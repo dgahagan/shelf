@@ -42,6 +42,9 @@
                     {% if item.media_type %}
                     <div><span class="text-shelf-muted">Type:</span> {{ media_types.get(item.media_type, item.media_type) }}</div>
                     {% endif %}
+                    {% if item.platform %}
+                    <div><span class="text-shelf-muted">Platform:</span> {{ game_platforms.get(item.platform, item.platform) }}</div>
+                    {% endif %}
                     {% if item.publisher %}
                     <div><span class="text-shelf-muted">Publisher:</span> {{ item.publisher }}</div>
                     {% endif %}

@@ -1,0 +1,48 @@
+{% if results %}
+<div class="space-y-2">
+    {% for game in results %}
+    <div class="bg-shelf-bg rounded-lg border border-shelf-border p-3 flex items-center gap-4">
+        {% if game.cover_url %}
+        <img src="{{ game.cover_url }}" class="w-12 h-16 object-cover rounded shrink-0" alt="">
+        {% else %}
+        <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs shrink-0">?</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+            <p class="font-medium truncate">{{ game.title }}</p>
+            <p class="text-xs text-shelf-muted truncate">
+                {% if game.publish_year %}{{ game.publish_year }}{% endif %}
+                {% if game.publisher %} &middot; {{ game.publisher }}{% endif %}
+                {% if game.platform_names %} &middot; {{ game.platform_names|join(', ') }}{% endif %}
+            </p>
+            {% if game.series_name %}
+            <p class="text-xs text-shelf-muted/70">{{ game.series_name }}</p>
+            {% endif %}
+        </div>
+        <form hx-post="/api/games/add" hx-target="#scan-results" hx-swap="afterbegin"
+              hx-on::after-request="if(event.detail.successful) { document.getElementById('game-search-input').value = ''; document.getElementById('game-search-results').innerHTML = ''; }">
+            <input type="hidden" name="igdb_id" value="{{ game.igdb_id }}">
+            <input type="hidden" name="platform" class="game-platform-sync" value="{{ platform }}">
+            <input type="hidden" name="location_id" class="game-loc-sync"
+                   value="">
+            <button type="submit"
+                    class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs font-medium hover:bg-shelf-accent2 transition-colors whitespace-nowrap">
+                Add
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+<script>
+// Sync location and platform values from main form into game search results
+var loc = document.getElementById('location');
+var plat = document.getElementById('platform');
+document.querySelectorAll('.game-loc-sync').forEach(function(el) {
+    if (loc) el.value = loc.value;
+});
+document.querySelectorAll('.game-platform-sync').forEach(function(el) {
+    if (plat) el.value = plat.value;
+});
+</script>
+{% else %}
+<p class="text-sm text-shelf-muted">No games found. Try a different title or remove the platform filter.</p>
+{% endif %}

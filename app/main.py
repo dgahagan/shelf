@@ -30,7 +30,7 @@ from starlette.responses import Response, RedirectResponse
 
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.database import init_db, get_db
-from app.routers import pages, items, locations, settings, sync, checkouts, valuation, hardcover
+from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover
 from app.routers import auth_routes
 
 
@@ -283,6 +283,7 @@ app.include_router(auth_routes.router)
 app.include_router(pages.router)
 app.include_router(items.router)
 app.include_router(locations.router)
+app.include_router(platforms.router)
 app.include_router(settings.router)
 app.include_router(sync.router)
 app.include_router(checkouts.router)

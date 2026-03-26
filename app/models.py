@@ -24,6 +24,7 @@ class ItemCreate(BaseModel):
     duration_mins: int | None = None
     location_id: int | None = None
     notes: str | None = None
+    platform: str | None = None
 
 
 class ItemUpdate(ItemCreate):

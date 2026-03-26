@@ -23,7 +23,7 @@
             <div class="grid grid-cols-2 gap-3">
                 <input type="text" name="title" placeholder="Title *" required
                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <input type="text" name="authors" placeholder="Author(s)"
+                <input type="text" name="authors" placeholder="{% if media_type == 'video_game' %}Developer{% else %}Author(s){% endif %}"
                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -32,6 +32,43 @@
                 <input type="number" name="publish_year" placeholder="Year"
                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
             </div>
+            {% if media_type == 'video_game' %}
+            <div>
+                <select name="platform" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">Platform (optional)</option>
+                    <option value="atari2600">Atari 2600</option>
+                    <option value="atari5200">Atari 5200</option>
+                    <option value="atari7800">Atari 7800</option>
+                    <option value="nes">NES</option>
+                    <option value="snes">SNES</option>
+                    <option value="n64">Nintendo 64</option>
+                    <option value="gamecube">GameCube</option>
+                    <option value="wii">Wii</option>
+                    <option value="wiiu">Wii U</option>
+                    <option value="switch">Nintendo Switch</option>
+                    <option value="gameboy">Game Boy</option>
+                    <option value="gba">Game Boy Advance</option>
+                    <option value="nds">Nintendo DS</option>
+                    <option value="3ds">Nintendo 3DS</option>
+                    <option value="genesis">Sega Genesis</option>
+                    <option value="saturn">Sega Saturn</option>
+                    <option value="dreamcast">Dreamcast</option>
+                    <option value="ps1">PlayStation</option>
+                    <option value="ps2">PlayStation 2</option>
+                    <option value="ps3">PlayStation 3</option>
+                    <option value="ps4">PlayStation 4</option>
+                    <option value="ps5">PlayStation 5</option>
+                    <option value="psp">PSP</option>
+                    <option value="vita">PS Vita</option>
+                    <option value="xbox">Xbox</option>
+                    <option value="xbox360">Xbox 360</option>
+                    <option value="xboxone">Xbox One</option>
+                    <option value="xboxsx">Xbox Series X/S</option>
+                    <option value="pc">PC</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            {% endif %}
             <div>
                 <label class="text-xs text-shelf-muted">Cover image (optional)</label>
                 <input type="file" name="cover" accept="image/*"

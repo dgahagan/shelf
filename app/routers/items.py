@@ -11,10 +11,10 @@ from app.auth import require_role
 
 logger = logging.getLogger(__name__)
 from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
-from app.database import get_db, get_setting
+from app.database import get_db, get_setting, get_game_platforms
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
-from app.services import upc as upc_svc, tmdb
+from app.services import upc as upc_svc, tmdb, igdb
 
 router = APIRouter(prefix="/api")
 
@@ -129,7 +129,7 @@ async def _fetch_preview_cover(isbn13: str, client: httpx.AsyncClient) -> str | 
 
 
 @router.post("/scan")
-async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = Form("book"), location_id: int | None = Form(None), _=Depends(require_role("editor"))):
+async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = Form("book"), location_id: int | None = Form(None), platform: str = Form(""), _=Depends(require_role("editor"))):
     """Scan a barcode: detect type, lookup metadata, download cover, save to DB. Returns HTMX fragment."""
     templates = request.app.state.templates
     raw = isbn.strip()
@@ -137,7 +137,7 @@ async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = F
     # Detect barcode type — route UPC barcodes to DVD/product lookup
     barcode_type = upc_svc.detect_barcode_type(raw)
     if barcode_type == "upc":
-        return await _scan_upc(request, templates, raw, media_type, location_id)
+        return await _scan_upc(request, templates, raw, media_type, location_id, platform or None)
 
     # Normalize ISBN
     isbn13 = isbn_svc.to_isbn13(raw)
@@ -232,13 +232,16 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
     isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if isbn13 else None
     media_type = form.get("media_type", "book")
     pub_year = form.get("publish_year")
+    platform = form.get("platform") or None
 
     with get_db() as db:
+        if platform and platform not in get_game_platforms(db):
+            platform = None
         cursor = db.execute(
             """INSERT INTO items (title, authors, isbn, isbn10, media_type, publisher,
-               publish_year, source) VALUES (?, ?, ?, ?, ?, ?, ?, 'manual')""",
+               publish_year, platform, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
             (title, form.get("authors"), isbn13, isbn10, media_type,
-             form.get("publisher"), int(pub_year) if pub_year else None),
+             form.get("publisher"), int(pub_year) if pub_year else None, platform),
         )
         item_id = cursor.lastrowid
 
@@ -383,7 +386,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
     for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
                 "publish_year", "page_count", "description", "series_name",
                 "series_position", "narrator", "duration_mins", "location_id", "notes",
-                "reading_status", "date_started", "date_finished", "owned"):
+                "reading_status", "date_started", "date_finished", "owned", "platform"):
         val = form.get(key)
         if val is not None:
             if val == "" and key != "owned":
@@ -653,7 +656,7 @@ async def export_csv(_=Depends(require_role("viewer"))):
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["title", "authors", "isbn", "media_type", "publisher", "publish_year", "page_count", "series_name", "location", "source", "estimated_value"])
+    writer.writerow(["title", "authors", "isbn", "media_type", "platform", "publisher", "publish_year", "page_count", "series_name", "location", "source", "estimated_value"])
 
     with get_db() as db:
         rows = db.execute(
@@ -665,7 +668,7 @@ async def export_csv(_=Depends(require_role("viewer"))):
     for row in rows:
         writer.writerow([
             row["title"], row["authors"], row["isbn"], row["media_type"],
-            row["publisher"], row["publish_year"], row["page_count"],
+            row["platform"], row["publisher"], row["publish_year"], row["page_count"],
             row["series_name"], row["location_name"], row["source"],
             row["estimated_value"],
         ])
@@ -752,8 +755,8 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     return {"imported": imported, "skipped": skipped, "errors": errors[:20]}
 
 
-async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None):
-    """Handle UPC barcode scan — look up via UPC Item DB + TMDb."""
+async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None):
+    """Handle UPC barcode scan — look up via UPC Item DB + TMDb (or IGDB for games)."""
     upc_norm = upc_svc.normalize_barcode(upc_code)
 
     # Check duplicate
@@ -767,6 +770,10 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             request, "fragments/scan_result.html",
             {"status": "duplicate", "isbn": upc_norm, "title": existing["title"], "item_id": existing["id"]},
         )
+
+    # Video games: use UPC Item DB for title → IGDB for metadata
+    if media_type == "video_game":
+        return await _scan_upc_game(request, templates, upc_norm, location_id, platform)
 
     # Get TMDb API key
     with get_db() as db:
@@ -815,6 +822,226 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     )
     resp.headers["HX-Trigger"] = _toast_header(f"Added: {metadata['title'][:50]}")
     return resp
+
+
+async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id: int | None, platform: str | None = None):
+    """Handle UPC scan for video games: UPC Item DB → IGDB lookup."""
+    # Step 1: Get title from UPC
+    title = None
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        try:
+            resp = await client.get(
+                "https://api.upcitemdb.com/prod/trial/lookup",
+                params={"upc": upc_norm}, timeout=10,
+            )
+            if resp.status_code == 200:
+                items = resp.json().get("items", [])
+                if items:
+                    title = items[0].get("title")
+        except Exception:
+            pass
+
+    if not title:
+        _log_scan(upc_norm, "video_game", "not_found")
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "not_found", "isbn": upc_norm, "media_type": "video_game",
+             "message": "Not found — add manually below", "preview_cover": None},
+        )
+
+    # Step 2: Search IGDB for metadata using that title
+    with get_db() as db:
+        igdb_id = get_setting(db, "igdb_client_id")
+        igdb_secret = get_setting(db, "igdb_client_secret")
+
+    metadata = None
+    if igdb_id and igdb_secret:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            results = await igdb.search_games(title, igdb_id, igdb_secret, client, limit=1)
+            if results:
+                metadata = results[0]
+
+    # Save item — with IGDB metadata if found, otherwise just UPC title
+    loc_id = location_id if location_id and location_id > 0 else None
+    source = "igdb" if metadata else "upc"
+    game_title = metadata["title"] if metadata else title
+
+    with get_db() as db:
+        valid_platforms = get_game_platforms(db)
+        platform_val = platform if platform and platform in valid_platforms else None
+        cursor = db.execute(
+            """INSERT INTO items (title, description, media_type, publisher, publish_year,
+               series_name, platform, location_id, upc, source)
+               VALUES (?, ?, 'video_game', ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                game_title,
+                metadata.get("description") if metadata else None,
+                metadata.get("publisher") if metadata else None,
+                metadata.get("publish_year") if metadata else None,
+                metadata.get("series_name") if metadata else None,
+                platform_val,
+                loc_id,
+                upc_norm,
+                source,
+            ),
+        )
+        item_id = cursor.lastrowid
+
+    # Download cover
+    cover_path = None
+    cover_url = metadata.get("cover_url") if metadata else None
+    if cover_url:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            cover_path = await covers._download_to_item(item_id, cover_url, client)
+        if cover_path:
+            with get_db() as db:
+                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+
+    _log_scan(upc_norm, "video_game", "added", item_id)
+
+    resp = templates.TemplateResponse(
+        request, "fragments/scan_result.html",
+        {
+            "status": "added", "isbn": upc_norm, "title": game_title,
+            "authors": metadata.get("developer") if metadata else None,
+            "cover_path": cover_path, "item_id": item_id,
+            "source": source, "media_type_label": "Video Game",
+        },
+    )
+    resp.headers["HX-Trigger"] = _toast_header(f"Added: {game_title[:50]}")
+    return resp
+
+
+@router.get("/games/search")
+async def search_games(
+    request: Request,
+    q: str = "",
+    platform: str = "",
+    _=Depends(require_role("editor")),
+):
+    """Search IGDB for video games by title + optional platform. Returns HTMX fragment."""
+    templates = request.app.state.templates
+    if not q.strip():
+        return HTMLResponse("")
+
+    with get_db() as db:
+        igdb_id = get_setting(db, "igdb_client_id")
+        igdb_secret = get_setting(db, "igdb_client_secret")
+
+    if not igdb_id or not igdb_secret:
+        return HTMLResponse(
+            '<p class="text-sm text-shelf-error">IGDB credentials not configured. '
+            'Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
+        )
+
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        results = await igdb.search_games(
+            q.strip(), igdb_id, igdb_secret, client,
+            platform=platform or None, limit=10,
+        )
+
+    return templates.TemplateResponse(
+        request, "fragments/game_search_results.html",
+        {"results": results, "platform": platform},
+    )
+
+
+@router.post("/games/add")
+async def add_game_from_search(
+    request: Request,
+    igdb_id: int = Form(...),
+    platform: str = Form(""),
+    location_id: int | None = Form(None),
+    _=Depends(require_role("editor")),
+):
+    """Add a video game to the collection from an IGDB search result."""
+    templates = request.app.state.templates
+
+    with get_db() as db:
+        client_id = get_setting(db, "igdb_client_id")
+        client_secret = get_setting(db, "igdb_client_secret")
+
+    if not client_id or not client_secret:
+        return HTMLResponse('<p class="text-sm text-shelf-error">IGDB not configured.</p>')
+
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        metadata = await igdb.lookup_game(igdb_id, client_id, client_secret, client)
+
+    if not metadata:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": "", "message": "Failed to fetch game details from IGDB"},
+        )
+
+    loc_id = location_id if location_id and location_id > 0 else None
+
+    with get_db() as db:
+        valid_platforms = get_game_platforms(db)
+        platform_val = platform if platform in valid_platforms else None
+
+        # Check duplicate by title + platform
+        existing = db.execute(
+            "SELECT id, title FROM items WHERE title = ? AND media_type = 'video_game' AND platform = ?",
+            (metadata["title"], platform_val),
+        ).fetchone()
+    if existing:
+        _log_scan("", "video_game", "duplicate", existing["id"])
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
+        )
+
+    with get_db() as db:
+        cursor = db.execute(
+            """INSERT INTO items (title, description, media_type, publisher, publish_year,
+               series_name, platform, location_id, source)
+               VALUES (?, ?, 'video_game', ?, ?, ?, ?, ?, 'igdb')""",
+            (
+                metadata["title"],
+                metadata.get("description"),
+                metadata.get("publisher"),
+                metadata.get("publish_year"),
+                metadata.get("series_name"),
+                platform_val,
+                loc_id,
+            ),
+        )
+        item_id = cursor.lastrowid
+
+    # Download cover
+    cover_path = None
+    if metadata.get("cover_url"):
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            cover_path = await covers._download_to_item(item_id, metadata["cover_url"], client)
+        if cover_path:
+            with get_db() as db:
+                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+
+    _log_scan("", "video_game", "added", item_id)
+
+    resp = templates.TemplateResponse(
+        request, "fragments/scan_result.html",
+        {
+            "status": "added", "isbn": "", "title": metadata["title"],
+            "authors": metadata.get("developer"),
+            "cover_path": cover_path, "item_id": item_id,
+            "source": "igdb", "media_type_label": "Video Game",
+        },
+    )
+    resp.headers["HX-Trigger"] = _toast_header(f"Added: {metadata['title'][:50]}")
+    return resp
+
+
+@router.post("/igdb/test-key")
+async def test_igdb_key(request: Request, _=Depends(require_role("admin"))):
+    """Test IGDB (Twitch) credentials."""
+    data = await request.json()
+    client_id = data.get("client_id", "")
+    client_secret = data.get("client_secret", "")
+    if not client_id or not client_secret:
+        return {"ok": False, "message": "Both Client ID and Client Secret are required"}
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        return await igdb.test_credentials(client_id, client_secret, client)
 
 
 def _update_from_csv_row(db, item_id: int, row: dict):
