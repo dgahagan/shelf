@@ -1,6 +1,6 @@
 # Shelf
 
-A self-hosted home library catalog with barcode scanning, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
+A self-hosted home library catalog with barcode scanning, video game support, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
 
 <p align="center">
   <img src="screenshots/browse.png" width="800" alt="Browse your collection">
@@ -14,7 +14,8 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 - **Zero cloud dependency** — runs entirely on your network in a single Docker container with a SQLite database. Your data never leaves your home
 - **Works on any device** — responsive web UI that works on phones, tablets, and desktops. No app store required
 - **Multi-user** — share with your household. Admins manage the catalog, viewers can browse and track what they're reading
-- **More than books** — catalog audiobooks, eBooks, DVDs, CDs, comics, and kids' books. Link physical and digital formats together
+- **More than books** — catalog audiobooks, eBooks, DVDs, CDs, comics, kids' books, and video games. Link physical and digital formats together
+- **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges (Atari 2600, NES, SNES, etc.). Cover art, publisher, series, and platform tracking with a customizable platform list
 - **Lend with confidence** — track who borrowed what with due dates and overdue alerts
 - **Know what you own** — ISBNdb integration estimates your collection's value for insurance purposes
 
@@ -70,13 +71,15 @@ data/
 ### Scanning and Metadata
 - **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books
-- **Cover art pipeline** — Open Library, Hardcover, Amazon, Google Books, and manual upload/search
+- **Cover art pipeline** — Open Library, Hardcover, Amazon, Google Books, IGDB, and manual upload/search
 - **UPC support** — scan DVDs and Blu-rays with TMDb lookup
+- **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges. Platform tracking with a customizable platform list (30+ platforms from Atari 2600 to PS5)
 
 ### Collection Management
 - **Filter and search** — by media type, location, reading status, ownership, and free text
 - **Reading tracking** — want-to-read, reading, and read with start/finish dates
 - **Locations** — organize by room, shelf, or any system you like
+- **Game platforms** — customizable list of platforms, add your own for niche or retro systems
 - **Checkout system** — lend to borrowers with due dates and overdue tracking
 - **Wishlist** — mark items as unowned to build a wish list alongside your catalog
 - **CSV import/export** — bulk operations and backups
@@ -84,6 +87,7 @@ data/
 ### Integrations
 - **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
 - **[Audiobookshelf](https://www.audiobookshelf.org)** — sync your audiobook library and link physical + digital formats
+- **[IGDB](https://www.igdb.com)** — video game metadata, cover art, and platform info via Twitch developer credentials (free)
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
 
 ### Administration
@@ -111,15 +115,16 @@ data/
 
 ## Metadata Sources
 
-Shelf queries free, public APIs to look up book information — no API keys needed for core functionality:
+Shelf queries free, public APIs to look up book and game information — no API keys needed for core book functionality:
 
 | Source | What it provides | API key required? |
 |--------|-----------------|-------------------|
 | [Open Library](https://openlibrary.org) | Title, author, description, cover art, publish info | No |
 | [Google Books](https://books.google.com) | Fallback metadata and cover art | No |
 | [Amazon Images](https://www.amazon.com) | Fallback cover art via ISBN | No |
+| [UPC Item DB](https://www.upcitemdb.com) | Title lookup from UPC barcodes (games, DVDs) | No |
 
-Metadata lookups send only the ISBN to these services. No personal data, account info, or collection details are transmitted.
+Metadata lookups send only the ISBN or UPC to these services. No personal data, account info, or collection details are transmitted.
 
 ## Optional API Keys
 
@@ -128,6 +133,7 @@ Configure in Settings to unlock additional features:
 | Service | Enables | Link |
 |---------|---------|------|
 | **Hardcover** | Reading status sync, richer metadata, import/export, Discover page | [hardcover.app](https://hardcover.app) |
+| **IGDB** (Twitch) | Video game metadata, cover art, and platform info | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
 | **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
 | **TMDb** | DVD/Blu-ray metadata via UPC barcode | [themoviedb.org](https://www.themoviedb.org) |
 
