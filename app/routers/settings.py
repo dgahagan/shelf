@@ -17,6 +17,8 @@ async def update_settings(
     isbndb_api_key: str = Form(""),
     tmdb_api_key: str = Form(""),
     hardcover_token: str = Form(""),
+    igdb_client_id: str = Form(""),
+    igdb_client_secret: str = Form(""),
 ):
     with get_db() as db:
         for key, value in [
@@ -25,6 +27,8 @@ async def update_settings(
             ("isbndb_api_key", isbndb_api_key.strip()),
             ("tmdb_api_key", tmdb_api_key.strip()),
             ("hardcover_token", hardcover_token.strip()),
+            ("igdb_client_id", igdb_client_id.strip()),
+            ("igdb_client_secret", igdb_client_secret.strip()),
         ]:
             db.execute(
                 "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",

@@ -80,6 +80,8 @@ COLUMN_MIGRATIONS: Sequence[str] = (
     "ALTER TABLE items ADD COLUMN hardcover_user_book_id INTEGER DEFAULT NULL",
     # Phase 6B: Wishlist / Owned flag
     "ALTER TABLE items ADD COLUMN owned INTEGER NOT NULL DEFAULT 1",
+    # Phase 7: Video Game Support
+    "ALTER TABLE items ADD COLUMN platform TEXT DEFAULT NULL",
 )
 
 MIGRATION_TABLES = """
@@ -129,6 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_item_links_a ON item_links(item_a_id);
 CREATE INDEX IF NOT EXISTS idx_item_links_b ON item_links(item_b_id);
 
 CREATE INDEX IF NOT EXISTS idx_items_hardcover_book ON items(hardcover_book_id);
+CREATE INDEX IF NOT EXISTS idx_items_platform ON items(platform);
 
 CREATE TABLE IF NOT EXISTS log_entries (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,6 +152,14 @@ CREATE TABLE IF NOT EXISTS users (
     created_at   TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS game_platforms (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug       TEXT NOT NULL UNIQUE,
+    name       TEXT NOT NULL,
+    sort_order INTEGER DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -159,6 +170,20 @@ def _run_migrations(db: sqlite3.Connection) -> None:
         except sqlite3.OperationalError:
             pass  # column already exists
     db.executescript(MIGRATION_TABLES)
+    _seed_game_platforms(db)
+
+
+def _seed_game_platforms(db: sqlite3.Connection) -> None:
+    """Seed game_platforms table from config defaults if empty."""
+    count = db.execute("SELECT COUNT(*) as c FROM game_platforms").fetchone()["c"]
+    if count > 0:
+        return
+    from app.config import GAME_PLATFORMS
+    for i, (slug, name) in enumerate(GAME_PLATFORMS.items()):
+        db.execute(
+            "INSERT OR IGNORE INTO game_platforms (slug, name, sort_order) VALUES (?, ?, ?)",
+            (slug, name, i),
+        )
 
 
 def get_setting(db, key: str) -> str:
@@ -173,6 +198,14 @@ def get_all_settings(db) -> dict[str, str]:
     from app.config import get_setting_value
     settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
     return {k: get_setting_value(k, v) for k, v in settings.items()}
+
+
+def get_game_platforms(db) -> dict[str, str]:
+    """Get game platforms as {slug: name} dict, ordered by sort_order then name."""
+    rows = db.execute(
+        "SELECT slug, name FROM game_platforms ORDER BY sort_order, name"
+    ).fetchall()
+    return {r["slug"]: r["name"] for r in rows}
 
 
 def init_db():

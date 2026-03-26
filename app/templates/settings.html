@@ -1,14 +1,126 @@
 {% extends "base.html" %}
 {% block title %}Settings — Shelf{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto space-y-8">
-    <h1 class="text-2xl font-bold">Settings</h1>
+<div class="max-w-2xl mx-auto" x-data="{ tab: localStorage.getItem('shelf_settings_tab') || 'library' }">
+    <h1 class="text-2xl font-bold mb-6">Settings</h1>
+
+    <!-- Tab Bar -->
+    <div class="flex gap-1 mb-6 border-b border-shelf-border">
+        <button @click="tab = 'library'; localStorage.setItem('shelf_settings_tab', 'library')"
+                :class="tab === 'library' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
+                class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Library</button>
+        <button @click="tab = 'integrations'; localStorage.setItem('shelf_settings_tab', 'integrations')"
+                :class="tab === 'integrations' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
+                class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Integrations</button>
+        <button @click="tab = 'data'; localStorage.setItem('shelf_settings_tab', 'data')"
+                :class="tab === 'data' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
+                class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Data</button>
+        <button @click="tab = 'users'; localStorage.setItem('shelf_settings_tab', 'users')"
+                :class="tab === 'users' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
+                class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Users</button>
+    </div>
+
+    <!-- Library Tab -->
+    <div x-show="tab === 'library'" class="space-y-8">
 
     <!-- Stats -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-2">Collection</h2>
         <p class="text-shelf-muted">{{ item_count }} items in your library</p>
     </div>
+
+    <!-- Locations -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-4">Locations</h2>
+
+        {% if locations %}
+        <div class="space-y-2 mb-4">
+            {% for loc in locations %}
+            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+                <span>{{ loc.name }}</span>
+                <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline">
+                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
+                            onclick="return confirm('Delete location \'{{ loc.name }}\'?')">
+                        Remove
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="/api/locations" method="post" class="flex gap-2">
+            <input type="text" name="name" placeholder="New location name..." required
+                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Add
+            </button>
+        </form>
+    </div>
+
+    <!-- Borrowers -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-4">Borrowers</h2>
+
+        {% if borrowers %}
+        <div class="space-y-2 mb-4">
+            {% for b in borrowers %}
+            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+                <span>{{ b.name }}</span>
+                <form action="/api/borrowers/{{ b.id }}/delete" method="post" class="inline">
+                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
+                            onclick="return confirm('Remove borrower \'{{ b.name }}\'?')">
+                        Remove
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="/api/borrowers" method="post" class="flex gap-2">
+            <input type="text" name="name" placeholder="Add borrower..." required
+                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Add
+            </button>
+        </form>
+    </div>
+
+    <!-- Game Platforms -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-4">Game Platforms</h2>
+        <p class="text-xs text-shelf-muted mb-4">Platforms available when adding video games. Custom platforms can be added for niche or retro systems.</p>
+
+        {% if game_platforms_list %}
+        <div class="space-y-2 mb-4 max-h-64 overflow-y-auto">
+            {% for p in game_platforms_list %}
+            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+                <span>{{ p.name }} <span class="text-shelf-muted text-xs">({{ p.slug }})</span></span>
+                <form action="/api/platforms/{{ p.id }}/delete" method="post" class="inline">
+                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
+                            onclick="return confirm('Delete platform \'{{ p.name }}\'? Items using it will have their platform cleared.')">
+                        Remove
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="/api/platforms" method="post" class="flex gap-2">
+            <input type="text" name="name" placeholder="Platform name (e.g. TurboGrafx-16)..." required
+                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Add
+            </button>
+        </form>
+    </div>
+
+    </div><!-- /Library Tab -->
+
+    <!-- Integrations Tab -->
+    <div x-show="tab === 'integrations'" class="space-y-8">
 
     <!-- Audiobookshelf Sync -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
@@ -95,6 +207,8 @@
                 </div>
             </div>
             <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
+            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
@@ -282,6 +396,8 @@
             <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
             <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
             <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
+            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
+            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
@@ -458,35 +574,6 @@
         </div>
     </div>
 
-    <!-- Locations -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-4">Locations</h2>
-
-        {% if locations %}
-        <div class="space-y-2 mb-4">
-            {% for loc in locations %}
-            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
-                <span>{{ loc.name }}</span>
-                <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline">
-                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
-                            onclick="return confirm('Delete location \'{{ loc.name }}\'?')">
-                        Remove
-                    </button>
-                </form>
-            </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <form action="/api/locations" method="post" class="flex gap-2">
-            <input type="text" name="name" placeholder="New location name..." required
-                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Add
-            </button>
-        </form>
-    </div>
-
     <!-- Valuation -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{
@@ -574,6 +661,8 @@
             <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
             <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
             <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
+            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
@@ -693,40 +782,92 @@
             <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
             <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
             <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
+            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
         </form>
     </div>
 
-    <!-- Borrowers -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-4">Borrowers</h2>
-
-        {% if borrowers %}
-        <div class="space-y-2 mb-4">
-            {% for b in borrowers %}
-            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
-                <span>{{ b.name }}</span>
-                <form action="/api/borrowers/{{ b.id }}/delete" method="post" class="inline">
-                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
-                            onclick="return confirm('Remove borrower \'{{ b.name }}\'?')">
-                        Remove
-                    </button>
-                </form>
-            </div>
-            {% endfor %}
+    <!-- IGDB (Video Games) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{ igdbStatus: null, igdbTesting: false, showIgdbHelp: false, igdbId: '{{ settings.get('igdb_client_id', '') }}', igdbSecret: '{{ settings.get('igdb_client_secret', '') }}' }">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">IGDB (Video Games)</h2>
+            <button @click="showIgdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get credentials?</button>
         </div>
-        {% endif %}
 
-        <form action="/api/borrowers" method="post" class="flex gap-2">
-            <input type="text" name="name" placeholder="Add borrower..." required
-                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        <!-- Help Modal -->
+        <div x-show="showIgdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showIgdbHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting IGDB Credentials</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Go to <span class="text-shelf-accent2">dev.twitch.tv/console</span> and log in with a Twitch account</li>
+                    <li>Click <span class="text-shelf-text">Register Your Application</span></li>
+                    <li>Set any name, use <span class="text-shelf-text font-mono text-xs">http://localhost</span> as the OAuth redirect, and category <span class="text-shelf-text">Application Integration</span></li>
+                    <li>Copy the <span class="text-shelf-text">Client ID</span> from the app listing</li>
+                    <li>Click <span class="text-shelf-text">New Secret</span> to generate a Client Secret</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">About IGDB</p>
+                    <p>IGDB (Internet Game Database) is the community standard game database, owned by Twitch. It provides game metadata, cover art, platform info, and more. Authentication is via Twitch developer credentials (free).</p>
+                </div>
+                <button @click="showIgdbHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="igdb_client_id" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client ID</label>
+                <input type="text" id="igdb_client_id" name="igdb_client_id" x-model="igdbId"
+                       value="{{ settings.get('igdb_client_id', '') }}" placeholder="Your Twitch Client ID"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div>
+                <label for="igdb_client_secret" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client Secret</label>
+                <div class="flex gap-2">
+                    <input type="password" id="igdb_client_secret" name="igdb_client_secret" x-model="igdbSecret"
+                           value="{{ settings.get('igdb_client_secret', '') }}" placeholder="Your Twitch Client Secret"
+                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="if(!igdbId || !igdbSecret) return; igdbTesting=true; igdbStatus=null; fetch('/api/igdb/test-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:igdbId,client_secret:igdbSecret})}).then(r=>r.json()).then(d=>{igdbStatus=d; igdbTesting=false}).catch(()=>{igdbStatus={ok:false,message:'Connection failed'}; igdbTesting=false})"
+                            :disabled="igdbTesting || !igdbId || !igdbSecret"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!igdbTesting">Test</span>
+                        <span x-show="igdbTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="igdbStatus && igdbStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="igdbStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="igdbStatus && !igdbStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="igdbStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
+            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
+            <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
+            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Add
+                Save
             </button>
         </form>
     </div>
+
+    </div><!-- /Integrations Tab -->
+
+    <!-- Data Tab -->
+    <div x-show="tab === 'data'" class="space-y-8">
 
     <!-- Maintenance -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
@@ -886,6 +1027,11 @@
         </div>
     </div>
 
+    </div><!-- /Data Tab -->
+
+    <!-- Users Tab -->
+    <div x-show="tab === 'users'" class="space-y-8">
+
     <!-- User Management -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{
@@ -991,5 +1137,7 @@
             </div>
         </div>
     </div>
+
+    </div><!-- /Users Tab -->
 </div>
 {% endblock %}

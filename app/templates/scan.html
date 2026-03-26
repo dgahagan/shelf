@@ -82,17 +82,48 @@
                     </select>
                 </div>
 
+                <!-- Platform (video games only) -->
+                <div x-show="mediaType === 'video_game'" x-transition style="display:none">
+                    <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
+                    <select id="platform" name="platform"
+                            x-model="platform" @change="localStorage.setItem('shelf_platform', platform)"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        <option value="">Any / Unknown</option>
+                        {% for key, label in game_platforms.items() %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
                 <!-- ISBN Input -->
                 <div>
                     <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1">ISBN / UPC</label>
                     <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off"
-                           placeholder="Scan or type ISBN..."
+                           :placeholder="mediaType === 'video_game' ? 'Scan UPC barcode...' : 'Scan or type ISBN...'"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
                 </div>
             </div>
-            <p class="text-xs text-shelf-muted mt-3">Scan a barcode or type an ISBN and press Enter. The book will be looked up and added automatically.</p>
+            <p x-show="mediaType !== 'video_game'" class="text-xs text-shelf-muted mt-3">Scan a barcode or type an ISBN and press Enter. The book will be looked up and added automatically.</p>
+            <p x-show="mediaType === 'video_game'" class="text-xs text-shelf-muted mt-3" style="display:none">Scan a UPC barcode from a game case, or use the title search below for cartridges and loose games.</p>
         </div>
     </form>
+
+    <!-- Game Title Search (for retro games without barcodes) -->
+    <div x-show="mediaType === 'video_game'" x-transition style="display:none" class="mb-6">
+        <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+            <h2 class="text-lg font-semibold mb-3">Search by Title</h2>
+            <p class="text-xs text-shelf-muted mb-4">For cartridges or games without a barcode — search IGDB by name and platform.</p>
+            <div class="flex gap-3">
+                <input type="text" id="game-search-input" placeholder="Game title..."
+                       class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50"
+                       hx-get="/api/games/search" hx-trigger="keyup changed delay:400ms"
+                       hx-target="#game-search-results" hx-swap="innerHTML"
+                       hx-include="#platform, #location"
+                       name="q">
+            </div>
+            <div id="game-search-results" class="mt-4"></div>
+        </div>
+    </div>
 
     <!-- Scan Results -->
     <div id="scan-results" class="space-y-3">
@@ -122,6 +153,7 @@
 function scanPage() {
     return {
         mediaType: localStorage.getItem('shelf_media_type') || 'book',
+        platform: localStorage.getItem('shelf_platform') || '',
         location: localStorage.getItem('shelf_location') || '',
         cameraActive: false,
         scanPaused: false,

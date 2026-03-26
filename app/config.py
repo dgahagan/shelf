@@ -13,6 +13,41 @@ MEDIA_TYPES = {
     "dvd": "DVD / Blu-ray",
     "cd": "CD",
     "comic": "Comic / Graphic Novel",
+    "video_game": "Video Game",
+}
+
+# Seed data — runtime platform list comes from game_platforms table
+GAME_PLATFORMS = {
+    "atari2600": "Atari 2600",
+    "atari5200": "Atari 5200",
+    "atari7800": "Atari 7800",
+    "nes": "NES",
+    "snes": "SNES",
+    "n64": "Nintendo 64",
+    "gamecube": "GameCube",
+    "wii": "Wii",
+    "wiiu": "Wii U",
+    "switch": "Nintendo Switch",
+    "gameboy": "Game Boy",
+    "gba": "Game Boy Advance",
+    "nds": "Nintendo DS",
+    "3ds": "Nintendo 3DS",
+    "genesis": "Sega Genesis",
+    "saturn": "Sega Saturn",
+    "dreamcast": "Dreamcast",
+    "ps1": "PlayStation",
+    "ps2": "PlayStation 2",
+    "ps3": "PlayStation 3",
+    "ps4": "PlayStation 4",
+    "ps5": "PlayStation 5",
+    "psp": "PSP",
+    "vita": "PS Vita",
+    "xbox": "Xbox",
+    "xbox360": "Xbox 360",
+    "xboxone": "Xbox One",
+    "xboxsx": "Xbox Series X/S",
+    "pc": "PC",
+    "other": "Other",
 }
 
 OPENLIBRARY_RATE_LIMIT = 0.34  # seconds between requests (~3/sec)
@@ -35,6 +70,8 @@ SECRET_ENV_VARS = {
     "hardcover_token": "HARDCOVER_TOKEN",
     "isbndb_api_key": "ISBNDB_API_KEY",
     "tmdb_api_key": "TMDB_API_KEY",
+    "igdb_client_id": "IGDB_CLIENT_ID",
+    "igdb_client_secret": "IGDB_CLIENT_SECRET",
 }
 
 

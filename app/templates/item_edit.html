@@ -63,6 +63,17 @@
             {{ field("series_name", "Series", item.series_name) }}
         </div>
 
+        <div>
+            <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
+            <select id="platform" name="platform"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">None</option>
+                {% for key, label in game_platforms.items() %}
+                <option value="{{ key }}" {% if item.platform == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
             {{ field("narrator", "Narrator", item.narrator) }}
             {{ field("duration_mins", "Duration (min)", item.duration_mins, type="number") }}

@@ -18,6 +18,7 @@ ALLOWED_COVER_DOMAINS = {
     "m.media-amazon.com",
     "hardcover.app",
     "assets.hardcover.app",
+    "images.igdb.com",
 }
 
 

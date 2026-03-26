@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 
 from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
-from app.database import get_db, get_setting
+from app.database import get_db, get_setting, get_game_platforms
 
 router = APIRouter()
 
@@ -88,10 +88,11 @@ async def scan(request: Request, _=Depends(require_role("editor"))):
             "FROM scan_log sl LEFT JOIN items i ON sl.item_id = i.id "
             "ORDER BY sl.created_at DESC LIMIT 20"
         ).fetchall()
+        game_platforms = get_game_platforms(db)
     return request.app.state.templates.TemplateResponse(
         request,
         "scan.html",
-        {"media_types": MEDIA_TYPES, "locations": locations, "recent_scans": recent},
+        {"media_types": MEDIA_TYPES, "game_platforms": game_platforms, "locations": locations, "recent_scans": recent},
     )
 
 
@@ -141,12 +142,15 @@ async def item_detail(request: Request, item_id: int, _=Depends(require_role("vi
         # Hardcover token check
         has_hardcover = bool(get_setting(db, "hardcover_token"))
 
+        game_platforms = get_game_platforms(db)
+
     return request.app.state.templates.TemplateResponse(
         request,
         "item_detail.html",
         {
             "item": item,
             "media_types": MEDIA_TYPES,
+            "game_platforms": game_platforms,
             "has_hardcover": has_hardcover,
             "current_checkout": current_checkout,
             "checkout_history": checkout_history,
@@ -165,12 +169,13 @@ async def item_edit(request: Request, item_id: int, _=Depends(require_role("edit
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
+        game_platforms = get_game_platforms(db)
     if not item:
         return RedirectResponse(url="/browse")
     return request.app.state.templates.TemplateResponse(
         request,
         "item_edit.html",
-        {"item": item, "media_types": MEDIA_TYPES, "locations": locations},
+        {"item": item, "media_types": MEDIA_TYPES, "game_platforms": game_platforms, "locations": locations},
     )
 
 
@@ -286,10 +291,14 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         ).fetchall()
         item_count = db.execute("SELECT COUNT(*) as c FROM items").fetchone()["c"]
         borrowers = db.execute("SELECT * FROM borrowers ORDER BY name").fetchall()
+        game_platforms_list = db.execute(
+            "SELECT * FROM game_platforms ORDER BY sort_order, name"
+        ).fetchall()
     env_overrides = {k for k in settings if is_env_override(k)}
     return request.app.state.templates.TemplateResponse(
         request,
         "settings.html",
         {"settings": settings, "locations": locations, "item_count": item_count,
-         "borrowers": borrowers, "env_overrides": env_overrides},
+         "borrowers": borrowers, "env_overrides": env_overrides,
+         "game_platforms_list": game_platforms_list},
     )
