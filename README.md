@@ -1,20 +1,36 @@
 # Shelf
 
-A self-hosted home library catalog with ISBN barcode scanning, metadata lookup, cover art, and collection browsing.
+A self-hosted home library catalog with barcode scanning, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
 
-## Features
+<p align="center">
+  <img src="screenshots/browse.png" width="800" alt="Browse your collection">
+</p>
 
-- **Barcode scanning** — scan ISBNs and UPCs via device camera or manual entry
-- **Metadata lookup** — automatic enrichment from Open Library, Google Books, and Hardcover
-- **Cover art** — cascading download from Open Library, Hardcover, Amazon, and Google Books; manual upload and search
-- **Collection browsing** — filter by media type, location, reading status, and ownership; full-text search
-- **Reading status** — track want-to-read, reading, and read with dates
-- **Checkouts** — lend books to borrowers with due dates and overdue tracking
-- **Hardcover integration** — bidirectional sync of reading statuses, import/export
-- **Audiobookshelf integration** — sync audiobook library, link physical and digital formats
-- **Valuation** — collection value estimates via ISBNdb for insurance purposes
-- **Authentication** — local accounts with admin/editor/viewer roles, JWT sessions
-- **HTTPS** — self-signed TLS certificates generated automatically
+## Why Shelf?
+
+Most home library apps are cloud-hosted, mobile-only, or require you to manually enter every book. Shelf takes a different approach:
+
+- **Scan and done** — point your phone camera at a barcode or use a USB/Bluetooth barcode scanner and the book is cataloged in seconds, complete with cover art, author, series info, and description. Works out of the box with any scanner that sends Enter after the barcode (most do by default)
+- **Zero cloud dependency** — runs entirely on your network in a single Docker container with a SQLite database. Your data never leaves your home
+- **Works on any device** — responsive web UI that works on phones, tablets, and desktops. No app store required
+- **Multi-user** — share with your household. Admins manage the catalog, viewers can browse and track what they're reading
+- **More than books** — catalog audiobooks, eBooks, DVDs, CDs, comics, and kids' books. Link physical and digital formats together
+- **Lend with confidence** — track who borrowed what with due dates and overdue alerts
+- **Know what you own** — ISBNdb integration estimates your collection's value for insurance purposes
+
+## Screenshots
+
+| Browse | Scan |
+|--------|------|
+| ![Browse](screenshots/browse.png) | ![Scan](screenshots/scan.png) |
+
+| Item Detail | Stats |
+|-------------|-------|
+| ![Detail](screenshots/detail.png) | ![Stats](screenshots/stats.png) |
+
+| Admin Logs |
+|------------|
+| ![Logs](screenshots/logs.png) |
 
 ## Quick Start
 
@@ -22,55 +38,86 @@ A self-hosted home library catalog with ISBN barcode scanning, metadata lookup, 
 docker compose up -d
 ```
 
-On first launch, open `https://localhost:18888` and create your admin account via the setup wizard.
+Open `https://localhost:18888` and create your admin account via the setup wizard. That's it.
 
-### Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CERT_SAN` | `DNS:shelf,DNS:localhost` | Subject Alternative Names for TLS cert (e.g., `IP:192.168.1.50,DNS:shelf`) |
-| `SECRET_KEY` | *(auto-generated)* | JWT signing key. Auto-generated and stored in DB if not set. |
+### Configuration
 
 Create a `.env` file alongside `docker-compose.yml` for host-specific config:
 
 ```bash
+# Add your machine's IP so you can access Shelf from other devices
 CERT_SAN=IP:192.168.1.50,DNS:shelf,DNS:localhost
 ```
 
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `CERT_SAN` | `DNS:shelf,DNS:localhost` | TLS certificate Subject Alternative Names |
+| `SECRET_KEY` | *(auto-generated)* | JWT signing key (auto-generated and stored in DB if not set) |
+
 ### Data
 
-All persistent data lives in `./data/` (bind-mounted to `/data` in the container):
+All persistent data lives in `./data/` (bind-mounted into the container):
 
-- `shelf.db` — SQLite database
-- `covers/` — cached cover images
-- `certs/` — TLS certificates
+```
+data/
+  shelf.db    — SQLite database
+  covers/     — cached cover images
+  certs/      — auto-generated TLS certificates
+```
+
+## Features
+
+### Scanning and Metadata
+- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
+- **Cascading metadata lookup** — Open Library, Hardcover, and Google Books
+- **Cover art pipeline** — Open Library, Hardcover, Amazon, Google Books, and manual upload/search
+- **UPC support** — scan DVDs and Blu-rays with TMDb lookup
+
+### Collection Management
+- **Filter and search** — by media type, location, reading status, ownership, and free text
+- **Reading tracking** — want-to-read, reading, and read with start/finish dates
+- **Locations** — organize by room, shelf, or any system you like
+- **Checkout system** — lend to borrowers with due dates and overdue tracking
+- **Wishlist** — mark items as unowned to build a wish list alongside your catalog
+- **CSV import/export** — bulk operations and backups
+
+### Integrations
+- **Hardcover** — bidirectional reading status sync, import your library, discover new books
+- **Audiobookshelf** — sync your audiobook library and link physical + digital formats
+- **ISBNdb** — collection valuation with list prices for insurance documentation
+
+### Administration
+- **Role-based access** — admin, editor, and viewer roles
+- **Web log viewer** — monitor auth events, sync activity, and errors from the browser
+- **HTTPS** — self-signed TLS certificates generated on first run
+- **Backup/restore** — database backup and restore from the settings page
 
 ## Tech Stack
 
-- **Backend:** Python 3.12, FastAPI, SQLite (WAL mode)
-- **Frontend:** Jinja2 templates, HTMX, Alpine.js, Tailwind CSS (CDN)
-- **Auth:** bcrypt password hashing, JWT tokens in HTTP-only cookies
-- **Container:** Docker, runs as non-root user, self-signed HTTPS
-
-## Media Types
-
-Books, Kids Books, Audiobooks, eBooks, DVDs/Blu-rays, CDs, Comics/Graphic Novels.
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.12, FastAPI, SQLite (WAL mode) |
+| Frontend | Jinja2, HTMX, Alpine.js, Tailwind CSS |
+| Auth | bcrypt, JWT in HTTP-only secure cookies |
+| Container | Docker, non-root user, self-signed HTTPS |
 
 ## Roles
 
-| Role | Permissions |
-|------|-------------|
-| **Admin** | Full access: settings, user management, locations, backups, delete items, sync, bulk operations |
-| **Editor** | Add/edit items, scan barcodes, manage covers, checkout/checkin, import/export |
-| **Viewer** | Browse, search, view details, update reading status, export CSV, view stats |
+| Role | Can do |
+|------|--------|
+| **Admin** | Everything: settings, users, locations, sync, delete, bulk ops, logs |
+| **Editor** | Add/edit items, scan, manage covers, checkout/checkin, import/export |
+| **Viewer** | Browse, search, reading status, export CSV, view stats |
 
-## API Keys (Optional)
+## Optional API Keys
 
-Configure these in Settings to enable additional features:
+Configure in Settings to unlock additional features:
 
-- **Hardcover** — reading status sync, metadata enrichment, import/export
-- **ISBNdb** — collection valuation with list prices
-- **TMDb** — DVD/Blu-ray metadata lookup via UPC
+| Service | Enables |
+|---------|---------|
+| **Hardcover** | Reading status sync, richer metadata, import/export, Discover page |
+| **ISBNdb** | Collection valuation with market prices |
+| **TMDb** | DVD/Blu-ray metadata via UPC barcode |
 
 ## Development
 
@@ -81,6 +128,14 @@ docker compose build && docker compose up -d
 # View logs
 docker compose logs -f shelf
 
-# Access the database directly
+# Run tests
+pip install -r requirements-dev.txt
+pytest
+
+# Access the database
 sqlite3 data/shelf.db
 ```
+
+## License
+
+Personal project. Source available for reference and self-hosting.
