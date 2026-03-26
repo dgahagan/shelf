@@ -82,9 +82,9 @@ data/
 - **CSV import/export** — bulk operations and backups
 
 ### Integrations
-- **Hardcover** — bidirectional reading status sync, import your library, discover new books
-- **Audiobookshelf** — sync your audiobook library and link physical + digital formats
-- **ISBNdb** — collection valuation with list prices for insurance documentation
+- **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
+- **[Audiobookshelf](https://www.audiobookshelf.org)** — sync your audiobook library and link physical + digital formats
+- **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
 
 ### Administration
 - **Role-based access** — admin, editor, and viewer roles
@@ -109,15 +109,27 @@ data/
 | **Editor** | Add/edit items, scan, manage covers, checkout/checkin, import/export |
 | **Viewer** | Browse, search, reading status, export CSV, view stats |
 
+## Metadata Sources
+
+Shelf queries free, public APIs to look up book information — no API keys needed for core functionality:
+
+| Source | What it provides | API key required? |
+|--------|-----------------|-------------------|
+| [Open Library](https://openlibrary.org) | Title, author, description, cover art, publish info | No |
+| [Google Books](https://books.google.com) | Fallback metadata and cover art | No |
+| [Amazon Images](https://www.amazon.com) | Fallback cover art via ISBN | No |
+
+Metadata lookups send only the ISBN to these services. No personal data, account info, or collection details are transmitted.
+
 ## Optional API Keys
 
 Configure in Settings to unlock additional features:
 
-| Service | Enables |
-|---------|---------|
-| **Hardcover** | Reading status sync, richer metadata, import/export, Discover page |
-| **ISBNdb** | Collection valuation with market prices |
-| **TMDb** | DVD/Blu-ray metadata via UPC barcode |
+| Service | Enables | Link |
+|---------|---------|------|
+| **Hardcover** | Reading status sync, richer metadata, import/export, Discover page | [hardcover.app](https://hardcover.app) |
+| **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
+| **TMDb** | DVD/Blu-ray metadata via UPC barcode | [themoviedb.org](https://www.themoviedb.org) |
 
 ## Development
 
