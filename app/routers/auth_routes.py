@@ -8,6 +8,7 @@ from app.auth import (
     set_auth_cookie, clear_auth_cookie, get_user_count,
     require_role,
 )
+from app.config import get_client_ip
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
@@ -37,7 +38,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
         ).fetchone()
 
     if not user or not verify_password(password, user["password"]):
-        logger.warning("Failed login attempt for username=%s from %s", username, request.client.host if request.client else "unknown")
+        logger.warning("Failed login attempt for username=%s from %s", username, get_client_ip(request))
         return templates.TemplateResponse(
             request, "login.html",
             {"error": "Invalid username or password"},
@@ -47,7 +48,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
     token = create_token(user["id"], user["username"], user["role"], user["display_name"])
     response = RedirectResponse(url="/browse", status_code=303)
     set_auth_cookie(response, token)
-    logger.info("User '%s' logged in from %s", username, request.client.host if request.client else "unknown")
+    logger.info("User '%s' logged in from %s", username, get_client_ip(request))
     return response
 
 
