@@ -13,6 +13,13 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+# Add SQLite handler so logs are viewable in the web UI
+from app.log_handler import SQLiteHandler
+_db_handler = SQLiteHandler()
+_db_handler.setLevel(logging.INFO)
+_db_handler.setFormatter(logging.Formatter("%(message)s"))
+logging.getLogger("app").addHandler(_db_handler)
+
 logger = logging.getLogger(__name__)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates

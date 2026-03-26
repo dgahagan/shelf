@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Logs — Shelf{% endblock %}
+{% block head %}
+<style>
+    .log-row { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace; }
+    .level-DEBUG { color: #94a3b8; }
+    .level-INFO { color: #6366f1; }
+    .level-WARNING { color: #eab308; }
+    .level-ERROR { color: #ef4444; }
+    .level-CRITICAL { color: #ef4444; font-weight: bold; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="space-y-4">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold">Logs</h1>
+        <div class="flex items-center gap-3">
+            <span class="text-shelf-muted text-sm">{{ total }} entries</span>
+            <div x-data="{ auto: false, interval: null }"
+                 x-init="$watch('auto', v => { if (v) { interval = setInterval(() => $refs.filters.requestSubmit(), 10000); } else { clearInterval(interval); } })">
+                <label class="flex items-center gap-2 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="auto" class="rounded bg-shelf-bg border-shelf-border text-shelf-accent focus:ring-shelf-accent">
+                    Auto-refresh
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form x-ref="filters" method="GET" action="/logs" class="bg-shelf-card rounded-xl border border-shelf-border p-4">
+        <div class="flex flex-wrap items-end gap-3">
+            <div class="flex-1 min-w-[180px]">
+                <label class="block text-xs font-medium text-shelf-muted mb-1">Search</label>
+                <input type="text" name="q" value="{{ filter_q }}" placeholder="Search log messages..."
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-shelf-muted mb-1">Level</label>
+                <select name="level"
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
+                    <option value="">All Levels</option>
+                    {% for lvl in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] %}
+                    <option value="{{ lvl }}" {% if filter_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-shelf-muted mb-1">Module</label>
+                <select name="module"
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
+                    <option value="">All Modules</option>
+                    {% for mod in modules %}
+                    <option value="{{ mod }}" {% if filter_module == mod %}selected{% endif %}>{{ mod }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit"
+                    class="px-4 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                    Filter
+                </button>
+                {% if filter_level or filter_module or filter_q %}
+                <a href="/logs" class="px-4 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:text-white transition-colors">
+                    Clear
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- Log table -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border overflow-hidden">
+        {% if entries %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-shelf-border text-shelf-muted text-xs uppercase tracking-wider">
+                        <th class="px-4 py-2.5 text-left w-[170px]">Timestamp</th>
+                        <th class="px-4 py-2.5 text-left w-[80px]">Level</th>
+                        <th class="px-4 py-2.5 text-left w-[200px]">Module</th>
+                        <th class="px-4 py-2.5 text-left">Message</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-shelf-border/50">
+                    {% for entry in entries %}
+                    <tr class="log-row hover:bg-shelf-hover/50 transition-colors">
+                        <td class="px-4 py-2 text-shelf-muted text-xs whitespace-nowrap">{{ entry.timestamp }}</td>
+                        <td class="px-4 py-2">
+                            <span class="level-{{ entry.level }} text-xs font-semibold">{{ entry.level }}</span>
+                        </td>
+                        <td class="px-4 py-2 text-shelf-muted text-xs truncate max-w-[200px]" title="{{ entry.module }}">{{ entry.module }}</td>
+                        <td class="px-4 py-2 text-shelf-text text-xs whitespace-pre-wrap break-all">{{ entry.message }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if has_prev or has_next %}
+        <div class="flex items-center justify-between px-4 py-3 border-t border-shelf-border">
+            <div class="text-xs text-shelf-muted">
+                Page {{ page }} ({{ entries|length }} of {{ total }})
+            </div>
+            <div class="flex gap-2">
+                {% if has_prev %}
+                <a href="/logs?page={{ page - 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
+                   class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded text-xs hover:text-white transition-colors">
+                    Previous
+                </a>
+                {% endif %}
+                {% if has_next %}
+                <a href="/logs?page={{ page + 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
+                   class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded text-xs hover:text-white transition-colors">
+                    Next
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="px-4 py-12 text-center text-shelf-muted text-sm">
+            {% if filter_level or filter_module or filter_q %}
+            No log entries match your filters.
+            {% else %}
+            No log entries yet. Activity will appear here as the app runs.
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -73,6 +73,9 @@
                     <a href="/settings" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/settings' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                         Settings
                     </a>
+                    <a href="/logs" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/logs' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Logs
+                    </a>
                     {% endif %}
                 </div>
                 {% if user %}

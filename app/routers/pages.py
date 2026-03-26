@@ -217,6 +217,62 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
     )
 
 
+@router.get("/logs")
+async def logs(
+    request: Request,
+    level: str = "",
+    module: str = "",
+    q: str = "",
+    page: int = 1,
+    _=Depends(require_role("admin")),
+):
+    per_page = 100
+    conditions = []
+    params: list = []
+
+    if level:
+        conditions.append("level = ?")
+        params.append(level.upper())
+    if module:
+        conditions.append("module LIKE ?")
+        params.append(f"%{module}%")
+    if q:
+        conditions.append("message LIKE ?")
+        params.append(f"%{q}%")
+
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    offset = (max(page, 1) - 1) * per_page
+
+    with get_db() as db:
+        total = db.execute(f"SELECT COUNT(*) as c FROM log_entries {where}", params).fetchone()["c"]
+        entries = db.execute(
+            f"SELECT * FROM log_entries {where} ORDER BY id DESC LIMIT ? OFFSET ?",
+            params + [per_page, offset],
+        ).fetchall()
+        modules = [
+            row["module"] for row in db.execute(
+                "SELECT DISTINCT module FROM log_entries ORDER BY module"
+            ).fetchall()
+        ]
+
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "logs.html",
+        {
+            "entries": entries,
+            "modules": modules,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "has_prev": page > 1,
+            "has_next": (offset + per_page) < total,
+            "filter_level": level,
+            "filter_module": module,
+            "filter_q": q,
+        },
+    )
+
+
 @router.get("/settings")
 async def settings(request: Request, _=Depends(require_role("admin"))):
     from app.config import is_env_override

@@ -130,6 +130,16 @@ CREATE INDEX IF NOT EXISTS idx_item_links_b ON item_links(item_b_id);
 
 CREATE INDEX IF NOT EXISTS idx_items_hardcover_book ON items(hardcover_book_id);
 
+CREATE TABLE IF NOT EXISTS log_entries (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp  TEXT NOT NULL DEFAULT (datetime('now')),
+    level      TEXT NOT NULL,
+    module     TEXT,
+    message    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_log_entries_timestamp ON log_entries(timestamp);
+CREATE INDEX IF NOT EXISTS idx_log_entries_level ON log_entries(level);
+
 CREATE TABLE IF NOT EXISTS users (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     username     TEXT NOT NULL UNIQUE COLLATE NOCASE,
