@@ -3,11 +3,12 @@ import json
 import re
 
 import httpx
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 from starlette.responses import StreamingResponse
 
-from app.database import get_db
+from app.auth import require_role
+from app.database import get_db, get_setting, get_all_settings
 from app.services import hardcover, covers
 
 router = APIRouter(prefix="/api/hardcover")
@@ -23,7 +24,7 @@ HC_STATUSES = {
 
 
 @router.post("/test")
-async def test_hardcover(request: Request):
+async def test_hardcover(request: Request, _=Depends(require_role("admin"))):
     """Test a Hardcover API token."""
     data = await request.json()
     token = data.get("token", "").strip()
@@ -33,12 +34,11 @@ async def test_hardcover(request: Request):
 
 
 @router.get("/search")
-async def search_hardcover(request: Request, q: str = ""):
+async def search_hardcover(request: Request, q: str = "", _=Depends(require_role("viewer"))):
     """Search Hardcover catalog. Returns HTMX fragment with results."""
     templates = request.app.state.templates
     with get_db() as db:
-        token_row = db.execute("SELECT value FROM settings WHERE key = 'hardcover_token'").fetchone()
-    token = token_row["value"] if token_row and token_row["value"] else None
+        token = get_setting(db, "hardcover_token")
 
     results = []
     if q.strip() and token:
@@ -68,7 +68,7 @@ async def search_hardcover(request: Request, q: str = ""):
 
 
 @router.post("/add-to-shelf")
-async def add_hardcover_to_shelf(request: Request):
+async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("editor"))):
     """Add a book from Hardcover search to Shelf as a wishlist item."""
     data = await request.json()
     title = data.get("title", "").strip()
@@ -130,7 +130,7 @@ async def add_hardcover_to_shelf(request: Request):
 
 
 @router.post("/schedule")
-async def set_hardcover_schedule(interval: str = Form("off")):
+async def set_hardcover_schedule(interval: str = Form("off"), _=Depends(require_role("admin"))):
     """Set the Hardcover sync schedule."""
     if interval not in ("off", "daily", "weekly"):
         interval = "off"
@@ -144,10 +144,10 @@ async def set_hardcover_schedule(interval: str = Form("off")):
 
 
 @router.post("/push/{item_id}")
-async def push_to_hardcover(item_id: int):
+async def push_to_hardcover(item_id: int, _=Depends(require_role("editor"))):
     """Push a single item to Hardcover. Returns JSON result."""
     with get_db() as db:
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+        settings = get_all_settings(db)
         item = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
 
     token = settings.get("hardcover_token", "")
@@ -171,10 +171,10 @@ async def push_to_hardcover(item_id: int):
 
 
 @router.get("/export/stream")
-async def export_hardcover_stream(request: Request):
+async def export_hardcover_stream(request: Request, _=Depends(require_role("editor"))):
     """SSE endpoint for bulk exporting items to Hardcover."""
     with get_db() as db:
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+        settings = get_all_settings(db)
 
     token = settings.get("hardcover_token", "")
     if not token:
@@ -256,11 +256,11 @@ async def export_hardcover_stream(request: Request):
 
 
 @router.get("/import/stream")
-async def import_hardcover_stream(request: Request):
+async def import_hardcover_stream(request: Request, _=Depends(require_role("editor"))):
     """SSE endpoint for importing books from Hardcover with progress updates."""
     # Read settings
     with get_db() as db:
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+        settings = get_all_settings(db)
 
     token = settings.get("hardcover_token", "")
     if not token:

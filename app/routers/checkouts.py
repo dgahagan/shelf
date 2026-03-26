@@ -1,8 +1,9 @@
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
+from app.auth import require_role
 from app.database import get_db
 
 router = APIRouter(prefix="/api")
@@ -11,14 +12,14 @@ router = APIRouter(prefix="/api")
 # --- Borrowers ---
 
 @router.post("/borrowers")
-async def create_borrower(name: str = Form(...)):
+async def create_borrower(name: str = Form(...), _=Depends(require_role("admin"))):
     with get_db() as db:
         db.execute("INSERT OR IGNORE INTO borrowers (name) VALUES (?)", (name.strip(),))
     return RedirectResponse(url="/settings", status_code=303)
 
 
 @router.post("/borrowers/{borrower_id}/delete")
-async def delete_borrower(borrower_id: int):
+async def delete_borrower(borrower_id: int, _=Depends(require_role("admin"))):
     with get_db() as db:
         active = db.execute(
             "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ? AND checked_in IS NULL",
@@ -39,6 +40,7 @@ async def checkout_item(
     borrower_id: int = Form(...),
     due_days: int = Form(14),
     notes: str = Form(""),
+    _=Depends(require_role("editor")),
 ):
     """Check out an item to a borrower."""
     templates = request.app.state.templates
@@ -61,7 +63,7 @@ async def checkout_item(
 
 
 @router.post("/checkouts/{checkout_id}/checkin")
-async def checkin_item(checkout_id: int):
+async def checkin_item(checkout_id: int, _=Depends(require_role("editor"))):
     """Check in an item (return it)."""
     with get_db() as db:
         checkout = db.execute("SELECT item_id FROM checkouts WHERE id = ?", (checkout_id,)).fetchone()
@@ -74,7 +76,7 @@ async def checkin_item(checkout_id: int):
 
 
 @router.get("/checkouts/overdue")
-async def overdue_items(request: Request):
+async def overdue_items(request: Request, _=Depends(require_role("viewer"))):
     """List all overdue checkouts."""
     with get_db() as db:
         rows = db.execute(

@@ -2,18 +2,19 @@ import asyncio
 import json
 
 import httpx
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse
 from starlette.responses import StreamingResponse
 
-from app.database import get_db
+from app.auth import require_role
+from app.database import get_db, get_all_settings
 from app.services import isbndb
 
 router = APIRouter(prefix="/api")
 
 
 @router.post("/valuate/test-key")
-async def test_isbndb_key(request: Request):
+async def test_isbndb_key(request: Request, _=Depends(require_role("admin"))):
     """Test whether an ISBNdb API key is valid. Accepts key from POST body or falls back to DB."""
     api_key = ""
     try:
@@ -24,7 +25,7 @@ async def test_isbndb_key(request: Request):
 
     if not api_key:
         with get_db() as db:
-            settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+            settings = get_all_settings(db)
         api_key = settings.get("isbndb_api_key", "")
 
     if not api_key:
@@ -45,12 +46,12 @@ async def test_isbndb_key(request: Request):
             return {"ok": False, "message": "Invalid or expired key"}
         else:
             return {"ok": False, "message": f"Unexpected response: HTTP {resp.status_code}"}
-    except Exception as e:
-        return {"ok": False, "message": f"Connection failed: {e}"}
+    except Exception:
+        return {"ok": False, "message": "Connection failed — check network"}
 
 
 @router.post("/tmdb/test-key")
-async def test_tmdb_key(request: Request):
+async def test_tmdb_key(request: Request, _=Depends(require_role("admin"))):
     """Test whether a TMDb API key is valid. Accepts key from POST body or falls back to DB."""
     api_key = ""
     try:
@@ -61,7 +62,7 @@ async def test_tmdb_key(request: Request):
 
     if not api_key:
         with get_db() as db:
-            settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+            settings = get_all_settings(db)
         api_key = settings.get("tmdb_api_key", "")
 
     if not api_key:
@@ -81,16 +82,16 @@ async def test_tmdb_key(request: Request):
             return {"ok": False, "message": "Invalid API key"}
         else:
             return {"ok": False, "message": f"Unexpected response: HTTP {resp.status_code}"}
-    except Exception as e:
-        return {"ok": False, "message": f"Connection failed: {e}"}
+    except Exception:
+        return {"ok": False, "message": "Connection failed — check network"}
 
 
 @router.post("/valuate/{item_id}")
-async def valuate_item(item_id: int):
+async def valuate_item(item_id: int, _=Depends(require_role("admin"))):
     """Look up price for a single item."""
     with get_db() as db:
         item = db.execute("SELECT isbn FROM items WHERE id = ?", (item_id,)).fetchone()
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+        settings = get_all_settings(db)
 
     if not item or not item["isbn"]:
         return {"ok": False, "message": "No ISBN"}
@@ -116,13 +117,13 @@ async def valuate_item(item_id: int):
 
 
 @router.post("/valuate/all")
-async def valuate_all():
+async def valuate_all(_=Depends(require_role("admin"))):
     """Batch valuate all items with ISBNs."""
     with get_db() as db:
         items = db.execute(
             "SELECT id, isbn FROM items WHERE isbn IS NOT NULL"
         ).fetchall()
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+        settings = get_all_settings(db)
 
     api_key = settings.get("isbndb_api_key")
     if not api_key:
@@ -155,13 +156,13 @@ async def valuate_all():
 
 
 @router.get("/valuate/stream")
-async def valuate_all_stream(request: Request):
+async def valuate_all_stream(request: Request, _=Depends(require_role("admin"))):
     """SSE endpoint for batch valuation with progress updates."""
     with get_db() as db:
         items = db.execute(
             "SELECT id, isbn, title FROM items WHERE isbn IS NOT NULL"
         ).fetchall()
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+        settings = get_all_settings(db)
 
     api_key = settings.get("isbndb_api_key")
     if not api_key:
@@ -221,7 +222,7 @@ async def valuate_all_stream(request: Request):
 
 
 @router.get("/valuation/report")
-async def valuation_report(request: Request):
+async def valuation_report(request: Request, _=Depends(require_role("viewer"))):
     """Generate an insurance valuation report page."""
     templates = request.app.state.templates
 

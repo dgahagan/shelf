@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
 
+from app.auth import require_role
 from app.database import get_db
 
-router = APIRouter(prefix="/api/locations")
+router = APIRouter(prefix="/api/locations", dependencies=[Depends(require_role("admin"))])
 
 
 @router.post("")

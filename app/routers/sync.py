@@ -1,15 +1,30 @@
 import asyncio
 import json
+from urllib.parse import urlparse
 
 import httpx
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import RedirectResponse
 from starlette.responses import StreamingResponse
 
-from app.database import get_db
+from app.auth import require_role
+from app.database import get_db, get_setting
 from app.services import audiobookshelf
 
-router = APIRouter(prefix="/api/sync")
+
+def _validate_abs_url(url: str) -> str | None:
+    """Validate ABS URL scheme. Returns error message or None if valid."""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return "URL must use http:// or https://"
+        if not parsed.hostname:
+            return "Invalid URL"
+    except Exception:
+        return "Invalid URL"
+    return None
+
+router = APIRouter(prefix="/api/sync", dependencies=[Depends(require_role("admin"))])
 
 
 @router.post("/audiobookshelf/test")
@@ -25,16 +40,18 @@ async def test_audiobookshelf(request: Request):
     except Exception:
         pass
 
-    # Fall back to database if not provided in body
+    # Fall back to database (with env var override) if not provided in body
     if not url or not token:
         with get_db() as db:
-            abs_url = db.execute("SELECT value FROM settings WHERE key = 'abs_url'").fetchone()
-            abs_token = db.execute("SELECT value FROM settings WHERE key = 'abs_token'").fetchone()
-        url = url or (abs_url["value"] if abs_url else "")
-        token = token or (abs_token["value"] if abs_token else "")
+            url = url or get_setting(db, "abs_url")
+            token = token or get_setting(db, "abs_token")
 
     if not url or not token:
         return {"ok": False, "message": "URL and token are required"}
+
+    url_err = _validate_abs_url(url)
+    if url_err:
+        return {"ok": False, "message": url_err}
 
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -51,20 +68,24 @@ async def test_audiobookshelf(request: Request):
             return {"ok": False, "message": f"Unexpected response: HTTP {resp.status_code}"}
     except httpx.ConnectError:
         return {"ok": False, "message": f"Cannot connect to {url}"}
-    except Exception as e:
-        return {"ok": False, "message": f"Connection failed: {e}"}
+    except Exception:
+        return {"ok": False, "message": "Connection failed — check URL and network"}
 
 
 @router.post("/audiobookshelf")
 async def sync_audiobookshelf(request: Request):
     with get_db() as db:
-        abs_url = db.execute("SELECT value FROM settings WHERE key = 'abs_url'").fetchone()
-        abs_token = db.execute("SELECT value FROM settings WHERE key = 'abs_token'").fetchone()
+        abs_url_val = get_setting(db, "abs_url")
+        abs_token_val = get_setting(db, "abs_token")
 
-    if not abs_url or not abs_token or not abs_url["value"] or not abs_token["value"]:
+    if not abs_url_val or not abs_token_val:
         return {"error": "Audiobookshelf URL and API token must be configured in Settings"}
 
-    stats = await audiobookshelf.sync(abs_url["value"], abs_token["value"])
+    url_err = _validate_abs_url(abs_url_val)
+    if url_err:
+        return {"error": url_err}
+
+    stats = await audiobookshelf.sync(abs_url_val, abs_token_val)
     return stats
 
 
@@ -72,13 +93,19 @@ async def sync_audiobookshelf(request: Request):
 async def sync_audiobookshelf_stream(request: Request):
     """SSE endpoint for sync with progress updates."""
     with get_db() as db:
-        abs_url = db.execute("SELECT value FROM settings WHERE key = 'abs_url'").fetchone()
-        abs_token = db.execute("SELECT value FROM settings WHERE key = 'abs_token'").fetchone()
+        abs_url_val = get_setting(db, "abs_url")
+        abs_token_val = get_setting(db, "abs_token")
 
-    if not abs_url or not abs_token or not abs_url["value"] or not abs_token["value"]:
+    if not abs_url_val or not abs_token_val:
         async def error_stream():
             yield f"data: {json.dumps({'type': 'error', 'message': 'URL and token required'})}\n\n"
         return StreamingResponse(error_stream(), media_type="text/event-stream")
+
+    url_err = _validate_abs_url(abs_url_val)
+    if url_err:
+        async def url_error_stream():
+            yield f"data: {json.dumps({'type': 'error', 'message': url_err})}\n\n"
+        return StreamingResponse(url_error_stream(), media_type="text/event-stream")
 
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -93,7 +120,7 @@ async def sync_audiobookshelf_stream(request: Request):
 
     async def run_sync():
         try:
-            stats = await audiobookshelf.sync(abs_url["value"], abs_token["value"], on_progress=on_progress)
+            stats = await audiobookshelf.sync(abs_url_val, abs_token_val, on_progress=on_progress)
             await queue.put({"type": "done", **stats})
         except Exception as e:
             await queue.put({"type": "error", "message": str(e)})

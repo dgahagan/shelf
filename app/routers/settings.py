@@ -1,12 +1,13 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse, FileResponse
 
+from app.auth import require_role
 from app.config import DATABASE_PATH, DATA_DIR
 from app.database import get_db
 
-router = APIRouter(prefix="/api/settings")
+router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
 
 
 @router.post("")
@@ -53,6 +54,9 @@ async def restore_backup(request: Request):
         return {"ok": False, "message": "No file uploaded"}
 
     content = await db_file.read()
+    max_db_size = 500 * 1024 * 1024  # 500 MB
+    if len(content) > max_db_size:
+        return {"ok": False, "message": "File too large (max 500 MB)"}
     tmp_path = DATA_DIR / "shelf_restore_tmp.db"
     tmp_path.write_bytes(content)
 
@@ -61,9 +65,9 @@ async def restore_backup(request: Request):
         conn = sqlite3.connect(str(tmp_path))
         conn.execute("SELECT COUNT(*) FROM items")
         conn.close()
-    except Exception as e:
+    except Exception:
         tmp_path.unlink(missing_ok=True)
-        return {"ok": False, "message": f"Invalid database: {e}"}
+        return {"ok": False, "message": "Invalid database file — must be a valid Shelf SQLite database"}
 
     # Replace current database
     import shutil

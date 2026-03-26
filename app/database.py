@@ -129,6 +129,16 @@ CREATE INDEX IF NOT EXISTS idx_item_links_a ON item_links(item_a_id);
 CREATE INDEX IF NOT EXISTS idx_item_links_b ON item_links(item_b_id);
 
 CREATE INDEX IF NOT EXISTS idx_items_hardcover_book ON items(hardcover_book_id);
+
+CREATE TABLE IF NOT EXISTS users (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    username     TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password     TEXT NOT NULL,
+    display_name TEXT,
+    role         TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','editor','viewer')),
+    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
@@ -139,6 +149,20 @@ def _run_migrations(db: sqlite3.Connection) -> None:
         except sqlite3.OperationalError:
             pass  # column already exists
     db.executescript(MIGRATION_TABLES)
+
+
+def get_setting(db, key: str) -> str:
+    """Get a single setting value with env var override."""
+    from app.config import get_setting_value
+    row = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return get_setting_value(key, row["value"] if row else None)
+
+
+def get_all_settings(db) -> dict[str, str]:
+    """Get all settings as a dict with env var overrides applied."""
+    from app.config import get_setting_value
+    settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+    return {k: get_setting_value(k, v) for k, v in settings.items()}
 
 
 def init_db():

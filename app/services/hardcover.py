@@ -183,9 +183,11 @@ async def get_user_books(
 ) -> list[dict]:
     """Fetch a user's library from Hardcover. Returns list of book dicts with reading status."""
     # Build where clause — filter by status if requested
-    where_parts = [f'user_id: {{ _eq: {user_id} }}']
+    # Validate inputs are integers to prevent GraphQL injection
+    where_parts = [f'user_id: {{ _eq: {int(user_id)} }}']
     if status_ids:
-        ids_str = ", ".join(str(s) for s in status_ids)
+        safe_ids = [int(s) for s in status_ids]
+        ids_str = ", ".join(str(s) for s in safe_ids)
         where_parts.append(f'status_id: {{ _in: [{ids_str}] }}')
     where = ", ".join(where_parts)
 

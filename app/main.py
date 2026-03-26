@@ -1,4 +1,5 @@
 import asyncio
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -6,9 +7,105 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response, RedirectResponse
+
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES
 from app.database import init_db, get_db
 from app.routers import pages, items, locations, settings, sync, checkouts, valuation, hardcover
+from app.routers import auth_routes
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        return response
+
+
+_SKIP_AUTH_PATHS = frozenset({"/login", "/setup"})
+_SKIP_AUTH_PREFIXES = ("/static/", "/covers/")
+
+
+class AuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next) -> Response:
+        from app.auth import get_current_user, should_refresh_token, set_auth_cookie, get_user_count
+
+        path = request.url.path
+
+        # Skip auth for static assets
+        if path.startswith(_SKIP_AUTH_PREFIXES):
+            return await call_next(request)
+
+        # Inject user into request state
+        user = get_current_user(request)
+        request.state.user = user
+
+        # Setup wizard: if no users exist, redirect everything to /setup
+        if path not in _SKIP_AUTH_PATHS:
+            if get_user_count() == 0:
+                return RedirectResponse(url="/setup", status_code=303)
+
+        # Login redirect: if users exist but no session, redirect to /login
+        # (skip for POST /login, POST /setup to avoid blocking form submissions)
+        if path not in _SKIP_AUTH_PATHS and not user:
+            if get_user_count() > 0:
+                return RedirectResponse(url="/login", status_code=303)
+
+        response = await call_next(request)
+
+        # Sliding expiry: refresh token if past half-life
+        if user:
+            fresh_token = should_refresh_token(request)
+            if fresh_token:
+                set_auth_cookie(response, fresh_token)
+
+        return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Simple in-memory per-IP rate limiter for API endpoints."""
+
+    def __init__(self, app, requests_per_minute: int = 60):
+        super().__init__(app)
+        self.rpm = requests_per_minute
+        self._hits: dict[str, list[float]] = {}
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        import time
+
+        # Only rate-limit API and auth endpoints
+        path = request.url.path
+        if not (path.startswith("/api/") or path in ("/login", "/setup")):
+            return await call_next(request)
+
+        ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        window = now - 60
+
+        # Clean old entries and check count
+        hits = self._hits.get(ip, [])
+        hits = [t for t in hits if t > window]
+        if len(hits) >= self.rpm:
+            return Response("Rate limit exceeded", status_code=429)
+
+        hits.append(now)
+        self._hits[ip] = hits
+
+        # Periodic cleanup of stale IPs (every ~100 requests)
+        if len(self._hits) > 1000:
+            self._hits = {
+                k: [t for t in v if t > window]
+                for k, v in self._hits.items()
+                if any(t > window for t in v)
+            }
+
+        return await call_next(request)
 
 
 async def _periodic_abs_sync():
@@ -35,11 +132,12 @@ async def _periodic_abs_sync():
                     if elapsed < intervals.get(interval, 86400):
                         continue
 
-                abs_url = db.execute("SELECT value FROM settings WHERE key = 'abs_url'").fetchone()
-                abs_token = db.execute("SELECT value FROM settings WHERE key = 'abs_token'").fetchone()
+                from app.database import get_setting
+                abs_url_val = get_setting(db, "abs_url")
+                abs_token_val = get_setting(db, "abs_token")
 
-            if abs_url and abs_token and abs_url["value"] and abs_token["value"]:
-                await audiobookshelf.sync(abs_url["value"], abs_token["value"])
+            if abs_url_val and abs_token_val:
+                await audiobookshelf.sync(abs_url_val, abs_token_val)
                 with get_db() as db:
                     db.execute(
                         "INSERT INTO settings (key, value) VALUES ('abs_last_sync', ?) "
@@ -73,9 +171,10 @@ async def _periodic_hardcover_sync():
                     if elapsed < intervals.get(interval, 86400):
                         continue
 
-                token_row = db.execute("SELECT value FROM settings WHERE key = 'hardcover_token'").fetchone()
+                from app.database import get_setting
+                token = get_setting(db, "hardcover_token")
 
-            token = token_row["value"] if token_row and token_row["value"] else None
+            token = token or None
             if token:
                 await hc_svc.sync_reading_statuses(token)
                 with get_db() as db:
@@ -91,6 +190,9 @@ async def _periodic_hardcover_sync():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    # Initialize secret key on startup
+    from app.auth import get_secret_key
+    get_secret_key()
     task = asyncio.create_task(_periodic_abs_sync())
     hc_task = asyncio.create_task(_periodic_hardcover_sync())
     yield
@@ -99,19 +201,54 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Shelf", lifespan=lifespan)
+app.add_middleware(AuthMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Exception handler for auth dependency responses
+from app.auth import _ResponseException
+
+@app.exception_handler(_ResponseException)
+async def auth_exception_handler(request: Request, exc: _ResponseException):
+    return exc.response
 
 # Templates
 templates_dir = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
-# Custom filter to strip HTML tags from descriptions
-import re
 def strip_html(value: str) -> str:
     if not value:
         return ""
     return re.sub(r"<[^>]+>", "", value)
 
 templates.env.filters["strip_html"] = strip_html
+
+# Wrap TemplateResponse to auto-inject 'user' from request.state
+_original_template_response = templates.TemplateResponse
+
+def _template_response_with_user(request_or_self, *args, **kwargs):
+    # Handle both templates.TemplateResponse(request, name, ctx) patterns
+    if hasattr(request_or_self, 'state'):
+        request = request_or_self
+    elif args and hasattr(args[0], 'state'):
+        request = args[0]
+    else:
+        return _original_template_response(request_or_self, *args, **kwargs)
+
+    # Find the context dict and inject user
+    context = kwargs.get('context', None)
+    if context is None:
+        # Context is a positional arg (3rd after request, name)
+        for i, a in enumerate(args):
+            if isinstance(a, dict):
+                a.setdefault("user", getattr(request.state, "user", None))
+                break
+    else:
+        context.setdefault("user", getattr(request.state, "user", None))
+
+    return _original_template_response(request_or_self, *args, **kwargs)
+
+templates.TemplateResponse = _template_response_with_user
 app.state.templates = templates
 
 # Static files
@@ -123,6 +260,7 @@ COVERS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/covers", StaticFiles(directory=str(COVERS_DIR)), name="covers")
 
 # Routers
+app.include_router(auth_routes.router)
 app.include_router(pages.router)
 app.include_router(items.router)
 app.include_router(locations.router)

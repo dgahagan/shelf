@@ -1,10 +1,11 @@
 from datetime import date
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 
+from app.auth import require_role
 from app.config import MEDIA_TYPES
-from app.database import get_db
+from app.database import get_db, get_setting
 
 router = APIRouter()
 
@@ -15,7 +16,7 @@ async def index():
 
 
 @router.get("/browse")
-async def browse(request: Request, q: str = ""):
+async def browse(request: Request, q: str = "", _=Depends(require_role("viewer"))):
     with get_db() as db:
         if q:
             items = db.execute(
@@ -67,17 +68,16 @@ async def browse(request: Request, q: str = ""):
 
 
 @router.get("/discover")
-async def discover(request: Request):
+async def discover(request: Request, _=Depends(require_role("viewer"))):
     with get_db() as db:
-        hc_row = db.execute("SELECT value FROM settings WHERE key = 'hardcover_token'").fetchone()
-        has_hardcover = bool(hc_row and hc_row["value"])
+        has_hardcover = bool(get_setting(db, "hardcover_token"))
     return request.app.state.templates.TemplateResponse(
         request, "discover.html", {"has_hardcover": has_hardcover},
     )
 
 
 @router.get("/scan")
-async def scan(request: Request):
+async def scan(request: Request, _=Depends(require_role("editor"))):
     with get_db() as db:
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
@@ -95,7 +95,7 @@ async def scan(request: Request):
 
 
 @router.get("/item/{item_id}")
-async def item_detail(request: Request, item_id: int):
+async def item_detail(request: Request, item_id: int, _=Depends(require_role("viewer"))):
     with get_db() as db:
         item = db.execute(
             "SELECT i.*, l.name as location_name FROM items i "
@@ -132,14 +132,13 @@ async def item_detail(request: Request, item_id: int):
         # ABS playback URL
         abs_url = None
         if item["abs_id"]:
-            abs_setting = db.execute("SELECT value FROM settings WHERE key = 'abs_url'").fetchone()
-            if abs_setting and abs_setting["value"]:
+            abs_url_val = get_setting(db, "abs_url")
+            if abs_url_val:
                 from app.services.audiobookshelf import get_playback_url
-                abs_url = get_playback_url(abs_setting["value"], item["abs_id"])
+                abs_url = get_playback_url(abs_url_val, item["abs_id"])
 
         # Hardcover token check
-        hc_row = db.execute("SELECT value FROM settings WHERE key = 'hardcover_token'").fetchone()
-        has_hardcover = bool(hc_row and hc_row["value"])
+        has_hardcover = bool(get_setting(db, "hardcover_token"))
 
     return request.app.state.templates.TemplateResponse(
         request,
@@ -159,7 +158,7 @@ async def item_detail(request: Request, item_id: int):
 
 
 @router.get("/item/{item_id}/edit")
-async def item_edit(request: Request, item_id: int):
+async def item_edit(request: Request, item_id: int, _=Depends(require_role("editor"))):
     with get_db() as db:
         item = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
         locations = db.execute(
@@ -175,7 +174,7 @@ async def item_edit(request: Request, item_id: int):
 
 
 @router.get("/stats")
-async def stats(request: Request):
+async def stats(request: Request, _=Depends(require_role("viewer"))):
     with get_db() as db:
         by_type = db.execute(
             "SELECT media_type, COUNT(*) as c FROM items GROUP BY media_type ORDER BY c DESC"
@@ -218,7 +217,8 @@ async def stats(request: Request):
 
 
 @router.get("/settings")
-async def settings(request: Request):
+async def settings(request: Request, _=Depends(require_role("admin"))):
+    from app.config import is_env_override
     with get_db() as db:
         settings = {
             row["key"]: row["value"]
@@ -229,8 +229,10 @@ async def settings(request: Request):
         ).fetchall()
         item_count = db.execute("SELECT COUNT(*) as c FROM items").fetchone()["c"]
         borrowers = db.execute("SELECT * FROM borrowers ORDER BY name").fetchall()
+    env_overrides = {k for k in settings if is_env_override(k)}
     return request.app.state.templates.TemplateResponse(
         request,
         "settings.html",
-        {"settings": settings, "locations": locations, "item_count": item_count, "borrowers": borrowers},
+        {"settings": settings, "locations": locations, "item_count": item_count,
+         "borrowers": borrowers, "env_overrides": env_overrides},
     )

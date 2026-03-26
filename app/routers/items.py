@@ -2,12 +2,13 @@ import asyncio
 import json
 
 import httpx
-from fastapi import APIRouter, Request, Form
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse
 from starlette.responses import StreamingResponse
 
+from app.auth import require_role
 from app.config import MEDIA_TYPES
-from app.database import get_db
+from app.database import get_db, get_setting
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
 from app.services import upc as upc_svc, tmdb
@@ -30,7 +31,7 @@ def _toast_header(message: str, toast_type: str = "success") -> str:
 
 
 @router.post("/scan")
-async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = Form("book"), location_id: int | None = Form(None)):
+async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = Form("book"), location_id: int | None = Form(None), _=Depends(require_role("editor"))):
     """Scan a barcode: detect type, lookup metadata, download cover, save to DB. Returns HTMX fragment."""
     templates = request.app.state.templates
     raw = isbn.strip()
@@ -64,8 +65,7 @@ async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = F
 
     # Get Hardcover token for metadata enrichment
     with get_db() as db:
-        _hc_row = db.execute("SELECT value FROM settings WHERE key = 'hardcover_token'").fetchone()
-    hc_token = _hc_row["value"] if _hc_row and _hc_row["value"] else None
+        hc_token = get_setting(db, "hardcover_token") or None
 
     # Lookup metadata: Open Library -> Hardcover -> Google Books
     metadata = None
@@ -197,7 +197,7 @@ async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = F
 
 
 @router.post("/items/manual")
-async def manual_add(request: Request):
+async def manual_add(request: Request, _=Depends(require_role("editor"))):
     """Manually add an item with optional cover upload. Returns HTMX fragment."""
     templates = request.app.state.templates
     form = await request.form()
@@ -280,6 +280,7 @@ async def search_items(
     owned: str = "",
     page: int = 1,
     per_page: int = 60,
+    _=Depends(require_role("viewer")),
 ):
     """Search/filter items. Returns HTMX fragment of item cards."""
     templates = request.app.state.templates
@@ -358,7 +359,7 @@ async def search_items(
 
 
 @router.post("/items/{item_id}")
-async def update_item(request: Request, item_id: int):
+async def update_item(request: Request, item_id: int, _=Depends(require_role("editor"))):
     form = await request.form()
     fields = {}
     for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
@@ -405,7 +406,7 @@ async def update_item(request: Request, item_id: int):
 
 
 @router.post("/items/{item_id}/reading-status")
-async def set_reading_status(request: Request, item_id: int, status: str = Form("")):
+async def set_reading_status(request: Request, item_id: int, status: str = Form(""), _=Depends(require_role("viewer"))):
     """Quick-toggle reading status from detail or browse page."""
     templates = request.app.state.templates
     valid = ("want_to_read", "reading", "read", "")
@@ -469,8 +470,7 @@ async def _push_status_to_hardcover(item_id: int, status: str):
     """Background task: push reading status change to Hardcover."""
     try:
         with get_db() as db:
-            row = db.execute("SELECT value FROM settings WHERE key = 'hardcover_token'").fetchone()
-            token = row["value"] if row and row["value"] else None
+            token = get_setting(db, "hardcover_token") or None
             item = db.execute(
                 "SELECT hardcover_user_book_id, hardcover_book_id FROM items WHERE id = ?", (item_id,)
             ).fetchone()
@@ -484,7 +484,7 @@ async def _push_status_to_hardcover(item_id: int, status: str):
 
 
 @router.post("/items/{item_id}/retry-cover")
-async def retry_cover(item_id: int):
+async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
     """Re-attempt cover download for an item."""
     with get_db() as db:
         item = db.execute("SELECT isbn FROM items WHERE id = ?", (item_id,)).fetchone()
@@ -502,7 +502,7 @@ async def retry_cover(item_id: int):
 
 
 @router.get("/items/{item_id}/cover-search")
-async def cover_search(request: Request, item_id: int):
+async def cover_search(request: Request, item_id: int, _=Depends(require_role("editor"))):
     """Search for cover candidates by title/author. Returns HTMX fragment."""
     templates = request.app.state.templates
     with get_db() as db:
@@ -520,7 +520,7 @@ async def cover_search(request: Request, item_id: int):
 
 
 @router.post("/items/{item_id}/cover-select")
-async def cover_select(request: Request, item_id: int, url: str = Form(...)):
+async def cover_select(request: Request, item_id: int, url: str = Form(...), _=Depends(require_role("editor"))):
     """Download a selected cover URL and save it for an item."""
     async with httpx.AsyncClient(timeout=15) as client:
         cover_path = await covers._download_to_item(item_id, url, client)
@@ -539,7 +539,7 @@ async def cover_select(request: Request, item_id: int, url: str = Form(...)):
 
 
 @router.post("/covers/bulk-retry")
-async def bulk_retry_covers(request: Request):
+async def bulk_retry_covers(request: Request, _=Depends(require_role("admin"))):
     """Retry downloading covers for all items missing them."""
     with get_db() as db:
         items = db.execute(
@@ -562,7 +562,7 @@ async def bulk_retry_covers(request: Request):
 
 
 @router.get("/covers/bulk-retry/stream")
-async def bulk_retry_covers_stream(request: Request):
+async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("admin"))):
     """SSE endpoint for bulk cover retry with progress updates."""
     with get_db() as db:
         items = db.execute(
@@ -616,7 +616,7 @@ async def bulk_retry_covers_stream(request: Request):
 
 
 @router.delete("/items/{item_id}")
-async def delete_item(item_id: int):
+async def delete_item(item_id: int, _=Depends(require_role("admin"))):
     with get_db() as db:
         row = db.execute("SELECT title FROM items WHERE id = ?", (item_id,)).fetchone()
         title = row["title"] if row else "Item"
@@ -627,7 +627,7 @@ async def delete_item(item_id: int):
 
 
 @router.get("/export/csv")
-async def export_csv():
+async def export_csv(_=Depends(require_role("viewer"))):
     import csv
     import io
     from fastapi.responses import StreamingResponse
@@ -660,7 +660,7 @@ async def export_csv():
 
 
 @router.post("/import/csv")
-async def import_csv(request: Request):
+async def import_csv(request: Request, _=Depends(require_role("admin"))):
     """Import items from a CSV file upload."""
     import csv
     import io
@@ -825,7 +825,7 @@ def _update_from_csv_row(db, item_id: int, row: dict):
 
 
 @router.post("/items/bulk-update")
-async def bulk_update(request: Request):
+async def bulk_update(request: Request, _=Depends(require_role("admin"))):
     """Bulk update multiple items with the same field values."""
     data = await request.json()
     item_ids = data.get("item_ids", [])
@@ -852,7 +852,7 @@ async def bulk_update(request: Request):
 
 
 @router.post("/items/merge")
-async def merge_items(request: Request):
+async def merge_items(request: Request, _=Depends(require_role("admin"))):
     """Merge multiple items into one, keeping the first as primary."""
     data = await request.json()
     keep_id = data.get("keep_id")

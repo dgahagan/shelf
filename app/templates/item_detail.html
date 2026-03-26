@@ -203,13 +203,17 @@
 
                 <!-- Actions -->
                 <div class="flex gap-3">
+                    {% if user and user.role in ('admin', 'editor') %}
                     <a href="/item/{{ item.id }}/edit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                         Edit
                     </a>
+                    {% endif %}
+                    {% if user and user.role == 'admin' %}
                     <button hx-delete="/api/items/{{ item.id }}" hx-confirm="Delete '{{ item.title }}'?" hx-on::after-request="window.location='/browse'"
                             class="px-4 py-2 bg-shelf-error/20 text-shelf-error rounded-lg text-sm hover:bg-shelf-error/30 transition-colors">
                         Delete
                     </button>
+                    {% endif %}
                 </div>
             </div>
         </div>

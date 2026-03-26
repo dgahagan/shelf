@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Shelf</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        shelf: {
+                            bg: '#0f1117', card: '#1a1d27', hover: '#242836',
+                            accent: '#6366f1', accent2: '#818cf8',
+                            text: '#e2e8f0', muted: '#94a3b8', border: '#2d3148',
+                            error: '#ef4444', success: '#22c55e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>body { background-color: #0f1117; color: #e2e8f0; }</style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4">
+    <div class="w-full max-w-md" x-data="{
+        password: '', confirm: '',
+        get mismatch() { return this.confirm && this.password !== this.confirm },
+        get tooShort() { return this.password && this.password.length < 8 }
+    }">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-shelf-accent2 tracking-tight">Welcome to Shelf</h1>
+            <p class="text-shelf-muted text-sm mt-2">Create your admin account to get started.</p>
+        </div>
+
+        <form method="POST" action="/setup" class="bg-shelf-card border border-shelf-border rounded-xl p-6 space-y-4">
+            {% if error %}
+            <div class="bg-shelf-error/10 border border-shelf-error/30 text-shelf-error text-sm rounded-lg px-4 py-2">
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <div>
+                <label for="username" class="block text-sm font-medium text-shelf-muted mb-1">Username</label>
+                <input type="text" id="username" name="username" required autofocus minlength="2"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+            </div>
+
+            <div>
+                <label for="display_name" class="block text-sm font-medium text-shelf-muted mb-1">Display Name <span class="text-shelf-muted/50">(optional)</span></label>
+                <input type="text" id="display_name" name="display_name"
+                    placeholder="How your name appears in the app"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-shelf-muted mb-1">Password</label>
+                <input type="password" id="password" name="password" required minlength="8"
+                    x-model="password"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                <p x-show="tooShort" x-cloak class="text-shelf-error text-xs mt-1">Must be at least 8 characters</p>
+            </div>
+
+            <div>
+                <label for="password_confirm" class="block text-sm font-medium text-shelf-muted mb-1">Confirm Password</label>
+                <input type="password" id="password_confirm" name="password_confirm" required
+                    x-model="confirm"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
+                    :class="mismatch ? 'border-shelf-error' : ''">
+                <p x-show="mismatch" x-cloak class="text-shelf-error text-xs mt-1">Passwords do not match</p>
+            </div>
+
+            <button type="submit"
+                :disabled="mismatch || tooShort"
+                class="w-full bg-shelf-accent hover:bg-shelf-accent2 text-white font-medium rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                Create Account
+            </button>
+
+            <p class="text-center text-shelf-muted text-xs mt-4">
+                This will be the admin account with full access to your library.
+            </p>
+        </form>
+    </div>
+</body>
+</html>
