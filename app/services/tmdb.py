@@ -59,3 +59,33 @@ async def lookup_upc(upc: str, tmdb_api_key: str, client: httpx.AsyncClient) -> 
 
     # Fallback: return just the title from UPC lookup
     return {"title": title, "description": None, "publish_year": None, "cover_url": None}
+
+
+async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
+    """Search TMDb by title, return multiple results."""
+    try:
+        resp = await client.get(
+            TMDB_SEARCH_URL,
+            params={"api_key": api_key, "query": query},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return []
+        results = resp.json().get("results", [])[:limit]
+        movies = []
+        for movie in results:
+            title = movie.get("title")
+            if not title:
+                continue
+            cover_url = f"{TMDB_IMAGE_BASE}{movie['poster_path']}" if movie.get("poster_path") else None
+            year = movie.get("release_date", "")[:4]
+            movies.append({
+                "tmdb_id": movie.get("id"),
+                "title": title,
+                "description": movie.get("overview"),
+                "publish_year": int(year) if year.isdigit() else None,
+                "cover_url": cover_url,
+            })
+        return movies
+    except Exception:
+        return []

@@ -49,6 +49,9 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
             "SELECT COUNT(*) as c FROM items WHERE owned = 0"
         ).fetchone()["c"]
         owned_count = total_count - wishlist_count
+        lent_out_count = db.execute(
+            "SELECT COUNT(DISTINCT item_id) as c FROM checkouts WHERE checked_in IS NULL"
+        ).fetchone()["c"]
         if not q:
             has_more = total_count > 60
     return request.app.state.templates.TemplateResponse(
@@ -62,6 +65,7 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
             "total_count": total_count,
             "owned_count": owned_count,
             "wishlist_count": wishlist_count,
+            "lent_out_count": lent_out_count,
             "has_more": has_more,
             "initial_query": q,
         },
@@ -83,16 +87,15 @@ async def scan(request: Request, _=Depends(require_role("editor"))):
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
-        recent = db.execute(
-            "SELECT sl.*, i.title, i.authors, i.cover_path "
-            "FROM scan_log sl LEFT JOIN items i ON sl.item_id = i.id "
-            "ORDER BY sl.created_at DESC LIMIT 20"
-        ).fetchall()
         game_platforms = get_game_platforms(db)
+        borrowers = db.execute(
+            "SELECT * FROM borrowers ORDER BY name"
+        ).fetchall()
     return request.app.state.templates.TemplateResponse(
         request,
         "scan.html",
-        {"media_types": MEDIA_TYPES, "game_platforms": game_platforms, "locations": locations, "recent_scans": recent},
+        {"media_types": MEDIA_TYPES, "game_platforms": game_platforms,
+         "locations": locations, "borrowers": borrowers},
     )
 
 

@@ -19,7 +19,7 @@
             {% endif %}
         </div>
         <form hx-post="/api/games/add" hx-target="#scan-results" hx-swap="afterbegin"
-              hx-on::after-request="if(event.detail.successful) { document.getElementById('game-search-input').value = ''; document.getElementById('game-search-results').innerHTML = ''; }">
+              hx-on::after-request="if(event.detail.successful) { var si = document.getElementById('title-search-input') || document.getElementById('game-search-input'); if(si) si.value = ''; var sr = document.getElementById('title-search-results') || document.getElementById('game-search-results'); if(sr) sr.innerHTML = ''; }">
             <input type="hidden" name="igdb_id" value="{{ game.igdb_id }}">
             <input type="hidden" name="platform" class="game-platform-sync" value="{{ platform }}">
             <input type="hidden" name="location_id" class="game-loc-sync"

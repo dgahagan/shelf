@@ -1,0 +1,28 @@
+{% for scan in recent_scans %}
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
+    {% if scan.cover_path %}
+    <img src="/covers/{{ scan.item_id }}.jpg" class="w-12 h-16 object-cover rounded" alt="">
+    {% else %}
+    <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>
+    {% endif %}
+    <div class="flex-1 min-w-0">
+        <p class="font-medium truncate">
+            {% if scan.item_id %}<a href="/item/{{ scan.item_id }}" class="hover:text-shelf-accent2">{{ scan.title or scan.isbn }}</a>
+            {% else %}{{ scan.title or scan.isbn }}{% endif %}
+        </p>
+        {% if scan.authors %}<p class="text-sm text-shelf-muted truncate">{{ scan.authors }}</p>{% endif %}
+    </div>
+    <span class="text-xs px-2 py-1 rounded-full shrink-0
+        {% if scan.result in ('added', 'returned', 'confirmed', 'marked_read') %}bg-shelf-success/20 text-shelf-success
+        {% elif scan.result == 'wishlisted' %}bg-purple-500/20 text-purple-400
+        {% elif scan.result == 'checked_out' %}bg-orange-500/20 text-orange-400
+        {% elif scan.result in ('moved', 'found', 'relocated') %}bg-blue-500/20 text-blue-400
+        {% elif scan.result in ('duplicate', 'already_checked_out', 'not_checked_out') %}bg-shelf-warning/20 text-shelf-warning
+        {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
+        {{ scan.result }}
+    </span>
+</div>
+{% endfor %}
+{% if not recent_scans %}
+<p class="text-sm text-shelf-muted text-center py-4">No recent activity for this mode.</p>
+{% endif %}

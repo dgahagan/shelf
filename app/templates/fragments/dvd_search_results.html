@@ -1,0 +1,41 @@
+{% if results %}
+<div class="space-y-2">
+    {% for movie in results %}
+    <div class="bg-shelf-bg rounded-lg border border-shelf-border p-3 flex items-center gap-4">
+        {% if movie.cover_url %}
+        <img src="{{ movie.cover_url }}" class="w-12 h-16 object-cover rounded shrink-0" alt="">
+        {% else %}
+        <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs shrink-0">?</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+            <p class="font-medium truncate">{{ movie.title }}</p>
+            <p class="text-xs text-shelf-muted truncate">
+                {% if movie.publish_year %}{{ movie.publish_year }}{% endif %}
+                {% if movie.description %} &middot; {{ movie.description[:80] }}{% if movie.description|length > 80 %}...{% endif %}{% endif %}
+            </p>
+        </div>
+        <form hx-post="/api/dvds/add" hx-target="#scan-results" hx-swap="afterbegin"
+              hx-on::after-request="if(event.detail.successful) { document.getElementById('title-search-input').value = ''; document.getElementById('title-search-results').innerHTML = ''; }">
+            <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}">
+            <input type="hidden" name="title" value="{{ movie.title }}">
+            <input type="hidden" name="description" value="{{ movie.description or '' }}">
+            <input type="hidden" name="publish_year" value="{{ movie.publish_year or '' }}">
+            <input type="hidden" name="cover_url" value="{{ movie.cover_url or '' }}">
+            <input type="hidden" name="location_id" class="dvd-loc-sync" value="">
+            <button type="submit"
+                    class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs font-medium hover:bg-shelf-accent2 transition-colors whitespace-nowrap">
+                Add
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+<script>
+var loc = document.getElementById('location');
+document.querySelectorAll('.dvd-loc-sync').forEach(function(el) {
+    if (loc) el.value = loc.value;
+});
+</script>
+{% elif query %}
+<p class="text-sm text-shelf-muted">No movies found for "{{ query }}". Try a different search.</p>
+{% endif %}

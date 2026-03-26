@@ -5,7 +5,23 @@
 {% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="scanPage()">
-    <h1 class="text-2xl font-bold mb-6">Scan Books</h1>
+
+    <!-- Mode Switcher -->
+    <div class="flex flex-wrap gap-2 mb-4">
+        <template x-for="m in modes" :key="m.id">
+            <button @click="setMode(m.id)" type="button"
+                    :class="mode === m.id
+                        ? 'bg-shelf-accent text-white border-shelf-accent'
+                        : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-shelf-text hover:border-shelf-accent/50'"
+                    class="border rounded-lg px-3 py-1.5 text-sm transition-colors"
+                    x-text="m.label">
+            </button>
+        </template>
+    </div>
+
+    <!-- Mode heading + description -->
+    <h1 class="text-2xl font-bold mb-1" x-text="modeConfig.heading"></h1>
+    <p class="text-sm text-shelf-muted mb-6" x-text="modeConfig.description"></p>
 
     <!-- Camera Scanner -->
     <div class="mb-6">
@@ -35,18 +51,16 @@
                         <p class="text-white font-medium text-lg mb-1" x-text="scanResult.title || scanResult.isbn"></p>
                         <p x-show="scanResult.authors" class="text-shelf-muted text-sm mb-2" x-text="scanResult.authors"></p>
                         <span class="text-xs px-3 py-1 rounded-full inline-block mb-4"
-                              :class="scanResult.status === 'added' ? 'bg-shelf-success/30 text-shelf-success' :
-                                      scanResult.status === 'duplicate' ? 'bg-shelf-warning/30 text-shelf-warning' :
+                              :class="scanResult.ok ? 'bg-shelf-success/30 text-shelf-success' :
+                                      scanResult.warn ? 'bg-shelf-warning/30 text-shelf-warning' :
                                       'bg-shelf-error/30 text-shelf-error'"
-                              x-text="scanResult.status === 'added' ? 'Added!' :
-                                      scanResult.status === 'duplicate' ? 'Already in collection' :
-                                      scanResult.status === 'not_found' ? 'Not found' : 'Error'">
+                              x-text="scanResult.label">
                         </span>
                     </div>
                 </template>
                 <button @click="resumeScanning()" type="button"
                         class="mt-2 px-6 py-2.5 bg-shelf-accent text-white rounded-lg text-sm font-medium hover:bg-shelf-accent2 transition-colors">
-                    Scan Next Book
+                    Scan Next
                 </button>
             </div>
         </div>
@@ -55,13 +69,15 @@
 
     <!-- Scan Form -->
     <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="afterbegin" hx-on::after-request="this.querySelector('#isbn-input').value=''; this.querySelector('#isbn-input').focus();">
+        <input type="hidden" name="mode" :value="mode">
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <!-- Media Type -->
-                <div>
+
+                <!-- Media Type (add/wishlist only) -->
+                <div x-show="mode === 'add' || mode === 'wishlist'" x-transition>
                     <label for="media-type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
                     <select id="media-type" name="media_type"
-                            x-model="mediaType" @change="localStorage.setItem('shelf_media_type', mediaType)"
+                            x-model="mediaType" @change="localStorage.setItem('shelf_media_type', mediaType); var si=document.getElementById('title-search-input'); if(si) si.value=''; var sr=document.getElementById('title-search-results'); if(sr) sr.innerHTML='';"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
                         {% for key, label in media_types.items() %}
                         <option value="{{ key }}">{{ label }}</option>
@@ -69,9 +85,10 @@
                     </select>
                 </div>
 
-                <!-- Location (optional) -->
-                <div>
-                    <label for="location" class="block text-sm font-medium text-shelf-muted mb-1">Location</label>
+                <!-- Location (add/move/inventory) -->
+                <div x-show="['add', 'move', 'inventory'].includes(mode)" x-transition>
+                    <label for="location" class="block text-sm font-medium text-shelf-muted mb-1"
+                           x-text="mode === 'move' ? 'Target Location' : mode === 'inventory' ? 'Auditing Location' : 'Location'"></label>
                     <select id="location" name="location_id"
                             x-model="location" @change="localStorage.setItem('shelf_location', location)"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
@@ -82,8 +99,8 @@
                     </select>
                 </div>
 
-                <!-- Platform (video games only) -->
-                <div x-show="mediaType === 'video_game'" x-transition style="display:none">
+                <!-- Platform (video games in add/wishlist only) -->
+                <div x-show="(mode === 'add' || mode === 'wishlist') && mediaType === 'video_game'" x-transition style="display:none">
                     <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
                     <select id="platform" name="platform"
                             x-model="platform" @change="localStorage.setItem('shelf_platform', platform)"
@@ -95,66 +112,92 @@
                     </select>
                 </div>
 
-                <!-- ISBN Input -->
+                <!-- Borrower (lend only) -->
+                <div x-show="mode === 'lend'" x-transition style="display:none">
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">Borrower</label>
+                    <select name="borrower_id" x-model="borrowerId"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        <option value="">Select borrower...</option>
+                        {% for b in borrowers %}
+                        <option value="{{ b.id }}">{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if not borrowers %}
+                    <p class="text-xs text-shelf-muted mt-1">No borrowers yet. Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>
+                    {% endif %}
+                </div>
+
+                <!-- ISBN / Barcode Input (always shown) -->
                 <div>
-                    <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1">ISBN / UPC</label>
+                    <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1"
+                           x-text="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Barcode' : 'ISBN / UPC'"></label>
                     <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off"
-                           :placeholder="mediaType === 'video_game' ? 'Scan UPC barcode...' : 'Scan or type ISBN...'"
+                           :placeholder="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Scan barcode...' : mediaType === 'video_game' ? 'Scan UPC barcode...' : 'Scan or type ISBN...'"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
                 </div>
             </div>
-            <p x-show="mediaType !== 'video_game'" class="text-xs text-shelf-muted mt-3">Scan a barcode or type an ISBN and press Enter. The book will be looked up and added automatically.</p>
-            <p x-show="mediaType === 'video_game'" class="text-xs text-shelf-muted mt-3" style="display:none">Scan a UPC barcode from a game case, or use the title search below for cartridges and loose games.</p>
+
+            <!-- Validation warnings -->
+            <p x-show="mode === 'lend' && !borrowerId" class="text-xs text-shelf-warning mt-3" style="display:none">Select a borrower before scanning.</p>
+            <p x-show="mode === 'move' && !location" class="text-xs text-shelf-warning mt-3" style="display:none">Select a target location before scanning.</p>
+            <p x-show="mode === 'inventory' && !location" class="text-xs text-shelf-warning mt-3" style="display:none">Select the location you are auditing before scanning.</p>
         </div>
     </form>
 
-    <!-- Game Title Search (for retro games without barcodes) -->
-    <div x-show="mediaType === 'video_game'" x-transition style="display:none" class="mb-6">
+    <!-- Title Search (add/wishlist only) -->
+    <div x-show="mode === 'add' || mode === 'wishlist'" x-transition class="mb-6" style="display:none">
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
             <h2 class="text-lg font-semibold mb-3">Search by Title</h2>
-            <p class="text-xs text-shelf-muted mb-4">For cartridges or games without a barcode — search IGDB by name and platform.</p>
+            <p x-show="mediaType === 'video_game'" class="text-xs text-shelf-muted mb-4" style="display:none">For cartridges or games without a barcode — search IGDB by name and platform.</p>
+            <p x-show="mediaType === 'dvd'" class="text-xs text-shelf-muted mb-4" style="display:none">Search TMDb for movies by title.</p>
+            <p x-show="mediaType !== 'video_game' && mediaType !== 'dvd'" class="text-xs text-shelf-muted mb-4">Search Open Library for books by title, author, or keyword.</p>
             <div class="flex gap-3">
-                <input type="text" id="game-search-input" placeholder="Game title..."
+                <input type="text" id="title-search-input"
+                       :placeholder="mediaType === 'video_game' ? 'Game title...' : mediaType === 'dvd' ? 'Movie title...' : 'Book title or author...'"
                        class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50"
-                       hx-get="/api/games/search" hx-trigger="keyup changed delay:400ms"
-                       hx-target="#game-search-results" hx-swap="innerHTML"
-                       hx-include="#platform, #location"
+                       hx-get="/api/title-search" hx-trigger="keyup changed delay:400ms"
+                       hx-target="#title-search-results" hx-swap="innerHTML"
+                       hx-include="#platform, #location, #media-type"
                        name="q">
             </div>
-            <div id="game-search-results" class="mt-4"></div>
+            <div id="title-search-results" class="mt-4"></div>
         </div>
     </div>
 
+    <!-- Inventory: Show Missing button -->
+    <div x-show="mode === 'inventory' && inventoryScannedIds.length > 0" x-transition class="mb-6" style="display:none">
+        <button @click="showMissing()" type="button"
+                class="px-4 py-2 bg-shelf-warning/20 text-shelf-warning border border-shelf-warning/40 rounded-lg text-sm hover:bg-shelf-warning/30 transition-colors">
+            Show Missing Items (<span x-text="inventoryScannedIds.length"></span> scanned)
+        </button>
+        <div id="inventory-missing" class="mt-4 space-y-3"></div>
+    </div>
+
     <!-- Scan Results -->
-    <div id="scan-results" class="space-y-3">
-        {% for scan in recent_scans %}
-        <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
-            {% if scan.cover_path %}
-            <img src="/covers/{{ scan.item_id }}.jpg" class="w-12 h-16 object-cover rounded" alt="">
-            {% else %}
-            <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>
-            {% endif %}
-            <div class="flex-1 min-w-0">
-                <p class="font-medium truncate">{{ scan.title or scan.isbn }}</p>
-                {% if scan.authors %}<p class="text-sm text-shelf-muted truncate">{{ scan.authors }}</p>{% endif %}
-            </div>
-            <span class="text-xs px-2 py-1 rounded-full shrink-0
-                {% if scan.result == 'added' %}bg-shelf-success/20 text-shelf-success
-                {% elif scan.result == 'duplicate' %}bg-shelf-warning/20 text-shelf-warning
-                {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
-                {{ scan.result }}
-            </span>
-        </div>
-        {% endfor %}
+    <h2 class="text-lg font-semibold mb-3"
+        x-text="mode === 'add' ? 'Recently Added' :
+                mode === 'wishlist' ? 'Added to Wishlist' :
+                mode === 'lend' ? 'Checked Out' :
+                mode === 'return' ? 'Returned' :
+                mode === 'move' ? 'Moved' :
+                mode === 'inventory' ? 'Scanned Items' :
+                mode === 'lookup' ? 'Lookup Results' :
+                mode === 'quick_rate' ? 'Marked as Read' : 'Results'">
+    </h2>
+    <div id="scan-results" class="space-y-3"
+         hx-get="/api/recent-scans" hx-trigger="load" hx-swap="innerHTML"
+         hx-vals='js:{"mode": localStorage.getItem("shelf_scan_mode") || "add"}'>
     </div>
 </div>
 
 <script>
 function scanPage() {
     return {
+        mode: localStorage.getItem('shelf_scan_mode') || 'add',
         mediaType: localStorage.getItem('shelf_media_type') || 'book',
         platform: localStorage.getItem('shelf_platform') || '',
         location: localStorage.getItem('shelf_location') || '',
+        borrowerId: '',
         cameraActive: false,
         scanPaused: false,
         scanLoading: false,
@@ -162,6 +205,81 @@ function scanPage() {
         scanner: null,
         lastScanned: '',
         lastScanTime: 0,
+        inventoryScannedIds: [],
+
+        modes: [
+            {id: 'add', label: 'Add'},
+            {id: 'wishlist', label: 'Wishlist'},
+            {id: 'lend', label: 'Lend'},
+            {id: 'return', label: 'Return'},
+            {id: 'move', label: 'Move'},
+            {id: 'inventory', label: 'Inventory'},
+            {id: 'lookup', label: 'Lookup'},
+            {id: 'quick_rate', label: 'Quick Rate'},
+        ],
+
+        get modeConfig() {
+            var configs = {
+                add: {heading: 'Add Items', description: 'Scan barcodes to add items to your collection.'},
+                wishlist: {heading: 'Add to Wishlist', description: 'Scan to save items you want but haven\'t bought yet.'},
+                lend: {heading: 'Lend Items', description: 'Select a borrower, then scan items to check them out.'},
+                'return': {heading: 'Return Items', description: 'Scan items to check them back in.'},
+                move: {heading: 'Move Items', description: 'Select a target location, then scan items to move them.'},
+                inventory: {heading: 'Inventory Audit', description: 'Select a location and scan every item you find there. Then check for missing items.'},
+                lookup: {heading: 'Lookup', description: 'Scan to check if an item is in your collection. No changes are made.'},
+                quick_rate: {heading: 'Quick Rate', description: 'Scan to mark items as read or completed.'},
+            };
+            return configs[this.mode] || configs.add;
+        },
+
+        loadRecentScans(m) {
+            fetch('/api/recent-scans?mode=' + encodeURIComponent(m))
+                .then(function(r) { return r.text(); })
+                .then(function(html) {
+                    document.getElementById('scan-results').innerHTML = html;
+                });
+        },
+
+        setMode(m) {
+            this.mode = m;
+            localStorage.setItem('shelf_scan_mode', m);
+            document.getElementById('inventory-missing').innerHTML = '';
+            this.inventoryScannedIds = [];
+            this.loadRecentScans(m);
+            var si = document.getElementById('title-search-input');
+            if (si) si.value = '';
+            var sr = document.getElementById('title-search-results');
+            if (sr) sr.innerHTML = '';
+        },
+
+        // Client-side validation before form submit
+        init() {
+            var self = this;
+            var form = document.querySelector('form[hx-post="/api/scan"]');
+            if (form) {
+                form.addEventListener('htmx:beforeRequest', function(e) {
+                    if (self.mode === 'lend' && !self.borrowerId) {
+                        e.preventDefault();
+                        showToast('Select a borrower first', 'error');
+                        return false;
+                    }
+                    if ((self.mode === 'move' || self.mode === 'inventory') && !self.location) {
+                        e.preventDefault();
+                        showToast('Select a location first', 'error');
+                        return false;
+                    }
+                });
+            }
+        },
+
+        async showMissing() {
+            var form = new FormData();
+            form.set('location_id', this.location);
+            form.set('scanned_ids', this.inventoryScannedIds.join(','));
+            var resp = await fetch('/api/inventory/missing', {method: 'POST', body: form});
+            var html = await resp.text();
+            document.getElementById('inventory-missing').innerHTML = html;
+        },
 
         async toggleCamera() {
             if (this.cameraActive) {
@@ -217,6 +335,16 @@ function scanPage() {
         async onScan(code) {
             if (this.scanPaused) return;
 
+            // Client-side validation
+            if (this.mode === 'lend' && !this.borrowerId) {
+                showToast('Select a borrower first', 'error');
+                return;
+            }
+            if ((this.mode === 'move' || this.mode === 'inventory') && !this.location) {
+                showToast('Select a location first', 'error');
+                return;
+            }
+
             var now = Date.now();
             if (code === this.lastScanned && now - this.lastScanTime < 3000) return;
             this.lastScanned = code;
@@ -245,6 +373,8 @@ function scanPage() {
             var form = document.querySelector('form[hx-post="/api/scan"]');
             var formData = new FormData(form);
             formData.set('isbn', code);
+            formData.set('mode', this.mode);
+            if (this.mode === 'lend') formData.set('borrower_id', this.borrowerId);
             try {
                 var resp = await fetch('/api/scan', { method: 'POST', body: formData });
                 var html = await resp.text();
@@ -252,29 +382,40 @@ function scanPage() {
                 // Insert result into the scan results list
                 var results = document.getElementById('scan-results');
                 results.insertAdjacentHTML('afterbegin', html);
+                htmx.process(results.firstElementChild);
 
                 // Parse the result to show in overlay
                 var tmp = document.createElement('div');
                 tmp.innerHTML = html;
-                var statusEl = tmp.querySelector('.scan-result span:last-child, span[class*="bg-shelf-success"], span[class*="bg-shelf-warning"], span[class*="bg-shelf-error"]');
                 var titleEl = tmp.querySelector('.font-medium');
                 var authorsEl = tmp.querySelector('.text-sm.text-shelf-muted');
                 var coverEl = tmp.querySelector('img');
+                var badgeEl = tmp.querySelector('span[class*="rounded-full"]');
+                var badge = badgeEl ? badgeEl.textContent.trim() : '';
 
-                var status = 'added';
-                if (html.includes('bg-shelf-warning')) status = 'duplicate';
-                else if (html.includes('bg-shelf-error') || html.includes('not found')) status = 'not_found';
-                else if (html.includes('showForm')) status = 'not_found';
+                var ok = html.includes('bg-shelf-success') || html.includes('bg-blue-500') || html.includes('bg-orange-500') || html.includes('bg-purple-500');
+                var warn = html.includes('bg-shelf-warning');
 
                 this.scanResult = {
-                    status: status,
+                    ok: ok,
+                    warn: warn,
+                    label: badge || 'done',
                     title: titleEl ? titleEl.textContent.trim() : null,
                     authors: authorsEl ? authorsEl.textContent.trim() : null,
                     cover: coverEl ? coverEl.getAttribute('src').replace(/^\//, '') : null,
                     isbn: code
                 };
+
+                // Track item IDs for inventory mode
+                if (this.mode === 'inventory') {
+                    var linkEl = tmp.querySelector('a[href^="/item/"]');
+                    if (linkEl) {
+                        var match = linkEl.getAttribute('href').match(/\/item\/(\d+)/);
+                        if (match) this.inventoryScannedIds.push(parseInt(match[1]));
+                    }
+                }
             } catch (err) {
-                this.scanResult = { status: 'error', title: 'Network error', isbn: code };
+                this.scanResult = { ok: false, warn: false, label: 'error', title: 'Network error', isbn: code };
             }
             this.scanLoading = false;
         }

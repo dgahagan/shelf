@@ -82,6 +82,8 @@ COLUMN_MIGRATIONS: Sequence[str] = (
     "ALTER TABLE items ADD COLUMN owned INTEGER NOT NULL DEFAULT 1",
     # Phase 7: Video Game Support
     "ALTER TABLE items ADD COLUMN platform TEXT DEFAULT NULL",
+    # Phase 8: Scan Modes
+    "ALTER TABLE scan_log ADD COLUMN mode TEXT DEFAULT 'add'",
 )
 
 MIGRATION_TABLES = """
