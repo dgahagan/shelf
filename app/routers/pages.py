@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 
 from app.auth import require_role
-from app.config import MEDIA_TYPES
+from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
 from app.database import get_db, get_setting
 
 router = APIRouter()
@@ -23,15 +23,16 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
                 "SELECT i.*, l.name as location_name FROM items i "
                 "LEFT JOIN locations l ON i.location_id = l.id "
                 "WHERE i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ? "
-                "ORDER BY i.created_at DESC LIMIT 60",
-                (f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"),
+                "ORDER BY i.created_at DESC LIMIT ?",
+                (f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%", DEFAULT_PAGE_SIZE),
             ).fetchall()
             has_more = False
         else:
             items = db.execute(
                 "SELECT i.*, l.name as location_name FROM items i "
                 "LEFT JOIN locations l ON i.location_id = l.id "
-                "ORDER BY i.created_at DESC LIMIT 60"
+                "ORDER BY i.created_at DESC LIMIT ?",
+                (DEFAULT_PAGE_SIZE,),
             ).fetchall()
             has_more = False  # recalculated below
         locations = db.execute(

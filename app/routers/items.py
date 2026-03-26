@@ -10,7 +10,7 @@ from starlette.responses import StreamingResponse
 from app.auth import require_role
 
 logger = logging.getLogger(__name__)
-from app.config import MEDIA_TYPES
+from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
 from app.database import get_db, get_setting
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
@@ -31,6 +31,101 @@ SORT_OPTIONS = {
 
 def _toast_header(message: str, toast_type: str = "success") -> str:
     return json.dumps({"showToast": {"message": message, "type": toast_type}})
+
+
+async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient) -> tuple[dict | None, str, dict]:
+    """Look up book metadata across sources. Returns (metadata, source, hc_ids)."""
+    metadata = await openlibrary.lookup(isbn13, client)
+    if metadata:
+        source = "openlibrary"
+    else:
+        source = "manual"
+
+    hc_ids = {}
+    if not metadata and hc_token:
+        metadata = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
+        if metadata:
+            source = "hardcover"
+            hc_ids = {
+                "hardcover_book_id": metadata.get("hardcover_book_id"),
+                "hardcover_edition_id": metadata.get("hardcover_edition_id"),
+            }
+
+    if not metadata:
+        metadata = await googlebooks.lookup(isbn13, client)
+        if metadata:
+            source = "google"
+
+    # Enrich with Hardcover data if primary source didn't have series/description
+    if metadata and hc_token and source != "hardcover":
+        if not metadata.get("series_name") or not metadata.get("description"):
+            hc_data = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
+            if hc_data:
+                if hc_data.get("series_name") and not metadata.get("series_name"):
+                    metadata["series_name"] = hc_data["series_name"]
+                    metadata["series_position"] = hc_data.get("series_position")
+                if hc_data.get("description") and not metadata.get("description"):
+                    metadata["description"] = hc_data["description"]
+                hc_ids = {
+                    "hardcover_book_id": hc_data.get("hardcover_book_id"),
+                    "hardcover_edition_id": hc_data.get("hardcover_edition_id"),
+                    "cover_url": hc_data.get("cover_url"),
+                }
+
+    return metadata, source, hc_ids
+
+
+def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | None,
+               source: str, hc_ids: dict) -> int:
+    """Insert a new item from scan metadata. Returns the new item ID."""
+    isbn10 = metadata.get("isbn10") or isbn_svc.isbn13_to_isbn10(isbn13)
+    loc_id = location_id if location_id and location_id > 0 else None
+
+    with get_db() as db:
+        cursor = db.execute(
+            """INSERT INTO items (title, subtitle, authors, isbn, isbn10, media_type,
+               publisher, publish_year, page_count, description, series_name,
+               series_position, location_id, source,
+               hardcover_book_id, hardcover_edition_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                metadata["title"],
+                metadata.get("subtitle"),
+                metadata.get("authors"),
+                isbn13,
+                isbn10,
+                media_type,
+                metadata.get("publisher"),
+                metadata.get("publish_year"),
+                metadata.get("page_count"),
+                metadata.get("description"),
+                metadata.get("series_name"),
+                metadata.get("series_position"),
+                loc_id,
+                source,
+                hc_ids.get("hardcover_book_id"),
+                hc_ids.get("hardcover_edition_id"),
+            ),
+        )
+        return cursor.lastrowid
+
+
+async def _fetch_preview_cover(isbn13: str, client: httpx.AsyncClient) -> str | None:
+    """Try to grab an Amazon cover preview for manual-add fallback."""
+    isbn10 = isbn_svc.isbn13_to_isbn10(isbn13)
+    if not isbn10:
+        return None
+    preview_url = f"https://images-na.ssl-images-amazon.com/images/P/{isbn10}.01._SCLZZZZZZZ_SX500_.jpg"
+    try:
+        resp = await client.get(preview_url, follow_redirects=True)
+        if resp.status_code == 200 and len(resp.content) > 1000:
+            tmp_path = covers.COVERS_DIR / f"preview_{isbn13}.jpg"
+            covers.COVERS_DIR.mkdir(parents=True, exist_ok=True)
+            tmp_path.write_bytes(resp.content)
+            return f"covers/preview_{isbn13}.jpg"
+    except Exception:
+        pass
+    return None
 
 
 @router.post("/scan")
@@ -70,61 +165,12 @@ async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = F
     with get_db() as db:
         hc_token = get_setting(db, "hardcover_token") or None
 
-    # Lookup metadata: Open Library -> Hardcover -> Google Books
-    metadata = None
-    source = "manual"
-    hc_ids = {}
     logger.info("Scanning ISBN %s (type=%s)", isbn13, media_type)
-    async with httpx.AsyncClient(timeout=15) as client:
-        metadata = await openlibrary.lookup(isbn13, client)
-        if metadata:
-            source = "openlibrary"
-        if not metadata and hc_token:
-            metadata = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
-            if metadata:
-                source = "hardcover"
-                hc_ids = {
-                    "hardcover_book_id": metadata.get("hardcover_book_id"),
-                    "hardcover_edition_id": metadata.get("hardcover_edition_id"),
-                }
-        if not metadata:
-            metadata = await googlebooks.lookup(isbn13, client)
-            if metadata:
-                source = "google"
-
-        # Enrich with Hardcover data if primary source didn't have series info
-        if metadata and hc_token and source != "hardcover":
-            if not metadata.get("series_name") or not metadata.get("description"):
-                hc_data = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
-                if hc_data:
-                    if hc_data.get("series_name") and not metadata.get("series_name"):
-                        metadata["series_name"] = hc_data["series_name"]
-                        metadata["series_position"] = hc_data.get("series_position")
-                    if hc_data.get("description") and not metadata.get("description"):
-                        metadata["description"] = hc_data["description"]
-                    hc_ids = {
-                        "hardcover_book_id": hc_data.get("hardcover_book_id"),
-                        "hardcover_edition_id": hc_data.get("hardcover_edition_id"),
-                        "cover_url": hc_data.get("cover_url"),
-                    }
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        metadata, source, hc_ids = await _lookup_metadata(isbn13, hc_token, client)
 
         if not metadata:
-            # Even though we have no metadata, try to grab a cover preview from Amazon
-            preview_cover = None
-            isbn10 = isbn_svc.isbn13_to_isbn10(isbn13)
-            if isbn10:
-                preview_url = f"https://images-na.ssl-images-amazon.com/images/P/{isbn10}.01._SCLZZZZZZZ_SX500_.jpg"
-                try:
-                    resp = await client.get(preview_url, follow_redirects=True)
-                    if resp.status_code == 200 and len(resp.content) > 1000:
-                        # Save temporarily with isbn as filename
-                        tmp_path = covers.COVERS_DIR / f"preview_{isbn13}.jpg"
-                        covers.COVERS_DIR.mkdir(parents=True, exist_ok=True)
-                        tmp_path.write_bytes(resp.content)
-                        preview_cover = f"covers/preview_{isbn13}.jpg"
-                except Exception:
-                    pass
-
+            preview_cover = await _fetch_preview_cover(isbn13, client)
             _log_scan(isbn13, media_type, "not_found")
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
@@ -135,46 +181,14 @@ async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = F
                 },
             )
 
-        # Save to DB
-        isbn10 = metadata.get("isbn10") or isbn_svc.isbn13_to_isbn10(isbn13)
-        loc_id = location_id if location_id and location_id > 0 else None
+        item_id = _save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
 
-        with get_db() as db:
-            cursor = db.execute(
-                """INSERT INTO items (title, subtitle, authors, isbn, isbn10, media_type,
-                   publisher, publish_year, page_count, description, series_name,
-                   series_position, location_id, source,
-                   hardcover_book_id, hardcover_edition_id)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    metadata["title"],
-                    metadata.get("subtitle"),
-                    metadata.get("authors"),
-                    isbn13,
-                    isbn10,
-                    media_type,
-                    metadata.get("publisher"),
-                    metadata.get("publish_year"),
-                    metadata.get("page_count"),
-                    metadata.get("description"),
-                    metadata.get("series_name"),
-                    metadata.get("series_position"),
-                    loc_id,
-                    source,
-                    hc_ids.get("hardcover_book_id"),
-                    hc_ids.get("hardcover_edition_id"),
-                ),
-            )
-            item_id = cursor.lastrowid
-
-        # Download cover — pass Hardcover cover URL for priority placement in pipeline
+        # Download cover
         hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
         cover_path = await covers.download_cover(
-            item_id,
-            isbn13,
+            item_id, isbn13,
             metadata.get("cover_url") if source != "hardcover" else None,
-            metadata.get("cover_id"),
-            client,
+            metadata.get("cover_id"), client,
             hardcover_cover_url=hc_cover,
         )
         if cover_path:
@@ -245,7 +259,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
             preview_path.rename(dest)
             cover_path = f"covers/{item_id}.jpg"
         else:
-            async with httpx.AsyncClient(timeout=10) as client:
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 cover_path = await covers.download_cover(item_id, isbn13, None, None, client)
 
     if cover_path:
@@ -283,7 +297,7 @@ async def search_items(
     reading_status: str = "",
     owned: str = "",
     page: int = 1,
-    per_page: int = 60,
+    per_page: int = DEFAULT_PAGE_SIZE,
     _=Depends(require_role("viewer")),
 ):
     """Search/filter items. Returns HTMX fragment of item cards."""
@@ -496,7 +510,7 @@ async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
     if not item or not item["isbn"]:
         return {"ok": False, "message": "No ISBN"}
 
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         cover_path = await covers.download_cover(item_id, item["isbn"], None, None, client)
 
     if cover_path:
@@ -527,7 +541,7 @@ async def cover_search(request: Request, item_id: int, _=Depends(require_role("e
 @router.post("/items/{item_id}/cover-select")
 async def cover_select(request: Request, item_id: int, url: str = Form(...), _=Depends(require_role("editor"))):
     """Download a selected cover URL and save it for an item."""
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         cover_path = await covers._download_to_item(item_id, url, client)
 
     if cover_path:
@@ -553,7 +567,7 @@ async def bulk_retry_covers(request: Request, _=Depends(require_role("admin"))):
 
     results = {"success": 0, "failed": 0, "total": len(items)}
 
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for item in items:
             cover_path = await covers.download_cover(item["id"], item["isbn"], None, None, client)
             if cover_path:
@@ -584,7 +598,7 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
     async def run_retry():
         results = {"success": 0, "failed": 0, "total": len(items)}
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 for i, item in enumerate(items, 1):
                     cover_path = await covers.download_cover(item["id"], item["isbn"], None, None, client)
                     if cover_path:
@@ -756,11 +770,10 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
 
     # Get TMDb API key
     with get_db() as db:
-        settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
-    tmdb_key = settings.get("tmdb_api_key", "")
+        tmdb_key = get_setting(db, "tmdb_api_key")
 
     metadata = None
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         metadata = await tmdb.lookup_upc(upc_norm, tmdb_key, client)
 
     if not metadata:
@@ -784,7 +797,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # Download cover
     cover_path = None
     if metadata.get("cover_url"):
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             cover_path = await covers._download_to_item(item_id, metadata["cover_url"], client)
         if cover_path:
             with get_db() as db:

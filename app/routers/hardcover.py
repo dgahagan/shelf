@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
+from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting, get_all_settings
 from app.services import hardcover, covers
 
@@ -42,7 +43,7 @@ async def search_hardcover(request: Request, q: str = "", _=Depends(require_role
 
     results = []
     if q.strip() and token:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             results = await hardcover.search_books(q.strip(), client, token=token)
 
         # Mark which books are already in Shelf
@@ -120,7 +121,7 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
 
     # Download cover
     if cover_url:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             cover_path = await covers.download_cover(item_id, isbn, None, None, client, hardcover_cover_url=cover_url)
         if cover_path:
             with get_db() as db:
@@ -330,7 +331,7 @@ async def import_hardcover_stream(request: Request, _=Depends(require_role("edit
                 await queue.put({"type": "progress", "current": 0, "total": len(cover_jobs), "title": f"Downloading {len(cover_jobs)} covers...", "status": "loading"})
                 batch_size = 5
                 done_covers = 0
-                async with httpx.AsyncClient(timeout=15) as client:
+                async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                     for batch_start in range(0, len(cover_jobs), batch_size):
                         batch = cover_jobs[batch_start:batch_start + batch_size]
                         tasks = [_download_cover_with_fallback(job, client) for job in batch]
@@ -403,98 +404,95 @@ async def _download_cover_with_fallback(job: dict, client: httpx.AsyncClient) ->
     return cover_path
 
 
-def _import_single_book_metadata(book: dict, overwrite: bool, title_index: dict) -> tuple[str, dict | None]:
-    """Import metadata for a single book (no network). Returns (status, cover_job_or_None)."""
+def _find_existing_item(db, book: dict, title_index: dict):
+    """Find an existing item matching a Hardcover book. Returns sqlite3.Row or None."""
     hc_book_id = book.get("hardcover_book_id")
     isbn = book.get("isbn")
-    title = book["title"]
 
+    if hc_book_id:
+        existing = db.execute(
+            "SELECT id, title, cover_path, authors FROM items WHERE hardcover_book_id = ?", (hc_book_id,)
+        ).fetchone()
+        if existing:
+            return existing
+
+    if isbn:
+        existing = db.execute(
+            "SELECT id, title, cover_path, authors FROM items WHERE isbn = ?", (isbn,)
+        ).fetchone()
+        if existing:
+            return existing
+
+    # Fuzzy match using pre-built title index
+    if book.get("authors"):
+        norm_title = _normalize_title(book["title"])
+        candidates = title_index.get(norm_title, [])
+        hc_first = book["authors"].split(",")[0].strip().split()[-1].lower()
+        for row in candidates:
+            if row["authors"]:
+                shelf_first = row["authors"].split(",")[0].strip().split()[-1].lower()
+                if shelf_first == hc_first:
+                    return row
+
+    return None
+
+
+_MERGE_FIELDS = ("subtitle", "description", "series_name", "series_position",
+                 "publisher", "page_count", "publish_year", "authors")
+
+
+def _build_hc_id_updates(book: dict) -> dict:
+    """Build Hardcover ID fields to always update on an existing item."""
+    updates = {}
+    for key in ("hardcover_book_id", "hardcover_edition_id", "hardcover_user_book_id"):
+        if book.get(key):
+            updates[key] = book[key]
+    return updates
+
+
+def _apply_updates(db, item_id: int, updates: dict):
+    """Apply a dict of field updates to an item."""
+    if not updates:
+        return
+    set_clause = ", ".join(f"{k} = ?" for k in updates)
+    db.execute(
+        f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
+        list(updates.values()) + [item_id],
+    )
+
+
+def _cover_job(item_id: int, book: dict) -> dict:
+    return {"item_id": item_id, "isbn": book.get("isbn"), "cover_url": book.get("cover_url")}
+
+
+def _import_single_book_metadata(book: dict, overwrite: bool, title_index: dict) -> tuple[str, dict | None]:
+    """Import metadata for a single book (no network). Returns (status, cover_job_or_None)."""
     with get_db() as db:
-        existing = None
-
-        # Match by hardcover_book_id first
-        if hc_book_id:
-            existing = db.execute(
-                "SELECT id, title, cover_path FROM items WHERE hardcover_book_id = ?", (hc_book_id,)
-            ).fetchone()
-
-        # Match by ISBN
-        if not existing and isbn:
-            existing = db.execute(
-                "SELECT id, title, cover_path FROM items WHERE isbn = ?", (isbn,)
-            ).fetchone()
-
-        # Fuzzy match using pre-built title index
-        if not existing and book.get("authors"):
-            norm_title = _normalize_title(title)
-            candidates = title_index.get(norm_title, [])
-            hc_first = book["authors"].split(",")[0].strip().split()[-1].lower()
-            for row in candidates:
-                if row["authors"]:
-                    shelf_first = row["authors"].split(",")[0].strip().split()[-1].lower()
-                    if shelf_first == hc_first:
-                        existing = row
-                        break
+        existing = _find_existing_item(db, book, title_index)
 
         if existing:
             if not overwrite:
-                updates = {}
-                if hc_book_id:
-                    updates["hardcover_book_id"] = hc_book_id
-                if book.get("hardcover_edition_id"):
-                    updates["hardcover_edition_id"] = book["hardcover_edition_id"]
-                if book.get("hardcover_user_book_id"):
-                    updates["hardcover_user_book_id"] = book["hardcover_user_book_id"]
-
+                updates = _build_hc_id_updates(book)
                 item = db.execute("SELECT * FROM items WHERE id = ?", (existing["id"],)).fetchone()
-                fill_fields = {
-                    "subtitle": "subtitle", "description": "description",
-                    "series_name": "series_name", "series_position": "series_position",
-                    "publisher": "publisher", "page_count": "page_count",
-                    "publish_year": "publish_year", "authors": "authors",
-                }
-                for db_field, book_key in fill_fields.items():
-                    if not item[db_field] and book.get(book_key):
-                        updates[db_field] = book[book_key]
-
+                for field in _MERGE_FIELDS:
+                    if not item[field] and book.get(field):
+                        updates[field] = book[field]
                 if not item["reading_status"] and book.get("reading_status"):
                     updates["reading_status"] = book["reading_status"]
 
-                if updates:
-                    set_clause = ", ".join(f"{k} = ?" for k in updates)
-                    db.execute(
-                        f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-                        list(updates.values()) + [existing["id"]],
-                    )
-
-                # Queue cover download if missing
-                cover_job = None
-                existing_cover = existing["cover_path"] if isinstance(existing, dict) else existing["cover_path"]
-                if not existing_cover:
-                    cover_job = {"item_id": existing["id"], "isbn": book.get("isbn"), "cover_url": book.get("cover_url")}
-
+                _apply_updates(db, existing["id"], updates)
+                cover_job = None if existing["cover_path"] else _cover_job(existing["id"], book)
                 return ("updated" if updates else "skipped", cover_job)
             else:
-                updates = {
-                    "hardcover_book_id": hc_book_id,
-                    "hardcover_edition_id": book.get("hardcover_edition_id"),
-                    "hardcover_user_book_id": book.get("hardcover_user_book_id"),
-                }
-                for field in ("subtitle", "description", "series_name", "series_position",
-                              "publisher", "page_count", "publish_year", "authors", "reading_status"):
+                updates = _build_hc_id_updates(book)
+                for field in (*_MERGE_FIELDS, "reading_status"):
                     if book.get(field) is not None:
                         updates[field] = book[field]
-
-                set_clause = ", ".join(f"{k} = ?" for k in updates)
-                db.execute(
-                    f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-                    list(updates.values()) + [existing["id"]],
-                )
-
-                cover_job = {"item_id": existing["id"], "isbn": book.get("isbn"), "cover_url": book.get("cover_url")}
-                return ("updated", cover_job)
+                _apply_updates(db, existing["id"], updates)
+                return ("updated", _cover_job(existing["id"], book))
 
         # New item — insert
+        isbn = book.get("isbn")
         isbn10 = book.get("isbn10")
         if isbn and not isbn10:
             from app.services.isbn import isbn13_to_isbn10
@@ -509,7 +507,7 @@ def _import_single_book_metadata(book: dict, overwrite: bool, title_index: dict)
                hardcover_book_id, hardcover_edition_id, hardcover_user_book_id)
                VALUES (?, ?, ?, ?, ?, 'book', ?, ?, ?, ?, ?, ?, ?, 'hardcover', ?, ?, ?, ?)""",
             (
-                title,
+                book["title"],
                 book.get("subtitle"),
                 book.get("authors"),
                 isbn,
@@ -522,12 +520,11 @@ def _import_single_book_metadata(book: dict, overwrite: bool, title_index: dict)
                 book.get("series_position"),
                 book.get("reading_status"),
                 is_owned,
-                hc_book_id,
+                book.get("hardcover_book_id"),
                 book.get("hardcover_edition_id"),
                 book.get("hardcover_user_book_id"),
             ),
         )
         item_id = cursor.lastrowid
 
-    cover_job = {"item_id": item_id, "isbn": isbn, "cover_url": book.get("cover_url")}
-    return ("added", cover_job)
+    return ("added", _cover_job(item_id, book))

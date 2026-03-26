@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
+from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.services import audiobookshelf
 
@@ -54,7 +55,7 @@ async def test_audiobookshelf(request: Request):
         return {"ok": False, "message": url_err}
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             resp = await client.get(
                 f"{url}/api/libraries",
                 headers={"Authorization": f"Bearer {token}"},

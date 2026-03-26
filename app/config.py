@@ -18,6 +18,10 @@ MEDIA_TYPES = {
 OPENLIBRARY_RATE_LIMIT = 0.34  # seconds between requests (~3/sec)
 HARDCOVER_RATE_LIMIT = 1.0  # seconds between requests (60/min API limit)
 
+# HTTP client defaults
+HTTP_TIMEOUT = 15  # seconds for external API calls
+DEFAULT_PAGE_SIZE = 60
+
 # Auth
 SECRET_KEY = os.environ.get("SECRET_KEY", "")  # auto-generated and stored in DB if empty
 JWT_ALGORITHM = "HS256"
