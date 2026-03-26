@@ -38,6 +38,24 @@ SECRET_ENV_VARS = {
 }
 
 
+def get_client_ip(request) -> str:
+    """Extract the real client IP from proxy headers, falling back to direct connection.
+
+    Checks CF-Connecting-IP (Cloudflare), then X-Forwarded-For, then request.client.
+    """
+    # Cloudflare sets this to the actual visitor IP
+    cf_ip = request.headers.get("cf-connecting-ip")
+    if cf_ip:
+        return cf_ip.strip()
+
+    # Standard proxy header — first entry is the original client
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+
+    return request.client.host if request.client else "unknown"
+
+
 def get_setting_value(key: str, db_value: str | None = None) -> str:
     """Get a setting value with env var override. Env var takes priority."""
     env_name = SECRET_ENV_VARS.get(key)

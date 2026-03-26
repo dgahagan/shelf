@@ -28,7 +28,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
-from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES
+from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.database import init_db, get_db
 from app.routers import pages, items, locations, settings, sync, checkouts, valuation, hardcover
 from app.routers import auth_routes
@@ -101,7 +101,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not (path.startswith("/api/") or path in ("/login", "/setup")):
             return await call_next(request)
 
-        ip = request.client.host if request.client else "unknown"
+        ip = get_client_ip(request)
         now = time.time()
         window = now - 60
 
