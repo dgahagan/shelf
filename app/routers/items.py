@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Form
@@ -7,6 +8,8 @@ from fastapi.responses import HTMLResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
+
+logger = logging.getLogger(__name__)
 from app.config import MEDIA_TYPES
 from app.database import get_db, get_setting
 from app.services import isbn as isbn_svc
@@ -71,6 +74,7 @@ async def scan_isbn(request: Request, isbn: str = Form(...), media_type: str = F
     metadata = None
     source = "manual"
     hc_ids = {}
+    logger.info("Scanning ISBN %s (type=%s)", isbn13, media_type)
     async with httpx.AsyncClient(timeout=15) as client:
         metadata = await openlibrary.lookup(isbn13, client)
         if metadata:
@@ -479,8 +483,9 @@ async def _push_status_to_hardcover(item_id: int, status: str):
 
         hc_status_id = hardcover.STATUS_TO_HC.get(status)
         await hardcover.update_user_book(token, item["hardcover_user_book_id"], status_id=hc_status_id)
+        logger.debug("Pushed status '%s' to Hardcover for item %d", status, item_id)
     except Exception:
-        pass  # non-blocking — don't disrupt the UI
+        logger.warning("Failed to push status to Hardcover for item %d", item_id, exc_info=True)
 
 
 @router.post("/items/{item_id}/retry-cover")

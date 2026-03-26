@@ -1,4 +1,8 @@
+import logging
+
 import httpx
+
+logger = logging.getLogger(__name__)
 
 
 async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
@@ -8,6 +12,7 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
         params={"q": f"isbn:{isbn}"},
     )
     if resp.status_code != 200:
+        logger.debug("Google Books lookup failed for ISBN %s: HTTP %d", isbn, resp.status_code)
         return None
 
     data = resp.json()

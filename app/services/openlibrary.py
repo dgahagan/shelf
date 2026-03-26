@@ -1,7 +1,11 @@
 import asyncio
+import logging
+
 import httpx
 
 from app.config import OPENLIBRARY_RATE_LIMIT
+
+logger = logging.getLogger(__name__)
 
 _last_request = 0.0
 
@@ -24,6 +28,7 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
         follow_redirects=True,
     )
     if resp.status_code != 200:
+        logger.debug("Open Library lookup failed for ISBN %s: HTTP %d", isbn, resp.status_code)
         return None
 
     data = resp.json()

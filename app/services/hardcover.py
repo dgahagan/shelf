@@ -1,9 +1,12 @@
 """Hardcover.app GraphQL API client for book metadata and library sync."""
 
 import asyncio
+import logging
 import time
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 API_URL = "https://api.hardcover.app/v1/graphql"
 RATE_LIMIT = 1.0  # seconds between requests (60/min limit, stay safe at 1/sec)
@@ -46,12 +49,15 @@ async def _graphql(
     try:
         resp = await client.post(API_URL, json=payload, headers=headers)
         if resp.status_code != 200:
+            logger.debug("Hardcover API returned HTTP %d", resp.status_code)
             return None
         body = resp.json()
         if body.get("errors"):
+            logger.debug("Hardcover GraphQL errors: %s", body["errors"])
             return None
         return body.get("data")
     except Exception:
+        logger.warning("Hardcover API request failed", exc_info=True)
         return None
     finally:
         if own_client:

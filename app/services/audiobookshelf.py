@@ -1,7 +1,11 @@
+import logging
+
 import httpx
 
 from app.database import get_db
 from app.services import covers
+
+logger = logging.getLogger(__name__)
 
 
 async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
@@ -142,7 +146,7 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                                 (f"covers/{item_id}.jpg", item_id),
                             )
                 except Exception:
-                    pass
+                    logger.debug("Failed to download cover for ABS item %s", abs_id, exc_info=True)
 
     # Auto-link: match ABS items to physical books by title or ISBN
     _auto_link_items()

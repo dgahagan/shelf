@@ -1,3 +1,4 @@
+import logging
 import secrets
 import time
 from datetime import datetime, timezone, timedelta
@@ -9,6 +10,8 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 
 from app.config import SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRY_SECONDS
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 
 ROLE_LEVELS = {"viewer": 1, "editor": 2, "admin": 3}
 
@@ -65,7 +68,11 @@ def create_token(user_id: int, username: str, role: str, display_name: str | Non
 def decode_token(token: str) -> dict | None:
     try:
         return jwt.decode(token, get_secret_key(), algorithms=[JWT_ALGORITHM])
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+    except jwt.ExpiredSignatureError:
+        logger.debug("Expired JWT token presented")
+        return None
+    except jwt.InvalidTokenError:
+        logger.warning("Invalid JWT token presented")
         return None
 
 

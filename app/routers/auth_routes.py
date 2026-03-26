@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Form, Request, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
 
@@ -7,6 +9,8 @@ from app.auth import (
     require_role,
 )
 from app.database import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -33,6 +37,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
         ).fetchone()
 
     if not user or not verify_password(password, user["password"]):
+        logger.warning("Failed login attempt for username=%s from %s", username, request.client.host if request.client else "unknown")
         return templates.TemplateResponse(
             request, "login.html",
             {"error": "Invalid username or password"},
@@ -42,6 +47,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
     token = create_token(user["id"], user["username"], user["role"], user["display_name"])
     response = RedirectResponse(url="/browse", status_code=303)
     set_auth_cookie(response, token)
+    logger.info("User '%s' logged in from %s", username, request.client.host if request.client else "unknown")
     return response
 
 
@@ -105,6 +111,7 @@ async def setup(
     token = create_token(user["id"], user["username"], user["role"], user["display_name"])
     response = RedirectResponse(url="/browse", status_code=303)
     set_auth_cookie(response, token)
+    logger.info("Setup completed: admin user '%s' created", username)
     return response
 
 
@@ -145,8 +152,10 @@ async def create_user(
                 (username, hash_password(password), display_name, role),
             )
     except Exception:
+        logger.warning("Failed to create user '%s': username already exists", username)
         return {"ok": False, "message": "Username already exists"}
 
+    logger.info("User '%s' created with role '%s'", username, role)
     return {"ok": True, "message": f"User '{username}' created"}
 
 
@@ -177,6 +186,7 @@ async def update_user_role(
             (role, user_id),
         )
 
+    logger.info("User id=%d role changed to '%s' by user '%s'", user_id, role, current_user["username"])
     return {"ok": True, "message": "Role updated"}
 
 
@@ -199,6 +209,7 @@ async def reset_user_password(
             (hash_password(password), user_id),
         )
 
+    logger.info("Password reset for user id=%d by admin", user_id)
     return {"ok": True, "message": "Password updated"}
 
 
@@ -217,12 +228,14 @@ async def change_own_password(
     with get_db() as db:
         row = db.execute("SELECT password FROM users WHERE id = ?", (user["id"],)).fetchone()
         if not row or not verify_password(current_password, row["password"]):
+            logger.warning("Failed password change attempt for user '%s'", user["username"])
             return {"ok": False, "message": "Current password is incorrect"}
         db.execute(
             "UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?",
             (hash_password(new_password), user["id"]),
         )
 
+    logger.info("User '%s' changed their password", user["username"])
     return {"ok": True, "message": "Password changed"}
 
 
@@ -270,4 +283,5 @@ async def delete_user(request: Request, user_id: int, _=Depends(require_role("ad
 
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
 
+    logger.info("User id=%d deleted by admin '%s'", user_id, current_user["username"])
     return {"ok": True, "message": "User deleted"}

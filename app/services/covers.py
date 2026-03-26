@@ -1,8 +1,11 @@
+import logging
 from urllib.parse import urlparse
 
 import httpx
 
 from app.config import COVERS_DIR
+
+logger = logging.getLogger(__name__)
 
 # Trusted domains for cover image downloads
 ALLOWED_COVER_DOMAINS = {
@@ -171,12 +174,15 @@ async def _download(url: str, dest, client: httpx.AsyncClient) -> bool:
     try:
         resp = await client.get(url, follow_redirects=True)
         if resp.status_code != 200:
+            logger.debug("Cover download failed for %s: HTTP %d", url, resp.status_code)
             return False
         content = resp.content
         # Open Library returns a 1x1 pixel for missing covers
         if len(content) < 1000 or len(content) > MAX_COVER_SIZE:
+            logger.debug("Cover download rejected for %s: size=%d bytes", url, len(content))
             return False
         dest.write_bytes(content)
         return True
     except Exception:
+        logger.debug("Cover download error for %s", url, exc_info=True)
         return False

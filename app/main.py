@@ -1,9 +1,19 @@
 import asyncio
+import logging
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+
+# Configure logging for the app
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+logger = logging.getLogger(__name__)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -144,8 +154,9 @@ async def _periodic_abs_sync():
                         "ON CONFLICT(key) DO UPDATE SET value = ?",
                         (str(now), str(now)),
                     )
+                logger.info("Periodic Audiobookshelf sync completed")
         except Exception:
-            pass
+            logger.exception("Periodic Audiobookshelf sync failed")
 
 
 async def _periodic_hardcover_sync():
@@ -183,8 +194,9 @@ async def _periodic_hardcover_sync():
                         "ON CONFLICT(key) DO UPDATE SET value = ?",
                         (str(now), str(now)),
                     )
+                logger.info("Periodic Hardcover sync completed")
         except Exception:
-            pass
+            logger.exception("Periodic Hardcover sync failed")
 
 
 @asynccontextmanager
