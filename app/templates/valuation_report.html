@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Valuation Report — Shelf{% endblock %}
+{% block head %}
+<style>
+    @media print {
+        nav, .no-print { display: none !important; }
+        body { background: white; color: black; }
+        .bg-shelf-card { background: white; border: 1px solid #ddd; }
+        .text-shelf-muted { color: #666; }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold">Collection Valuation Report</h1>
+        <button onclick="window.print()" class="no-print px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+            Print Report
+        </button>
+    </div>
+
+    <!-- Summary -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-4">Summary</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+            <div>
+                <p class="text-shelf-muted">Total Items</p>
+                <p class="text-xl font-bold">{{ total_items }}</p>
+            </div>
+            <div>
+                <p class="text-shelf-muted">Priced</p>
+                <p class="text-xl font-bold">{{ priced_count }} <span class="text-sm text-shelf-muted font-normal">/ {{ total_with_isbn }} with ISBN</span></p>
+            </div>
+            <div>
+                <p class="text-shelf-muted">Not Priced</p>
+                <p class="text-xl font-bold">{{ unpriced_count }}</p>
+            </div>
+            <div>
+                <p class="text-shelf-muted">Total List Value</p>
+                <p class="text-xl font-bold text-shelf-success">${{ "%.2f"|format(total_value) }}</p>
+            </div>
+            <div>
+                <p class="text-shelf-muted">Est. Missing Value</p>
+                <p class="text-xl font-bold">${{ "%.2f"|format(estimated_missing) }}</p>
+                <p class="text-xs text-shelf-muted">avg ${{ "%.2f"|format(avg_price) }} x {{ unpriced_count }}</p>
+            </div>
+            <div>
+                <p class="text-shelf-muted">Grand Total Est.</p>
+                <p class="text-xl font-bold text-shelf-accent2">${{ "%.2f"|format(grand_total) }}</p>
+            </div>
+        </div>
+        <p class="text-xs text-shelf-muted mt-4">Values are publisher list prices — appropriate for insurance replacement cost claims.</p>
+    </div>
+
+    <!-- Item Table -->
+    {% if items %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-border overflow-hidden">
+        <table class="w-full text-sm">
+            <thead class="bg-shelf-hover text-shelf-muted text-xs uppercase">
+                <tr>
+                    <th class="px-4 py-3 text-left">Title</th>
+                    <th class="px-4 py-3 text-left">Author</th>
+                    <th class="px-4 py-3 text-left">ISBN</th>
+                    <th class="px-4 py-3 text-right">Value</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-shelf-border">
+                {% for item in items %}
+                <tr class="hover:bg-shelf-hover/50">
+                    <td class="px-4 py-2">{{ item.title }}</td>
+                    <td class="px-4 py-2 text-shelf-muted">{{ item.authors or '' }}</td>
+                    <td class="px-4 py-2 font-mono text-xs text-shelf-muted">{{ item.isbn or '' }}</td>
+                    <td class="px-4 py-2 text-right font-mono">${{ "%.2f"|format(item.estimated_value) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-shelf-hover font-semibold">
+                <tr>
+                    <td class="px-4 py-3" colspan="3">Total (priced items)</td>
+                    <td class="px-4 py-3 text-right font-mono">${{ "%.2f"|format(total_value) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-shelf-muted text-center py-8">No items have been valuated yet. Go to Settings to run a valuation.</p>
+    {% endif %}
+</div>
+{% endblock %}

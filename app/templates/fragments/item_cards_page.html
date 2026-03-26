@@ -1,0 +1,11 @@
+{% for item in items %}
+{% include "fragments/item_card.html" %}
+{% endfor %}
+{% if has_more is defined and has_more %}
+<div id="load-more" class="col-span-full text-center py-4"
+     hx-get="{{ load_more_url }}" hx-trigger="click" hx-swap="outerHTML">
+    <button class="px-6 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">
+        Load More
+    </button>
+</div>
+{% endif %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Discover — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Discover Books</h1>
+
+    {% if not has_hardcover %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center">
+        <p class="text-shelf-muted mb-3">Connect your Hardcover account to search for books and add them to your wishlist.</p>
+        <a href="/settings" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors inline-block">Go to Settings</a>
+    </div>
+    {% else %}
+    <div x-data="{ query: '' }">
+        <!-- Search -->
+        <div class="mb-6">
+            <input type="search" name="q" placeholder="Search by title or author..."
+                   x-model="query"
+                   hx-get="/api/hardcover/search" hx-trigger="keyup changed delay:400ms" hx-target="#hc-results"
+                   hx-include="this"
+                   class="w-full bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 text-lg"
+                   autofocus>
+        </div>
+
+        <!-- Results -->
+        <div id="hc-results">
+            <p class="text-shelf-muted text-sm text-center py-8">Search Hardcover's catalog to find books and add them to your wishlist.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

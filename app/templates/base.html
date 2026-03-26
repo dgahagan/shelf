@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Shelf{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        shelf: {
+                            bg: '#0f1117',
+                            card: '#1a1d27',
+                            hover: '#242836',
+                            accent: '#6366f1',
+                            accent2: '#818cf8',
+                            text: '#e2e8f0',
+                            muted: '#94a3b8',
+                            border: '#2d3148',
+                            success: '#22c55e',
+                            warning: '#eab308',
+                            error: '#ef4444',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body { background-color: #0f1117; color: #e2e8f0; }
+        .cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; }
+        .cover-card { aspect-ratio: 2/3; }
+        .cover-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
+        .scan-result { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f1117; }
+        ::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 4px; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen">
+    <!-- Loading bar -->
+    <div id="htmx-indicator" class="fixed top-0 left-0 h-0.5 bg-shelf-accent z-[100] transition-all duration-300" style="width:0;opacity:0"></div>
+
+    <!-- Nav -->
+    <nav class="bg-shelf-card border-b border-shelf-border sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14">
+                <div class="flex items-center gap-1">
+                    <a href="/browse" class="text-lg font-bold text-shelf-accent2 tracking-tight mr-6">Shelf</a>
+                    <a href="/browse" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/browse' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Browse
+                    </a>
+                    <a href="/scan" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/scan' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Scan
+                    </a>
+                    <a href="/discover" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/discover' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Discover
+                    </a>
+                    <a href="/stats" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/stats' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Stats
+                    </a>
+                    <a href="/settings" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/settings' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Toast container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Keyboard shortcuts help modal -->
+    <div id="shortcut-modal" class="fixed inset-0 bg-black/60 z-[200] hidden items-center justify-center" onclick="if(event.target===this)this.classList.add('hidden')">
+        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
+            <h3 class="text-lg font-bold mb-4">Keyboard Shortcuts</h3>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between"><span class="text-shelf-muted">Focus search</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">/</kbd></div>
+                <div class="flex justify-between"><span class="text-shelf-muted">Go to Scan</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">s</kbd></div>
+                <div class="flex justify-between"><span class="text-shelf-muted">Go to Browse</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">b</kbd></div>
+                <div class="flex justify-between"><span class="text-shelf-muted">This help</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">?</kbd></div>
+            </div>
+            <button onclick="this.closest('#shortcut-modal').classList.add('hidden')" class="mt-4 w-full text-center text-sm text-shelf-muted hover:text-shelf-text">Close</button>
+        </div>
+    </div>
+
+    <script>
+    // --- Toast notifications ---
+    function showToast(message, type) {
+        var container = document.getElementById('toast-container');
+        var colors = {success: 'bg-shelf-success', error: 'bg-shelf-error', warning: 'bg-shelf-warning'};
+        var el = document.createElement('div');
+        el.className = (colors[type] || 'bg-shelf-accent') + ' text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300';
+        el.textContent = message;
+        container.appendChild(el);
+        setTimeout(function() { el.style.opacity = '0'; }, 2700);
+        setTimeout(function() { el.remove(); }, 3000);
+    }
+
+    // Listen for HX-Trigger showToast events from server
+    document.body.addEventListener('showToast', function(e) {
+        var d = e.detail || {};
+        showToast(d.message || 'Done', d.type || 'success');
+    });
+
+    // --- Loading bar ---
+    (function() {
+        var bar = document.getElementById('htmx-indicator');
+        document.body.addEventListener('htmx:beforeRequest', function() {
+            bar.style.opacity = '1';
+            bar.style.width = (30 + Math.random() * 30) + '%';
+        });
+        document.body.addEventListener('htmx:afterRequest', function() {
+            bar.style.width = '100%';
+            setTimeout(function() { bar.style.opacity = '0'; bar.style.width = '0'; }, 300);
+        });
+    })();
+
+    // --- Keyboard shortcuts ---
+    document.addEventListener('keydown', function(e) {
+        var tag = document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+        if (e.key === '/' ) { e.preventDefault(); var q = document.querySelector('[name="q"]'); if (q) q.focus(); }
+        else if (e.key === 's') { window.location.href = '/scan'; }
+        else if (e.key === 'b') { window.location.href = '/browse'; }
+        else if (e.key === '?') { document.getElementById('shortcut-modal').classList.toggle('hidden'); }
+    });
+    </script>
+</body>
+</html>

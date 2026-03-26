@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}Stats — Shelf{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold mb-6">Collection Statistics</h1>
+
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <p class="text-shelf-muted text-sm">Owned</p>
+        <p class="text-3xl font-bold">{{ owned_count }}</p>
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <p class="text-shelf-muted text-sm">Wishlist</p>
+        <p class="text-3xl font-bold">{{ wishlist_count }}</p>
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <p class="text-shelf-muted text-sm">With Covers</p>
+        <p class="text-3xl font-bold">{{ with_covers }} <span class="text-sm text-shelf-muted font-normal">/ {{ total }}</span></p>
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <p class="text-shelf-muted text-sm">Without ISBN</p>
+        <p class="text-3xl font-bold">{{ without_isbn }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- By Media Type -->
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-4">By Media Type</h2>
+        {% if by_type %}
+        <div class="space-y-3">
+            {% for row in by_type %}
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span>{{ media_types.get(row.media_type, row.media_type) }}</span>
+                    <span class="text-shelf-muted">{{ row.c }}</span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2" style="width: {{ (row.c / total * 100) if total else 0 }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-shelf-muted text-sm">No items yet</p>
+        {% endif %}
+    </div>
+
+    <!-- By Location -->
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <h2 class="text-lg font-semibold mb-4">By Location</h2>
+        {% if by_location %}
+        <div class="space-y-3">
+            {% for row in by_location %}
+            <div>
+                <div class="flex justify-between text-sm mb-1">
+                    <span>{{ row.name }}</span>
+                    <span class="text-shelf-muted">{{ row.c }}</span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent2 rounded-full h-2" style="width: {{ (row.c / total * 100) if total else 0 }}%"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-shelf-muted text-sm">No items yet</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Additions -->
+{% if recent %}
+<div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+    <h2 class="text-lg font-semibold mb-4">Recently Added (Last 30 Days)</h2>
+    <div class="space-y-2">
+        {% for item in recent %}
+        <a href="/item/{{ item.id }}" class="flex items-center gap-3 p-2 rounded hover:bg-shelf-hover transition-colors">
+            {% if item.cover_path %}
+            <img src="/{{ item.cover_path }}" alt="" class="w-8 h-12 object-cover rounded">
+            {% else %}
+            <div class="w-8 h-12 bg-shelf-hover rounded flex items-center justify-center text-xs text-shelf-muted">?</div>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium truncate">{{ item.title }}</p>
+                <p class="text-xs text-shelf-muted truncate">{{ item.authors or '' }} · {{ media_types.get(item.media_type, item.media_type) }}</p>
+            </div>
+            <span class="text-xs text-shelf-muted whitespace-nowrap">{{ item.created_at[:10] }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

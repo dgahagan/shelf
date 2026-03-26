@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ item.title }} — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <a href="/item/{{ item.id }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; Back to item</a>
+
+    <h1 class="text-2xl font-bold mb-6">Edit Item</h1>
+
+    <form action="/api/items/{{ item.id }}" method="post" enctype="multipart/form-data" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+
+        {% macro field(name, label, value, type="text", placeholder="") %}
+        <div>
+            <label for="{{ name }}" class="block text-sm font-medium text-shelf-muted mb-1">{{ label }}</label>
+            <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value or '' }}" placeholder="{{ placeholder }}"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+        </div>
+        {% endmacro %}
+
+        {{ field("title", "Title", item.title) }}
+        {{ field("subtitle", "Subtitle", item.subtitle) }}
+        {{ field("authors", "Authors", item.authors) }}
+        {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
+
+        <div>
+            <label for="media_type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
+            <select id="media_type" name="media_type"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                {% for key, label in media_types.items() %}
+                <option value="{{ key }}" {% if item.media_type == key %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="location_id" class="block text-sm font-medium text-shelf-muted mb-1">Location</label>
+            <select id="location_id" name="location_id"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">None</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Owned / Wishlist -->
+        <div>
+            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <input type="hidden" name="owned" value="0">
+                <input type="checkbox" name="owned" value="1" {% if item.owned %}checked{% endif %}
+                       class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                <span class="font-medium text-shelf-muted">I own this item</span>
+            </label>
+            <p class="text-xs text-shelf-muted mt-1 ml-6">Uncheck for wishlist items you don't physically have yet</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            {{ field("publisher", "Publisher", item.publisher) }}
+            {{ field("publish_year", "Year", item.publish_year, type="number") }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            {{ field("page_count", "Pages", item.page_count, type="number") }}
+            {{ field("series_name", "Series", item.series_name) }}
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            {{ field("narrator", "Narrator", item.narrator) }}
+            {{ field("duration_mins", "Duration (min)", item.duration_mins, type="number") }}
+        </div>
+
+        <!-- Reading Status -->
+        <div>
+            <label for="reading_status" class="block text-sm font-medium text-shelf-muted mb-1">Reading Status</label>
+            <select id="reading_status" name="reading_status"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">None</option>
+                <option value="want_to_read" {% if item.reading_status == 'want_to_read' %}selected{% endif %}>Want to Read</option>
+                <option value="reading" {% if item.reading_status == 'reading' %}selected{% endif %}>Reading</option>
+                <option value="read" {% if item.reading_status == 'read' %}selected{% endif %}>Read</option>
+            </select>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            {{ field("date_started", "Date Started", item.date_started, type="date") }}
+            {{ field("date_finished", "Date Finished", item.date_finished, type="date") }}
+        </div>
+
+        <div>
+            <label for="description" class="block text-sm font-medium text-shelf-muted mb-1">Description</label>
+            <textarea id="description" name="description" rows="3"
+                      class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.description or '' }}</textarea>
+        </div>
+
+        <div>
+            <label for="notes" class="block text-sm font-medium text-shelf-muted mb-1">Notes</label>
+            <textarea id="notes" name="notes" rows="2"
+                      class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.notes or '' }}</textarea>
+        </div>
+
+        <div x-data="coverDrop()">
+            <label class="block text-sm font-medium text-shelf-muted mb-1">Cover Image</label>
+            <div class="flex items-center gap-4">
+                {% if item.cover_path %}
+                <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded" alt="">
+                {% else %}
+                <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded" alt="" style="display:none">
+                <div x-show="!preview" class="w-16 h-24 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">None</div>
+                {% endif %}
+                <div class="flex-1">
+                    <div @dragover.prevent="dragging = true" @dragleave="dragging = false"
+                         @drop.prevent="handleDrop($event)"
+                         :class="dragging ? 'border-shelf-accent bg-shelf-accent/10' : 'border-shelf-border'"
+                         class="border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
+                         @click="$refs.coverInput.click()">
+                        <input type="file" name="cover" accept="image/*" x-ref="coverInput" @change="handleFile($event)"
+                               class="hidden">
+                        <p class="text-sm text-shelf-muted">Drop an image here or click to browse</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit" class="px-6 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+            <a href="/item/{{ item.id }}" class="px-6 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+
+<script>
+function coverDrop() {
+    return {
+        dragging: false,
+        preview: null,
+        handleDrop(e) {
+            this.dragging = false;
+            var file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                var dt = new DataTransfer();
+                dt.items.add(file);
+                this.$refs.coverInput.files = dt.files;
+                this.preview = URL.createObjectURL(file);
+            }
+        },
+        handleFile(e) {
+            var file = e.target.files[0];
+            if (file) this.preview = URL.createObjectURL(file);
+        }
+    }
+}
+</script>
+{% endblock %}

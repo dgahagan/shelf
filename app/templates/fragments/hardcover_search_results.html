@@ -1,0 +1,57 @@
+{% if not results and query %}
+<p class="text-shelf-muted text-sm text-center py-8">No results for "{{ query }}"</p>
+{% elif results %}
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    {% for book in results %}
+    <div class="bg-shelf-card rounded-lg border border-shelf-border p-4 flex gap-4"
+         x-data="{ adding: false, added: {{ 'true' if book.in_shelf else 'false' }}, error: null }"
+         id="hc-result-{{ book.hardcover_book_id }}">
+        <!-- Cover -->
+        <div class="shrink-0 w-20">
+            {% if book.cover_url %}
+            <img src="{{ book.cover_url }}" alt="" class="w-20 rounded shadow" loading="lazy">
+            {% else %}
+            <div class="w-20 h-28 bg-shelf-hover rounded flex items-center justify-center text-xs text-shelf-muted">No Cover</div>
+            {% endif %}
+        </div>
+
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+            <p class="font-medium text-sm leading-tight truncate" title="{{ book.title }}">{{ book.title }}</p>
+            {% if book.authors %}
+            <p class="text-xs text-shelf-muted mt-0.5 truncate">{{ book.authors }}</p>
+            {% endif %}
+            <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-shelf-muted mt-1">
+                {% if book.year %}<span>{{ book.year }}</span>{% endif %}
+                {% if book.pages %}<span>{{ book.pages }}p</span>{% endif %}
+                {% if book.series_name %}<span>{{ book.series_name }}{% if book.series_position %} #{{ book.series_position|int }}{% endif %}</span>{% endif %}
+                {% if book.rating %}<span>{{ "%.1f"|format(book.rating) }}/5</span>{% endif %}
+            </div>
+            {% if book.description %}
+            <p class="text-xs text-shelf-muted mt-1.5 line-clamp-2">{{ book.description[:200] }}</p>
+            {% endif %}
+
+            <!-- Add button -->
+            <div class="mt-2">
+                <script type="application/json" id="hc-data-{{ book.hardcover_book_id }}">{{ book|tojson }}</script>
+                <button x-show="!added"
+                        @click="adding=true; error=null;
+                            var d=JSON.parse(document.getElementById('hc-data-{{ book.hardcover_book_id }}').textContent);
+                            fetch('/api/hardcover/add-to-shelf', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d)})
+                            .then(r=>r.json()).then(r=>{adding=false; if(r.ok){added=true; showToast('Added to wishlist')} else {error=r.message; if(r.item_id) added=true}})
+                            .catch(()=>{adding=false; error='Failed'})"
+                        :disabled="adding"
+                        class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50">
+                    <span x-show="!adding">Add to Wishlist</span>
+                    <span x-show="adding">Adding...</span>
+                </button>
+                <span x-show="added" class="text-xs text-shelf-success">In your library</span>
+                <template x-if="error && !added">
+                    <span class="text-xs text-shelf-error" x-text="error"></span>
+                </template>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

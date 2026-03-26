@@ -1,0 +1,889 @@
+{% extends "base.html" %}
+{% block title %}Settings — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-8">
+    <h1 class="text-2xl font-bold">Settings</h1>
+
+    <!-- Stats -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-2">Collection</h2>
+        <p class="text-shelf-muted">{{ item_count }} items in your library</p>
+    </div>
+
+    <!-- Audiobookshelf Sync -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{
+            syncing: false, result: null, absStatus: null, absTesting: false, showAbsHelp: false,
+            absUrl: '{{ settings.get('abs_url', '') }}', absToken: '{{ settings.get('abs_token', '') }}',
+            syncCurrent: 0, syncTotal: 0, syncLastTitle: '', syncLog: [], showSyncLog: false,
+            startSync() {
+                this.syncing = true; this.result = null; this.syncCurrent = 0; this.syncTotal = 0;
+                this.syncLastTitle = ''; this.syncLog = []; this.showSyncLog = false;
+                var self = this;
+                var es = new EventSource('/api/sync/audiobookshelf/stream');
+                es.onmessage = function(e) {
+                    var d = JSON.parse(e.data);
+                    if (d.type === 'progress') {
+                        self.syncCurrent = d.current;
+                        self.syncTotal = d.total;
+                        self.syncLastTitle = d.title;
+                        self.syncLog.push({i: d.current, t: d.title, s: d.status});
+                    } else if (d.type === 'done') {
+                        self.result = d; self.syncing = false; es.close();
+                    } else if (d.type === 'error') {
+                        self.result = {error: d.message}; self.syncing = false; es.close();
+                    }
+                };
+                es.onerror = function() { self.result = {error: 'Connection lost'}; self.syncing = false; es.close(); };
+            }
+         }">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Audiobookshelf Sync</h2>
+            <button @click="showAbsHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showAbsHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showAbsHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Connecting to Audiobookshelf</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Open your Audiobookshelf instance in a browser</li>
+                    <li>Go to <span class="text-shelf-text">Settings &rarr; Users</span> and select your user</li>
+                    <li>Scroll to <span class="text-shelf-text">API Token</span> — copy the token</li>
+                    <li>Enter your ABS server URL (e.g. <span class="text-shelf-accent2">http://localhost:13378</span>) and paste the token below</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">What does sync do?</p>
+                    <p>Sync imports your audiobooks and ebooks from Audiobookshelf into Shelf, including metadata and cover art. It also auto-links digital items to matching physical books in your collection.</p>
+                </div>
+                <button @click="showAbsHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3 mb-4">
+            <div>
+                <label for="abs_url" class="block text-sm font-medium text-shelf-muted mb-1">Audiobookshelf URL</label>
+                <input type="url" id="abs_url" name="abs_url" x-model="absUrl" value="{{ settings.get('abs_url', '') }}" placeholder="http://localhost:13378"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div>
+                <label for="abs_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
+                <div class="flex gap-2">
+                    <input type="password" id="abs_token" name="abs_token" x-model="absToken" value="{{ settings.get('abs_token', '') }}" placeholder="Bearer token from ABS settings"
+                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="if(!absUrl || !absToken) return; absTesting=true; absStatus=null; fetch('/api/sync/audiobookshelf/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:absUrl,token:absToken})}).then(r=>r.json()).then(d=>{absStatus=d; absTesting=false}).catch(()=>{absStatus={ok:false,message:'Connection failed'}; absTesting=false})"
+                            :disabled="absTesting || !absUrl || !absToken"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!absTesting">Test</span>
+                        <span x-show="absTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="absStatus && absStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="absStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="absStatus && !absStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="absStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+
+        <div class="border-t border-shelf-border pt-4">
+            <button @click="startSync()"
+                    :disabled="syncing || !absUrl || !absToken"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!syncing" x-text="(absUrl && absToken) ? 'Sync Now' : 'Enter URL and token to sync'"></span>
+                <span x-show="syncing">Syncing...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="syncing && syncTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="syncCurrent + ' / ' + syncTotal"></span>
+                    <span x-text="Math.round(syncCurrent / syncTotal * 100) + '%'"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (syncTotal ? (syncCurrent/syncTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="syncLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="syncLastTitle"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="result" class="mt-3 text-sm">
+                <template x-if="result && result.error">
+                    <p class="text-shelf-error" x-text="result.error"></p>
+                </template>
+                <template x-if="result && !result.error">
+                    <p class="text-shelf-success">
+                        Added: <span x-text="result.added"></span>,
+                        Updated: <span x-text="result.updated"></span>,
+                        Skipped: <span x-text="result.skipped"></span>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="syncLog.length > 0" class="mt-2">
+                <button @click="showSyncLog = !showSyncLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showSyncLog ? 'Hide details' : 'Show details (' + syncLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showSyncLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in syncLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s === 'added' ? 'text-shelf-success' : entry.s === 'updated' ? 'text-shelf-accent2' : 'text-shelf-muted'"
+                                  x-text="entry.s" class="w-14 shrink-0"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <form action="/api/sync/audiobookshelf/schedule" method="post" class="mt-3 flex items-center gap-2">
+                <label class="text-sm text-shelf-muted">Auto-sync:</label>
+                <select name="interval" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                    <option value="off" {% if settings.get('abs_sync_interval', 'off') == 'off' %}selected{% endif %}>Off</option>
+                    <option value="daily" {% if settings.get('abs_sync_interval') == 'daily' %}selected{% endif %}>Daily</option>
+                    <option value="weekly" {% if settings.get('abs_sync_interval') == 'weekly' %}selected{% endif %}>Weekly</option>
+                </select>
+                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hardcover -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{
+            hcStatus: null, hcTesting: false, showHcHelp: false,
+            hcToken: '{{ settings.get('hardcover_token', '') }}',
+            importing: false, importResult: null,
+            importCurrent: 0, importTotal: 0, importLastTitle: '',
+            importLog: [], showImportLog: false,
+            importOverwrite: false,
+            hcStatuses: { 1: true, 2: true, 3: true, 4: true, 5: true },
+            exporting: false, exportResult: null,
+            exportCurrent: 0, exportTotal: 0, exportLastTitle: '',
+            exportLog: [], showExportLog: false,
+            exportOwnedOnly: true,
+            startExport() {
+                this.exporting = true; this.exportResult = null;
+                this.exportCurrent = 0; this.exportTotal = 0;
+                this.exportLastTitle = ''; this.exportLog = []; this.showExportLog = false;
+                var url = '/api/hardcover/export/stream?owned=' + (this.exportOwnedOnly ? '1' : '');
+                var self = this;
+                var es = new EventSource(url);
+                es.onmessage = function(e) {
+                    var d = JSON.parse(e.data);
+                    if (d.type === 'progress') {
+                        self.exportCurrent = d.current;
+                        self.exportTotal = d.total;
+                        self.exportLastTitle = d.title;
+                        self.exportLog.push({i: d.current, t: d.title, s: d.status});
+                    } else if (d.type === 'done') {
+                        self.exportResult = d; self.exporting = false; es.close();
+                    } else if (d.type === 'error') {
+                        self.exportResult = {error: d.message}; self.exporting = false; es.close();
+                    }
+                };
+                es.onerror = function() { self.exportResult = {error: 'Connection lost'}; self.exporting = false; es.close(); };
+            },
+            startImport() {
+                this.importing = true; this.importResult = null;
+                this.importCurrent = 0; this.importTotal = 0;
+                this.importLastTitle = ''; this.importLog = []; this.showImportLog = false;
+                var sel = Object.entries(this.hcStatuses).filter(e => e[1]).map(e => e[0]).join(',');
+                var url = '/api/hardcover/import/stream?statuses=' + sel + '&overwrite=' + this.importOverwrite;
+                var self = this;
+                var es = new EventSource(url);
+                es.onmessage = function(e) {
+                    var d = JSON.parse(e.data);
+                    if (d.type === 'progress') {
+                        self.importCurrent = d.current;
+                        self.importTotal = d.total;
+                        self.importLastTitle = d.title;
+                        if (d.current > 0) {
+                            self.importLog.push({i: d.current, t: d.title, s: d.status});
+                        }
+                    } else if (d.type === 'done') {
+                        self.importResult = d; self.importing = false; es.close();
+                    } else if (d.type === 'error') {
+                        self.importResult = {error: d.message}; self.importing = false; es.close();
+                    }
+                };
+                es.onerror = function() { self.importResult = {error: 'Connection lost'}; self.importing = false; es.close(); };
+            }
+         }">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Hardcover</h2>
+            <button @click="showHcHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showHcHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showHcHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Connecting to Hardcover</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Create a free account at <span class="text-shelf-accent2">hardcover.app</span></li>
+                    <li>Go to <span class="text-shelf-text">Account Settings &rarr; Hardcover API</span></li>
+                    <li>Copy the API token shown at the top of the page</li>
+                    <li>Paste it into the field below and click <span class="text-shelf-text">Test</span></li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">What does Hardcover do?</p>
+                    <p>Hardcover is a modern book tracking platform (like Goodreads). With an API token, Shelf can use Hardcover as a metadata source for richer book data including series info, descriptions, and cover art. Future updates will add library import/export and reading status sync.</p>
+                    <p class="mt-1">The API is completely free. Tokens expire after one year.</p>
+                </div>
+                <button @click="showHcHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="hardcover_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
+                <div class="flex gap-2">
+                    <input type="password" id="hardcover_token" name="hardcover_token" x-model="hcToken"
+                           value="{{ settings.get('hardcover_token', '') }}" placeholder="Your Hardcover API token"
+                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="if(!hcToken) return; hcTesting=true; hcStatus=null; fetch('/api/hardcover/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:hcToken})}).then(r=>r.json()).then(d=>{hcStatus=d; hcTesting=false}).catch(()=>{hcStatus={ok:false,message:'Connection failed'}; hcTesting=false})"
+                            :disabled="hcTesting || !hcToken"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!hcTesting">Test</span>
+                        <span x-show="hcTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="hcStatus && hcStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            Connected as <span x-text="hcStatus.username"></span>
+                        </p>
+                    </template>
+                    <template x-if="hcStatus && !hcStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="hcStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
+            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
+            <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
+            <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+
+        <!-- Import from Hardcover -->
+        <div class="border-t border-shelf-border pt-4 mt-4">
+            <h3 class="text-sm font-semibold mb-3">Import Library from Hardcover</h3>
+
+            <!-- Status filter checkboxes -->
+            <div class="flex flex-wrap gap-x-4 gap-y-1 mb-3">
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcStatuses[1]" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Want to Read
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcStatuses[2]" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Reading
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcStatuses[3]" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Read
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcStatuses[4]" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Paused
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcStatuses[5]" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Did Not Finish
+                </label>
+            </div>
+
+            <!-- Overwrite toggle -->
+            <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
+                <input type="checkbox" x-model="importOverwrite" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                Overwrite existing items with Hardcover data
+            </label>
+
+            <button @click="startImport()"
+                    :disabled="importing || !hcToken"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!importing" x-text="hcToken ? 'Import from Hardcover' : 'Enter token to import'"></span>
+                <span x-show="importing">Importing...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="importing && importTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="importCurrent + ' / ' + importTotal"></span>
+                    <span x-text="Math.round(importCurrent / importTotal * 100) + '%'"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (importTotal ? (importCurrent/importTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="importLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="importLastTitle"></p>
+            </div>
+
+            <!-- Fetching indicator (before total is known) -->
+            <div x-show="importing && importTotal === 0" class="mt-3">
+                <p class="text-xs text-shelf-muted animate-pulse" x-text="importLastTitle || 'Connecting to Hardcover...'"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="importResult" class="mt-3 text-sm">
+                <template x-if="importResult && importResult.error">
+                    <p class="text-shelf-error" x-text="importResult.error"></p>
+                </template>
+                <template x-if="importResult && !importResult.error">
+                    <p class="text-shelf-muted">
+                        Added: <span x-text="importResult.added" class="text-shelf-success"></span>,
+                        Updated: <span x-text="importResult.updated" class="text-shelf-accent2"></span>,
+                        Skipped: <span x-text="importResult.skipped"></span>
+                        <template x-if="importResult.errors > 0">
+                            <span class="text-shelf-error"> · Errors: <span x-text="importResult.errors"></span></span>
+                        </template>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="importLog.length > 0" class="mt-2">
+                <button @click="showImportLog = !showImportLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showImportLog ? 'Hide details' : 'Show details (' + importLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showImportLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in importLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s === 'added' ? 'text-shelf-success' : entry.s === 'updated' ? 'text-shelf-accent2' : entry.s === 'skipped' ? 'text-shelf-muted' : 'text-shelf-error'"
+                                  x-text="entry.s" class="w-16 shrink-0"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Schedule -->
+        <div class="border-t border-shelf-border pt-4 mt-4">
+            <h3 class="text-sm font-semibold mb-2">Reading Status Sync</h3>
+            <p class="text-xs text-shelf-muted mb-3">Pull reading status changes from Hardcover automatically. Status changes made in Shelf are pushed to Hardcover instantly.</p>
+            <form action="/api/hardcover/schedule" method="post" class="flex items-center gap-2">
+                <label class="text-sm text-shelf-muted">Auto-sync:</label>
+                <select name="interval" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                    <option value="off" {% if settings.get('hc_sync_interval', 'off') == 'off' %}selected{% endif %}>Off</option>
+                    <option value="daily" {% if settings.get('hc_sync_interval') == 'daily' %}selected{% endif %}>Daily</option>
+                    <option value="weekly" {% if settings.get('hc_sync_interval') == 'weekly' %}selected{% endif %}>Weekly</option>
+                </select>
+                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
+            </form>
+        </div>
+
+        <!-- Export to Hardcover -->
+        <div class="border-t border-shelf-border pt-4 mt-4">
+            <h3 class="text-sm font-semibold mb-3">Export to Hardcover</h3>
+            <p class="text-xs text-shelf-muted mb-3">Push your Shelf collection to your Hardcover library. Only items with an ISBN can be exported.</p>
+
+            <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
+                <input type="checkbox" x-model="exportOwnedOnly" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                Owned items only (exclude wishlist)
+            </label>
+
+            <button @click="startExport()"
+                    :disabled="exporting || !hcToken"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!exporting" x-text="hcToken ? 'Export to Hardcover' : 'Enter token to export'"></span>
+                <span x-show="exporting">Exporting...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="exporting && exportTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="exportCurrent + ' / ' + exportTotal"></span>
+                    <span x-text="Math.round(exportCurrent / exportTotal * 100) + '%'"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (exportTotal ? (exportCurrent/exportTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="exportLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="exportLastTitle"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="exportResult" class="mt-3 text-sm">
+                <template x-if="exportResult && exportResult.error">
+                    <p class="text-shelf-error" x-text="exportResult.error"></p>
+                </template>
+                <template x-if="exportResult && !exportResult.error">
+                    <p class="text-shelf-muted">
+                        Pushed: <span x-text="exportResult.pushed" class="text-shelf-success"></span>,
+                        Updated: <span x-text="exportResult.updated" class="text-shelf-accent2"></span>,
+                        Not found: <span x-text="exportResult.not_found"></span>
+                        <template x-if="exportResult.errors > 0">
+                            <span class="text-shelf-error"> · Errors: <span x-text="exportResult.errors"></span></span>
+                        </template>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="exportLog.length > 0" class="mt-2">
+                <button @click="showExportLog = !showExportLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showExportLog ? 'Hide details' : 'Show details (' + exportLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showExportLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in exportLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s === 'added' ? 'text-shelf-success' : entry.s === 'updated' ? 'text-shelf-accent2' : entry.s === 'not found' ? 'text-shelf-muted' : 'text-shelf-error'"
+                                  x-text="entry.s" class="w-20 shrink-0"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Locations -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-4">Locations</h2>
+
+        {% if locations %}
+        <div class="space-y-2 mb-4">
+            {% for loc in locations %}
+            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+                <span>{{ loc.name }}</span>
+                <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline">
+                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
+                            onclick="return confirm('Delete location \'{{ loc.name }}\'?')">
+                        Remove
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="/api/locations" method="post" class="flex gap-2">
+            <input type="text" name="name" placeholder="New location name..." required
+                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Add
+            </button>
+        </form>
+    </div>
+
+    <!-- Valuation -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{
+            valuating: false, valResult: null, keyStatus: null, testing: false, showHelp: false,
+            apiKey: '{{ settings.get('isbndb_api_key', '') }}',
+            valCurrent: 0, valTotal: 0, valLastTitle: '', valLog: [], showValLog: false,
+            startValuation() {
+                this.valuating = true; this.valResult = null; this.valCurrent = 0; this.valTotal = 0;
+                this.valLastTitle = ''; this.valLog = []; this.showValLog = false;
+                var self = this;
+                var es = new EventSource('/api/valuate/stream');
+                es.onmessage = function(e) {
+                    var d = JSON.parse(e.data);
+                    if (d.type === 'progress') {
+                        self.valCurrent = d.current; self.valTotal = d.total;
+                        self.valLastTitle = d.title;
+                        self.valLog.push({i: d.current, t: d.title, s: d.status});
+                    } else if (d.type === 'done') {
+                        self.valResult = d; self.valuating = false; es.close();
+                    } else if (d.type === 'error') {
+                        self.valResult = {message: d.message}; self.valuating = false; es.close();
+                    }
+                };
+                es.onerror = function() { self.valResult = {message: 'Connection lost'}; self.valuating = false; es.close(); };
+            }
+         }">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Collection Valuation</h2>
+            <button @click="showHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting an ISBNdb API Key</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Go to <span class="text-shelf-accent2">isbndb.com</span> and create an account</li>
+                    <li>Subscribe to a plan that includes API access (Basic or higher)</li>
+                    <li>Navigate to your account dashboard and find the <span class="text-shelf-text">API Keys</span> section</li>
+                    <li>Generate a new key, copy it, and paste it into the field below</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">About ISBNdb</p>
+                    <p>ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes.</p>
+                    <p class="mt-1">API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices.</p>
+                </div>
+                <button @click="showHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3 mb-4">
+            <div>
+                <label for="isbndb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">ISBNdb API Key</label>
+                <div class="flex gap-2">
+                    <input type="password" id="isbndb_api_key" name="isbndb_api_key"
+                           x-model="apiKey"
+                           value="{{ settings.get('isbndb_api_key', '') }}" placeholder="Your ISBNdb API key"
+                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="if(!apiKey) return; testing=true; keyStatus=null; fetch('/api/valuate/test-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:apiKey})}).then(r=>r.json()).then(d=>{keyStatus=d; testing=false}).catch(()=>{keyStatus={ok:false,message:'Connection failed'}; testing=false})"
+                            :disabled="testing || !apiKey"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!testing">Test Key</span>
+                        <span x-show="testing">Testing...</span>
+                    </button>
+                </div>
+                <!-- Key status indicator -->
+                <div class="mt-1.5 h-5">
+                    <template x-if="keyStatus && keyStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="keyStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="keyStatus && !keyStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="keyStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            <!-- Include existing settings so they aren't cleared -->
+            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
+            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
+            <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
+            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+        <div class="border-t border-shelf-border pt-4 space-y-2">
+            <button @click="startValuation()"
+                    :disabled="valuating || !apiKey"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!valuating" x-text="apiKey ? 'Valuate Collection' : 'Enter API key to valuate'"></span>
+                <span x-show="valuating">Valuating...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="valuating && valTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="valCurrent + ' / ' + valTotal"></span>
+                    <span x-text="Math.round(valCurrent / valTotal * 100) + '%'"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (valTotal ? (valCurrent/valTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="valLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="valLastTitle"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="valResult" class="text-sm">
+                <template x-if="valResult && valResult.message">
+                    <p class="text-shelf-error" x-text="valResult.message"></p>
+                </template>
+                <template x-if="valResult && valResult.priced !== undefined">
+                    <p class="text-shelf-muted">
+                        Priced: <span x-text="valResult.priced" class="text-shelf-success"></span> /
+                        <span x-text="valResult.total"></span>
+                        · Total: $<span x-text="valResult.total_value.toFixed(2)" class="text-shelf-success"></span>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="valLog.length > 0">
+                <button @click="showValLog = !showValLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showValLog ? 'Hide details' : 'Show details (' + valLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showValLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in valLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s.startsWith('$') ? 'text-shelf-success' : 'text-shelf-muted'"
+                                  x-text="entry.s" class="w-16 shrink-0 text-right"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <a href="/api/valuation/report" class="text-shelf-accent2 hover:text-shelf-accent text-sm inline-block">View Valuation Report</a>
+        </div>
+    </div>
+
+    <!-- Movie Database (TMDb) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{ tmdbStatus: null, tmdbTesting: false, showTmdbHelp: false, tmdbKey: '{{ settings.get('tmdb_api_key', '') }}' }">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Movie Database (TMDb)</h2>
+            <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showTmdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showTmdbHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting a TMDb API Key</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Go to <span class="text-shelf-accent2">themoviedb.org</span> and create a free account</li>
+                    <li>Go to <span class="text-shelf-text">Settings &rarr; API</span> in your profile</li>
+                    <li>Request an API key (select "Developer" — it's instant for personal use)</li>
+                    <li>Copy the <span class="text-shelf-text">API Key (v3 auth)</span> value and paste it below</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">About TMDb</p>
+                    <p>The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb.</p>
+                    <p class="mt-1">TMDb's API is free for personal use with generous rate limits.</p>
+                </div>
+                <button @click="showTmdbHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">TMDb API Key</label>
+                <div class="flex gap-2">
+                    <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey"
+                           value="{{ settings.get('tmdb_api_key', '') }}" placeholder="Your TMDb API key"
+                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="if(!tmdbKey) return; tmdbTesting=true; tmdbStatus=null; fetch('/api/tmdb/test-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:tmdbKey})}).then(r=>r.json()).then(d=>{tmdbStatus=d; tmdbTesting=false}).catch(()=>{tmdbStatus={ok:false,message:'Connection failed'}; tmdbTesting=false})"
+                            :disabled="tmdbTesting || !tmdbKey"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!tmdbTesting">Test Key</span>
+                        <span x-show="tmdbTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="tmdbStatus && tmdbStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="tmdbStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="tmdbStatus && !tmdbStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="tmdbStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
+            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
+            <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
+            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+
+    <!-- Borrowers -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-4">Borrowers</h2>
+
+        {% if borrowers %}
+        <div class="space-y-2 mb-4">
+            {% for b in borrowers %}
+            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+                <span>{{ b.name }}</span>
+                <form action="/api/borrowers/{{ b.id }}/delete" method="post" class="inline">
+                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors"
+                            onclick="return confirm('Remove borrower \'{{ b.name }}\'?')">
+                        Remove
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="/api/borrowers" method="post" class="flex gap-2">
+            <input type="text" name="name" placeholder="Add borrower..." required
+                   class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Add
+            </button>
+        </form>
+    </div>
+
+    <!-- Maintenance -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{
+            retrying: false, retryResult: null,
+            retryCurrent: 0, retryTotal: 0, retryLastTitle: '', retryLog: [], showRetryLog: false,
+            startRetry() {
+                this.retrying = true; this.retryResult = null; this.retryCurrent = 0; this.retryTotal = 0;
+                this.retryLastTitle = ''; this.retryLog = []; this.showRetryLog = false;
+                var self = this;
+                var es = new EventSource('/api/covers/bulk-retry/stream');
+                es.onmessage = function(e) {
+                    var d = JSON.parse(e.data);
+                    if (d.type === 'progress') {
+                        self.retryCurrent = d.current; self.retryTotal = d.total;
+                        self.retryLastTitle = d.title;
+                        self.retryLog.push({i: d.current, t: d.title, s: d.status});
+                    } else if (d.type === 'done') {
+                        self.retryResult = d; self.retrying = false; es.close();
+                    } else if (d.type === 'error') {
+                        self.retryResult = {error: d.message}; self.retrying = false; es.close();
+                    }
+                };
+                es.onerror = function() { self.retryResult = {error: 'Connection lost'}; self.retrying = false; es.close(); };
+            }
+         }">
+        <h2 class="text-lg font-semibold mb-4">Maintenance</h2>
+        <div class="space-y-3">
+            <div>
+                <button @click="startRetry()"
+                        :disabled="retrying"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                    <span x-show="!retrying">Retry Missing Covers</span>
+                    <span x-show="retrying">Retrying...</span>
+                </button>
+
+                <!-- Progress bar -->
+                <div x-show="retrying && retryTotal > 0" class="mt-3">
+                    <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                        <span x-text="retryCurrent + ' / ' + retryTotal"></span>
+                        <span x-text="Math.round(retryCurrent / retryTotal * 100) + '%'"></span>
+                    </div>
+                    <div class="w-full bg-shelf-bg rounded-full h-2">
+                        <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (retryTotal ? (retryCurrent/retryTotal*100) : 0) + '%'"></div>
+                    </div>
+                    <p x-show="retryLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="retryLastTitle"></p>
+                </div>
+
+                <!-- Result -->
+                <div x-show="retryResult" class="mt-2 text-sm">
+                    <template x-if="retryResult && retryResult.error">
+                        <p class="text-shelf-error" x-text="retryResult.error"></p>
+                    </template>
+                    <template x-if="retryResult && !retryResult.error">
+                        <p class="text-shelf-muted">
+                            Found: <span x-text="retryResult.success" class="text-shelf-success"></span>,
+                            Failed: <span x-text="retryResult.failed"></span>
+                            of <span x-text="retryResult.total"></span> items
+                        </p>
+                    </template>
+                </div>
+
+                <!-- Detail log toggle -->
+                <div x-show="retryLog.length > 0" class="mt-2">
+                    <button @click="showRetryLog = !showRetryLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                        <span x-text="showRetryLog ? 'Hide details' : 'Show details (' + retryLog.length + ' items)'"></span>
+                    </button>
+                    <div x-show="showRetryLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                        <template x-for="entry in retryLog" :key="entry.i">
+                            <div class="flex gap-2">
+                                <span :class="entry.s === 'found' ? 'text-shelf-success' : 'text-shelf-muted'"
+                                      x-text="entry.s" class="w-16 shrink-0"></span>
+                                <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import / Export -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ importResult: null, importing: false }">
+        <h2 class="text-lg font-semibold mb-4">Import / Export</h2>
+
+        <div class="space-y-4">
+            <div>
+                <a href="/api/export/csv" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
+                    Export CSV
+                </a>
+            </div>
+
+            <div class="border-t border-shelf-border pt-4">
+                <p class="text-sm text-shelf-muted mb-2">Import items from a CSV file (columns: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)</p>
+                <form @submit.prevent="importing=true; importResult=null; fetch('/api/import/csv', {method:'POST', body: new FormData($el)}).then(r=>r.json()).then(d=>{importResult=d; importing=false}).catch(()=>{importResult={error:'Import failed'}; importing=false})">
+                    <div class="flex gap-2 items-end">
+                        <input type="file" name="file" accept=".csv" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
+                            <option value="skip">Skip duplicates</option>
+                            <option value="update">Update duplicates</option>
+                        </select>
+                        <button type="submit" :disabled="importing"
+                                class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50 whitespace-nowrap">
+                            <span x-show="!importing">Import</span>
+                            <span x-show="importing">Importing...</span>
+                        </button>
+                    </div>
+                </form>
+                <div x-show="importResult" class="mt-2 text-sm">
+                    <template x-if="importResult && importResult.error">
+                        <p class="text-shelf-error" x-text="importResult.error"></p>
+                    </template>
+                    <template x-if="importResult && !importResult.error">
+                        <p class="text-shelf-muted">
+                            Imported: <span x-text="importResult.imported" class="text-shelf-success"></span>,
+                            Skipped: <span x-text="importResult.skipped"></span>
+                            <template x-if="importResult.errors && importResult.errors.length > 0">
+                                <span class="text-shelf-error"> · Errors: <span x-text="importResult.errors.length"></span></span>
+                            </template>
+                        </p>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup & Restore -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ restoreResult: null, restoring: false }">
+        <h2 class="text-lg font-semibold mb-4">Backup & Restore</h2>
+        <div class="space-y-4">
+            <div>
+                <a href="/api/settings/backup" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
+                    Download Backup
+                </a>
+                <p class="text-xs text-shelf-muted mt-1">Downloads a copy of the SQLite database file</p>
+            </div>
+            <div class="border-t border-shelf-border pt-4">
+                <form @submit.prevent="restoring=true; restoreResult=null; fetch('/api/settings/restore', {method:'POST', body: new FormData($el)}).then(r=>r.json()).then(d=>{restoreResult=d; restoring=false}).catch(()=>{restoreResult={error:'Restore failed'}; restoring=false})">
+                    <div class="flex gap-2 items-end">
+                        <input type="file" name="file" accept=".db" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <button type="submit" :disabled="restoring"
+                                class="px-4 py-2 bg-shelf-warning/20 text-shelf-warning rounded-lg text-sm hover:bg-shelf-warning/30 transition-colors disabled:opacity-50 whitespace-nowrap">
+                            <span x-show="!restoring">Restore</span>
+                            <span x-show="restoring">Restoring...</span>
+                        </button>
+                    </div>
+                </form>
+                <div x-show="restoreResult" class="mt-2 text-sm">
+                    <template x-if="restoreResult && restoreResult.ok">
+                        <p class="text-shelf-success" x-text="restoreResult.message"></p>
+                    </template>
+                    <template x-if="restoreResult && !restoreResult.ok">
+                        <p class="text-shelf-error" x-text="restoreResult.message || restoreResult.error"></p>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

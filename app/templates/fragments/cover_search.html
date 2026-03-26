@@ -1,0 +1,16 @@
+<div class="mt-3">
+    {% if candidates %}
+    <p class="text-sm text-shelf-muted mb-2">Select a cover:</p>
+    <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+        {% for c in candidates %}
+        <button hx-post="/api/items/{{ item_id }}/cover-select" hx-vals='{"url":"{{ c.url }}"}'
+                class="group relative rounded-lg overflow-hidden border border-shelf-border hover:border-shelf-accent/50 transition-colors cursor-pointer bg-shelf-card">
+            <img src="{{ c.thumbnail }}" alt="Cover candidate" class="w-full aspect-[2/3] object-cover" loading="lazy">
+            <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center">{{ c.source }}</div>
+        </button>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-shelf-muted">No covers found for this title.</p>
+    {% endif %}
+</div>

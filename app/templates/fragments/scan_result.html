@@ -1,0 +1,83 @@
+{% if status == 'not_found' %}
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4" x-data="{ showForm: true }">
+    <div class="flex items-center gap-4 mb-3">
+        {% if preview_cover %}
+        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="">
+        {% else %}
+        <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-lg">?</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+            <p class="font-medium font-mono">{{ isbn }}</p>
+            <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} (cover found on Amazon){% endif %}</p>
+        </div>
+        <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning">not found</span>
+    </div>
+
+    <!-- Manual entry form -->
+    <div x-show="showForm" x-transition>
+        <form hx-post="/api/items/manual" hx-target="closest .scan-result" hx-swap="outerHTML" enctype="multipart/form-data"
+              class="border-t border-shelf-border pt-3 space-y-3">
+            <input type="hidden" name="isbn" value="{{ isbn }}">
+            <input type="hidden" name="media_type" value="{{ media_type }}">
+            <p class="text-sm text-shelf-muted">Add this item manually:</p>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="text" name="title" placeholder="Title *" required
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <input type="text" name="authors" placeholder="Author(s)"
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="text" name="publisher" placeholder="Publisher"
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <input type="number" name="publish_year" placeholder="Year"
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div>
+                <label class="text-xs text-shelf-muted">Cover image (optional)</label>
+                <input type="file" name="cover" accept="image/*"
+                       class="block w-full text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text hover:file:bg-shelf-border mt-1">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                    Add to Collection
+                </button>
+                <button type="button" @click="showForm = false" class="px-4 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:bg-shelf-border transition-colors">
+                    Skip
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% else %}
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
+    {% if status == 'added' and cover_path %}
+    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="">
+    {% else %}
+    <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">
+        {% if status == 'added' %}+{% elif status == 'duplicate' %}={% else %}!{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="flex-1 min-w-0">
+        {% if status == 'added' %}
+        <p class="font-medium truncate"><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>
+        {% if authors %}<p class="text-sm text-shelf-muted truncate">{{ authors }}</p>{% endif %}
+        <p class="text-xs text-shelf-muted">{{ media_type_label }} via {{ source }}</p>
+        {% elif status == 'duplicate' %}
+        <p class="font-medium truncate"><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>
+        <p class="text-sm text-shelf-muted">Already in collection</p>
+        {% else %}
+        <p class="font-medium font-mono">{{ isbn }}</p>
+        <p class="text-sm text-shelf-error">{{ message }}</p>
+        {% endif %}
+    </div>
+
+    <span class="text-xs px-2 py-1 rounded-full shrink-0
+        {% if status == 'added' %}bg-shelf-success/20 text-shelf-success
+        {% elif status == 'duplicate' %}bg-shelf-warning/20 text-shelf-warning
+        {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
+        {{ status }}
+    </span>
+</div>
+{% endif %}

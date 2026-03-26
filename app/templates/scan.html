@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}Scan — Shelf{% endblock %}
+{% block head %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto" x-data="scanPage()">
+    <h1 class="text-2xl font-bold mb-6">Scan Books</h1>
+
+    <!-- Camera Scanner -->
+    <div class="mb-6">
+        <button @click="toggleCamera()" type="button"
+                :class="cameraActive ? 'bg-shelf-error/20 text-shelf-error border-shelf-error/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-shelf-text hover:border-shelf-accent/50'"
+                class="border rounded-lg px-4 py-2 text-sm transition-colors mb-3">
+            <span x-text="cameraActive ? 'Stop Camera' : 'Scan with Camera'"></span>
+        </button>
+        <div x-show="cameraActive" x-transition class="relative max-w-md mx-auto" style="display:none">
+            <div id="camera-reader"
+                 class="rounded-xl overflow-hidden border border-shelf-border bg-black">
+            </div>
+            <!-- Scan result overlay -->
+            <div x-show="scanPaused" x-transition
+                 class="absolute inset-0 bg-black/80 rounded-xl flex flex-col items-center justify-center p-4 text-center z-10"
+                 style="display:none">
+                <div x-show="scanLoading" class="text-shelf-muted text-sm mb-2">
+                    <svg class="animate-spin h-6 w-6 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Looking up barcode...
+                </div>
+                <template x-if="scanResult">
+                    <div>
+                        <img x-show="scanResult.cover" :src="'/' + scanResult.cover" class="w-16 h-22 object-cover rounded mx-auto mb-3" alt="">
+                        <p class="text-white font-medium text-lg mb-1" x-text="scanResult.title || scanResult.isbn"></p>
+                        <p x-show="scanResult.authors" class="text-shelf-muted text-sm mb-2" x-text="scanResult.authors"></p>
+                        <span class="text-xs px-3 py-1 rounded-full inline-block mb-4"
+                              :class="scanResult.status === 'added' ? 'bg-shelf-success/30 text-shelf-success' :
+                                      scanResult.status === 'duplicate' ? 'bg-shelf-warning/30 text-shelf-warning' :
+                                      'bg-shelf-error/30 text-shelf-error'"
+                              x-text="scanResult.status === 'added' ? 'Added!' :
+                                      scanResult.status === 'duplicate' ? 'Already in collection' :
+                                      scanResult.status === 'not_found' ? 'Not found' : 'Error'">
+                        </span>
+                    </div>
+                </template>
+                <button @click="resumeScanning()" type="button"
+                        class="mt-2 px-6 py-2.5 bg-shelf-accent text-white rounded-lg text-sm font-medium hover:bg-shelf-accent2 transition-colors">
+                    Scan Next Book
+                </button>
+            </div>
+        </div>
+        <p x-show="cameraActive && !scanPaused" class="text-xs text-shelf-muted text-center mt-2">Point your camera at a barcode</p>
+    </div>
+
+    <!-- Scan Form -->
+    <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="afterbegin" hx-on::after-request="this.querySelector('#isbn-input').value=''; this.querySelector('#isbn-input').focus();">
+        <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <!-- Media Type -->
+                <div>
+                    <label for="media-type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
+                    <select id="media-type" name="media_type"
+                            x-model="mediaType" @change="localStorage.setItem('shelf_media_type', mediaType)"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        {% for key, label in media_types.items() %}
+                        <option value="{{ key }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Location (optional) -->
+                <div>
+                    <label for="location" class="block text-sm font-medium text-shelf-muted mb-1">Location</label>
+                    <select id="location" name="location_id"
+                            x-model="location" @change="localStorage.setItem('shelf_location', location)"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        <option value="">None</option>
+                        {% for loc in locations %}
+                        <option value="{{ loc.id }}">{{ loc.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- ISBN Input -->
+                <div>
+                    <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1">ISBN / UPC</label>
+                    <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off"
+                           placeholder="Scan or type ISBN..."
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+                </div>
+            </div>
+            <p class="text-xs text-shelf-muted mt-3">Scan a barcode or type an ISBN and press Enter. The book will be looked up and added automatically.</p>
+        </div>
+    </form>
+
+    <!-- Scan Results -->
+    <div id="scan-results" class="space-y-3">
+        {% for scan in recent_scans %}
+        <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
+            {% if scan.cover_path %}
+            <img src="/covers/{{ scan.item_id }}.jpg" class="w-12 h-16 object-cover rounded" alt="">
+            {% else %}
+            <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>
+            {% endif %}
+            <div class="flex-1 min-w-0">
+                <p class="font-medium truncate">{{ scan.title or scan.isbn }}</p>
+                {% if scan.authors %}<p class="text-sm text-shelf-muted truncate">{{ scan.authors }}</p>{% endif %}
+            </div>
+            <span class="text-xs px-2 py-1 rounded-full shrink-0
+                {% if scan.result == 'added' %}bg-shelf-success/20 text-shelf-success
+                {% elif scan.result == 'duplicate' %}bg-shelf-warning/20 text-shelf-warning
+                {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
+                {{ scan.result }}
+            </span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function scanPage() {
+    return {
+        mediaType: localStorage.getItem('shelf_media_type') || 'book',
+        location: localStorage.getItem('shelf_location') || '',
+        cameraActive: false,
+        scanPaused: false,
+        scanLoading: false,
+        scanResult: null,
+        scanner: null,
+        lastScanned: '',
+        lastScanTime: 0,
+
+        async toggleCamera() {
+            if (this.cameraActive) {
+                await this.stopCamera();
+            } else {
+                await this.startCamera();
+            }
+        },
+
+        async startCamera() {
+            try {
+                this.cameraActive = true;
+                this.scanPaused = false;
+                this.scanResult = null;
+                await this.$nextTick();
+                this.scanner = new Html5Qrcode('camera-reader');
+                await this.scanner.start(
+                    { facingMode: 'environment' },
+                    { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
+                    (decodedText) => this.onScan(decodedText),
+                    () => {}
+                );
+            } catch (err) {
+                this.cameraActive = false;
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    showToast('Camera requires HTTPS. Access Shelf via https:// and accept the certificate.', 'error');
+                } else {
+                    showToast('Camera access denied. Check browser permissions for this site.', 'error');
+                }
+            }
+        },
+
+        async stopCamera() {
+            if (this.scanner) {
+                try { await this.scanner.stop(); } catch(e) {}
+                this.scanner = null;
+            }
+            this.cameraActive = false;
+            this.scanPaused = false;
+            this.scanResult = null;
+        },
+
+        async resumeScanning() {
+            this.scanResult = null;
+            this.scanLoading = false;
+            this.lastScanned = '';
+            try {
+                this.scanner.resume();
+            } catch (err) {}
+            this.scanPaused = false;
+        },
+
+        async onScan(code) {
+            if (this.scanPaused) return;
+
+            var now = Date.now();
+            if (code === this.lastScanned && now - this.lastScanTime < 3000) return;
+            this.lastScanned = code;
+            this.lastScanTime = now;
+
+            // Pause scanner immediately
+            this.scanPaused = true;
+            this.scanLoading = true;
+            this.scanResult = null;
+            try { await this.scanner.pause(true); } catch(e) {}
+
+            // Beep
+            try {
+                var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                var osc = ctx.createOscillator();
+                var gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.frequency.value = 880;
+                gain.gain.value = 0.3;
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } catch(e) {}
+
+            // Submit scan via fetch so we can capture the result
+            var form = document.querySelector('form[hx-post="/api/scan"]');
+            var formData = new FormData(form);
+            formData.set('isbn', code);
+            try {
+                var resp = await fetch('/api/scan', { method: 'POST', body: formData });
+                var html = await resp.text();
+
+                // Insert result into the scan results list
+                var results = document.getElementById('scan-results');
+                results.insertAdjacentHTML('afterbegin', html);
+
+                // Parse the result to show in overlay
+                var tmp = document.createElement('div');
+                tmp.innerHTML = html;
+                var statusEl = tmp.querySelector('.scan-result span:last-child, span[class*="bg-shelf-success"], span[class*="bg-shelf-warning"], span[class*="bg-shelf-error"]');
+                var titleEl = tmp.querySelector('.font-medium');
+                var authorsEl = tmp.querySelector('.text-sm.text-shelf-muted');
+                var coverEl = tmp.querySelector('img');
+
+                var status = 'added';
+                if (html.includes('bg-shelf-warning')) status = 'duplicate';
+                else if (html.includes('bg-shelf-error') || html.includes('not found')) status = 'not_found';
+                else if (html.includes('showForm')) status = 'not_found';
+
+                this.scanResult = {
+                    status: status,
+                    title: titleEl ? titleEl.textContent.trim() : null,
+                    authors: authorsEl ? authorsEl.textContent.trim() : null,
+                    cover: coverEl ? coverEl.getAttribute('src').replace(/^\//, '') : null,
+                    isbn: code
+                };
+            } catch (err) {
+                this.scanResult = { status: 'error', title: 'Network error', isbn: code };
+            }
+            this.scanLoading = false;
+        }
+    }
+}
+</script>
+{% endblock %}

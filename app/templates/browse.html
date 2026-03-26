@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Browse — Shelf{% endblock %}
+{% block content %}
+<div x-data="browsePage()">
+    <!-- Bulk Action Bar -->
+    <div x-show="selectMode && selectedIds.length > 0" x-transition
+         class="fixed bottom-0 inset-x-0 z-40 bg-shelf-card border-t border-shelf-border py-3 px-4 shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center gap-3 flex-wrap">
+            <span class="text-sm text-shelf-muted" x-text="selectedIds.length + ' selected'"></span>
+            <select x-ref="bulkLocation" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                <option value="">Move to location...</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+            <button @click="bulkUpdate({location_id: parseInt($refs.bulkLocation.value) || null})" x-show="$refs.bulkLocation && $refs.bulkLocation.value"
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+            <select x-ref="bulkType" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                <option value="">Change type...</option>
+                {% for key, label in media_types.items() %}
+                <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+            </select>
+            <button @click="bulkUpdate({media_type: $refs.bulkType.value})" x-show="$refs.bulkType && $refs.bulkType.value"
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+            <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">Delete Selected</button>
+        </div>
+    </div>
+
+    <!-- Header + Filters -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold">Collection <span class="text-shelf-muted text-lg font-normal">({{ total_count }})</span></h1>
+            <button @click="selectMode = !selectMode; if(!selectMode) selectedIds = []"
+                    :class="selectMode ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
+                    class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">
+                <span x-text="selectMode ? 'Done' : 'Select'"></span>
+            </button>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <!-- Search -->
+            <input type="search" name="q" placeholder="Search..." value="{{ initial_query or '' }}"
+                   hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
+                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                   class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
+
+            <!-- Media Type Filter -->
+            <select name="media_type_filter"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">All Types ({{ total_count }})</option>
+                {% for key, label in media_types.items() %}
+                {% set count = type_counts.get(key, 0) %}
+                {% if count > 0 %}
+                <option value="{{ key }}">{{ label }} ({{ count }})</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+
+            <!-- Location Filter -->
+            <select name="location_filter"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">All Locations</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+
+            <!-- Owned / Wishlist Filter -->
+            <select name="owned"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">All ({{ total_count }})</option>
+                <option value="1">Owned ({{ owned_count }})</option>
+                <option value="0">Wishlist ({{ wishlist_count }})</option>
+            </select>
+
+            <!-- Reading Status Filter -->
+            <select name="reading_status"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">All Statuses</option>
+                <option value="want_to_read">Want to Read</option>
+                <option value="reading">Reading</option>
+                <option value="read">Read</option>
+            </select>
+
+            <!-- Sort -->
+            <select name="sort"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="newest">Most Recent</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title_asc">Title A–Z</option>
+                <option value="title_desc">Title Z–A</option>
+                <option value="author">Author</option>
+                <option value="year_desc">Year (Newest)</option>
+                <option value="year_asc">Year (Oldest)</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Item Grid -->
+    <div id="item-grid">
+        {% include "fragments/item_grid.html" %}
+    </div>
+</div>
+
+<script>
+function browsePage() {
+    return {
+        selectMode: false,
+        selectedIds: [],
+        toggleItem(id) {
+            var idx = this.selectedIds.indexOf(id);
+            if (idx >= 0) this.selectedIds.splice(idx, 1);
+            else this.selectedIds.push(id);
+        },
+        async bulkUpdate(updates) {
+            if (!this.selectedIds.length) return;
+            var resp = await fetch('/api/items/bulk-update', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({item_ids: this.selectedIds, updates: updates})
+            });
+            var data = await resp.json();
+            if (data.ok) {
+                showToast('Updated ' + data.updated + ' items', 'success');
+                this.selectedIds = [];
+                location.reload();
+            }
+        },
+        async bulkDelete() {
+            if (!confirm('Delete ' + this.selectedIds.length + ' items?')) return;
+            for (var id of this.selectedIds) {
+                await fetch('/api/items/' + id, {method: 'DELETE'});
+            }
+            showToast('Deleted ' + this.selectedIds.length + ' items', 'success');
+            this.selectedIds = [];
+            location.reload();
+        }
+    }
+}
+</script>
+{% endblock %}

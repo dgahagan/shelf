@@ -1,0 +1,8 @@
+services:
+  shelf:
+    build: .
+    container_name: shelf
+    network_mode: host
+    volumes:
+      - ./data:/data:z
+    restart: unless-stopped
