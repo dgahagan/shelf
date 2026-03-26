@@ -3,6 +3,8 @@ services:
     build: .
     container_name: shelf
     network_mode: host
+    environment:
+      - CERT_SAN=${CERT_SAN:-DNS:shelf,DNS:localhost}
     volumes:
       - ./data:/data:z
     restart: unless-stopped

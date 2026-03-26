@@ -12,7 +12,7 @@ if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
     openssl req -x509 -newkey rsa:2048 -nodes \
         -keyout "$KEY_FILE" -out "$CERT_FILE" \
         -days 3650 -subj "/CN=shelf" \
-        -addext "subjectAltName=IP:192.168.1.50,DNS:shelf,DNS:localhost"
+        -addext "subjectAltName=${CERT_SAN:-DNS:shelf,DNS:localhost}"
     echo "Certificate generated at $CERT_DIR"
 fi
 
