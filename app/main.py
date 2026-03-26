@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -95,6 +96,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         import time
+
+        # Disable rate limiting in tests
+        if os.environ.get("TESTING"):
+            return await call_next(request)
 
         # Only rate-limit API and auth endpoints
         path = request.url.path
