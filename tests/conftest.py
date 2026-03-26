@@ -44,8 +44,9 @@ def db():
 
 
 @pytest.fixture
-def client():
-    """FastAPI TestClient."""
+def client(monkeypatch):
+    """FastAPI TestClient with rate limiting disabled."""
+    monkeypatch.setenv("TESTING", "1")
     from app.main import app
     return TestClient(app, base_url="https://testserver")
 
@@ -91,3 +92,34 @@ def editor_user():
 def viewer_user():
     """Create a viewer user (committed) and return their info dict."""
     return _create_user("viewer", "password123", "Viewer User", "viewer")
+
+
+@pytest.fixture
+def editor_client(client, editor_user):
+    """TestClient with a valid editor session cookie."""
+    from app.auth import create_token
+    token = create_token(editor_user["id"], editor_user["username"], editor_user["role"], editor_user["display_name"])
+    client.cookies.set("access_token", token)
+    return client
+
+
+def _insert_item(db, title="Test Book", isbn="9780000000001", media_type="book", **kwargs):
+    """Insert a test item and return its ID."""
+    fields = {"title": title, "isbn": isbn, "media_type": media_type, "source": "test"}
+    fields.update(kwargs)
+    cols = ", ".join(fields.keys())
+    placeholders = ", ".join("?" for _ in fields)
+    cursor = db.execute(f"INSERT INTO items ({cols}) VALUES ({placeholders})", list(fields.values()))
+    return cursor.lastrowid
+
+
+def _insert_borrower(db, name="Test Borrower"):
+    """Insert a test borrower and return their ID."""
+    cursor = db.execute("INSERT INTO borrowers (name) VALUES (?)", (name,))
+    return cursor.lastrowid
+
+
+def _insert_location(db, name="Test Location"):
+    """Insert a test location and return its ID."""
+    cursor = db.execute("INSERT INTO locations (name) VALUES (?)", (name,))
+    return cursor.lastrowid
