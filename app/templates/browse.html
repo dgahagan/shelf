@@ -41,13 +41,13 @@
             <!-- Search -->
             <input type="search" name="q" placeholder="Search..." value="{{ initial_query or '' }}"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
-                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
 
             <!-- Media Type Filter -->
             <select name="media_type_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="">All Types ({{ total_count }})</option>
                 {% for key, label in media_types.items() %}
@@ -61,7 +61,7 @@
             <!-- Location Filter -->
             <select name="location_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="">All Locations</option>
                 {% for loc in locations %}
@@ -72,17 +72,26 @@
             <!-- Owned / Wishlist Filter -->
             <select name="owned"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="">All ({{ total_count }})</option>
                 <option value="1">Owned ({{ owned_count }})</option>
                 <option value="0">Wishlist ({{ wishlist_count }})</option>
             </select>
 
+            <!-- Lent Out Filter -->
+            <select name="lent_out"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">All Items</option>
+                <option value="1">Lent Out{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
+            </select>
+
             <!-- Reading Status Filter -->
             <select name="reading_status"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="">All Statuses</option>
                 <option value="want_to_read">Want to Read</option>
@@ -93,7 +102,7 @@
             <!-- Sort -->
             <select name="sort"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="newest">Most Recent</option>
                 <option value="oldest">Oldest First</option>

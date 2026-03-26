@@ -1,0 +1,46 @@
+{% if results %}
+<div class="space-y-2">
+    {% for book in results %}
+    <div class="bg-shelf-bg rounded-lg border border-shelf-border p-3 flex items-center gap-4">
+        {% if book.cover_url %}
+        <img src="{{ book.cover_url }}" class="w-12 h-16 object-cover rounded shrink-0" alt="">
+        {% else %}
+        <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs shrink-0">?</div>
+        {% endif %}
+        <div class="flex-1 min-w-0">
+            <p class="font-medium truncate">{{ book.title }}</p>
+            <p class="text-xs text-shelf-muted truncate">
+                {% if book.authors %}{{ book.authors }}{% endif %}
+                {% if book.publish_year %} &middot; {{ book.publish_year }}{% endif %}
+                {% if book.publisher %} &middot; {{ book.publisher }}{% endif %}
+            </p>
+            {% if book.isbn %}
+            <p class="text-xs text-shelf-muted/70 font-mono">{{ book.isbn }}</p>
+            {% endif %}
+        </div>
+        {% if book.isbn %}
+        <form hx-post="/api/books/add" hx-target="#scan-results" hx-swap="afterbegin"
+              hx-on::after-request="if(event.detail.successful) { document.getElementById('title-search-input').value = ''; document.getElementById('title-search-results').innerHTML = ''; }">
+            <input type="hidden" name="isbn" value="{{ book.isbn }}">
+            <input type="hidden" name="media_type" value="{{ media_type }}">
+            <input type="hidden" name="location_id" class="book-loc-sync" value="">
+            <button type="submit"
+                    class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs font-medium hover:bg-shelf-accent2 transition-colors whitespace-nowrap">
+                Add
+            </button>
+        </form>
+        {% else %}
+        <span class="text-xs text-shelf-muted/50">No ISBN</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+<script>
+var loc = document.getElementById('location');
+document.querySelectorAll('.book-loc-sync').forEach(function(el) {
+    if (loc) el.value = loc.value;
+});
+</script>
+{% elif query %}
+<p class="text-sm text-shelf-muted">No books found for "{{ query }}". Try a different search.</p>
+{% endif %}

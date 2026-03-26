@@ -138,3 +138,49 @@ async def _resolve_description(edition_data: dict, client: httpx.AsyncClient) ->
     if isinstance(desc, dict):
         return desc.get("value")
     return desc
+
+
+async def search_books(query: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
+    """Search Open Library by title. Returns list of book summaries."""
+    await _rate_limit()
+    resp = await client.get(
+        "https://openlibrary.org/search.json",
+        params={"q": query, "limit": str(limit), "fields": "key,title,author_name,first_publish_year,publisher,cover_i,isbn,number_of_pages_median"},
+        headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
+    )
+    if resp.status_code != 200:
+        logger.debug("Open Library search failed for %r: HTTP %d", query, resp.status_code)
+        return []
+
+    docs = resp.json().get("docs", [])
+    results = []
+    for doc in docs:
+        title = doc.get("title")
+        if not title:
+            continue
+        authors = doc.get("author_name", [])
+        isbns = doc.get("isbn", [])
+        # Prefer ISBN-13 (starts with 978/979)
+        isbn = None
+        for i in isbns:
+            if len(i) == 13:
+                isbn = i
+                break
+        if not isbn and isbns:
+            isbn = isbns[0]
+
+        cover_url = None
+        cover_i = doc.get("cover_i")
+        if cover_i:
+            cover_url = f"https://covers.openlibrary.org/b/id/{cover_i}-M.jpg"
+
+        results.append({
+            "title": title,
+            "authors": ", ".join(authors) if authors else None,
+            "publish_year": doc.get("first_publish_year"),
+            "publisher": doc.get("publisher", [None])[0] if doc.get("publisher") else None,
+            "cover_url": cover_url,
+            "isbn": isbn,
+            "page_count": doc.get("number_of_pages_median"),
+        })
+    return results

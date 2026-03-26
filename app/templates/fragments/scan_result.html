@@ -88,22 +88,44 @@
 
 {% else %}
 <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
-    {% if status == 'added' and cover_path %}
+    {# Cover image or placeholder #}
+    {% if cover_path %}
     <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="">
     {% else %}
     <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">
-        {% if status == 'added' %}+{% elif status == 'duplicate' %}={% else %}!{% endif %}
+        {% if status == 'added' or status == 'wishlisted' %}+
+        {% elif status == 'duplicate' %}=
+        {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read') %}&check;
+        {% else %}!{% endif %}
     </div>
     {% endif %}
 
     <div class="flex-1 min-w-0">
-        {% if status == 'added' %}
-        <p class="font-medium truncate"><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>
+        {# Statuses with a title link #}
+        {% if status in ('added', 'wishlisted', 'duplicate', 'checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read', 'already_checked_out', 'not_checked_out') %}
+        <p class="font-medium truncate">
+            {% if item_id %}<a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a>
+            {% else %}{{ title }}{% endif %}
+        </p>
         {% if authors %}<p class="text-sm text-shelf-muted truncate">{{ authors }}</p>{% endif %}
+        {% endif %}
+
+        {# Status-specific detail line #}
+        {% if status == 'added' %}
         <p class="text-xs text-shelf-muted">{{ media_type_label }} via {{ source }}</p>
+        {% elif status == 'wishlisted' %}
+        <p class="text-xs text-shelf-muted">Added to wishlist &middot; {{ media_type_label }} via {{ source }}</p>
         {% elif status == 'duplicate' %}
-        <p class="font-medium truncate"><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>
         <p class="text-sm text-shelf-muted">Already in collection</p>
+        {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'already_checked_out', 'not_checked_out') %}
+        <p class="text-xs text-shelf-muted">{{ message }}</p>
+        {% elif status == 'found' %}
+        <p class="text-xs text-shelf-muted">{{ message }}</p>
+        {% elif status == 'marked_read' %}
+        <p class="text-xs text-shelf-muted">{{ message }}</p>
+        {% elif status == 'not_owned' %}
+        <p class="font-medium font-mono">{{ isbn }}</p>
+        <p class="text-sm text-shelf-muted">{{ message }}</p>
         {% else %}
         <p class="font-medium font-mono">{{ isbn }}</p>
         <p class="text-sm text-shelf-error">{{ message }}</p>
@@ -111,10 +133,24 @@
     </div>
 
     <span class="text-xs px-2 py-1 rounded-full shrink-0
-        {% if status == 'added' %}bg-shelf-success/20 text-shelf-success
-        {% elif status == 'duplicate' %}bg-shelf-warning/20 text-shelf-warning
+        {% if status in ('added', 'returned', 'confirmed', 'marked_read') %}bg-shelf-success/20 text-shelf-success
+        {% elif status == 'wishlisted' %}bg-purple-500/20 text-purple-400
+        {% elif status in ('duplicate', 'already_checked_out', 'not_checked_out') %}bg-shelf-warning/20 text-shelf-warning
+        {% elif status == 'checked_out' %}bg-orange-500/20 text-orange-400
+        {% elif status in ('moved', 'found', 'relocated') %}bg-blue-500/20 text-blue-400
         {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
-        {{ status }}
+        {% if status == 'wishlisted' %}wishlisted
+        {% elif status == 'checked_out' %}lent
+        {% elif status == 'returned' %}returned
+        {% elif status == 'moved' %}moved
+        {% elif status == 'confirmed' %}confirmed
+        {% elif status == 'relocated' %}relocated
+        {% elif status == 'found' %}found
+        {% elif status == 'not_owned' %}not found
+        {% elif status == 'marked_read' %}read
+        {% elif status == 'already_checked_out' %}already lent
+        {% elif status == 'not_checked_out' %}not lent
+        {% else %}{{ status }}{% endif %}
     </span>
 </div>
 {% endif %}
