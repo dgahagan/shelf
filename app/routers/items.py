@@ -640,14 +640,99 @@ async def search_items(
                 own_params,
             ).fetchone()["c"]
 
+            # Location counts: all filters EXCEPT location
+            loc_conds: list[str] = []
+            loc_params: list = []
+            if q:
+                loc_conds.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
+                loc_params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+            if reading_status:
+                loc_conds.append("i.reading_status = ?")
+                loc_params.append(reading_status)
+            if lent_out == "1":
+                loc_conds.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+            if mt:
+                loc_conds.append("i.media_type = ?")
+                loc_params.append(mt)
+            if owned == "1":
+                loc_conds.append("i.owned = 1")
+            elif owned == "0":
+                loc_conds.append("i.owned = 0")
+            loc_where = "WHERE " + " AND ".join(loc_conds) if loc_conds else ""
+            location_counts = {
+                row["location_id"]: row["c"]
+                for row in db.execute(
+                    f"SELECT location_id, COUNT(*) as c FROM items i {loc_where}"
+                    + (" AND" if loc_where else " WHERE")
+                    + " location_id IS NOT NULL GROUP BY location_id",
+                    loc_params,
+                ).fetchall()
+            }
+            no_location_count = db.execute(
+                f"SELECT COUNT(*) as c FROM items i {loc_where}"
+                + (" AND" if loc_where else " WHERE")
+                + " location_id IS NULL",
+                loc_params,
+            ).fetchone()["c"]
+
+            # Reading status counts: all filters EXCEPT reading_status
+            rs_conds: list[str] = list(conditions)
+            rs_params: list = list(params)
+            # Remove reading_status condition if present
+            if reading_status and "i.reading_status = ?" in rs_conds:
+                idx = rs_conds.index("i.reading_status = ?")
+                rs_conds.pop(idx)
+                # Find the corresponding param — it's at the same position
+                # in base_params, which maps to the same offset in full params
+                # since base_conds come first. Easier: rebuild without it.
+                rs_conds_clean: list[str] = []
+                rs_params_clean: list = []
+                if q:
+                    rs_conds_clean.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
+                    rs_params_clean.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+                if loc:
+                    rs_conds_clean.append("i.location_id = ?")
+                    rs_params_clean.append(int(loc))
+                if lent_out == "1":
+                    rs_conds_clean.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+                if mt:
+                    rs_conds_clean.append("i.media_type = ?")
+                    rs_params_clean.append(mt)
+                if owned == "1":
+                    rs_conds_clean.append("i.owned = 1")
+                elif owned == "0":
+                    rs_conds_clean.append("i.owned = 0")
+                rs_conds = rs_conds_clean
+                rs_params = rs_params_clean
+            rs_where = "WHERE " + " AND ".join(rs_conds) if rs_conds else ""
+            reading_status_counts = {
+                row["reading_status"]: row["c"]
+                for row in db.execute(
+                    f"SELECT reading_status, COUNT(*) as c FROM items i {rs_where}"
+                    + (" AND" if rs_where else " WHERE")
+                    + " reading_status IS NOT NULL AND reading_status != '' GROUP BY reading_status",
+                    rs_params,
+                ).fetchall()
+            }
+
+            locations = db.execute(
+                "SELECT * FROM locations ORDER BY sort_order, name"
+            ).fetchall()
+
             filter_counts = {
                 "type_counts": type_counts,
                 "type_total": type_total,
                 "owned_count": owned_count,
                 "wishlist_count": wishlist_count,
+                "location_counts": location_counts,
+                "no_location_count": no_location_count,
+                "reading_status_counts": reading_status_counts,
+                "locations": locations,
                 "filtered_total": total,
                 "active_type": mt,
                 "active_owned": owned,
+                "active_location": loc,
+                "active_reading_status": reading_status,
             }
 
     has_more = (offset + per_page) < total
@@ -674,6 +759,7 @@ async def search_items(
     # Page 1: full grid wrapper. Page 2+: just cards (appended via outerHTML swap on load-more).
     template = "fragments/item_grid.html" if page <= 1 else "fragments/item_cards_page.html"
 
+    has_filters = any([q, mt, loc, reading_status, owned, lent_out])
     ctx = {
         "items": items,
         "media_types": MEDIA_TYPES,
@@ -681,6 +767,7 @@ async def search_items(
         "load_more_url": load_more_url,
         "page": page,
         "total": total,
+        "has_filters": has_filters,
     }
     if filter_counts:
         ctx.update(filter_counts)

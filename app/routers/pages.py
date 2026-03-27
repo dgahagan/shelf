@@ -86,6 +86,21 @@ async def browse(
         lent_out_count = db.execute(
             "SELECT COUNT(DISTINCT item_id) as c FROM checkouts WHERE checked_in IS NULL"
         ).fetchone()["c"]
+        location_counts = {
+            row["location_id"]: row["c"]
+            for row in db.execute(
+                "SELECT location_id, COUNT(*) as c FROM items WHERE location_id IS NOT NULL GROUP BY location_id"
+            ).fetchall()
+        }
+        no_location_count = db.execute(
+            "SELECT COUNT(*) as c FROM items WHERE location_id IS NULL"
+        ).fetchone()["c"]
+        reading_status_counts = {
+            row["reading_status"]: row["c"]
+            for row in db.execute(
+                "SELECT reading_status, COUNT(*) as c FROM items WHERE reading_status IS NOT NULL AND reading_status != '' GROUP BY reading_status"
+            ).fetchall()
+        }
 
         has_more = len(items) < total_filtered
 
@@ -120,7 +135,11 @@ async def browse(
             "owned_count": owned_count,
             "wishlist_count": wishlist_count,
             "lent_out_count": lent_out_count,
+            "location_counts": location_counts,
+            "no_location_count": no_location_count,
+            "reading_status_counts": reading_status_counts,
             "has_more": has_more,
+            "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out]),
             "load_more_url": load_more_url,
             "initial_query": q,
             "initial_filters": {

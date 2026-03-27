@@ -139,10 +139,10 @@ Items added in the last 7 days could show a subtle "New" badge, making it easy t
 | ~~P1~~ | ~~#8 Active filter indicators~~ | ~~1-2 hrs~~ | Done |
 | ~~P1~~ | ~~#6 Select All in select mode~~ | ~~30 min~~ | Done |
 | ~~P1~~ | ~~#11 URL state for filters~~ | ~~1-2 hrs~~ | Done |
-| P2 | #10 Infinite scroll | 30 min | |
-| P2 | #14 Counts on all dropdowns | 1 hr | |
-| P2 | #16 Sort persistence | 15 min | |
-| P2 | #9 Better empty state | 15 min | |
+| ~~P2~~ | ~~#10 Infinite scroll~~ | ~~30 min~~ | Done |
+| ~~P2~~ | ~~#14 Counts on all dropdowns~~ | ~~1 hr~~ | Done |
+| ~~P2~~ | ~~#16 Sort persistence~~ | ~~15 min~~ | Done |
+| ~~P2~~ | ~~#9 Better empty state~~ | ~~15 min~~ | Done |
 | P3 | #12 Grid/list toggle | 2-3 hrs | |
 | P3 | #13 Keyboard shortcuts | 1 hr | |
 | P3 | #7 Responsive filter collapse | 1-2 hrs | |

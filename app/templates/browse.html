@@ -66,13 +66,14 @@
             </select>
 
             <!-- Location Filter -->
-            <select name="location_filter"
+            <select id="location-filter" name="location_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations</option>
+                <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations ({{ total_count }})</option>
                 {% for loc in locations %}
-                <option value="{{ loc.id }}" {{ 'selected' if f.location_filter == loc.id|string else '' }}>{{ loc.name }}</option>
+                {% set lcount = location_counts.get(loc.id, 0) %}
+                <option value="{{ loc.id }}" {{ 'selected' if f.location_filter == loc.id|string else '' }}>{{ loc.name }}{% if lcount %} ({{ lcount }}){% endif %}</option>
                 {% endfor %}
             </select>
 
@@ -96,14 +97,15 @@
             </select>
 
             <!-- Reading Status Filter -->
-            <select name="reading_status"
+            <select id="reading-status-filter" name="reading_status"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.reading_status else '' }}>All Statuses</option>
-                <option value="want_to_read" {{ 'selected' if f.reading_status == 'want_to_read' else '' }}>Want to Read</option>
-                <option value="reading" {{ 'selected' if f.reading_status == 'reading' else '' }}>Reading</option>
-                <option value="read" {{ 'selected' if f.reading_status == 'read' else '' }}>Read</option>
+                {% set rsc = reading_status_counts or {} %}
+                <option value="want_to_read" {{ 'selected' if f.reading_status == 'want_to_read' else '' }}>Want to Read{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>
+                <option value="reading" {{ 'selected' if f.reading_status == 'reading' else '' }}>Reading{% if rsc.get('reading') %} ({{ rsc.reading }}){% endif %}</option>
+                <option value="read" {{ 'selected' if f.reading_status == 'read' else '' }}>Read{% if rsc.get('read') %} ({{ rsc.read }}){% endif %}</option>
             </select>
 
             <!-- Sort -->
@@ -149,11 +151,27 @@ function browsePage() {
         filterPills: [],
 
         init() {
+            // Restore sort preference from localStorage (only if no sort in URL)
+            var urlSort = new URLSearchParams(window.location.search).get('sort');
+            if (!urlSort) {
+                var saved = localStorage.getItem('shelf-sort');
+                if (saved) {
+                    var sortEl = document.querySelector('[name="sort"]');
+                    if (sortEl && sortEl.querySelector('option[value="' + saved + '"]')) {
+                        sortEl.value = saved;
+                        if (saved !== 'newest') htmx.trigger(sortEl, 'change');
+                    }
+                }
+            }
             this.syncFilters();
             // Sync filter pills and URL after every HTMX swap
             document.body.addEventListener('htmx:afterSettle', () => {
                 this.syncFilters();
                 this.updateUrl();
+            });
+            // Persist sort preference on change
+            document.querySelector('[name="sort"]')?.addEventListener('change', function(e) {
+                localStorage.setItem('shelf-sort', e.target.value);
             });
         },
 
