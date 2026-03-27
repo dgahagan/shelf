@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import re
+import secrets
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,6 +45,55 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' https://covers.openlibrary.org https://images-na.ssl-images-amazon.com "
+            "https://books.google.com https://images.igdb.com https://image.tmdb.org data:; "
+            "connect-src 'self'"
+        )
+        return response
+
+
+_CSRF_SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_CSRF_SKIP_PATHS = frozenset({"/login", "/setup"})
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """Double-submit cookie CSRF protection for state-changing requests."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        # Allow disabling CSRF for test suite (mirrors SHELF_DISABLE_RATE_LIMIT pattern)
+        if os.environ.get("SHELF_DISABLE_CSRF"):
+            response = await call_next(request)
+            return response
+
+        # Ensure a CSRF token cookie exists on every response
+        csrf_cookie = request.cookies.get("csrf_token")
+        if not csrf_cookie:
+            csrf_cookie = secrets.token_hex(32)
+
+        # Validate CSRF on state-changing methods (POST, PUT, DELETE, PATCH)
+        if request.method not in _CSRF_SAFE_METHODS:
+            path = request.url.path
+            if not path.startswith("/static/") and path not in _CSRF_SKIP_PATHS:
+                header_token = request.headers.get("X-CSRF-Token", "")
+                cookie_token = request.cookies.get("csrf_token", "")
+                if not cookie_token or not header_token or cookie_token != header_token:
+                    return Response("CSRF token missing or invalid", status_code=403)
+
+        response = await call_next(request)
+
+        # Set/refresh the CSRF cookie
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_cookie,
+            httponly=False,  # JS must read it
+            secure=True,
+            samesite="lax",
+            path="/",
+        )
         return response
 
 
@@ -96,8 +147,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self._last_cleanup: float = 0.0
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        import time
-
         # Disable rate limiting when explicitly configured (e.g. test suite)
         if os.environ.get("SHELF_DISABLE_RATE_LIMIT"):
             return await call_next(request)
@@ -138,39 +187,42 @@ async def _periodic_abs_sync():
 
     intervals = {"daily": 86400, "weekly": 604800}
 
-    while True:
-        await asyncio.sleep(300)  # check every 5 minutes
-        try:
-            with get_db() as db:
-                row = db.execute("SELECT value FROM settings WHERE key = 'abs_sync_interval'").fetchone()
-                interval = row["value"] if row else "off"
-                if interval == "off":
-                    continue
-
-                # Check last sync time
-                last = db.execute("SELECT value FROM settings WHERE key = 'abs_last_sync'").fetchone()
-                import time
-                now = time.time()
-                if last and last["value"]:
-                    elapsed = now - float(last["value"])
-                    if elapsed < intervals.get(interval, 86400):
+    try:
+        while True:
+            await asyncio.sleep(300)  # check every 5 minutes
+            try:
+                with get_db() as db:
+                    row = db.execute("SELECT value FROM settings WHERE key = 'abs_sync_interval'").fetchone()
+                    interval = row["value"] if row else "off"
+                    if interval == "off":
                         continue
 
-                from app.database import get_setting
-                abs_url_val = get_setting(db, "abs_url")
-                abs_token_val = get_setting(db, "abs_token")
+                    last = db.execute("SELECT value FROM settings WHERE key = 'abs_last_sync'").fetchone()
+                    now = time.time()
+                    if last and last["value"]:
+                        elapsed = now - float(last["value"])
+                        if elapsed < intervals.get(interval, 86400):
+                            continue
 
-            if abs_url_val and abs_token_val:
-                await audiobookshelf.sync(abs_url_val, abs_token_val)
-                with get_db() as db:
-                    db.execute(
-                        "INSERT INTO settings (key, value) VALUES ('abs_last_sync', ?) "
-                        "ON CONFLICT(key) DO UPDATE SET value = ?",
-                        (str(now), str(now)),
-                    )
-                logger.info("Periodic Audiobookshelf sync completed")
-        except Exception:
-            logger.exception("Periodic Audiobookshelf sync failed")
+                    from app.database import get_setting
+                    abs_url_val = get_setting(db, "abs_url")
+                    abs_token_val = get_setting(db, "abs_token")
+
+                if abs_url_val and abs_token_val:
+                    await audiobookshelf.sync(abs_url_val, abs_token_val)
+                    with get_db() as db:
+                        db.execute(
+                            "INSERT INTO settings (key, value) VALUES ('abs_last_sync', ?) "
+                            "ON CONFLICT(key) DO UPDATE SET value = ?",
+                            (str(now), str(now)),
+                        )
+                    logger.info("Periodic Audiobookshelf sync completed")
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Periodic Audiobookshelf sync failed")
+    except asyncio.CancelledError:
+        logger.info("ABS sync task shutting down")
 
 
 async def _periodic_hardcover_sync():
@@ -179,38 +231,42 @@ async def _periodic_hardcover_sync():
 
     intervals = {"daily": 86400, "weekly": 604800}
 
-    while True:
-        await asyncio.sleep(300)  # check every 5 minutes
-        try:
-            with get_db() as db:
-                row = db.execute("SELECT value FROM settings WHERE key = 'hc_sync_interval'").fetchone()
-                interval = row["value"] if row else "off"
-                if interval == "off":
-                    continue
-
-                last = db.execute("SELECT value FROM settings WHERE key = 'hc_last_sync'").fetchone()
-                import time
-                now = time.time()
-                if last and last["value"]:
-                    elapsed = now - float(last["value"])
-                    if elapsed < intervals.get(interval, 86400):
+    try:
+        while True:
+            await asyncio.sleep(300)  # check every 5 minutes
+            try:
+                with get_db() as db:
+                    row = db.execute("SELECT value FROM settings WHERE key = 'hc_sync_interval'").fetchone()
+                    interval = row["value"] if row else "off"
+                    if interval == "off":
                         continue
 
-                from app.database import get_setting
-                token = get_setting(db, "hardcover_token")
+                    last = db.execute("SELECT value FROM settings WHERE key = 'hc_last_sync'").fetchone()
+                    now = time.time()
+                    if last and last["value"]:
+                        elapsed = now - float(last["value"])
+                        if elapsed < intervals.get(interval, 86400):
+                            continue
 
-            token = token or None
-            if token:
-                await hc_svc.sync_reading_statuses(token)
-                with get_db() as db:
-                    db.execute(
-                        "INSERT INTO settings (key, value) VALUES ('hc_last_sync', ?) "
-                        "ON CONFLICT(key) DO UPDATE SET value = ?",
-                        (str(now), str(now)),
-                    )
-                logger.info("Periodic Hardcover sync completed")
-        except Exception:
-            logger.exception("Periodic Hardcover sync failed")
+                    from app.database import get_setting
+                    token = get_setting(db, "hardcover_token")
+
+                token = token or None
+                if token:
+                    await hc_svc.sync_reading_statuses(token)
+                    with get_db() as db:
+                        db.execute(
+                            "INSERT INTO settings (key, value) VALUES ('hc_last_sync', ?) "
+                            "ON CONFLICT(key) DO UPDATE SET value = ?",
+                            (str(now), str(now)),
+                        )
+                    logger.info("Periodic Hardcover sync completed")
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Periodic Hardcover sync failed")
+    except asyncio.CancelledError:
+        logger.info("Hardcover sync task shutting down")
 
 
 @asynccontextmanager
@@ -227,9 +283,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Shelf", lifespan=lifespan)
-app.add_middleware(AuthMiddleware)
-app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
+app.add_middleware(CSRFMiddleware)
+app.add_middleware(AuthMiddleware)
 
 # Exception handler for auth dependency responses
 from app.auth import _ResponseException

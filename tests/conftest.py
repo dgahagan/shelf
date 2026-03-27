@@ -22,13 +22,15 @@ def _isolated_db(tmp_path, monkeypatch):
     monkeypatch.setattr("app.config.DATABASE_PATH", db_path)
     monkeypatch.setattr("app.config.COVERS_DIR", covers_dir)
 
-    # Also patch database module's imports (already resolved at import time)
+    # Also patch modules that import these at module level (already resolved at import time)
     monkeypatch.setattr("app.database.DATABASE_PATH", db_path)
     monkeypatch.setattr("app.database.COVERS_DIR", covers_dir)
+    monkeypatch.setattr("app.services.covers.COVERS_DIR", covers_dir)
 
-    # Reset cached secret key so each test gets a fresh one
+    # Reset cached secret key and user count so each test gets fresh state
     import app.auth as auth_mod
     monkeypatch.setattr(auth_mod, "_cached_secret_key", None)
+    monkeypatch.setattr(auth_mod, "_user_count_cache", None)
 
     # Initialize schema
     from app.database import init_db
@@ -45,8 +47,9 @@ def db():
 
 @pytest.fixture
 def client(monkeypatch):
-    """FastAPI TestClient with rate limiting disabled."""
+    """FastAPI TestClient with rate limiting and CSRF disabled."""
     monkeypatch.setenv("SHELF_DISABLE_RATE_LIMIT", "1")
+    monkeypatch.setenv("SHELF_DISABLE_CSRF", "1")
     from app.main import app
     return TestClient(app, base_url="https://testserver")
 
@@ -99,6 +102,15 @@ def editor_client(client, editor_user):
     """TestClient with a valid editor session cookie."""
     from app.auth import create_token
     token = create_token(editor_user["id"], editor_user["username"], editor_user["role"], editor_user["display_name"])
+    client.cookies.set("access_token", token)
+    return client
+
+
+@pytest.fixture
+def viewer_client(client, viewer_user):
+    """TestClient with a valid viewer session cookie."""
+    from app.auth import create_token
+    token = create_token(viewer_user["id"], viewer_user["username"], viewer_user["role"], viewer_user["display_name"])
     client.cookies.set("access_token", token)
     return client
 
