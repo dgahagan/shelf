@@ -211,6 +211,12 @@ make verify      # confirm all tests still pass
 
 Reports land in `docs/` with today's date (e.g. `docs/CODE_REVIEW_2026-03-27.md`) and are gitignored — they're regenerated each QA cycle.
 
+Report targets default to `claude-sonnet-4-6`. Override with `MODEL=` for a deeper pre-release audit:
+
+```bash
+make reports MODEL=claude-opus-4-6
+```
+
 ## License
 
 Personal project. Source available for reference and self-hosting.

@@ -1,6 +1,7 @@
 SHELL := /bin/bash
 DATE  := $(shell date +%Y-%m-%d)
 DOCS  := docs
+MODEL ?= claude-sonnet-4-6
 
 .PHONY: test test-e2e test-all \
         check-deps check-licenses check-secrets checks \
@@ -47,15 +48,15 @@ $(DOCS):
 	@mkdir -p $(DOCS)
 
 report-review: $(DOCS)
-	claude --max-turns 20 -p \
+	claude --model $(MODEL) --max-turns 20 -p \
 		"Review the shelf/ codebase. Write a comprehensive code review report to shelf/docs/CODE_REVIEW_$(DATE).md"
 
 report-security: $(DOCS)
-	claude --max-turns 20 -p \
+	claude --model $(MODEL) --max-turns 20 -p \
 		"Audit the shelf/ codebase for security issues. Write findings to shelf/docs/SECURITY_AUDIT_$(DATE).md"
 
 report-test: $(DOCS)
-	claude --max-turns 20 -p \
+	claude --model $(MODEL) --max-turns 20 -p \
 		"Audit test coverage for shelf/. Identify gaps and write findings to shelf/docs/TEST_AUDIT_$(DATE).md"
 
 reports: report-review report-security report-test
