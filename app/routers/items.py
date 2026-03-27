@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+from datetime import date, datetime, timedelta
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Form
@@ -320,7 +322,6 @@ def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
 
 def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
     """Handle quick rate mode: mark item as read/completed."""
-    from datetime import date
     with get_db() as db:
         db.execute(
             "UPDATE items SET reading_status = 'read', date_finished = ? WHERE id = ?",
@@ -391,21 +392,18 @@ async def scan_isbn(
             {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
         )
 
-    # Check duplicate
+    # Check duplicate and get settings in a single connection
     with get_db() as db:
         existing = db.execute(
             "SELECT id, title FROM items WHERE isbn = ? AND media_type = ?",
             (isbn13, media_type),
         ).fetchone()
-    if existing:
-        _log_scan(isbn13, media_type, "duplicate", existing["id"], mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    # Get Hardcover token for metadata enrichment
-    with get_db() as db:
+        if existing:
+            _log_scan(isbn13, media_type, "duplicate", existing["id"], mode)
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
+            )
         hc_token = get_setting(db, "hardcover_token") or None
 
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
@@ -426,11 +424,6 @@ async def scan_isbn(
 
         item_id = _save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
 
-        # Wishlist mode: set owned = 0
-        if mode == "wishlist":
-            with get_db() as db:
-                db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
-
         # Download cover
         hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
         cover_path = await covers.download_cover(
@@ -439,8 +432,12 @@ async def scan_isbn(
             metadata.get("cover_id"), client,
             hardcover_cover_url=hc_cover,
         )
-        if cover_path:
-            with get_db() as db:
+
+        # Post-save updates in a single connection (wishlist flag + cover path)
+        with get_db() as db:
+            if mode == "wishlist":
+                db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
+            if cover_path:
                 db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
 
     status = "wishlisted" if mode == "wishlist" else "added"
@@ -557,6 +554,7 @@ async def search_items(
 ):
     """Search/filter items. Returns HTMX fragment of item cards."""
     templates = request.app.state.templates
+    per_page = min(max(per_page, 1), 200)
 
     # Truncate search query to prevent slow LIKE scans
     q = q[:200] if q else ""
@@ -570,7 +568,9 @@ async def search_items(
     if q:
         base_conds.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
         base_params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-    if loc:
+    if loc == "none":
+        base_conds.append("i.location_id IS NULL")
+    elif loc:
         base_conds.append("i.location_id = ?")
         base_params.append(int(loc))
     if reading_status:
@@ -742,25 +742,25 @@ async def search_items(
     has_more = (offset + per_page) < total
 
     # Build query string for load-more button
-    qs_parts = []
+    qs_params: dict[str, str] = {}
     if q:
-        qs_parts.append(f"q={q}")
+        qs_params["q"] = q
     if mt:
-        qs_parts.append(f"media_type_filter={mt}")
+        qs_params["media_type_filter"] = mt
     if loc:
-        qs_parts.append(f"location_filter={loc}")
+        qs_params["location_filter"] = loc
     if sort != "newest":
-        qs_parts.append(f"sort={sort}")
+        qs_params["sort"] = sort
     if reading_status:
-        qs_parts.append(f"reading_status={reading_status}")
+        qs_params["reading_status"] = reading_status
     if owned:
-        qs_parts.append(f"owned={owned}")
+        qs_params["owned"] = owned
     if lent_out:
-        qs_parts.append(f"lent_out={lent_out}")
+        qs_params["lent_out"] = lent_out
     if view:
-        qs_parts.append(f"view={view}")
-    qs_parts.append(f"page={page + 1}")
-    load_more_url = "/api/search?" + "&".join(qs_parts)
+        qs_params["view"] = view
+    qs_params["page"] = str(page + 1)
+    load_more_url = "/api/search?" + urlencode(qs_params)
 
     # Page 1: full grid wrapper. Page 2+: just cards/rows (appended via outerHTML swap on load-more).
     if page <= 1:
@@ -770,7 +770,6 @@ async def search_items(
     else:
         template = "fragments/item_cards_page.html"
 
-    from datetime import datetime, timedelta
     has_filters = any([q, mt, loc, reading_status, owned, lent_out])
     ctx = {
         "items": items,
@@ -786,6 +785,53 @@ async def search_items(
         ctx.update(filter_counts)
 
     return templates.TemplateResponse(request, template, ctx)
+
+
+@router.get("/items/ids")
+async def get_filtered_ids(
+    request: Request,
+    q: str = "",
+    media_type_filter: str = "",
+    location_filter: str = "",
+    reading_status: str = "",
+    owned: str = "",
+    lent_out: str = "",
+    _=Depends(require_role("viewer")),
+):
+    """Return all item IDs matching the current filters (for Select All)."""
+    q = q[:200] if q else ""
+    mt = media_type_filter
+    loc = location_filter
+
+    conditions: list[str] = []
+    params: list = []
+    if q:
+        conditions.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+    if loc == "none":
+        conditions.append("i.location_id IS NULL")
+    elif loc:
+        conditions.append("i.location_id = ?")
+        params.append(int(loc))
+    if reading_status:
+        conditions.append("i.reading_status = ?")
+        params.append(reading_status)
+    if lent_out == "1":
+        conditions.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+    if mt:
+        conditions.append("i.media_type = ?")
+        params.append(mt)
+    if owned == "1":
+        conditions.append("i.owned = 1")
+    elif owned == "0":
+        conditions.append("i.owned = 0")
+
+    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+
+    with get_db() as db:
+        rows = db.execute(f"SELECT i.id FROM items i {where}", params).fetchall()
+
+    return {"ids": [r["id"] for r in rows]}
 
 
 @router.post("/items/bulk-update")
@@ -921,10 +967,8 @@ async def set_reading_status(request: Request, item_id: int, status: str = Form(
         updates = {"reading_status": reading_status}
 
         if status == "reading" and not old["date_started"]:
-            from datetime import date
             updates["date_started"] = date.today().isoformat()
         elif status == "read":
-            from datetime import date
             now_date = date.today().isoformat()
             updates["date_finished"] = now_date
             if not old["date_started"]:
@@ -1763,27 +1807,10 @@ async def inventory_missing(
 
     missing = [dict(i) for i in items if i["id"] not in scanned]
 
-    html_parts = []
-    if not missing:
-        html_parts.append(
-            f'<p class="text-sm text-shelf-success">All items at {loc_name} accounted for!</p>'
-        )
-    else:
-        html_parts.append(
-            f'<p class="text-sm text-shelf-warning mb-3">{len(missing)} item(s) at {loc_name} not scanned:</p>'
-        )
-        for item in missing:
-            cover = f'<img src="/covers/{item["id"]}.jpg" class="w-10 h-14 object-cover rounded" alt="">' if item["cover_path"] else '<div class="w-10 h-14 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>'
-            title = item["title"] or "Untitled"
-            authors = f'<p class="text-xs text-shelf-muted truncate">{item["authors"]}</p>' if item.get("authors") else ""
-            html_parts.append(
-                f'<div class="bg-shelf-card rounded-lg border border-shelf-border p-3 flex items-center gap-3">'
-                f'{cover}<div class="flex-1 min-w-0"><p class="font-medium text-sm truncate">'
-                f'<a href="/item/{item["id"]}" class="hover:text-shelf-accent2">{title}</a></p>{authors}</div>'
-                f'<span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-error/20 text-shelf-error">missing</span></div>'
-            )
-
-    return HTMLResponse("\n".join(html_parts))
+    return templates.TemplateResponse(
+        request, "fragments/inventory_missing.html",
+        {"missing": missing, "loc_name": loc_name},
+    )
 
 
 @router.post("/igdb/test-key")

@@ -7,12 +7,12 @@ KEY_FILE="$CERT_DIR/key.pem"
 
 # Ensure data directories exist and are owned by shelf user
 mkdir -p /data/certs /data/covers
-chown -R shelf:shelf /data
+chown shelf:shelf /data /data/certs /data/covers
 
 # Generate self-signed certificate if it doesn't exist
 if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
     echo "Generating self-signed TLS certificate..."
-    openssl req -x509 -newkey rsa:2048 -nodes \
+    openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
         -keyout "$KEY_FILE" -out "$CERT_FILE" \
         -days 3650 -subj "/CN=shelf" \
         -addext "subjectAltName=${CERT_SAN:-DNS:shelf,DNS:localhost}"

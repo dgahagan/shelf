@@ -29,6 +29,7 @@
             }
         }
     </script>
+    <meta name="csrf-token" content="">
     <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
     <script defer src="https://unpkg.com/alpinejs@3.15.9/dist/cdn.min.js" integrity="sha384-MEh8ZMZhsmD6/1Bd3kfTiGZoYIKR9u+BilQQWl5DOonh+pvKg6fP2AejtOozsZK8" crossorigin="anonymous"></script>
     <style>
@@ -248,6 +249,29 @@
     </div>
 
     <script>
+    // --- CSRF: send token with every HTMX and fetch request ---
+    (function() {
+        function getCookie(name) {
+            var m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return m ? m[1] : '';
+        }
+        document.body.addEventListener('htmx:configRequest', function(e) {
+            e.detail.headers['X-CSRF-Token'] = getCookie('csrf_token');
+        });
+        // Patch fetch for Alpine.js inline calls
+        var _fetch = window.fetch;
+        window.fetch = function(url, opts) {
+            opts = opts || {};
+            if (opts.method && opts.method !== 'GET' && opts.method !== 'HEAD') {
+                opts.headers = opts.headers || {};
+                if (!opts.headers['X-CSRF-Token']) {
+                    opts.headers['X-CSRF-Token'] = getCookie('csrf_token');
+                }
+            }
+            return _fetch.call(this, url, opts);
+        };
+    })();
+
     // --- Toast notifications ---
     function showToast(message, type) {
         var container = document.getElementById('toast-container');

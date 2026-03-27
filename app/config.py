@@ -75,11 +75,23 @@ SECRET_ENV_VARS = {
 }
 
 
-def get_client_ip(request) -> str:
-    """Extract the real client IP from proxy headers, falling back to direct connection.
+TRUSTED_PROXIES = frozenset(
+    p.strip() for p in os.environ.get("TRUSTED_PROXIES", "").split(",") if p.strip()
+)
 
-    Checks CF-Connecting-IP (Cloudflare), then X-Forwarded-For, then request.client.
+
+def get_client_ip(request) -> str:
+    """Extract the real client IP, only trusting proxy headers from TRUSTED_PROXIES.
+
+    When TRUSTED_PROXIES is configured and the direct connection is from a trusted IP,
+    checks CF-Connecting-IP (Cloudflare), then X-Forwarded-For, then request.client.
+    Otherwise ignores proxy headers to prevent IP spoofing.
     """
+    direct_ip = request.client.host if request.client else "unknown"
+
+    if not TRUSTED_PROXIES or direct_ip not in TRUSTED_PROXIES:
+        return direct_ip
+
     # Cloudflare sets this to the actual visitor IP
     cf_ip = request.headers.get("cf-connecting-ip")
     if cf_ip:
@@ -90,7 +102,7 @@ def get_client_ip(request) -> str:
     if xff:
         return xff.split(",")[0].strip()
 
-    return request.client.host if request.client else "unknown"
+    return direct_ip
 
 
 def get_setting_value(key: str, db_value: str | None = None) -> str:

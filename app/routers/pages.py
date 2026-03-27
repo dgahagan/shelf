@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
@@ -37,7 +38,9 @@ async def browse(
                 "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)"
             )
             params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-        if location_filter:
+        if location_filter == "none":
+            conditions.append("i.location_id IS NULL")
+        elif location_filter:
             conditions.append("i.location_id = ?")
             params.append(int(location_filter))
         if reading_status:
@@ -105,23 +108,23 @@ async def browse(
         has_more = len(items) < total_filtered
 
         # Build load-more URL preserving filters
-        qs_parts = []
+        qs_params: dict[str, str] = {}
         if q:
-            qs_parts.append(f"q={q}")
+            qs_params["q"] = q
         if media_type_filter:
-            qs_parts.append(f"media_type_filter={media_type_filter}")
+            qs_params["media_type_filter"] = media_type_filter
         if location_filter:
-            qs_parts.append(f"location_filter={location_filter}")
+            qs_params["location_filter"] = location_filter
         if sort != "newest":
-            qs_parts.append(f"sort={sort}")
+            qs_params["sort"] = sort
         if reading_status:
-            qs_parts.append(f"reading_status={reading_status}")
+            qs_params["reading_status"] = reading_status
         if owned:
-            qs_parts.append(f"owned={owned}")
+            qs_params["owned"] = owned
         if lent_out:
-            qs_parts.append(f"lent_out={lent_out}")
-        qs_parts.append("page=2")
-        load_more_url = "/api/search?" + "&".join(qs_parts)
+            qs_params["lent_out"] = lent_out
+        qs_params["page"] = "2"
+        load_more_url = "/api/search?" + urlencode(qs_params)
 
     return request.app.state.templates.TemplateResponse(
         request,

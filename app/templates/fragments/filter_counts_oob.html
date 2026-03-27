@@ -29,6 +29,7 @@
         hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
     <option value="" {{ 'selected' if not active_location else '' }}>All Locations ({{ filtered_total }})</option>
+    <option value="none" {{ 'selected' if active_location == 'none' else '' }}>No Location{% if no_location_count %} ({{ no_location_count }}){% endif %}</option>
     {% for loc in locations %}
     {% set lcount = location_counts.get(loc.id, 0) if location_counts else 0 %}
     <option value="{{ loc.id }}" {{ 'selected' if active_location == loc.id|string else '' }}>{{ loc.name }}{% if lcount %} ({{ lcount }}){% endif %}</option>

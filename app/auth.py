@@ -152,10 +152,22 @@ def should_refresh_token(request: Request) -> str | None:
     return None
 
 
+_user_count_cache: int | None = None
+
+
 def get_user_count() -> int:
+    global _user_count_cache
+    if _user_count_cache is not None:
+        return _user_count_cache
     with get_db() as db:
         row = db.execute("SELECT COUNT(*) as cnt FROM users").fetchone()
-        return row["cnt"] if row else 0
+        _user_count_cache = row["cnt"] if row else 0
+        return _user_count_cache
+
+
+def invalidate_user_count_cache() -> None:
+    global _user_count_cache
+    _user_count_cache = None
 
 
 def require_role(minimum_role: str):

@@ -4,6 +4,7 @@ Uses the Twitch OAuth flow to authenticate with IGDB (igdb.com).
 Supports searching games by title + platform, and looking up by IGDB game ID.
 """
 
+import asyncio
 import logging
 import time
 
@@ -18,6 +19,7 @@ IGDB_IMAGE_BASE = "https://images.igdb.com/igdb/image/upload/t_cover_big/"
 # Cached OAuth token
 _token: str | None = None
 _token_expires: float = 0
+_token_lock = asyncio.Lock()
 
 # Map our platform slugs to IGDB platform IDs
 # See: https://api-docs.igdb.com/#platform
@@ -58,29 +60,30 @@ async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClie
     """Get or refresh the Twitch OAuth token for IGDB access."""
     global _token, _token_expires
 
-    if _token and time.time() < _token_expires - 60:
-        return _token
+    async with _token_lock:
+        if _token and time.time() < _token_expires - 60:
+            return _token
 
-    try:
-        resp = await client.post(
-            TWITCH_TOKEN_URL,
-            params={
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "grant_type": "client_credentials",
-            },
-            timeout=10,
-        )
-        if resp.status_code != 200:
-            logger.debug("IGDB token request failed: HTTP %d", resp.status_code)
+        try:
+            resp = await client.post(
+                TWITCH_TOKEN_URL,
+                params={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "grant_type": "client_credentials",
+                },
+                timeout=10,
+            )
+            if resp.status_code != 200:
+                logger.debug("IGDB token request failed: HTTP %d", resp.status_code)
+                return None
+            data = resp.json()
+            _token = data["access_token"]
+            _token_expires = time.time() + data.get("expires_in", 3600)
+            return _token
+        except Exception:
+            logger.debug("IGDB token error", exc_info=True)
             return None
-        data = resp.json()
-        _token = data["access_token"]
-        _token_expires = time.time() + data.get("expires_in", 3600)
-        return _token
-    except Exception:
-        logger.debug("IGDB token error", exc_info=True)
-        return None
 
 
 async def search_games(

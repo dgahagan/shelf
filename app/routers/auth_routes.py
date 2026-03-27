@@ -6,7 +6,7 @@ from fastapi.responses import RedirectResponse, HTMLResponse
 from app.auth import (
     hash_password, verify_password, create_token,
     set_auth_cookie, clear_auth_cookie, get_user_count,
-    require_role,
+    invalidate_user_count_cache, require_role,
 )
 from app.config import get_client_ip
 from app.database import get_db
@@ -109,6 +109,7 @@ async def setup(
         )
         user = db.execute("SELECT id, username, role, display_name, token_version FROM users WHERE username = ?", (username,)).fetchone()
 
+    invalidate_user_count_cache()
     token = create_token(user["id"], user["username"], user["role"], user["display_name"], user["token_version"])
     response = RedirectResponse(url="/browse", status_code=303)
     set_auth_cookie(response, token)
@@ -156,6 +157,7 @@ async def create_user(
         logger.warning("Failed to create user '%s': username already exists", username)
         return {"ok": False, "message": "Username already exists"}
 
+    invalidate_user_count_cache()
     logger.info("User '%s' created with role '%s'", username, role)
     return {"ok": True, "message": f"User '{username}' created"}
 
@@ -291,5 +293,6 @@ async def delete_user(request: Request, user_id: int, _=Depends(require_role("ad
 
         db.execute("DELETE FROM users WHERE id = ?", (user_id,))
 
+    invalidate_user_count_cache()
     logger.info("User id=%d deleted by admin '%s'", user_id, current_user["username"])
     return {"ok": True, "message": "User deleted"}

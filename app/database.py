@@ -1,8 +1,11 @@
+import logging
 import sqlite3
 from contextlib import contextmanager
 from typing import Sequence
 
 from app.config import DATABASE_PATH, COVERS_DIR
+
+logger = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
@@ -172,8 +175,9 @@ def _run_migrations(db: sqlite3.Connection) -> None:
     for sql in COLUMN_MIGRATIONS:
         try:
             db.execute(sql)
-        except sqlite3.OperationalError:
-            pass  # column already exists
+        except sqlite3.OperationalError as e:
+            if "duplicate column" not in str(e).lower():
+                logger.warning("Migration failed: %s — %s", sql, e)
     db.executescript(MIGRATION_TABLES)
     _seed_game_platforms(db)
 
