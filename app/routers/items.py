@@ -556,30 +556,35 @@ async def search_items(
 ):
     """Search/filter items. Returns HTMX fragment of item cards."""
     templates = request.app.state.templates
-    conditions = []
-    params: list = []
 
     mt = media_type or media_type_filter
     loc = location or location_filter
 
+    # Build conditions in groups so we can compute cross-filter counts
+    base_conds = []  # search + location + reading_status + lent_out
+    base_params: list = []
     if q:
-        conditions.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
-        params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+        base_conds.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
+        base_params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+    if loc:
+        base_conds.append("i.location_id = ?")
+        base_params.append(int(loc))
+    if reading_status:
+        base_conds.append("i.reading_status = ?")
+        base_params.append(reading_status)
+    if lent_out == "1":
+        base_conds.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+
+    # Full conditions = base + type + owned
+    conditions = list(base_conds)
+    params = list(base_params)
     if mt:
         conditions.append("i.media_type = ?")
         params.append(mt)
-    if loc:
-        conditions.append("i.location_id = ?")
-        params.append(int(loc))
-    if reading_status:
-        conditions.append("i.reading_status = ?")
-        params.append(reading_status)
     if owned == "1":
         conditions.append("i.owned = 1")
     elif owned == "0":
         conditions.append("i.owned = 0")
-    if lent_out == "1":
-        conditions.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
 
     where = "WHERE " + " AND ".join(conditions) if conditions else ""
     _, order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["newest"])
@@ -596,6 +601,54 @@ async def search_items(
             f"{where} ORDER BY {order_clause} LIMIT ? OFFSET ?",
             params + [per_page, offset],
         ).fetchall()
+
+        # Cross-filter counts for dropdowns (page 1 only)
+        filter_counts = None
+        if page <= 1:
+            # Type counts: base + owned (no type filter)
+            type_conds = list(base_conds)
+            type_params = list(base_params)
+            if owned == "1":
+                type_conds.append("i.owned = 1")
+            elif owned == "0":
+                type_conds.append("i.owned = 0")
+            type_where = "WHERE " + " AND ".join(type_conds) if type_conds else ""
+            type_counts = {
+                row["media_type"]: row["c"]
+                for row in db.execute(
+                    f"SELECT media_type, COUNT(*) as c FROM items i {type_where} GROUP BY media_type",
+                    type_params,
+                ).fetchall()
+            }
+            type_total = sum(type_counts.values())
+
+            # Owned/wishlist counts: base + type (no owned filter)
+            own_conds = list(base_conds)
+            own_params = list(base_params)
+            if mt:
+                own_conds.append("i.media_type = ?")
+                own_params.append(mt)
+            own_where = "WHERE " + " AND ".join(own_conds) if own_conds else ""
+            owned_count = db.execute(
+                f"SELECT COUNT(*) as c FROM items i {own_where} AND i.owned = 1"
+                if own_where else "SELECT COUNT(*) as c FROM items i WHERE i.owned = 1",
+                own_params,
+            ).fetchone()["c"]
+            wishlist_count = db.execute(
+                f"SELECT COUNT(*) as c FROM items i {own_where} AND i.owned = 0"
+                if own_where else "SELECT COUNT(*) as c FROM items i WHERE i.owned = 0",
+                own_params,
+            ).fetchone()["c"]
+
+            filter_counts = {
+                "type_counts": type_counts,
+                "type_total": type_total,
+                "owned_count": owned_count,
+                "wishlist_count": wishlist_count,
+                "filtered_total": total,
+                "active_type": mt,
+                "active_owned": owned,
+            }
 
     has_more = (offset + per_page) < total
 
@@ -621,17 +674,77 @@ async def search_items(
     # Page 1: full grid wrapper. Page 2+: just cards (appended via outerHTML swap on load-more).
     template = "fragments/item_grid.html" if page <= 1 else "fragments/item_cards_page.html"
 
-    return templates.TemplateResponse(
-        request, template,
-        {
-            "items": items,
-            "media_types": MEDIA_TYPES,
-            "has_more": has_more,
-            "load_more_url": load_more_url,
-            "page": page,
-            "total": total,
-        },
-    )
+    ctx = {
+        "items": items,
+        "media_types": MEDIA_TYPES,
+        "has_more": has_more,
+        "load_more_url": load_more_url,
+        "page": page,
+        "total": total,
+    }
+    if filter_counts:
+        ctx.update(filter_counts)
+
+    return templates.TemplateResponse(request, template, ctx)
+
+
+@router.post("/items/bulk-update")
+async def bulk_update(request: Request, _=Depends(require_role("admin"))):
+    """Bulk update multiple items with the same field values."""
+    data = await request.json()
+    item_ids = data.get("item_ids", [])
+    updates = data.get("updates", {})
+
+    if not item_ids or not updates:
+        return {"ok": False, "message": "No items or updates specified"}
+
+    allowed = {"media_type", "location_id", "reading_status", "owned"}
+    filtered = {k: v for k, v in updates.items() if k in allowed}
+    if not filtered:
+        return {"ok": False, "message": "No valid fields to update"}
+
+    placeholders = ",".join("?" for _ in item_ids)
+    set_clause = ", ".join(f"{k} = ?" for k in filtered)
+
+    with get_db() as db:
+        db.execute(
+            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id IN ({placeholders})",
+            list(filtered.values()) + item_ids,
+        )
+
+    return {"ok": True, "updated": len(item_ids)}
+
+
+@router.post("/items/merge")
+async def merge_items(request: Request, _=Depends(require_role("admin"))):
+    """Merge multiple items into one, keeping the first as primary."""
+    data = await request.json()
+    keep_id = data.get("keep_id")
+    merge_ids = data.get("merge_ids", [])
+
+    if not keep_id or not merge_ids:
+        return {"ok": False, "message": "Specify keep_id and merge_ids"}
+
+    with get_db() as db:
+        primary = db.execute("SELECT * FROM items WHERE id = ?", (keep_id,)).fetchone()
+        if not primary:
+            return {"ok": False, "message": "Primary item not found"}
+
+        fillable = ["subtitle", "authors", "publisher", "publish_year", "page_count",
+                     "description", "series_name", "narrator", "isbn"]
+        for mid in merge_ids:
+            other = db.execute("SELECT * FROM items WHERE id = ?", (mid,)).fetchone()
+            if not other:
+                continue
+            for field in fillable:
+                if not primary[field] and other[field]:
+                    db.execute(f"UPDATE items SET {field} = ? WHERE id = ?", (other[field], keep_id))
+
+            db.execute("UPDATE scan_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
+            db.execute("UPDATE reading_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
+            db.execute("DELETE FROM items WHERE id = ?", (mid,))
+
+    return {"ok": True, "merged": len(merge_ids)}
 
 
 @router.post("/items/{item_id}")
@@ -1600,67 +1713,6 @@ def _update_from_csv_row(db, item_id: int, row: dict):
             f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
             list(updates.values()) + [item_id],
         )
-
-
-@router.post("/items/bulk-update")
-async def bulk_update(request: Request, _=Depends(require_role("admin"))):
-    """Bulk update multiple items with the same field values."""
-    data = await request.json()
-    item_ids = data.get("item_ids", [])
-    updates = data.get("updates", {})
-
-    if not item_ids or not updates:
-        return {"ok": False, "message": "No items or updates specified"}
-
-    allowed = {"media_type", "location_id", "reading_status", "owned"}
-    filtered = {k: v for k, v in updates.items() if k in allowed}
-    if not filtered:
-        return {"ok": False, "message": "No valid fields to update"}
-
-    placeholders = ",".join("?" for _ in item_ids)
-    set_clause = ", ".join(f"{k} = ?" for k in filtered)
-
-    with get_db() as db:
-        db.execute(
-            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id IN ({placeholders})",
-            list(filtered.values()) + item_ids,
-        )
-
-    return {"ok": True, "updated": len(item_ids)}
-
-
-@router.post("/items/merge")
-async def merge_items(request: Request, _=Depends(require_role("admin"))):
-    """Merge multiple items into one, keeping the first as primary."""
-    data = await request.json()
-    keep_id = data.get("keep_id")
-    merge_ids = data.get("merge_ids", [])
-
-    if not keep_id or not merge_ids:
-        return {"ok": False, "message": "Specify keep_id and merge_ids"}
-
-    with get_db() as db:
-        primary = db.execute("SELECT * FROM items WHERE id = ?", (keep_id,)).fetchone()
-        if not primary:
-            return {"ok": False, "message": "Primary item not found"}
-
-        # Merge non-null fields from merged items into primary
-        fillable = ["subtitle", "authors", "publisher", "publish_year", "page_count",
-                     "description", "series_name", "narrator", "isbn"]
-        for mid in merge_ids:
-            other = db.execute("SELECT * FROM items WHERE id = ?", (mid,)).fetchone()
-            if not other:
-                continue
-            for field in fillable:
-                if not primary[field] and other[field]:
-                    db.execute(f"UPDATE items SET {field} = ? WHERE id = ?", (other[field], keep_id))
-
-            # Move related records
-            db.execute("UPDATE scan_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
-            db.execute("UPDATE reading_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
-            db.execute("DELETE FROM items WHERE id = ?", (mid,))
-
-    return {"ok": True, "merged": len(merge_ids)}
 
 
 def _log_scan(isbn: str, media_type: str, result: str, item_id: int | None = None, mode: str = "add"):

@@ -53,7 +53,8 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
             "SELECT COUNT(DISTINCT item_id) as c FROM checkouts WHERE checked_in IS NULL"
         ).fetchone()["c"]
         if not q:
-            has_more = total_count > 60
+            has_more = total_count > DEFAULT_PAGE_SIZE
+        load_more_url = f"/api/search?page=2&q={q}" if q else "/api/search?page=2"
     return request.app.state.templates.TemplateResponse(
         request,
         "browse.html",
@@ -67,6 +68,7 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
             "wishlist_count": wishlist_count,
             "lent_out_count": lent_out_count,
             "has_more": has_more,
+            "load_more_url": load_more_url,
             "initial_query": q,
         },
     )

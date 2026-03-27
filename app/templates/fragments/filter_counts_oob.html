@@ -1,0 +1,25 @@
+{% if filtered_total is defined %}
+<span id="collection-count" hx-swap-oob="true" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span>
+
+<select id="type-filter" name="media_type_filter" hx-swap-oob="true"
+        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+    <option value="" {{ 'selected' if not active_type else '' }}>All Types ({{ type_total }})</option>
+    {% for key, label in media_types.items() %}
+    {% set count = type_counts.get(key, 0) %}
+    {% if count > 0 %}
+    <option value="{{ key }}" {{ 'selected' if active_type == key else '' }}>{{ label }} ({{ count }})</option>
+    {% endif %}
+    {% endfor %}
+</select>
+
+<select id="owned-filter" name="owned" hx-swap-oob="true"
+        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out']"
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+    <option value="" {{ 'selected' if not active_owned else '' }}>All ({{ owned_count + wishlist_count }})</option>
+    <option value="1" {{ 'selected' if active_owned == '1' else '' }}>Owned ({{ owned_count }})</option>
+    <option value="0" {{ 'selected' if active_owned == '0' else '' }}>Wishlist ({{ wishlist_count }})</option>
+</select>
+{% endif %}

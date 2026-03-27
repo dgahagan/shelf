@@ -7,21 +7,21 @@
          class="fixed bottom-0 inset-x-0 z-40 bg-shelf-card border-t border-shelf-border py-3 px-4 shadow-lg">
         <div class="max-w-7xl mx-auto flex items-center gap-3 flex-wrap">
             <span class="text-sm text-shelf-muted" x-text="selectedIds.length + ' selected'"></span>
-            <select x-ref="bulkLocation" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+            <select x-model="bulkLocationVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
                 <option value="">Move to location...</option>
                 {% for loc in locations %}
                 <option value="{{ loc.id }}">{{ loc.name }}</option>
                 {% endfor %}
             </select>
-            <button @click="bulkUpdate({location_id: parseInt($refs.bulkLocation.value) || null})" x-show="$refs.bulkLocation && $refs.bulkLocation.value"
+            <button @click="bulkUpdate({location_id: parseInt(bulkLocationVal) || null})" x-show="bulkLocationVal"
                     class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
-            <select x-ref="bulkType" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+            <select x-model="bulkTypeVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
                 <option value="">Change type...</option>
                 {% for key, label in media_types.items() %}
                 <option value="{{ key }}">{{ label }}</option>
                 {% endfor %}
             </select>
-            <button @click="bulkUpdate({media_type: $refs.bulkType.value})" x-show="$refs.bulkType && $refs.bulkType.value"
+            <button @click="bulkUpdate({media_type: bulkTypeVal})" x-show="bulkTypeVal"
                     class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
             <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">Delete Selected</button>
         </div>
@@ -30,7 +30,7 @@
     <!-- Header + Filters -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold">Collection <span class="text-shelf-muted text-lg font-normal">({{ total_count }})</span></h1>
+            <h1 class="text-2xl font-bold">Collection <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ total_count }})</span></h1>
             <button @click="selectMode = !selectMode; if(!selectMode) selectedIds = []"
                     :class="selectMode ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
                     class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">
@@ -45,7 +45,7 @@
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
 
             <!-- Media Type Filter -->
-            <select name="media_type_filter"
+            <select id="type-filter" name="media_type_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
@@ -70,7 +70,7 @@
             </select>
 
             <!-- Owned / Wishlist Filter -->
-            <select name="owned"
+            <select id="owned-filter" name="owned"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
@@ -126,6 +126,8 @@ function browsePage() {
     return {
         selectMode: false,
         selectedIds: [],
+        bulkLocationVal: '',
+        bulkTypeVal: '',
         toggleItem(id) {
             var idx = this.selectedIds.indexOf(id);
             if (idx >= 0) this.selectedIds.splice(idx, 1);
@@ -133,16 +135,22 @@ function browsePage() {
         },
         async bulkUpdate(updates) {
             if (!this.selectedIds.length) return;
-            var resp = await fetch('/api/items/bulk-update', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({item_ids: this.selectedIds, updates: updates})
-            });
-            var data = await resp.json();
-            if (data.ok) {
-                showToast('Updated ' + data.updated + ' items', 'success');
-                this.selectedIds = [];
-                location.reload();
+            try {
+                var resp = await fetch('/api/items/bulk-update', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({item_ids: this.selectedIds, updates: updates})
+                });
+                var data = await resp.json();
+                if (data.ok) {
+                    showToast('Updated ' + data.updated + ' items', 'success');
+                    this.selectedIds = [];
+                    location.reload();
+                } else {
+                    showToast(data.message || 'Update failed', 'error');
+                }
+            } catch (e) {
+                showToast('Update failed: ' + e.message, 'error');
             }
         },
         async bulkDelete() {
