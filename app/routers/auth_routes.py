@@ -33,7 +33,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
     templates = request.app.state.templates
     with get_db() as db:
         user = db.execute(
-            "SELECT id, username, password, role, display_name FROM users WHERE username = ?",
+            "SELECT id, username, password, role, display_name, token_version FROM users WHERE username = ?",
             (username,),
         ).fetchone()
 
@@ -45,7 +45,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
             status_code=401,
         )
 
-    token = create_token(user["id"], user["username"], user["role"], user["display_name"])
+    token = create_token(user["id"], user["username"], user["role"], user["display_name"], user["token_version"])
     response = RedirectResponse(url="/browse", status_code=303)
     set_auth_cookie(response, token)
     logger.info("User '%s' logged in from %s", username, get_client_ip(request))
@@ -107,9 +107,9 @@ async def setup(
             "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, 'admin')",
             (username, hash_password(password), display_name),
         )
-        user = db.execute("SELECT id, username, role, display_name FROM users WHERE username = ?", (username,)).fetchone()
+        user = db.execute("SELECT id, username, role, display_name, token_version FROM users WHERE username = ?", (username,)).fetchone()
 
-    token = create_token(user["id"], user["username"], user["role"], user["display_name"])
+    token = create_token(user["id"], user["username"], user["role"], user["display_name"], user["token_version"])
     response = RedirectResponse(url="/browse", status_code=303)
     set_auth_cookie(response, token)
     logger.info("Setup completed: admin user '%s' created", username)
@@ -183,12 +183,12 @@ async def update_user_role(
                 return {"ok": False, "message": "Cannot demote the last admin"}
 
         db.execute(
-            "UPDATE users SET role = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE users SET role = ?, token_version = token_version + 1, updated_at = datetime('now') WHERE id = ?",
             (role, user_id),
         )
 
     logger.info("User id=%d role changed to '%s' by user '%s'", user_id, role, current_user["username"])
-    return {"ok": True, "message": "Role updated"}
+    return {"ok": True, "message": "Role updated — user's sessions have been invalidated"}
 
 
 @router.post("/api/users/{user_id}/password")
@@ -206,12 +206,12 @@ async def reset_user_password(
         if not target:
             return {"ok": False, "message": "User not found"}
         db.execute(
-            "UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE users SET password = ?, token_version = token_version + 1, updated_at = datetime('now') WHERE id = ?",
             (hash_password(password), user_id),
         )
 
     logger.info("Password reset for user id=%d by admin", user_id)
-    return {"ok": True, "message": "Password updated"}
+    return {"ok": True, "message": "Password updated — user's sessions have been invalidated"}
 
 
 @router.post("/api/account/password")
@@ -232,12 +232,19 @@ async def change_own_password(
             logger.warning("Failed password change attempt for user '%s'", user["username"])
             return {"ok": False, "message": "Current password is incorrect"}
         db.execute(
-            "UPDATE users SET password = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE users SET password = ?, token_version = token_version + 1, updated_at = datetime('now') WHERE id = ?",
             (hash_password(new_password), user["id"]),
         )
+        row = db.execute("SELECT token_version FROM users WHERE id = ?", (user["id"],)).fetchone()
+        new_tv = row["token_version"]
 
     logger.info("User '%s' changed their password", user["username"])
-    return {"ok": True, "message": "Password changed"}
+    # Issue a new token with updated version so the user stays logged in
+    new_token = create_token(user["id"], user["username"], user["role"], user.get("display_name"), new_tv)
+    from fastapi.responses import JSONResponse
+    resp = JSONResponse({"ok": True, "message": "Password changed"})
+    set_auth_cookie(resp, new_token)
+    return resp
 
 
 @router.post("/api/account/display-name")

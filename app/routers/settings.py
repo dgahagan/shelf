@@ -64,10 +64,25 @@ async def restore_backup(request: Request):
     tmp_path = DATA_DIR / "shelf_restore_tmp.db"
     tmp_path.write_bytes(content)
 
-    # Validate: try opening as SQLite and check for items table
+    # Validate: try opening as SQLite, check for items table, reject dangerous objects
     try:
         conn = sqlite3.connect(str(tmp_path))
         conn.execute("SELECT COUNT(*) FROM items")
+
+        # Reject databases with triggers (could execute arbitrary SQL on queries)
+        triggers = conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger'").fetchall()
+        if triggers:
+            conn.close()
+            tmp_path.unlink(missing_ok=True)
+            return {"ok": False, "message": "Database contains triggers — not allowed"}
+
+        # Reject databases with attached databases
+        dbs = conn.execute("PRAGMA database_list").fetchall()
+        if len(dbs) > 1:
+            conn.close()
+            tmp_path.unlink(missing_ok=True)
+            return {"ok": False, "message": "Database has attached databases — not allowed"}
+
         conn.close()
     except Exception:
         tmp_path.unlink(missing_ok=True)
@@ -78,4 +93,8 @@ async def restore_backup(request: Request):
     shutil.copy2(str(tmp_path), str(DATABASE_PATH))
     tmp_path.unlink(missing_ok=True)
 
-    return {"ok": True, "message": "Database restored. Restart the container to apply."}
+    # Rotate the secret key to invalidate all existing JWT tokens
+    from app.auth import _rotate_secret_key
+    _rotate_secret_key()
+
+    return {"ok": True, "message": "Database restored. All sessions invalidated. Restart the container to apply."}

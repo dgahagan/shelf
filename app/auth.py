@@ -44,6 +44,19 @@ def get_secret_key() -> str:
         return _cached_secret_key
 
 
+def _rotate_secret_key() -> None:
+    """Generate a new secret key, invalidating all existing JWTs."""
+    global _cached_secret_key
+    key = secrets.token_hex(32)
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO settings (key, value) VALUES ('secret_key', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = ?",
+            (key, key),
+        )
+    _cached_secret_key = key
+
+
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
@@ -52,13 +65,14 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_token(user_id: int, username: str, role: str, display_name: str | None = None) -> str:
+def create_token(user_id: int, username: str, role: str, display_name: str | None = None, token_version: int = 1) -> str:
     now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "username": username,
         "role": role,
         "display_name": display_name or username,
+        "tv": token_version,
         "iat": now,
         "exp": now + timedelta(seconds=JWT_EXPIRY_SECONDS),
     }
@@ -100,6 +114,16 @@ def get_current_user(request: Request) -> dict | None:
     payload = decode_token(token)
     if not payload:
         return None
+
+    # Check token version against DB to detect invalidated tokens
+    token_tv = payload.get("tv", 1)
+    with get_db() as db:
+        row = db.execute("SELECT token_version FROM users WHERE id = ?", (payload["sub"],)).fetchone()
+        if not row:
+            return None
+        if row["token_version"] != token_tv:
+            return None
+
     return {
         "id": payload["sub"],
         "username": payload["username"],
@@ -123,7 +147,7 @@ def should_refresh_token(request: Request) -> str | None:
     if now > iat + half_life:
         return create_token(
             payload["sub"], payload["username"], payload["role"],
-            payload.get("display_name"),
+            payload.get("display_name"), payload.get("tv", 1),
         )
     return None
 

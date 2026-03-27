@@ -46,7 +46,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-_SKIP_AUTH_PATHS = frozenset({"/login", "/setup"})
+_SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/health"})
 _SKIP_AUTH_PREFIXES = ("/static/", "/covers/")
 
 
@@ -93,12 +93,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.rpm = requests_per_minute
         self._hits: dict[str, list[float]] = {}
+        self._last_cleanup: float = 0.0
 
     async def dispatch(self, request: Request, call_next) -> Response:
         import time
 
-        # Disable rate limiting in tests
-        if os.environ.get("TESTING"):
+        # Disable rate limiting when explicitly configured (e.g. test suite)
+        if os.environ.get("SHELF_DISABLE_RATE_LIMIT"):
             return await call_next(request)
 
         # Only rate-limit API and auth endpoints
@@ -119,13 +120,14 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         hits.append(now)
         self._hits[ip] = hits
 
-        # Periodic cleanup of stale IPs (every ~100 requests)
-        if len(self._hits) > 1000:
+        # Periodic cleanup: by entry count (>200) or by time (every 60s)
+        if len(self._hits) > 200 or (now - self._last_cleanup > 60):
             self._hits = {
                 k: [t for t in v if t > window]
                 for k, v in self._hits.items()
                 if any(t > window for t in v)
             }
+            self._last_cleanup = now
 
         return await call_next(request)
 
@@ -282,6 +284,17 @@ app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 # Serve cached covers from data volume
 COVERS_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/covers", StaticFiles(directory=str(COVERS_DIR)), name="covers")
+
+# Health check (unauthenticated, for container orchestration)
+@app.get("/health")
+async def health():
+    try:
+        with get_db() as db:
+            db.execute("SELECT 1")
+        return {"status": "ok"}
+    except Exception:
+        return Response("Database unavailable", status_code=503)
+
 
 # Routers
 app.include_router(auth_routes.router)

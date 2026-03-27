@@ -84,6 +84,8 @@ COLUMN_MIGRATIONS: Sequence[str] = (
     "ALTER TABLE items ADD COLUMN platform TEXT DEFAULT NULL",
     # Phase 8: Scan Modes
     "ALTER TABLE scan_log ADD COLUMN mode TEXT DEFAULT 'add'",
+    # Security: token version for JWT invalidation
+    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1",
 )
 
 MIGRATION_TABLES = """
@@ -146,13 +148,14 @@ CREATE INDEX IF NOT EXISTS idx_log_entries_timestamp ON log_entries(timestamp);
 CREATE INDEX IF NOT EXISTS idx_log_entries_level ON log_entries(level);
 
 CREATE TABLE IF NOT EXISTS users (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    username     TEXT NOT NULL UNIQUE COLLATE NOCASE,
-    password     TEXT NOT NULL,
-    display_name TEXT,
-    role         TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','editor','viewer')),
-    created_at   TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    username       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    password       TEXT NOT NULL,
+    display_name   TEXT,
+    role           TEXT NOT NULL DEFAULT 'viewer' CHECK(role IN ('admin','editor','viewer')),
+    token_version  INTEGER NOT NULL DEFAULT 1,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE TABLE IF NOT EXISTS game_platforms (

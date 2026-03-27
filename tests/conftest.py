@@ -46,7 +46,7 @@ def db():
 @pytest.fixture
 def client(monkeypatch):
     """FastAPI TestClient with rate limiting disabled."""
-    monkeypatch.setenv("TESTING", "1")
+    monkeypatch.setenv("SHELF_DISABLE_RATE_LIMIT", "1")
     from app.main import app
     return TestClient(app, base_url="https://testserver")
 

@@ -40,7 +40,7 @@ async def download_cover(item_id: int, isbn: str | None, cover_url: str | None, 
             return f"covers/{item_id}.jpg"
 
     # Try Hardcover cover image
-    if hardcover_cover_url:
+    if hardcover_cover_url and is_allowed_cover_url(hardcover_cover_url):
         if await _download(hardcover_cover_url, dest, client):
             return f"covers/{item_id}.jpg"
 
@@ -53,7 +53,7 @@ async def download_cover(item_id: int, isbn: str | None, cover_url: str | None, 
                 return f"covers/{item_id}.jpg"
 
     # Try provided cover URL (e.g., from Google Books)
-    if cover_url:
+    if cover_url and is_allowed_cover_url(cover_url):
         if await _download(cover_url, dest, client):
             return f"covers/{item_id}.jpg"
 
@@ -99,7 +99,8 @@ async def search_cover_by_title(title: str, author: str | None, client: httpx.As
         if author:
             q += f"+inauthor:{author.split(',')[0].split('&')[0].strip()}"
         resp = await client.get(
-            f"https://www.googleapis.com/books/v1/volumes?q={q}&maxResults=5",
+            "https://www.googleapis.com/books/v1/volumes",
+            params={"q": q, "maxResults": "5"},
             timeout=10,
         )
         if resp.status_code == 200:

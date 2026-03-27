@@ -558,6 +558,9 @@ async def search_items(
     """Search/filter items. Returns HTMX fragment of item cards."""
     templates = request.app.state.templates
 
+    # Truncate search query to prevent slow LIKE scans
+    q = q[:200] if q else ""
+
     mt = media_type or media_type_filter
     loc = location or location_filter
 
@@ -789,11 +792,16 @@ async def search_items(
 async def bulk_update(request: Request, _=Depends(require_role("admin"))):
     """Bulk update multiple items with the same field values."""
     data = await request.json()
-    item_ids = data.get("item_ids", [])
+    raw_ids = data.get("item_ids", [])
     updates = data.get("updates", {})
 
-    if not item_ids or not updates:
+    if not raw_ids or not updates:
         return {"ok": False, "message": "No items or updates specified"}
+
+    try:
+        item_ids = [int(i) for i in raw_ids]
+    except (ValueError, TypeError):
+        return {"ok": False, "message": "Invalid item IDs"}
 
     allowed = {"media_type", "location_id", "reading_status", "owned"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
@@ -816,8 +824,11 @@ async def bulk_update(request: Request, _=Depends(require_role("admin"))):
 async def merge_items(request: Request, _=Depends(require_role("admin"))):
     """Merge multiple items into one, keeping the first as primary."""
     data = await request.json()
-    keep_id = data.get("keep_id")
-    merge_ids = data.get("merge_ids", [])
+    try:
+        keep_id = int(data.get("keep_id", 0))
+        merge_ids = [int(i) for i in data.get("merge_ids", [])]
+    except (ValueError, TypeError):
+        return {"ok": False, "message": "Invalid item IDs"}
 
     if not keep_id or not merge_ids:
         return {"ok": False, "message": "Specify keep_id and merge_ids"}
@@ -997,7 +1008,7 @@ async def cover_search(request: Request, item_id: int, _=Depends(require_role("e
     if not item:
         return HTMLResponse("Not found", status_code=404)
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         candidates = await covers.search_cover_by_title(item["title"], item["authors"], client)
 
     return templates.TemplateResponse(
