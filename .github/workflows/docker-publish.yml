@@ -1,0 +1,62 @@
+name: Publish Docker image
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag_override:
+        description: 'Optional image tag override (e.g. "beta", "test")'
+        required: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: dgahagan/shelf
+          tags: |
+            # For "v1.2.3" → "1.2.3"
+            type=semver,pattern={{version}}
+            # For "v1.2.3" → "1.2"
+            type=semver,pattern={{major}}.{{minor}}
+            # For "v1.2.3-beta.1" → tag includes the prerelease
+            type=semver,pattern={{version}}
+            # Tag "beta" on any prerelease tag containing "beta"
+            type=raw,value=beta,enable=${{ contains(github.ref, 'beta') }}
+            # Tag "latest" only on stable (non-prerelease) tags
+            type=raw,value=latest,enable=${{ !contains(github.ref, '-') }}
+            # Manual dispatch override
+            type=raw,value=${{ inputs.tag_override }},enable=${{ inputs.tag_override != '' }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: dgahagan/shelf
+          readme-filepath: ./DOCKERHUB_README.md
+          short-description: "Self-hosted home library catalog with barcode scanning and automatic metadata lookup"
