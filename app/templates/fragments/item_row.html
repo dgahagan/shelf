@@ -1,0 +1,43 @@
+<tr class="border-b border-shelf-border hover:bg-shelf-hover/50 transition-colors cursor-pointer"
+    data-item-id="{{ item.id }}"
+    @click="selectMode ? toggleItem({{ item.id }}) : window.location='/item/{{ item.id }}'"
+    :class="selectedIds && selectedIds.includes({{ item.id }}) ? 'bg-shelf-accent/10' : ''">
+    <td x-show="selectMode" class="px-3 py-2 w-8">
+        <div class="w-5 h-5 rounded border-2 flex items-center justify-center text-xs"
+             :class="selectedIds.includes({{ item.id }}) ? 'bg-shelf-accent border-shelf-accent text-white' : 'border-shelf-border'">
+            <span x-show="selectedIds.includes({{ item.id }})">&#10003;</span>
+        </div>
+    </td>
+    <td class="px-3 py-2 w-10">
+        {% if item.cover_path %}
+        <img src="/{{ item.cover_path }}" alt="" class="w-8 h-12 object-cover rounded" loading="lazy">
+        {% else %}
+        <div class="w-8 h-12 bg-shelf-hover rounded flex items-center justify-center">
+            <svg class="w-4 h-4 text-shelf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        </div>
+        {% endif %}
+    </td>
+    <td class="px-3 py-2">
+        <div class="flex items-center gap-2">
+            <span class="text-shelf-text text-sm font-medium truncate max-w-xs">{{ item.title }}</span>
+            {% if not item.owned %}
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">Wishlist</span>
+            {% endif %}
+            {% if item.created_at and item.created_at >= seven_days_ago %}
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-accent/80 text-white shrink-0">New</span>
+            {% endif %}
+        </div>
+    </td>
+    <td class="px-3 py-2 text-shelf-muted text-sm truncate max-w-[200px] hidden md:table-cell">{{ item.authors or '—' }}</td>
+    <td class="px-3 py-2 text-shelf-muted text-xs hidden lg:table-cell">{{ media_types.get(item.media_type, item.media_type or '—') }}</td>
+    <td class="px-3 py-2 text-shelf-muted text-xs hidden lg:table-cell">{{ item.location_name or '—' }}</td>
+    <td class="px-3 py-2 hidden sm:table-cell">
+        {% if item.reading_status == 'read' %}
+        <span class="w-2.5 h-2.5 rounded-full bg-shelf-success inline-block"></span>
+        {% elif item.reading_status == 'reading' %}
+        <span class="w-2.5 h-2.5 rounded-full bg-shelf-accent2 inline-block"></span>
+        {% elif item.reading_status == 'want_to_read' %}
+        <span class="w-2.5 h-2.5 rounded-full bg-shelf-warning inline-block"></span>
+        {% endif %}
+    </td>
+</tr>

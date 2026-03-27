@@ -206,17 +206,44 @@
     <!-- Toast container -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
+    <!-- Keyboard shortcut help button -->
+    <button onclick="document.getElementById('shortcut-modal').classList.toggle('hidden')"
+            class="fixed bottom-4 left-4 z-40 w-8 h-8 bg-shelf-card border border-shelf-border rounded-full text-shelf-muted hover:text-shelf-accent2 hover:border-shelf-accent/50 transition-colors flex items-center justify-center text-sm font-bold shadow-lg"
+            title="Keyboard shortcuts (?)">?</button>
+
     <!-- Keyboard shortcuts help modal -->
     <div id="shortcut-modal" class="fixed inset-0 bg-black/60 z-[200] hidden items-center justify-center" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-sm w-full mx-4 shadow-2xl">
-            <h3 class="text-lg font-bold mb-4">Keyboard Shortcuts</h3>
-            <div class="space-y-2 text-sm">
-                <div class="flex justify-between"><span class="text-shelf-muted">Focus search</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">/</kbd></div>
-                <div class="flex justify-between"><span class="text-shelf-muted">Go to Scan</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">s</kbd></div>
-                <div class="flex justify-between"><span class="text-shelf-muted">Go to Browse</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">b</kbd></div>
-                <div class="flex justify-between"><span class="text-shelf-muted">This help</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text">?</kbd></div>
+        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-bold">Keyboard Shortcuts</h3>
+                <button onclick="this.closest('#shortcut-modal').classList.add('hidden')" class="text-shelf-muted hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
             </div>
-            <button onclick="this.closest('#shortcut-modal').classList.add('hidden')" class="mt-4 w-full text-center text-sm text-shelf-muted hover:text-shelf-text">Close</button>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <h4 class="text-shelf-accent2 font-medium mb-2 text-xs uppercase tracking-wider">Global</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between"><span class="text-shelf-muted">Focus search</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">/</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Go to Scan</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">s</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Go to Browse</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">b</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Show shortcuts</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">?</kbd></div>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-shelf-accent2 font-medium mb-2 text-xs uppercase tracking-wider">Browse Page</h4>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between"><span class="text-shelf-muted">Toggle grid / list view</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">g</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Toggle select mode</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">e</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Toggle filters (mobile)</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">f</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Clear all filters</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">x</kbd></div>
+                        <div class="flex justify-between"><span class="text-shelf-muted">Exit select / blur search</span><kbd class="bg-shelf-hover px-2 py-0.5 rounded text-shelf-text font-mono">Esc</kbd></div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-shelf-border text-center">
+                <span class="text-xs text-shelf-muted">Shortcuts are disabled when typing in inputs</span>
+            </div>
         </div>
     </div>
 

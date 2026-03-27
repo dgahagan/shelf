@@ -1,4 +1,5 @@
 {% if items %}
+<template x-if="viewMode === 'grid'">
 <div class="cover-grid">
     {% for item in items %}
     {% include "fragments/item_card.html" %}
@@ -10,6 +11,35 @@
     </div>
     {% endif %}
 </div>
+</template>
+<template x-if="viewMode === 'list'">
+<div class="overflow-x-auto">
+    <table class="w-full text-left">
+        <thead>
+            <tr class="border-b border-shelf-border text-shelf-muted text-xs uppercase tracking-wider">
+                <th x-show="selectMode" class="px-3 py-2 w-8"></th>
+                <th class="px-3 py-2 w-10"></th>
+                <th class="px-3 py-2">Title</th>
+                <th class="px-3 py-2 hidden md:table-cell">Author</th>
+                <th class="px-3 py-2 hidden lg:table-cell">Type</th>
+                <th class="px-3 py-2 hidden lg:table-cell">Location</th>
+                <th class="px-3 py-2 hidden sm:table-cell">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            {% include "fragments/item_row.html" %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if has_more is defined and has_more %}
+    <div id="load-more" class="text-center py-4"
+         hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML">
+        <div class="inline-block w-6 h-6 border-2 border-shelf-border border-t-shelf-accent rounded-full animate-spin"></div>
+    </div>
+    {% endif %}
+</div>
+</template>
 {% else %}
 <div class="text-center py-20">
     <svg class="mx-auto mb-4 w-16 h-16 text-shelf-border" fill="none" stroke="currentColor" viewBox="0 0 24 24">

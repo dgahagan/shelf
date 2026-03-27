@@ -3,7 +3,7 @@
 
 <select id="type-filter" name="media_type_filter" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-        hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
+        hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
     <option value="" {{ 'selected' if not active_type else '' }}>All Types ({{ type_total }})</option>
     {% for key, label in media_types.items() %}
@@ -16,7 +16,7 @@
 
 <select id="owned-filter" name="owned" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-        hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out']"
+        hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out'],[name='view']"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
     <option value="" {{ 'selected' if not active_owned else '' }}>All ({{ owned_count + wishlist_count }})</option>
     <option value="1" {{ 'selected' if active_owned == '1' else '' }}>Owned ({{ owned_count }})</option>
@@ -26,7 +26,7 @@
 {% if locations is defined %}
 <select id="location-filter" name="location_filter" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-        hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
+        hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
     <option value="" {{ 'selected' if not active_location else '' }}>All Locations ({{ filtered_total }})</option>
     {% for loc in locations %}
@@ -40,7 +40,7 @@
 {% set rsc = reading_status_counts or {} %}
 <select id="reading-status-filter" name="reading_status" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-        hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out']"
+        hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out'],[name='view']"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
     <option value="" {{ 'selected' if not active_reading_status else '' }}>All Statuses</option>
     <option value="want_to_read" {{ 'selected' if active_reading_status == 'want_to_read' else '' }}>Want to Read{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>

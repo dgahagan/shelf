@@ -550,6 +550,7 @@ async def search_items(
     reading_status: str = "",
     owned: str = "",
     lent_out: str = "",
+    view: str = "",
     page: int = 1,
     per_page: int = DEFAULT_PAGE_SIZE,
     _=Depends(require_role("viewer")),
@@ -753,12 +754,20 @@ async def search_items(
         qs_parts.append(f"owned={owned}")
     if lent_out:
         qs_parts.append(f"lent_out={lent_out}")
+    if view:
+        qs_parts.append(f"view={view}")
     qs_parts.append(f"page={page + 1}")
     load_more_url = "/api/search?" + "&".join(qs_parts)
 
-    # Page 1: full grid wrapper. Page 2+: just cards (appended via outerHTML swap on load-more).
-    template = "fragments/item_grid.html" if page <= 1 else "fragments/item_cards_page.html"
+    # Page 1: full grid wrapper. Page 2+: just cards/rows (appended via outerHTML swap on load-more).
+    if page <= 1:
+        template = "fragments/item_grid.html"
+    elif view == "list":
+        template = "fragments/item_rows_page.html"
+    else:
+        template = "fragments/item_cards_page.html"
 
+    from datetime import datetime, timedelta
     has_filters = any([q, mt, loc, reading_status, owned, lent_out])
     ctx = {
         "items": items,
@@ -768,6 +777,7 @@ async def search_items(
         "page": page,
         "total": total,
         "has_filters": has_filters,
+        "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
     }
     if filter_counts:
         ctx.update(filter_counts)

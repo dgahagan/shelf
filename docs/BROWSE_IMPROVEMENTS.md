@@ -143,9 +143,9 @@ Items added in the last 7 days could show a subtle "New" badge, making it easy t
 | ~~P2~~ | ~~#14 Counts on all dropdowns~~ | ~~1 hr~~ | Done |
 | ~~P2~~ | ~~#16 Sort persistence~~ | ~~15 min~~ | Done |
 | ~~P2~~ | ~~#9 Better empty state~~ | ~~15 min~~ | Done |
-| P3 | #12 Grid/list toggle | 2-3 hrs | |
-| P3 | #13 Keyboard shortcuts | 1 hr | |
-| P3 | #7 Responsive filter collapse | 1-2 hrs | |
-| P3 | #5 Select mode discoverability | 30 min | |
-| P3 | #15 Batch rating | 30 min | |
-| P3 | #17 Recently added badge | 30 min | |
+| ~~P3~~ | ~~#12 Grid/list toggle~~ | ~~2-3 hrs~~ | Done |
+| ~~P3~~ | ~~#13 Keyboard shortcuts~~ | ~~1 hr~~ | Done |
+| ~~P3~~ | ~~#7 Responsive filter collapse~~ | ~~1-2 hrs~~ | Done |
+| ~~P3~~ | ~~#5 Select mode discoverability~~ | ~~30 min~~ | Done |
+| ~~P3~~ | ~~#15 Batch rating~~ | ~~30 min~~ | Done |
+| ~~P3~~ | ~~#17 Recently added badge~~ | ~~30 min~~ | Done |

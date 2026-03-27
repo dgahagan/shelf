@@ -23,6 +23,15 @@
             </select>
             <button @click="bulkUpdate({media_type: bulkTypeVal})" x-show="bulkTypeVal"
                     class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+            <select x-model="bulkStatusVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                <option value="">Set status...</option>
+                <option value="want_to_read">Want to Read</option>
+                <option value="reading">Reading</option>
+                <option value="read">Read</option>
+                <option value="__clear__">Clear Status</option>
+            </select>
+            <button @click="bulkUpdate({reading_status: bulkStatusVal === '__clear__' ? '' : bulkStatusVal})" x-show="bulkStatusVal"
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
             <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">Delete Selected</button>
         </div>
     </div>
@@ -31,11 +40,32 @@
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div class="flex items-center gap-3">
             <h1 class="text-2xl font-bold">Collection <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ total_count }})</span></h1>
-            <button @click="selectMode = !selectMode; if(!selectMode) selectedIds = []"
-                    :class="selectMode ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
-                    class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">
-                <span x-text="selectMode ? 'Done' : 'Select'"></span>
-            </button>
+            <!-- View toggle -->
+            <div class="flex items-center bg-shelf-card border border-shelf-border rounded-lg overflow-hidden">
+                <button @click="setView('grid')" :class="viewMode === 'grid' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
+                        class="p-1.5 transition-colors" title="Grid view">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+                </button>
+                <button @click="setView('list')" :class="viewMode === 'list' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
+                        class="p-1.5 transition-colors" title="List view">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+            </div>
+            <!-- Select mode -->
+            <div class="relative" x-data="{ showSelectTip: false }">
+                <button @click="selectMode = !selectMode; if(!selectMode) selectedIds = []; localStorage.setItem('shelf-select-used', '1')"
+                        @mouseenter="showSelectTip = !localStorage.getItem('shelf-select-used')"
+                        @mouseleave="showSelectTip = false"
+                        :class="selectMode ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
+                        class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">
+                    <span x-text="selectMode ? 'Done' : 'Select'"></span>
+                </button>
+                <!-- First-use tooltip -->
+                <div x-show="showSelectTip" x-transition
+                     class="absolute top-full left-0 mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg p-2 shadow-xl z-50 text-xs text-shelf-muted">
+                    Tap items to select them for bulk move, type change, status update, or delete.
+                </div>
+            </div>
             <template x-if="selectMode">
                 <div class="flex items-center gap-1">
                     <button @click="selectAll()" class="px-2 py-1 rounded text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Select All</button>
@@ -43,18 +73,32 @@
                 </div>
             </template>
         </div>
-        <div class="flex flex-wrap items-center gap-3">
-            <!-- Search -->
+        <!-- Filters: shown inline on large screens, collapsible on small -->
+        <div class="flex items-center gap-2 sm:hidden">
+            <button @click="filtersOpen = !filtersOpen"
+                    class="flex items-center gap-1.5 px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text transition-colors">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+                <span>Filters</span>
+                <span x-show="filterPills.length > 0" class="bg-shelf-accent text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center" x-text="filterPills.length"></span>
+            </button>
+            <!-- Search always visible on mobile -->
             <input type="search" name="q" placeholder="Search..." value="{{ initial_query or '' }}"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
-                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
-                   class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
+                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
+                   class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 flex-1 min-w-0">
+        </div>
+        <div :class="filtersOpen ? 'flex' : 'hidden sm:flex'" class="flex-wrap items-center gap-3">
+            <!-- Search (hidden on mobile since it's shown above) -->
+            <input type="search" name="q" placeholder="Search..." value="{{ initial_query or '' }}"
+                   hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
+                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
+                   class="hidden sm:block bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
 
             {% set f = initial_filters or {} %}
             <!-- Media Type Filter -->
             <select id="type-filter" name="media_type_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
+                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.media_type_filter else '' }}>All Types ({{ total_count }})</option>
                 {% for key, label in media_types.items() %}
@@ -68,7 +112,7 @@
             <!-- Location Filter -->
             <select id="location-filter" name="location_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations ({{ total_count }})</option>
                 {% for loc in locations %}
@@ -80,7 +124,7 @@
             <!-- Owned / Wishlist Filter -->
             <select id="owned-filter" name="owned"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.owned else '' }}>All ({{ total_count }})</option>
                 <option value="1" {{ 'selected' if f.owned == '1' else '' }}>Owned ({{ owned_count }})</option>
@@ -90,7 +134,7 @@
             <!-- Lent Out Filter -->
             <select name="lent_out"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.lent_out else '' }}>All Items</option>
                 <option value="1" {{ 'selected' if f.lent_out == '1' else '' }}>Lent Out{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
@@ -99,7 +143,7 @@
             <!-- Reading Status Filter -->
             <select id="reading-status-filter" name="reading_status"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.reading_status else '' }}>All Statuses</option>
                 {% set rsc = reading_status_counts or {} %}
@@ -111,7 +155,7 @@
             <!-- Sort -->
             <select name="sort"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned'],[name='lent_out']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="newest" {{ 'selected' if f.sort == 'newest' or not f.sort else '' }}>Most Recent</option>
                 <option value="oldest" {{ 'selected' if f.sort == 'oldest' else '' }}>Oldest First</option>
@@ -135,6 +179,9 @@
         <button @click="clearAllFilters()" class="text-xs text-shelf-muted hover:text-shelf-error transition-colors ml-1">Clear all</button>
     </div>
 
+    <!-- Hidden view mode input for HTMX requests -->
+    <input type="hidden" name="view" :value="viewMode">
+
     <!-- Item Grid -->
     <div id="item-grid">
         {% include "fragments/item_grid.html" %}
@@ -148,7 +195,10 @@ function browsePage() {
         selectedIds: [],
         bulkLocationVal: '',
         bulkTypeVal: '',
+        bulkStatusVal: '',
         filterPills: [],
+        viewMode: localStorage.getItem('shelf-view') || 'grid',
+        filtersOpen: false,
 
         init() {
             // Restore sort preference from localStorage (only if no sort in URL)
@@ -173,6 +223,51 @@ function browsePage() {
             document.querySelector('[name="sort"]')?.addEventListener('change', function(e) {
                 localStorage.setItem('shelf-sort', e.target.value);
             });
+            // Show keyboard shortcut hint on first visit
+            if (!localStorage.getItem('shelf-shortcuts-seen')) {
+                localStorage.setItem('shelf-shortcuts-seen', '1');
+                setTimeout(function() { showToast('Press ? for keyboard shortcuts', 'info'); }, 1500);
+            }
+            // Browse-page keyboard shortcuts
+            this._keyHandler = (e) => this.handleKey(e);
+            document.addEventListener('keydown', this._keyHandler);
+        },
+
+        destroy() {
+            if (this._keyHandler) document.removeEventListener('keydown', this._keyHandler);
+        },
+
+        handleKey(e) {
+            var tag = document.activeElement.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                // Escape blurs the focused input
+                if (e.key === 'Escape') { document.activeElement.blur(); e.preventDefault(); }
+                return;
+            }
+            if (e.key === 'Escape') {
+                if (this.selectMode) { this.selectMode = false; this.selectedIds = []; e.preventDefault(); }
+            } else if (e.key === 'e') {
+                this.selectMode = !this.selectMode;
+                if (!this.selectMode) this.selectedIds = [];
+                e.preventDefault();
+            } else if (e.key === 'g') {
+                this.setView(this.viewMode === 'grid' ? 'list' : 'grid');
+                e.preventDefault();
+            } else if (e.key === 'f') {
+                this.filtersOpen = !this.filtersOpen;
+                e.preventDefault();
+            } else if (e.key === 'x' && !e.ctrlKey && !e.metaKey) {
+                this.clearAllFilters();
+                e.preventDefault();
+            }
+        },
+
+        setView(mode) {
+            this.viewMode = mode;
+            localStorage.setItem('shelf-view', mode);
+            // Re-trigger search to get correct template
+            var trigger = document.querySelector('[name="media_type_filter"]') || document.querySelector('[name="q"]');
+            if (trigger) htmx.trigger(trigger, 'change');
         },
 
         syncFilters() {

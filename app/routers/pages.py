@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
@@ -141,6 +141,7 @@ async def browse(
             "has_more": has_more,
             "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out]),
             "load_more_url": load_more_url,
+            "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
             "initial_query": q,
             "initial_filters": {
                 "media_type_filter": media_type_filter,
