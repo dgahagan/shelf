@@ -164,13 +164,52 @@ docker compose build && docker compose up -d
 # View logs
 docker compose logs -f shelf
 
-# Run tests
-pip install -r requirements-dev.txt
-pytest
-
 # Access the database
 sqlite3 data/shelf.db
 ```
+
+### QA Pipeline
+
+Shelf ships with a `Makefile` that orchestrates a two-pass local QA workflow — no CI/CD required.
+
+**One-time setup:**
+
+```bash
+pip install -r requirements-dev.txt
+make install-playwright   # downloads headless Chromium
+```
+
+**Common targets:**
+
+| Target | What it does |
+|--------|-------------|
+| `make test` | Unit and integration tests (pytest, excludes E2E) |
+| `make test-e2e` | Playwright E2E browser tests against a live local server |
+| `make test-all` | Both of the above |
+| `make check-deps` | `pip-audit` vulnerability scan of `requirements.txt` |
+| `make check-licenses` | License compliance report |
+| `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
+| `make checks` | All three checks above |
+| `make report-review` | Code review report via Claude agent |
+| `make report-security` | Security audit report via Claude agent |
+| `make report-test` | Test coverage audit report via Claude agent |
+| `make reports` | All three reports |
+| `make qa` | Full Pass 1: `test-all` → `checks` → `reports` |
+| `make fix` | Pass 2a: interactive Claude session reads reports and applies fixes |
+| `make verify` | Pass 2b: re-run all tests after fixes |
+| `make release-check` | Alias for `make qa` |
+| `make install-hooks` | Install a pre-push git hook that runs `make test-all` |
+
+**Typical pre-release workflow:**
+
+```bash
+make qa          # run tests, checks, and generate reports
+# review docs/CODE_REVIEW_*.md, SECURITY_AUDIT_*.md, TEST_AUDIT_*.md
+make fix         # Claude reads reports and applies fixes interactively
+make verify      # confirm all tests still pass
+```
+
+Reports land in `docs/` with today's date (e.g. `docs/CODE_REVIEW_2026-03-27.md`) and are gitignored — they're regenerated each QA cycle.
 
 ## License
 
