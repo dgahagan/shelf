@@ -36,6 +36,12 @@
                     class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">
                 <span x-text="selectMode ? 'Done' : 'Select'"></span>
             </button>
+            <template x-if="selectMode">
+                <div class="flex items-center gap-1">
+                    <button @click="selectAll()" class="px-2 py-1 rounded text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Select All</button>
+                    <button @click="deselectAll()" x-show="selectedIds.length > 0" class="px-2 py-1 rounded text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Deselect All</button>
+                </div>
+            </template>
         </div>
         <div class="flex flex-wrap items-center gap-3">
             <!-- Search -->
@@ -44,16 +50,17 @@
                    hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
 
+            {% set f = initial_filters or {} %}
             <!-- Media Type Filter -->
             <select id="type-filter" name="media_type_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">All Types ({{ total_count }})</option>
+                <option value="" {{ 'selected' if not f.media_type_filter else '' }}>All Types ({{ total_count }})</option>
                 {% for key, label in media_types.items() %}
                 {% set count = type_counts.get(key, 0) %}
                 {% if count > 0 %}
-                <option value="{{ key }}">{{ label }} ({{ count }})</option>
+                <option value="{{ key }}" {{ 'selected' if f.media_type_filter == key else '' }}>{{ label }} ({{ count }})</option>
                 {% endif %}
                 {% endfor %}
             </select>
@@ -63,9 +70,9 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">All Locations</option>
+                <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations</option>
                 {% for loc in locations %}
-                <option value="{{ loc.id }}">{{ loc.name }}</option>
+                <option value="{{ loc.id }}" {{ 'selected' if f.location_filter == loc.id|string else '' }}>{{ loc.name }}</option>
                 {% endfor %}
             </select>
 
@@ -74,9 +81,9 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">All ({{ total_count }})</option>
-                <option value="1">Owned ({{ owned_count }})</option>
-                <option value="0">Wishlist ({{ wishlist_count }})</option>
+                <option value="" {{ 'selected' if not f.owned else '' }}>All ({{ total_count }})</option>
+                <option value="1" {{ 'selected' if f.owned == '1' else '' }}>Owned ({{ owned_count }})</option>
+                <option value="0" {{ 'selected' if f.owned == '0' else '' }}>Wishlist ({{ wishlist_count }})</option>
             </select>
 
             <!-- Lent Out Filter -->
@@ -84,8 +91,8 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">All Items</option>
-                <option value="1">Lent Out{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
+                <option value="" {{ 'selected' if not f.lent_out else '' }}>All Items</option>
+                <option value="1" {{ 'selected' if f.lent_out == '1' else '' }}>Lent Out{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
             </select>
 
             <!-- Reading Status Filter -->
@@ -93,10 +100,10 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">All Statuses</option>
-                <option value="want_to_read">Want to Read</option>
-                <option value="reading">Reading</option>
-                <option value="read">Read</option>
+                <option value="" {{ 'selected' if not f.reading_status else '' }}>All Statuses</option>
+                <option value="want_to_read" {{ 'selected' if f.reading_status == 'want_to_read' else '' }}>Want to Read</option>
+                <option value="reading" {{ 'selected' if f.reading_status == 'reading' else '' }}>Reading</option>
+                <option value="read" {{ 'selected' if f.reading_status == 'read' else '' }}>Read</option>
             </select>
 
             <!-- Sort -->
@@ -104,15 +111,26 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned'],[name='lent_out']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="newest">Most Recent</option>
-                <option value="oldest">Oldest First</option>
-                <option value="title_asc">Title A–Z</option>
-                <option value="title_desc">Title Z–A</option>
-                <option value="author">Author</option>
-                <option value="year_desc">Year (Newest)</option>
-                <option value="year_asc">Year (Oldest)</option>
+                <option value="newest" {{ 'selected' if f.sort == 'newest' or not f.sort else '' }}>Most Recent</option>
+                <option value="oldest" {{ 'selected' if f.sort == 'oldest' else '' }}>Oldest First</option>
+                <option value="title_asc" {{ 'selected' if f.sort == 'title_asc' else '' }}>Title A–Z</option>
+                <option value="title_desc" {{ 'selected' if f.sort == 'title_desc' else '' }}>Title Z–A</option>
+                <option value="author" {{ 'selected' if f.sort == 'author' else '' }}>Author</option>
+                <option value="year_desc" {{ 'selected' if f.sort == 'year_desc' else '' }}>Year (Newest)</option>
+                <option value="year_asc" {{ 'selected' if f.sort == 'year_asc' else '' }}>Year (Oldest)</option>
             </select>
         </div>
+    </div>
+
+    <!-- Active Filter Pills -->
+    <div x-show="filterPills.length > 0" x-transition class="flex flex-wrap items-center gap-2 mb-4">
+        <template x-for="pill in filterPills" :key="pill.name">
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-shelf-accent/10 text-shelf-accent2 border border-shelf-accent/20 rounded-full text-xs">
+                <span x-text="pill.label"></span>
+                <button @click="clearFilter(pill.name)" class="hover:text-shelf-text ml-0.5">&times;</button>
+            </span>
+        </template>
+        <button @click="clearAllFilters()" class="text-xs text-shelf-muted hover:text-shelf-error transition-colors ml-1">Clear all</button>
     </div>
 
     <!-- Item Grid -->
@@ -128,11 +146,96 @@ function browsePage() {
         selectedIds: [],
         bulkLocationVal: '',
         bulkTypeVal: '',
+        filterPills: [],
+
+        init() {
+            this.syncFilters();
+            // Sync filter pills and URL after every HTMX swap
+            document.body.addEventListener('htmx:afterSettle', () => {
+                this.syncFilters();
+                this.updateUrl();
+            });
+        },
+
+        syncFilters() {
+            var pills = [];
+            var filterDefs = [
+                {name: 'q', prefix: 'Search'},
+                {name: 'media_type_filter', prefix: 'Type'},
+                {name: 'location_filter', prefix: 'Location'},
+                {name: 'owned', prefix: ''},
+                {name: 'lent_out', prefix: ''},
+                {name: 'reading_status', prefix: 'Status'},
+                {name: 'sort', prefix: 'Sort', skip: 'newest'},
+            ];
+            filterDefs.forEach(function(def) {
+                var el = document.querySelector('[name="' + def.name + '"]');
+                if (!el || !el.value || el.value === (def.skip || '')) return;
+                var label;
+                if (el.tagName === 'SELECT') {
+                    var opt = el.options[el.selectedIndex];
+                    label = opt ? opt.text.replace(/ \(\d+\)$/, '') : el.value;
+                } else {
+                    label = def.prefix ? def.prefix + ': ' + el.value : el.value;
+                }
+                if (def.prefix && el.tagName === 'SELECT') label = def.prefix + ': ' + label;
+                pills.push({name: def.name, label: label});
+            });
+            this.filterPills = pills;
+        },
+
+        updateUrl() {
+            var params = new URLSearchParams();
+            var names = ['q', 'media_type_filter', 'location_filter', 'sort', 'reading_status', 'owned', 'lent_out'];
+            names.forEach(function(name) {
+                var el = document.querySelector('[name="' + name + '"]');
+                if (!el) return;
+                if (name === 'sort' && el.value === 'newest') return;
+                if (el.value) params.set(name, el.value);
+            });
+            var qs = params.toString();
+            var url = window.location.pathname + (qs ? '?' + qs : '');
+            history.replaceState(null, '', url);
+        },
+
+        clearFilter(name) {
+            var el = document.querySelector('[name="' + name + '"]');
+            if (el) {
+                el.value = name === 'sort' ? 'newest' : '';
+                htmx.trigger(el, el.tagName === 'SELECT' ? 'change' : 'keyup');
+            }
+        },
+
+        clearAllFilters() {
+            var names = ['q', 'media_type_filter', 'location_filter', 'reading_status', 'owned', 'lent_out'];
+            names.forEach(function(name) {
+                var el = document.querySelector('[name="' + name + '"]');
+                if (el) el.value = '';
+            });
+            var sort = document.querySelector('[name="sort"]');
+            if (sort) sort.value = 'newest';
+            var trigger = document.querySelector('[name="media_type_filter"]') || document.querySelector('[name="q"]');
+            if (trigger) htmx.trigger(trigger, 'change');
+        },
+
         toggleItem(id) {
             var idx = this.selectedIds.indexOf(id);
             if (idx >= 0) this.selectedIds.splice(idx, 1);
             else this.selectedIds.push(id);
         },
+
+        selectAll() {
+            var self = this;
+            document.querySelectorAll('[data-item-id]').forEach(function(el) {
+                var id = parseInt(el.dataset.itemId);
+                if (self.selectedIds.indexOf(id) < 0) self.selectedIds.push(id);
+            });
+        },
+
+        deselectAll() {
+            this.selectedIds = [];
+        },
+
         async bulkUpdate(updates) {
             if (!this.selectedIds.length) return;
             try {
@@ -153,6 +256,7 @@ function browsePage() {
                 showToast('Update failed: ' + e.message, 'error');
             }
         },
+
         async bulkDelete() {
             if (!confirm('Delete ' + this.selectedIds.length + ' items?')) return;
             for (var id of this.selectedIds) {

@@ -6,6 +6,7 @@ from fastapi.responses import RedirectResponse
 from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
 from app.database import get_db, get_setting, get_game_platforms
+from app.routers.items import SORT_OPTIONS
 
 router = APIRouter()
 
@@ -16,25 +17,58 @@ async def index():
 
 
 @router.get("/browse")
-async def browse(request: Request, q: str = "", _=Depends(require_role("viewer"))):
+async def browse(
+    request: Request,
+    q: str = "",
+    media_type_filter: str = "",
+    location_filter: str = "",
+    sort: str = "newest",
+    reading_status: str = "",
+    owned: str = "",
+    lent_out: str = "",
+    _=Depends(require_role("viewer")),
+):
     with get_db() as db:
+        # Build filter conditions
+        conditions: list[str] = []
+        params: list = []
         if q:
-            items = db.execute(
-                "SELECT i.*, l.name as location_name FROM items i "
-                "LEFT JOIN locations l ON i.location_id = l.id "
-                "WHERE i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ? "
-                "ORDER BY i.created_at DESC LIMIT ?",
-                (f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%", DEFAULT_PAGE_SIZE),
-            ).fetchall()
-            has_more = False
-        else:
-            items = db.execute(
-                "SELECT i.*, l.name as location_name FROM items i "
-                "LEFT JOIN locations l ON i.location_id = l.id "
-                "ORDER BY i.created_at DESC LIMIT ?",
-                (DEFAULT_PAGE_SIZE,),
-            ).fetchall()
-            has_more = False  # recalculated below
+            conditions.append(
+                "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)"
+            )
+            params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
+        if location_filter:
+            conditions.append("i.location_id = ?")
+            params.append(int(location_filter))
+        if reading_status:
+            conditions.append("i.reading_status = ?")
+            params.append(reading_status)
+        if lent_out == "1":
+            conditions.append(
+                "i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)"
+            )
+        if media_type_filter:
+            conditions.append("i.media_type = ?")
+            params.append(media_type_filter)
+        if owned == "1":
+            conditions.append("i.owned = 1")
+        elif owned == "0":
+            conditions.append("i.owned = 0")
+
+        where = "WHERE " + " AND ".join(conditions) if conditions else ""
+        _, order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["newest"])
+
+        items = db.execute(
+            f"SELECT i.*, l.name as location_name FROM items i "
+            f"LEFT JOIN locations l ON i.location_id = l.id "
+            f"{where} ORDER BY {order_clause} LIMIT ?",
+            params + [DEFAULT_PAGE_SIZE],
+        ).fetchall()
+
+        total_filtered = db.execute(
+            f"SELECT COUNT(*) as c FROM items i {where}", params
+        ).fetchone()["c"]
+
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
@@ -52,9 +86,28 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
         lent_out_count = db.execute(
             "SELECT COUNT(DISTINCT item_id) as c FROM checkouts WHERE checked_in IS NULL"
         ).fetchone()["c"]
-        if not q:
-            has_more = total_count > DEFAULT_PAGE_SIZE
-        load_more_url = f"/api/search?page=2&q={q}" if q else "/api/search?page=2"
+
+        has_more = len(items) < total_filtered
+
+        # Build load-more URL preserving filters
+        qs_parts = []
+        if q:
+            qs_parts.append(f"q={q}")
+        if media_type_filter:
+            qs_parts.append(f"media_type_filter={media_type_filter}")
+        if location_filter:
+            qs_parts.append(f"location_filter={location_filter}")
+        if sort != "newest":
+            qs_parts.append(f"sort={sort}")
+        if reading_status:
+            qs_parts.append(f"reading_status={reading_status}")
+        if owned:
+            qs_parts.append(f"owned={owned}")
+        if lent_out:
+            qs_parts.append(f"lent_out={lent_out}")
+        qs_parts.append("page=2")
+        load_more_url = "/api/search?" + "&".join(qs_parts)
+
     return request.app.state.templates.TemplateResponse(
         request,
         "browse.html",
@@ -63,13 +116,21 @@ async def browse(request: Request, q: str = "", _=Depends(require_role("viewer")
             "media_types": MEDIA_TYPES,
             "locations": locations,
             "type_counts": type_counts,
-            "total_count": total_count,
+            "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out]) else total_count,
             "owned_count": owned_count,
             "wishlist_count": wishlist_count,
             "lent_out_count": lent_out_count,
             "has_more": has_more,
             "load_more_url": load_more_url,
             "initial_query": q,
+            "initial_filters": {
+                "media_type_filter": media_type_filter,
+                "location_filter": location_filter,
+                "sort": sort,
+                "reading_status": reading_status,
+                "owned": owned,
+                "lent_out": lent_out,
+            },
         },
     )
 

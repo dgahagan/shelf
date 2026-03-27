@@ -1,4 +1,4 @@
-<a href="/item/{{ item.id }}" class="group relative" @click.prevent="selectMode ? toggleItem({{ item.id }}) : window.location='/item/{{ item.id }}'">
+<a href="/item/{{ item.id }}" class="group relative" data-item-id="{{ item.id }}" @click.prevent="selectMode ? toggleItem({{ item.id }}) : window.location='/item/{{ item.id }}'">
     <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg"
          :class="selectedIds && selectedIds.includes({{ item.id }}) ? 'ring-2 ring-shelf-accent' : ''">
         {% if not item.owned %}
