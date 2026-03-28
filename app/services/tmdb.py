@@ -13,7 +13,8 @@ async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -
     try:
         resp = await client.get(
             TMDB_SEARCH_URL,
-            params={"api_key": api_key, "query": title},
+            params={"query": title},
+            headers={"Authorization": f"Bearer {api_key}"},
             timeout=10,
         )
         if resp.status_code != 200:
@@ -66,7 +67,8 @@ async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, lim
     try:
         resp = await client.get(
             TMDB_SEARCH_URL,
-            params={"api_key": api_key, "query": query},
+            params={"query": query},
+            headers={"Authorization": f"Bearer {api_key}"},
             timeout=10,
         )
         if resp.status_code != 200:

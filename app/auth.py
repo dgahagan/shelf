@@ -1,4 +1,5 @@
 import logging
+import os
 import secrets
 import time
 from datetime import datetime, timezone, timedelta
@@ -36,11 +37,12 @@ def get_secret_key() -> str:
 
         key = secrets.token_hex(32)
         db.execute(
-            "INSERT INTO settings (key, value) VALUES ('secret_key', ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = ?",
-            (key, key),
+            "INSERT OR IGNORE INTO settings (key, value) VALUES ('secret_key', ?)",
+            (key,),
         )
-        _cached_secret_key = key
+        # Read back what was actually stored — another process may have beaten us
+        row = db.execute("SELECT value FROM settings WHERE key = 'secret_key'").fetchone()
+        _cached_secret_key = row["value"]
         return _cached_secret_key
 
 
@@ -90,13 +92,31 @@ def decode_token(token: str) -> dict | None:
         return None
 
 
-def set_auth_cookie(response: Response, token: str) -> None:
+def set_auth_cookie(response: Response, token: str, csrf_token: str | None = None) -> None:
+    secure = not os.environ.get("SHELF_DEV_INSECURE_COOKIES")
+    if os.environ.get("SHELF_DEV_INSECURE_COOKIES"):
+        logger.warning(
+            "SHELF_DEV_INSECURE_COOKIES is set — auth cookie is NOT secure. "
+            "Never use this in production."
+        )
     response.set_cookie(
         key="access_token",
         value=token,
         httponly=True,
-        secure=True,
-        samesite="lax",
+        secure=secure,
+        samesite="strict",
+        max_age=JWT_EXPIRY_SECONDS,
+        path="/",
+    )
+    # Set a paired CSRF token cookie (readable by JS for double-submit)
+    if csrf_token is None:
+        csrf_token = secrets.token_hex(32)
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,
+        secure=secure,
+        samesite="strict",
         max_age=JWT_EXPIRY_SECONDS,
         path="/",
     )
@@ -104,6 +124,7 @@ def set_auth_cookie(response: Response, token: str) -> None:
 
 def clear_auth_cookie(response: Response) -> None:
     response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="csrf_token", path="/")
 
 
 def get_current_user(request: Request) -> dict | None:

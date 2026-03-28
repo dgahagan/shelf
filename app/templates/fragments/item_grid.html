@@ -1,6 +1,6 @@
 {% if items %}
 <template x-if="viewMode === 'grid'">
-<div class="cover-grid">
+<div class="cover-grid" data-testid="item-grid">
     {% for item in items %}
     {% include "fragments/item_card.html" %}
     {% endfor %}
@@ -41,7 +41,7 @@
 </div>
 </template>
 {% else %}
-<div class="text-center py-20">
+<div class="text-center py-20" data-testid="empty-state">
     <svg class="mx-auto mb-4 w-16 h-16 text-shelf-border" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         {% if has_filters %}
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>

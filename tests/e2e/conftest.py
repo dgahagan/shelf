@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import sync_playwright
 
-APP_DIR = Path(__file__).parents[3]  # shelf/
+APP_DIR = Path(__file__).parents[2]  # shelf/
 ADMIN_USERNAME = "e2eadmin"
 ADMIN_PASSWORD = "e2epassword1"
 ADMIN_DISPLAY = "E2E Admin"
@@ -32,16 +32,38 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
-def _wait_for_server(url: str, timeout: float = 15.0) -> None:
+_SERVER_TIMEOUT = float(os.environ.get("E2E_SERVER_TIMEOUT", "30"))
+
+
+def _wait_for_server(url: str, timeout: float = _SERVER_TIMEOUT, proc: subprocess.Popen | None = None) -> None:
+    import json
     import urllib.request
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         try:
-            urllib.request.urlopen(url, timeout=1)
-            return
+            resp = urllib.request.urlopen(url, timeout=1)
+            body = json.loads(resp.read())
+            if body.get("status") == "ok":
+                return
         except Exception:
             time.sleep(0.2)
-    raise RuntimeError(f"Server at {url} did not start within {timeout}s")
+    # On failure, capture and display server stderr for diagnosis
+    stderr_output = ""
+    if proc and proc.stderr:
+        try:
+            proc.stderr.flush()
+            stderr_output = proc.stderr.read().decode(errors="replace") if isinstance(proc.stderr.read, type(b"".decode)) else ""
+        except Exception:
+            pass
+        if not stderr_output:
+            try:
+                stderr_output = proc.stderr.read(8192).decode(errors="replace") if proc.stderr.readable() else ""
+            except Exception:
+                stderr_output = "(could not read stderr)"
+    raise RuntimeError(
+        f"Server at {url} did not start within {timeout}s\n"
+        f"Server stderr:\n{stderr_output}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -62,6 +84,7 @@ def live_server():
         **os.environ,
         "DATA_DIR": str(data_dir),
         "SHELF_DISABLE_RATE_LIMIT": "1",
+        "SHELF_DEV_INSECURE_COOKIES": "1",
     }
 
     proc = subprocess.Popen(
@@ -79,7 +102,7 @@ def live_server():
 
     base_url = f"http://127.0.0.1:{port}"
     try:
-        _wait_for_server(f"{base_url}/health")
+        _wait_for_server(f"{base_url}/health", proc=proc)
         yield {"url": base_url, "data_dir": data_dir, "port": port}
     finally:
         proc.terminate()
@@ -124,8 +147,8 @@ def setup_admin(live_server, browser):
     return {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD, "display_name": ADMIN_DISPLAY}
 
 
-def _get_auth_cookie(live_server, browser, credentials: dict) -> str:
-    """Log in and return the access_token cookie value."""
+def _get_auth_cookies(live_server, browser, credentials: dict) -> dict:
+    """Log in and return all cookie values as a dict."""
     ctx = browser.new_context()
     page = ctx.new_page()
     page.goto(f"{live_server['url']}/login")
@@ -133,10 +156,9 @@ def _get_auth_cookie(live_server, browser, credentials: dict) -> str:
     page.fill("input[name=password]", credentials["password"])
     page.click("button[type=submit]")
     page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
-    cookies = ctx.cookies()
-    token = next(c["value"] for c in cookies if c["name"] == "access_token")
+    cookies = {c["name"]: c["value"] for c in ctx.cookies()}
     ctx.close()
-    return token
+    return cookies
 
 
 # ---------------------------------------------------------------------------
@@ -146,16 +168,18 @@ def _get_auth_cookie(live_server, browser, credentials: dict) -> str:
 
 @pytest.fixture
 def authed_page(live_server, browser, setup_admin):
-    """New page pre-authenticated as admin."""
-    token = _get_auth_cookie(live_server, browser, setup_admin)
+    """New page authenticated via real browser login flow.
+
+    Logs in through the UI so the browser picks up all cookies (auth, CSRF,
+    etc.) automatically — no manual cookie-setting required.
+    """
     ctx = browser.new_context()
-    ctx.add_cookies([{
-        "name": "access_token",
-        "value": token,
-        "domain": "127.0.0.1",
-        "path": "/",
-    }])
     pg = ctx.new_page()
+    pg.goto(f"{live_server['url']}/login")
+    pg.fill("input[name=username]", setup_admin["username"])
+    pg.fill("input[name=password]", setup_admin["password"])
+    pg.click("button[type=submit]")
+    pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
     yield pg
     ctx.close()
 

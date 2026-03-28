@@ -6,3 +6,5 @@ docs/licenses-*.md
 docs/CODE_REVIEW_*.md
 docs/SECURITY_AUDIT_*.md
 docs/TEST_AUDIT_*.md
+.coverage
+htmlcov/

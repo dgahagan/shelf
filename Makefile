@@ -3,11 +3,20 @@ DATE  := $(shell date +%Y-%m-%d)
 DOCS  := docs
 MODEL ?= claude-sonnet-4-6
 
-.PHONY: test test-e2e test-all \
+.PHONY: setup test test-e2e test-all \
         check-deps check-licenses check-secrets checks \
         report-review report-security report-test reports \
-        qa fix verify release-check \
+        qa fix verify release-check status \
         install-playwright install-hooks
+
+# ---------------------------------------------------------------------------
+# One-time setup
+# ---------------------------------------------------------------------------
+
+setup:
+	pip install -r requirements-dev.txt
+	playwright install chromium
+	@echo "=== Setup complete ==="
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -48,16 +57,19 @@ $(DOCS):
 	@mkdir -p $(DOCS)
 
 report-review: $(DOCS)
-	claude --model $(MODEL) --max-turns 20 -p \
+	claude --model $(MODEL) --max-turns 30 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
 		"Review the shelf/ codebase. Write a comprehensive code review report to shelf/docs/CODE_REVIEW_$(DATE).md"
+	@test -f $(DOCS)/CODE_REVIEW_$(DATE).md || (echo "ERROR: report-review produced no output file"; exit 1)
 
 report-security: $(DOCS)
-	claude --model $(MODEL) --max-turns 20 -p \
+	claude --model $(MODEL) --max-turns 30 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
 		"Audit the shelf/ codebase for security issues. Write findings to shelf/docs/SECURITY_AUDIT_$(DATE).md"
+	@test -f $(DOCS)/SECURITY_AUDIT_$(DATE).md || (echo "ERROR: report-security produced no output file"; exit 1)
 
 report-test: $(DOCS)
-	claude --model $(MODEL) --max-turns 20 -p \
+	claude --model $(MODEL) --max-turns 30 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
 		"Audit test coverage for shelf/. Identify gaps and write findings to shelf/docs/TEST_AUDIT_$(DATE).md"
+	@test -f $(DOCS)/TEST_AUDIT_$(DATE).md || (echo "ERROR: report-test produced no output file"; exit 1)
 
 reports: report-review report-security report-test
 
@@ -75,11 +87,33 @@ qa: test-all checks reports
 # ---------------------------------------------------------------------------
 
 fix:
-	claude "Read the latest audit reports in shelf/docs/ (CODE_REVIEW, SECURITY_AUDIT, TEST_AUDIT). \
+	claude --model $(MODEL) --max-turns 50 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
+		"Read the latest audit reports in shelf/docs/ (CODE_REVIEW, SECURITY_AUDIT, TEST_AUDIT). \
 		Fix all critical and high severity issues. Skip low/info items unless trivial."
+	$(MAKE) verify
 
 verify: test-all
 	@echo "=== VERIFICATION PASSED ==="
+
+# ---------------------------------------------------------------------------
+# Status
+# ---------------------------------------------------------------------------
+
+status:
+	@echo "=== QA Pipeline Status ==="
+	@echo ""
+	@echo "Reports:"
+	@for prefix in CODE_REVIEW SECURITY_AUDIT TEST_AUDIT; do \
+		latest=$$(ls -1t $(DOCS)/$${prefix}_*.md 2>/dev/null | head -1); \
+		if [ -n "$$latest" ]; then \
+			echo "  $$prefix: $$latest"; \
+		else \
+			echo "  $$prefix: (none)"; \
+		fi; \
+	done
+	@echo ""
+	@echo "Last test run:"
+	@python -m pytest tests/ --ignore=tests/e2e --tb=no -q 2>/dev/null | tail -1 || echo "  (no test results)"
 
 # ---------------------------------------------------------------------------
 # Aliases
@@ -88,11 +122,10 @@ verify: test-all
 release-check: qa
 
 # ---------------------------------------------------------------------------
-# One-time setup
+# Legacy aliases (kept for backwards compatibility)
 # ---------------------------------------------------------------------------
 
-install-playwright:
-	pip install playwright && playwright install chromium
+install-playwright: setup
 
 install-hooks:
 	@echo '#!/bin/bash' > ../.git/hooks/pre-push

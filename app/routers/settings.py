@@ -3,8 +3,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse, FileResponse
 
-from app.auth import require_role
+from app.auth import require_role, get_secret_key
 from app.config import DATABASE_PATH, DATA_DIR
+from app.crypto import SENSITIVE_KEYS, encrypt_value, decrypt_value
 from app.database import get_db
 
 router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
@@ -20,6 +21,7 @@ async def update_settings(
     igdb_client_id: str = Form(""),
     igdb_client_secret: str = Form(""),
 ):
+    secret = get_secret_key()
     with get_db() as db:
         for key, value in [
             ("abs_url", abs_url.strip().rstrip("/")),
@@ -30,9 +32,10 @@ async def update_settings(
             ("igdb_client_id", igdb_client_id.strip()),
             ("igdb_client_secret", igdb_client_secret.strip()),
         ]:
+            stored = encrypt_value(value, secret) if key in SENSITIVE_KEYS and value else value
             db.execute(
                 "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-                (key, value, value),
+                (key, stored, stored),
             )
     return RedirectResponse(url="/settings", status_code=303)
 
@@ -64,13 +67,21 @@ async def restore_backup(request: Request):
     tmp_path = DATA_DIR / "shelf_restore_tmp.db"
     tmp_path.write_bytes(content)
 
-    # Validate: try opening as SQLite, check for items table, reject dangerous objects
+    # Validate: must be a valid Shelf SQLite database with the expected schema
+    _REQUIRED_TABLES = {"items", "users", "settings"}
+    _REQUIRED_COLUMNS = {
+        "items": {"id", "title", "media_type"},
+        "users": {"id", "username", "password", "role"},
+        "settings": {"key", "value"},
+    }
+
     try:
         conn = sqlite3.connect(str(tmp_path))
-        conn.execute("SELECT COUNT(*) FROM items")
 
         # Reject databases with triggers (could execute arbitrary SQL on queries)
-        triggers = conn.execute("SELECT name FROM sqlite_master WHERE type = 'trigger'").fetchall()
+        triggers = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'trigger'"
+        ).fetchall()
         if triggers:
             conn.close()
             tmp_path.unlink(missing_ok=True)
@@ -82,6 +93,37 @@ async def restore_backup(request: Request):
             conn.close()
             tmp_path.unlink(missing_ok=True)
             return {"ok": False, "message": "Database has attached databases — not allowed"}
+
+        # Verify all required tables exist
+        existing_tables = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        missing_tables = _REQUIRED_TABLES - existing_tables
+        if missing_tables:
+            conn.close()
+            tmp_path.unlink(missing_ok=True)
+            return {
+                "ok": False,
+                "message": f"Not a valid Shelf database (missing tables: {', '.join(sorted(missing_tables))})",
+            }
+
+        # Verify required columns on each critical table
+        for table, required_cols in _REQUIRED_COLUMNS.items():
+            existing_cols = {
+                row[1]
+                for row in conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+            missing_cols = required_cols - existing_cols
+            if missing_cols:
+                conn.close()
+                tmp_path.unlink(missing_ok=True)
+                return {
+                    "ok": False,
+                    "message": f"Incompatible schema: '{table}' table is missing columns: {', '.join(sorted(missing_cols))}",
+                }
 
         conn.close()
     except Exception:

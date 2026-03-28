@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 import re
+import time
+from collections import OrderedDict
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,11 +45,72 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; "
+            "script-src 'self' https://unpkg.com https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' https://cdn.jsdelivr.net https://cdn.tailwindcss.com 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "connect-src 'self'; "
+            "font-src 'self' data:; "
+            "frame-ancestors 'none';"
+        )
         return response
 
 
-_SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/health"})
+_SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/logout", "/health"})
 _SKIP_AUTH_PREFIXES = ("/static/", "/covers/")
+
+# Methods that mutate state and must carry a CSRF token
+_CSRF_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """Double-submit cookie CSRF protection for all state-mutating requests.
+
+    HTMX sends the X-CSRF-Token header (configured in base.html).  Standard
+    browser form submissions are also blocked unless the hidden _csrf field or
+    header matches the csrf_token cookie.
+    """
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        path = request.url.path
+
+        # Only validate state-mutating methods on authenticated paths
+        if request.method not in _CSRF_METHODS:
+            return await call_next(request)
+        if path in _SKIP_AUTH_PATHS or path.startswith(_SKIP_AUTH_PREFIXES):
+            return await call_next(request)
+
+        cookie_token = request.cookies.get("csrf_token")
+        if not cookie_token:
+            return Response("CSRF token missing", status_code=403)
+
+        # Accept token from header (HTMX) or form field (plain HTML forms).
+        # IMPORTANT: for form bodies we must cache the raw bytes BEFORE calling
+        # call_next, because BaseHTTPMiddleware's receive stream is consumed once.
+        # We replay the body via a patched Request so the route handler can still
+        # read the form data normally.
+        submitted = request.headers.get("X-CSRF-Token")
+        body_bytes: bytes | None = None
+        if not submitted:
+            content_type = request.headers.get("content-type", "")
+            if "application/x-www-form-urlencoded" in content_type or "multipart/form-data" in content_type:
+                body_bytes = await request.body()  # caches in request._body
+                form = await request.form()
+                submitted = form.get("_csrf")
+
+        if not submitted or submitted != cookie_token:
+            return Response("CSRF validation failed", status_code=403)
+
+        # If we consumed the body, replay it so the route handler can read it too
+        if body_bytes is not None:
+            async def _replay_receive():
+                return {"type": "http.request", "body": body_bytes, "more_body": False}
+
+            patched = Request(request.scope, _replay_receive)
+            return await call_next(patched)
+
+        return await call_next(request)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -77,27 +140,30 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         response = await call_next(request)
 
-        # Sliding expiry: refresh token if past half-life
+        # Sliding expiry: refresh token if past half-life, preserving CSRF token
         if user:
             fresh_token = should_refresh_token(request)
             if fresh_token:
-                set_auth_cookie(response, fresh_token)
+                set_auth_cookie(response, fresh_token, request.cookies.get("csrf_token"))
 
         return response
 
 
 class RateLimitMiddleware(BaseHTTPMiddleware):
-    """Simple in-memory per-IP rate limiter for API endpoints."""
+    """Simple in-memory per-IP rate limiter for API endpoints.
+
+    Uses a bounded OrderedDict (max MAX_IPS entries) to prevent unbounded
+    memory growth from rotating IPs or IPv6 address churn.
+    """
+
+    MAX_IPS = 1000
 
     def __init__(self, app, requests_per_minute: int = 60):
         super().__init__(app)
         self.rpm = requests_per_minute
-        self._hits: dict[str, list[float]] = {}
-        self._last_cleanup: float = 0.0
+        self._hits: OrderedDict[str, list[float]] = OrderedDict()
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        import time
-
         # Disable rate limiting when explicitly configured (e.g. test suite)
         if os.environ.get("SHELF_DISABLE_RATE_LIMIT"):
             return await call_next(request)
@@ -111,23 +177,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         now = time.time()
         window = now - 60
 
-        # Clean old entries and check count
-        hits = self._hits.get(ip, [])
-        hits = [t for t in hits if t > window]
+        # Evict this IP's stale timestamps and check the limit
+        hits = [t for t in self._hits.get(ip, []) if t > window]
         if len(hits) >= self.rpm:
             return Response("Rate limit exceeded", status_code=429)
 
         hits.append(now)
-        self._hits[ip] = hits
 
-        # Periodic cleanup: by entry count (>200) or by time (every 60s)
-        if len(self._hits) > 200 or (now - self._last_cleanup > 60):
-            self._hits = {
-                k: [t for t in v if t > window]
-                for k, v in self._hits.items()
-                if any(t > window for t in v)
-            }
-            self._last_cleanup = now
+        # Update entry and move to end (most-recently-seen)
+        self._hits[ip] = hits
+        self._hits.move_to_end(ip)
+
+        # Evict the oldest IP when the dict exceeds the cap
+        while len(self._hits) > self.MAX_IPS:
+            self._hits.popitem(last=False)
 
         return await call_next(request)
 
@@ -149,7 +212,6 @@ async def _periodic_abs_sync():
 
                 # Check last sync time
                 last = db.execute("SELECT value FROM settings WHERE key = 'abs_last_sync'").fetchone()
-                import time
                 now = time.time()
                 if last and last["value"]:
                     elapsed = now - float(last["value"])
@@ -189,7 +251,6 @@ async def _periodic_hardcover_sync():
                     continue
 
                 last = db.execute("SELECT value FROM settings WHERE key = 'hc_last_sync'").fetchone()
-                import time
                 now = time.time()
                 if last and last["value"]:
                     elapsed = now - float(last["value"])
@@ -227,6 +288,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Shelf", lifespan=lifespan)
+app.add_middleware(CSRFMiddleware)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 app.add_middleware(SecurityHeadersMiddleware)

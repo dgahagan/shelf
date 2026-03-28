@@ -41,13 +41,13 @@
         <div class="flex items-center gap-3">
             <h1 class="text-2xl font-bold">Collection <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ total_count }})</span></h1>
             <!-- View toggle -->
-            <div class="flex items-center bg-shelf-card border border-shelf-border rounded-lg overflow-hidden">
+            <div class="flex items-center bg-shelf-card border border-shelf-border rounded-lg overflow-hidden" data-testid="view-toggle">
                 <button @click="setView('grid')" :class="viewMode === 'grid' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-                        class="p-1.5 transition-colors" title="Grid view">
+                        class="p-1.5 transition-colors" title="Grid view" data-testid="view-grid">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                 </button>
                 <button @click="setView('list')" :class="viewMode === 'list' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-                        class="p-1.5 transition-colors" title="List view">
+                        class="p-1.5 transition-colors" title="List view" data-testid="view-list">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
             </div>
@@ -82,14 +82,14 @@
                 <span x-show="filterPills.length > 0" class="bg-shelf-accent text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center" x-text="filterPills.length"></span>
             </button>
             <!-- Search always visible on mobile -->
-            <input type="search" name="q" placeholder="Search..." value="{{ initial_query or '' }}"
+            <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 flex-1 min-w-0">
         </div>
         <div :class="filtersOpen ? 'flex' : 'hidden sm:flex'" class="flex-wrap items-center gap-3">
             <!-- Search (hidden on mobile since it's shown above) -->
-            <input type="search" name="q" placeholder="Search..." value="{{ initial_query or '' }}"
+            <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
                    class="hidden sm:block bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">

@@ -192,16 +192,36 @@ def _seed_game_platforms(db: sqlite3.Connection) -> None:
 
 
 def get_setting(db, key: str) -> str:
-    """Get a single setting value with env var override."""
+    """Get a single setting value with env var override.
+
+    Sensitive values stored encrypted in the DB are transparently decrypted.
+    """
     from app.config import get_setting_value
+    from app.crypto import SENSITIVE_KEYS, decrypt_value
     row = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
-    return get_setting_value(key, row["value"] if row else None)
+    raw = row["value"] if row else None
+    if raw and key in SENSITIVE_KEYS:
+        from app.auth import get_secret_key
+        raw = decrypt_value(raw, get_secret_key())
+    return get_setting_value(key, raw)
 
 
 def get_all_settings(db) -> dict[str, str]:
-    """Get all settings as a dict with env var overrides applied."""
+    """Get all settings as a dict with env var overrides applied.
+
+    Sensitive values are decrypted before being returned.
+    """
     from app.config import get_setting_value
-    settings = {r["key"]: r["value"] for r in db.execute("SELECT key, value FROM settings").fetchall()}
+    from app.crypto import SENSITIVE_KEYS, decrypt_value
+    from app.auth import get_secret_key
+    rows = db.execute("SELECT key, value FROM settings").fetchall()
+    secret = get_secret_key()
+    settings = {}
+    for r in rows:
+        val = r["value"]
+        if val and r["key"] in SENSITIVE_KEYS:
+            val = decrypt_value(val, secret)
+        settings[r["key"]] = val
     return {k: get_setting_value(k, v) for k, v in settings.items()}
 
 

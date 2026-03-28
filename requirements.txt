@@ -6,3 +6,4 @@ python-multipart==0.0.22
 aiofiles==25.1.0
 PyJWT==2.9.0
 bcrypt==4.3.0
+cryptography==44.0.2

@@ -21,11 +21,14 @@ def test_browse_empty_state(live_server, authed_page):
 
 
 def test_browse_shows_items(live_server, authed_page):
-    """Items seeded into the DB appear on the browse page."""
+    """Items seeded into the DB appear on the browse page with a non-empty grid."""
     insert_item(live_server["data_dir"], title="Dune", media_type="book", isbn="9780441013593")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     expect(authed_page.locator("body")).to_contain_text("Dune")
+    # Verify the item grid is populated (catches silent CSP / JS breakage)
+    grid = authed_page.locator("[data-testid='item-grid'], table tbody")
+    assert grid.count() > 0, "Item grid not rendered — possible JS framework error"
 
 
 def test_browse_search(live_server, authed_page):
@@ -35,7 +38,8 @@ def test_browse_search(live_server, authed_page):
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
-    search = authed_page.locator("input[name=q], input[placeholder*='Search'], input[type=search]").first
+    # Two search inputs exist (mobile hidden, desktop visible) — use the visible one
+    search = authed_page.locator("input[name=q]:visible").first
     search.fill("Foundation")
     search.press("Enter")
     authed_page.wait_for_load_state("networkidle")
@@ -44,37 +48,32 @@ def test_browse_search(live_server, authed_page):
 
 
 def test_browse_media_type_filter(live_server, authed_page):
-    """Clicking a media-type filter pill triggers an HTMX reload."""
+    """Selecting a media-type filter triggers an HTMX reload."""
+    insert_item(live_server["data_dir"], title="Filter Test", media_type="book", isbn="9780000444555")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
-    # Find any filter button/pill for books or another media type
-    filter_el = authed_page.locator(
-        "button:has-text('Book'), a:has-text('Book'), [data-media-type='book'], input[value='book']"
-    ).first
-    if filter_el.count() == 0:
-        pytest.skip("No media-type filter found in current UI")
-    filter_el.click()
+    # The media type filter is a <select> dropdown
+    filter_el = authed_page.locator("select#type-filter")
+    filter_el.select_option("book")
     authed_page.wait_for_load_state("networkidle")
     # Page should still be on /browse (with query params)
     assert "/browse" in authed_page.url
 
 
 def test_browse_grid_list_toggle(live_server, authed_page):
-    """Grid/list toggle button changes layout class."""
+    """Grid/list toggle button switches between grid and list view."""
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
-    toggle = authed_page.locator(
-        "button[aria-label*='list'], button[aria-label*='grid'], "
-        "button:has-text('List'), button:has-text('Grid'), "
-        "[data-testid='view-toggle']"
-    ).first
-    if toggle.count() == 0:
-        pytest.skip("No grid/list toggle found in current UI")
-    toggle.click()
+    # Click the list-view toggle button
+    authed_page.locator("[data-testid='view-list']").click()
     authed_page.wait_for_load_state("networkidle")
-    # Just verify page didn't crash
+    assert authed_page.locator("body").is_visible()
+
+    # Click back to grid view
+    authed_page.locator("[data-testid='view-grid']").click()
+    authed_page.wait_for_load_state("networkidle")
     assert authed_page.locator("body").is_visible()
 
 

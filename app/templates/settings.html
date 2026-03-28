@@ -6,16 +6,16 @@
 
     <!-- Tab Bar -->
     <div class="flex gap-1 mb-6 border-b border-shelf-border">
-        <button @click="tab = 'library'; localStorage.setItem('shelf_settings_tab', 'library')"
+        <button @click="tab = 'library'; localStorage.setItem('shelf_settings_tab', 'library')" data-testid="tab-library"
                 :class="tab === 'library' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Library</button>
-        <button @click="tab = 'integrations'; localStorage.setItem('shelf_settings_tab', 'integrations')"
+        <button @click="tab = 'integrations'; localStorage.setItem('shelf_settings_tab', 'integrations')" data-testid="tab-integrations"
                 :class="tab === 'integrations' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Integrations</button>
-        <button @click="tab = 'data'; localStorage.setItem('shelf_settings_tab', 'data')"
+        <button @click="tab = 'data'; localStorage.setItem('shelf_settings_tab', 'data')" data-testid="tab-data"
                 :class="tab === 'data' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Data</button>
-        <button @click="tab = 'users'; localStorage.setItem('shelf_settings_tab', 'users')"
+        <button @click="tab = 'users'; localStorage.setItem('shelf_settings_tab', 'users')" data-testid="tab-users"
                 :class="tab === 'users' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Users</button>
     </div>
@@ -962,7 +962,7 @@
 
             <div class="border-t border-shelf-border pt-4">
                 <p class="text-sm text-shelf-muted mb-2">Import items from a CSV file (columns: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)</p>
-                <form @submit.prevent="importing=true; importResult=null; fetch('/api/import/csv', {method:'POST', body: new FormData($el)}).then(r=>r.json()).then(d=>{importResult=d; importing=false}).catch(()=>{importResult={error:'Import failed'}; importing=false})">
+                <form @submit.prevent="importing=true; importResult=null; fetch('/api/import/csv', {method:'POST', body: new FormData($el), headers: {'X-CSRF-Token': (document.cookie.split('; ').find(r=>r.startsWith('csrf_token='))||'').split('=')[1]||''}}).then(r=>r.json()).then(d=>{importResult=d; importing=false}).catch(()=>{importResult={error:'Import failed'}; importing=false})">
                     <div class="flex gap-2 items-end">
                         <input type="file" name="file" accept=".csv" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">

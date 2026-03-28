@@ -34,6 +34,11 @@ def _isolated_db(tmp_path, monkeypatch):
     from app.database import init_db
     init_db()
 
+    # Pre-seed and cache the secret key so get_secret_key() never opens a
+    # second connection while a test's db fixture connection is already open.
+    from app.auth import get_secret_key
+    get_secret_key()
+
 
 @pytest.fixture
 def db():
@@ -43,12 +48,18 @@ def db():
         yield conn
 
 
+_TEST_CSRF_TOKEN = "test-csrf-token-fixed"
+
+
 @pytest.fixture
 def client(monkeypatch):
-    """FastAPI TestClient with rate limiting disabled."""
+    """FastAPI TestClient with rate limiting disabled and CSRF pre-seeded."""
     monkeypatch.setenv("SHELF_DISABLE_RATE_LIMIT", "1")
     from app.main import app
-    return TestClient(app, base_url="https://testserver")
+    c = TestClient(app, base_url="https://testserver")
+    c.cookies.set("csrf_token", _TEST_CSRF_TOKEN)
+    c.headers.update({"X-CSRF-Token": _TEST_CSRF_TOKEN})
+    return c
 
 
 def _create_user(username, password, display_name, role):

@@ -51,7 +51,7 @@ def test_item_edit_save(live_server, authed_page):
     title_input = authed_page.locator("input[name=title]")
     title_input.fill("Updated Title")
 
-    authed_page.locator("button[type=submit], input[type=submit]").first.click()
+    authed_page.locator("button[type=submit]:has-text('Save')").click()
     authed_page.wait_for_url(f"{live_server['url']}/item/{item_id}", timeout=10_000)
     expect(authed_page.locator("body")).to_contain_text("Updated Title")
 
