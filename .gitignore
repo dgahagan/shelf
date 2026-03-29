@@ -1,10 +1,6 @@
 data/
 .env
 __pycache__/
-docs/dep-audit-*.txt
-docs/licenses-*.md
-docs/CODE_REVIEW_*.md
-docs/SECURITY_AUDIT_*.md
-docs/TEST_AUDIT_*.md
+docs/
 .coverage
 htmlcov/
