@@ -1,5 +1,6 @@
 import logging
 
+import bcrypt
 from fastapi import APIRouter, Form, Request, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
 
@@ -37,7 +38,16 @@ async def login(request: Request, username: str = Form(...), password: str = For
             (username,),
         ).fetchone()
 
-    if not user or not verify_password(password, user["password"]):
+    if not user:
+        # Run a dummy bcrypt check to prevent username enumeration via timing
+        bcrypt.checkpw(b"dummy", bcrypt.hashpw(b"dummy", bcrypt.gensalt()))
+        logger.warning("Failed login attempt for username=%s from %s", username, get_client_ip(request))
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"error": "Invalid username or password"},
+            status_code=401,
+        )
+    if not verify_password(password, user["password"]):
         logger.warning("Failed login attempt for username=%s from %s", username, get_client_ip(request))
         return templates.TemplateResponse(
             request, "login.html",
@@ -264,9 +274,14 @@ async def change_display_name(
             "UPDATE users SET display_name = ?, updated_at = datetime('now') WHERE id = ?",
             (display_name, user["id"]),
         )
+        # Re-read token_version so the refreshed JWT matches the DB value
+        row = db.execute(
+            "SELECT token_version FROM users WHERE id = ?", (user["id"],)
+        ).fetchone()
+        token_version = row["token_version"] if row else 1
 
     # Refresh the JWT so the nav bar updates immediately
-    token = create_token(user["id"], user["username"], user["role"], display_name)
+    token = create_token(user["id"], user["username"], user["role"], display_name, token_version)
     from fastapi.responses import JSONResponse
     resp = JSONResponse({"ok": True, "message": "Display name updated", "display_name": display_name})
     set_auth_cookie(resp, token)

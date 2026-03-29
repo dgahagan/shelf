@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Form
@@ -9,6 +10,8 @@ from starlette.responses import StreamingResponse
 from app.auth import require_role
 from app.database import get_db, get_all_settings
 from app.services import isbndb
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
@@ -202,9 +205,10 @@ async def valuate_all_stream(request: Request, _=Depends(require_role("admin")))
 
             isbndb._save_cache(cache)
             await queue.put({"type": "done", **results})
-        except Exception as e:
+        except Exception:
+            logger.exception("Valuation failed")
             isbndb._save_cache(cache)
-            await queue.put({"type": "error", "message": str(e)})
+            await queue.put({"type": "error", "message": "Valuation failed — check server logs"})
 
     async def event_stream():
         task = asyncio.create_task(run_valuate())

@@ -409,39 +409,55 @@ async def scan_isbn(
         hc_token = get_setting(db, "hardcover_token") or None
 
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        metadata, source, hc_ids = await _lookup_metadata(isbn13, hc_token, client)
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            metadata, source, hc_ids = await _lookup_metadata(isbn13, hc_token, client)
 
-        if not metadata:
-            preview_cover = await _fetch_preview_cover(isbn13, client)
-            _log_scan(isbn13, media_type, "not_found", mode=mode)
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {
-                    "status": "not_found", "isbn": isbn13, "media_type": media_type,
-                    "message": "Not found — add manually below",
-                    "preview_cover": preview_cover,
-                },
+            if not metadata:
+                preview_cover = await _fetch_preview_cover(isbn13, client)
+                _log_scan(isbn13, media_type, "not_found", mode=mode)
+                return templates.TemplateResponse(
+                    request, "fragments/scan_result.html",
+                    {
+                        "status": "not_found", "isbn": isbn13, "media_type": media_type,
+                        "message": "Not found — add manually below",
+                        "preview_cover": preview_cover,
+                    },
+                )
+
+            item_id = _save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
+
+            # Wishlist mode: set owned = 0
+            if mode == "wishlist":
+                with get_db() as db:
+                    db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
+
+            # Download cover
+            hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
+            cover_path = await covers.download_cover(
+                item_id, isbn13,
+                metadata.get("cover_url") if source != "hardcover" else None,
+                metadata.get("cover_id"), client,
+                hardcover_cover_url=hc_cover,
             )
+            if cover_path:
+                with get_db() as db:
+                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
 
-        item_id = _save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
-
-        # Wishlist mode: set owned = 0
-        if mode == "wishlist":
-            with get_db() as db:
-                db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
-
-        # Download cover
-        hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
-        cover_path = await covers.download_cover(
-            item_id, isbn13,
-            metadata.get("cover_url") if source != "hardcover" else None,
-            metadata.get("cover_id"), client,
-            hardcover_cover_url=hc_cover,
+    except httpx.TimeoutException:
+        logger.warning("Timeout looking up ISBN %s", isbn13)
+        _log_scan(isbn13, media_type, "error", mode=mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn13, "message": "Metadata lookup timed out — try again"},
         )
-        if cover_path:
-            with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+    except httpx.NetworkError:
+        logger.warning("Network error looking up ISBN %s", isbn13)
+        _log_scan(isbn13, media_type, "error", mode=mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn13, "message": "Network error during lookup — check connectivity"},
+        )
 
     status = "wishlisted" if mode == "wishlist" else "added"
     _log_scan(isbn13, media_type, status, item_id, mode)
@@ -838,13 +854,13 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
         if not primary:
             return {"ok": False, "message": "Primary item not found"}
 
-        fillable = ["subtitle", "authors", "publisher", "publish_year", "page_count",
-                     "description", "series_name", "narrator", "isbn"]
+        _MERGE_FILLABLE = frozenset(["subtitle", "authors", "publisher", "publish_year", "page_count",
+                                      "description", "series_name", "narrator", "isbn"])
         for mid in merge_ids:
             other = db.execute("SELECT * FROM items WHERE id = ?", (mid,)).fetchone()
             if not other:
                 continue
-            for field in fillable:
+            for field in _MERGE_FILLABLE:
                 if not primary[field] and other[field]:
                     db.execute(f"UPDATE items SET {field} = ? WHERE id = ?", (other[field], keep_id))
 
@@ -1095,8 +1111,9 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
                     })
 
             await queue.put({"type": "done", **results})
-        except Exception as e:
-            await queue.put({"type": "error", "message": str(e)})
+        except Exception:
+            logger.exception("Bulk cover retry failed")
+            await queue.put({"type": "error", "message": "Cover retry failed — check server logs"})
 
     async def event_stream():
         task = asyncio.create_task(run_retry())
@@ -1171,7 +1188,10 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     if not csv_file or not hasattr(csv_file, "read"):
         return {"error": "No file uploaded", "imported": 0, "skipped": 0, "errors": []}
 
-    content = (await csv_file.read()).decode("utf-8-sig")
+    raw = await csv_file.read()
+    if len(raw) > 50 * 1024 * 1024:  # 50 MB cap
+        return {"error": "File too large (max 50 MB)", "imported": 0, "skipped": 0, "errors": []}
+    content = raw.decode("utf-8-sig")
     reader = csv.DictReader(io.StringIO(content))
 
     # Normalize headers (lowercase, strip)
@@ -1182,12 +1202,30 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     skipped = 0
     errors = []
 
+    _CSV_MAX_TEXT = 1000
+
     with get_db() as db:
         for i, row in enumerate(reader, start=2):
             try:
                 title = (row.get("title") or "").strip()
                 if not title:
                     errors.append(f"Row {i}: missing title")
+                    continue
+                if len(title) > _CSV_MAX_TEXT:
+                    errors.append(f"Row {i}: title too long (max {_CSV_MAX_TEXT} chars)")
+                    continue
+
+                authors_val = (row.get("authors") or row.get("author") or "").strip() or None
+                if authors_val and len(authors_val) > _CSV_MAX_TEXT:
+                    errors.append(f"Row {i}: authors too long (max {_CSV_MAX_TEXT} chars)")
+                    continue
+                publisher_val = (row.get("publisher") or "").strip() or None
+                if publisher_val and len(publisher_val) > _CSV_MAX_TEXT:
+                    errors.append(f"Row {i}: publisher too long (max {_CSV_MAX_TEXT} chars)")
+                    continue
+                series_val = (row.get("series_name") or row.get("series") or "").strip() or None
+                if series_val and len(series_val) > _CSV_MAX_TEXT:
+                    errors.append(f"Row {i}: series_name too long (max {_CSV_MAX_TEXT} chars)")
                     continue
 
                 isbn_val = (row.get("isbn") or "").strip() or None
@@ -1217,13 +1255,13 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'csv_import')""",
                     (
                         title,
-                        (row.get("authors") or row.get("author") or "").strip() or None,
+                        authors_val,
                         isbn_val,
                         media,
-                        (row.get("publisher") or "").strip() or None,
+                        publisher_val,
                         int(pub_year) if pub_year and str(pub_year).isdigit() else None,
                         int(page_count) if page_count and str(page_count).isdigit() else None,
-                        (row.get("series_name") or row.get("series") or "").strip() or None,
+                        series_val,
                     ),
                 )
                 imported += 1
@@ -1258,8 +1296,17 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         tmdb_key = get_setting(db, "tmdb_api_key")
 
     metadata = None
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        metadata = await tmdb.lookup_upc(upc_norm, tmdb_key, client)
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            metadata = await tmdb.lookup_upc(upc_norm, tmdb_key, client)
+    except (httpx.TimeoutException, httpx.NetworkError) as exc:
+        logger.warning("Network error looking up UPC %s: %s", upc_norm, type(exc).__name__)
+        _log_scan(upc_norm, media_type, "error", mode=mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": upc_norm, "media_type": media_type,
+             "message": "Metadata lookup failed — check connectivity", "preview_cover": None},
+        )
 
     if not metadata:
         _log_scan(upc_norm, media_type, "not_found", mode=mode)
@@ -1823,9 +1870,23 @@ def _update_from_csv_row(db, item_id: int, row: dict):
         )
 
 
+_SCAN_LOG_RETENTION_DAYS = 90
+_SCAN_LOG_PRUNE_INTERVAL = 3600  # seconds between prune checks
+_scan_log_last_prune: float = float("-inf")  # -inf triggers prune on first call
+
+
 def _log_scan(isbn: str, media_type: str, result: str, item_id: int | None = None, mode: str = "add"):
+    import time
+    global _scan_log_last_prune
     with get_db() as db:
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, item_id, mode) VALUES (?, ?, ?, ?, ?)",
             (isbn, media_type, result, item_id, mode),
         )
+        now = time.monotonic()
+        if now - _scan_log_last_prune >= _SCAN_LOG_PRUNE_INTERVAL:
+            _scan_log_last_prune = now
+            db.execute(
+                "DELETE FROM scan_log WHERE created_at < datetime('now', ?)",
+                (f"-{_SCAN_LOG_RETENTION_DAYS} days",),
+            )

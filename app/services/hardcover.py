@@ -409,9 +409,10 @@ async def find_book_id_by_isbn(isbn: str, token: str, client: httpx.AsyncClient)
 
 async def create_user_book(token: str, book_id: int, status_id: int | None = None) -> dict:
     """Add a book to the user's Hardcover library. Returns {ok, user_book_id} or {ok, message}."""
-    obj_parts = [f"book_id: {book_id}"]
+    # Coerce to int to prevent injection if callers ever pass non-integer values
+    obj_parts = [f"book_id: {int(book_id)}"]
     if status_id:
-        obj_parts.append(f"status_id: {status_id}")
+        obj_parts.append(f"status_id: {int(status_id)}")
     obj = ", ".join(obj_parts)
 
     query = f"""
@@ -435,14 +436,15 @@ async def update_user_book(token: str, user_book_id: int, status_id: int | None 
     """Update a book in the user's Hardcover library. Returns {ok} or {ok, message}."""
     obj_parts = []
     if status_id is not None:
-        obj_parts.append(f"status_id: {status_id}")
+        # Coerce to int to prevent injection if callers ever pass non-integer values
+        obj_parts.append(f"status_id: {int(status_id)}")
     if not obj_parts:
         return {"ok": True}
     obj = ", ".join(obj_parts)
 
     query = f"""
     mutation {{
-      update_user_book(id: {user_book_id}, object: {{ {obj} }}) {{
+      update_user_book(id: {int(user_book_id)}, object: {{ {obj} }}) {{
         id
       }}
     }}

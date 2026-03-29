@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import re
 
 import httpx
@@ -11,6 +12,8 @@ from app.auth import require_role
 from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting, get_all_settings
 from app.services import hardcover, covers
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/hardcover")
 
@@ -228,18 +231,18 @@ async def export_hardcover_stream(request: Request, _=Depends(require_role("edit
                             "type": "progress", "current": i, "total": len(items),
                             "title": title, "status": status,
                         })
-                    except Exception as e:
+                    except Exception:
+                        logger.exception("Error processing item during Hardcover export")
                         stats["errors"] += 1
                         await queue.put({
                             "type": "progress", "current": i, "total": len(items),
-                            "title": title, "status": f"error: {e}",
+                            "title": title, "status": "error",
                         })
 
             await queue.put({"type": "done", **stats})
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            await queue.put({"type": "error", "message": str(e)})
+        except Exception:
+            logger.exception("Hardcover export failed")
+            await queue.put({"type": "error", "message": "Export failed — check server logs"})
 
     async def event_stream():
         task = asyncio.create_task(run_export())
@@ -347,10 +350,9 @@ async def import_hardcover_stream(request: Request, _=Depends(require_role("edit
                         })
 
             await queue.put({"type": "done", **stats})
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            await queue.put({"type": "error", "message": str(e)})
+        except Exception:
+            logger.exception("Hardcover import failed")
+            await queue.put({"type": "error", "message": "Import failed — check server logs"})
 
     async def event_stream():
         task = asyncio.create_task(run_import())

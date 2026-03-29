@@ -14,6 +14,7 @@ ALLOWED_COVER_DOMAINS = {
     "books.google.com",
     "books.googleapis.com",
     "www.googleapis.com",
+    "lh3.googleusercontent.com",  # Google Books CDN redirect target
     "images-na.ssl-images-amazon.com",
     "m.media-amazon.com",
     "hardcover.app",
@@ -155,7 +156,7 @@ def is_allowed_cover_url(url: str) -> bool:
     """Check if a URL is from a trusted cover image domain."""
     try:
         parsed = urlparse(url)
-        return parsed.scheme in ("http", "https") and parsed.hostname in ALLOWED_COVER_DOMAINS
+        return parsed.scheme == "https" and parsed.hostname in ALLOWED_COVER_DOMAINS
     except Exception:
         return False
 
@@ -177,6 +178,11 @@ async def _download(url: str, dest, client: httpx.AsyncClient) -> bool:
         resp = await client.get(url, follow_redirects=True)
         if resp.status_code != 200:
             logger.debug("Cover download failed for %s: HTTP %d", url, resp.status_code)
+            return False
+        # Validate the final URL after any redirects to prevent allowlist bypass
+        final_url = str(resp.url)
+        if not is_allowed_cover_url(final_url):
+            logger.warning("Cover redirect to untrusted domain: %s -> %s", url, final_url)
             return False
         content = resp.content
         # Open Library returns a 1x1 pixel for missing covers
