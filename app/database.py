@@ -1,8 +1,11 @@
+import logging
 import sqlite3
 from contextlib import contextmanager
 from typing import Sequence
 
 from app.config import DATABASE_PATH, COVERS_DIR
+
+logger = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS items (
@@ -61,31 +64,31 @@ CREATE TABLE IF NOT EXISTS scan_log (
 CREATE INDEX IF NOT EXISTS idx_items_authors ON items(authors COLLATE NOCASE);
 CREATE INDEX IF NOT EXISTS idx_items_publish_year ON items(publish_year);
 CREATE INDEX IF NOT EXISTS idx_items_series ON items(series_name COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS schema_version (
+    version     INTEGER PRIMARY KEY,
+    description TEXT NOT NULL,
+    applied_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
 """
 
 
-COLUMN_MIGRATIONS: Sequence[str] = (
-    # Phase 2B: Reading Status
-    "ALTER TABLE items ADD COLUMN reading_status TEXT DEFAULT NULL",
-    "ALTER TABLE items ADD COLUMN date_started TEXT DEFAULT NULL",
-    "ALTER TABLE items ADD COLUMN date_finished TEXT DEFAULT NULL",
-    # Phase 4B: Valuation
-    "ALTER TABLE items ADD COLUMN estimated_value REAL DEFAULT NULL",
-    "ALTER TABLE items ADD COLUMN value_updated_at TEXT DEFAULT NULL",
-    # Phase 5A: UPC Support
-    "ALTER TABLE items ADD COLUMN upc TEXT DEFAULT NULL",
-    # Phase 6: Hardcover Integration
-    "ALTER TABLE items ADD COLUMN hardcover_book_id INTEGER DEFAULT NULL",
-    "ALTER TABLE items ADD COLUMN hardcover_edition_id INTEGER DEFAULT NULL",
-    "ALTER TABLE items ADD COLUMN hardcover_user_book_id INTEGER DEFAULT NULL",
-    # Phase 6B: Wishlist / Owned flag
-    "ALTER TABLE items ADD COLUMN owned INTEGER NOT NULL DEFAULT 1",
-    # Phase 7: Video Game Support
-    "ALTER TABLE items ADD COLUMN platform TEXT DEFAULT NULL",
-    # Phase 8: Scan Modes
-    "ALTER TABLE scan_log ADD COLUMN mode TEXT DEFAULT 'add'",
-    # Security: token version for JWT invalidation
-    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1",
+# Versioned migrations: (version, description, sql)
+# Append new migrations to the end. Never modify or reorder existing entries.
+MIGRATIONS: Sequence[tuple[int, str, str]] = (
+    (1,  "Add reading_status column",         "ALTER TABLE items ADD COLUMN reading_status TEXT DEFAULT NULL"),
+    (2,  "Add date_started column",           "ALTER TABLE items ADD COLUMN date_started TEXT DEFAULT NULL"),
+    (3,  "Add date_finished column",          "ALTER TABLE items ADD COLUMN date_finished TEXT DEFAULT NULL"),
+    (4,  "Add estimated_value column",        "ALTER TABLE items ADD COLUMN estimated_value REAL DEFAULT NULL"),
+    (5,  "Add value_updated_at column",       "ALTER TABLE items ADD COLUMN value_updated_at TEXT DEFAULT NULL"),
+    (6,  "Add upc column",                    "ALTER TABLE items ADD COLUMN upc TEXT DEFAULT NULL"),
+    (7,  "Add hardcover_book_id column",      "ALTER TABLE items ADD COLUMN hardcover_book_id INTEGER DEFAULT NULL"),
+    (8,  "Add hardcover_edition_id column",   "ALTER TABLE items ADD COLUMN hardcover_edition_id INTEGER DEFAULT NULL"),
+    (9,  "Add hardcover_user_book_id column", "ALTER TABLE items ADD COLUMN hardcover_user_book_id INTEGER DEFAULT NULL"),
+    (10, "Add owned column",                  "ALTER TABLE items ADD COLUMN owned INTEGER NOT NULL DEFAULT 1"),
+    (11, "Add platform column",               "ALTER TABLE items ADD COLUMN platform TEXT DEFAULT NULL"),
+    (12, "Add scan_log mode column",          "ALTER TABLE scan_log ADD COLUMN mode TEXT DEFAULT 'add'"),
+    (13, "Add users token_version column",    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1"),
 )
 
 MIGRATION_TABLES = """
@@ -168,12 +171,43 @@ CREATE TABLE IF NOT EXISTS game_platforms (
 """
 
 
-def _run_migrations(db: sqlite3.Connection) -> None:
-    for sql in COLUMN_MIGRATIONS:
+def _backfill_versions(db: sqlite3.Connection) -> set[int]:
+    """Detect already-applied migrations in pre-version-tracking databases."""
+    applied = set()
+    for version, description, sql in MIGRATIONS:
         try:
             db.execute(sql)
         except sqlite3.OperationalError:
-            pass  # column already exists
+            pass  # column already exists — migration was previously applied
+        applied.add(version)
+        db.execute(
+            "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+            (version, description),
+        )
+    logger.info("Backfilled %d migration version records", len(applied))
+    return applied
+
+
+def _run_migrations(db: sqlite3.Connection) -> None:
+    applied = {
+        r["version"]
+        for r in db.execute("SELECT version FROM schema_version").fetchall()
+    }
+
+    if not applied:
+        # First run with version tracking — detect already-applied migrations
+        applied = _backfill_versions(db)
+    else:
+        for version, description, sql in MIGRATIONS:
+            if version in applied:
+                continue
+            db.execute(sql)
+            db.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+            logger.info("Applied migration %d: %s", version, description)
+
     db.executescript(MIGRATION_TABLES)
     _seed_game_platforms(db)
 
