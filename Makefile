@@ -9,7 +9,8 @@ MIN_TESTS ?= 155
         check-deps check-licenses check-secrets checks \
         report-review report-security report-test reports \
         qa fix verify release-check status \
-        install-playwright install-hooks
+        install-playwright install-hooks \
+        dev dev-down dev-logs seed-dev release
 
 # NOTE: This Makefile must be run from within shelf/ (cd shelf && make ...).
 # Running via `make -C shelf` will break targets that use git commands.
@@ -129,6 +130,34 @@ verify: test-all
 		echo "ERROR: Unit test count $$count < minimum $(MIN_TESTS)"; exit 1; \
 	fi
 	@echo "=== VERIFICATION PASSED ==="
+
+# ---------------------------------------------------------------------------
+# Dev instance management
+# ---------------------------------------------------------------------------
+
+PROD_DIR ?= $(HOME)/shelf-prod
+
+dev:
+	docker compose up -d --build
+
+dev-down:
+	docker compose down
+
+dev-logs:
+	docker compose logs -f
+
+seed-dev:
+	@test -f $(PROD_DIR)/data/shelf.db || (echo "ERROR: No prod DB at $(PROD_DIR)/data/shelf.db"; exit 1)
+	mkdir -p data-dev/covers
+	cp $(PROD_DIR)/data/shelf.db data-dev/shelf.db
+	cp -r $(PROD_DIR)/data/covers/ data-dev/covers/ 2>/dev/null || true
+	@echo "Dev data seeded from prod. Certs will auto-generate on first run."
+
+release:
+	docker build -t shelf:prod .
+	@echo ""
+	@echo "Tagged shelf:prod. To deploy:"
+	@echo "  cd $(PROD_DIR) && ./upgrade.sh"
 
 # ---------------------------------------------------------------------------
 # Status

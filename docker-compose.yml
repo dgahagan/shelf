@@ -1,10 +1,11 @@
 services:
   shelf:
     build: .
-    container_name: shelf
+    container_name: ${SHELF_CONTAINER:-shelf-dev}
     network_mode: host
     environment:
-      - CERT_SAN=${CERT_SAN:-DNS:shelf,DNS:localhost}
+      - CERT_SAN=${CERT_SAN:-DNS:localhost}
+      - SHELF_PORT=${SHELF_PORT:-18889}
     volumes:
-      - ./data:/data:z
+      - ${SHELF_DATA:-./data-dev}:/data:z
     restart: unless-stopped

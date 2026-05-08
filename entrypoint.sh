@@ -30,5 +30,5 @@ if [ ! -f "$CERT_FILE" ] || [ ! -f "$KEY_FILE" ]; then
 fi
 
 # Drop to non-root user for the application
-exec gosu shelf uvicorn app.main:app --host 0.0.0.0 --port 18888 \
+exec gosu shelf uvicorn app.main:app --host 0.0.0.0 --port "${SHELF_PORT:-18888}" \
     --ssl-keyfile "$KEY_FILE" --ssl-certfile "$CERT_FILE"
