@@ -59,7 +59,10 @@ async def browse(
         _, order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["newest"])
 
         items = db.execute(
-            f"SELECT i.*, l.name as location_name FROM items i "
+            f"SELECT i.*, l.name as location_name, "
+            f"(SELECT b.name FROM checkouts c JOIN borrowers b ON c.borrower_id = b.id "
+            f" WHERE c.item_id = i.id AND c.checked_in IS NULL LIMIT 1) AS lent_to "
+            f"FROM items i "
             f"LEFT JOIN locations l ON i.location_id = l.id "
             f"{where} ORDER BY {order_clause} LIMIT ?",
             params + [DEFAULT_PAGE_SIZE],

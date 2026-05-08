@@ -23,6 +23,13 @@
             {% if not item.owned %}
             <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">Wishlist</span>
             {% endif %}
+            {% if item.lent_to %}
+            <span x-data="{ show: false }" @click.stop.prevent="show = !show" @mouseleave="show = false"
+                  class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/90 text-white shrink-0 cursor-pointer"
+                  title="Loaned to {{ item.lent_to }}">
+                <span x-text="show ? 'To: {{ item.lent_to|e }}' : 'Loaned'"></span>
+            </span>
+            {% endif %}
             {% if item.created_at and item.created_at >= seven_days_ago %}
             <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-accent/80 text-white shrink-0">New</span>
             {% endif %}
@@ -32,7 +39,9 @@
     <td class="px-3 py-2 text-shelf-muted text-xs hidden lg:table-cell">{{ media_types.get(item.media_type, item.media_type or '—') }}</td>
     <td class="px-3 py-2 text-shelf-muted text-xs hidden lg:table-cell">{{ item.location_name or '—' }}</td>
     <td class="px-3 py-2 hidden sm:table-cell">
-        {% if item.reading_status == 'read' %}
+        {% if item.lent_to %}
+        <span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" title="Loaned to {{ item.lent_to }}"></span>
+        {% elif item.reading_status == 'read' %}
         <span class="w-2.5 h-2.5 rounded-full bg-shelf-success inline-block"></span>
         {% elif item.reading_status == 'reading' %}
         <span class="w-2.5 h-2.5 rounded-full bg-shelf-accent2 inline-block"></span>
