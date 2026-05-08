@@ -70,7 +70,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 def create_token(user_id: int, username: str, role: str, display_name: str | None = None, token_version: int = 1) -> str:
     now = datetime.now(timezone.utc)
     payload = {
-        "sub": user_id,
+        "sub": str(user_id),
         "username": username,
         "role": role,
         "display_name": display_name or username,
@@ -138,15 +138,16 @@ def get_current_user(request: Request) -> dict | None:
 
     # Check token version against DB to detect invalidated tokens
     token_tv = payload.get("tv", 1)
+    user_id = int(payload["sub"])
     with get_db() as db:
-        row = db.execute("SELECT token_version FROM users WHERE id = ?", (payload["sub"],)).fetchone()
+        row = db.execute("SELECT token_version FROM users WHERE id = ?", (user_id,)).fetchone()
         if not row:
             return None
         if row["token_version"] != token_tv:
             return None
 
     return {
-        "id": payload["sub"],
+        "id": user_id,
         "username": payload["username"],
         "role": payload["role"],
         "display_name": payload.get("display_name", payload["username"]),
@@ -167,7 +168,7 @@ def should_refresh_token(request: Request) -> str | None:
     half_life = (exp - iat) / 2
     if now > iat + half_life:
         return create_token(
-            payload["sub"], payload["username"], payload["role"],
+            int(payload["sub"]), payload["username"], payload["role"],
             payload.get("display_name"), payload.get("tv", 1),
         )
     return None
