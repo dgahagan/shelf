@@ -1,7 +1,6 @@
 """Tests covering the security and correctness fixes applied on 2026-03-28.
 
 Covers:
-- H1: SSRF via Audiobookshelf URL (private IP rejection)
 - H2: Cover download redirect bypass (final URL validation)
 - H3: GraphQL mutation injection (int() coercion)
 - M1: Login timing oracle (dummy bcrypt for unknown usernames)
@@ -12,7 +11,6 @@ Covers:
 """
 
 import io
-import socket
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,67 +21,23 @@ from tests.conftest import _insert_item
 
 
 # ---------------------------------------------------------------------------
-# H1 — SSRF: _validate_abs_url rejects private/loopback addresses
+# ABS URL validator — scheme and hostname only (private-IP rejection removed:
+# Shelf is meant to point at a self-hosted ABS on the same LAN)
 # ---------------------------------------------------------------------------
 
 
-class TestSSRFValidation:
-    def setup_method(self):
-        # Re-import each time to pick up monkeypatched state cleanly
-        from app.routers.sync import _validate_abs_url, _is_private_address
-        self._validate = _validate_abs_url
-        self._is_private = _is_private_address
-
-    def test_rejects_loopback_ipv4(self):
-        result = self._validate("http://127.0.0.1/api")
-        assert result is not None
-        assert "private" in result.lower() or "internal" in result.lower()
-
-    def test_rejects_rfc1918_192_168(self):
-        result = self._validate("http://192.168.1.100/api")
-        assert result is not None
-
-    def test_rejects_rfc1918_10_x(self):
-        result = self._validate("http://10.0.0.1/api")
-        assert result is not None
-
-    def test_rejects_rfc1918_172_16(self):
-        result = self._validate("http://172.16.0.1/api")
-        assert result is not None
-
-    def test_rejects_link_local(self):
-        result = self._validate("http://169.254.1.1/api")
-        assert result is not None
-
-    def test_rejects_localhost_hostname(self, monkeypatch):
-        """'localhost' resolves to 127.0.0.1 — must be blocked."""
-        monkeypatch.setattr(
-            socket, "getaddrinfo",
-            lambda host, port: [(None, None, None, None, ("127.0.0.1", 0))],
-        )
+class TestABSURLValidation:
+    def test_allows_private_lan_address(self):
         from app.routers.sync import _validate_abs_url
-        result = _validate_abs_url("http://localhost/api")
-        assert result is not None
+        assert _validate_abs_url("http://192.168.1.50:13378") is None
 
-    def test_rejects_internal_hostname_via_dns(self, monkeypatch):
-        """Hostname that resolves to an RFC 1918 address must be blocked."""
-        monkeypatch.setattr(
-            socket, "getaddrinfo",
-            lambda host, port: [(None, None, None, None, ("10.5.0.1", 0))],
-        )
+    def test_allows_localhost(self):
         from app.routers.sync import _validate_abs_url
-        result = _validate_abs_url("https://internal-service.corp/api")
-        assert result is not None
+        assert _validate_abs_url("http://localhost:13378") is None
 
-    def test_allows_public_ip(self, monkeypatch):
-        """Public IP addresses must pass validation."""
-        monkeypatch.setattr(
-            socket, "getaddrinfo",
-            lambda host, port: [(None, None, None, None, ("93.184.216.34", 0))],
-        )
+    def test_allows_public_url(self):
         from app.routers.sync import _validate_abs_url
-        result = _validate_abs_url("https://example.com")
-        assert result is None
+        assert _validate_abs_url("https://example.com") is None
 
     def test_rejects_non_http_scheme(self):
         from app.routers.sync import _validate_abs_url

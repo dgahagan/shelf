@@ -370,11 +370,9 @@ async def logs(
 @router.get("/settings")
 async def settings(request: Request, _=Depends(require_role("admin"))):
     from app.config import is_env_override
+    from app.database import get_all_settings
     with get_db() as db:
-        settings = {
-            row["key"]: row["value"]
-            for row in db.execute("SELECT key, value FROM settings").fetchall()
-        }
+        settings = get_all_settings(db)
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()

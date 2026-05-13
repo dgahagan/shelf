@@ -184,7 +184,7 @@
                     <input type="password" id="abs_token" name="abs_token" x-model="absToken" value="{{ settings.get('abs_token', '') }}" placeholder="Bearer token from ABS settings"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!absUrl || !absToken) return; absTesting=true; absStatus=null; fetch('/api/sync/audiobookshelf/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:absUrl,token:absToken})}).then(r=>r.json()).then(d=>{absStatus=d; absTesting=false}).catch(()=>{absStatus={ok:false,message:'Connection failed'}; absTesting=false})"
+                            @click="if(!absUrl || !absToken) return; absTesting=true; absStatus=null; fetch('/api/sync/audiobookshelf/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:absUrl,token:absToken})}).then(r=>r.json()).then(d=>{absStatus=d; absTesting=false}).catch(()=>{absStatus={ok:false,message:'Connection failed'}; absTesting=false})"
                             :disabled="absTesting || !absUrl || !absToken"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!absTesting">Test</span>
@@ -370,7 +370,7 @@
                            value="{{ settings.get('hardcover_token', '') }}" placeholder="Your Hardcover API token"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!hcToken) return; hcTesting=true; hcStatus=null; fetch('/api/hardcover/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:hcToken})}).then(r=>r.json()).then(d=>{hcStatus=d; hcTesting=false}).catch(()=>{hcStatus={ok:false,message:'Connection failed'}; hcTesting=false})"
+                            @click="if(!hcToken) return; hcTesting=true; hcStatus=null; fetch('/api/hardcover/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({token:hcToken})}).then(r=>r.json()).then(d=>{hcStatus=d; hcTesting=false}).catch(()=>{hcStatus={ok:false,message:'Connection failed'}; hcTesting=false})"
                             :disabled="hcTesting || !hcToken"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!hcTesting">Test</span>
@@ -633,7 +633,7 @@
                            value="{{ settings.get('isbndb_api_key', '') }}" placeholder="Your ISBNdb API key"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!apiKey) return; testing=true; keyStatus=null; fetch('/api/valuate/test-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:apiKey})}).then(r=>r.json()).then(d=>{keyStatus=d; testing=false}).catch(()=>{keyStatus={ok:false,message:'Connection failed'}; testing=false})"
+                            @click="if(!apiKey) return; testing=true; keyStatus=null; fetch('/api/valuate/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:apiKey})}).then(r=>r.json()).then(d=>{keyStatus=d; testing=false}).catch(()=>{keyStatus={ok:false,message:'Connection failed'}; testing=false})"
                             :disabled="testing || !apiKey"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!testing">Test Key</span>
@@ -756,7 +756,7 @@
                            value="{{ settings.get('tmdb_api_key', '') }}" placeholder="Your TMDb API key"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!tmdbKey) return; tmdbTesting=true; tmdbStatus=null; fetch('/api/tmdb/test-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:tmdbKey})}).then(r=>r.json()).then(d=>{tmdbStatus=d; tmdbTesting=false}).catch(()=>{tmdbStatus={ok:false,message:'Connection failed'}; tmdbTesting=false})"
+                            @click="if(!tmdbKey) return; tmdbTesting=true; tmdbStatus=null; fetch('/api/tmdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:tmdbKey})}).then(r=>r.json()).then(d=>{tmdbStatus=d; tmdbTesting=false}).catch(()=>{tmdbStatus={ok:false,message:'Connection failed'}; tmdbTesting=false})"
                             :disabled="tmdbTesting || !tmdbKey"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!tmdbTesting">Test Key</span>
@@ -831,7 +831,7 @@
                            value="{{ settings.get('igdb_client_secret', '') }}" placeholder="Your Twitch Client Secret"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!igdbId || !igdbSecret) return; igdbTesting=true; igdbStatus=null; fetch('/api/igdb/test-key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_id:igdbId,client_secret:igdbSecret})}).then(r=>r.json()).then(d=>{igdbStatus=d; igdbTesting=false}).catch(()=>{igdbStatus={ok:false,message:'Connection failed'}; igdbTesting=false})"
+                            @click="if(!igdbId || !igdbSecret) return; igdbTesting=true; igdbStatus=null; fetch('/api/igdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({client_id:igdbId,client_secret:igdbSecret})}).then(r=>r.json()).then(d=>{igdbStatus=d; igdbTesting=false}).catch(()=>{igdbStatus={ok:false,message:'Connection failed'}; igdbTesting=false})"
                             :disabled="igdbTesting || !igdbId || !igdbSecret"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!igdbTesting">Test</span>

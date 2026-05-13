@@ -1,6 +1,6 @@
 import asyncio
-import ipaddress
 import json
+import logging
 from urllib.parse import urlparse
 
 import httpx
@@ -13,50 +13,17 @@ from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.services import audiobookshelf
 
-# Private/loopback ranges that must not be reachable via admin-supplied URLs
-_BLOCKED_NETWORKS = [
-    ipaddress.ip_network("10.0.0.0/8"),
-    ipaddress.ip_network("172.16.0.0/12"),
-    ipaddress.ip_network("192.168.0.0/16"),
-    ipaddress.ip_network("127.0.0.0/8"),
-    ipaddress.ip_network("::1/128"),
-    ipaddress.ip_network("fc00::/7"),
-    ipaddress.ip_network("169.254.0.0/16"),  # link-local
-    ipaddress.ip_network("fe80::/10"),
-]
-
-
-def _is_private_address(hostname: str) -> bool:
-    """Return True if hostname resolves to a private/loopback address."""
-    import socket
-    try:
-        infos = socket.getaddrinfo(hostname, None)
-    except socket.gaierror:
-        return False
-    for info in infos:
-        addr_str = info[4][0]
-        try:
-            addr = ipaddress.ip_address(addr_str)
-            if addr.is_loopback or addr.is_private or addr.is_link_local:
-                return True
-            for net in _BLOCKED_NETWORKS:
-                if addr in net:
-                    return True
-        except ValueError:
-            pass
-    return False
+logger = logging.getLogger(__name__)
 
 
 def _validate_abs_url(url: str) -> str | None:
-    """Validate ABS URL scheme and reject private/internal IP targets."""
+    """Validate ABS URL scheme and hostname."""
     try:
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
             return "URL must use http:// or https://"
         if not parsed.hostname:
             return "Invalid URL"
-        if _is_private_address(parsed.hostname):
-            return "URL must not point to a private or internal address"
     except Exception:
         return "Invalid URL"
     return None

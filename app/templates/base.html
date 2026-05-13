@@ -32,6 +32,11 @@
     <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
     <script defer src="https://unpkg.com/alpinejs@3.15.9/dist/cdn.min.js" integrity="sha384-MEh8ZMZhsmD6/1Bd3kfTiGZoYIKR9u+BilQQWl5DOonh+pvKg6fP2AejtOozsZK8" crossorigin="anonymous"></script>
     <script>
+        // Read the csrf_token cookie. Used by HTMX hook below and by raw fetch() callers.
+        window.csrfToken = function() {
+            const match = document.cookie.split('; ').find(r => r.startsWith('csrf_token='));
+            return match ? decodeURIComponent(match.split('=')[1]) : '';
+        };
         // Attach CSRF token to every HTMX state-mutating request (double-submit cookie)
         document.addEventListener('htmx:configRequest', function(evt) {
             if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(evt.detail.verb.toUpperCase())) {
