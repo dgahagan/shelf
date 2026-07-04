@@ -14,6 +14,7 @@
     var dataMeta = { generated_at: null, count: 0 };
     var scanner = null;
     var lastScan = { code: null, at: 0 };
+    var deferredInstall = null;
 
     function $(id) { return document.getElementById(id); }
 
@@ -213,6 +214,32 @@
         });
     }
 
+    // --- PWA install ------------------------------------------------------
+    // Chrome never reliably shows its own install banner; capture the event
+    // and surface a button instead. Browsers without the event (iOS Safari,
+    // already-installed, untrusted origin) simply never reveal the button.
+
+    window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        deferredInstall = e;
+        var btn = $('install-app');
+        if (btn) btn.classList.remove('hidden');
+    });
+
+    window.addEventListener('appinstalled', function () {
+        deferredInstall = null;
+        var btn = $('install-app');
+        if (btn) btn.classList.add('hidden');
+    });
+
+    function promptInstall() {
+        if (!deferredInstall) return;
+        var evt = deferredInstall;
+        deferredInstall = null;
+        $('install-app').classList.add('hidden');
+        evt.prompt();
+    }
+
     // --- Status -----------------------------------------------------------
 
     function updateStatus() {
@@ -245,6 +272,7 @@
         });
         $('camera-toggle').addEventListener('click', toggleCamera);
         $('sync-now').addEventListener('click', function () { flushQueue(); });
+        $('install-app').addEventListener('click', promptInstall);
 
         window.addEventListener('online', function () { updateStatus(); flushQueue().then(refreshData); });
         window.addEventListener('offline', updateStatus);

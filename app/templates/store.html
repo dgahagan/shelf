@@ -63,6 +63,12 @@
             <p id="sync-hint" class="text-xs text-shelf-warning hidden"></p>
         </div>
 
+        <!-- PWA install (revealed only when the browser fires beforeinstallprompt) -->
+        <button id="install-app" data-testid="install-app"
+                class="hidden w-full px-4 py-3 bg-shelf-card border border-shelf-accent/40 text-shelf-accent2 rounded-xl text-sm font-medium hover:bg-shelf-hover transition-colors">
+            Install Shelf on this device
+        </button>
+
         <p class="text-[11px] text-shelf-muted/70 text-center pt-2">
             Scans of books not in your library are added to your wishlist automatically when you're back online.
         </p>

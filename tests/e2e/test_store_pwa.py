@@ -89,6 +89,33 @@ def test_offline_verdicts_and_queue_flush(live_server, browser, setup_admin):
         ctx.close()
 
 
+def test_install_button_appears_on_beforeinstallprompt(live_server, browser, setup_admin):
+    """The install button stays hidden until the browser offers installability,
+    then triggers the deferred prompt when clicked."""
+    ctx = browser.new_context()
+    try:
+        pg = _login(live_server, ctx, setup_admin)
+        pg.goto(f"{live_server['url']}/store")
+        expect(pg.get_by_test_id("install-app")).to_be_hidden()
+
+        # Playwright can't make Chromium fire the real event; dispatch a
+        # synthetic one with the same shape (preventDefault + prompt()).
+        pg.evaluate(
+            "() => {"
+            "  const e = new Event('beforeinstallprompt', { cancelable: true });"
+            "  e.prompt = () => { window.__installPrompted = true; };"
+            "  window.dispatchEvent(e);"
+            "}"
+        )
+        expect(pg.get_by_test_id("install-app")).to_be_visible()
+
+        pg.get_by_test_id("install-app").click()
+        assert pg.evaluate("window.__installPrompted") is True
+        expect(pg.get_by_test_id("install-app")).to_be_hidden()
+    finally:
+        ctx.close()
+
+
 def test_store_page_no_csp_violations(live_server, browser, setup_admin):
     ctx = browser.new_context()
     try:
