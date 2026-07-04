@@ -104,6 +104,16 @@ class TestCoverRedirectValidation:
         from app.services.covers import ALLOWED_COVER_DOMAINS
         assert "lh3.googleusercontent.com" in ALLOWED_COVER_DOMAINS
 
+    def test_internet_archive_suffix_allowed(self):
+        """Open Library covers redirect to rotating ia*.us.archive.org hosts."""
+        from app.services.covers import is_allowed_cover_url
+        assert is_allowed_cover_url("https://ia800505.us.archive.org/view_archive.php?x=1")
+        assert is_allowed_cover_url("https://ia601601.us.archive.org/img.jpg")
+        # Suffix must not be spoofable and scheme still matters
+        assert not is_allowed_cover_url("https://evilus.archive.org.attacker.com/a.jpg")
+        assert not is_allowed_cover_url("https://fake-us.archive.org/a.jpg")
+        assert not is_allowed_cover_url("http://ia800505.us.archive.org/a.jpg")
+
 
 # ---------------------------------------------------------------------------
 # H3 — GraphQL mutation injection: int() coercion enforced

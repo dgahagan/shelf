@@ -22,6 +22,10 @@ ALLOWED_COVER_DOMAINS = {
     "images.igdb.com",
 }
 
+# Suffix-matched domains (subdomain rotates): covers.openlibrary.org serves
+# images via redirects to Internet Archive hosts like ia800505.us.archive.org.
+ALLOWED_COVER_SUFFIXES = (".us.archive.org",)
+
 
 async def download_cover(item_id: int, isbn: str | None, cover_url: str | None, cover_id: int | None, client: httpx.AsyncClient, hardcover_cover_url: str | None = None) -> str | None:
     """Download a cover image and return the relative path, or None on failure."""
@@ -156,7 +160,10 @@ def is_allowed_cover_url(url: str) -> bool:
     """Check if a URL is from a trusted cover image domain."""
     try:
         parsed = urlparse(url)
-        return parsed.scheme == "https" and parsed.hostname in ALLOWED_COVER_DOMAINS
+        host = parsed.hostname
+        if parsed.scheme != "https" or not host:
+            return False
+        return host in ALLOWED_COVER_DOMAINS or host.endswith(ALLOWED_COVER_SUFFIXES)
     except Exception:
         return False
 
