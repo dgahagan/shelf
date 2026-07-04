@@ -117,6 +117,46 @@
         </form>
     </div>
 
+    <!-- Lending -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ ntTesting: false, ntStatus: null }">
+        <h2 class="text-lg font-semibold mb-1">Lending</h2>
+        <p class="text-sm text-shelf-muted mb-4">Loans past their due date — or, when no due date was set, out longer than the window below — show an <span class="text-shelf-error">Overdue</span> badge. Configure a notification URL to get a daily digest of overdue loans.</p>
+        <form method="POST" action="/api/settings/lending" class="space-y-4">
+            <div>
+                <label for="lending_overdue_days" class="block text-sm font-medium text-shelf-muted mb-1">Overdue after (days, for loans without a due date — 0 disables)</label>
+                <input type="number" id="lending_overdue_days" name="lending_overdue_days" min="0" step="1"
+                       value="{{ settings.get('lending_overdue_days', '28') }}"
+                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div>
+                <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">Notification URL (ntfy topic or webhook — leave empty to disable)</label>
+                <div class="flex gap-2">
+                    <select id="notify-format-input" name="notify_format"
+                            class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
+                        <option value="ntfy" {% if settings.get('notify_format', 'ntfy') == 'ntfy' %}selected{% endif %}>ntfy</option>
+                        <option value="webhook" {% if settings.get('notify_format') == 'webhook' %}selected{% endif %}>Webhook (JSON)</option>
+                    </select>
+                    <input type="text" id="notify-url-input" name="notify_url" value="{{ settings.get('notify_url', '') }}"
+                           placeholder="https://ntfy.sh/your-private-topic"
+                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="if(!document.getElementById('notify-url-input').value) return; ntTesting=true; ntStatus=null; fetch('/api/settings/notify-test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:document.getElementById('notify-url-input').value,format:document.getElementById('notify-format-input').value})}).then(r=>r.json()).then(d=>{ntStatus=d; ntTesting=false}).catch(()=>{ntStatus={ok:false,message:'Request failed'}; ntTesting=false})"
+                            :disabled="ntTesting"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!ntTesting">Test</span>
+                        <span x-show="ntTesting" style="display:none">Sending...</span>
+                    </button>
+                </div>
+                <template x-if="ntStatus">
+                    <p class="text-sm mt-1" :class="ntStatus.ok ? 'text-shelf-success' : 'text-shelf-error'" x-text="ntStatus.message"></p>
+                </template>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save Lending Settings
+            </button>
+        </form>
+    </div>
+
     </div><!-- /Library Tab -->
 
     <!-- Integrations Tab -->

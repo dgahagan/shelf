@@ -277,6 +277,60 @@ async def _periodic_hardcover_sync():
             logger.exception("Periodic Hardcover sync failed")
 
 
+_LOAN_REMINDER_INTERVAL = 86400  # at most one digest per day
+
+
+async def check_loan_reminders() -> bool:
+    """One reminder pass: send a digest if overdue loans exist, a notify URL
+    is configured, and no digest went out in the last 24h. Returns True when
+    a digest was sent."""
+    from app.database import get_setting
+    from app.routers.checkouts import get_overdue_loans
+    from app.services.notify import send_notification
+
+    with get_db() as db:
+        url = get_setting(db, "notify_url")
+        if not url:
+            return False
+        fmt = get_setting(db, "notify_format") or "ntfy"
+        last = db.execute(
+            "SELECT value FROM settings WHERE key = 'loan_reminder_last_sent'"
+        ).fetchone()
+        now = time.time()
+        if last and last["value"] and now - float(last["value"]) < _LOAN_REMINDER_INTERVAL:
+            return False
+        overdue = get_overdue_loans(db)
+
+    if not overdue:
+        return False
+
+    lines = [
+        f"{o['title']} — {o['borrower_name']} ({o['days_out']} days out)"
+        for o in overdue
+    ]
+    title = f"Shelf: {len(overdue)} overdue loan{'s' if len(overdue) != 1 else ''}"
+    ok = await send_notification(url, title, "\n".join(lines), fmt)
+    if ok:
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO settings (key, value) VALUES ('loan_reminder_last_sent', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = ?",
+                (str(now), str(now)),
+            )
+        logger.info("Loan reminder digest sent (%d overdue)", len(overdue))
+    return ok
+
+
+async def _periodic_loan_reminders():
+    """Background task: check for overdue loans and send the daily digest."""
+    while True:
+        await asyncio.sleep(300)  # check every 5 minutes
+        try:
+            await check_loan_reminders()
+        except Exception:
+            logger.exception("Loan reminder check failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
@@ -285,9 +339,11 @@ async def lifespan(app: FastAPI):
     get_secret_key()
     task = asyncio.create_task(_periodic_abs_sync())
     hc_task = asyncio.create_task(_periodic_hardcover_sync())
+    loan_task = asyncio.create_task(_periodic_loan_reminders())
     yield
     task.cancel()
     hc_task.cancel()
+    loan_task.cancel()
 
 
 app = FastAPI(title="Shelf", lifespan=lifespan)

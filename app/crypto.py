@@ -29,6 +29,9 @@ SENSITIVE_KEYS: frozenset[str] = frozenset(
         "tmdb_api_key",
         "igdb_client_id",
         "igdb_client_secret",
+        # An ntfy topic URL is effectively a credential — anyone holding it
+        # can post to (and often read) the topic
+        "notify_url",
     }
 )
 

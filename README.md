@@ -99,6 +99,7 @@ data/
 - **Locations** — organize by room, shelf, or any system you like
 - **Game platforms** — customizable list of platforms, add your own for niche or retro systems
 - **Checkout system** — lend to borrowers with the Lend scan mode, filter by "Lent Out" in browse
+- **Loan reminders** — overdue loans get a red badge, and an optional daily digest (ntfy or webhook) nags you about them; configure under Settings → Library → Lending
 - **Wishlist** — mark items as unowned to build a wish list alongside your catalog
 - **CSV import/export** — bulk operations and backups
 - **Goodreads & StoryGraph migration** — upload your library export as-is; the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically

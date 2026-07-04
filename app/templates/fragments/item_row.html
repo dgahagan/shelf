@@ -25,9 +25,9 @@
             {% endif %}
             {% if item.lent_to %}
             <span x-data="{ show: false }" @click.stop.prevent="show = !show" @mouseleave="show = false"
-                  class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/90 text-white shrink-0 cursor-pointer"
+                  class="px-1.5 py-0.5 rounded text-[10px] font-medium {% if item.lent_overdue %}bg-shelf-error/90{% else %}bg-orange-500/90{% endif %} text-white shrink-0 cursor-pointer"
                   title="Loaned to {{ item.lent_to }}">
-                <span x-show="!show">Loaned</span><span x-show="show" style="display:none">To: {{ item.lent_to }}</span>
+                <span x-show="!show">{% if item.lent_overdue %}Overdue{% else %}Loaned{% endif %}</span><span x-show="show" style="display:none">To: {{ item.lent_to }}</span>
             </span>
             {% endif %}
             {% if item.created_at and item.created_at >= seven_days_ago %}

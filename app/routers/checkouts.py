@@ -4,9 +4,47 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
 
 from app.auth import require_role
-from app.database import get_db
+from app.database import get_db, get_setting
 
 router = APIRouter(prefix="/api")
+
+DEFAULT_OVERDUE_DAYS = 28
+
+# A loan is overdue when its explicit due date has passed, or — for loans
+# with no due date (e.g. created via the Lend scan mode) — when it has been
+# out longer than the configured fallback window. One ? param: fallback days.
+OVERDUE_CONDITION = (
+    "c.checked_in IS NULL AND ("
+    "  (c.due_date IS NOT NULL AND c.due_date < date('now'))"
+    "  OR (c.due_date IS NULL AND julianday('now') - julianday(c.checked_out) > ?)"
+    ")"
+)
+
+
+def get_overdue_days(db) -> int:
+    """Fallback overdue window in days; 0 disables the no-due-date fallback."""
+    raw = get_setting(db, "lending_overdue_days")
+    try:
+        days = int(raw) if raw else DEFAULT_OVERDUE_DAYS
+    except ValueError:
+        days = DEFAULT_OVERDUE_DAYS
+    # 0 = disabled: make the fallback unreachable rather than branching SQL
+    return days if days > 0 else 10**9
+
+
+def get_overdue_loans(db) -> list[dict]:
+    """All overdue checkouts with item and borrower context."""
+    rows = db.execute(
+        "SELECT c.*, i.title, i.cover_path, b.name as borrower_name, "
+        "CAST(julianday('now') - julianday(c.checked_out) AS INTEGER) as days_out "
+        "FROM checkouts c "
+        "JOIN items i ON c.item_id = i.id "
+        "JOIN borrowers b ON c.borrower_id = b.id "
+        f"WHERE {OVERDUE_CONDITION} "
+        "ORDER BY c.checked_out ASC",
+        (get_overdue_days(db),),
+    ).fetchall()
+    return [dict(row) for row in rows]
 
 
 # --- Borrowers ---
@@ -77,14 +115,6 @@ async def checkin_item(checkout_id: int, _=Depends(require_role("editor"))):
 
 @router.get("/checkouts/overdue")
 async def overdue_items(request: Request, _=Depends(require_role("viewer"))):
-    """List all overdue checkouts."""
+    """List all overdue checkouts (explicit due date or fallback window)."""
     with get_db() as db:
-        rows = db.execute(
-            "SELECT c.*, i.title, i.cover_path, b.name as borrower_name "
-            "FROM checkouts c "
-            "JOIN items i ON c.item_id = i.id "
-            "JOIN borrowers b ON c.borrower_id = b.id "
-            "WHERE c.checked_in IS NULL AND c.due_date < date('now') "
-            "ORDER BY c.due_date ASC"
-        ).fetchall()
-    return [dict(row) for row in rows]
+        return get_overdue_loans(db)

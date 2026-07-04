@@ -58,14 +58,16 @@ async def browse(
         where = "WHERE " + " AND ".join(conditions) if conditions else ""
         _, order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["newest"])
 
+        from app.routers.checkouts import OVERDUE_CONDITION, get_overdue_days
         items = db.execute(
             f"SELECT i.*, l.name as location_name, "
             f"(SELECT b.name FROM checkouts c JOIN borrowers b ON c.borrower_id = b.id "
-            f" WHERE c.item_id = i.id AND c.checked_in IS NULL LIMIT 1) AS lent_to "
+            f" WHERE c.item_id = i.id AND c.checked_in IS NULL LIMIT 1) AS lent_to, "
+            f"(SELECT 1 FROM checkouts c WHERE c.item_id = i.id AND {OVERDUE_CONDITION} LIMIT 1) AS lent_overdue "
             f"FROM items i "
             f"LEFT JOIN locations l ON i.location_id = l.id "
             f"{where} ORDER BY {order_clause} LIMIT ?",
-            params + [DEFAULT_PAGE_SIZE],
+            [get_overdue_days(db)] + params + [DEFAULT_PAGE_SIZE],
         ).fetchall()
 
         total_filtered = db.execute(

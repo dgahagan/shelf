@@ -40,6 +40,58 @@ async def update_settings(
     return RedirectResponse(url="/settings", status_code=303)
 
 
+@router.post("/lending")
+async def update_lending_settings(
+    lending_overdue_days: str = Form("28"),
+    notify_url: str = Form(""),
+    notify_format: str = Form("ntfy"),
+):
+    """Save lending/reminder settings.
+
+    Separate from POST /api/settings on purpose: that handler writes its
+    entire fixed key list from the form, so posting a partial form there
+    would blank the integration credentials.
+    """
+    from app.services.notify import FORMATS
+
+    days = lending_overdue_days.strip() or "28"
+    if not days.isdigit():
+        return {"ok": False, "message": "Overdue days must be a whole number"}
+    fmt = notify_format if notify_format in FORMATS else "ntfy"
+
+    secret = get_secret_key()
+    with get_db() as db:
+        for key, value in [
+            ("lending_overdue_days", days),
+            ("notify_url", notify_url.strip()),
+            ("notify_format", fmt),
+        ]:
+            stored = encrypt_value(value, secret) if key in SENSITIVE_KEYS and value else value
+            db.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+                (key, stored, stored),
+            )
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@router.post("/notify-test")
+async def notify_test(request: Request):
+    """Send a test notification to the URL provided in the request body."""
+    from app.services.notify import send_notification
+
+    try:
+        body = await request.json()
+    except Exception:
+        return {"ok": False, "message": "Invalid request"}
+    url = (body.get("url") or "").strip()
+    fmt = body.get("format") or "ntfy"
+    if not url:
+        return {"ok": False, "message": "No URL provided"}
+
+    ok = await send_notification(url, "Shelf test notification", "Loan reminders are working!", fmt)
+    return {"ok": ok, "message": "Test notification sent" if ok else "Send failed — check the URL and server logs"}
+
+
 @router.get("/backup")
 async def download_backup():
     """Download a backup of the SQLite database."""

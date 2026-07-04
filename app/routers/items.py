@@ -615,14 +615,16 @@ async def search_items(
             f"SELECT COUNT(*) as c FROM items i {where}", params
         ).fetchone()["c"]
 
+        from app.routers.checkouts import OVERDUE_CONDITION, get_overdue_days
         items = db.execute(
             f"SELECT i.*, l.name as location_name, "
             f"(SELECT b.name FROM checkouts c JOIN borrowers b ON c.borrower_id = b.id "
-            f" WHERE c.item_id = i.id AND c.checked_in IS NULL LIMIT 1) AS lent_to "
+            f" WHERE c.item_id = i.id AND c.checked_in IS NULL LIMIT 1) AS lent_to, "
+            f"(SELECT 1 FROM checkouts c WHERE c.item_id = i.id AND {OVERDUE_CONDITION} LIMIT 1) AS lent_overdue "
             f"FROM items i "
             f"LEFT JOIN locations l ON i.location_id = l.id "
             f"{where} ORDER BY {order_clause} LIMIT ? OFFSET ?",
-            params + [per_page, offset],
+            [get_overdue_days(db)] + params + [per_page, offset],
         ).fetchall()
 
         # Cross-filter counts for dropdowns (page 1 only)
