@@ -33,7 +33,7 @@ from starlette.responses import Response, RedirectResponse
 
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.database import init_db, get_db
-from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover
+from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store
 from app.routers import auth_routes
 
 
@@ -60,7 +60,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         return response
 
 
-_SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/logout", "/health"})
+_SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/logout", "/health", "/sw.js"})
 _SKIP_AUTH_PREFIXES = ("/static/", "/covers/")
 
 # Methods that mutate state and must carry a CSRF token
@@ -372,3 +372,4 @@ app.include_router(sync.router)
 app.include_router(checkouts.router)
 app.include_router(valuation.router)
 app.include_router(hardcover.router)
+app.include_router(store.router)

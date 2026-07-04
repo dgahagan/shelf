@@ -102,12 +102,38 @@ data/
 - **Wishlist** — mark items as unowned to build a wish list alongside your catalog
 - **CSV import/export** — bulk operations and backups
 - **Goodreads & StoryGraph migration** — upload your library export as-is; the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically
+- **Store Mode (offline PWA)** — scan barcodes in a bookstore with no signal and get an instant Owned / On wishlist / Not in library verdict; unknown books queue on-device and are added to your wishlist automatically when you're back online (see [Store Mode](#store-mode-offline-pwa))
 
 ### Integrations
 - **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
 - **[Audiobookshelf](https://www.audiobookshelf.org)** — sync your audiobook library and link physical + digital formats
 - **[IGDB](https://www.igdb.com)** — video game metadata, cover art, and platform info via Twitch developer credentials (free)
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
+
+### Store Mode (Offline PWA)
+
+Open **Store** in the nav (or visit `/store`), and Shelf caches your library's
+ISBNs on the device. From then on, scanning a barcode answers instantly from
+the local cache — even with zero signal in a bookstore basement. Books you
+scan that aren't in your library are queued on-device and added to your
+wishlist (with metadata and cover) the next time you're online.
+
+To install it as an app, use your browser's "Add to Home Screen" while on the
+store page. **One requirement:** service workers (the offline machinery) only
+run on an origin your phone trusts. Options, from simplest to cleanest:
+
+1. **Trust the self-signed cert on your phone** — download the cert from your
+   Shelf server and install it (Android: Settings → Security → Install a
+   certificate → CA certificate; iOS: install the profile, then enable full
+   trust under Settings → General → About → Certificate Trust Settings).
+2. **VPN home** (WireGuard/OpenVPN/Tailscale) — the offline cache still does
+   the work in the store; the VPN is only needed when syncing.
+3. **A real certificate** — reverse proxy with Let's Encrypt, or
+   `tailscale cert` for a ts.net HTTPS name. Set `SHELF_TRUST_PROXY=1` if a
+   proxy sits in front.
+
+Note that `localhost` is always trusted, so store mode works out of the box
+for local development.
 
 ### Administration
 - **Role-based access** — admin, editor, and viewer roles

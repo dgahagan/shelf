@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Store Mode - Shelf</title>
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#0f1117">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+    <script defer src="/static/js/store.js"></script>
+</head>
+<body class="min-h-screen">
+    <header class="bg-shelf-card border-b border-shelf-border sticky top-0 z-50">
+        <div class="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
+            <a href="/browse" class="text-sm text-shelf-muted hover:text-white transition-colors">&larr; Shelf</a>
+            <h1 class="text-lg font-bold text-shelf-accent2 tracking-tight">Store Mode</h1>
+            <span id="net-dot" class="w-2.5 h-2.5 rounded-full bg-shelf-muted" title="Connection status"></span>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 py-4 space-y-4">
+        <!-- Data freshness / status line -->
+        <p id="status-line" class="text-xs text-shelf-muted text-center" data-testid="status-line">Loading library data&hellip;</p>
+
+        <!-- Camera scanner -->
+        <div id="reader" class="rounded-xl overflow-hidden border border-shelf-border hidden"></div>
+        <button id="camera-toggle" data-testid="camera-toggle"
+                class="w-full px-4 py-3 bg-shelf-accent text-white rounded-xl text-sm font-medium hover:bg-shelf-accent2 transition-colors">
+            Scan with Camera
+        </button>
+
+        <!-- Manual entry -->
+        <form id="manual-form" class="flex gap-2">
+            <input id="isbn-input" data-testid="isbn-input" type="text" inputmode="numeric" autocomplete="off"
+                   placeholder="Type or paste ISBN..."
+                   class="flex-1 bg-shelf-card border border-shelf-border rounded-xl px-3 py-3 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none placeholder-shelf-muted/50">
+            <button type="submit" data-testid="check-button"
+                    class="px-4 py-3 bg-shelf-hover text-shelf-text rounded-xl text-sm hover:bg-shelf-border transition-colors">
+                Check
+            </button>
+        </form>
+
+        <!-- Verdict -->
+        <div id="verdict" data-testid="verdict" class="hidden rounded-xl border p-5 text-center space-y-1">
+            <p id="verdict-label" class="text-2xl font-bold tracking-tight"></p>
+            <p id="verdict-title" class="text-sm text-shelf-text"></p>
+            <p id="verdict-authors" class="text-xs text-shelf-muted"></p>
+            <p id="verdict-note" class="text-xs text-shelf-muted"></p>
+        </div>
+
+        <!-- Pending queue -->
+        <div id="queue-section" class="hidden bg-shelf-card border border-shelf-border rounded-xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-semibold">Pending sync (<span id="queue-count" data-testid="queue-count">0</span>)</h2>
+                <button id="sync-now" data-testid="sync-now"
+                        class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">
+                    Sync now
+                </button>
+            </div>
+            <ul id="queue-list" class="text-xs text-shelf-muted space-y-1"></ul>
+            <p id="sync-hint" class="text-xs text-shelf-warning hidden"></p>
+        </div>
+
+        <p class="text-[11px] text-shelf-muted/70 text-center pt-2">
+            Scans of books not in your library are added to your wishlist automatically when you're back online.
+        </p>
+    </main>
+</body>
+</html>

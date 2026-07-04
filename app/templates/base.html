@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Shelf{% endblock %}</title>
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#0f1117">
+    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     <link rel="stylesheet" href="/static/css/app.css">
     <script src="/static/vendor/htmx-2.0.4.min.js"></script>
     <script defer src="/static/vendor/alpinejs-3.15.9.min.js"></script>
@@ -28,6 +31,9 @@
                         Scan
                     </a>
                     {% endif %}
+                    <a href="/store" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/store' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        Store
+                    </a>
                     <a href="/discover" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/discover' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                         Discover
                     </a>
