@@ -3,7 +3,7 @@
 {% block content %}
 <h1 class="text-2xl font-bold mb-6">Collection Statistics</h1>
 
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
         <p class="text-shelf-muted text-sm">Owned</p>
         <p class="text-3xl font-bold">{{ owned_count }}</p>
@@ -13,12 +13,44 @@
         <p class="text-3xl font-bold">{{ wishlist_count }}</p>
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <p class="text-shelf-muted text-sm">Read in {{ current_year }}</p>
+        <p class="text-3xl font-bold">{{ read_this_year }}</p>
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+        <p class="text-shelf-muted text-sm">Est. Value</p>
+        <p class="text-3xl font-bold">{% if current_value %}${{ '{:,.0f}'.format(current_value) }}{% else %}—{% endif %}</p>
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
         <p class="text-shelf-muted text-sm">With Covers</p>
         <p class="text-3xl font-bold">{{ with_covers }} <span class="text-sm text-shelf-muted font-normal">/ {{ total }}</span></p>
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
         <p class="text-shelf-muted text-sm">Without ISBN</p>
         <p class="text-3xl font-bold">{{ without_isbn }}</p>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-read">
+        <h2 class="text-lg font-semibold mb-3">Books Read per Year</h2>
+        {{ chart_read|safe }}
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-growth">
+        <h2 class="text-lg font-semibold mb-3">Collection Growth</h2>
+        {{ chart_growth|safe }}
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-authors">
+        <h2 class="text-lg font-semibold mb-3">Top Authors</h2>
+        {{ chart_authors|safe }}
+    </div>
+    <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-valuation">
+        <h2 class="text-lg font-semibold mb-3">Collection Value Over Time</h2>
+        {% if chart_valuation %}
+        {{ chart_valuation|safe }}
+        {% else %}
+        <p class="text-sm text-shelf-muted py-8 text-center">Run batch valuations (Settings &rarr; Integrations &rarr; ISBNdb) at least twice to see value history.</p>
+        {% endif %}
     </div>
 </div>
 

@@ -40,7 +40,7 @@ def test_no_csp_violations_on_key_pages(live_server, browser, setup_admin):
     page.click("button[type=submit]")
     page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
 
-    for path in ["/browse", "/scan", "/settings", f"/item/{item_id}"]:
+    for path in ["/browse", "/scan", "/settings", "/stats", "/series", f"/item/{item_id}"]:
         page.goto(f"{live_server['url']}{path}")
         page.wait_for_load_state("networkidle")
         violations[path] = page.evaluate("window.__cspViolations")

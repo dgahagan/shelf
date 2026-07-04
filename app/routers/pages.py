@@ -296,6 +296,62 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
             "WHERE i.created_at >= datetime('now', '-30 days') "
             "ORDER BY i.created_at DESC LIMIT 20"
         ).fetchall()
+
+        # --- Dashboard chart data (see docs/plans/STATS_DASHBOARD.md) ---
+        read_by_year = db.execute(
+            "SELECT substr(date_finished, 1, 4) as y, COUNT(*) as c FROM items "
+            "WHERE reading_status = 'read' AND date_finished IS NOT NULL "
+            "GROUP BY y ORDER BY y"
+        ).fetchall()
+        growth_rows = db.execute(
+            "SELECT substr(created_at, 1, 7) as m, COUNT(*) as c FROM items "
+            "GROUP BY m ORDER BY m"
+        ).fetchall()
+        author_rows = db.execute(
+            "SELECT authors, COUNT(*) as c FROM items "
+            "WHERE authors IS NOT NULL AND TRIM(authors) != '' GROUP BY authors"
+        ).fetchall()
+        valuation_rows = db.execute(
+            "SELECT substr(created_at, 1, 10) as d, total_value FROM valuation_history "
+            "ORDER BY created_at"
+        ).fetchall()
+        current_value = db.execute(
+            "SELECT COALESCE(SUM(estimated_value), 0) as v FROM items "
+            "WHERE estimated_value IS NOT NULL"
+        ).fetchone()["v"]
+
+    from datetime import date as _date
+    current_year = str(_date.today().year)
+    read_pairs = [(r["y"], r["c"]) for r in read_by_year]
+    read_this_year = dict(read_pairs).get(current_year, 0)
+
+    running = 0
+    growth_pairs = []
+    for r in growth_rows:
+        running += r["c"]
+        growth_pairs.append((r["m"], running))
+
+    # Aggregate by first author (the authors column is a comma-joined string)
+    author_counts: dict[str, int] = {}
+    for r in author_rows:
+        first = r["authors"].split(",")[0].strip()
+        if first:
+            author_counts[first] = author_counts.get(first, 0) + r["c"]
+    top_authors = sorted(author_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:10]
+
+    valuation_pairs = [(r["d"], r["total_value"]) for r in valuation_rows]
+
+    from app.services import charts
+    chart_read = charts.column_chart(
+        read_pairs, empty_message="Mark books as read (with a finish date) to build this chart")
+    chart_growth = charts.area_chart(growth_pairs, empty_message="No items yet")
+    chart_authors = charts.hbar_chart(top_authors, empty_message="No authors yet")
+    chart_valuation = (
+        charts.area_chart(valuation_pairs, value_prefix="$",
+                          empty_message="Run a batch valuation to start tracking value over time")
+        if len(valuation_pairs) >= 2 else None
+    )
+
     return request.app.state.templates.TemplateResponse(
         request,
         "stats.html",
@@ -309,6 +365,13 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
             "without_isbn": without_isbn,
             "recent": recent,
             "media_types": MEDIA_TYPES,
+            "read_this_year": read_this_year,
+            "current_year": current_year,
+            "current_value": current_value,
+            "chart_read": chart_read,
+            "chart_growth": chart_growth,
+            "chart_authors": chart_authors,
+            "chart_valuation": chart_valuation,
         },
     )
 

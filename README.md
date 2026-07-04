@@ -96,6 +96,7 @@ data/
 ### Collection Management
 - **Filter and search** — by media type, location, reading status, ownership, lending status, and free text
 - **Reading tracking** — want-to-read, reading, and read with start/finish dates
+- **Stats dashboard** — books read per year, collection growth, top authors, and value-over-time charts (server-rendered SVG, no JS)
 - **Locations** — organize by room, shelf, or any system you like
 - **Game platforms** — customizable list of platforms, add your own for niche or retro systems
 - **Checkout system** — lend to borrowers with the Lend scan mode, filter by "Lent Out" in browse

@@ -89,7 +89,7 @@ async def test_tmdb_key(request: Request, _=Depends(require_role("admin"))):
         return {"ok": False, "message": "Connection failed — check network"}
 
 
-@router.post("/valuate/{item_id}")
+@router.post("/valuate/{item_id:int}")
 async def valuate_item(item_id: int, _=Depends(require_role("admin"))):
     """Look up price for a single item."""
     with get_db() as db:
@@ -117,6 +117,22 @@ async def valuate_item(item_id: int, _=Depends(require_role("admin"))):
             )
         return {"ok": True, "value": price}
     return {"ok": False, "message": "No price found"}
+
+
+
+
+def _snapshot_valuation() -> None:
+    """Append a valuation_history row after a batch run (feeds the stats chart)."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT COALESCE(SUM(estimated_value), 0) as total, COUNT(*) as c "
+            "FROM items WHERE estimated_value IS NOT NULL"
+        ).fetchone()
+        if row["c"] > 0:
+            db.execute(
+                "INSERT INTO valuation_history (total_value, priced_count) VALUES (?, ?)",
+                (row["total"], row["c"]),
+            )
 
 
 @router.post("/valuate/all")
@@ -155,6 +171,7 @@ async def valuate_all(_=Depends(require_role("admin"))):
                 isbndb._save_cache(cache)
 
     isbndb._save_cache(cache)
+    _snapshot_valuation()
     return results
 
 
@@ -204,6 +221,7 @@ async def valuate_all_stream(request: Request, _=Depends(require_role("admin")))
                         isbndb._save_cache(cache)
 
             isbndb._save_cache(cache)
+            _snapshot_valuation()
             await queue.put({"type": "done", **results})
         except Exception:
             logger.exception("Valuation failed")

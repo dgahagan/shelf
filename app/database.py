@@ -104,6 +104,13 @@ CREATE TABLE IF NOT EXISTS reading_log (
 CREATE INDEX IF NOT EXISTS idx_reading_log_item ON reading_log(item_id);
 CREATE INDEX IF NOT EXISTS idx_items_reading_status ON items(reading_status);
 
+CREATE TABLE IF NOT EXISTS valuation_history (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    total_value  REAL NOT NULL,
+    priced_count INTEGER NOT NULL,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS borrowers (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     name       TEXT NOT NULL UNIQUE,
