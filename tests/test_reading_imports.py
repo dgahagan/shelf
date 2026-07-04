@@ -374,13 +374,13 @@ class TestCoverEnrichment:
         search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
                           "isbn": "9780515147018", "cover_url": "https://covers.example/1.jpg",
                           "publish_year": 2009, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_books",
+        with patch("app.routers.items.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
             await _enrich_import_covers([item_id])
             dl.assert_awaited_once()
-            assert dl.await_args.args[1] == "9780515147018"
+            assert dl.await_args.args[2] == "https://covers.example/1.jpg"
 
         from app.database import get_db
         with get_db() as conn:
@@ -391,19 +391,19 @@ class TestCoverEnrichment:
         assert row["cover_path"] == f"covers/{item_id}.jpg"
 
     @pytest.mark.asyncio
-    async def test_enrich_title_search_rejects_mismatch(self, db):
-        """A search hit whose title doesn't match must not be applied."""
+    async def test_enrich_title_search_rejects_wrong_author(self, db):
+        """Adaptations and study guides of famous titles rank high in title
+        searches — a hit by a different author must not be applied."""
         from tests.conftest import _insert_item
         from app.routers.items import _enrich_import_covers
 
-        item_id = _insert_item(db, title="Extremely Obscure Memoir", authors="A. Nobody",
-                               isbn=None)
+        item_id = _insert_item(db, title="1984", authors="George Orwell", isbn=None)
         db.execute("COMMIT")
 
-        search_result = [{"title": "Completely Different Book", "authors": "Someone Else",
-                          "isbn": "9780000000002", "cover_url": None,
+        search_result = [{"title": "1984 (adaptation)", "authors": "Michael Dean",
+                          "isbn": "9780000000002", "cover_url": "https://covers.example/x.jpg",
                           "publish_year": None, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_books",
+        with patch("app.routers.items.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
             await _enrich_import_covers([item_id])
@@ -413,6 +413,39 @@ class TestCoverEnrichment:
         with get_db() as conn:
             row = conn.execute("SELECT isbn FROM items WHERE id = ?", (item_id,)).fetchone()
         assert row["isbn"] is None
+
+    @pytest.mark.asyncio
+    async def test_enrich_falls_back_to_search_when_isbn_cover_fails(self, db):
+        """An item whose own edition ISBN has no cover anywhere still gets
+        one from the work's best-known edition via title search — but its
+        existing ISBN is never overwritten."""
+        from tests.conftest import _insert_item
+        from app.routers.items import _enrich_import_covers
+
+        item_id = _insert_item(db, title="Pride and Prejudice", authors="Jane Austen",
+                               isbn="9781102008545")
+        db.execute("COMMIT")
+
+        search_result = [{"title": "Pride and Prejudice", "authors": "Jane Austen",
+                          "isbn": "9780141439518", "cover_url": "https://covers.example/pp.jpg",
+                          "publish_year": None, "publisher": None, "page_count": None}]
+
+        async def dl_side_effect(item_id_, isbn, cover_url, cover_id, client, **kw):
+            return f"covers/{item_id_}.jpg" if cover_url else None  # ISBN chain fails
+
+        with patch("app.routers.items.openlibrary.search_by_title_author",
+                   new=AsyncMock(return_value=search_result)), \
+             patch("app.routers.items.covers.download_cover",
+                   new=AsyncMock(side_effect=dl_side_effect)) as dl:
+            await _enrich_import_covers([item_id])
+            assert dl.await_count == 2  # own-ISBN attempt, then search cover
+
+        from app.database import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT isbn, cover_path FROM items WHERE id = ?",
+                               (item_id,)).fetchone()
+        assert row["isbn"] == "9781102008545"  # untouched
+        assert row["cover_path"] == f"covers/{item_id}.jpg"
 
     @pytest.mark.asyncio
     async def test_enrich_recovered_isbn_collision_not_stored(self, db):
@@ -429,7 +462,7 @@ class TestCoverEnrichment:
         search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
                           "isbn": "9780515147018", "cover_url": "https://covers.example/1.jpg",
                           "publish_year": None, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_books",
+        with patch("app.routers.items.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")):

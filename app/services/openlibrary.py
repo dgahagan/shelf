@@ -140,16 +140,35 @@ async def _resolve_description(edition_data: dict, client: httpx.AsyncClient) ->
     return desc
 
 
+_SEARCH_FIELDS = "key,title,author_name,first_publish_year,publisher,cover_i,isbn,number_of_pages_median"
+
+
 async def search_books(query: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
     """Search Open Library by title. Returns list of book summaries."""
+    return await _search({"q": query}, client, limit)
+
+
+async def search_by_title_author(title: str, author: str | None, client: httpx.AsyncClient,
+                                 limit: int = 5) -> list[dict]:
+    """Field-scoped search — Open Library matches the title itself (including
+    alternate titles, so '1984' finds 'Nineteen Eighty-Four'). Callers must
+    still check authors: adaptations/study guides of famous titles rank high.
+    """
+    params = {"title": title}
+    if author:
+        params["author"] = author
+    return await _search(params, client, limit)
+
+
+async def _search(params: dict, client: httpx.AsyncClient, limit: int) -> list[dict]:
     await _rate_limit()
     resp = await client.get(
         "https://openlibrary.org/search.json",
-        params={"q": query, "limit": str(limit), "fields": "key,title,author_name,first_publish_year,publisher,cover_i,isbn,number_of_pages_median"},
+        params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS},
         headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
     )
     if resp.status_code != 200:
-        logger.debug("Open Library search failed for %r: HTTP %d", query, resp.status_code)
+        logger.debug("Open Library search failed for %r: HTTP %d", params, resp.status_code)
         return []
 
     docs = resp.json().get("docs", [])
