@@ -535,3 +535,58 @@ class TestRestoreSecretKeyPreserved:
 
         assert key_after == key_before  # rotation would orphan encrypted settings
         assert tv_after == tv_before + 1  # all sessions invalidated
+
+# ---------------------------------------------------------------------------
+# Restore rejects views and virtual tables (ported from dbe47c3)
+# ---------------------------------------------------------------------------
+
+
+class TestRestoreRejectsRiskySchema:
+    def _get_backup_with(self, admin_client, tmp_path, extra_sql):
+        """Download a valid backup, inject extra schema objects, return bytes."""
+        import sqlite3 as sq
+        backup = admin_client.get("/api/settings/backup")
+        assert backup.status_code == 200
+        p = tmp_path / "tampered.db"
+        p.write_bytes(backup.content)
+        conn = sq.connect(str(p))
+        conn.execute(extra_sql)
+        conn.commit()
+        conn.close()
+        return p.read_bytes()
+
+    def _align_paths(self, monkeypatch):
+        import app.config as config
+        monkeypatch.setattr("app.routers.settings.DATA_DIR", config.DATA_DIR)
+        monkeypatch.setattr("app.routers.settings.DATABASE_PATH", config.DATABASE_PATH)
+
+    def test_rejects_views(self, admin_client, tmp_path, monkeypatch):
+        self._align_paths(monkeypatch)
+        content = self._get_backup_with(
+            admin_client, tmp_path, "CREATE VIEW sneaky AS SELECT 1"
+        )
+        resp = admin_client.post(
+            "/api/settings/restore",
+            files={"file": ("backup.db", io.BytesIO(content), "application/octet-stream")},
+        )
+        data = resp.json()
+        assert data["ok"] is False
+        assert "views" in data["message"]
+
+    def test_rejects_virtual_tables(self, admin_client, tmp_path, monkeypatch):
+        import sqlite3 as sq
+        self._align_paths(monkeypatch)
+        try:
+            content = self._get_backup_with(
+                admin_client, tmp_path,
+                "CREATE VIRTUAL TABLE sneaky_fts USING fts5(content)",
+            )
+        except sq.OperationalError:
+            pytest.skip("SQLite build lacks FTS5")
+        resp = admin_client.post(
+            "/api/settings/restore",
+            files={"file": ("backup.db", io.BytesIO(content), "application/octet-stream")},
+        )
+        data = resp.json()
+        assert data["ok"] is False
+        assert "virtual tables" in data["message"]

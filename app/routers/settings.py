@@ -87,6 +87,25 @@ async def restore_backup(request: Request):
             tmp_path.unlink(missing_ok=True)
             return {"ok": False, "message": "Database contains triggers — not allowed"}
 
+        # Reject databases with views (could embed malicious SQL)
+        views = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'view'"
+        ).fetchall()
+        if views:
+            conn.close()
+            tmp_path.unlink(missing_ok=True)
+            return {"ok": False, "message": "Database contains views — not allowed"}
+
+        # Reject virtual tables (their module code runs on access)
+        vtables = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND sql LIKE 'CREATE VIRTUAL TABLE%'"
+        ).fetchall()
+        if vtables:
+            conn.close()
+            tmp_path.unlink(missing_ok=True)
+            return {"ok": False, "message": "Database contains virtual tables — not allowed"}
+
         # Reject databases with attached databases
         dbs = conn.execute("PRAGMA database_list").fetchall()
         if len(dbs) > 1:
