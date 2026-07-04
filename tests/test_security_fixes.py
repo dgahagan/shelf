@@ -491,3 +491,47 @@ class TestClientIPTrust:
         req = self._request({})
         assert get_client_ip(req) == "9.9.9.9"
 
+
+# ---------------------------------------------------------------------------
+# Restore keeps the secret key (so Fernet-encrypted settings stay readable)
+# and invalidates sessions via token_version instead
+# ---------------------------------------------------------------------------
+
+
+class TestRestoreSecretKeyPreserved:
+    def test_restore_preserves_key_and_bumps_token_version(self, admin_client, monkeypatch):
+        import app.config as config
+        # routers.settings binds these at import time; align them with the
+        # per-test tmp paths patched into app.config by the _isolated_db fixture
+        monkeypatch.setattr("app.routers.settings.DATA_DIR", config.DATA_DIR)
+        monkeypatch.setattr("app.routers.settings.DATABASE_PATH", config.DATABASE_PATH)
+
+        from app.database import get_db
+        with get_db() as db:
+            key_before = db.execute(
+                "SELECT value FROM settings WHERE key = 'secret_key'"
+            ).fetchone()["value"]
+            tv_before = db.execute(
+                "SELECT token_version FROM users WHERE username = 'admin'"
+            ).fetchone()["token_version"]
+
+        backup = admin_client.get("/api/settings/backup")
+        assert backup.status_code == 200
+
+        resp = admin_client.post(
+            "/api/settings/restore",
+            files={"file": ("backup.db", io.BytesIO(backup.content), "application/octet-stream")},
+        )
+        data = resp.json()
+        assert data["ok"] is True, data
+
+        with get_db() as db:
+            key_after = db.execute(
+                "SELECT value FROM settings WHERE key = 'secret_key'"
+            ).fetchone()["value"]
+            tv_after = db.execute(
+                "SELECT token_version FROM users WHERE username = 'admin'"
+            ).fetchone()["token_version"]
+
+        assert key_after == key_before  # rotation would orphan encrypted settings
+        assert tv_after == tv_before + 1  # all sessions invalidated

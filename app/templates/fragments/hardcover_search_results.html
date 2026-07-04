@@ -37,7 +37,7 @@
                 <button x-show="!added"
                         @click="adding=true; error=null;
                             var d=JSON.parse(document.getElementById('hc-data-{{ book.hardcover_book_id }}').textContent);
-                            fetch('/api/hardcover/add-to-shelf', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(d)})
+                            fetch('/api/hardcover/add-to-shelf', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()}, body:JSON.stringify(d)})
                             .then(r=>r.json()).then(r=>{adding=false; if(r.ok){added=true; showToast('Added to wishlist')} else {error=r.message; if(r.item_id) added=true}})
                             .catch(()=>{adding=false; error='Failed'})"
                         :disabled="adding"

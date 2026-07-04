@@ -46,19 +46,6 @@ def get_secret_key() -> str:
         return _cached_secret_key
 
 
-def _rotate_secret_key() -> None:
-    """Generate a new secret key, invalidating all existing JWTs."""
-    global _cached_secret_key
-    key = secrets.token_hex(32)
-    with get_db() as db:
-        db.execute(
-            "INSERT INTO settings (key, value) VALUES ('secret_key', ?) "
-            "ON CONFLICT(key) DO UPDATE SET value = ?",
-            (key, key),
-        )
-    _cached_secret_key = key
-
-
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 

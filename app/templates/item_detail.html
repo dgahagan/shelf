@@ -103,7 +103,7 @@
                 <!-- Hardcover Sync -->
                 {% if has_hardcover %}
                 <div class="mb-4" x-data="{ hcPushing: false, hcResult: null }">
-                    <button @click="hcPushing=true; hcResult=null; fetch('/api/hardcover/push/{{ item.id }}',{method:'POST'}).then(r=>r.json()).then(d=>{hcResult=d; hcPushing=false; if(d.ok) showToast('Synced to Hardcover')}).catch(()=>{hcResult={ok:false,message:'Connection failed'}; hcPushing=false})"
+                    <button @click="hcPushing=true; hcResult=null; fetch('/api/hardcover/push/{{ item.id }}',{method:'POST',headers:{'X-CSRF-Token':window.csrfToken()}}).then(r=>r.json()).then(d=>{hcResult=d; hcPushing=false; if(d.ok) showToast('Synced to Hardcover')}).catch(()=>{hcResult={ok:false,message:'Connection failed'}; hcPushing=false})"
                             :disabled="hcPushing"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors
                                    {% if item.hardcover_user_book_id %}bg-shelf-success/20 text-shelf-success hover:bg-shelf-success/30

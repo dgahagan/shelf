@@ -45,7 +45,7 @@ def test_create_and_decode_token():
     token = create_token(1, "alice", "admin", "Alice")
     payload = decode_token(token)
     assert payload is not None
-    assert payload["sub"] == 1
+    assert payload["sub"] == "1"  # PyJWT >= 2.10 requires sub to be a string
     assert payload["username"] == "alice"
     assert payload["role"] == "admin"
     assert payload["display_name"] == "Alice"
@@ -113,7 +113,7 @@ def test_should_refresh_token_after_halflife():
     iat = datetime.now(timezone.utc) - timedelta(seconds=JWT_EXPIRY_SECONDS * 0.6)
     exp = iat + timedelta(seconds=JWT_EXPIRY_SECONDS)
     payload = {
-        "sub": 1, "username": "alice", "role": "admin", "display_name": "Alice",
+        "sub": "1", "username": "alice", "role": "admin", "display_name": "Alice",
         "iat": iat, "exp": exp,
     }
     old_token = pyjwt.encode(payload, get_secret_key(), algorithm=JWT_ALGORITHM)

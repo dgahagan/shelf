@@ -1005,7 +1005,7 @@
                 <p class="text-xs text-shelf-muted mt-1">Downloads a copy of the SQLite database file</p>
             </div>
             <div class="border-t border-shelf-border pt-4">
-                <form @submit.prevent="restoring=true; restoreResult=null; fetch('/api/settings/restore', {method:'POST', body: new FormData($el)}).then(r=>r.json()).then(d=>{restoreResult=d; restoring=false}).catch(()=>{restoreResult={error:'Restore failed'}; restoring=false})">
+                <form @submit.prevent="restoring=true; restoreResult=null; fetch('/api/settings/restore', {method:'POST', headers:{'X-CSRF-Token':window.csrfToken()}, body: new FormData($el)}).then(r=>r.json()).then(d=>{restoreResult=d; restoring=false}).catch(()=>{restoreResult={error:'Restore failed'}; restoring=false})">
                     <div class="flex gap-2 items-end">
                         <input type="file" name="file" accept=".db" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <button type="submit" :disabled="restoring"
@@ -1049,7 +1049,7 @@
                 form.append('display_name', this.newUser.display_name);
                 form.append('password', this.newUser.password);
                 form.append('role', this.newUser.role);
-                const r = await fetch('/api/users', { method: 'POST', body: form });
+                const r = await fetch('/api/users', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 const d = await r.json();
                 this.addResult = d;
                 if (d.ok) {
@@ -1060,7 +1060,7 @@
             async updateRole(id, role) {
                 const form = new FormData();
                 form.append('role', role);
-                const r = await fetch('/api/users/' + id + '/role', { method: 'POST', body: form });
+                const r = await fetch('/api/users/' + id + '/role', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 const d = await r.json();
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();
@@ -1070,13 +1070,13 @@
                 if (!pw) return;
                 const form = new FormData();
                 form.append('password', pw);
-                const r = await fetch('/api/users/' + id + '/password', { method: 'POST', body: form });
+                const r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 const d = await r.json();
                 alert(d.message);
             },
             async deleteUser(id, name) {
                 if (!confirm('Delete user ' + name + '?')) return;
-                const r = await fetch('/api/users/' + id, { method: 'DELETE' });
+                const r = await fetch('/api/users/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 const d = await r.json();
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();

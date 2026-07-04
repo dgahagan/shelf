@@ -354,7 +354,7 @@ function browsePage() {
             try {
                 var resp = await fetch('/api/items/bulk-update', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()},
                     body: JSON.stringify({item_ids: this.selectedIds, updates: updates})
                 });
                 var data = await resp.json();
@@ -373,7 +373,7 @@ function browsePage() {
         async bulkDelete() {
             if (!confirm('Delete ' + this.selectedIds.length + ' items?')) return;
             for (var id of this.selectedIds) {
-                await fetch('/api/items/' + id, {method: 'DELETE'});
+                await fetch('/api/items/' + id, {method: 'DELETE', headers: {'X-CSRF-Token': window.csrfToken()}});
             }
             showToast('Deleted ' + this.selectedIds.length + ' items', 'success');
             this.selectedIds = [];

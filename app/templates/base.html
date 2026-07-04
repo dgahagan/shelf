@@ -137,7 +137,7 @@
                                     this.nameSaving = true; this.nameResult = null;
                                     const form = new FormData();
                                     form.append('display_name', this.displayName);
-                                    const r = await fetch('/api/account/display-name', { method: 'POST', body: form });
+                                    const r = await fetch('/api/account/display-name', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                                     this.nameResult = await r.json();
                                     this.nameSaving = false;
                                     if (this.nameResult.ok) setTimeout(() => location.reload(), 800);
@@ -147,7 +147,7 @@
                                     const form = new FormData();
                                     form.append('current_password', this.current);
                                     form.append('new_password', this.newPw);
-                                    const r = await fetch('/api/account/password', { method: 'POST', body: form });
+                                    const r = await fetch('/api/account/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                                     this.pwResult = await r.json();
                                     this.pwSaving = false;
                                     if (this.pwResult.ok) { this.current = ''; this.newPw = ''; this.confirm = ''; }

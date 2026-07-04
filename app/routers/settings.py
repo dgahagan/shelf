@@ -135,8 +135,13 @@ async def restore_backup(request: Request):
     shutil.copy2(str(tmp_path), str(DATABASE_PATH))
     tmp_path.unlink(missing_ok=True)
 
-    # Rotate the secret key to invalidate all existing JWT tokens
-    from app.auth import _rotate_secret_key
-    _rotate_secret_key()
+    # Invalidate all existing sessions by bumping every user's token_version.
+    # We deliberately do NOT rotate the secret key here: the restored DB's
+    # encrypted settings (API tokens) are Fernet-encrypted with the key stored
+    # inside that same DB, and rotating it would make them undecryptable.
+    from app.database import init_db
+    init_db()  # bring an older restored DB up to the current schema first
+    with get_db() as db:
+        db.execute("UPDATE users SET token_version = token_version + 1")
 
     return {"ok": True, "message": "Database restored. All sessions invalidated. Restart the container to apply."}

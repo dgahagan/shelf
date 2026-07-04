@@ -276,7 +276,7 @@ function scanPage() {
             var form = new FormData();
             form.set('location_id', this.location);
             form.set('scanned_ids', this.inventoryScannedIds.join(','));
-            var resp = await fetch('/api/inventory/missing', {method: 'POST', body: form});
+            var resp = await fetch('/api/inventory/missing', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}, body: form});
             var html = await resp.text();
             document.getElementById('inventory-missing').innerHTML = html;
         },
@@ -376,7 +376,7 @@ function scanPage() {
             formData.set('mode', this.mode);
             if (this.mode === 'lend') formData.set('borrower_id', this.borrowerId);
             try {
-                var resp = await fetch('/api/scan', { method: 'POST', body: formData });
+                var resp = await fetch('/api/scan', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: formData });
                 var html = await resp.text();
 
                 // Insert result into the scan results list
