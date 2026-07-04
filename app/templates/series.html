@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Series — Shelf{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <h1 class="text-2xl font-bold">Series <span class="text-shelf-muted text-lg font-normal">({{ series_list|length }})</span></h1>
+    <p class="text-sm text-shelf-muted mt-1">Your library grouped by series. Gaps are inferred from position numbers{% if has_hardcover %}; use <span class="text-shelf-accent2">Check completeness</span> to compare against Hardcover's full series listing{% endif %}.</p>
+</div>
+
+{% if not series_list %}
+<div class="text-center py-16 text-shelf-muted">
+    <p class="text-lg mb-1">No series yet</p>
+    <p class="text-sm">Items gain a series when metadata lookup finds one, or when you set it manually while editing.</p>
+</div>
+{% endif %}
+
+<div class="space-y-6">
+    {% for s in series_list %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-5"
+         x-data="{ checking: false, result: null, error: null, added: {} }"
+         data-series-name="{{ s.name }}" data-testid="series-card">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+            <div>
+                <h2 class="text-lg font-semibold">{{ s.name }}</h2>
+                <p class="text-xs text-shelf-muted mt-0.5">
+                    {{ s.owned_count }} owned{% if s['items']|length != s.owned_count %} · {{ s['items']|length - s.owned_count }} wishlisted{% endif %}
+                    {% if s.gaps %}
+                    · <span class="text-shelf-warning">possibly missing
+                        {%- for g in s.gaps[:8] %} #{{ g }}{% if not loop.last %},{% endif %}{% endfor %}
+                        {%- if s.gaps|length > 8 %} +{{ s.gaps|length - 8 }} more{% endif %}</span>
+                    {% endif %}
+                </p>
+            </div>
+            {% if has_hardcover %}
+            <button @click="checking=true; error=null;
+                        fetch('/api/series/check?name=' + encodeURIComponent($el.closest('[data-series-name]').dataset.seriesName))
+                        .then(r=>r.json()).then(d=>{ checking=false; if(d.ok) result=d; else error=d.message })
+                        .catch(()=>{ checking=false; error='Check failed' })"
+                    :disabled="checking"
+                    class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50 shrink-0"
+                    data-testid="check-series">
+                <span x-show="!checking">Check completeness</span>
+                <span x-show="checking" style="display:none">Checking&hellip;</span>
+            </button>
+            {% endif %}
+        </div>
+
+        <!-- Owned/wishlisted volumes -->
+        <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
+            {% for item in s['items'] %}
+            <a href="/item/{{ item.id }}" class="shrink-0 w-20 group" title="{{ item.title }}">
+                <div class="relative">
+                    {% if item.cover_path %}
+                    <img src="/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">
+                    {% else %}
+                    <div class="w-20 bg-shelf-hover rounded-lg border border-shelf-border flex items-center justify-center p-1" style="height:120px">
+                        <span class="text-[10px] text-shelf-muted text-center leading-tight">{{ item.title[:40] }}</span>
+                    </div>
+                    {% endif %}
+                    {% if item.series_position is not none %}
+                    <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1 rounded">#{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}</span>
+                    {% endif %}
+                    {% if not item.owned %}
+                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded font-medium">Wishlist</span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Hardcover check results -->
+        <template x-if="error">
+            <p class="text-sm text-shelf-error mt-2" x-text="error"></p>
+        </template>
+        <template x-if="result">
+            <div class="mt-3 border-t border-shelf-border pt-3">
+                <p class="text-sm text-shelf-muted mb-2">
+                    Hardcover lists <span class="text-shelf-text" x-text="result.total"></span> volumes —
+                    <span x-show="result.missing === 0" class="text-shelf-success">you have them all!</span>
+                    <span x-show="result.missing > 0" class="text-shelf-warning"><span x-text="result.missing"></span> missing:</span>
+                </p>
+                <div class="space-y-1.5">
+                    <template x-for="b in result.books.filter(x => x.status === 'missing')" :key="b.hardcover_book_id">
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-shelf-muted w-10 shrink-0 text-right" x-text="b.series_position !== null ? '#' + b.series_position : ''"></span>
+                            <span class="text-shelf-text truncate" x-text="b.title"></span>
+                            <span class="text-shelf-muted text-xs truncate" x-text="b.authors || ''"></span>
+                            <button x-show="!added[b.hardcover_book_id]"
+                                    @click="fetch('/api/hardcover/add-to-shelf', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},
+                                            body: JSON.stringify({title: b.title, authors: b.authors, cover_url: b.cover_url, hardcover_book_id: b.hardcover_book_id, series_name: b.series_name, series_position: b.series_position})})
+                                        .then(r=>r.json()).then(d=>{ if(d.ok || d.item_id) { added[b.hardcover_book_id]=true; showToast('Added to wishlist') } else { showToast(d.message || 'Failed', 'error') } })
+                                        .catch(()=>showToast('Failed', 'error'))"
+                                    class="ml-auto px-2 py-0.5 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors shrink-0">
+                                + Wishlist
+                            </button>
+                            <span x-show="added[b.hardcover_book_id]" style="display:none" class="ml-auto text-xs text-shelf-success shrink-0">Wishlisted</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

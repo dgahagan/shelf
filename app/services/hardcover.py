@@ -540,3 +540,99 @@ async def sync_reading_statuses(token: str) -> dict:
                 unchanged += 1
 
     return {"updated": updated, "unchanged": unchanged, "total": len(linked)}
+
+
+# --- Series completeness (see docs/plans/SERIES_TRACKING.md) ---
+
+
+def _parse_series_entries(entries: list) -> list[dict]:
+    """Normalize book_series rows ({position, book{...}}) to book summaries."""
+    books = []
+    seen_ids = set()
+    for entry in entries or []:
+        book = (entry or {}).get("book") or {}
+        if not book.get("title") or not book.get("id"):
+            continue
+        if book["id"] in seen_ids:
+            continue
+        seen_ids.add(book["id"])
+
+        authors = None
+        contributions = book.get("contributions", [])
+        if contributions:
+            names = [c["author"]["name"] for c in contributions if c.get("author", {}).get("name")]
+            if names:
+                authors = ", ".join(names)
+
+        cover_url = None
+        ci = book.get("cached_image")
+        if isinstance(ci, dict):
+            cover_url = ci.get("url")
+        elif isinstance(ci, str):
+            cover_url = ci
+
+        books.append({
+            "hardcover_book_id": book["id"],
+            "title": book["title"],
+            "authors": authors,
+            "cover_url": cover_url,
+            "year": book.get("release_year"),
+            "series_position": entry.get("position"),
+        })
+    books.sort(key=lambda b: (b["series_position"] is None, b["series_position"] or 0))
+    return books
+
+
+async def get_series_books(series_name: str, token: str, client: httpx.AsyncClient | None = None) -> list[dict] | None:
+    """Fetch all books in a named series from Hardcover, ordered by position.
+
+    Returns None when the series can't be found or the API fails — callers
+    must treat that as "couldn't check", not "series is complete".
+
+    Tries two query shapes (the exact root exposure of the join table isn't
+    documented): root book_series filtered through the series relationship,
+    then a series-rooted fallback.
+    """
+    book_fields = """
+          book {
+            id
+            title
+            release_year
+            cached_image
+            contributions { author { name } }
+          }
+    """
+
+    query_root = f"""
+    query ($name: String!) {{
+      book_series(
+        where: {{ series: {{ name: {{ _eq: $name }} }} }},
+        order_by: {{ position: asc }},
+        limit: 100
+      ) {{
+          position
+          {book_fields}
+      }}
+    }}
+    """
+    data = await _graphql(query_root, {"name": series_name}, token=token, client=client)
+    if data and data.get("book_series"):
+        return _parse_series_entries(data["book_series"]) or None
+
+    query_fallback = f"""
+    query ($name: String!) {{
+      series(where: {{ name: {{ _eq: $name }} }}, limit: 1) {{
+        name
+        book_series(order_by: {{ position: asc }}, limit: 100) {{
+          position
+          {book_fields}
+        }}
+      }}
+    }}
+    """
+    data = await _graphql(query_fallback, {"name": series_name}, token=token, client=client)
+    if data and data.get("series"):
+        entries = (data["series"][0] or {}).get("book_series") or []
+        return _parse_series_entries(entries) or None
+
+    return None
