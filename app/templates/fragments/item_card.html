@@ -7,7 +7,7 @@
         <div x-data="{ show: false }" @click.stop.prevent="show = !show" @mouseleave="show = false"
              class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-500/90 text-white shadow cursor-pointer max-w-[140px] truncate"
              title="Loaned to {{ item.lent_to }}">
-            <span x-text="show ? 'To: {{ item.lent_to|e }}' : 'Loaned'"></span>
+            <span x-show="!show">Loaned</span><span x-show="show" style="display:none">To: {{ item.lent_to }}</span>
         </div>
         {% elif item.reading_status %}
         <div class="absolute top-2 right-2 z-10 w-3 h-3 rounded-full shadow

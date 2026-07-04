@@ -453,3 +453,41 @@ class TestCSVFieldLengthCaps:
         )
         data = resp.json()
         assert data["imported"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Client IP extraction — proxy headers only trusted behind SHELF_TRUST_PROXY
+# ---------------------------------------------------------------------------
+
+
+class TestClientIPTrust:
+    def _request(self, headers=None, peer="9.9.9.9"):
+        req = MagicMock()
+        req.headers = headers or {}
+        req.client.host = peer
+        return req
+
+    def test_ignores_forwarded_headers_by_default(self, monkeypatch):
+        monkeypatch.delenv("SHELF_TRUST_PROXY", raising=False)
+        from app.config import get_client_ip
+        req = self._request({"x-forwarded-for": "1.2.3.4", "cf-connecting-ip": "5.6.7.8"})
+        assert get_client_ip(req) == "9.9.9.9"
+
+    def test_honors_cf_header_when_trusted(self, monkeypatch):
+        monkeypatch.setenv("SHELF_TRUST_PROXY", "1")
+        from app.config import get_client_ip
+        req = self._request({"cf-connecting-ip": "5.6.7.8"})
+        assert get_client_ip(req) == "5.6.7.8"
+
+    def test_honors_xff_first_entry_when_trusted(self, monkeypatch):
+        monkeypatch.setenv("SHELF_TRUST_PROXY", "1")
+        from app.config import get_client_ip
+        req = self._request({"x-forwarded-for": "1.2.3.4, 10.0.0.1"})
+        assert get_client_ip(req) == "1.2.3.4"
+
+    def test_falls_back_to_peer_when_trusted_but_no_headers(self, monkeypatch):
+        monkeypatch.setenv("SHELF_TRUST_PROXY", "1")
+        from app.config import get_client_ip
+        req = self._request({})
+        assert get_client_ip(req) == "9.9.9.9"
+

@@ -76,19 +76,23 @@ SECRET_ENV_VARS = {
 
 
 def get_client_ip(request) -> str:
-    """Extract the real client IP from proxy headers, falling back to direct connection.
+    """Extract the real client IP for rate limiting and auth logs.
 
-    Checks CF-Connecting-IP (Cloudflare), then X-Forwarded-For, then request.client.
+    Proxy headers (CF-Connecting-IP, X-Forwarded-For) are client-controlled and
+    trivially spoofable, so they are only honored when SHELF_TRUST_PROXY is set —
+    i.e. the operator has a reverse proxy in front that overwrites them. In the
+    default direct-connection deployment we use the socket peer address.
     """
-    # Cloudflare sets this to the actual visitor IP
-    cf_ip = request.headers.get("cf-connecting-ip")
-    if cf_ip:
-        return cf_ip.strip()
+    if os.environ.get("SHELF_TRUST_PROXY"):
+        # Cloudflare sets this to the actual visitor IP
+        cf_ip = request.headers.get("cf-connecting-ip")
+        if cf_ip:
+            return cf_ip.strip()
 
-    # Standard proxy header — first entry is the original client
-    xff = request.headers.get("x-forwarded-for")
-    if xff:
-        return xff.split(",")[0].strip()
+        # Standard proxy header — first entry is the original client
+        xff = request.headers.get("x-forwarded-for")
+        if xff:
+            return xff.split(",")[0].strip()
 
     return request.client.host if request.client else "unknown"
 

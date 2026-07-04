@@ -123,9 +123,11 @@
                     <div x-show="showAccount" x-cloak @click.self="showAccount = false" @keydown.escape.window="showAccount = false"
                          class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center">
                         <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+                             data-display-name="{{ user.display_name or user.username }}"
+                             x-init="displayName = $el.dataset.displayName"
                              x-data="{
                                 tab: 'profile',
-                                displayName: '{{ (user.display_name or user.username)|e }}',
+                                displayName: '',
                                 nameResult: null, nameSaving: false,
                                 current: '', newPw: '', confirm: '',
                                 pwResult: null, pwSaving: false,
