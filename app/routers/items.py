@@ -1285,9 +1285,9 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
 
                 cursor = db.execute(
                     """INSERT INTO items (title, authors, isbn, media_type, publisher,
-                       publish_year, page_count, series_name, reading_status,
-                       date_finished, owned, source)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                       publish_year, page_count, series_name, series_position,
+                       reading_status, date_finished, owned, source)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         title,
                         norm["authors"],
@@ -1297,6 +1297,7 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                         int(pub_year) if pub_year and str(pub_year).isdigit() else None,
                         int(page_count) if page_count and str(page_count).isdigit() else None,
                         norm["series_name"],
+                        norm.get("series_position"),
                         norm["reading_status"],
                         norm["date_finished"],
                         int(owned),
@@ -1323,11 +1324,35 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     }
 
 
-async def _enrich_import_covers(item_ids: list[int]) -> None:
-    """Background task: fetch covers for freshly imported items by ISBN.
+def _titles_match(a: str, b: str) -> bool:
+    """Loose match: equal, or one is a prefix of the other (subtitle drift)."""
+    a, b = a.casefold().strip(), b.casefold().strip()
+    return bool(a) and bool(b) and (a.startswith(b) or b.startswith(a))
 
-    Best-effort — failures are logged and skipped. Uses the standard cover
-    chain (Open Library covers -> Amazon -> Google Books) via download_cover.
+
+async def _search_isbn_for_item(title: str, authors: str | None, client) -> tuple[str | None, str | None]:
+    """Find (isbn, cover_url) by title/author search on Open Library.
+
+    Goodreads exports omit ISBNs for many editions (Kindle especially);
+    this recovers one so the cover chain and future lookups can work.
+    Returns (None, None) unless the top results match the title.
+    """
+    first_author = (authors or "").split(",")[0].strip()
+    query = f"{title} {first_author}".strip()
+    results = await openlibrary.search_books(query, client, limit=3)
+    for res in results:
+        if _titles_match(res["title"], title):
+            return res.get("isbn"), res.get("cover_url")
+    return None, None
+
+
+async def _enrich_import_covers(item_ids: list[int]) -> None:
+    """Background task: fetch covers (and missing ISBNs) for imported items.
+
+    Items with an ISBN go straight to the standard cover chain (Open Library
+    covers -> Amazon -> Google Books). Items without one get a title/author
+    search first; a recovered ISBN is stored unless another item already
+    holds it. Best-effort — failures are logged and skipped.
     """
     enriched = 0
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -1335,11 +1360,36 @@ async def _enrich_import_covers(item_ids: list[int]) -> None:
             try:
                 with get_db() as db:
                     row = db.execute(
-                        "SELECT isbn, cover_path FROM items WHERE id = ?", (item_id,)
+                        "SELECT title, authors, isbn, cover_path FROM items WHERE id = ?",
+                        (item_id,),
                     ).fetchone()
-                if not row or row["cover_path"] or not row["isbn"]:
+                if not row or row["cover_path"]:
                     continue
-                cover_path = await covers.download_cover(item_id, row["isbn"], None, None, client)
+
+                isbn_val = row["isbn"]
+                cover_url = None
+                if not isbn_val:
+                    isbn_val, cover_url = await _search_isbn_for_item(
+                        row["title"], row["authors"], client)
+                    if isbn_val:
+                        isbn13 = isbn_svc.to_isbn13(isbn_val) or isbn_val
+                        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if len(isbn13) == 13 else None
+                        with get_db() as db:
+                            taken = db.execute(
+                                "SELECT id FROM items WHERE isbn = ? AND id != ?",
+                                (isbn13, item_id),
+                            ).fetchone()
+                            if not taken:
+                                db.execute(
+                                    "UPDATE items SET isbn = ?, isbn10 = ?, "
+                                    "updated_at = datetime('now') WHERE id = ?",
+                                    (isbn13, isbn10, item_id),
+                                )
+                        isbn_val = isbn13
+                    if not isbn_val and not cover_url:
+                        continue
+
+                cover_path = await covers.download_cover(item_id, isbn_val, cover_url, None, client)
                 if cover_path:
                     with get_db() as db:
                         db.execute(

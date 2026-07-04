@@ -21,9 +21,29 @@ Each normalizer returns the shelf-native shape consumed by the CSV import:
     }
 """
 
+import re
+
 GOODREADS = "goodreads"
 STORYGRAPH = "storygraph"
 GENERIC = "generic"
+
+# Goodreads embeds series in the title: "The Gray Man (Gray Man, #1)".
+# Multi-series titles look like "(Series A, #1; Series B, #4)" — we take the
+# first pairing and discard the rest.
+_SERIES_TITLE_RE = re.compile(
+    r"^(?P<title>.+?)\s*"
+    r"\((?P<series>[^()#;]+?),?\s+#(?P<pos>\d+(?:\.\d+)?)(?:;[^)]*)?\)\s*$"
+)
+
+
+def split_series_title(raw: str | None) -> tuple[str, str | None, float | None]:
+    """Split a Goodreads-style title into (title, series_name, position)."""
+    raw = (raw or "").strip()
+    m = _SERIES_TITLE_RE.match(raw)
+    if not m:
+        return raw, None, None
+    pos = float(m.group("pos"))
+    return m.group("title").strip(), m.group("series").strip(), pos
 
 
 def detect_format(fieldnames) -> str:
@@ -96,18 +116,24 @@ def normalize_goodreads(row: dict) -> dict:
     shelf = (row.get("exclusive_shelf") or "").strip().lower()
     status = _GOODREADS_SHELF_STATUS.get(shelf)
 
+    title, series_name, series_position = split_series_title(row.get("title"))
+
     return {
-        "title": (row.get("title") or "").strip(),
+        "title": title,
         "authors": authors,
         "isbn": _clean_isbn(row.get("isbn13")) or _clean_isbn(row.get("isbn")),
         "media_type": _media_type_from(row.get("binding")),
         "publisher": (row.get("publisher") or "").strip() or None,
         "publish_year": (row.get("year_published") or "").strip() or None,
         "page_count": (row.get("number_of_pages") or "").strip() or None,
-        "series_name": None,
+        "series_name": series_name,
+        "series_position": series_position,
         "reading_status": status,
         "date_finished": _clean_date(row.get("date_read")),
-        "owned": True,
+        # Goodreads tracks reading, not possession — trust its Owned Copies
+        # count instead of assuming everything on a shelf is on a shelf.
+        "owned": (row.get("owned_copies") or "").strip().isdigit()
+                 and int(row["owned_copies"]) > 0,
     }
 
 
@@ -125,6 +151,7 @@ def normalize_storygraph(row: dict) -> dict:
         "publish_year": None,
         "page_count": None,
         "series_name": None,
+        "series_position": None,
         "reading_status": status,
         "date_finished": _clean_date(row.get("last_date_read")),
         # Only an explicit "No" marks the book as not owned (wishlist)
@@ -143,6 +170,7 @@ def normalize_generic(row: dict) -> dict:
         "publish_year": (row.get("publish_year") or row.get("year") or "").strip() or None,
         "page_count": (row.get("page_count") or row.get("pages") or "").strip() or None,
         "series_name": (row.get("series_name") or row.get("series") or "").strip() or None,
+        "series_position": None,
         "reading_status": None,
         "date_finished": None,
         "owned": True,

@@ -13,6 +13,7 @@ from app.services.reading_imports import (
     detect_format,
     normalize_goodreads,
     normalize_storygraph,
+    split_series_title,
 )
 
 # Realistic export headers
@@ -32,11 +33,11 @@ STORYGRAPH_HEADER = (
 
 def _gr_row(title="Dune", author="Frank Herbert", additional="", isbn10="0441013597",
             isbn13="9780441013593", publisher="Ace", binding="Paperback", pages="412",
-            year="2005", date_read="2023/08/15", shelf="read"):
+            year="2005", date_read="2023/08/15", shelf="read", owned_copies="0"):
     return (
         f'123,{title},{author},"Herbert, Frank",{additional},'
         f'"=""{isbn10}""","=""{isbn13}""",5,4.25,{publisher},{binding},{pages},'
-        f'{year},1965,{date_read},2023/01/02,favorites,favorites (#1),{shelf},,,,1,0'
+        f'{year},1965,{date_read},2023/01/02,favorites,favorites (#1),{shelf},,,,1,{owned_copies}'
     )
 
 
@@ -124,7 +125,7 @@ class TestNormalizeGoodreads:
             "isbn": '="0441013597"', "isbn13": '="9780441013593"',
             "publisher": "Ace", "binding": "Paperback", "number_of_pages": "412",
             "year_published": "2005", "date_read": "2023/08/15",
-            "exclusive_shelf": "read",
+            "exclusive_shelf": "read", "owned_copies": "0",
         }
         base.update(over)
         return base
@@ -138,7 +139,25 @@ class TestNormalizeGoodreads:
         assert n["publish_year"] == "2005"
         assert n["page_count"] == "412"
         assert n["media_type"] == "book"
-        assert n["owned"] is True
+        # Goodreads is a reading tracker, not a shelf inventory: only an
+        # explicit Owned Copies count marks possession.
+        assert n["owned"] is False
+
+    def test_owned_copies_marks_owned(self):
+        assert normalize_goodreads(self._row(owned_copies="2"))["owned"] is True
+        assert normalize_goodreads(self._row(owned_copies=""))["owned"] is False
+
+    def test_series_extracted_from_title(self):
+        n = normalize_goodreads(self._row(title="The Gray Man (Gray Man, #1)"))
+        assert n["title"] == "The Gray Man"
+        assert n["series_name"] == "Gray Man"
+        assert n["series_position"] == 1.0
+
+    def test_plain_title_has_no_series(self):
+        n = normalize_goodreads(self._row(title="A Moveable Feast"))
+        assert n["title"] == "A Moveable Feast"
+        assert n["series_name"] is None
+        assert n["series_position"] is None
 
     def test_additional_authors_joined(self):
         n = normalize_goodreads(self._row(additional_authors="Brian Herbert"))
@@ -212,8 +231,30 @@ class TestGoodreadsImport:
         assert item["title"] == "Dune"
         assert item["reading_status"] == "read"
         assert item["date_finished"] == "2023-08-15"
-        assert item["owned"] == 1
+        assert item["owned"] == 0  # Owned Copies is 0 in the export
         assert item["source"] == "goodreads_import"
+
+    def test_owned_copies_imports_as_owned(self, admin_client, db):
+        csv_content = GOODREADS_HEADER + "\n" + _gr_row(
+            title="Owned Dune", isbn13="9780441172719", isbn10="0441172717",
+            owned_copies="1")
+        data = _post_csv(admin_client, csv_content).json()
+        assert data["imported"] == 1
+        item = db.execute("SELECT owned FROM items WHERE isbn = '9780441172719'").fetchone()
+        assert item["owned"] == 1
+
+    def test_series_title_imports_split(self, admin_client, db):
+        csv_content = GOODREADS_HEADER + "\n" + _gr_row(
+            title='"The Gray Man (Gray Man, #1)"', isbn13="9780515147018",
+            isbn10="0515147015")
+        data = _post_csv(admin_client, csv_content).json()
+        assert data["imported"] == 1
+        item = db.execute(
+            "SELECT title, series_name, series_position FROM items "
+            "WHERE isbn = '9780515147018'").fetchone()
+        assert item["title"] == "The Gray Man"
+        assert item["series_name"] == "Gray Man"
+        assert item["series_position"] == 1.0
 
     def test_to_read_wishlist_option(self, admin_client, db):
         csv_content = GOODREADS_HEADER + "\n" + _gr_row(
@@ -318,3 +359,117 @@ class TestCoverEnrichment:
         with patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
             await _enrich_import_covers([item_id])
             dl.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_enrich_recovers_isbn_by_title_search(self, db):
+        """Items imported without an ISBN (Goodreads omits them for many
+        editions) get one from an Open Library title/author search."""
+        from tests.conftest import _insert_item
+        from app.routers.items import _enrich_import_covers
+
+        item_id = _insert_item(db, title="The Gray Man", authors="Mark Greaney",
+                               isbn=None)
+        db.execute("COMMIT")
+
+        search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
+                          "isbn": "9780515147018", "cover_url": "https://covers.example/1.jpg",
+                          "publish_year": 2009, "publisher": None, "page_count": None}]
+        with patch("app.routers.items.openlibrary.search_books",
+                   new=AsyncMock(return_value=search_result)), \
+             patch("app.routers.items.covers.download_cover",
+                   new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
+            await _enrich_import_covers([item_id])
+            dl.assert_awaited_once()
+            assert dl.await_args.args[1] == "9780515147018"
+
+        from app.database import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT isbn, isbn10, cover_path FROM items WHERE id = ?",
+                               (item_id,)).fetchone()
+        assert row["isbn"] == "9780515147018"
+        assert row["isbn10"] == "051514701X"  # derived from the ISBN-13
+        assert row["cover_path"] == f"covers/{item_id}.jpg"
+
+    @pytest.mark.asyncio
+    async def test_enrich_title_search_rejects_mismatch(self, db):
+        """A search hit whose title doesn't match must not be applied."""
+        from tests.conftest import _insert_item
+        from app.routers.items import _enrich_import_covers
+
+        item_id = _insert_item(db, title="Extremely Obscure Memoir", authors="A. Nobody",
+                               isbn=None)
+        db.execute("COMMIT")
+
+        search_result = [{"title": "Completely Different Book", "authors": "Someone Else",
+                          "isbn": "9780000000002", "cover_url": None,
+                          "publish_year": None, "publisher": None, "page_count": None}]
+        with patch("app.routers.items.openlibrary.search_books",
+                   new=AsyncMock(return_value=search_result)), \
+             patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
+            await _enrich_import_covers([item_id])
+            dl.assert_not_awaited()
+
+        from app.database import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT isbn FROM items WHERE id = ?", (item_id,)).fetchone()
+        assert row["isbn"] is None
+
+    @pytest.mark.asyncio
+    async def test_enrich_recovered_isbn_collision_not_stored(self, db):
+        """If another item already holds the recovered ISBN, keep the cover
+        but leave this item's ISBN empty (no UNIQUE surprises, no mislinks)."""
+        from tests.conftest import _insert_item
+        from app.routers.items import _enrich_import_covers
+
+        _insert_item(db, title="Already Here", isbn="9780515147018")
+        item_id = _insert_item(db, title="The Gray Man", authors="Mark Greaney",
+                               isbn=None)
+        db.execute("COMMIT")
+
+        search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
+                          "isbn": "9780515147018", "cover_url": "https://covers.example/1.jpg",
+                          "publish_year": None, "publisher": None, "page_count": None}]
+        with patch("app.routers.items.openlibrary.search_books",
+                   new=AsyncMock(return_value=search_result)), \
+             patch("app.routers.items.covers.download_cover",
+                   new=AsyncMock(return_value=f"covers/{item_id}.jpg")):
+            await _enrich_import_covers([item_id])
+
+        from app.database import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT isbn, cover_path FROM items WHERE id = ?",
+                               (item_id,)).fetchone()
+        assert row["isbn"] is None
+        assert row["cover_path"] == f"covers/{item_id}.jpg"
+
+
+class TestSplitSeriesTitle:
+    def test_standard_form(self):
+        assert split_series_title("The Gray Man (Gray Man, #1)") == \
+            ("The Gray Man", "Gray Man", 1.0)
+
+    def test_fractional_position(self):
+        assert split_series_title("Novella (Saga, #2.5)") == ("Novella", "Saga", 2.5)
+
+    def test_no_comma_before_hash(self):
+        assert split_series_title("Hyperion (Hyperion Cantos #1)") == \
+            ("Hyperion", "Hyperion Cantos", 1.0)
+
+    def test_multi_series_takes_first(self):
+        title, series, pos = split_series_title(
+            "Ender's Game (Ender's Saga, #1; Ender Universe, #12)")
+        assert title == "Ender's Game"
+        assert series == "Ender's Saga"
+        assert pos == 1.0
+
+    def test_plain_parenthetical_untouched(self):
+        # Not a series marker — no #N, so leave the title alone
+        assert split_series_title("Sanctuary (a novel)") == \
+            ("Sanctuary (a novel)", None, None)
+
+    def test_no_parens(self):
+        assert split_series_title("Dune") == ("Dune", None, None)
+
+    def test_empty(self):
+        assert split_series_title(None) == ("", None, None)
+        assert split_series_title("") == ("", None, None)
