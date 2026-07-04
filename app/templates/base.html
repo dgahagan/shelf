@@ -4,75 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Shelf{% endblock %}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        shelf: {
-                            bg: '#0f1117',
-                            card: '#1a1d27',
-                            hover: '#242836',
-                            accent: '#6366f1',
-                            accent2: '#818cf8',
-                            text: '#e2e8f0',
-                            muted: '#94a3b8',
-                            border: '#2d3148',
-                            success: '#22c55e',
-                            warning: '#eab308',
-                            error: '#ef4444',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.15.9/dist/cdn.min.js" integrity="sha384-MEh8ZMZhsmD6/1Bd3kfTiGZoYIKR9u+BilQQWl5DOonh+pvKg6fP2AejtOozsZK8" crossorigin="anonymous"></script>
-    <script>
-        // Read the csrf_token cookie. Used by HTMX hook below and by raw fetch() callers.
-        window.csrfToken = function() {
-            const match = document.cookie.split('; ').find(r => r.startsWith('csrf_token='));
-            return match ? decodeURIComponent(match.split('=')[1]) : '';
-        };
-        // Attach CSRF token to every HTMX state-mutating request (double-submit cookie)
-        document.addEventListener('htmx:configRequest', function(evt) {
-            if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(evt.detail.verb.toUpperCase())) {
-                const match = document.cookie.split('; ').find(r => r.startsWith('csrf_token='));
-                if (match) {
-                    evt.detail.headers['X-CSRF-Token'] = match.split('=')[1];
-                }
-            }
-        });
-        // Inject _csrf hidden field into plain HTML POST forms (non-HTMX)
-        document.addEventListener('DOMContentLoaded', function() {
-            const csrfCookie = document.cookie.split('; ').find(r => r.startsWith('csrf_token='));
-            if (csrfCookie) {
-                const csrfValue = decodeURIComponent(csrfCookie.split('=')[1]);
-                document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function(form) {
-                    if (!form.querySelector('input[name="_csrf"]')) {
-                        var input = document.createElement('input');
-                        input.type = 'hidden'; input.name = '_csrf'; input.value = csrfValue;
-                        form.appendChild(input);
-                    }
-                });
-            }
-        });
-    </script>
-    <style>
-        body { background-color: #0f1117; color: #e2e8f0; }
-        .cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; }
-        .cover-card { aspect-ratio: 2/3; }
-        .cover-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
-        .scan-result { animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        /* Scrollbar */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f1117; }
-        ::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 4px; }
-    </style>
+    <link rel="stylesheet" href="/static/css/app.css">
+    <script src="/static/vendor/htmx-2.0.4.min.js"></script>
+    <script defer src="/static/vendor/alpinejs-3.15.9.min.js"></script>
+    <script src="/static/js/csrf.js"></script>
     {% block head %}{% endblock %}
 </head>
 <body class="min-h-screen">
@@ -279,47 +214,6 @@
         </div>
     </div>
 
-    <script>
-    // --- Toast notifications ---
-    function showToast(message, type) {
-        var container = document.getElementById('toast-container');
-        var colors = {success: 'bg-shelf-success', error: 'bg-shelf-error', warning: 'bg-shelf-warning'};
-        var el = document.createElement('div');
-        el.className = (colors[type] || 'bg-shelf-accent') + ' text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300';
-        el.textContent = message;
-        container.appendChild(el);
-        setTimeout(function() { el.style.opacity = '0'; }, 2700);
-        setTimeout(function() { el.remove(); }, 3000);
-    }
-
-    // Listen for HX-Trigger showToast events from server
-    document.body.addEventListener('showToast', function(e) {
-        var d = e.detail || {};
-        showToast(d.message || 'Done', d.type || 'success');
-    });
-
-    // --- Loading bar ---
-    (function() {
-        var bar = document.getElementById('htmx-indicator');
-        document.body.addEventListener('htmx:beforeRequest', function() {
-            bar.style.opacity = '1';
-            bar.style.width = (30 + Math.random() * 30) + '%';
-        });
-        document.body.addEventListener('htmx:afterRequest', function() {
-            bar.style.width = '100%';
-            setTimeout(function() { bar.style.opacity = '0'; bar.style.width = '0'; }, 300);
-        });
-    })();
-
-    // --- Keyboard shortcuts ---
-    document.addEventListener('keydown', function(e) {
-        var tag = document.activeElement.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-        if (e.key === '/' ) { e.preventDefault(); var q = document.querySelector('[name="q"]'); if (q) q.focus(); }
-        else if (e.key === 's') { window.location.href = '/scan'; }
-        else if (e.key === 'b') { window.location.href = '/browse'; }
-        else if (e.key === '?') { document.getElementById('shortcut-modal').classList.toggle('hidden'); }
-    });
-    </script>
+    <script src="/static/js/app.js"></script>
 </body>
 </html>

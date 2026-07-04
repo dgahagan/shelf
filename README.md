@@ -166,6 +166,10 @@ docker compose logs -f shelf
 
 # Access the database
 sqlite3 data/shelf.db
+
+# Rebuild the Tailwind stylesheet after changing templates or static/js
+# (all JS/CSS is vendored locally — no CDNs; requires node/npx)
+make css
 ```
 
 ### QA Pipeline

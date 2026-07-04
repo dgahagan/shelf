@@ -30,12 +30,6 @@
     </div>
     {% endfor %}
 </div>
-<script>
-var loc = document.getElementById('location');
-document.querySelectorAll('.dvd-loc-sync').forEach(function(el) {
-    if (loc) el.value = loc.value;
-});
-</script>
 {% elif query %}
 <p class="text-sm text-shelf-muted">No movies found for "{{ query }}". Try a different search.</p>
 {% endif %}

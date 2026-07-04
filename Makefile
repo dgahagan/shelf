@@ -5,7 +5,7 @@ DOCS  := docs
 MODEL ?= claude-sonnet-4-6
 MIN_TESTS ?= 155
 
-.PHONY: setup test test-e2e test-all \
+.PHONY: setup css test test-e2e test-all \
         check-deps check-licenses check-secrets checks \
         report-review report-security report-test reports \
         qa fix verify release-check status \
@@ -23,6 +23,15 @@ setup:
 	pip install -r requirements-dev.txt
 	playwright install chromium
 	@echo "=== Setup complete ==="
+
+# ---------------------------------------------------------------------------
+# Frontend assets
+# ---------------------------------------------------------------------------
+
+# Rebuild the committed Tailwind stylesheet after changing templates,
+# static/js, or tailwind.config.js. Requires node/npx.
+css:
+	npx -y tailwindcss@3.4.17 -c tailwind.config.js -i static/css/input.css -o static/css/app.css --minify
 
 # ---------------------------------------------------------------------------
 # Tests

@@ -32,17 +32,6 @@
     </div>
     {% endfor %}
 </div>
-<script>
-// Sync location and platform values from main form into game search results
-var loc = document.getElementById('location');
-var plat = document.getElementById('platform');
-document.querySelectorAll('.game-loc-sync').forEach(function(el) {
-    if (loc) el.value = loc.value;
-});
-document.querySelectorAll('.game-platform-sync').forEach(function(el) {
-    if (plat) el.value = plat.value;
-});
-</script>
 {% else %}
 <p class="text-sm text-shelf-muted">No games found. Try a different title or remove the platform filter.</p>
 {% endif %}

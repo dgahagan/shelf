@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* App-wide styles previously inlined in base.html */
+body { background-color: #0f1117; color: #e2e8f0; }
+.cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; }
+.cover-card { aspect-ratio: 2/3; }
+.cover-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
+.scan-result { animation: slideIn 0.3s ease-out; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0f1117; }
+::-webkit-scrollbar-thumb { background: #2d3148; border-radius: 4px; }
+/* Hide Alpine-controlled elements until Alpine initializes */
+[x-cloak] { display: none !important; }
