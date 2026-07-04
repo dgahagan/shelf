@@ -1181,12 +1181,22 @@ async def export_csv(_=Depends(require_role("viewer"))):
 
 @router.post("/import/csv")
 async def import_csv(request: Request, _=Depends(require_role("admin"))):
-    """Import items from a CSV file upload."""
+    """Import items from a CSV file upload.
+
+    Accepts Shelf's own CSV format plus Goodreads and StoryGraph exports —
+    the source is auto-detected from the header row (see
+    services/reading_imports.py for the column mappings).
+    """
     import csv
     import io
+    import os
+
+    from app.services import reading_imports
 
     form = await request.form()
     mode = form.get("mode", "skip")  # skip or update
+    to_read_wishlist = form.get("to_read_wishlist") in ("1", "true", "on")
+    enrich_covers = form.get("enrich_covers") in ("1", "true", "on")
     csv_file = form.get("file")
     if not csv_file or not hasattr(csv_file, "read"):
         return {"error": "No file uploaded", "imported": 0, "skipped": 0, "errors": []}
@@ -1201,41 +1211,53 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     if reader.fieldnames:
         reader.fieldnames = [f.strip().lower().replace(" ", "_") for f in reader.fieldnames]
 
+    fmt = reading_imports.detect_format(reader.fieldnames)
+    normalize = reading_imports.NORMALIZERS[fmt]
+    source = "csv_import" if fmt == reading_imports.GENERIC else f"{fmt}_import"
+
     imported = 0
     skipped = 0
     errors = []
+    new_item_ids: list[int] = []
+    seen_in_file: set[tuple[str, str]] = set()
 
     _CSV_MAX_TEXT = 1000
 
     with get_db() as db:
         for i, row in enumerate(reader, start=2):
             try:
-                title = (row.get("title") or "").strip()
+                norm = normalize(row)
+
+                title = norm["title"]
                 if not title:
                     errors.append(f"Row {i}: missing title")
                     continue
                 if len(title) > _CSV_MAX_TEXT:
                     errors.append(f"Row {i}: title too long (max {_CSV_MAX_TEXT} chars)")
                     continue
-
-                authors_val = (row.get("authors") or row.get("author") or "").strip() or None
-                if authors_val and len(authors_val) > _CSV_MAX_TEXT:
+                if norm["authors"] and len(norm["authors"]) > _CSV_MAX_TEXT:
                     errors.append(f"Row {i}: authors too long (max {_CSV_MAX_TEXT} chars)")
                     continue
-                publisher_val = (row.get("publisher") or "").strip() or None
-                if publisher_val and len(publisher_val) > _CSV_MAX_TEXT:
+                if norm["publisher"] and len(norm["publisher"]) > _CSV_MAX_TEXT:
                     errors.append(f"Row {i}: publisher too long (max {_CSV_MAX_TEXT} chars)")
                     continue
-                series_val = (row.get("series_name") or row.get("series") or "").strip() or None
-                if series_val and len(series_val) > _CSV_MAX_TEXT:
+                if norm["series_name"] and len(norm["series_name"]) > _CSV_MAX_TEXT:
                     errors.append(f"Row {i}: series_name too long (max {_CSV_MAX_TEXT} chars)")
                     continue
 
-                isbn_val = (row.get("isbn") or "").strip() or None
-                media = (row.get("media_type") or "book").strip()
+                isbn_val = norm["isbn"]
+                media = norm["media_type"]
 
-                # Check duplicate
+                owned = norm["owned"]
+                if to_read_wishlist and norm["reading_status"] == "want_to_read":
+                    owned = False
+
+                # Check duplicate (within this file, then against the DB)
                 if isbn_val:
+                    if (isbn_val, media) in seen_in_file:
+                        skipped += 1
+                        continue
+                    seen_in_file.add((isbn_val, media))
                     existing = db.execute(
                         "SELECT id FROM items WHERE isbn = ? AND media_type = ?", (isbn_val, media)
                     ).fetchone()
@@ -1243,35 +1265,89 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                         if mode == "skip":
                             skipped += 1
                             continue
-                        # mode == update: update existing
-                        _update_from_csv_row(db, existing["id"], row)
+                        # mode == update: refresh metadata, and reading state
+                        # for reading-tracker imports
+                        _update_from_csv_row(db, existing["id"], norm)
+                        if fmt != reading_imports.GENERIC:
+                            db.execute(
+                                "UPDATE items SET reading_status = COALESCE(?, reading_status), "
+                                "date_finished = COALESCE(?, date_finished), owned = ?, "
+                                "updated_at = datetime('now') WHERE id = ?",
+                                (norm["reading_status"], norm["date_finished"], int(owned), existing["id"]),
+                            )
                         imported += 1
                         continue
 
-                # Parse optional numeric fields
-                pub_year = row.get("publish_year") or row.get("year")
-                page_count = row.get("page_count") or row.get("pages")
+                pub_year = norm["publish_year"]
+                page_count = norm["page_count"]
 
-                db.execute(
+                cursor = db.execute(
                     """INSERT INTO items (title, authors, isbn, media_type, publisher,
-                       publish_year, page_count, series_name, source)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'csv_import')""",
+                       publish_year, page_count, series_name, reading_status,
+                       date_finished, owned, source)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                     (
                         title,
-                        authors_val,
+                        norm["authors"],
                         isbn_val,
                         media,
-                        publisher_val,
+                        norm["publisher"],
                         int(pub_year) if pub_year and str(pub_year).isdigit() else None,
                         int(page_count) if page_count and str(page_count).isdigit() else None,
-                        series_val,
+                        norm["series_name"],
+                        norm["reading_status"],
+                        norm["date_finished"],
+                        int(owned),
+                        source,
                     ),
                 )
+                if isbn_val:
+                    new_item_ids.append(cursor.lastrowid)
                 imported += 1
             except Exception as e:
                 errors.append(f"Row {i}: {e}")
 
-    return {"imported": imported, "skipped": skipped, "errors": errors[:20]}
+    covers_queued = 0
+    if enrich_covers and new_item_ids and not os.environ.get("SHELF_DISABLE_COVER_ENRICH"):
+        covers_queued = len(new_item_ids)
+        asyncio.create_task(_enrich_import_covers(new_item_ids))
+
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors[:20],
+        "format": fmt,
+        "covers_queued": covers_queued,
+    }
+
+
+async def _enrich_import_covers(item_ids: list[int]) -> None:
+    """Background task: fetch covers for freshly imported items by ISBN.
+
+    Best-effort — failures are logged and skipped. Uses the standard cover
+    chain (Open Library covers -> Amazon -> Google Books) via download_cover.
+    """
+    enriched = 0
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        for item_id in item_ids:
+            try:
+                with get_db() as db:
+                    row = db.execute(
+                        "SELECT isbn, cover_path FROM items WHERE id = ?", (item_id,)
+                    ).fetchone()
+                if not row or row["cover_path"] or not row["isbn"]:
+                    continue
+                cover_path = await covers.download_cover(item_id, row["isbn"], None, None, client)
+                if cover_path:
+                    with get_db() as db:
+                        db.execute(
+                            "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+                            (cover_path, item_id),
+                        )
+                    enriched += 1
+            except Exception:
+                logger.exception("Cover enrichment failed for imported item %d", item_id)
+    logger.info("Import cover enrichment done: %d/%d covers fetched", enriched, len(item_ids))
 
 
 async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None, mode: str = "add"):

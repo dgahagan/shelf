@@ -101,6 +101,7 @@ data/
 - **Checkout system** — lend to borrowers with the Lend scan mode, filter by "Lent Out" in browse
 - **Wishlist** — mark items as unowned to build a wish list alongside your catalog
 - **CSV import/export** — bulk operations and backups
+- **Goodreads & StoryGraph migration** — upload your library export as-is; the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically
 
 ### Integrations
 - **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books

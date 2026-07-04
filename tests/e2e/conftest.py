@@ -85,6 +85,7 @@ def live_server():
         "DATA_DIR": str(data_dir),
         "SHELF_DISABLE_RATE_LIMIT": "1",
         "SHELF_DEV_INSECURE_COOKIES": "1",
+        "SHELF_DISABLE_COVER_ENRICH": "1",  # no outbound cover fetches from E2E
     }
 
     proc = subprocess.Popen(

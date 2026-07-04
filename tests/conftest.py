@@ -55,6 +55,7 @@ _TEST_CSRF_TOKEN = "test-csrf-token-fixed"
 def client(monkeypatch):
     """FastAPI TestClient with rate limiting disabled and CSRF pre-seeded."""
     monkeypatch.setenv("SHELF_DISABLE_RATE_LIMIT", "1")
+    monkeypatch.setenv("SHELF_DISABLE_COVER_ENRICH", "1")  # no network from import tests
     from app.main import app
     c = TestClient(app, base_url="https://testserver")
     c.cookies.set("csrf_token", _TEST_CSRF_TOKEN)

@@ -962,7 +962,8 @@
 
             <div class="border-t border-shelf-border pt-4">
                 <p class="text-sm text-shelf-muted mb-2">Import items from a CSV file (columns: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)</p>
-                <form @submit.prevent="importing=true; importResult=null; fetch('/api/import/csv', {method:'POST', body: new FormData($el), headers: {'X-CSRF-Token': (document.cookie.split('; ').find(r=>r.startsWith('csrf_token='))||'').split('=')[1]||''}}).then(r=>r.json()).then(d=>{importResult=d; importing=false}).catch(()=>{importResult={error:'Import failed'}; importing=false})">
+                <p class="text-sm text-shelf-muted mb-2"><strong class="text-shelf-text">Goodreads</strong> and <strong class="text-shelf-text">StoryGraph</strong> library exports are detected automatically — reading status, dates, and owned/wishlist flags are mapped for you.</p>
+                <form @submit.prevent="importing=true; importResult=null; fetch('/api/import/csv', {method:'POST', body: new FormData($el), headers: {'X-CSRF-Token': window.csrfToken()}}).then(r=>r.json()).then(d=>{importResult=d; importing=false}).catch(()=>{importResult={error:'Import failed'}; importing=false})">
                     <div class="flex gap-2 items-end">
                         <input type="file" name="file" accept=".csv" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
@@ -975,6 +976,16 @@
                             <span x-show="importing">Importing...</span>
                         </button>
                     </div>
+                    <div class="flex flex-wrap gap-x-6 gap-y-1 mt-2">
+                        <label class="flex items-center gap-2 text-sm text-shelf-muted cursor-pointer">
+                            <input type="checkbox" name="enrich_covers" value="1" checked class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                            Fetch covers after import
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-shelf-muted cursor-pointer">
+                            <input type="checkbox" name="to_read_wishlist" value="1" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                            Import "to read" books as wishlist
+                        </label>
+                    </div>
                 </form>
                 <div x-show="importResult" class="mt-2 text-sm">
                     <template x-if="importResult && importResult.error">
@@ -982,8 +993,14 @@
                     </template>
                     <template x-if="importResult && !importResult.error">
                         <p class="text-shelf-muted">
+                            <template x-if="importResult.format && importResult.format !== 'generic'">
+                                <span>Detected <span x-text="importResult.format" class="capitalize text-shelf-accent2"></span> export · </span>
+                            </template>
                             Imported: <span x-text="importResult.imported" class="text-shelf-success"></span>,
                             Skipped: <span x-text="importResult.skipped"></span>
+                            <template x-if="importResult.covers_queued > 0">
+                                <span> · Fetching <span x-text="importResult.covers_queued"></span> covers in background</span>
+                            </template>
                             <template x-if="importResult.errors && importResult.errors.length > 0">
                                 <span class="text-shelf-error"> · Errors: <span x-text="importResult.errors.length"></span></span>
                             </template>
