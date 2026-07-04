@@ -138,6 +138,14 @@ run on an origin your phone trusts. Options, from simplest to cleanest:
 Note that `localhost` is always trusted, so store mode works out of the box
 for local development.
 
+### Sharing
+
+Create public read-only links under Settings → Data → Sharing — a **wishlist
+link** for gift ideas or a **collection link** for browsing. Anyone with the
+URL sees titles, authors, covers, and series only (never locations, loans,
+values, notes, or ISBNs). Links are unguessable 128-bit tokens, rate-limited,
+marked `noindex`, and revocable at any time.
+
 ### Administration
 - **Role-based access** — admin, editor, and viewer roles
 - **Web log viewer** — monitor auth events, sync activity, and errors from the browser

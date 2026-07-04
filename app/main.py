@@ -33,7 +33,7 @@ from starlette.responses import Response, RedirectResponse
 
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.database import init_db, get_db
-from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series
+from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share
 from app.routers import auth_routes
 
 
@@ -61,7 +61,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 _SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/logout", "/health", "/sw.js"})
-_SKIP_AUTH_PREFIXES = ("/static/", "/covers/")
+_SKIP_AUTH_PREFIXES = ("/static/", "/covers/", "/share/")
 
 # Methods that mutate state and must carry a CSRF token
 _CSRF_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
@@ -173,7 +173,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Only rate-limit API and auth endpoints
         path = request.url.path
-        if not (path.startswith("/api/") or path in ("/login", "/setup")):
+        if not (path.startswith(("/api/", "/share/")) or path in ("/login", "/setup")):
             return await call_next(request)
 
         ip = get_client_ip(request)
@@ -430,3 +430,4 @@ app.include_router(valuation.router)
 app.include_router(hardcover.router)
 app.include_router(store.router)
 app.include_router(series.router)
+app.include_router(share.router)

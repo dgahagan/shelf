@@ -104,6 +104,14 @@ CREATE TABLE IF NOT EXISTS reading_log (
 CREATE INDEX IF NOT EXISTS idx_reading_log_item ON reading_log(item_id);
 CREATE INDEX IF NOT EXISTS idx_items_reading_status ON items(reading_status);
 
+CREATE TABLE IF NOT EXISTS share_links (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    token      TEXT NOT NULL UNIQUE,
+    scope      TEXT NOT NULL DEFAULT 'wishlist',
+    label      TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS valuation_history (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     total_value  REAL NOT NULL,

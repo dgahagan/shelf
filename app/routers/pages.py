@@ -446,11 +446,14 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         game_platforms_list = db.execute(
             "SELECT * FROM game_platforms ORDER BY sort_order, name"
         ).fetchall()
+        share_links = db.execute(
+            "SELECT * FROM share_links ORDER BY created_at DESC"
+        ).fetchall()
     env_overrides = {k for k in settings if is_env_override(k)}
     return request.app.state.templates.TemplateResponse(
         request,
         "settings.html",
-        {"settings": settings, "locations": locations, "item_count": item_count,
+        {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
          "borrowers": borrowers, "env_overrides": env_overrides,
          "game_platforms_list": game_platforms_list},
     )

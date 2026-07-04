@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>{{ link.label or ('Wishlist' if scope == 'wishlist' else 'Library') }} - Shelf</title>
+    <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="min-h-screen">
+    <header class="bg-shelf-card border-b border-shelf-border">
+        <div class="max-w-6xl mx-auto px-4 py-5">
+            <h1 class="text-2xl font-bold">{{ link.label or ('Wishlist' if scope == 'wishlist' else 'Library') }}</h1>
+            <p class="text-sm text-shelf-muted mt-1">
+                {{ items|length }} {{ 'book on this wishlist' if items|length == 1 else ('books on this wishlist' if scope == 'wishlist' else 'items in this collection') }}
+                · shared read-only via <span class="text-shelf-accent2 font-medium">Shelf</span>
+            </p>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        {% if not items %}
+        <p class="text-center text-shelf-muted py-16">Nothing here yet.</p>
+        {% endif %}
+        <div class="cover-grid">
+            {% for item in items %}
+            <div>
+                <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border shadow-lg">
+                    {% if item.cover_path %}
+                    <img src="/{{ item.cover_path }}" alt="" loading="lazy">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center p-3">
+                        <span class="text-sm text-shelf-muted text-center leading-snug">{{ item.title }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <p class="text-sm font-medium mt-2 leading-snug">{{ item.title }}</p>
+                <p class="text-xs text-shelf-muted truncate">{{ item.authors or '' }}{% if item.publish_year %} · {{ item.publish_year }}{% endif %}</p>
+                {% if item.series_name %}
+                <p class="text-xs text-shelf-muted/70 truncate">{{ item.series_name }}{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </main>
+</body>
+</html>

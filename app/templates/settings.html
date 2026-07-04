@@ -1051,6 +1051,49 @@
         </div>
     </div>
 
+    <!-- Share Links -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ copied: null }">
+        <h2 class="text-lg font-semibold mb-1">Sharing</h2>
+        <p class="text-sm text-shelf-muted mb-4">Public read-only links to your wishlist (for gift ideas) or collection. Anyone with the link can view titles, authors, and covers — never locations, loans, or values. Revoke a link at any time.</p>
+
+        {% if share_links %}
+        <div class="space-y-2 mb-4">
+            {% for sl in share_links %}
+            <div class="flex items-center gap-2 bg-shelf-bg rounded-lg px-4 py-2 flex-wrap" data-testid="share-link-row">
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-medium {% if sl.scope == 'wishlist' %}bg-shelf-warning/90 text-black{% else %}bg-shelf-accent/80 text-white{% endif %} uppercase">{{ sl.scope }}</span>
+                <span class="text-sm">{{ sl.label or 'Untitled link' }}</span>
+                <code class="text-xs text-shelf-muted truncate max-w-[220px]">/share/{{ sl.token }}</code>
+                <div class="ml-auto flex items-center gap-2">
+                    <button type="button" data-token="{{ sl.token }}"
+                            @click="navigator.clipboard.writeText(location.origin + '/share/' + $el.dataset.token).then(() => { copied = {{ sl.id }}; setTimeout(() => copied = null, 1500) })"
+                            class="px-2 py-1 bg-shelf-hover text-shelf-text rounded text-xs hover:bg-shelf-border transition-colors">
+                        <span x-show="copied !== {{ sl.id }}">Copy link</span>
+                        <span x-show="copied === {{ sl.id }}" style="display:none" class="text-shelf-success">Copied!</span>
+                    </button>
+                    <a href="/share/{{ sl.token }}" target="_blank" rel="noopener"
+                       class="px-2 py-1 bg-shelf-hover text-shelf-text rounded text-xs hover:bg-shelf-border transition-colors">Open</a>
+                    <form action="/api/share/{{ sl.id }}/delete" method="post" class="inline">
+                        <button type="submit" class="px-2 py-1 bg-shelf-error/20 text-shelf-error rounded text-xs hover:bg-shelf-error/30 transition-colors">Revoke</button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form action="/api/share" method="post" class="flex gap-2 items-end flex-wrap">
+            <select name="scope" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
+                <option value="wishlist">Wishlist</option>
+                <option value="collection">Collection</option>
+            </select>
+            <input type="text" name="label" placeholder="Label (e.g. Dan's gift ideas)..." maxlength="100"
+                   class="flex-1 min-w-[200px] bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Create Link
+            </button>
+        </form>
+    </div>
+
     <!-- Backup & Restore -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ restoreResult: null, restoring: false }">
         <h2 class="text-lg font-semibold mb-4">Backup & Restore</h2>
