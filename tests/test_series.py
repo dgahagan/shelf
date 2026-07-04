@@ -118,13 +118,14 @@ class TestSeriesCheck:
 
 
 class TestGetSeriesBooksParsing:
-    def _entry(self, book_id, title, position, authors=("Frank Herbert",)):
+    def _entry(self, book_id, title, position, authors=("Frank Herbert",), **book_extra):
         return {
             "position": position,
             "book": {
                 "id": book_id, "title": title, "release_year": 1965,
                 "cached_image": {"url": f"https://img.example/{book_id}.jpg"},
                 "contributions": [{"author": {"name": a}} for a in authors],
+                **book_extra,
             },
         }
 
@@ -167,3 +168,60 @@ class TestGetSeriesBooksParsing:
         with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
             books = await hc.get_series_books("Dune Saga", "tok")
         assert [b["title"] for b in books] == ["Dune", "Dune Messiah", "Companion"]
+
+    @pytest.mark.asyncio
+    async def test_translations_and_compilations_dropped(self):
+        """Rows with canonical_id (translations/dupes) or compilation=true
+        (box sets) never appear, regardless of popularity."""
+        from app.services import hardcover as hc
+        payload = {"book_series": [
+            self._entry(1, "Dungeon Crawler Carl", 1, users_count=8106),
+            self._entry(2, "Carl, o Explorador de Masmorras", 1, users_count=500,
+                        canonical_id=1),
+            self._entry(3, "DCC 3 Books Collection", 1, users_count=500,
+                        compilation=True),
+            self._entry(4, "Carl's Doomsday Scenario", 2, users_count=4294),
+        ]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            books = await hc.get_series_books("Dungeon Crawler Carl", "tok")
+        assert [b["title"] for b in books] == [
+            "Dungeon Crawler Carl", "Carl's Doomsday Scenario"]
+
+    @pytest.mark.asyncio
+    async def test_position_ties_collapse_to_most_shelved(self):
+        from app.services import hardcover as hc
+        payload = {"book_series": [
+            self._entry(1, "Backstage Novella", 1, users_count=4),
+            self._entry(2, "Dungeon Crawler Carl", 1, users_count=8106),
+        ]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            books = await hc.get_series_books("Dungeon Crawler Carl", "tok")
+        assert [b["title"] for b in books] == ["Dungeon Crawler Carl"]
+
+    @pytest.mark.asyncio
+    async def test_popularity_floor_drops_foreign_split_volumes(self):
+        """Foreign split volumes sit at unique fractional positions with no
+        canonical link; the 1%-of-max floor is what removes them. Legit
+        novellas well above the floor survive."""
+        from app.services import hardcover as hc
+        payload = {"book_series": [
+            self._entry(1, "Hyperion", 1, users_count=5335),
+            self._entry(2, "La Chute d'Hypérion 2", 2.2, users_count=6),
+            self._entry(3, "Orphans of the Helix", 4.5, users_count=96),
+        ]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            books = await hc.get_series_books("Hyperion Cantos", "tok")
+        assert [b["title"] for b in books] == ["Hyperion", "Orphans of the Helix"]
+
+    @pytest.mark.asyncio
+    async def test_no_users_data_keeps_everything(self):
+        """An obscure series where Hardcover has no shelf counts must not be
+        filtered to nothing — the floor is relative, never absolute."""
+        from app.services import hardcover as hc
+        payload = {"book_series": [
+            self._entry(1, "Obscure Vol 1", 1),
+            self._entry(2, "Obscure Vol 2", 2),
+        ]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            books = await hc.get_series_books("Obscure", "tok")
+        assert [b["title"] for b in books] == ["Obscure Vol 1", "Obscure Vol 2"]

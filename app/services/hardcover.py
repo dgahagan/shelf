@@ -546,7 +546,20 @@ async def sync_reading_statuses(token: str) -> dict:
 
 
 def _parse_series_entries(entries: list) -> list[dict]:
-    """Normalize book_series rows ({position, book{...}}) to book summaries."""
+    """Normalize book_series rows ({position, book{...}}) to book summaries.
+
+    Hardcover series listings mix in translated editions, box sets, and
+    split-volume foreign serializations as separate book rows. Three filters
+    reduce that to the canonical run (validated live against Dungeon Crawler
+    Carl, Hyperion Cantos, and Ender's Saga — 24/36/23 raw rows -> 9/8/10):
+      1. drop rows with canonical_id (translations/dupes of another row)
+         or compilation=true (box sets),
+      2. collapse rows sharing an integer position to the most-shelved one,
+      3. drop rows below 1% of the series' max users_count (catches foreign
+         split volumes at unique fractional positions, which nothing above
+         removes). Relative floor only — an obscure series where every book
+         has a handful of readers keeps all its rows.
+    """
     books = []
     seen_ids = set()
     for entry in entries or []:
@@ -554,6 +567,8 @@ def _parse_series_entries(entries: list) -> list[dict]:
         if not book.get("title") or not book.get("id"):
             continue
         if book["id"] in seen_ids:
+            continue
+        if book.get("canonical_id") is not None or book.get("compilation"):
             continue
         seen_ids.add(book["id"])
 
@@ -578,7 +593,27 @@ def _parse_series_entries(entries: list) -> list[dict]:
             "cover_url": cover_url,
             "year": book.get("release_year"),
             "series_position": entry.get("position"),
+            "_users": book.get("users_count") or 0,
         })
+
+    # Collapse integer-position ties to the most-shelved row (the canonical
+    # entry dwarfs stray editions that escaped the canonical_id filter).
+    by_pos: dict = {}
+    unpositioned = []
+    for b in books:
+        pos = b["series_position"]
+        if pos is None:
+            unpositioned.append(b)
+        elif pos not in by_pos or b["_users"] > by_pos[pos]["_users"]:
+            by_pos[pos] = b
+    books = list(by_pos.values()) + unpositioned
+
+    max_users = max((b["_users"] for b in books), default=0)
+    floor = max_users * 0.01
+    books = [b for b in books if b["_users"] >= floor]
+
+    for b in books:
+        del b["_users"]
     books.sort(key=lambda b: (b["series_position"] is None, b["series_position"] or 0))
     return books
 
@@ -599,6 +634,9 @@ async def get_series_books(series_name: str, token: str, client: httpx.AsyncClie
             title
             release_year
             cached_image
+            canonical_id
+            compilation
+            users_count
             contributions { author { name } }
           }
     """
