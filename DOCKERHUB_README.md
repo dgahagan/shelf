@@ -59,6 +59,8 @@ CERT_SAN=IP:192.168.1.100,DNS:shelf,DNS:localhost
 |----------|---------|-------------|
 | `CERT_SAN` | `DNS:shelf,DNS:localhost` | TLS certificate Subject Alternative Names. Add your machine's IP or hostname so other devices can connect |
 | `SECRET_KEY` | *(auto-generated)* | JWT signing key for auth tokens. Auto-generated and stored in the database if not set. Set this explicitly if running multiple instances |
+| `SHELF_ENCRYPTION_KEY` | *(auto-generated)* | Encryption key for stored API credentials. Auto-generated at `/data/encryption.key` if not set. Set it explicitly (e.g. `openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
+| `SHELF_TRUST_PROXY` | *(unset)* | Set to `1` when running behind a reverse proxy so client IPs are read from proxy headers |
 
 ## Persistent Data
 
@@ -66,12 +68,14 @@ All data is stored in a single volume mounted at `/data`:
 
 ```
 data/
-  shelf.db    — SQLite database (your entire catalog)
-  covers/     — cached cover images
-  certs/      — auto-generated TLS certificates
+  shelf.db        — SQLite database (your entire catalog)
+  covers/         — cached cover images
+  certs/          — auto-generated TLS certificates
+  encryption.key  — key for API credentials stored in the DB
+                    (unless SHELF_ENCRYPTION_KEY is set)
 ```
 
-**Backups:** Copy the `data/` directory, or use the built-in backup/restore feature in Settings.
+**Backups:** Copy the `data/` directory, or use the built-in backup/restore feature in Settings — with an optional passphrase, backup downloads are AES-encrypted and safe to store off-site.
 
 ## Screenshots
 
@@ -87,14 +91,20 @@ data/
 |-------|------------|
 | ![Stats](https://raw.githubusercontent.com/dgahagan/shelf/main/screenshots/stats.png) | ![Logs](https://raw.githubusercontent.com/dgahagan/shelf/main/screenshots/logs.png) |
 
+| Valuation Report | Browse (Tag Filter) |
+|------------------|---------------------|
+| ![Valuation Report](https://raw.githubusercontent.com/dgahagan/shelf/main/screenshots/valuation-report.png) | ![Tag Filter](https://raw.githubusercontent.com/dgahagan/shelf/main/screenshots/browse-tag-filter.png) |
+
 ## Features
 
 ### Scanning and Cataloging
 - **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
 - **USB/Bluetooth scanner support** — works with any scanner that sends Enter after the barcode
+- **Photo intake** — bulk-add books from a photo of your shelves; a vision model (Anthropic API or fully local Ollama) reads the spines and you confirm before import
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, Google Books, and more
 - **Cover art pipeline** — automatically fetches covers from multiple sources with manual upload fallback
+- **Store Mode (offline PWA)** — scan in a bookstore with no signal and get an instant Owned / On wishlist / Not in library verdict; unknown books queue on-device and land on your wishlist when back online
 
 ### 8 Scan Modes
 
@@ -115,11 +125,16 @@ data/
 - Video game support with IGDB metadata and 30+ platforms (Atari 2600 to PS5)
 
 ### Collection Management
-- Filter and search by media type, location, reading status, ownership, and lending status
+- Filter and search by media type, location, reading status, ownership, lending status, and custom tags
 - Reading tracking — want-to-read, reading, and read with start/finish dates
+- Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover
+- Stats dashboard — books read per year, collection growth, top authors, and value-over-time charts
 - Locations — organize by room, shelf, or any system you like
-- Checkout system — lend to borrowers and track who has what
+- Checkout system — lend to borrowers and track who has what, with overdue badges and an optional daily reminder digest (ntfy/webhook)
 - Wishlist — mark items as unowned alongside your catalog
+- Public share links — read-only wishlist or collection pages for gift ideas, revocable anytime
+- Goodreads & StoryGraph import — upload your export as-is; format auto-detected, covers fetched automatically
+- Valuation report — location-grouped, print-ready collection value report for insurance (via ISBNdb)
 - CSV import/export
 
 ### Multi-User
@@ -133,10 +148,12 @@ Shelf works fully out of the box with no API keys. These optional integrations a
 
 | Service | What it adds | Free? |
 |---------|-------------|-------|
-| [Hardcover](https://hardcover.app) | Reading status sync, richer metadata, Discover page | Yes |
+| [Hardcover](https://hardcover.app) | Reading status sync, richer metadata, series gap checks, Discover page | Yes |
+| [Audiobookshelf](https://www.audiobookshelf.org) | Sync selected audiobook libraries, link physical + digital formats | Yes |
 | [IGDB](https://dev.twitch.tv/console) (Twitch) | Video game metadata, cover art, platform info | Yes |
 | [TMDb](https://www.themoviedb.org) | DVD/Blu-ray metadata from UPC barcodes | Yes |
 | [ISBNdb](https://isbndb.com) | Collection valuation with market prices | Paid |
+| [Anthropic](https://console.anthropic.com) | Photo Intake spine recognition (or use a local Ollama model — free) | Pay-per-use |
 
 ## Updating
 

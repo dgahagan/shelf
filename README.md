@@ -11,6 +11,7 @@ A self-hosted home library catalog with barcode scanning, multi-mode scanning wo
 Most home library apps are cloud-hosted, mobile-only, or require you to manually enter every book. Shelf takes a different approach:
 
 - **Scan and done** — point your phone camera at a barcode or use a USB/Bluetooth barcode scanner and the book is cataloged in seconds, complete with cover art, author, series info, and description. Works out of the box with any scanner that sends Enter after the barcode (most do by default)
+- **Bulk-add from a photo** — snap a picture of a full shelf and a vision model reads the spines. Review the detected titles, then import them all with full metadata and covers. Works with the Anthropic API or a fully local Ollama model
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate. The scan tab adapts to whatever you're doing: adding new items, lending to a friend, reorganizing shelves, or auditing a room
 - **Title search** — don't have a barcode? Search by title across Open Library (books), TMDb (movies), and IGDB (video games) and add directly from results
 - **Zero cloud dependency** — runs entirely on your network in a single Docker container with a SQLite database. Your data never leaves your home
@@ -20,7 +21,7 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges (Atari 2600, NES, SNES, etc.). Cover art, publisher, series, and platform tracking with a customizable platform list
 - **Lend with confidence** — track who borrowed what with the Lend/Return scan modes and a "Lent Out" filter on the browse page
 - **Inventory auditing** — pick a location, scan everything on the shelf, then see what's missing
-- **Know what you own** — ISBNdb integration estimates your collection's value for insurance purposes
+- **Know what you own** — ISBNdb integration estimates your collection's value and generates a location-grouped, print-ready valuation report for insurance documentation
 
 ## Screenshots
 
@@ -35,6 +36,10 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 | Stats | Admin Logs |
 |-------|------------|
 | ![Stats](screenshots/stats.png) | ![Logs](screenshots/logs.png) |
+
+| Valuation Report | Browse (Tag Filter) |
+|------------------|---------------------|
+| ![Valuation Report](screenshots/valuation-report.png) | ![Tag Filter](screenshots/browse-tag-filter.png) |
 
 ## Quick Start
 
@@ -77,6 +82,7 @@ data/
 ### Scanning and Metadata
 - **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate
+- **Photo intake** — bulk-add books from a photo of your shelves using a vision model (see [Photo Intake](#photo-intake))
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books
 - **Cover art pipeline** — Open Library, Hardcover, Amazon, Google Books, IGDB, and manual upload/search
@@ -96,9 +102,30 @@ data/
 | **Lookup** | Scan to check if an item is in your collection — no changes made |
 | **Quick Rate** | Scan to mark items as read/completed |
 
+### Photo Intake
+
+Snap a photo of a shelf and Shelf reads the spines. Open **Photo Intake** in
+the nav, upload the photo, and the detected books appear as an editable
+candidate list — nothing is imported until you confirm. Confirmed rows run
+through the normal metadata pipeline, so they arrive with full metadata and
+cover art, and an author-match guard keeps wrong editions from slipping in.
+
+Configure a vision backend under Settings → Integrations → Photo Intake:
+
+- **Anthropic API** — best accuracy; pay-per-photo (typically a few cents)
+- **Ollama** — free and fully local with any vision-capable model
+  (gemma3, qwen2.5vl, llama3.2-vision, …); accuracy depends on the model
+
+For high-resolution photos that exceed what the model actually ingests,
+Shelf shows a preview of what the model will see and offers to split the
+photo into overlapping tiles for better accuracy — with a cost estimate for
+each option before anything is sent.
+
 ### Collection Management
 - **Filter and search** — by media type, location, reading status, ownership, lending status, and free text
 - **Reading tracking** — want-to-read, reading, and read with start/finish dates
+- **Custom tags** — free-form tags (`signed`, `first-edition`, whatever you like) as chips on the item page, with a tag filter on Browse
+- **Synopses** — item descriptions fetched automatically on add, plus a one-click backfill for your existing catalog (Open Library, Google Books, Hardcover)
 - **Stats dashboard** — books read per year, collection growth, top authors, and value-over-time charts (server-rendered SVG, no JS)
 - **Locations** — organize by room, shelf, or any system you like
 - **Game platforms** — customizable list of platforms, add your own for niche or retro systems
@@ -106,13 +133,14 @@ data/
 - **Loan reminders** — overdue loans get a red badge, and an optional daily digest (ntfy or webhook) nags you about them; configure under Settings → Library → Lending
 - **Wishlist** — mark items as unowned to build a wish list alongside your catalog
 - **Series tracking** — a Series page groups your library by series with position numbers, flags likely gaps, and (with Hardcover configured) checks the full series and adds missing volumes to your wishlist in one click
+- **Valuation report** — location-grouped, print-ready report of your collection's list-price value for insurance documentation ([print view](screenshots/valuation-report-print.png)); prices via ISBNdb
 - **CSV import/export** — bulk operations and backups
 - **Goodreads & StoryGraph migration** — upload your library export as-is; the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically
 - **Store Mode (offline PWA)** — scan barcodes in a bookstore with no signal and get an instant Owned / On wishlist / Not in library verdict; unknown books queue on-device and are added to your wishlist automatically when you're back online (see [Store Mode](#store-mode-offline-pwa))
 
 ### Integrations
 - **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
-- **[Audiobookshelf](https://www.audiobookshelf.org)** — sync your audiobook library and link physical + digital formats
+- **[Audiobookshelf](https://www.audiobookshelf.org)** — sync selected libraries from your Audiobookshelf server, link physical + digital formats, and jump straight to an item in ABS from its Shelf page
 - **[IGDB](https://www.igdb.com)** — video game metadata, cover art, and platform info via Twitch developer credentials (free)
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
 
@@ -153,7 +181,8 @@ marked `noindex`, and revocable at any time.
 - **Role-based access** — admin, editor, and viewer roles
 - **Web log viewer** — monitor auth events, sync activity, and errors from the browser
 - **HTTPS** — self-signed TLS certificates generated on first run
-- **Backup/restore** — database backup and restore from the settings page
+- **Backup/restore** — database backup and restore from the settings page, with optional passphrase-encrypted (AES) backup downloads that are safe to store off-site
+- **Hardened by default** — strict Content-Security-Policy (no `unsafe-inline`/`unsafe-eval`, no CDNs), CSRF protection on all mutating requests, write-only API credentials in Settings, encrypted credential storage
 
 ## Tech Stack
 
@@ -195,6 +224,7 @@ Configure in Settings to unlock additional features:
 | **IGDB** (Twitch) | Video game metadata, cover art, and platform info | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
 | **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
 | **TMDb** | DVD/Blu-ray metadata and title search via UPC barcode | [themoviedb.org](https://www.themoviedb.org) |
+| **Anthropic** | Photo Intake spine recognition (or use a local Ollama model — no key needed) | [console.anthropic.com](https://console.anthropic.com) |
 
 ## Development
 
@@ -234,7 +264,9 @@ make install-playwright   # downloads headless Chromium
 | `make check-deps` | `pip-audit` vulnerability scan of `requirements.txt` |
 | `make check-licenses` | License compliance report |
 | `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
-| `make checks` | All three checks above |
+| `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |
+| `make check-alpine` | Verify templates stay compatible with the Alpine CSP build |
+| `make checks` | All of the checks above |
 | `make report-review` | Code review report via Claude agent |
 | `make report-security` | Security audit report via Claude agent |
 | `make report-test` | Test coverage audit report via Claude agent |
