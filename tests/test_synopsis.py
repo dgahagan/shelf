@@ -98,6 +98,41 @@ class TestFetchDescription:
             assert await synopsis.fetch_description("9780441013593", "Dune", "Frank Herbert", client) is None
 
 
+class TestSlugTitles:
+    def test_searchable_title_deslugs(self):
+        assert synopsis._searchable_title("mark-hatmaker-no-holds-barred-fighting") == \
+            "mark hatmaker no holds barred fighting"
+        assert synopsis._searchable_title("Winter_Time_Camping") == "Winter Time Camping"
+        # Normal titles (with spaces) keep their hyphens
+        assert synopsis._searchable_title("The Three-Body Problem") == "The Three-Body Problem"
+
+    def test_title_close_enough(self):
+        assert synopsis._title_close_enough(
+            "mark hatmaker no holds barred fighting", "No Holds Barred Fighting") is True
+        assert synopsis._title_close_enough(
+            "winter time camping", "The Art of French Cooking") is False
+        assert synopsis._title_close_enough("anything", None) is False
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_authorless_slug_needs_title_match(self):
+        # De-slugged search finds two results: an unrelated book first, the
+        # real one second. Only the title-matching one may supply the work.
+        respx.get(GB_URL).mock(return_value=httpx.Response(429))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [
+            {"key": "/works/OL1W", "title": "Completely Different Book",
+             "author_name": ["Someone Else"]},
+            {"key": "/works/OL2W", "title": "No Holds Barred Fighting",
+             "author_name": ["Mark Hatmaker"]},
+        ]}))
+        respx.get("https://openlibrary.org/works/OL2W.json").mock(
+            return_value=httpx.Response(200, json={"description": "A grappling manual."}))
+        async with httpx.AsyncClient() as client:
+            desc = await synopsis.fetch_description(
+                None, "mark-hatmaker-no-holds-barred-fighting", None, client)
+        assert desc == "A grappling manual."
+
+
 class TestStripHtml:
     def test_cleans_api_rich_text(self):
         # Import inside the test: app.main import needs the isolated-DB fixture
