@@ -364,9 +364,20 @@ templates_dir = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
 def strip_html(value: str) -> str:
+    """Render API-sourced rich text as plain text. Open Library descriptions
+    mix HTML, markdown links (often spam), and emphasis markers."""
     if not value:
         return ""
-    return re.sub(r"<[^>]+>", "", value)
+    import html as html_mod
+    # <br> and paragraph breaks become newlines (rendered via whitespace-pre-line)
+    value = re.sub(r"<br\s*/?>|</p>\s*<p[^>]*>", "\n", value, flags=re.IGNORECASE)
+    value = re.sub(r"<[^>]+>", "", value)
+    value = re.sub(r"\[([^\]]*)\]\([^)]*\)", "", value)  # markdown links, label included
+    # emphasis markers; underscores only at word boundaries (snake_case stays)
+    value = re.sub(r"(\*\*?)(?=\S)(.+?)(?<=\S)\1", r"\2", value)
+    value = re.sub(r"(?<!\w)(__?)(?=\S)(.+?)(?<=\S)\1(?!\w)", r"\2", value)
+    value = re.sub(r"\n{3,}", "\n\n", value)
+    return html_mod.unescape(value).strip()
 
 templates.env.filters["strip_html"] = strip_html
 

@@ -78,9 +78,30 @@
                 </div>
 
                 {% if item.description %}
-                <div class="text-sm text-shelf-muted leading-relaxed mb-6">
+                <div class="mb-6" x-data="{ expanded: false }">
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Synopsis</h3>
                     {% set clean_desc = item.description|strip_html %}
-                    <p>{{ clean_desc[:500] }}{% if clean_desc|length > 500 %}...{% endif %}</p>
+                    <div class="text-sm text-shelf-text leading-relaxed whitespace-pre-line"
+                         :class="expanded ? '' : 'line-clamp-5'">{{ clean_desc }}</div>
+                    {% if clean_desc|length > 350 %}
+                    <button @click="expanded = !expanded"
+                            class="mt-1.5 text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors"
+                            x-text="expanded ? 'Show less' : 'Read more'"></button>
+                    {% endif %}
+                </div>
+                {% elif user and user.role in ('admin', 'editor') and item.media_type in ('book', 'ebook', 'audiobook', 'kids_book') %}
+                <div class="mb-6" x-data="{ fetching: false, failed: false }">
+                    <button @click="fetching = true; failed = false;
+                                    fetch('/api/items/{{ item.id }}/fetch-synopsis', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}})
+                                        .then(r => r.json())
+                                        .then(d => { if (d.ok) { location.reload() } else { failed = true; fetching = false } })
+                                        .catch(() => { failed = true; fetching = false })"
+                            :disabled="fetching"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:bg-shelf-border hover:text-shelf-text transition-colors disabled:opacity-50">
+                        <span x-show="!fetching">Fetch synopsis</span>
+                        <span x-show="fetching">Searching&hellip;</span>
+                    </button>
+                    <p x-show="failed" x-cloak class="text-xs text-shelf-muted mt-1.5">No synopsis found on Open Library or Google Books.</p>
                 </div>
                 {% endif %}
 

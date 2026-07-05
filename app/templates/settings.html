@@ -932,6 +932,27 @@
                     }
                 };
                 es.onerror = function() { self.retryResult = {error: 'Connection lost'}; self.retrying = false; es.close(); };
+            },
+            synFetching: false, synResult: null,
+            synCurrent: 0, synTotal: 0, synLastTitle: '', synLog: [], showSynLog: false,
+            startSynopses() {
+                this.synFetching = true; this.synResult = null; this.synCurrent = 0; this.synTotal = 0;
+                this.synLastTitle = ''; this.synLog = []; this.showSynLog = false;
+                var self = this;
+                var es = new EventSource('/api/synopses/backfill/stream');
+                es.onmessage = function(e) {
+                    var d = JSON.parse(e.data);
+                    if (d.type === 'progress') {
+                        self.synCurrent = d.current; self.synTotal = d.total;
+                        self.synLastTitle = d.title;
+                        self.synLog.push({i: d.current, t: d.title, s: d.status});
+                    } else if (d.type === 'done') {
+                        self.synResult = d; self.synFetching = false; es.close();
+                    } else if (d.type === 'error') {
+                        self.synResult = {error: d.message}; self.synFetching = false; es.close();
+                    }
+                };
+                es.onerror = function() { self.synResult = {error: 'Connection lost'}; self.synFetching = false; es.close(); };
             }
          }">
         <h2 class="text-lg font-semibold mb-4">Maintenance</h2>
@@ -977,6 +998,58 @@
                     </button>
                     <div x-show="showRetryLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
                         <template x-for="entry in retryLog" :key="entry.i">
+                            <div class="flex gap-2">
+                                <span :class="entry.s === 'found' ? 'text-shelf-success' : 'text-shelf-muted'"
+                                      x-text="entry.s" class="w-16 shrink-0"></span>
+                                <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <button @click="startSynopses()"
+                        :disabled="synFetching"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                    <span x-show="!synFetching">Fetch Missing Synopses</span>
+                    <span x-show="synFetching">Fetching...</span>
+                </button>
+                <p class="text-xs text-shelf-muted mt-1">Looks up descriptions for books, ebooks, and audiobooks that don't have one (Google Books + Open Library).</p>
+
+                <!-- Progress bar -->
+                <div x-show="synFetching && synTotal > 0" class="mt-3">
+                    <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                        <span x-text="synCurrent + ' / ' + synTotal"></span>
+                        <span x-text="Math.round(synCurrent / synTotal * 100) + '%'"></span>
+                    </div>
+                    <div class="w-full bg-shelf-bg rounded-full h-2">
+                        <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (synTotal ? (synCurrent/synTotal*100) : 0) + '%'"></div>
+                    </div>
+                    <p x-show="synLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="synLastTitle"></p>
+                </div>
+
+                <!-- Result -->
+                <div x-show="synResult" class="mt-2 text-sm">
+                    <template x-if="synResult && synResult.error">
+                        <p class="text-shelf-error" x-text="synResult.error"></p>
+                    </template>
+                    <template x-if="synResult && !synResult.error">
+                        <p class="text-shelf-muted">
+                            Found: <span x-text="synResult.success" class="text-shelf-success"></span>,
+                            Failed: <span x-text="synResult.failed"></span>
+                            of <span x-text="synResult.total"></span> items
+                        </p>
+                    </template>
+                </div>
+
+                <!-- Detail log toggle -->
+                <div x-show="synLog.length > 0" class="mt-2">
+                    <button @click="showSynLog = !showSynLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                        <span x-text="showSynLog ? 'Hide details' : 'Show details (' + synLog.length + ' items)'"></span>
+                    </button>
+                    <div x-show="showSynLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                        <template x-for="entry in synLog" :key="entry.i">
                             <div class="flex gap-2">
                                 <span :class="entry.s === 'found' ? 'text-shelf-success' : 'text-shelf-muted'"
                                       x-text="entry.s" class="w-16 shrink-0"></span>

@@ -124,17 +124,21 @@ async def _resolve_description(edition_data: dict, client: httpx.AsyncClient) ->
 
     # We may have already fetched the work in _resolve_author, but keeping it
     # simple — the rate limiter handles it
+    return await get_work_description(works[0]["key"], client)
+
+
+async def get_work_description(work_key: str, client: httpx.AsyncClient) -> str | None:
+    """Fetch a work record (e.g. '/works/OL27448W') and return its description."""
     await _rate_limit()
     resp = await client.get(
-        f"https://openlibrary.org{works[0]['key']}.json",
+        f"https://openlibrary.org{work_key}.json",
         headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
         follow_redirects=True,
     )
     if resp.status_code != 200:
         return None
 
-    work = resp.json()
-    desc = work.get("description")
+    desc = resp.json().get("description")
     if isinstance(desc, dict):
         return desc.get("value")
     return desc
@@ -195,6 +199,7 @@ async def _search(params: dict, client: httpx.AsyncClient, limit: int) -> list[d
 
         results.append({
             "title": title,
+            "work_key": doc.get("key"),
             "authors": ", ".join(authors) if authors else None,
             "publish_year": doc.get("first_publish_year"),
             "publisher": doc.get("publisher", [None])[0] if doc.get("publisher") else None,

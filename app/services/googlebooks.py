@@ -68,3 +68,30 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
         result["series_position"] = series.get("bookDisplayNumber")
 
     return result
+
+
+async def search_by_title_author(title: str, author: str | None, client: httpx.AsyncClient,
+                                 limit: int = 5) -> list[dict]:
+    """Field-scoped volume search. Returns summaries including description."""
+    query = f'intitle:"{title}"'
+    if author:
+        query += f' inauthor:"{author}"'
+    resp = await client.get(
+        "https://www.googleapis.com/books/v1/volumes",
+        params={"q": query, "maxResults": str(limit)},
+    )
+    if resp.status_code != 200:
+        logger.debug("Google Books search failed for %r: HTTP %d", query, resp.status_code)
+        return []
+
+    results = []
+    for item in resp.json().get("items", []):
+        info = item.get("volumeInfo", {})
+        if not info.get("title"):
+            continue
+        results.append({
+            "title": info["title"],
+            "authors": ", ".join(info.get("authors", [])) or None,
+            "description": info.get("description"),
+        })
+    return results

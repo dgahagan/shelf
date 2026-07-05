@@ -15,6 +15,7 @@ from app.database import get_db, get_setting, get_game_platforms
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
 from app.services import upc as upc_svc, tmdb, igdb
+from app.services import synopsis as synopsis_svc
 
 router = APIRouter(prefix="/api")
 
@@ -1122,6 +1123,97 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
 
     async def event_stream():
         task = asyncio.create_task(run_retry())
+        try:
+            while True:
+                msg = await queue.get()
+                yield f"data: {json.dumps(msg)}\n\n"
+                if msg["type"] in ("done", "error"):
+                    break
+        finally:
+            if not task.done():
+                task.cancel()
+
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@router.post("/items/{item_id}/fetch-synopsis")
+async def fetch_synopsis(item_id: int, _=Depends(require_role("editor"))):
+    """Look up a description for an item that's missing one."""
+    with get_db() as db:
+        item = db.execute(
+            "SELECT isbn, title, authors FROM items WHERE id = ?", (item_id,)
+        ).fetchone()
+    if not item:
+        return {"ok": False, "message": "Item not found"}
+
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        desc = await synopsis_svc.fetch_description(
+            item["isbn"], item["title"], item["authors"], client)
+
+    if desc:
+        with get_db() as db:
+            db.execute(
+                "UPDATE items SET description = ?, updated_at = datetime('now') WHERE id = ?",
+                (desc, item_id),
+            )
+        return {"ok": True}
+    return {"ok": False, "message": "No synopsis found"}
+
+
+@router.get("/synopses/backfill/stream")
+async def backfill_synopses_stream(request: Request, _=Depends(require_role("admin"))):
+    """SSE endpoint: fetch descriptions for all book-family items missing one."""
+    placeholders = ",".join("?" * len(synopsis_svc.BOOK_MEDIA_TYPES))
+    with get_db() as db:
+        items = db.execute(
+            f"SELECT id, isbn, title, authors FROM items "
+            f"WHERE (description IS NULL OR description = '') "
+            f"AND media_type IN ({placeholders}) ORDER BY id",
+            synopsis_svc.BOOK_MEDIA_TYPES,
+        ).fetchall()
+
+    if not items:
+        async def empty_stream():
+            yield f"data: {json.dumps({'type': 'done', 'success': 0, 'failed': 0, 'total': 0})}\n\n"
+        return StreamingResponse(empty_stream(), media_type="text/event-stream")
+
+    queue: asyncio.Queue = asyncio.Queue()
+
+    async def run_backfill():
+        results = {"success": 0, "failed": 0, "total": len(items)}
+        try:
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+                for i, item in enumerate(items, 1):
+                    desc = None
+                    try:
+                        desc = await synopsis_svc.fetch_description(
+                            item["isbn"], item["title"], item["authors"], client)
+                    except Exception:
+                        logger.exception("Synopsis fetch failed for item %d", item["id"])
+                    if desc:
+                        with get_db() as db:
+                            db.execute(
+                                "UPDATE items SET description = ?, updated_at = datetime('now') WHERE id = ?",
+                                (desc, item["id"]),
+                            )
+                        results["success"] += 1
+                        status = "found"
+                    else:
+                        results["failed"] += 1
+                        status = "not found"
+
+                    await queue.put({
+                        "type": "progress", "current": i, "total": len(items),
+                        "title": item["title"] or item["isbn"], "status": status,
+                    })
+
+            await queue.put({"type": "done", **results})
+        except Exception:
+            logger.exception("Synopsis backfill failed")
+            await queue.put({"type": "error", "message": "Synopsis backfill failed — check server logs"})
+
+    async def event_stream():
+        task = asyncio.create_task(run_backfill())
         try:
             while True:
                 msg = await queue.get()

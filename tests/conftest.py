@@ -115,6 +115,15 @@ def editor_client(client, editor_user):
     return client
 
 
+@pytest.fixture
+def viewer_client(client, viewer_user):
+    """TestClient with a valid viewer session cookie."""
+    from app.auth import create_token
+    token = create_token(viewer_user["id"], viewer_user["username"], viewer_user["role"], viewer_user["display_name"])
+    client.cookies.set("access_token", token)
+    return client
+
+
 def _insert_item(db, title="Test Book", isbn="9780000000001", media_type="book", **kwargs):
     """Insert a test item and return its ID."""
     fields = {"title": title, "isbn": isbn, "media_type": media_type, "source": "test"}
