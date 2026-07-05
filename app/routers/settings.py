@@ -139,15 +139,39 @@ async def notify_test(request: Request):
     return {"ok": ok, "message": "Test notification sent" if ok else "Send failed — check the URL and server logs"}
 
 
-@router.get("/backup")
-async def download_backup():
-    """Download a backup of the SQLite database."""
+def _vacuum_backup():
     backup_path = DATA_DIR / "shelf_backup.db"
     backup_path.unlink(missing_ok=True)
     with get_db() as db:
         db.execute("VACUUM INTO ?", (str(backup_path),))
+    return backup_path
+
+
+@router.get("/backup")
+async def download_backup():
+    """Download a plain backup of the SQLite database."""
+    backup_path = _vacuum_backup()
     filename = f"shelf_backup_{datetime.now():%Y%m%d_%H%M}.db"
     return FileResponse(str(backup_path), filename=filename, media_type="application/octet-stream")
+
+
+@router.post("/backup")
+async def download_backup_encrypted(passphrase: str = Form("")):
+    """Download a backup, AES-GCM-encrypted when a passphrase is provided —
+    an off-site copy then exposes neither user hashes nor item data."""
+    from app.crypto import encrypt_backup
+
+    backup_path = _vacuum_backup()
+    if not passphrase:
+        filename = f"shelf_backup_{datetime.now():%Y%m%d_%H%M}.db"
+        return FileResponse(str(backup_path), filename=filename, media_type="application/octet-stream")
+
+    encrypted = encrypt_backup(backup_path.read_bytes(), passphrase)
+    enc_path = DATA_DIR / "shelf_backup.db.enc"
+    enc_path.write_bytes(encrypted)
+    backup_path.unlink(missing_ok=True)  # don't leave the plaintext copy behind
+    filename = f"shelf_backup_{datetime.now():%Y%m%d_%H%M}.db.enc"
+    return FileResponse(str(enc_path), filename=filename, media_type="application/octet-stream")
 
 
 @router.post("/restore")
@@ -163,6 +187,17 @@ async def restore_backup(request: Request):
     max_db_size = 500 * 1024 * 1024  # 500 MB
     if len(content) > max_db_size:
         return {"ok": False, "message": "File too large (max 500 MB)"}
+
+    from app.crypto import is_encrypted_backup, decrypt_backup
+    if is_encrypted_backup(content):
+        passphrase = (form.get("passphrase") or "").strip()
+        if not passphrase:
+            return {"ok": False, "message": "This backup is encrypted — enter its passphrase"}
+        try:
+            content = decrypt_backup(content, passphrase)
+        except ValueError as e:
+            return {"ok": False, "message": str(e)}
+
     tmp_path = DATA_DIR / "shelf_restore_tmp.db"
     tmp_path.write_bytes(content)
 

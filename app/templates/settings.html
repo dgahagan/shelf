@@ -1303,15 +1303,23 @@
         <h2 class="text-lg font-semibold mb-4">Backup & Restore</h2>
         <div class="space-y-4">
             <div>
-                <a href="/api/settings/backup" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
-                    Download Backup
-                </a>
-                <p class="text-xs text-shelf-muted mt-1">Downloads a copy of the SQLite database file</p>
+                <form action="/api/settings/backup" method="post" class="flex gap-2 items-center">
+                    <input type="password" name="passphrase" autocomplete="new-password"
+                           placeholder="Passphrase (optional — encrypts the backup)"
+                           class="flex-1 max-w-xs bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="submit" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors whitespace-nowrap">
+                        Download Backup
+                    </button>
+                </form>
+                <p class="text-xs text-shelf-muted mt-1">Downloads a copy of the SQLite database. With a passphrase, the file is AES-encrypted (.db.enc) — safe to store off-site, but unrecoverable without the passphrase.</p>
             </div>
             <div class="border-t border-shelf-border pt-4">
                 <form @submit.prevent="restoring=true; restoreResult=null; fetch('/api/settings/restore', {method:'POST', headers:{'X-CSRF-Token':window.csrfToken()}, body: new FormData($el)}).then(r=>r.json()).then(d=>{restoreResult=d; restoring=false}).catch(()=>{restoreResult={error:'Restore failed'}; restoring=false})">
                     <div class="flex gap-2 items-end">
-                        <input type="file" name="file" accept=".db" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <input type="file" name="file" accept=".db,.enc" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <input type="password" name="passphrase" autocomplete="off"
+                               placeholder="Passphrase (if encrypted)"
+                               class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                         <button type="submit" :disabled="restoring"
                                 class="px-4 py-2 bg-shelf-warning/20 text-shelf-warning rounded-lg text-sm hover:bg-shelf-warning/30 transition-colors disabled:opacity-50 whitespace-nowrap">
                             <span x-show="!restoring">Restore</span>

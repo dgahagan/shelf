@@ -122,6 +122,52 @@ def decrypt_value(ciphertext: str, secret_key: str) -> str:
         return ciphertext
 
 
+# --- Encrypted backup container ---------------------------------------------
+# Layout: magic || 16-byte scrypt salt || 12-byte nonce || AES-256-GCM ciphertext.
+# The magic doubles as GCM associated data, so a tampered header fails auth.
+
+BACKUP_MAGIC = b"SHELFBAK1"
+_BACKUP_SALT_LEN = 16
+_BACKUP_NONCE_LEN = 12
+
+
+def _backup_key(passphrase: str, salt: bytes) -> bytes:
+    from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
+    return Scrypt(salt=salt, length=32, n=2**14, r=8, p=1).derive(passphrase.encode())
+
+
+def is_encrypted_backup(data: bytes) -> bool:
+    return data[: len(BACKUP_MAGIC)] == BACKUP_MAGIC
+
+
+def encrypt_backup(data: bytes, passphrase: str) -> bytes:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    salt = os.urandom(_BACKUP_SALT_LEN)
+    nonce = os.urandom(_BACKUP_NONCE_LEN)
+    ciphertext = AESGCM(_backup_key(passphrase, salt)).encrypt(nonce, data, BACKUP_MAGIC)
+    return BACKUP_MAGIC + salt + nonce + ciphertext
+
+
+def decrypt_backup(data: bytes, passphrase: str) -> bytes:
+    """Decrypt an encrypted backup. Raises ValueError on a wrong passphrase
+    or a corrupted/tampered file."""
+    from cryptography.exceptions import InvalidTag
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+    if not is_encrypted_backup(data):
+        raise ValueError("Not an encrypted Shelf backup")
+    offset = len(BACKUP_MAGIC)
+    salt = data[offset: offset + _BACKUP_SALT_LEN]
+    nonce = data[offset + _BACKUP_SALT_LEN: offset + _BACKUP_SALT_LEN + _BACKUP_NONCE_LEN]
+    ciphertext = data[offset + _BACKUP_SALT_LEN + _BACKUP_NONCE_LEN:]
+    try:
+        return AESGCM(_backup_key(passphrase, salt)).decrypt(nonce, ciphertext, BACKUP_MAGIC)
+    except InvalidTag:
+        raise ValueError("Wrong passphrase or corrupted backup file")
+
+
 def migrate_sensitive_settings() -> int:
     """Move sensitive settings onto the dedicated encryption key.
 
