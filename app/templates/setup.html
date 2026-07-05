@@ -5,14 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Welcome - Shelf</title>
     <link rel="stylesheet" href="/static/css/app.css">
-    <script defer src="/static/vendor/alpinejs-3.15.9.min.js"></script>
+    <script src="/static/js/components.js"></script>
+    <script defer src="/static/vendor/alpinejs-csp-3.15.9.min.js"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4">
-    <div class="w-full max-w-md" x-data="{
-        password: '', confirm: '',
-        get mismatch() { return this.confirm && this.password !== this.confirm },
-        get tooShort() { return this.password && this.password.length < 8 }
-    }">
+    <div class="w-full max-w-md" x-data="setupForm">
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-shelf-accent2 tracking-tight">Welcome to Shelf</h1>
             <p class="text-shelf-muted text-sm mt-2">Create your admin account to get started.</p>

@@ -15,7 +15,7 @@
             </p>
         </div>
         <form hx-post="/api/dvds/add" hx-target="#scan-results" hx-swap="afterbegin"
-              hx-on::after-request="if(event.detail.successful) { document.getElementById('title-search-input').value = ''; document.getElementById('title-search-results').innerHTML = ''; }">
+              data-after-request="clear-title-search">
             <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}">
             <input type="hidden" name="title" value="{{ movie.title }}">
             <input type="hidden" name="description" value="{{ movie.description or '' }}">

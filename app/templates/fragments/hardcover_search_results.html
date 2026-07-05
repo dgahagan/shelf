@@ -4,7 +4,7 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     {% for book in results %}
     <div class="bg-shelf-card rounded-lg border border-shelf-border p-4 flex gap-4"
-         x-data="{ adding: false, added: {{ 'true' if book.in_shelf else 'false' }}, error: null }"
+         x-data="hcResultCard" data-added="{{ '1' if book.in_shelf else '' }}"
          id="hc-result-{{ book.hardcover_book_id }}">
         <!-- Cover -->
         <div class="shrink-0 w-20">
@@ -33,13 +33,9 @@
 
             <!-- Add button -->
             <div class="mt-2">
-                <script type="application/json" id="hc-data-{{ book.hardcover_book_id }}">{{ book|tojson }}</script>
                 <button x-show="!added"
-                        @click="adding=true; error=null;
-                            var d=JSON.parse(document.getElementById('hc-data-{{ book.hardcover_book_id }}').textContent);
-                            fetch('/api/hardcover/add-to-shelf', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()}, body:JSON.stringify(d)})
-                            .then(r=>r.json()).then(r=>{adding=false; if(r.ok){added=true; showToast('Added to wishlist')} else {error=r.message; if(r.item_id) added=true}})
-                            .catch(()=>{adding=false; error='Failed'})"
+                        @click="addBook($event)"
+                        data-book='{{ book|tojson }}'
                         :disabled="adding"
                         class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50">
                     <span x-show="!adding">Add to Wishlist</span>

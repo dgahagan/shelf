@@ -1,7 +1,7 @@
 function coverDrop() {
     return {
         dragging: false,
-        preview: null,
+        preview: false,
         handleDrop(e) {
             this.dragging = false;
             var file = e.dataTransfer.files[0];
@@ -18,3 +18,8 @@ function coverDrop() {
         }
     }
 }
+
+// CSP build has no global fallback — register so x-data="coverDrop" resolves.
+document.addEventListener('alpine:init', function () {
+    Alpine.data('coverDrop', coverDrop);
+});

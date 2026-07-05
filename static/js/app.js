@@ -56,3 +56,36 @@ document.body.addEventListener('htmx:afterSwap', function() {
         });
     }
 });
+
+// CSP: hx-on:: attributes and hx-vals='js:...' need unsafe-eval, which the CSP
+// forbids — equivalent behavior via delegated listeners keyed by data attributes.
+htmx.config.allowEval = false;
+
+document.body.addEventListener('htmx:afterRequest', function (evt) {
+    var el = evt.detail.elt;
+    if (!el || !el.getAttribute) return;
+    var action = el.getAttribute('data-after-request');
+    if (!action) return;
+    var ok = evt.detail.successful;
+    if (action === 'clear-scan-input') {
+        var input = el.querySelector('#isbn-input');
+        if (input) { input.value = ''; input.focus(); }
+    } else if (action === 'clear-title-search' && ok) {
+        var si = document.getElementById('title-search-input') || document.getElementById('game-search-input');
+        if (si) si.value = '';
+        var sr = document.getElementById('title-search-results') || document.getElementById('game-search-results');
+        if (sr) sr.innerHTML = '';
+    } else if (action === 'reload' && ok) {
+        location.reload();
+    } else if (action === 'goto-browse' && ok) {
+        window.location = '/browse';
+    }
+});
+
+// Replaces hx-vals='js:...' on the recent-scans panel (dynamic localStorage value)
+document.body.addEventListener('htmx:configRequest', function (evt) {
+    var el = evt.detail.elt;
+    if (el && el.getAttribute && el.getAttribute('data-vals-scan-mode') !== null) {
+        evt.detail.parameters.mode = localStorage.getItem('shelf_scan_mode') || 'add';
+    }
+});

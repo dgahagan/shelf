@@ -2,6 +2,7 @@ function browsePage() {
     return {
         selectMode: false,
         selectedIds: [],
+        showSelectTip: false,
         bulkLocationVal: '',
         bulkTypeVal: '',
         bulkStatusVal: '',
@@ -141,6 +142,23 @@ function browsePage() {
             if (trigger) htmx.trigger(trigger, 'change');
         },
 
+        toggleSelectMode() {
+            this.selectMode = !this.selectMode;
+            if (!this.selectMode) this.selectedIds = [];
+            localStorage.setItem('shelf-select-used', '1');
+        },
+
+        maybeShowSelectTip() {
+            this.showSelectTip = !localStorage.getItem('shelf-select-used');
+        },
+
+        // item_row / item_card fragments: tap toggles selection in select
+        // mode, otherwise navigates to the item detail page.
+        openOrToggle(id, url) {
+            if (this.selectMode) this.toggleItem(id);
+            else window.location = url;
+        },
+
         toggleItem(id) {
             var idx = this.selectedIds.indexOf(id);
             if (idx >= 0) this.selectedIds.splice(idx, 1);
@@ -191,3 +209,8 @@ function browsePage() {
         }
     }
 }
+
+// CSP build has no global fallback — register so x-data="browsePage" resolves.
+document.addEventListener('alpine:init', function () {
+    Alpine.data('browsePage', browsePage);
+});

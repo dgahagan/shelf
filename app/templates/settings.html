@@ -1,21 +1,21 @@
 {% extends "base.html" %}
 {% block title %}Settings — Shelf{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto" x-data="{ tab: localStorage.getItem('shelf_settings_tab') || 'library' }">
+<div class="max-w-2xl mx-auto" x-data="settingsTabs">
     <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
     <!-- Tab Bar -->
     <div class="flex gap-1 mb-6 border-b border-shelf-border">
-        <button @click="tab = 'library'; localStorage.setItem('shelf_settings_tab', 'library')" data-testid="tab-library"
+        <button @click="setTab('library')" data-testid="tab-library"
                 :class="tab === 'library' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Library</button>
-        <button @click="tab = 'integrations'; localStorage.setItem('shelf_settings_tab', 'integrations')" data-testid="tab-integrations"
+        <button @click="setTab('integrations')" data-testid="tab-integrations"
                 :class="tab === 'integrations' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Integrations</button>
-        <button @click="tab = 'data'; localStorage.setItem('shelf_settings_tab', 'data')" data-testid="tab-data"
+        <button @click="setTab('data')" data-testid="tab-data"
                 :class="tab === 'data' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Data</button>
-        <button @click="tab = 'users'; localStorage.setItem('shelf_settings_tab', 'users')" data-testid="tab-users"
+        <button @click="setTab('users')" data-testid="tab-users"
                 :class="tab === 'users' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
                 class="px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Users</button>
     </div>
@@ -118,7 +118,8 @@
     </div>
 
     <!-- Lending -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ ntTesting: false, ntStatus: null }">
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="lendingPanel"
+         data-notify-saved="{{ '1' if secrets_saved['notify_url'] else '' }}">
         <h2 class="text-lg font-semibold mb-1">Lending</h2>
         <p class="text-sm text-shelf-muted mb-4">Loans past their due date — or, when no due date was set, out longer than the window below — show an <span class="text-shelf-error">Overdue</span> badge. Configure a notification URL to get a daily digest of overdue loans.</p>
         <form method="POST" action="/api/settings/lending" class="space-y-4">
@@ -131,16 +132,16 @@
             <div>
                 <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">Notification URL (ntfy topic or webhook)</label>
                 <div class="flex gap-2">
-                    <select id="notify-format-input" name="notify_format"
+                    <select id="notify-format-input" name="notify_format" x-ref="notifyFormat"
                             class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
                         <option value="ntfy" {% if settings.get('notify_format', 'ntfy') == 'ntfy' %}selected{% endif %}>ntfy</option>
                         <option value="webhook" {% if settings.get('notify_format') == 'webhook' %}selected{% endif %}>Webhook (JSON)</option>
                     </select>
-                    <input type="text" id="notify-url-input" name="notify_url" autocomplete="off"
+                    <input type="text" id="notify-url-input" name="notify_url" x-ref="notifyUrl" autocomplete="off"
                            placeholder="{% if secrets_saved['notify_url'] %}Saved — leave blank to keep{% else %}https://ntfy.sh/your-private-topic{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="{% if not secrets_saved['notify_url'] %}if(!document.getElementById('notify-url-input').value) return; {% endif %}ntTesting=true; ntStatus=null; fetch('/api/settings/notify-test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:document.getElementById('notify-url-input').value,format:document.getElementById('notify-format-input').value})}).then(r=>r.json()).then(d=>{ntStatus=d; ntTesting=false}).catch(()=>{ntStatus={ok:false,message:'Request failed'}; ntTesting=false})"
+                            @click="testNotify"
                             :disabled="ntTesting"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!ntTesting">Test</span>
@@ -169,31 +170,9 @@
 
     <!-- Audiobookshelf Sync -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{
-            syncing: false, result: null, absStatus: null, absTesting: false, showAbsHelp: false,
-            absUrl: '{{ settings.get('abs_url', '') }}', absToken: '', absSaved: {{ 'true' if secrets_saved['abs_token'] else 'false' }},
-            syncCurrent: 0, syncTotal: 0, syncLastTitle: '', syncLog: [], showSyncLog: false,
-            startSync() {
-                this.syncing = true; this.result = null; this.syncCurrent = 0; this.syncTotal = 0;
-                this.syncLastTitle = ''; this.syncLog = []; this.showSyncLog = false;
-                var self = this;
-                var es = new EventSource('/api/sync/audiobookshelf/stream');
-                es.onmessage = function(e) {
-                    var d = JSON.parse(e.data);
-                    if (d.type === 'progress') {
-                        self.syncCurrent = d.current;
-                        self.syncTotal = d.total;
-                        self.syncLastTitle = d.title;
-                        self.syncLog.push({i: d.current, t: d.title, s: d.status});
-                    } else if (d.type === 'done') {
-                        self.result = d; self.syncing = false; es.close();
-                    } else if (d.type === 'error') {
-                        self.result = {error: d.message}; self.syncing = false; es.close();
-                    }
-                };
-                es.onerror = function() { self.result = {error: 'Connection lost'}; self.syncing = false; es.close(); };
-            }
-         }">
+         x-data="absSync"
+         data-abs-url="{{ settings.get('abs_url', '') }}"
+         data-abs-saved="{{ '1' if secrets_saved['abs_token'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Audiobookshelf Sync</h2>
             <button @click="showAbsHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
@@ -230,7 +209,7 @@
                            placeholder="{% if secrets_saved['abs_token'] %}Saved — leave blank to keep{% else %}Bearer token from ABS settings{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!absUrl || (!absToken && !absSaved)) return; absTesting=true; absStatus=null; fetch('/api/sync/audiobookshelf/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:absUrl,token:absToken})}).then(r=>r.json()).then(d=>{absStatus=d; absTesting=false}).catch(()=>{absStatus={ok:false,message:'Connection failed'}; absTesting=false})"
+                            @click="testAbs"
                             :disabled="absTesting || !absUrl || (!absToken && !absSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!absTesting">Test</span>
@@ -274,7 +253,7 @@
             <div x-show="syncing && syncTotal > 0" class="mt-3">
                 <div class="flex justify-between text-xs text-shelf-muted mb-1">
                     <span x-text="syncCurrent + ' / ' + syncTotal"></span>
-                    <span x-text="Math.round(syncCurrent / syncTotal * 100) + '%'"></span>
+                    <span x-text="syncPct"></span>
                 </div>
                 <div class="w-full bg-shelf-bg rounded-full h-2">
                     <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (syncTotal ? (syncCurrent/syncTotal*100) : 0) + '%'"></div>
@@ -323,33 +302,7 @@
             </form>
 
             <!-- Library selection -->
-            <div class="mt-4 pt-4 border-t border-shelf-border"
-                 x-data="{ libs: null, libsLoading: false, libsError: null, libsSaving: false, cleaning: false, cleanResult: null,
-                           excludedIds() { return this.libs.filter(l => !l.included).map(l => l.id) },
-                           loadLibs() {
-                               this.libsLoading = true; this.libsError = null;
-                               fetch('/api/sync/audiobookshelf/libraries')
-                                   .then(r => r.json())
-                                   .then(d => { if (d.ok) { this.libs = d.libraries } else { this.libsError = d.message } this.libsLoading = false })
-                                   .catch(() => { this.libsError = 'Failed to load libraries'; this.libsLoading = false });
-                           },
-                           saveLibs() {
-                               this.libsSaving = true;
-                               fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
-                                   .then(r => r.json())
-                                   .then(d => { this.libsSaving = false; if (d.ok) showToast('Library selection saved'); else showToast(d.message || 'Save failed', 'error') })
-                                   .catch(() => { this.libsSaving = false; showToast('Save failed', 'error') });
-                           },
-                           cleanup() {
-                               if (!confirm('Remove all Shelf items that came from unchecked libraries? Audiobookshelf itself is not touched, and re-checking a library re-imports them on the next sync.')) return;
-                               this.cleaning = true; this.cleanResult = null;
-                               // Persist the current selection first so the cleanup matches what's on screen
-                               fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
-                                   .then(() => fetch('/api/sync/audiobookshelf/libraries/cleanup', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}}))
-                                   .then(r => r.json())
-                                   .then(d => { this.cleaning = false; this.cleanResult = d; if (d.ok) showToast('Removed ' + d.deleted + ' items') })
-                                   .catch(() => { this.cleaning = false; showToast('Cleanup failed', 'error') });
-                           } }">
+            <div class="mt-4 pt-4 border-t border-shelf-border" x-data="absLibraries">
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm font-medium text-shelf-text">Libraries to sync</p>
@@ -396,66 +349,8 @@
 
     <!-- Hardcover -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{
-            hcStatus: null, hcTesting: false, showHcHelp: false,
-            hcToken: '', hcSaved: {{ 'true' if secrets_saved['hardcover_token'] else 'false' }},
-            importing: false, importResult: null,
-            importCurrent: 0, importTotal: 0, importLastTitle: '',
-            importLog: [], showImportLog: false,
-            importOverwrite: false,
-            hcStatuses: { 1: true, 2: true, 3: true, 4: true, 5: true },
-            exporting: false, exportResult: null,
-            exportCurrent: 0, exportTotal: 0, exportLastTitle: '',
-            exportLog: [], showExportLog: false,
-            exportOwnedOnly: true,
-            startExport() {
-                this.exporting = true; this.exportResult = null;
-                this.exportCurrent = 0; this.exportTotal = 0;
-                this.exportLastTitle = ''; this.exportLog = []; this.showExportLog = false;
-                var url = '/api/hardcover/export/stream?owned=' + (this.exportOwnedOnly ? '1' : '');
-                var self = this;
-                var es = new EventSource(url);
-                es.onmessage = function(e) {
-                    var d = JSON.parse(e.data);
-                    if (d.type === 'progress') {
-                        self.exportCurrent = d.current;
-                        self.exportTotal = d.total;
-                        self.exportLastTitle = d.title;
-                        self.exportLog.push({i: d.current, t: d.title, s: d.status});
-                    } else if (d.type === 'done') {
-                        self.exportResult = d; self.exporting = false; es.close();
-                    } else if (d.type === 'error') {
-                        self.exportResult = {error: d.message}; self.exporting = false; es.close();
-                    }
-                };
-                es.onerror = function() { self.exportResult = {error: 'Connection lost'}; self.exporting = false; es.close(); };
-            },
-            startImport() {
-                this.importing = true; this.importResult = null;
-                this.importCurrent = 0; this.importTotal = 0;
-                this.importLastTitle = ''; this.importLog = []; this.showImportLog = false;
-                var sel = Object.entries(this.hcStatuses).filter(e => e[1]).map(e => e[0]).join(',');
-                var url = '/api/hardcover/import/stream?statuses=' + sel + '&overwrite=' + this.importOverwrite;
-                var self = this;
-                var es = new EventSource(url);
-                es.onmessage = function(e) {
-                    var d = JSON.parse(e.data);
-                    if (d.type === 'progress') {
-                        self.importCurrent = d.current;
-                        self.importTotal = d.total;
-                        self.importLastTitle = d.title;
-                        if (d.current > 0) {
-                            self.importLog.push({i: d.current, t: d.title, s: d.status});
-                        }
-                    } else if (d.type === 'done') {
-                        self.importResult = d; self.importing = false; es.close();
-                    } else if (d.type === 'error') {
-                        self.importResult = {error: d.message}; self.importing = false; es.close();
-                    }
-                };
-                es.onerror = function() { self.importResult = {error: 'Connection lost'}; self.importing = false; es.close(); };
-            }
-         }">
+         x-data="hardcoverPanel"
+         data-hc-saved="{{ '1' if secrets_saved['hardcover_token'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Hardcover</h2>
             <button @click="showHcHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
@@ -488,7 +383,7 @@
                            placeholder="{% if secrets_saved['hardcover_token'] %}Saved — leave blank to keep{% else %}Your Hardcover API token{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!hcToken && !hcSaved) return; hcTesting=true; hcStatus=null; fetch('/api/hardcover/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({token:hcToken})}).then(r=>r.json()).then(d=>{hcStatus=d; hcTesting=false}).catch(()=>{hcStatus={ok:false,message:'Connection failed'}; hcTesting=false})"
+                            @click="testHc"
                             :disabled="hcTesting || (!hcToken && !hcSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!hcTesting">Test</span>
@@ -565,7 +460,7 @@
             <div x-show="importing && importTotal > 0" class="mt-3">
                 <div class="flex justify-between text-xs text-shelf-muted mb-1">
                     <span x-text="importCurrent + ' / ' + importTotal"></span>
-                    <span x-text="Math.round(importCurrent / importTotal * 100) + '%'"></span>
+                    <span x-text="importPct"></span>
                 </div>
                 <div class="w-full bg-shelf-bg rounded-full h-2">
                     <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (importTotal ? (importCurrent/importTotal*100) : 0) + '%'"></div>
@@ -648,7 +543,7 @@
             <div x-show="exporting && exportTotal > 0" class="mt-3">
                 <div class="flex justify-between text-xs text-shelf-muted mb-1">
                     <span x-text="exportCurrent + ' / ' + exportTotal"></span>
-                    <span x-text="Math.round(exportCurrent / exportTotal * 100) + '%'"></span>
+                    <span x-text="exportPct"></span>
                 </div>
                 <div class="w-full bg-shelf-bg rounded-full h-2">
                     <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (exportTotal ? (exportCurrent/exportTotal*100) : 0) + '%'"></div>
@@ -693,30 +588,8 @@
 
     <!-- Valuation -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{
-            valuating: false, valResult: null, keyStatus: null, testing: false, showHelp: false,
-            apiKey: '', apiKeySaved: {{ 'true' if secrets_saved['isbndb_api_key'] else 'false' }},
-            valCurrent: 0, valTotal: 0, valLastTitle: '', valLog: [], showValLog: false,
-            startValuation() {
-                this.valuating = true; this.valResult = null; this.valCurrent = 0; this.valTotal = 0;
-                this.valLastTitle = ''; this.valLog = []; this.showValLog = false;
-                var self = this;
-                var es = new EventSource('/api/valuate/stream');
-                es.onmessage = function(e) {
-                    var d = JSON.parse(e.data);
-                    if (d.type === 'progress') {
-                        self.valCurrent = d.current; self.valTotal = d.total;
-                        self.valLastTitle = d.title;
-                        self.valLog.push({i: d.current, t: d.title, s: d.status});
-                    } else if (d.type === 'done') {
-                        self.valResult = d; self.valuating = false; es.close();
-                    } else if (d.type === 'error') {
-                        self.valResult = {message: d.message}; self.valuating = false; es.close();
-                    }
-                };
-                es.onerror = function() { self.valResult = {message: 'Connection lost'}; self.valuating = false; es.close(); };
-            }
-         }">
+         x-data="valuationPanel"
+         data-api-key-saved="{{ '1' if secrets_saved['isbndb_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Collection Valuation</h2>
             <button @click="showHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
@@ -750,7 +623,7 @@
                            placeholder="{% if secrets_saved['isbndb_api_key'] %}Saved — leave blank to keep{% else %}Your ISBNdb API key{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!apiKey && !apiKeySaved) return; testing=true; keyStatus=null; fetch('/api/valuate/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:apiKey})}).then(r=>r.json()).then(d=>{keyStatus=d; testing=false}).catch(()=>{keyStatus={ok:false,message:'Connection failed'}; testing=false})"
+                            @click="testKey"
                             :disabled="testing || (!apiKey && !apiKeySaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!testing">Test Key</span>
@@ -794,7 +667,7 @@
             <div x-show="valuating && valTotal > 0" class="mt-3">
                 <div class="flex justify-between text-xs text-shelf-muted mb-1">
                     <span x-text="valCurrent + ' / ' + valTotal"></span>
-                    <span x-text="Math.round(valCurrent / valTotal * 100) + '%'"></span>
+                    <span x-text="valPct"></span>
                 </div>
                 <div class="w-full bg-shelf-bg rounded-full h-2">
                     <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (valTotal ? (valCurrent/valTotal*100) : 0) + '%'"></div>
@@ -838,7 +711,8 @@
 
     <!-- Movie Database (TMDb) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{ tmdbStatus: null, tmdbTesting: false, showTmdbHelp: false, tmdbKey: '', tmdbSaved: {{ 'true' if secrets_saved['tmdb_api_key'] else 'false' }} }">
+         x-data="tmdbPanel"
+         data-tmdb-saved="{{ '1' if secrets_saved['tmdb_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Movie Database (TMDb)</h2>
             <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
@@ -871,7 +745,7 @@
                            placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!tmdbKey && !tmdbSaved) return; tmdbTesting=true; tmdbStatus=null; fetch('/api/tmdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:tmdbKey})}).then(r=>r.json()).then(d=>{tmdbStatus=d; tmdbTesting=false}).catch(()=>{tmdbStatus={ok:false,message:'Connection failed'}; tmdbTesting=false})"
+                            @click="testTmdb"
                             :disabled="tmdbTesting || (!tmdbKey && !tmdbSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!tmdbTesting">Test Key</span>
@@ -962,7 +836,8 @@
 
     <!-- IGDB (Video Games) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{ igdbStatus: null, igdbTesting: false, showIgdbHelp: false, igdbId: '', igdbSecret: '', igdbSaved: {{ 'true' if secrets_saved['igdb_client_id'] and secrets_saved['igdb_client_secret'] else 'false' }} }">
+         x-data="igdbPanel"
+         data-igdb-saved="{{ '1' if secrets_saved['igdb_client_id'] and secrets_saved['igdb_client_secret'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">IGDB (Video Games)</h2>
             <button @click="showIgdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get credentials?</button>
@@ -1001,7 +876,7 @@
                            placeholder="{% if secrets_saved['igdb_client_secret'] %}Saved — leave blank to keep{% else %}Your Twitch Client Secret{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if((!igdbId || !igdbSecret) && !igdbSaved) return; igdbTesting=true; igdbStatus=null; fetch('/api/igdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({client_id:igdbId,client_secret:igdbSecret})}).then(r=>r.json()).then(d=>{igdbStatus=d; igdbTesting=false}).catch(()=>{igdbStatus={ok:false,message:'Connection failed'}; igdbTesting=false})"
+                            @click="testIgdb"
                             :disabled="igdbTesting || ((!igdbId || !igdbSecret) && !igdbSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!igdbTesting">Test</span>
@@ -1042,50 +917,7 @@
 
     <!-- Maintenance -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{
-            retrying: false, retryResult: null,
-            retryCurrent: 0, retryTotal: 0, retryLastTitle: '', retryLog: [], showRetryLog: false,
-            startRetry() {
-                this.retrying = true; this.retryResult = null; this.retryCurrent = 0; this.retryTotal = 0;
-                this.retryLastTitle = ''; this.retryLog = []; this.showRetryLog = false;
-                var self = this;
-                var es = new EventSource('/api/covers/bulk-retry/stream');
-                es.onmessage = function(e) {
-                    var d = JSON.parse(e.data);
-                    if (d.type === 'progress') {
-                        self.retryCurrent = d.current; self.retryTotal = d.total;
-                        self.retryLastTitle = d.title;
-                        self.retryLog.push({i: d.current, t: d.title, s: d.status});
-                    } else if (d.type === 'done') {
-                        self.retryResult = d; self.retrying = false; es.close();
-                    } else if (d.type === 'error') {
-                        self.retryResult = {error: d.message}; self.retrying = false; es.close();
-                    }
-                };
-                es.onerror = function() { self.retryResult = {error: 'Connection lost'}; self.retrying = false; es.close(); };
-            },
-            synFetching: false, synResult: null,
-            synCurrent: 0, synTotal: 0, synLastTitle: '', synLog: [], showSynLog: false,
-            startSynopses() {
-                this.synFetching = true; this.synResult = null; this.synCurrent = 0; this.synTotal = 0;
-                this.synLastTitle = ''; this.synLog = []; this.showSynLog = false;
-                var self = this;
-                var es = new EventSource('/api/synopses/backfill/stream');
-                es.onmessage = function(e) {
-                    var d = JSON.parse(e.data);
-                    if (d.type === 'progress') {
-                        self.synCurrent = d.current; self.synTotal = d.total;
-                        self.synLastTitle = d.title;
-                        self.synLog.push({i: d.current, t: d.title, s: d.status});
-                    } else if (d.type === 'done') {
-                        self.synResult = d; self.synFetching = false; es.close();
-                    } else if (d.type === 'error') {
-                        self.synResult = {error: d.message}; self.synFetching = false; es.close();
-                    }
-                };
-                es.onerror = function() { self.synResult = {error: 'Connection lost'}; self.synFetching = false; es.close(); };
-            }
-         }">
+         x-data="maintenancePanel">
         <h2 class="text-lg font-semibold mb-4">Maintenance</h2>
         <div class="space-y-3">
             <div>
@@ -1100,7 +932,7 @@
                 <div x-show="retrying && retryTotal > 0" class="mt-3">
                     <div class="flex justify-between text-xs text-shelf-muted mb-1">
                         <span x-text="retryCurrent + ' / ' + retryTotal"></span>
-                        <span x-text="Math.round(retryCurrent / retryTotal * 100) + '%'"></span>
+                        <span x-text="retryPct"></span>
                     </div>
                     <div class="w-full bg-shelf-bg rounded-full h-2">
                         <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (retryTotal ? (retryCurrent/retryTotal*100) : 0) + '%'"></div>
@@ -1152,7 +984,7 @@
                 <div x-show="synFetching && synTotal > 0" class="mt-3">
                     <div class="flex justify-between text-xs text-shelf-muted mb-1">
                         <span x-text="synCurrent + ' / ' + synTotal"></span>
-                        <span x-text="Math.round(synCurrent / synTotal * 100) + '%'"></span>
+                        <span x-text="synPct"></span>
                     </div>
                     <div class="w-full bg-shelf-bg rounded-full h-2">
                         <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (synTotal ? (synCurrent/synTotal*100) : 0) + '%'"></div>
@@ -1194,7 +1026,7 @@
     </div>
 
     <!-- Import / Export -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ importResult: null, importing: false }">
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="csvImportPanel">
         <h2 class="text-lg font-semibold mb-4">Import / Export</h2>
 
         <div class="space-y-4">
@@ -1207,7 +1039,7 @@
             <div class="border-t border-shelf-border pt-4">
                 <p class="text-sm text-shelf-muted mb-2">Import items from a CSV file (columns: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)</p>
                 <p class="text-sm text-shelf-muted mb-2"><strong class="text-shelf-text">Goodreads</strong> and <strong class="text-shelf-text">StoryGraph</strong> library exports are detected automatically — reading status, dates, and owned/wishlist flags are mapped for you.</p>
-                <form @submit.prevent="importing=true; importResult=null; fetch('/api/import/csv', {method:'POST', body: new FormData($el), headers: {'X-CSRF-Token': window.csrfToken()}}).then(r=>r.json()).then(d=>{importResult=d; importing=false}).catch(()=>{importResult={error:'Import failed'}; importing=false})">
+                <form @submit.prevent="doImport">
                     <div class="flex gap-2 items-end">
                         <input type="file" name="file" accept=".csv" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
@@ -1256,7 +1088,7 @@
     </div>
 
     <!-- Share Links -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ copied: null }">
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="sharePanel">
         <h2 class="text-lg font-semibold mb-1">Sharing</h2>
         <p class="text-sm text-shelf-muted mb-4">Public read-only links to your wishlist (for gift ideas) or collection. Anyone with the link can view titles, authors, and covers — never locations, loans, or values. Revoke a link at any time.</p>
 
@@ -1269,7 +1101,7 @@
                 <code class="text-xs text-shelf-muted truncate max-w-[220px]">/share/{{ sl.token }}</code>
                 <div class="ml-auto flex items-center gap-2">
                     <button type="button" data-token="{{ sl.token }}"
-                            @click="navigator.clipboard.writeText(location.origin + '/share/' + $el.dataset.token).then(() => { copied = {{ sl.id }}; setTimeout(() => copied = null, 1500) })"
+                            @click="copyLink('{{ sl.token }}', {{ sl.id }})"
                             class="px-2 py-1 bg-shelf-hover text-shelf-text rounded text-xs hover:bg-shelf-border transition-colors">
                         <span x-show="copied !== {{ sl.id }}">Copy link</span>
                         <span x-show="copied === {{ sl.id }}" style="display:none" class="text-shelf-success">Copied!</span>
@@ -1299,7 +1131,7 @@
     </div>
 
     <!-- Backup & Restore -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="{ restoreResult: null, restoring: false }">
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="backupRestore">
         <h2 class="text-lg font-semibold mb-4">Backup & Restore</h2>
         <div class="space-y-4">
             <div>
@@ -1314,7 +1146,7 @@
                 <p class="text-xs text-shelf-muted mt-1">Downloads a copy of the SQLite database. With a passphrase, the file is AES-encrypted (.db.enc) — safe to store off-site, but unrecoverable without the passphrase.</p>
             </div>
             <div class="border-t border-shelf-border pt-4">
-                <form @submit.prevent="restoring=true; restoreResult=null; fetch('/api/settings/restore', {method:'POST', headers:{'X-CSRF-Token':window.csrfToken()}, body: new FormData($el)}).then(r=>r.json()).then(d=>{restoreResult=d; restoring=false}).catch(()=>{restoreResult={error:'Restore failed'}; restoring=false})">
+                <form @submit.prevent="doRestore">
                     <div class="flex gap-2 items-end">
                         <input type="file" name="file" accept=".db,.enc" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <input type="password" name="passphrase" autocomplete="off"
@@ -1346,54 +1178,7 @@
 
     <!-- User Management -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{
-            users: [],
-            newUser: { username: '', display_name: '', password: '', role: 'viewer' },
-            addResult: null,
-            async loadUsers() {
-                const r = await fetch('/api/users');
-                this.users = await r.json();
-            },
-            async addUser() {
-                this.addResult = null;
-                const form = new FormData();
-                form.append('username', this.newUser.username);
-                form.append('display_name', this.newUser.display_name);
-                form.append('password', this.newUser.password);
-                form.append('role', this.newUser.role);
-                const r = await fetch('/api/users', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
-                const d = await r.json();
-                this.addResult = d;
-                if (d.ok) {
-                    this.newUser = { username: '', display_name: '', password: '', role: 'viewer' };
-                    await this.loadUsers();
-                }
-            },
-            async updateRole(id, role) {
-                const form = new FormData();
-                form.append('role', role);
-                const r = await fetch('/api/users/' + id + '/role', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
-                const d = await r.json();
-                if (!d.ok) alert(d.message);
-                else await this.loadUsers();
-            },
-            async resetPassword(id) {
-                const pw = prompt('Enter new password (min 8 characters):');
-                if (!pw) return;
-                const form = new FormData();
-                form.append('password', pw);
-                const r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
-                const d = await r.json();
-                alert(d.message);
-            },
-            async deleteUser(id, name) {
-                if (!confirm('Delete user ' + name + '?')) return;
-                const r = await fetch('/api/users/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
-                const d = await r.json();
-                if (!d.ok) alert(d.message);
-                else await this.loadUsers();
-            }
-         }"
+         x-data="usersPanel"
          x-init="loadUsers()">
         <h2 class="text-lg font-semibold mb-4">Users</h2>
 

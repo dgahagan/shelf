@@ -1,34 +1,42 @@
 function intakePage() {
     return {
-        file: null,
-        preview: null,
+        file: false,
+        preview: false,
         analyzing: false,
         confirming: false,
-        error: null,
+        error: false,
         books: [],
-        result: null,
+        result: false,
         locationId: '',
         owned: true,
 
         onFileChosen(e) {
             this.file = e.target.files[0] || null;
-            this.error = null;
+            this.error = false;
             this.books = [];
-            this.result = null;
+            this.result = false;
             if (this.preview) URL.revokeObjectURL(this.preview);
-            this.preview = this.file ? URL.createObjectURL(this.file) : null;
+            this.preview = this.file ? URL.createObjectURL(this.file) : false;
         },
 
         selectedCount() {
             return this.books.filter(b => b.include).length;
         },
 
+        selectAll() {
+            this.books.forEach(b => b.include = true);
+        },
+
+        deselectAll() {
+            this.books.forEach(b => b.include = false);
+        },
+
         async analyze() {
             if (!this.file) return;
             this.analyzing = true;
-            this.error = null;
+            this.error = false;
             this.books = [];
-            this.result = null;
+            this.result = false;
             try {
                 var form = new FormData();
                 form.append('photo', this.file);
@@ -53,7 +61,7 @@ function intakePage() {
 
         async confirm() {
             this.confirming = true;
-            this.error = null;
+            this.error = false;
             try {
                 var resp = await fetch('/api/intake/confirm', {
                     method: 'POST',
@@ -84,13 +92,18 @@ function intakePage() {
         },
 
         reset() {
-            this.file = null;
+            this.file = false;
             if (this.preview) URL.revokeObjectURL(this.preview);
-            this.preview = null;
+            this.preview = false;
             this.books = [];
-            this.result = null;
-            this.error = null;
+            this.result = false;
+            this.error = false;
             if (this.$refs.photoInput) this.$refs.photoInput.value = '';
         },
     };
 }
+
+// CSP build has no global fallback — register so x-data="intakePage" resolves.
+document.addEventListener('alpine:init', function () {
+    Alpine.data('intakePage', intakePage);
+});

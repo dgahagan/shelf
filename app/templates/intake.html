@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Photo Intake — Shelf{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto" x-data="intakePage()">
+<div class="max-w-3xl mx-auto" x-data="intakePage">
     <h1 class="text-2xl font-bold mb-1">Photo Intake</h1>
     <p class="text-sm text-shelf-muted mb-6">Photograph a shelf, let the vision model read the spines, then confirm which books to add.</p>
 
@@ -36,8 +36,8 @@
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Found <span x-text="books.length"></span> books</h2>
             <div class="flex gap-2 text-xs">
-                <button @click="books.forEach(b => b.include = true)" class="text-shelf-accent2 hover:text-shelf-accent">Select all</button>
-                <button @click="books.forEach(b => b.include = false)" class="text-shelf-muted hover:text-shelf-text">Deselect all</button>
+                <button @click="selectAll()" class="text-shelf-accent2 hover:text-shelf-accent">Select all</button>
+                <button @click="deselectAll()" class="text-shelf-muted hover:text-shelf-text">Deselect all</button>
             </div>
         </div>
         <div class="space-y-2 mb-4">

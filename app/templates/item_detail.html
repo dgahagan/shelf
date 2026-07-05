@@ -17,7 +17,7 @@
                         <span>No Cover</span>
                         <div class="flex flex-col gap-1">
                             <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
-                                    hx-on::after-request="if(event.detail.successful) location.reload()"
+                                    data-after-request="reload"
                                     class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
                                 Retry ISBN
                             </button>
@@ -90,12 +90,8 @@
                     {% endif %}
                 </div>
                 {% elif user and user.role in ('admin', 'editor') and item.media_type in ('book', 'ebook', 'audiobook', 'kids_book') %}
-                <div class="mb-6" x-data="{ fetching: false, failed: false }">
-                    <button @click="fetching = true; failed = false;
-                                    fetch('/api/items/{{ item.id }}/fetch-synopsis', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}})
-                                        .then(r => r.json())
-                                        .then(d => { if (d.ok) { location.reload() } else { failed = true; fetching = false } })
-                                        .catch(() => { failed = true; fetching = false })"
+                <div class="mb-6" x-data="synopsisFetcher" data-item-id="{{ item.id }}">
+                    <button @click="fetchSynopsis"
                             :disabled="fetching"
                             class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:bg-shelf-border hover:text-shelf-text transition-colors disabled:opacity-50">
                         <span x-show="!fetching">Fetch synopsis</span>
@@ -125,8 +121,8 @@
 
                 <!-- Hardcover Sync -->
                 {% if has_hardcover %}
-                <div class="mb-4" x-data="{ hcPushing: false, hcResult: null }">
-                    <button @click="hcPushing=true; hcResult=null; fetch('/api/hardcover/push/{{ item.id }}',{method:'POST',headers:{'X-CSRF-Token':window.csrfToken()}}).then(r=>r.json()).then(d=>{hcResult=d; hcPushing=false; if(d.ok) showToast('Synced to Hardcover')}).catch(()=>{hcResult={ok:false,message:'Connection failed'}; hcPushing=false})"
+                <div class="mb-4" x-data="hardcoverPush" data-item-id="{{ item.id }}">
+                    <button @click="push"
                             :disabled="hcPushing"
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors
                                    {% if item.hardcover_user_book_id %}bg-shelf-success/20 text-shelf-success hover:bg-shelf-success/30
@@ -247,7 +243,7 @@
                     </a>
                     {% endif %}
                     {% if user and user.role in ('admin', 'editor') %}
-                    <button hx-delete="/api/items/{{ item.id }}" hx-confirm="Delete '{{ item.title }}'?" hx-on::after-request="if(event.detail.successful) window.location='/browse'"
+                    <button hx-delete="/api/items/{{ item.id }}" hx-confirm="Delete '{{ item.title }}'?" data-after-request="goto-browse"
                             class="px-4 py-2 bg-shelf-error/20 text-shelf-error rounded-lg text-sm hover:bg-shelf-error/30 transition-colors">
                         Delete
                     </button>

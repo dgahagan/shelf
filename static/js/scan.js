@@ -8,8 +8,8 @@ function scanPage() {
         cameraActive: false,
         scanPaused: false,
         scanLoading: false,
-        scanResult: null,
-        scanner: null,
+        scanResult: false,
+        scanner: false,
         lastScanned: '',
         lastScanTime: 0,
         inventoryScannedIds: [],
@@ -59,6 +59,23 @@ function scanPage() {
             if (sr) sr.innerHTML = '';
         },
 
+        // @change handlers (CSP build: no localStorage/document in templates)
+        persistMediaType() {
+            localStorage.setItem('shelf_media_type', this.mediaType);
+            var si = document.getElementById('title-search-input');
+            if (si) si.value = '';
+            var sr = document.getElementById('title-search-results');
+            if (sr) sr.innerHTML = '';
+        },
+
+        persistLocation() {
+            localStorage.setItem('shelf_location', this.location);
+        },
+
+        persistPlatform() {
+            localStorage.setItem('shelf_platform', this.platform);
+        },
+
         // Client-side validation before form submit
         init() {
             var self = this;
@@ -100,7 +117,7 @@ function scanPage() {
             try {
                 this.cameraActive = true;
                 this.scanPaused = false;
-                this.scanResult = null;
+                this.scanResult = false;
                 await this.$nextTick();
                 this.scanner = new Html5Qrcode('camera-reader');
                 await this.scanner.start(
@@ -122,15 +139,15 @@ function scanPage() {
         async stopCamera() {
             if (this.scanner) {
                 try { await this.scanner.stop(); } catch(e) {}
-                this.scanner = null;
+                this.scanner = false;
             }
             this.cameraActive = false;
             this.scanPaused = false;
-            this.scanResult = null;
+            this.scanResult = false;
         },
 
         async resumeScanning() {
-            this.scanResult = null;
+            this.scanResult = false;
             this.scanLoading = false;
             this.lastScanned = '';
             try {
@@ -160,7 +177,7 @@ function scanPage() {
             // Pause scanner immediately
             this.scanPaused = true;
             this.scanLoading = true;
-            this.scanResult = null;
+            this.scanResult = false;
             try { await this.scanner.pause(true); } catch(e) {}
 
             // Beep
@@ -228,3 +245,8 @@ function scanPage() {
         }
     }
 }
+
+// CSP build has no global fallback — register so x-data="scanPage" resolves.
+document.addEventListener('alpine:init', function () {
+    Alpine.data('scanPage', scanPage);
+});

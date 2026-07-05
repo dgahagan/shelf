@@ -3,3 +3,5 @@
 alpinejs-3.15.9.min.js sha384-MEh8ZMZhsmD6/1Bd3kfTiGZoYIKR9u+BilQQWl5DOonh+pvKg6fP2AejtOozsZK8
 html5-qrcode-2.3.8.min.js sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+
 htmx-2.0.4.min.js sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+
+# CSP build verified byte-identical across jsdelivr and unpkg at download (2026-07-04)
+alpinejs-csp-3.15.9.min.js sha384-+Plaz+5c53MWWAEUhjPxE9xRB7oJEoQ7W4kqOPeqb0TohG5uxcI9t0I3FV+lWxnD

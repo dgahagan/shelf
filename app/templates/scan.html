@@ -4,7 +4,7 @@
 <script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
 {% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto" x-data="scanPage()">
+<div class="max-w-3xl mx-auto" x-data="scanPage">
 
     <!-- Mode Switcher -->
     <div class="flex flex-wrap gap-2 mb-4">
@@ -68,7 +68,7 @@
     </div>
 
     <!-- Scan Form -->
-    <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="afterbegin" hx-on::after-request="this.querySelector('#isbn-input').value=''; this.querySelector('#isbn-input').focus();">
+    <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
         <input type="hidden" name="mode" :value="mode">
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -77,7 +77,7 @@
                 <div x-show="mode === 'add' || mode === 'wishlist'" x-transition>
                     <label for="media-type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
                     <select id="media-type" name="media_type"
-                            x-model="mediaType" @change="localStorage.setItem('shelf_media_type', mediaType); var si=document.getElementById('title-search-input'); if(si) si.value=''; var sr=document.getElementById('title-search-results'); if(sr) sr.innerHTML='';"
+                            x-model="mediaType" @change="persistMediaType()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
                         {% for key, label in media_types.items() %}
                         <option value="{{ key }}">{{ label }}</option>
@@ -90,7 +90,7 @@
                     <label for="location" class="block text-sm font-medium text-shelf-muted mb-1"
                            x-text="mode === 'move' ? 'Target Location' : mode === 'inventory' ? 'Auditing Location' : 'Location'"></label>
                     <select id="location" name="location_id"
-                            x-model="location" @change="localStorage.setItem('shelf_location', location)"
+                            x-model="location" @change="persistLocation()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
                         <option value="">None</option>
                         {% for loc in locations %}
@@ -103,7 +103,7 @@
                 <div x-show="(mode === 'add' || mode === 'wishlist') && mediaType === 'video_game'" x-transition style="display:none">
                     <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
                     <select id="platform" name="platform"
-                            x-model="platform" @change="localStorage.setItem('shelf_platform', platform)"
+                            x-model="platform" @change="persistPlatform()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
                         <option value="">Any / Unknown</option>
                         {% for key, label in game_platforms.items() %}
@@ -186,7 +186,7 @@
     </h2>
     <div id="scan-results" class="space-y-3"
          hx-get="/api/recent-scans" hx-trigger="load" hx-swap="innerHTML"
-         hx-vals='js:{"mode": localStorage.getItem("shelf_scan_mode") || "add"}'>
+         data-vals-scan-mode>
     </div>
 </div>
 

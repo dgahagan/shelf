@@ -1,6 +1,6 @@
 <tr class="border-b border-shelf-border hover:bg-shelf-hover/50 transition-colors cursor-pointer"
     data-item-id="{{ item.id }}"
-    @click="selectMode ? toggleItem({{ item.id }}) : window.location='/item/{{ item.id }}'"
+    @click="openOrToggle({{ item.id }}, '/item/{{ item.id }}')"
     :class="selectedIds && selectedIds.includes({{ item.id }}) ? 'bg-shelf-accent/10' : ''">
     <td x-show="selectMode" class="px-3 py-2 w-8">
         <div class="w-5 h-5 rounded border-2 flex items-center justify-center text-xs"

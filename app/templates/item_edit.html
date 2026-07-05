@@ -107,7 +107,7 @@
                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.notes or '' }}</textarea>
         </div>
 
-        <div x-data="coverDrop()">
+        <div x-data="coverDrop">
             <label class="block text-sm font-medium text-shelf-muted mb-1">Cover Image</label>
             <div class="flex items-center gap-4">
                 {% if item.cover_path %}

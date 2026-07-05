@@ -16,7 +16,7 @@
 <div class="space-y-6">
     {% for s in series_list %}
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-5"
-         x-data="{ checking: false, result: null, error: null, added: {} }"
+         x-data="seriesCard"
          data-series-name="{{ s.name }}" data-testid="series-card">
         <div class="flex items-start justify-between gap-3 flex-wrap">
             <div>
@@ -31,10 +31,7 @@
                 </p>
             </div>
             {% if has_hardcover %}
-            <button @click="checking=true; error=null;
-                        fetch('/api/series/check?name=' + encodeURIComponent($el.closest('[data-series-name]').dataset.seriesName))
-                        .then(r=>r.json()).then(d=>{ checking=false; if(d.ok) result=d; else error=d.message })
-                        .catch(()=>{ checking=false; error='Check failed' })"
+            <button @click="check"
                     :disabled="checking"
                     class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50 shrink-0"
                     data-testid="check-series">
@@ -79,16 +76,13 @@
                     <span x-show="result.missing > 0" class="text-shelf-warning"><span x-text="result.missing"></span> missing:</span>
                 </p>
                 <div class="space-y-1.5">
-                    <template x-for="b in result.books.filter(x => x.status === 'missing')" :key="b.hardcover_book_id">
+                    <template x-for="b in missingBooks" :key="b.hardcover_book_id">
                         <div class="flex items-center gap-2 text-sm">
                             <span class="text-shelf-muted w-10 shrink-0 text-right" x-text="b.series_position !== null ? '#' + b.series_position : ''"></span>
                             <span class="text-shelf-text truncate" x-text="b.title"></span>
                             <span class="text-shelf-muted text-xs truncate" x-text="b.authors || ''"></span>
                             <button x-show="!added[b.hardcover_book_id]"
-                                    @click="fetch('/api/hardcover/add-to-shelf', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},
-                                            body: JSON.stringify({title: b.title, authors: b.authors, cover_url: b.cover_url, hardcover_book_id: b.hardcover_book_id, series_name: b.series_name, series_position: b.series_position})})
-                                        .then(r=>r.json()).then(d=>{ if(d.ok || d.item_id) { added[b.hardcover_book_id]=true; showToast('Added to wishlist') } else { showToast(d.message || 'Failed', 'error') } })
-                                        .catch(()=>showToast('Failed', 'error'))"
+                                    @click="addToWishlist(b)"
                                     class="ml-auto px-2 py-0.5 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors shrink-0">
                                 + Wishlist
                             </button>

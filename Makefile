@@ -65,7 +65,10 @@ check-secrets:
 check-csrf:
 	python scripts/check_csrf_fetch.py
 
-checks: check-deps check-licenses check-secrets check-csrf
+check-alpine:
+	python scripts/check_alpine_csp.py
+
+checks: check-deps check-licenses check-secrets check-csrf check-alpine
 
 # ---------------------------------------------------------------------------
 # Claude agent reports

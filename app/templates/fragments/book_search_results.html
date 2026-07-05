@@ -20,7 +20,7 @@
         </div>
         {% if book.isbn %}
         <form hx-post="/api/books/add" hx-target="#scan-results" hx-swap="afterbegin"
-              hx-on::after-request="if(event.detail.successful) { document.getElementById('title-search-input').value = ''; document.getElementById('title-search-results').innerHTML = ''; }">
+              data-after-request="clear-title-search">
             <input type="hidden" name="isbn" value="{{ book.isbn }}">
             <input type="hidden" name="media_type" value="{{ media_type }}">
             <input type="hidden" name="location_id" class="book-loc-sync" value="">

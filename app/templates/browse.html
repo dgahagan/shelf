@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Browse — Shelf{% endblock %}
 {% block content %}
-<div x-data="browsePage()">
+<div x-data="browsePage">
     <!-- Bulk Action Bar -->
     <div x-show="selectMode && selectedIds.length > 0" x-transition
          class="fixed bottom-0 inset-x-0 z-40 bg-shelf-card border-t border-shelf-border py-3 px-4 shadow-lg">
@@ -52,9 +52,9 @@
                 </button>
             </div>
             <!-- Select mode -->
-            <div class="relative" x-data="{ showSelectTip: false }">
-                <button @click="selectMode = !selectMode; if(!selectMode) selectedIds = []; localStorage.setItem('shelf-select-used', '1')"
-                        @mouseenter="showSelectTip = !localStorage.getItem('shelf-select-used')"
+            <div class="relative">
+                <button @click="toggleSelectMode()"
+                        @mouseenter="maybeShowSelectTip()"
                         @mouseleave="showSelectTip = false"
                         :class="selectMode ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
                         class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">

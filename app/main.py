@@ -44,13 +44,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        # No 'unsafe-inline' and no CDN hosts: all JS is served from /static
-        # (see docs/plans/CSP_BUNDLING.md). 'unsafe-eval' remains because
-        # Alpine's standard build evaluates x-data expressions via new Function;
-        # dropping it requires migrating to Alpine's CSP build.
+        # No 'unsafe-inline', no CDN hosts, and no 'unsafe-eval': all JS is
+        # served from /static and Alpine is the CSP build (no new Function) —
+        # see docs/plans/CSP_BUNDLING.md and docs/plans/ALPINE_CSP.md.
+        # scripts/check_alpine_csp.py keeps template expressions parseable.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-eval'; "
+            "script-src 'self'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https:; "  # blob: for the intake photo preview
             "connect-src 'self'; "  # PWA sync queue + SSE are same-origin only
