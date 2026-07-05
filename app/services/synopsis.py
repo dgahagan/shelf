@@ -8,7 +8,7 @@ import logging
 
 import httpx
 
-from app.services import googlebooks, openlibrary
+from app.services import googlebooks, hardcover, openlibrary
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +30,14 @@ def _authors_match(wanted: str | None, found: str | None) -> bool:
 
 
 async def fetch_description(isbn: str | None, title: str | None, authors: str | None,
-                            client: httpx.AsyncClient) -> str | None:
-    """Find a description via Google Books (ISBN), then Open Library work
-    search, then Google Books title/author search. Returns None if nothing
-    credible is found."""
+                            client: httpx.AsyncClient, hc_token: str | None = None) -> str | None:
+    """Find a description via Google Books (ISBN), then Hardcover (when a
+    token is configured), then Open Library work search, then Google Books
+    title/author search. Returns None if nothing credible is found.
+
+    Hardcover sits early in the chain because Google Books' anonymous quota
+    is per-IP and exhausts under bulk backfills, and Open Library work
+    records are frequently description-less even when the search matches."""
     if isbn:
         try:
             meta = await googlebooks.lookup(isbn, client)
@@ -45,6 +49,15 @@ async def fetch_description(isbn: str | None, title: str | None, authors: str | 
     if not title:
         return None
     first_author = (authors or "").split(",")[0].strip() or None
+
+    if hc_token:
+        try:
+            query = f"{title} {first_author}" if first_author else title
+            for res in await hardcover.search_books(query, client, token=hc_token):
+                if _authors_match(authors, res.get("authors")) and res.get("description"):
+                    return res["description"]
+        except httpx.HTTPError:
+            logger.debug("Hardcover synopsis search failed for %r", title)
 
     try:
         results = await openlibrary.search_by_title_author(title, first_author, client)

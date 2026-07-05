@@ -1165,12 +1165,13 @@ async def fetch_synopsis(item_id: int, _=Depends(require_role("editor"))):
         item = db.execute(
             "SELECT isbn, title, authors FROM items WHERE id = ?", (item_id,)
         ).fetchone()
+        hc_token = get_setting(db, "hardcover_token")
     if not item:
         return {"ok": False, "message": "Item not found"}
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         desc = await synopsis_svc.fetch_description(
-            item["isbn"], item["title"], item["authors"], client)
+            item["isbn"], item["title"], item["authors"], client, hc_token=hc_token)
 
     if desc:
         with get_db() as db:
@@ -1193,6 +1194,7 @@ async def backfill_synopses_stream(request: Request, _=Depends(require_role("adm
             f"AND media_type IN ({placeholders}) ORDER BY id",
             synopsis_svc.BOOK_MEDIA_TYPES,
         ).fetchall()
+        hc_token = get_setting(db, "hardcover_token")
 
     if not items:
         async def empty_stream():
@@ -1209,7 +1211,8 @@ async def backfill_synopses_stream(request: Request, _=Depends(require_role("adm
                     desc = None
                     try:
                         desc = await synopsis_svc.fetch_description(
-                            item["isbn"], item["title"], item["authors"], client)
+                            item["isbn"], item["title"], item["authors"], client,
+                            hc_token=hc_token)
                     except Exception:
                         logger.exception("Synopsis fetch failed for item %d", item["id"])
                     if desc:

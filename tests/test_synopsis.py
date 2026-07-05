@@ -57,6 +57,34 @@ class TestFetchDescription:
 
     @respx.mock
     @pytest.mark.asyncio
+    async def test_hardcover_fallback_when_gb_quota_dead(self):
+        # Google Books 429 (per-IP quota), OL not needed — Hardcover has it
+        respx.get(GB_URL).mock(return_value=httpx.Response(429, json={"error": {"code": 429}}))
+        respx.post("https://api.hardcover.app/v1/graphql").mock(
+            return_value=httpx.Response(200, json={"data": {"search": {"results": {
+                "hits": [{"document": {
+                    "id": "1", "title": "The Singularity Trap",
+                    "author_names": ["Dennis E. Taylor"],
+                    "description": "From Hardcover.",
+                }}],
+            }}}}))
+        async with httpx.AsyncClient() as client:
+            desc = await synopsis.fetch_description(
+                "9781978665101", "The Singularity Trap", "Dennis E. Taylor",
+                client, hc_token="hc-test-token")
+        assert desc == "From Hardcover."
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_hardcover_skipped_without_token(self):
+        respx.get(GB_URL).mock(return_value=httpx.Response(429))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        async with httpx.AsyncClient() as client:
+            desc = await synopsis.fetch_description(None, "Dune", "Frank Herbert", client)
+        assert desc is None  # no Hardcover call attempted (respx would 404 it)
+
+    @respx.mock
+    @pytest.mark.asyncio
     async def test_no_isbn_no_title(self):
         async with httpx.AsyncClient() as client:
             assert await synopsis.fetch_description(None, None, None, client) is None
