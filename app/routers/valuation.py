@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
+from app.config import MEDIA_TYPES
 from app.database import get_db, get_all_settings
 from app.services import isbndb
 
@@ -245,19 +246,21 @@ async def valuate_all_stream(request: Request, _=Depends(require_role("admin")))
 
 @router.get("/valuation/report")
 async def valuation_report(request: Request, _=Depends(require_role("viewer"))):
-    """Generate an insurance valuation report page."""
+    """Insurance valuation report: every item grouped by location with
+    per-location subtotals, so the printout documents what exists and
+    where it is — not just what has a price."""
     templates = request.app.state.templates
 
     with get_db() as db:
         items = db.execute(
             "SELECT i.*, l.name as location_name FROM items i "
             "LEFT JOIN locations l ON i.location_id = l.id "
-            "WHERE i.estimated_value IS NOT NULL "
-            "ORDER BY i.estimated_value DESC"
+            "ORDER BY (l.name IS NULL), l.name COLLATE NOCASE, "
+            "(i.estimated_value IS NULL), i.estimated_value DESC, i.title COLLATE NOCASE"
         ).fetchall()
-        total_items = db.execute("SELECT COUNT(*) as c FROM items").fetchone()["c"]
         total_with_isbn = db.execute("SELECT COUNT(*) as c FROM items WHERE isbn IS NOT NULL").fetchone()["c"]
 
+    total_items = len(items)
     priced = [i for i in items if i["estimated_value"]]
     total_value = sum(i["estimated_value"] for i in priced)
     avg_price = total_value / len(priced) if priced else 0
@@ -265,10 +268,23 @@ async def valuation_report(request: Request, _=Depends(require_role("viewer"))):
     estimated_missing = avg_price * unpriced
     grand_total = total_value + estimated_missing
 
+    # Group by location (query is already ordered by location)
+    location_groups = []
+    for item in items:
+        name = item["location_name"] or "No location"
+        if not location_groups or location_groups[-1]["name"] != name:
+            location_groups.append({"name": name, "items": [], "subtotal": 0.0, "priced_count": 0})
+        group = location_groups[-1]
+        group["items"].append(item)
+        if item["estimated_value"]:
+            group["subtotal"] += item["estimated_value"]
+            group["priced_count"] += 1
+
+    from datetime import date
     return templates.TemplateResponse(
         request, "valuation_report.html",
         {
-            "items": items,
+            "location_groups": location_groups,
             "total_items": total_items,
             "total_with_isbn": total_with_isbn,
             "priced_count": len(priced),
@@ -277,5 +293,7 @@ async def valuation_report(request: Request, _=Depends(require_role("viewer"))):
             "unpriced_count": unpriced,
             "estimated_missing": estimated_missing,
             "grand_total": grand_total,
+            "report_date": date.today().isoformat(),
+            "media_types": MEDIA_TYPES,
         },
     )

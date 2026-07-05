@@ -3,24 +3,34 @@
 {% block head %}
 <style>
     @media print {
+        @page { margin: 1.5cm; }
         nav, .no-print { display: none !important; }
-        body { background: white; color: black; }
-        .bg-shelf-card { background: white; border: 1px solid #ddd; }
-        .text-shelf-muted { color: #666; }
+        body { background: white !important; color: #111 !important; }
+        .bg-shelf-card, .bg-shelf-hover { background: white !important; }
+        .bg-shelf-card { border: 1px solid #ddd; }
+        thead { background: #f3f4f6 !important; }
+        .text-shelf-muted { color: #555 !important; }
+        .text-shelf-text, .text-shelf-success, .text-shelf-accent2 { color: #111 !important; }
+        tr, .summary-block { break-inside: avoid; }
+        h2 { break-after: avoid; }
+        table { break-inside: auto; }
+        thead { display: table-header-group; }
+        a { text-decoration: none; color: inherit; }
     }
 </style>
 {% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto">
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center justify-between mb-2">
         <h1 class="text-2xl font-bold">Collection Valuation Report</h1>
         <button onclick="window.print()" class="no-print px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
-            Print Report
+            Print / Save as PDF
         </button>
     </div>
+    <p class="text-sm text-shelf-muted mb-6">Generated {{ report_date }}</p>
 
     <!-- Summary -->
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+    <div class="summary-block bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
         <h2 class="text-lg font-semibold mb-4">Summary</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
             <div>
@@ -49,41 +59,62 @@
                 <p class="text-xl font-bold text-shelf-accent2">${{ "%.2f"|format(grand_total) }}</p>
             </div>
         </div>
-        <p class="text-xs text-shelf-muted mt-4">Values are publisher list prices — appropriate for insurance replacement cost claims.</p>
+        <p class="text-xs text-shelf-muted mt-4">Values are publisher list prices — appropriate for insurance replacement cost claims. Unpriced items are listed for inventory completeness.</p>
     </div>
 
-    <!-- Item Table -->
-    {% if items %}
-    <div class="bg-shelf-card rounded-xl border border-shelf-border overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-shelf-hover text-shelf-muted text-xs uppercase">
-                <tr>
-                    <th class="px-4 py-3 text-left">Title</th>
-                    <th class="px-4 py-3 text-left">Author</th>
-                    <th class="px-4 py-3 text-left">ISBN</th>
-                    <th class="px-4 py-3 text-right">Value</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-shelf-border">
-                {% for item in items %}
-                <tr class="hover:bg-shelf-hover/50">
-                    <td class="px-4 py-2">{{ item.title }}</td>
-                    <td class="px-4 py-2 text-shelf-muted">{{ item.authors or '' }}</td>
-                    <td class="px-4 py-2 font-mono text-xs text-shelf-muted">{{ item.isbn or '' }}</td>
-                    <td class="px-4 py-2 text-right font-mono">${{ "%.2f"|format(item.estimated_value) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="bg-shelf-hover font-semibold">
-                <tr>
-                    <td class="px-4 py-3" colspan="3">Total (priced items)</td>
-                    <td class="px-4 py-3 text-right font-mono">${{ "%.2f"|format(total_value) }}</td>
-                </tr>
-            </tfoot>
-        </table>
+    <!-- Per-location tables -->
+    {% if total_items %}
+    {% for group in location_groups %}
+    <div class="mb-6">
+        <div class="flex items-baseline justify-between mb-2">
+            <h2 class="text-lg font-semibold">{{ group.name }}</h2>
+            <p class="text-sm text-shelf-muted">{{ group['items']|length }} items{% if group.priced_count %} &middot; <span class="text-shelf-text font-mono">${{ "%.2f"|format(group.subtotal) }}</span>{% endif %}</p>
+        </div>
+        <div class="bg-shelf-card rounded-xl border border-shelf-border overflow-hidden">
+            <table class="w-full text-sm">
+                <thead class="bg-shelf-hover text-shelf-muted text-xs uppercase">
+                    <tr>
+                        <th class="px-3 py-3 text-left w-10"></th>
+                        <th class="px-3 py-3 text-left">Title</th>
+                        <th class="px-3 py-3 text-left">Author</th>
+                        <th class="px-3 py-3 text-left">ISBN / UPC</th>
+                        <th class="px-3 py-3 text-left">Type</th>
+                        <th class="px-3 py-3 text-right">Value</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-shelf-border">
+                    {% for item in group['items'] %}
+                    <tr class="hover:bg-shelf-hover/50">
+                        <td class="px-3 py-1.5">
+                            {% if item.cover_path %}
+                            <img src="/{{ item.cover_path }}" alt="" class="w-7 rounded-sm" loading="lazy">
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-1.5">{{ item.title }}{% if item.publish_year %} <span class="text-shelf-muted">({{ item.publish_year }})</span>{% endif %}</td>
+                        <td class="px-3 py-1.5 text-shelf-muted">{{ item.authors or '' }}</td>
+                        <td class="px-3 py-1.5 font-mono text-xs text-shelf-muted">{{ item.isbn or item.upc or '' }}</td>
+                        <td class="px-3 py-1.5 text-shelf-muted">{{ media_types.get(item.media_type, item.media_type) }}</td>
+                        <td class="px-3 py-1.5 text-right font-mono">{% if item.estimated_value %}${{ "%.2f"|format(item.estimated_value) }}{% else %}&mdash;{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="bg-shelf-hover font-semibold">
+                    <tr>
+                        <td class="px-3 py-2.5" colspan="5">{{ group.name }} subtotal ({{ group.priced_count }} priced)</td>
+                        <td class="px-3 py-2.5 text-right font-mono">${{ "%.2f"|format(group.subtotal) }}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-4 flex items-baseline justify-between font-semibold">
+        <span>Total (priced items)</span>
+        <span class="font-mono text-shelf-success">${{ "%.2f"|format(total_value) }}</span>
     </div>
     {% else %}
-    <p class="text-shelf-muted text-center py-8">No items have been valuated yet. Go to Settings to run a valuation.</p>
+    <p class="text-shelf-muted text-center py-8">No items in the library yet.</p>
     {% endif %}
 </div>
 {% endblock %}
