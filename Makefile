@@ -62,7 +62,10 @@ check-secrets:
 	@git grep -nE '(password|secret|token|api_key)\s*=\s*["'"'"'][^"'"'"']{8,}' \
 		-- ':!*.md' ':!tests/' ':!requirements*.txt' || echo "No hardcoded secrets found."
 
-checks: check-deps check-licenses check-secrets
+check-csrf:
+	python scripts/check_csrf_fetch.py
+
+checks: check-deps check-licenses check-secrets check-csrf
 
 # ---------------------------------------------------------------------------
 # Claude agent reports
