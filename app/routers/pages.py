@@ -237,13 +237,20 @@ async def item_detail(request: Request, item_id: int, _=Depends(require_role("vi
             (item_id, item_id, item_id),
         ).fetchall()
 
-        # ABS playback URL
+        # ABS playback URLs — for this item and for linked formats, so a
+        # physical copy's page can deep-link straight into Audiobookshelf
         abs_url = None
-        if item["abs_id"]:
-            abs_url_val = get_setting(db, "abs_url")
-            if abs_url_val:
-                from app.services.audiobookshelf import get_playback_url
+        linked_abs_items = []
+        abs_url_val = get_setting(db, "abs_url")
+        if abs_url_val:
+            from app.services.audiobookshelf import get_playback_url
+            if item["abs_id"]:
                 abs_url = get_playback_url(abs_url_val, item["abs_id"])
+            linked_abs_items = [
+                {"id": li["id"], "media_type": li["media_type"],
+                 "abs_url": get_playback_url(abs_url_val, li["abs_id"])}
+                for li in linked_items if li["abs_id"]
+            ]
 
         # Hardcover token check
         has_hardcover = bool(get_setting(db, "hardcover_token"))
@@ -270,6 +277,7 @@ async def item_detail(request: Request, item_id: int, _=Depends(require_role("vi
             "borrowers": borrowers,
             "now_date": date.today().isoformat(),
             "linked_items": linked_items,
+            "linked_abs_items": linked_abs_items,
             "abs_url": abs_url,
         },
     )

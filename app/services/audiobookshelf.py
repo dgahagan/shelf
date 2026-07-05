@@ -169,11 +169,22 @@ def _normalize_title(title: str) -> str:
     return title.strip()
 
 
+def _authors_compatible(a: str | None, b: str | None) -> bool:
+    """Guard title-only matches: when both sides have authors, the first
+    author of one must appear in the other's author string. Items without
+    authors still match by title alone."""
+    if not a or not b:
+        return True
+    first_a = a.split(",")[0].strip().casefold()
+    first_b = b.split(",")[0].strip().casefold()
+    return bool(first_a) and bool(first_b) and (first_a in b.casefold() or first_b in a.casefold())
+
+
 def _auto_link_items():
     """Create item_links between items that appear to be the same work in different formats."""
     with get_db() as db:
         abs_items = db.execute(
-            "SELECT id, title, isbn, media_type FROM items WHERE abs_id IS NOT NULL"
+            "SELECT id, title, authors, isbn, media_type FROM items WHERE abs_id IS NOT NULL"
         ).fetchall()
 
         for abs_item in abs_items:
@@ -188,16 +199,17 @@ def _auto_link_items():
             else:
                 matches = []
 
-            # Match by normalized title if no ISBN match
+            # Match by normalized title + compatible authors if no ISBN match
             if not matches:
                 all_items = db.execute(
-                    "SELECT id, title, media_type FROM items WHERE id != ? AND abs_id IS NULL",
+                    "SELECT id, title, authors, media_type FROM items WHERE id != ? AND abs_id IS NULL",
                     (abs_item["id"],),
                 ).fetchall()
                 matches = [
                     i for i in all_items
                     if _normalize_title(i["title"]) == norm_title
                     and i["media_type"] != abs_item["media_type"]
+                    and _authors_compatible(abs_item["authors"], i["authors"])
                 ]
 
             for match in matches:

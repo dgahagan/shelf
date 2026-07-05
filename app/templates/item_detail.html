@@ -143,6 +143,18 @@
                 </div>
                 {% endif %}
 
+                <!-- Also in Audiobookshelf (linked digital copy, direct deep link) -->
+                {% if not abs_url and linked_abs_items %}
+                <div class="mb-4">
+                    {% for la in linked_abs_items %}
+                    <a href="{{ la.abs_url }}" target="_blank" rel="noopener"
+                       class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-sm hover:bg-shelf-accent/30 transition-colors mr-2">
+                        {% if la.media_type == 'ebook' %}&#128214;{% else %}&#9654;{% endif %} Also in Audiobookshelf ({{ media_types.get(la.media_type, la.media_type) }})
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <!-- Linked Items (other formats) -->
                 {% if linked_items %}
                 <div class="mb-4">
