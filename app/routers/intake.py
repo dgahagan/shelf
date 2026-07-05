@@ -9,33 +9,84 @@ from fastapi import APIRouter, Depends, Request, UploadFile, File
 from pydantic import BaseModel
 
 from app.auth import require_role
-from app.config import HTTP_TIMEOUT
+from app.config import HTTP_TIMEOUT, TILING_THRESHOLD
 from app.database import get_db, get_all_settings
-from app.services import openlibrary, vision
+from app.services import openlibrary, tiling, vision
 from app.services import isbn as isbn_svc
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/intake", dependencies=[Depends(require_role("editor"))])
 
+MAX_PHOTO_DIMENSION = 100_000  # sanity bound on client-reported pixels
+
+
+class PlanRequest(BaseModel):
+    width: int
+    height: int
+
+
+@router.post("/plan")
+async def plan_photo(payload: PlanRequest):
+    """Pre-upload plan: downscale factor, tile grid, and cost estimates.
+
+    The client sends only the photo dimensions; the grid geometry and the
+    per-provider ingest caps stay server-side so no provider logic leaks
+    into the UI. Cropping happens in the browser from these rects.
+    """
+    w, h = payload.width, payload.height
+    if not (0 < w <= MAX_PHOTO_DIMENSION and 0 < h <= MAX_PHOTO_DIMENSION):
+        return {"ok": False, "message": "Invalid photo dimensions"}
+
+    with get_db() as db:
+        settings = get_all_settings(db)
+    if not settings.get("vision_provider"):
+        return {"ok": False, "message": "No vision provider configured"}
+
+    cap = tiling.ingest_cap(settings)
+    factor = tiling.downscale_factor(w, h, cap)
+    tiles = tiling.compute_grid(w, h, cap)
+    books = tiling.expected_books(w, h)
+    preview_w, preview_h = tiling.scaled_dims(w, h, cap)
+    return {
+        "ok": True,
+        "factor": round(factor, 2),
+        "needs_choice": factor >= TILING_THRESHOLD,
+        "preview": {"w": preview_w, "h": preview_h},
+        "tiles": [{"x": t.x, "y": t.y, "w": t.w, "h": t.h} for t in tiles],
+        "grid": {"rows": max(t.row for t in tiles) + 1, "cols": max(t.col for t in tiles) + 1},
+        "cost_as_is_usd": tiling.estimate_cost_usd([(w, h)], settings, books),
+        "cost_tiled_usd": tiling.estimate_cost_usd(
+            [(t.w, t.h) for t in tiles], settings, books),
+    }
+
 
 @router.post("/analyze")
-async def analyze_photo(photo: UploadFile = File(...)):
-    """Run the configured vision provider over an uploaded shelf photo."""
-    mime = (photo.content_type or "").lower()
-    if mime not in vision.ALLOWED_MIME:
-        return {"ok": False, "message": "Please upload a JPEG, PNG, or WebP photo"}
-    image_bytes = await photo.read()
-    if len(image_bytes) > vision.MAX_IMAGE_BYTES:
-        return {"ok": False, "message": "Photo is too large (max 10 MB)"}
-    if not image_bytes:
+async def analyze_photo(photos: list[UploadFile] = File(...)):
+    """Run the configured vision provider over an uploaded shelf photo.
+
+    One file is the normal path; multiple files are overlapping tiles of a
+    single photo, cropped client-side in reading order (see /plan).
+    """
+    images: list[tuple[bytes, str]] = []
+    for photo in photos:
+        mime = (photo.content_type or "").lower()
+        if mime not in vision.ALLOWED_MIME:
+            return {"ok": False, "message": "Please upload a JPEG, PNG, or WebP photo"}
+        image_bytes = await photo.read()
+        if len(image_bytes) > vision.MAX_IMAGE_BYTES:
+            return {"ok": False, "message": "Photo is too large (max 10 MB)"}
+        if not image_bytes:
+            return {"ok": False, "message": "Empty upload"}
+        images.append((image_bytes, mime))
+    if not images:
         return {"ok": False, "message": "Empty upload"}
 
     with get_db() as db:
         settings = get_all_settings(db)
 
     try:
-        books = await vision.detect_spines(image_bytes, mime, settings)
+        books = await vision.detect_spines(images, settings)
     except vision.VisionError as e:
         return {"ok": False, "message": str(e)}
 

@@ -18,7 +18,7 @@
             <input type="file" accept="image/*" capture="environment" x-ref="photoInput"
                    @change="onFileChosen($event)"
                    class="text-sm text-shelf-muted file:mr-3 file:rounded-lg file:border-0 file:bg-shelf-hover file:px-3 file:py-1.5 file:text-sm file:text-shelf-text hover:file:bg-shelf-border">
-            <button @click="analyze()" :disabled="!file || analyzing"
+            <button @click="analyze(false)" :disabled="!file || analyzing || planning" x-show="!needsChoice"
                     class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50 whitespace-nowrap">
                 <span x-show="!analyzing">Read Spines</span>
                 <span x-show="analyzing">Reading&hellip;</span>
@@ -26,10 +26,38 @@
         </div>
         <p class="text-xs text-shelf-muted mt-2">Provider: <span class="text-shelf-text">{{ 'Anthropic API' if vision_provider == 'anthropic' else 'Ollama (local)' }}</span> &middot; photos are analyzed in memory and not stored.</p>
         <template x-if="preview">
-            <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64">
+            <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64" x-show="!needsChoice">
         </template>
         <p x-show="error" x-cloak class="text-sm text-shelf-error mt-3" x-text="error"></p>
     </div>
+
+    <!-- Step 1b: high-res photo — show what the model sees, offer tiling -->
+    <template x-if="needsChoice">
+        <div class="bg-shelf-card rounded-xl border border-shelf-warning/30 p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-1">This is what the AI will see</h2>
+            <p class="text-sm text-shelf-muted mb-3">
+                Your photo is <span class="text-shelf-text font-medium" x-text="plan.factor"></span>&times; larger than
+                what the model receives. Below is the downscaled version at actual size &mdash; pan around:
+                if you can't read the spines here, neither can it.
+            </p>
+            <div class="overflow-auto max-h-96 rounded-lg border border-shelf-border mb-4 bg-shelf-bg">
+                <canvas x-ref="modelPreview" class="block"></canvas>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button @click="analyze(false)" :disabled="analyzing"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                    <span x-show="!analyzing">Send as-is (<span x-text="fmtCost(plan.cost_as_is_usd)"></span>)</span>
+                    <span x-show="analyzing">Reading&hellip;</span>
+                </button>
+                <button @click="analyze(true)" :disabled="analyzing"
+                        class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
+                    <span x-show="!analyzing">Send high-res &mdash; <span x-text="tileCount()"></span> tiles (<span x-text="fmtCost(plan.cost_tiled_usd)"></span>)</span>
+                    <span x-show="analyzing">Reading&hellip;</span>
+                </button>
+            </div>
+            <p class="text-xs text-shelf-muted mt-2">High-res splits the original into overlapping full-resolution tiles so every spine stays legible. Cost estimates are approximate.</p>
+        </div>
+    </template>
 
     <!-- Step 2: review candidates -->
     <div x-show="books.length > 0" x-cloak class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">

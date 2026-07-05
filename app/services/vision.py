@@ -6,13 +6,23 @@ Two backends, selected by the `vision_provider` setting:
   vision-capable model such as gemma3).
 
 Both return the same shape: a list of {"title": str, "authors": str|None}.
+
+Input is a list of (bytes, mime) images. A single image is the normal path;
+multiple images are overlapping tiles of one photo (see services/tiling.py).
+For Anthropic up to MAX_TILES_PER_REQUEST tiles go in one request as multiple
+image blocks (the model merges overlap duplicates); beyond that, and always
+for Ollama, tiles are analyzed one call at a time and merged in code.
 """
 
 import base64
+import difflib
 import json
 import logging
+import re
 
 import httpx
+
+from app.config import MAX_TILES_PER_REQUEST
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +41,16 @@ PROMPT = (
     "the author if readable (null if not). Skip objects that are not books "
     "and do not guess titles you cannot actually read."
 )
+
+TILED_PROMPT_SUFFIX = (
+    " IMPORTANT: these {n} images are overlapping tiles of ONE photograph, "
+    "ordered left-to-right then top-to-bottom. Adjacent tiles share an "
+    "overlap region, so the same spine may appear in two tiles — merge such "
+    "duplicates and list each distinct book exactly once."
+)
+
+# Fuzzy-title similarity at or above which two tile results are the same book
+MERGE_SIMILARITY = 0.85
 
 BOOKS_SCHEMA = {
     "type": "object",
@@ -75,17 +95,85 @@ def _clean(raw: object) -> list[dict]:
     return books
 
 
-async def detect_spines(image_bytes: bytes, mime_type: str, settings: dict) -> list[dict]:
-    """Dispatch to the configured provider. Raises VisionError on failure."""
+def _normalize_title(title: str) -> str:
+    return re.sub(r"[^a-z0-9 ]", "", title.casefold()).strip()
+
+
+def _authors_compatible(a: str | None, b: str | None) -> bool:
+    """True unless both entries name authors that clearly differ."""
+    if not a or not b:
+        return True
+    a_first = a.split(",")[0].strip().casefold()
+    b_first = b.split(",")[0].strip().casefold()
+    return a_first in b.casefold() or b_first in a.casefold()
+
+
+def merge_tile_books(book_lists: list[list[dict]]) -> list[dict]:
+    """Intra-batch dedup across tile results (fuzzy title + author match).
+
+    Spines in overlap regions appear in two adjacent tiles; keep one copy,
+    preferring the more complete entry (has authors, then longer title).
+    This is separate from — and upstream of — the already-in-inventory
+    check performed at confirm time.
+    """
+    merged: list[dict] = []
+    keys: list[str] = []
+    for books in book_lists:
+        for book in books:
+            key = _normalize_title(book["title"])
+            dupe_at = None
+            for i, existing_key in enumerate(keys):
+                if not _authors_compatible(book["authors"], merged[i]["authors"]):
+                    continue
+                if key == existing_key or difflib.SequenceMatcher(
+                        None, key, existing_key).ratio() >= MERGE_SIMILARITY:
+                    dupe_at = i
+                    break
+            if dupe_at is None:
+                merged.append(dict(book))
+                keys.append(key)
+            elif _more_complete(book, merged[dupe_at]):
+                merged[dupe_at] = dict(book)
+                keys[dupe_at] = key
+    return merged
+
+
+def _more_complete(candidate: dict, current: dict) -> bool:
+    if bool(candidate["authors"]) != bool(current["authors"]):
+        return bool(candidate["authors"])
+    return len(candidate["title"]) > len(current["title"])
+
+
+async def detect_spines(images: list[tuple[bytes, str]], settings: dict) -> list[dict]:
+    """Dispatch to the configured provider. Raises VisionError on failure.
+
+    `images` is [(bytes, mime), ...] — one entry for a normal photo, several
+    for tiles of one photo (already in left-to-right, top-to-bottom order).
+    """
     provider = settings.get("vision_provider") or ""
     if provider == "anthropic":
-        return await _detect_anthropic(image_bytes, mime_type, settings)
+        if len(images) <= MAX_TILES_PER_REQUEST:
+            books = await _detect_anthropic(images, settings)
+            # The prompt asks the model to merge overlap duplicates; sweep
+            # once more in code to catch the ones it misses.
+            return merge_tile_books([books]) if len(images) > 1 else books
+        results = [await _detect_anthropic([img], settings) for img in images]
+        return merge_tile_books(results)
     if provider == "ollama":
-        return await _detect_ollama(image_bytes, settings)
+        if len(images) == 1:
+            return await _detect_ollama(images[0][0], settings)
+        results = [await _detect_ollama(img, settings) for img, _ in images]
+        return merge_tile_books(results)
     raise VisionError("No vision provider configured — set one up in Settings → Integrations")
 
 
-async def _detect_anthropic(image_bytes: bytes, mime_type: str, settings: dict) -> list[dict]:
+def _prompt_for(count: int) -> str:
+    if count <= 1:
+        return PROMPT
+    return PROMPT + TILED_PROMPT_SUFFIX.format(n=count)
+
+
+async def _detect_anthropic(images: list[tuple[bytes, str]], settings: dict) -> list[dict]:
     api_key = settings.get("anthropic_api_key")
     if not api_key:
         raise VisionError("Anthropic API key is not configured")
@@ -93,26 +181,26 @@ async def _detect_anthropic(image_bytes: bytes, mime_type: str, settings: dict) 
 
     import anthropic
 
+    content = [
+        {
+            "type": "image",
+            "source": {
+                "type": "base64",
+                "media_type": mime,
+                "data": base64.standard_b64encode(image_bytes).decode(),
+            },
+        }
+        for image_bytes, mime in images
+    ]
+    content.append({"type": "text", "text": _prompt_for(len(images))})
+
     client = anthropic.AsyncAnthropic(api_key=api_key)
     try:
         response = await client.messages.create(
             model=model,
             max_tokens=16000,
             output_config={"format": {"type": "json_schema", "schema": BOOKS_SCHEMA}},
-            messages=[{
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": mime_type,
-                            "data": base64.standard_b64encode(image_bytes).decode(),
-                        },
-                    },
-                    {"type": "text", "text": PROMPT},
-                ],
-            }],
+            messages=[{"role": "user", "content": content}],
         )
     except anthropic.AuthenticationError:
         raise VisionError("Anthropic API key was rejected — check it in Settings")

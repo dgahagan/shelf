@@ -65,6 +65,7 @@ async def update_vision_settings(
     anthropic_vision_model: str = Form(""),
     ollama_url: str = Form(""),
     ollama_model: str = Form(""),
+    ollama_ingest_long_edge: str = Form(""),
     clear_anthropic_api_key: str = Form(""),
 ):
     """Save photo-intake vision settings.
@@ -74,6 +75,9 @@ async def update_vision_settings(
     """
     if vision_provider not in ("", "anthropic", "ollama"):
         return {"ok": False, "message": "Unknown vision provider"}
+    long_edge = ollama_ingest_long_edge.strip()
+    if long_edge and not long_edge.isdigit():
+        return {"ok": False, "message": "Ollama image size must be a whole number of pixels"}
     with get_db() as db:
         for key, value in [
             ("vision_provider", vision_provider),
@@ -81,6 +85,7 @@ async def update_vision_settings(
             ("anthropic_vision_model", anthropic_vision_model.strip()),
             ("ollama_url", ollama_url.strip().rstrip("/")),
             ("ollama_model", ollama_model.strip()),
+            ("ollama_ingest_long_edge", long_edge),
         ]:
             _upsert_setting(db, key, value, cleared=clear_anthropic_api_key == "on" and key == "anthropic_api_key")
     return RedirectResponse(url="/settings", status_code=303)

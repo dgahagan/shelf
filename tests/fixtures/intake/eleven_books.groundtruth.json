@@ -1,0 +1,90 @@
+[
+  {
+    "position": 1,
+    "title": "Thinking, Fast and Slow",
+    "author": "Daniel Kahneman",
+    "series": null,
+    "confidence": 0.98,
+    "notes": "FSG publisher logo visible on spine."
+  },
+  {
+    "position": 2,
+    "title": "Traction",
+    "author": "Wickman",
+    "series": null,
+    "confidence": 0.75,
+    "notes": "Only surname 'Wickman' printed on spine; full name is likely Gino Wickman based on general knowledge of this title, but first name is not visible on the spine itself, so author field reflects only what's printed."
+  },
+  {
+    "position": 3,
+    "title": "Sandworm",
+    "author": "Andy Greenberg",
+    "series": null,
+    "confidence": 0.97,
+    "notes": "Anchor Books edition, publisher logo visible."
+  },
+  {
+    "position": 4,
+    "title": "Surely You're Joking, Mr. Feynman!",
+    "author": "Richard P. Feynman",
+    "series": null,
+    "confidence": 0.98,
+    "notes": "Norton publisher logo visible; title printed with quotation marks on spine."
+  },
+  {
+    "position": 5,
+    "title": "Catch-22",
+    "author": "Joseph Heller",
+    "series": null,
+    "confidence": 0.97,
+    "notes": "50th anniversary edition badge visible, Simon & Schuster imprint."
+  },
+  {
+    "position": 6,
+    "title": "You Have the Right to Remain Innocent",
+    "author": "James Duane",
+    "series": null,
+    "confidence": 0.85,
+    "notes": "Thin spine, text small; title and author legible but low resolution."
+  },
+  {
+    "position": 7,
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "series": null,
+    "confidence": 0.85,
+    "notes": "Title and author printed in a heavily stylized mirrored/geometric font (Ace edition) that reads unusually in the photo; interpreted based on distinctive Dune cover typography rather than plain legibility."
+  },
+  {
+    "position": 8,
+    "title": "Solaris",
+    "author": "Stanislaw Lem",
+    "series": null,
+    "confidence": 0.95,
+    "notes": null
+  },
+  {
+    "position": 9,
+    "title": "Fisher Body Service Manual",
+    "author": null,
+    "series": null,
+    "confidence": 0.85,
+    "notes": "Non-standard item: a vintage automotive service manual/catalog, not a conventional book; '1976' printed on spine, no individual author listed."
+  },
+  {
+    "position": 10,
+    "title": "The Butcher's Masquerade",
+    "author": "Matt Dinniman",
+    "series": "Dungeon Crawler Carl (series number not visible on this spine)",
+    "confidence": 0.9,
+    "notes": "Ace publisher logo visible; series entry number not printed on this particular spine, inferred as part of series from author/branding only."
+  },
+  {
+    "position": 11,
+    "title": "The Eye of the Bedlam Bride",
+    "author": "Matt Dinniman",
+    "series": "Dungeon Crawler Carl Book Six",
+    "confidence": 0.97,
+    "notes": "Series and book number explicitly printed on spine ('Dungeon Crawler Carl Book Six')."
+  }
+]

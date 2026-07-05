@@ -827,6 +827,13 @@
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;).</p>
                 </div>
+                <div>
+                    <label for="ollama_ingest_long_edge" class="block text-sm font-medium text-shelf-muted mb-1">Image size (long edge, px)</label>
+                    <input type="text" id="ollama_ingest_long_edge" name="ollama_ingest_long_edge" inputmode="numeric"
+                           value="{{ settings.get('ollama_ingest_long_edge', '') }}" placeholder="1024 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; drives when Photo Intake offers high-res tiling.</p>
+                </div>
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save

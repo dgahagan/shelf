@@ -51,18 +51,21 @@ class TestClean:
         assert all(b["authors"] is None for b in vision._clean(raw))
 
 
+ONE_IMAGE = [(FAKE_JPEG, "image/jpeg")]
+
+
 class TestDetectSpines:
     @pytest.mark.asyncio
     async def test_no_provider_raises(self):
         with pytest.raises(vision.VisionError, match="No vision provider"):
-            await vision.detect_spines(FAKE_JPEG, "image/jpeg", {})
+            await vision.detect_spines(ONE_IMAGE, {})
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_anthropic_provider(self):
         respx.post(ANTHROPIC_URL).mock(return_value=_anthropic_response(
             {"books": [{"title": "Dune", "authors": "Frank Herbert"}]}))
-        books = await vision.detect_spines(FAKE_JPEG, "image/jpeg", {
+        books = await vision.detect_spines(ONE_IMAGE, {
             "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
         })
         assert books == [{"title": "Dune", "authors": "Frank Herbert"}]
@@ -70,7 +73,7 @@ class TestDetectSpines:
     @pytest.mark.asyncio
     async def test_anthropic_without_key(self):
         with pytest.raises(vision.VisionError, match="API key"):
-            await vision.detect_spines(FAKE_JPEG, "image/jpeg", {"vision_provider": "anthropic"})
+            await vision.detect_spines(ONE_IMAGE, {"vision_provider": "anthropic"})
 
     @respx.mock
     @pytest.mark.asyncio
@@ -79,7 +82,7 @@ class TestDetectSpines:
             "message": {"role": "assistant",
                         "content": '{"books": [{"title": "Dune", "authors": null}]}'},
         }))
-        books = await vision.detect_spines(FAKE_JPEG, "image/jpeg", {"vision_provider": "ollama"})
+        books = await vision.detect_spines(ONE_IMAGE, {"vision_provider": "ollama"})
         assert books == [{"title": "Dune", "authors": None}]
 
     @respx.mock
@@ -87,12 +90,112 @@ class TestDetectSpines:
     async def test_ollama_model_missing(self):
         respx.post(OLLAMA_URL).mock(return_value=httpx.Response(404, json={"error": "model not found"}))
         with pytest.raises(vision.VisionError, match="ollama pull"):
-            await vision.detect_spines(FAKE_JPEG, "image/jpeg", {"vision_provider": "ollama"})
+            await vision.detect_spines(ONE_IMAGE, {"vision_provider": "ollama"})
+
+
+class TestDetectSpinesTiled:
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_anthropic_tiles_go_in_one_request(self):
+        route = respx.post(ANTHROPIC_URL).mock(return_value=_anthropic_response(
+            {"books": [{"title": "Dune", "authors": None}]}))
+        await vision.detect_spines(ONE_IMAGE * 3, {
+            "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+        })
+        assert route.call_count == 1
+        body = json.loads(route.calls[0].request.content)
+        content = body["messages"][0]["content"]
+        assert sum(1 for b in content if b["type"] == "image") == 3
+        prompt = next(b["text"] for b in content if b["type"] == "text")
+        assert "overlapping tiles" in prompt and "3 images" in prompt
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_anthropic_single_image_keeps_plain_prompt(self):
+        route = respx.post(ANTHROPIC_URL).mock(return_value=_anthropic_response({"books": []}))
+        try:
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+            })
+        except vision.VisionError:
+            pass  # detect_spines itself doesn't raise on empty; router does
+        body = json.loads(route.calls[0].request.content)
+        prompt = next(b["text"] for b in body["messages"][0]["content"] if b["type"] == "text")
+        assert "overlapping tiles" not in prompt
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_anthropic_per_tile_fallback_over_cap(self, monkeypatch):
+        monkeypatch.setattr(vision, "MAX_TILES_PER_REQUEST", 2)
+        route = respx.post(ANTHROPIC_URL).mock(side_effect=[
+            _anthropic_response({"books": [{"title": "Dune", "authors": "Frank Herbert"}]}),
+            _anthropic_response({"books": [{"title": "Dune", "authors": None}]}),
+            _anthropic_response({"books": [{"title": "Solaris", "authors": "Stanislaw Lem"}]}),
+        ])
+        books = await vision.detect_spines(ONE_IMAGE * 3, {
+            "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+        })
+        assert route.call_count == 3
+        # Overlap duplicate merged; the copy with authors wins
+        assert books == [
+            {"title": "Dune", "authors": "Frank Herbert"},
+            {"title": "Solaris", "authors": "Stanislaw Lem"},
+        ]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_ollama_tiles_are_sequential_calls(self):
+        route = respx.post(OLLAMA_URL).mock(return_value=httpx.Response(200, json={
+            "message": {"content": '{"books": [{"title": "Dune", "authors": null}]}'},
+        }))
+        books = await vision.detect_spines(ONE_IMAGE * 2, {"vision_provider": "ollama"})
+        assert route.call_count == 2
+        assert books == [{"title": "Dune", "authors": None}]
+
+
+class TestMergeTileBooks:
+    def test_exact_duplicate_collapses(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Dune", "authors": "Frank Herbert"}],
+            [{"title": "Dune", "authors": "Frank Herbert"}],
+        ])
+        assert len(merged) == 1
+
+    def test_fuzzy_duplicate_collapses_keeps_complete(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Surely You're Joking, Mr. Feynman!", "authors": None}],
+            [{"title": "Surely Youre Joking Mr Feynman", "authors": "Richard P. Feynman"}],
+        ])
+        assert len(merged) == 1
+        assert merged[0]["authors"] == "Richard P. Feynman"
+
+    def test_distinct_titles_same_author_survive(self):
+        merged = vision.merge_tile_books([
+            [{"title": "The Butcher's Masquerade", "authors": "Matt Dinniman"}],
+            [{"title": "The Eye of the Bedlam Bride", "authors": "Matt Dinniman"}],
+        ])
+        assert len(merged) == 2
+
+    def test_same_title_different_authors_survive(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Collected Poems", "authors": "W. B. Yeats"},
+             {"title": "Collected Poems", "authors": "Sylvia Plath"}],
+        ])
+        assert len(merged) == 2
+
+    def test_longer_title_preferred_when_neither_has_author(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Thinking Fast", "authors": None}],
+            [{"title": "Thinking, Fast and Slow", "authors": None}],
+        ])
+        # Similarity below threshold keeps them apart OR merge keeps longer;
+        # either way the full title must survive.
+        assert any(b["title"] == "Thinking, Fast and Slow" for b in merged)
 
 
 class TestAnalyzeEndpoint:
     def _upload(self, client, content=FAKE_JPEG, mime="image/jpeg"):
-        return client.post("/api/intake/analyze", files={"photo": ("shelf.jpg", content, mime)})
+        return client.post("/api/intake/analyze", files={"photos": ("shelf.jpg", content, mime)})
 
     def test_rejects_bad_mime(self, admin_client):
         resp = self._upload(admin_client, mime="application/pdf")
@@ -105,14 +208,78 @@ class TestAnalyzeEndpoint:
         assert "No vision provider" in resp.json()["message"]
 
     def test_returns_books(self, admin_client, monkeypatch):
-        async def fake_detect(image_bytes, mime, settings):
+        async def fake_detect(images, settings):
             return [{"title": "Dune", "authors": "Frank Herbert"}]
         monkeypatch.setattr(vision, "detect_spines", fake_detect)
         resp = self._upload(admin_client)
         assert resp.json() == {"ok": True, "books": [{"title": "Dune", "authors": "Frank Herbert"}]}
 
+    def test_multiple_tiles_reach_provider_in_order(self, admin_client, monkeypatch):
+        seen = {}
+
+        async def fake_detect(images, settings):
+            seen["images"] = images
+            return [{"title": "Dune", "authors": None}]
+        monkeypatch.setattr(vision, "detect_spines", fake_detect)
+        resp = admin_client.post("/api/intake/analyze", files=[
+            ("photos", ("tile-0.jpg", b"tile0" + FAKE_JPEG, "image/jpeg")),
+            ("photos", ("tile-1.jpg", b"tile1" + FAKE_JPEG, "image/jpeg")),
+        ])
+        assert resp.json()["ok"] is True
+        assert [img[0][:5] for img in seen["images"]] == [b"tile0", b"tile1"]
+
+    def test_rejects_one_bad_tile(self, admin_client):
+        resp = admin_client.post("/api/intake/analyze", files=[
+            ("photos", ("tile-0.jpg", FAKE_JPEG, "image/jpeg")),
+            ("photos", ("tile-1.pdf", FAKE_JPEG, "application/pdf")),
+        ])
+        assert resp.json()["ok"] is False
+
     def test_viewer_forbidden(self, viewer_client):
         resp = self._upload(viewer_client)
+        assert resp.status_code in (401, 403)
+
+
+class TestPlanEndpoint:
+    def _configure(self, db, provider="anthropic"):
+        db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', ?)", (provider,))
+        db.execute("COMMIT")
+
+    def test_no_provider(self, admin_client):
+        resp = admin_client.post("/api/intake/plan", json={"width": 6000, "height": 4000})
+        assert resp.json()["ok"] is False
+
+    def test_small_photo_no_choice(self, admin_client, db):
+        self._configure(db)
+        data = admin_client.post("/api/intake/plan", json={"width": 800, "height": 600}).json()
+        assert data["ok"] is True
+        assert data["needs_choice"] is False
+        assert data["factor"] == 1.0
+        assert len(data["tiles"]) == 1
+
+    def test_large_photo_offers_tiling_with_costs(self, admin_client, db):
+        self._configure(db)
+        data = admin_client.post("/api/intake/plan", json={"width": 6000, "height": 4000}).json()
+        assert data["needs_choice"] is True
+        assert len(data["tiles"]) > 1
+        assert data["grid"]["rows"] >= 1 and data["grid"]["cols"] >= 2
+        assert 0 < data["cost_as_is_usd"] < data["cost_tiled_usd"]
+        assert data["preview"]["w"] < 6000
+
+    def test_ollama_costs_are_null(self, admin_client, db):
+        self._configure(db, provider="ollama")
+        data = admin_client.post("/api/intake/plan", json={"width": 6000, "height": 4000}).json()
+        assert data["needs_choice"] is True
+        assert data["cost_as_is_usd"] is None
+        assert data["cost_tiled_usd"] is None
+
+    def test_rejects_absurd_dimensions(self, admin_client, db):
+        self._configure(db)
+        data = admin_client.post("/api/intake/plan", json={"width": 0, "height": 4000}).json()
+        assert data["ok"] is False
+
+    def test_viewer_forbidden(self, viewer_client):
+        resp = viewer_client.post("/api/intake/plan", json={"width": 800, "height": 600})
         assert resp.status_code in (401, 403)
 
 
