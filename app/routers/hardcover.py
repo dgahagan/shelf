@@ -33,6 +33,10 @@ async def test_hardcover(request: Request, _=Depends(require_role("admin"))):
     data = await request.json()
     token = data.get("token", "").strip()
     if not token:
+        # Masked field posts empty — test the stored token instead
+        with get_db() as db:
+            token = get_setting(db, "hardcover_token")
+    if not token:
         return {"ok": False, "message": "No token provided"}
     return await hardcover.test_connection(token)
 

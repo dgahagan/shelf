@@ -2101,6 +2101,11 @@ async def test_igdb_key(request: Request, _=Depends(require_role("admin"))):
     client_id = data.get("client_id", "")
     client_secret = data.get("client_secret", "")
     if not client_id or not client_secret:
+        # Masked fields post empty — fall back to the stored credentials
+        with get_db() as db:
+            client_id = client_id or get_setting(db, "igdb_client_id")
+            client_secret = client_secret or get_setting(db, "igdb_client_secret")
+    if not client_id or not client_secret:
         return {"ok": False, "message": "Both Client ID and Client Secret are required"}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         return await igdb.test_credentials(client_id, client_secret, client)

@@ -129,18 +129,18 @@
                        class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
             </div>
             <div>
-                <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">Notification URL (ntfy topic or webhook — leave empty to disable)</label>
+                <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">Notification URL (ntfy topic or webhook)</label>
                 <div class="flex gap-2">
                     <select id="notify-format-input" name="notify_format"
                             class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
                         <option value="ntfy" {% if settings.get('notify_format', 'ntfy') == 'ntfy' %}selected{% endif %}>ntfy</option>
                         <option value="webhook" {% if settings.get('notify_format') == 'webhook' %}selected{% endif %}>Webhook (JSON)</option>
                     </select>
-                    <input type="text" id="notify-url-input" name="notify_url" value="{{ settings.get('notify_url', '') }}"
-                           placeholder="https://ntfy.sh/your-private-topic"
+                    <input type="text" id="notify-url-input" name="notify_url" autocomplete="off"
+                           placeholder="{% if secrets_saved['notify_url'] %}Saved — leave blank to keep{% else %}https://ntfy.sh/your-private-topic{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!document.getElementById('notify-url-input').value) return; ntTesting=true; ntStatus=null; fetch('/api/settings/notify-test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:document.getElementById('notify-url-input').value,format:document.getElementById('notify-format-input').value})}).then(r=>r.json()).then(d=>{ntStatus=d; ntTesting=false}).catch(()=>{ntStatus={ok:false,message:'Request failed'}; ntTesting=false})"
+                            @click="{% if not secrets_saved['notify_url'] %}if(!document.getElementById('notify-url-input').value) return; {% endif %}ntTesting=true; ntStatus=null; fetch('/api/settings/notify-test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:document.getElementById('notify-url-input').value,format:document.getElementById('notify-format-input').value})}).then(r=>r.json()).then(d=>{ntStatus=d; ntTesting=false}).catch(()=>{ntStatus={ok:false,message:'Request failed'}; ntTesting=false})"
                             :disabled="ntTesting"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!ntTesting">Test</span>
@@ -150,6 +150,11 @@
                 <template x-if="ntStatus">
                     <p class="text-sm mt-1" :class="ntStatus.ok ? 'text-shelf-success' : 'text-shelf-error'" x-text="ntStatus.message"></p>
                 </template>
+                {% if secrets_saved['notify_url'] %}
+                <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
+                    <input type="checkbox" name="clear_notify_url" class="rounded border-shelf-border"> Remove saved URL (disables reminders)
+                </label>
+                {% endif %}
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save Lending Settings
@@ -166,7 +171,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{
             syncing: false, result: null, absStatus: null, absTesting: false, showAbsHelp: false,
-            absUrl: '{{ settings.get('abs_url', '') }}', absToken: '{{ settings.get('abs_token', '') }}',
+            absUrl: '{{ settings.get('abs_url', '') }}', absToken: '', absSaved: {{ 'true' if secrets_saved['abs_token'] else 'false' }},
             syncCurrent: 0, syncTotal: 0, syncLastTitle: '', syncLog: [], showSyncLog: false,
             startSync() {
                 this.syncing = true; this.result = null; this.syncCurrent = 0; this.syncTotal = 0;
@@ -221,11 +226,12 @@
             <div>
                 <label for="abs_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
                 <div class="flex gap-2">
-                    <input type="password" id="abs_token" name="abs_token" x-model="absToken" value="{{ settings.get('abs_token', '') }}" placeholder="Bearer token from ABS settings"
+                    <input type="password" id="abs_token" name="abs_token" x-model="absToken" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['abs_token'] %}Saved — leave blank to keep{% else %}Bearer token from ABS settings{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!absUrl || !absToken) return; absTesting=true; absStatus=null; fetch('/api/sync/audiobookshelf/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:absUrl,token:absToken})}).then(r=>r.json()).then(d=>{absStatus=d; absTesting=false}).catch(()=>{absStatus={ok:false,message:'Connection failed'}; absTesting=false})"
-                            :disabled="absTesting || !absUrl || !absToken"
+                            @click="if(!absUrl || (!absToken && !absSaved)) return; absTesting=true; absStatus=null; fetch('/api/sync/audiobookshelf/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({url:absUrl,token:absToken})}).then(r=>r.json()).then(d=>{absStatus=d; absTesting=false}).catch(()=>{absStatus={ok:false,message:'Connection failed'}; absTesting=false})"
+                            :disabled="absTesting || !absUrl || (!absToken && !absSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!absTesting">Test</span>
                         <span x-show="absTesting">Testing...</span>
@@ -246,9 +252,11 @@
                     </template>
                 </div>
             </div>
-            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
-            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
-            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
+            {% if secrets_saved['abs_token'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_abs_token" class="rounded border-shelf-border"> Remove saved token
+            </label>
+            {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
@@ -390,7 +398,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{
             hcStatus: null, hcTesting: false, showHcHelp: false,
-            hcToken: '{{ settings.get('hardcover_token', '') }}',
+            hcToken: '', hcSaved: {{ 'true' if secrets_saved['hardcover_token'] else 'false' }},
             importing: false, importResult: null,
             importCurrent: 0, importTotal: 0, importLastTitle: '',
             importLog: [], showImportLog: false,
@@ -476,12 +484,12 @@
             <div>
                 <label for="hardcover_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
                 <div class="flex gap-2">
-                    <input type="password" id="hardcover_token" name="hardcover_token" x-model="hcToken"
-                           value="{{ settings.get('hardcover_token', '') }}" placeholder="Your Hardcover API token"
+                    <input type="password" id="hardcover_token" name="hardcover_token" x-model="hcToken" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['hardcover_token'] %}Saved — leave blank to keep{% else %}Your Hardcover API token{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!hcToken) return; hcTesting=true; hcStatus=null; fetch('/api/hardcover/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({token:hcToken})}).then(r=>r.json()).then(d=>{hcStatus=d; hcTesting=false}).catch(()=>{hcStatus={ok:false,message:'Connection failed'}; hcTesting=false})"
-                            :disabled="hcTesting || !hcToken"
+                            @click="if(!hcToken && !hcSaved) return; hcTesting=true; hcStatus=null; fetch('/api/hardcover/test',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({token:hcToken})}).then(r=>r.json()).then(d=>{hcStatus=d; hcTesting=false}).catch(()=>{hcStatus={ok:false,message:'Connection failed'}; hcTesting=false})"
+                            :disabled="hcTesting || (!hcToken && !hcSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!hcTesting">Test</span>
                         <span x-show="hcTesting">Testing...</span>
@@ -502,12 +510,11 @@
                     </template>
                 </div>
             </div>
-            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
-            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
-            <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
-            <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
-            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
-            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
+            {% if secrets_saved['hardcover_token'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_hardcover_token" class="rounded border-shelf-border"> Remove saved token
+            </label>
+            {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
@@ -548,9 +555,9 @@
             </label>
 
             <button @click="startImport()"
-                    :disabled="importing || !hcToken"
+                    :disabled="importing || (!hcToken && !hcSaved)"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!importing" x-text="hcToken ? 'Import from Hardcover' : 'Enter token to import'"></span>
+                <span x-show="!importing" x-text="(hcToken || hcSaved) ? 'Import from Hardcover' : 'Enter token to import'"></span>
                 <span x-show="importing">Importing...</span>
             </button>
 
@@ -631,9 +638,9 @@
             </label>
 
             <button @click="startExport()"
-                    :disabled="exporting || !hcToken"
+                    :disabled="exporting || (!hcToken && !hcSaved)"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!exporting" x-text="hcToken ? 'Export to Hardcover' : 'Enter token to export'"></span>
+                <span x-show="!exporting" x-text="(hcToken || hcSaved) ? 'Export to Hardcover' : 'Enter token to export'"></span>
                 <span x-show="exporting">Exporting...</span>
             </button>
 
@@ -688,7 +695,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{
             valuating: false, valResult: null, keyStatus: null, testing: false, showHelp: false,
-            apiKey: '{{ settings.get('isbndb_api_key', '') }}',
+            apiKey: '', apiKeySaved: {{ 'true' if secrets_saved['isbndb_api_key'] else 'false' }},
             valCurrent: 0, valTotal: 0, valLastTitle: '', valLog: [], showValLog: false,
             startValuation() {
                 this.valuating = true; this.valResult = null; this.valCurrent = 0; this.valTotal = 0;
@@ -739,12 +746,12 @@
                 <label for="isbndb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">ISBNdb API Key</label>
                 <div class="flex gap-2">
                     <input type="password" id="isbndb_api_key" name="isbndb_api_key"
-                           x-model="apiKey"
-                           value="{{ settings.get('isbndb_api_key', '') }}" placeholder="Your ISBNdb API key"
+                           x-model="apiKey" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['isbndb_api_key'] %}Saved — leave blank to keep{% else %}Your ISBNdb API key{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!apiKey) return; testing=true; keyStatus=null; fetch('/api/valuate/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:apiKey})}).then(r=>r.json()).then(d=>{keyStatus=d; testing=false}).catch(()=>{keyStatus={ok:false,message:'Connection failed'}; testing=false})"
-                            :disabled="testing || !apiKey"
+                            @click="if(!apiKey && !apiKeySaved) return; testing=true; keyStatus=null; fetch('/api/valuate/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:apiKey})}).then(r=>r.json()).then(d=>{keyStatus=d; testing=false}).catch(()=>{keyStatus={ok:false,message:'Connection failed'}; testing=false})"
+                            :disabled="testing || (!apiKey && !apiKeySaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!testing">Test Key</span>
                         <span x-show="testing">Testing...</span>
@@ -766,22 +773,20 @@
                     </template>
                 </div>
             </div>
-            <!-- Include existing settings so they aren't cleared -->
-            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
-            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
-            <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
-            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
-            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
-            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
+            {% if secrets_saved['isbndb_api_key'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_isbndb_api_key" class="rounded border-shelf-border"> Remove saved key
+            </label>
+            {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
         </form>
         <div class="border-t border-shelf-border pt-4 space-y-2">
             <button @click="startValuation()"
-                    :disabled="valuating || !apiKey"
+                    :disabled="valuating || (!apiKey && !apiKeySaved)"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!valuating" x-text="apiKey ? 'Valuate Collection' : 'Enter API key to valuate'"></span>
+                <span x-show="!valuating" x-text="(apiKey || apiKeySaved) ? 'Valuate Collection' : 'Enter API key to valuate'"></span>
                 <span x-show="valuating">Valuating...</span>
             </button>
 
@@ -833,7 +838,7 @@
 
     <!-- Movie Database (TMDb) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{ tmdbStatus: null, tmdbTesting: false, showTmdbHelp: false, tmdbKey: '{{ settings.get('tmdb_api_key', '') }}' }">
+         x-data="{ tmdbStatus: null, tmdbTesting: false, showTmdbHelp: false, tmdbKey: '', tmdbSaved: {{ 'true' if secrets_saved['tmdb_api_key'] else 'false' }} }">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Movie Database (TMDb)</h2>
             <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
@@ -862,12 +867,12 @@
             <div>
                 <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">TMDb API Key</label>
                 <div class="flex gap-2">
-                    <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey"
-                           value="{{ settings.get('tmdb_api_key', '') }}" placeholder="Your TMDb API key"
+                    <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!tmdbKey) return; tmdbTesting=true; tmdbStatus=null; fetch('/api/tmdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:tmdbKey})}).then(r=>r.json()).then(d=>{tmdbStatus=d; tmdbTesting=false}).catch(()=>{tmdbStatus={ok:false,message:'Connection failed'}; tmdbTesting=false})"
-                            :disabled="tmdbTesting || !tmdbKey"
+                            @click="if(!tmdbKey && !tmdbSaved) return; tmdbTesting=true; tmdbStatus=null; fetch('/api/tmdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({key:tmdbKey})}).then(r=>r.json()).then(d=>{tmdbStatus=d; tmdbTesting=false}).catch(()=>{tmdbStatus={ok:false,message:'Connection failed'}; tmdbTesting=false})"
+                            :disabled="tmdbTesting || (!tmdbKey && !tmdbSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!tmdbTesting">Test Key</span>
                         <span x-show="tmdbTesting">Testing...</span>
@@ -888,12 +893,11 @@
                     </template>
                 </div>
             </div>
-            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
-            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
-            <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
-            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
-            <input type="hidden" name="igdb_client_id" value="{{ settings.get('igdb_client_id', '') }}">
-            <input type="hidden" name="igdb_client_secret" value="{{ settings.get('igdb_client_secret', '') }}">
+            {% if secrets_saved['tmdb_api_key'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_tmdb_api_key" class="rounded border-shelf-border"> Remove saved key
+            </label>
+            {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
@@ -918,10 +922,15 @@
             <div x-show="visionProvider === 'anthropic'" class="space-y-3">
                 <div>
                     <label for="anthropic_api_key" class="block text-sm font-medium text-shelf-muted mb-1">Anthropic API Key</label>
-                    <input type="password" id="anthropic_api_key" name="anthropic_api_key"
-                           value="{{ settings.get('anthropic_api_key', '') }}" placeholder="sk-ant-..."
+                    <input type="password" id="anthropic_api_key" name="anthropic_api_key" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['anthropic_api_key'] %}Saved — leave blank to keep{% else %}sk-ant-...{% endif %}"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <p class="text-xs text-shelf-muted mt-1">Get one at console.anthropic.com. Stored encrypted; only used server-side.</p>
+                    {% if secrets_saved['anthropic_api_key'] %}
+                    <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
+                        <input type="checkbox" name="clear_anthropic_api_key" class="rounded border-shelf-border"> Remove saved key
+                    </label>
+                    {% endif %}
                 </div>
                 <div>
                     <label for="anthropic_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
@@ -953,7 +962,7 @@
 
     <!-- IGDB (Video Games) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
-         x-data="{ igdbStatus: null, igdbTesting: false, showIgdbHelp: false, igdbId: '{{ settings.get('igdb_client_id', '') }}', igdbSecret: '{{ settings.get('igdb_client_secret', '') }}' }">
+         x-data="{ igdbStatus: null, igdbTesting: false, showIgdbHelp: false, igdbId: '', igdbSecret: '', igdbSaved: {{ 'true' if secrets_saved['igdb_client_id'] and secrets_saved['igdb_client_secret'] else 'false' }} }">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">IGDB (Video Games)</h2>
             <button @click="showIgdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get credentials?</button>
@@ -981,19 +990,19 @@
         <form action="/api/settings" method="post" class="space-y-3">
             <div>
                 <label for="igdb_client_id" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client ID</label>
-                <input type="text" id="igdb_client_id" name="igdb_client_id" x-model="igdbId"
-                       value="{{ settings.get('igdb_client_id', '') }}" placeholder="Your Twitch Client ID"
+                <input type="text" id="igdb_client_id" name="igdb_client_id" x-model="igdbId" autocomplete="off"
+                       placeholder="{% if secrets_saved['igdb_client_id'] %}Saved — leave blank to keep{% else %}Your Twitch Client ID{% endif %}"
                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
             </div>
             <div>
                 <label for="igdb_client_secret" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client Secret</label>
                 <div class="flex gap-2">
-                    <input type="password" id="igdb_client_secret" name="igdb_client_secret" x-model="igdbSecret"
-                           value="{{ settings.get('igdb_client_secret', '') }}" placeholder="Your Twitch Client Secret"
+                    <input type="password" id="igdb_client_secret" name="igdb_client_secret" x-model="igdbSecret" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['igdb_client_secret'] %}Saved — leave blank to keep{% else %}Your Twitch Client Secret{% endif %}"
                            class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
-                            @click="if(!igdbId || !igdbSecret) return; igdbTesting=true; igdbStatus=null; fetch('/api/igdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({client_id:igdbId,client_secret:igdbSecret})}).then(r=>r.json()).then(d=>{igdbStatus=d; igdbTesting=false}).catch(()=>{igdbStatus={ok:false,message:'Connection failed'}; igdbTesting=false})"
-                            :disabled="igdbTesting || !igdbId || !igdbSecret"
+                            @click="if((!igdbId || !igdbSecret) && !igdbSaved) return; igdbTesting=true; igdbStatus=null; fetch('/api/igdb/test-key',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':window.csrfToken()},body:JSON.stringify({client_id:igdbId,client_secret:igdbSecret})}).then(r=>r.json()).then(d=>{igdbStatus=d; igdbTesting=false}).catch(()=>{igdbStatus={ok:false,message:'Connection failed'}; igdbTesting=false})"
+                            :disabled="igdbTesting || ((!igdbId || !igdbSecret) && !igdbSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!igdbTesting">Test</span>
                         <span x-show="igdbTesting">Testing...</span>
@@ -1014,11 +1023,12 @@
                     </template>
                 </div>
             </div>
-            <input type="hidden" name="abs_url" value="{{ settings.get('abs_url', '') }}">
-            <input type="hidden" name="abs_token" value="{{ settings.get('abs_token', '') }}">
-            <input type="hidden" name="isbndb_api_key" value="{{ settings.get('isbndb_api_key', '') }}">
-            <input type="hidden" name="hardcover_token" value="{{ settings.get('hardcover_token', '') }}">
-            <input type="hidden" name="tmdb_api_key" value="{{ settings.get('tmdb_api_key', '') }}">
+            {% if secrets_saved['igdb_client_id'] or secrets_saved['igdb_client_secret'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_igdb_client_id" @change="$el.form.clear_igdb_client_secret.checked = $el.checked" class="rounded border-shelf-border">
+                <input type="checkbox" name="clear_igdb_client_secret" class="hidden"> Remove saved credentials
+            </label>
+            {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>

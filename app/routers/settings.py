@@ -5,38 +5,56 @@ from fastapi.responses import RedirectResponse, FileResponse
 
 from app.auth import require_role
 from app.config import DATABASE_PATH, DATA_DIR
-from app.crypto import SENSITIVE_KEYS, encrypt_value, decrypt_value, get_encryption_key
+from app.crypto import SENSITIVE_KEYS, encrypt_value, get_encryption_key
 from app.database import get_db
 
 router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
 
+_INTEGRATION_KEYS = (
+    "abs_url",
+    "abs_token",
+    "isbndb_api_key",
+    "tmdb_api_key",
+    "hardcover_token",
+    "igdb_client_id",
+    "igdb_client_secret",
+)
+
+
+def _upsert_setting(db, key: str, value: str, cleared: bool = False):
+    """Write one setting. Sensitive keys are write-only: the page renders
+    masked fields that post empty, so a blank submission keeps the stored
+    value unless the matching clear checkbox was ticked."""
+    if key in SENSITIVE_KEYS:
+        if cleared:
+            value = ""
+        elif not value:
+            return
+        else:
+            value = encrypt_value(value, get_encryption_key())
+    db.execute(
+        "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+        (key, value, value),
+    )
+
 
 @router.post("")
-async def update_settings(
-    abs_url: str = Form(""),
-    abs_token: str = Form(""),
-    isbndb_api_key: str = Form(""),
-    tmdb_api_key: str = Form(""),
-    hardcover_token: str = Form(""),
-    igdb_client_id: str = Form(""),
-    igdb_client_secret: str = Form(""),
-):
-    secret = get_encryption_key()
+async def update_settings(request: Request):
+    """Save integration settings.
+
+    Only keys present in the submitted form are written — each integration
+    section is its own form, and sections must not blank each other's values
+    (previously handled by echoing every credential as a hidden input).
+    """
+    form = await request.form()
     with get_db() as db:
-        for key, value in [
-            ("abs_url", abs_url.strip().rstrip("/")),
-            ("abs_token", abs_token.strip()),
-            ("isbndb_api_key", isbndb_api_key.strip()),
-            ("tmdb_api_key", tmdb_api_key.strip()),
-            ("hardcover_token", hardcover_token.strip()),
-            ("igdb_client_id", igdb_client_id.strip()),
-            ("igdb_client_secret", igdb_client_secret.strip()),
-        ]:
-            stored = encrypt_value(value, secret) if key in SENSITIVE_KEYS and value else value
-            db.execute(
-                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-                (key, stored, stored),
-            )
+        for key in _INTEGRATION_KEYS:
+            if key not in form:
+                continue
+            value = (form.get(key) or "").strip()
+            if key == "abs_url":
+                value = value.rstrip("/")
+            _upsert_setting(db, key, value, cleared=form.get(f"clear_{key}") == "on")
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -47,6 +65,7 @@ async def update_vision_settings(
     anthropic_vision_model: str = Form(""),
     ollama_url: str = Form(""),
     ollama_model: str = Form(""),
+    clear_anthropic_api_key: str = Form(""),
 ):
     """Save photo-intake vision settings.
 
@@ -55,7 +74,6 @@ async def update_vision_settings(
     """
     if vision_provider not in ("", "anthropic", "ollama"):
         return {"ok": False, "message": "Unknown vision provider"}
-    secret = get_encryption_key()
     with get_db() as db:
         for key, value in [
             ("vision_provider", vision_provider),
@@ -64,11 +82,7 @@ async def update_vision_settings(
             ("ollama_url", ollama_url.strip().rstrip("/")),
             ("ollama_model", ollama_model.strip()),
         ]:
-            stored = encrypt_value(value, secret) if key in SENSITIVE_KEYS and value else value
-            db.execute(
-                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-                (key, stored, stored),
-            )
+            _upsert_setting(db, key, value, cleared=clear_anthropic_api_key == "on" and key == "anthropic_api_key")
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -77,6 +91,7 @@ async def update_lending_settings(
     lending_overdue_days: str = Form("28"),
     notify_url: str = Form(""),
     notify_format: str = Form("ntfy"),
+    clear_notify_url: str = Form(""),
 ):
     """Save lending/reminder settings.
 
@@ -91,18 +106,13 @@ async def update_lending_settings(
         return {"ok": False, "message": "Overdue days must be a whole number"}
     fmt = notify_format if notify_format in FORMATS else "ntfy"
 
-    secret = get_encryption_key()
     with get_db() as db:
         for key, value in [
             ("lending_overdue_days", days),
             ("notify_url", notify_url.strip()),
             ("notify_format", fmt),
         ]:
-            stored = encrypt_value(value, secret) if key in SENSITIVE_KEYS and value else value
-            db.execute(
-                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
-                (key, stored, stored),
-            )
+            _upsert_setting(db, key, value, cleared=clear_notify_url == "on" and key == "notify_url")
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -117,6 +127,11 @@ async def notify_test(request: Request):
         return {"ok": False, "message": "Invalid request"}
     url = (body.get("url") or "").strip()
     fmt = body.get("format") or "ntfy"
+    if not url:
+        # Masked field posts empty — test the stored URL instead
+        from app.database import get_setting
+        with get_db() as db:
+            url = get_setting(db, "notify_url")
     if not url:
         return {"ok": False, "message": "No URL provided"}
 

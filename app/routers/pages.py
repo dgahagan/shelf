@@ -497,10 +497,17 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
             "SELECT * FROM share_links ORDER BY created_at DESC"
         ).fetchall()
     env_overrides = {k for k in settings if is_env_override(k)}
+    # Never hand decrypted credentials to the template — it only needs to know
+    # whether one is saved. Fields are write-only; blank submit keeps the value.
+    from app.crypto import SENSITIVE_KEYS
+    secrets_saved = {k: bool(settings.get(k)) for k in SENSITIVE_KEYS}
+    for k in SENSITIVE_KEYS:
+        if k in settings:
+            settings[k] = ""
     return request.app.state.templates.TemplateResponse(
         request,
         "settings.html",
         {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
-         "borrowers": borrowers, "env_overrides": env_overrides,
+         "borrowers": borrowers, "env_overrides": env_overrides, "secrets_saved": secrets_saved,
          "game_platforms_list": game_platforms_list},
     )
