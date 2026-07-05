@@ -53,9 +53,16 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "script-src 'self' 'unsafe-eval'; "
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data: blob: https:; "  # blob: for the intake photo preview
-            "connect-src 'self'; "
+            "connect-src 'self'; "  # PWA sync queue + SSE are same-origin only
             "font-src 'self' data:; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
             "frame-ancestors 'none';"
+        )
+        # Camera stays first-party for barcode scanning (html5-qrcode getUserMedia);
+        # everything else is denied outright.
+        response.headers["Permissions-Policy"] = (
+            "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
         )
         return response
 

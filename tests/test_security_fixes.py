@@ -600,3 +600,22 @@ class TestRestoreRejectsRiskySchema:
         data = resp.json()
         assert data["ok"] is False
         assert "virtual tables" in data["message"]
+
+
+# ---------------------------------------------------------------------------
+# Hardening #5 — CSP base-uri/form-action + Permissions-Policy
+# ---------------------------------------------------------------------------
+
+
+class TestHardenedHeaders:
+    def test_csp_base_uri_and_form_action(self, admin_client):
+        csp = admin_client.get("/settings").headers["Content-Security-Policy"]
+        assert "base-uri 'self'" in csp
+        assert "form-action 'self'" in csp
+        assert "connect-src 'self'" in csp
+
+    def test_permissions_policy_camera_self_only(self, admin_client):
+        pp = admin_client.get("/settings").headers["Permissions-Policy"]
+        assert "camera=(self)" in pp
+        assert "microphone=()" in pp
+        assert "geolocation=()" in pp
