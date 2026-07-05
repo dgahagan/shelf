@@ -260,12 +260,11 @@ def get_setting(db, key: str) -> str:
     Sensitive values stored encrypted in the DB are transparently decrypted.
     """
     from app.config import get_setting_value
-    from app.crypto import SENSITIVE_KEYS, decrypt_value
+    from app.crypto import SENSITIVE_KEYS, decrypt_value, get_encryption_key
     row = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
     raw = row["value"] if row else None
     if raw and key in SENSITIVE_KEYS:
-        from app.auth import get_secret_key
-        raw = decrypt_value(raw, get_secret_key())
+        raw = decrypt_value(raw, get_encryption_key())
     return get_setting_value(key, raw)
 
 
@@ -275,10 +274,9 @@ def get_all_settings(db) -> dict[str, str]:
     Sensitive values are decrypted before being returned.
     """
     from app.config import get_setting_value
-    from app.crypto import SENSITIVE_KEYS, decrypt_value
-    from app.auth import get_secret_key
+    from app.crypto import SENSITIVE_KEYS, decrypt_value, get_encryption_key
     rows = db.execute("SELECT key, value FROM settings").fetchall()
-    secret = get_secret_key()
+    secret = get_encryption_key()
     settings = {}
     for r in rows:
         val = r["value"]

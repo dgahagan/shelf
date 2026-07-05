@@ -7,6 +7,8 @@ services:
       - CERT_SAN=${CERT_SAN:-DNS:localhost}
       - SHELF_PORT=${SHELF_PORT:-18889}
       - SHELF_TRUST_PROXY=${SHELF_TRUST_PROXY:-}
+      - SECRET_KEY=${SECRET_KEY:-}
+      - SHELF_ENCRYPTION_KEY=${SHELF_ENCRYPTION_KEY:-}
     volumes:
       - ${SHELF_DATA:-./data-dev}:/data:z
     restart: unless-stopped

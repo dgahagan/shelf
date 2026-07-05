@@ -337,6 +337,10 @@ async def lifespan(app: FastAPI):
     # Initialize secret key on startup
     from app.auth import get_secret_key
     get_secret_key()
+    # Move sensitive settings off the legacy JWT-derived encryption key.
+    # Runs every startup (idempotent), which also covers restored backups.
+    from app.crypto import migrate_sensitive_settings
+    migrate_sensitive_settings()
     task = asyncio.create_task(_periodic_abs_sync())
     hc_task = asyncio.create_task(_periodic_hardcover_sync())
     loan_task = asyncio.create_task(_periodic_loan_reminders())

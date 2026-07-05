@@ -57,6 +57,7 @@ CERT_SAN=IP:192.168.1.50,DNS:shelf,DNS:localhost
 |----------|---------|-------------|
 | `CERT_SAN` | `DNS:shelf,DNS:localhost` | TLS certificate Subject Alternative Names |
 | `SECRET_KEY` | *(auto-generated)* | JWT signing key (auto-generated and stored in DB if not set) |
+| `SHELF_ENCRYPTION_KEY` | *(auto-generated)* | Encryption key for stored API credentials. Auto-generated at `data/encryption.key` if not set — never stored in the DB, so backups contain ciphertext only. Set it (e.g. `openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
 
 ### Data
 
@@ -64,9 +65,11 @@ All persistent data lives in `./data/` (bind-mounted into the container):
 
 ```
 data/
-  shelf.db    — SQLite database
-  covers/     — cached cover images
-  certs/      — auto-generated TLS certificates
+  shelf.db        — SQLite database
+  covers/         — cached cover images
+  certs/          — auto-generated TLS certificates
+  encryption.key  — key for credentials stored in the DB (unless
+                    SHELF_ENCRYPTION_KEY is set); keep it out of shared copies
 ```
 
 ## Features

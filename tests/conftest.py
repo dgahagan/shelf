@@ -30,6 +30,10 @@ def _isolated_db(tmp_path, monkeypatch):
     import app.auth as auth_mod
     monkeypatch.setattr(auth_mod, "_cached_secret_key", None)
 
+    # Reset cached encryption key — each test's key file lives in its own tmp dir
+    import app.crypto as crypto_mod
+    monkeypatch.setattr(crypto_mod, "_cached_encryption_key", None)
+
     # Initialize schema
     from app.database import init_db
     init_db()

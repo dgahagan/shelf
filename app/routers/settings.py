@@ -3,9 +3,9 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse, FileResponse
 
-from app.auth import require_role, get_secret_key
+from app.auth import require_role
 from app.config import DATABASE_PATH, DATA_DIR
-from app.crypto import SENSITIVE_KEYS, encrypt_value, decrypt_value
+from app.crypto import SENSITIVE_KEYS, encrypt_value, decrypt_value, get_encryption_key
 from app.database import get_db
 
 router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
@@ -21,7 +21,7 @@ async def update_settings(
     igdb_client_id: str = Form(""),
     igdb_client_secret: str = Form(""),
 ):
-    secret = get_secret_key()
+    secret = get_encryption_key()
     with get_db() as db:
         for key, value in [
             ("abs_url", abs_url.strip().rstrip("/")),
@@ -55,7 +55,7 @@ async def update_vision_settings(
     """
     if vision_provider not in ("", "anthropic", "ollama"):
         return {"ok": False, "message": "Unknown vision provider"}
-    secret = get_secret_key()
+    secret = get_encryption_key()
     with get_db() as db:
         for key, value in [
             ("vision_provider", vision_provider),
@@ -91,7 +91,7 @@ async def update_lending_settings(
         return {"ok": False, "message": "Overdue days must be a whole number"}
     fmt = notify_format if notify_format in FORMATS else "ntfy"
 
-    secret = get_secret_key()
+    secret = get_encryption_key()
     with get_db() as db:
         for key, value in [
             ("lending_overdue_days", days),
@@ -239,9 +239,12 @@ async def restore_backup(request: Request):
     tmp_path.unlink(missing_ok=True)
 
     # Invalidate all existing sessions by bumping every user's token_version.
-    # We deliberately do NOT rotate the secret key here: the restored DB's
-    # encrypted settings (API tokens) are Fernet-encrypted with the key stored
-    # inside that same DB, and rotating it would make them undecryptable.
+    # Encrypted settings in the restored DB stay readable because the
+    # encryption key lives outside the DB (env var or DATA_DIR/encryption.key)
+    # and is unaffected by the restore. A backup from a *different* install
+    # was encrypted with that install's key — startup migration logs a warning
+    # and those credentials must be re-entered. Backups still encrypted under
+    # the legacy JWT-derived key are re-encrypted on the required restart.
     from app.database import init_db
     init_db()  # bring an older restored DB up to the current schema first
     with get_db() as db:
