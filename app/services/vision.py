@@ -24,10 +24,12 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 PROMPT = (
-    "This photo shows a bookshelf. Read every book spine you can identify and "
-    "list each distinct book. Use the exact title as printed and the author if "
-    "readable (null if not). Skip objects that are not books and do not guess "
-    "titles you cannot actually read."
+    "This photo shows books — on a shelf, in a stack, or laid out. Text on "
+    "spines may run vertically or horizontally. Examine the image carefully, "
+    "section by section, and list EVERY distinct book you can identify — do "
+    "not stop after the most obvious ones. Use the exact title as printed and "
+    "the author if readable (null if not). Skip objects that are not books "
+    "and do not guess titles you cannot actually read."
 )
 
 BOOKS_SCHEMA = {
