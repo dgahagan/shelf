@@ -41,6 +41,15 @@ class TestClean:
         assert vision._clean([1, 2]) == []
         assert vision._clean(None) == []
 
+    def test_null_like_author_strings(self):
+        raw = {"books": [
+            {"title": "Fisher Body Service Manual", "authors": "null"},
+            {"title": "Solaris", "authors": "None"},
+            {"title": "Catch-22", "authors": "N/A"},
+            {"title": "Traction", "authors": "Unknown"},
+        ]}
+        assert all(b["authors"] is None for b in vision._clean(raw))
+
 
 class TestDetectSpines:
     @pytest.mark.asyncio

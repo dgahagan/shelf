@@ -69,6 +69,8 @@ def _clean(raw: object) -> list[dict]:
                 continue
             authors = entry.get("authors")
             authors = authors.strip() if isinstance(authors, str) else None
+            if authors and authors.lower() in ("null", "none", "n/a", "unknown"):
+                authors = None
             books.append({"title": title, "authors": authors or None})
     return books
 
