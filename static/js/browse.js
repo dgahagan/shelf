@@ -88,6 +88,7 @@ function browsePage() {
                 {name: 'owned', prefix: ''},
                 {name: 'lent_out', prefix: ''},
                 {name: 'reading_status', prefix: 'Status'},
+                {name: 'tag', prefix: 'Tag'},
                 {name: 'sort', prefix: 'Sort', skip: 'newest'},
             ];
             filterDefs.forEach(function(def) {
@@ -108,7 +109,7 @@ function browsePage() {
 
         updateUrl() {
             var params = new URLSearchParams();
-            var names = ['q', 'media_type_filter', 'location_filter', 'sort', 'reading_status', 'owned', 'lent_out'];
+            var names = ['q', 'media_type_filter', 'location_filter', 'sort', 'reading_status', 'owned', 'lent_out', 'tag'];
             names.forEach(function(name) {
                 var el = document.querySelector('[name="' + name + '"]');
                 if (!el) return;
@@ -129,7 +130,7 @@ function browsePage() {
         },
 
         clearAllFilters() {
-            var names = ['q', 'media_type_filter', 'location_filter', 'reading_status', 'owned', 'lent_out'];
+            var names = ['q', 'media_type_filter', 'location_filter', 'reading_status', 'owned', 'lent_out', 'tag'];
             names.forEach(function(name) {
                 var el = document.querySelector('[name="' + name + '"]');
                 if (el) el.value = '';

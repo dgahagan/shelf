@@ -183,6 +183,19 @@ CREATE TABLE IF NOT EXISTS game_platforms (
     sort_order INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS tags (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS item_tags (
+    item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    tag_id  INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    PRIMARY KEY (item_id, tag_id)
+);
+CREATE INDEX IF NOT EXISTS idx_item_tags_tag ON item_tags(tag_id);
 """
 
 

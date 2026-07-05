@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
@@ -26,6 +27,7 @@ async def browse(
     reading_status: str = "",
     owned: str = "",
     lent_out: str = "",
+    tag: str = "",
     _=Depends(require_role("viewer")),
 ):
     with get_db() as db:
@@ -40,6 +42,12 @@ async def browse(
         if location_filter:
             conditions.append("i.location_id = ?")
             params.append(int(location_filter))
+        if tag:
+            conditions.append(
+                "i.id IN (SELECT it.item_id FROM item_tags it "
+                "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
+            )
+            params.append(tag)
         if reading_status:
             conditions.append("i.reading_status = ?")
             params.append(reading_status)
@@ -107,6 +115,9 @@ async def browse(
             ).fetchall()
         }
 
+        from app.routers.tags import get_all_tags
+        all_tags = get_all_tags(db)
+
         has_more = len(items) < total_filtered
 
         # Build load-more URL preserving filters
@@ -125,6 +136,8 @@ async def browse(
             qs_parts.append(f"owned={owned}")
         if lent_out:
             qs_parts.append(f"lent_out={lent_out}")
+        if tag:
+            qs_parts.append(f"tag={quote(tag)}")
         qs_parts.append("page=2")
         load_more_url = "/api/search?" + "&".join(qs_parts)
 
@@ -136,7 +149,8 @@ async def browse(
             "media_types": MEDIA_TYPES,
             "locations": locations,
             "type_counts": type_counts,
-            "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out]) else total_count,
+            "all_tags": all_tags,
+            "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag]) else total_count,
             "owned_count": owned_count,
             "wishlist_count": wishlist_count,
             "lent_out_count": lent_out_count,
@@ -144,7 +158,7 @@ async def browse(
             "no_location_count": no_location_count,
             "reading_status_counts": reading_status_counts,
             "has_more": has_more,
-            "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out]),
+            "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag]),
             "load_more_url": load_more_url,
             "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
             "initial_query": q,
@@ -155,6 +169,7 @@ async def browse(
                 "reading_status": reading_status,
                 "owned": owned,
                 "lent_out": lent_out,
+                "tag": tag,
             },
         },
     )
@@ -235,11 +250,18 @@ async def item_detail(request: Request, item_id: int, _=Depends(require_role("vi
 
         game_platforms = get_game_platforms(db)
 
+        from app.routers.tags import get_item_tags, get_all_tags
+        item_tags = get_item_tags(db, item_id)
+        all_tags = get_all_tags(db)
+
     return request.app.state.templates.TemplateResponse(
         request,
         "item_detail.html",
         {
             "item": item,
+            "item_id": item_id,
+            "item_tags": item_tags,
+            "all_tags": all_tags,
             "media_types": MEDIA_TYPES,
             "game_platforms": game_platforms,
             "has_hardcover": has_hardcover,

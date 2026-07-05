@@ -567,6 +567,7 @@ async def search_items(
     reading_status: str = "",
     owned: str = "",
     lent_out: str = "",
+    tag: str = "",
     view: str = "",
     page: int = 1,
     per_page: int = DEFAULT_PAGE_SIZE,
@@ -582,7 +583,7 @@ async def search_items(
     loc = location or location_filter
 
     # Build conditions in groups so we can compute cross-filter counts
-    base_conds = []  # search + location + reading_status + lent_out
+    base_conds = []  # search + location + reading_status + lent_out + tag
     base_params: list = []
     if q:
         base_conds.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
@@ -595,6 +596,12 @@ async def search_items(
         base_params.append(reading_status)
     if lent_out == "1":
         base_conds.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+    if tag:
+        base_conds.append(
+            "i.id IN (SELECT it.item_id FROM item_tags it "
+            "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
+        )
+        base_params.append(tag)
 
     # Full conditions = base + type + owned
     conditions = list(base_conds)
@@ -677,6 +684,12 @@ async def search_items(
                 loc_params.append(reading_status)
             if lent_out == "1":
                 loc_conds.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+            if tag:
+                loc_conds.append(
+                    "i.id IN (SELECT it.item_id FROM item_tags it "
+                    "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
+                )
+                loc_params.append(tag)
             if mt:
                 loc_conds.append("i.media_type = ?")
                 loc_params.append(mt)
@@ -721,6 +734,12 @@ async def search_items(
                     rs_params_clean.append(int(loc))
                 if lent_out == "1":
                     rs_conds_clean.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
+                if tag:
+                    rs_conds_clean.append(
+                        "i.id IN (SELECT it.item_id FROM item_tags it "
+                        "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
+                    )
+                    rs_params_clean.append(tag)
                 if mt:
                     rs_conds_clean.append("i.media_type = ?")
                     rs_params_clean.append(mt)
@@ -779,6 +798,9 @@ async def search_items(
         qs_parts.append(f"owned={owned}")
     if lent_out:
         qs_parts.append(f"lent_out={lent_out}")
+    if tag:
+        from urllib.parse import quote
+        qs_parts.append(f"tag={quote(tag)}")
     if view:
         qs_parts.append(f"view={view}")
     qs_parts.append(f"page={page + 1}")
@@ -793,7 +815,7 @@ async def search_items(
         template = "fragments/item_cards_page.html"
 
     from datetime import datetime, timedelta
-    has_filters = any([q, mt, loc, reading_status, owned, lent_out])
+    has_filters = any([q, mt, loc, reading_status, owned, lent_out, tag])
     ctx = {
         "items": items,
         "media_types": MEDIA_TYPES,

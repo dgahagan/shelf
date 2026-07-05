@@ -1,0 +1,31 @@
+<div id="item-tags" class="mb-6">
+    {% if item_tags or (user and user.role in ('admin', 'editor')) %}
+    <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Tags</p>
+    <div class="flex flex-wrap items-center gap-2">
+        {% for tag in item_tags %}
+        <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-shelf-accent/10 text-shelf-accent2 border border-shelf-accent/20 rounded-full text-xs">
+            <a href="/browse?tag={{ tag.name|urlencode }}" class="hover:text-shelf-accent transition-colors">{{ tag.name }}</a>
+            {% if user and user.role in ('admin', 'editor') %}
+            <button hx-delete="/api/items/{{ item_id }}/tags/{{ tag.id }}"
+                    hx-target="#item-tags" hx-swap="outerHTML"
+                    class="hover:text-shelf-error ml-0.5" title="Remove tag">&times;</button>
+            {% endif %}
+        </span>
+        {% endfor %}
+        {% if user and user.role in ('admin', 'editor') %}
+        <form hx-post="/api/items/{{ item_id }}/tags"
+              hx-target="#item-tags" hx-swap="outerHTML"
+              class="inline-flex items-center gap-1">
+            <input type="text" name="name" list="tag-suggestions" placeholder="+ tag"
+                   maxlength="40" autocomplete="off"
+                   class="w-24 bg-shelf-bg border border-shelf-border rounded-full px-2.5 py-1 text-xs text-shelf-text focus:ring-1 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+            <datalist id="tag-suggestions">
+                {% for tag in all_tags %}
+                <option value="{{ tag.name }}"></option>
+                {% endfor %}
+            </datalist>
+        </form>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>

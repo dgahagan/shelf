@@ -105,6 +105,8 @@
                 </div>
                 {% endif %}
 
+                {% include "fragments/item_tags.html" %}
+
                 {% if item.notes %}
                 <div class="text-sm bg-shelf-bg rounded-lg p-3 mb-6">
                     <span class="text-shelf-muted">Notes:</span> {{ item.notes }}
