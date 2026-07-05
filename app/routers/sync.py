@@ -76,6 +76,110 @@ async def test_audiobookshelf(request: Request):
         return {"ok": False, "message": "Connection failed — check URL and network"}
 
 
+@router.get("/audiobookshelf/libraries")
+async def list_abs_libraries():
+    """List ABS libraries with their current include/exclude state."""
+    with get_db() as db:
+        url = get_setting(db, "abs_url")
+        token = get_setting(db, "abs_token")
+    if not url or not token:
+        return {"ok": False, "message": "Audiobookshelf is not configured"}
+
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await client.get(
+                f"{url}/api/libraries", headers={"Authorization": f"Bearer {token}"})
+    except httpx.HTTPError:
+        return {"ok": False, "message": f"Cannot connect to {url}"}
+    if resp.status_code != 200:
+        return {"ok": False, "message": f"ABS returned HTTP {resp.status_code}"}
+
+    excluded = audiobookshelf.get_excluded_libraries()
+    libraries = [
+        {"id": lib.get("id"), "name": lib.get("name"),
+         "media_type": lib.get("mediaType"), "included": lib.get("id") not in excluded}
+        for lib in resp.json().get("libraries", [])
+    ]
+    return {"ok": True, "libraries": libraries}
+
+
+@router.post("/audiobookshelf/libraries")
+async def save_abs_libraries(request: Request):
+    """Save which ABS libraries to sync. Body: {excluded: [library_id, ...]}."""
+    try:
+        body = await request.json()
+        excluded = [str(x) for x in (body.get("excluded") or [])]
+    except Exception:
+        return {"ok": False, "message": "Invalid request body"}
+
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO settings (key, value) VALUES ('abs_excluded_libraries', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (json.dumps(excluded),),
+        )
+    return {"ok": True, "excluded": excluded}
+
+
+@router.post("/audiobookshelf/libraries/cleanup")
+async def cleanup_excluded_libraries():
+    """Delete Shelf items that came from ABS libraries now marked excluded.
+
+    Matches items two ways: by stamped abs_library_id (items synced after
+    the column existed) and by live ABS listing of each excluded library
+    (covers items synced before stamping). ABS itself is never touched.
+    """
+    excluded = audiobookshelf.get_excluded_libraries()
+    if not excluded:
+        return {"ok": True, "deleted": 0, "message": "No libraries are excluded"}
+
+    with get_db() as db:
+        url = get_setting(db, "abs_url")
+        token = get_setting(db, "abs_token")
+    if not url or not token:
+        return {"ok": False, "message": "Audiobookshelf is not configured"}
+
+    abs_ids: set[str] = set()
+    try:
+        async with httpx.AsyncClient(timeout=60) as client:
+            for lib_id in excluded:
+                resp = await client.get(
+                    f"{url}/api/libraries/{lib_id}/items",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={"limit": 10000},
+                )
+                if resp.status_code == 200:
+                    abs_ids.update(
+                        item.get("id") for item in resp.json().get("results", [])
+                        if item.get("id"))
+    except httpx.HTTPError:
+        return {"ok": False, "message": f"Cannot connect to {url}"}
+
+    deleted = 0
+    with get_db() as db:
+        lib_placeholders = ",".join("?" * len(excluded))
+        rows = db.execute(
+            f"SELECT id FROM items WHERE abs_library_id IN ({lib_placeholders})",
+            tuple(excluded),
+        ).fetchall()
+        ids = {r["id"] for r in rows}
+        if abs_ids:
+            id_placeholders = ",".join("?" * len(abs_ids))
+            rows = db.execute(
+                f"SELECT id FROM items WHERE abs_id IN ({id_placeholders})",
+                tuple(abs_ids),
+            ).fetchall()
+            ids.update(r["id"] for r in rows)
+
+        for item_id in ids:
+            db.execute("UPDATE scan_log SET item_id = NULL WHERE item_id = ?", (item_id,))
+            db.execute("DELETE FROM items WHERE id = ?", (item_id,))
+            deleted += 1
+
+    logger.info("Removed %d items from %d excluded ABS libraries", deleted, len(excluded))
+    return {"ok": True, "deleted": deleted}
+
+
 @router.post("/audiobookshelf")
 async def sync_audiobookshelf(request: Request):
     with get_db() as db:

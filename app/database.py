@@ -89,6 +89,7 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
     (11, "Add platform column",               "ALTER TABLE items ADD COLUMN platform TEXT DEFAULT NULL"),
     (12, "Add scan_log mode column",          "ALTER TABLE scan_log ADD COLUMN mode TEXT DEFAULT 'add'"),
     (13, "Add users token_version column",    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1"),
+    (14, "Add abs_library_id column",         "ALTER TABLE items ADD COLUMN abs_library_id TEXT DEFAULT NULL"),
 )
 
 MIGRATION_TABLES = """

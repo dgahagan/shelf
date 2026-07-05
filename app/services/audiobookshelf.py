@@ -1,3 +1,4 @@
+import json
 import logging
 
 import httpx
@@ -8,6 +9,20 @@ from app.services import covers
 logger = logging.getLogger(__name__)
 
 
+def get_excluded_libraries() -> set[str]:
+    """ABS library IDs the user has opted out of syncing (JSON setting)."""
+    with get_db() as db:
+        row = db.execute(
+            "SELECT value FROM settings WHERE key = 'abs_excluded_libraries'"
+        ).fetchone()
+    if not row or not row["value"]:
+        return set()
+    try:
+        return set(json.loads(row["value"]))
+    except (json.JSONDecodeError, TypeError):
+        return set()
+
+
 async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
     """Sync items from Audiobookshelf. Returns summary stats.
 
@@ -16,6 +31,7 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
     stats = {"added": 0, "updated": 0, "skipped": 0, "errors": 0}
 
     headers = {"Authorization": f"Bearer {abs_token}"}
+    excluded = get_excluded_libraries()
 
     async with httpx.AsyncClient(timeout=30) as client:
         # Get libraries
@@ -23,7 +39,10 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
         if resp.status_code != 200:
             return {"error": f"Failed to connect: HTTP {resp.status_code}"}
 
-        libraries = resp.json().get("libraries", [])
+        libraries = [
+            lib for lib in resp.json().get("libraries", [])
+            if lib.get("id") not in excluded
+        ]
 
         # First pass: fetch all library items to get total count
         lib_items = []
@@ -105,11 +124,12 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                             """UPDATE items SET title=?, authors=?, narrator=?,
                                isbn=?, series_name=?, publisher=?, publish_year=?,
                                description=?, duration_mins=?, media_type=?,
+                               abs_library_id=?,
                                updated_at=datetime('now')
                                WHERE abs_id=?""",
                             (title, authors, narrator, isbn, series_name,
                              publisher, pub_year, description, duration_mins,
-                             media_type, abs_id),
+                             media_type, lib_id, abs_id),
                         )
                         stats["updated"] += 1
                         item_id = existing["id"]
@@ -119,10 +139,11 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         cursor = db.execute(
                             """INSERT INTO items (title, authors, isbn, media_type, publisher,
                                publish_year, description, series_name, narrator, duration_mins,
-                               abs_id, source)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'audiobookshelf')""",
+                               abs_id, abs_library_id, source)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'audiobookshelf')""",
                             (title, authors, isbn, media_type, publisher,
-                             pub_year, description, series_name, narrator, duration_mins, abs_id),
+                             pub_year, description, series_name, narrator, duration_mins,
+                             abs_id, lib_id),
                         )
                         item_id = cursor.lastrowid
                         stats["added"] += 1

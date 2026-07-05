@@ -313,6 +313,76 @@
                 </select>
                 <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
             </form>
+
+            <!-- Library selection -->
+            <div class="mt-4 pt-4 border-t border-shelf-border"
+                 x-data="{ libs: null, libsLoading: false, libsError: null, libsSaving: false, cleaning: false, cleanResult: null,
+                           excludedIds() { return this.libs.filter(l => !l.included).map(l => l.id) },
+                           loadLibs() {
+                               this.libsLoading = true; this.libsError = null;
+                               fetch('/api/sync/audiobookshelf/libraries')
+                                   .then(r => r.json())
+                                   .then(d => { if (d.ok) { this.libs = d.libraries } else { this.libsError = d.message } this.libsLoading = false })
+                                   .catch(() => { this.libsError = 'Failed to load libraries'; this.libsLoading = false });
+                           },
+                           saveLibs() {
+                               this.libsSaving = true;
+                               fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
+                                   .then(r => r.json())
+                                   .then(d => { this.libsSaving = false; if (d.ok) showToast('Library selection saved'); else showToast(d.message || 'Save failed', 'error') })
+                                   .catch(() => { this.libsSaving = false; showToast('Save failed', 'error') });
+                           },
+                           cleanup() {
+                               if (!confirm('Remove all Shelf items that came from unchecked libraries? Audiobookshelf itself is not touched, and re-checking a library re-imports them on the next sync.')) return;
+                               this.cleaning = true; this.cleanResult = null;
+                               // Persist the current selection first so the cleanup matches what's on screen
+                               fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
+                                   .then(() => fetch('/api/sync/audiobookshelf/libraries/cleanup', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}}))
+                                   .then(r => r.json())
+                                   .then(d => { this.cleaning = false; this.cleanResult = d; if (d.ok) showToast('Removed ' + d.deleted + ' items') })
+                                   .catch(() => { this.cleaning = false; showToast('Cleanup failed', 'error') });
+                           } }">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-shelf-text">Libraries to sync</p>
+                        <p class="text-xs text-shelf-muted">Uncheck libraries you don't want in Shelf (e.g. a dump of files you're not cataloging).</p>
+                    </div>
+                    <button @click="loadLibs()" x-show="!libs" :disabled="libsLoading"
+                            class="px-3 py-1.5 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors disabled:opacity-50 shrink-0">
+                        <span x-show="!libsLoading">Manage Libraries</span>
+                        <span x-show="libsLoading">Loading&hellip;</span>
+                    </button>
+                </div>
+                <p x-show="libsError" x-cloak class="text-xs text-shelf-error mt-2" x-text="libsError"></p>
+                <template x-if="libs">
+                    <div class="mt-3 space-y-2">
+                        <template x-for="lib in libs" :key="lib.id">
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" x-model="lib.included"
+                                       class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                                <span class="text-shelf-text" x-text="lib.name"></span>
+                                <span class="text-xs text-shelf-muted" x-text="'(' + lib.media_type + ')'"></span>
+                            </label>
+                        </template>
+                        <div class="flex items-center gap-2 pt-2">
+                            <button @click="saveLibs()" :disabled="libsSaving"
+                                    class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
+                                <span x-show="!libsSaving">Save Selection</span>
+                                <span x-show="libsSaving">Saving&hellip;</span>
+                            </button>
+                            <button @click="cleanup()" :disabled="cleaning || excludedIds().length === 0"
+                                    class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors disabled:opacity-50">
+                                <span x-show="!cleaning">Remove Excluded Items from Shelf</span>
+                                <span x-show="cleaning">Removing&hellip;</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-shelf-muted">Remove saves the selection, then deletes items already synced from unchecked libraries.</p>
+                        <template x-if="cleanResult && cleanResult.ok">
+                            <p class="text-xs text-shelf-success">Removed <span x-text="cleanResult.deleted"></span> items.</p>
+                        </template>
+                    </div>
+                </template>
+            </div>
         </div>
     </div>
 
