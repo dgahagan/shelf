@@ -202,6 +202,23 @@ async def scan(request: Request, _=Depends(require_role("editor"))):
     )
 
 
+@router.get("/intake")
+async def intake(request: Request, _=Depends(require_role("editor"))):
+    """Shelf-photo bulk intake page."""
+    from app.database import get_all_settings
+    with get_db() as db:
+        locations = db.execute(
+            "SELECT * FROM locations ORDER BY sort_order, name"
+        ).fetchall()
+        app_settings = get_all_settings(db)
+    provider = app_settings.get("vision_provider") or ""
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "intake.html",
+        {"locations": locations, "vision_provider": provider},
+    )
+
+
 @router.get("/item/{item_id}")
 async def item_detail(request: Request, item_id: int, _=Depends(require_role("viewer"))):
     with get_db() as db:

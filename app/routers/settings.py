@@ -40,6 +40,38 @@ async def update_settings(
     return RedirectResponse(url="/settings", status_code=303)
 
 
+@router.post("/vision")
+async def update_vision_settings(
+    vision_provider: str = Form(""),
+    anthropic_api_key: str = Form(""),
+    anthropic_vision_model: str = Form(""),
+    ollama_url: str = Form(""),
+    ollama_model: str = Form(""),
+):
+    """Save photo-intake vision settings.
+
+    Separate handler (like /lending) so this partial form doesn't blank
+    the other integration credentials.
+    """
+    if vision_provider not in ("", "anthropic", "ollama"):
+        return {"ok": False, "message": "Unknown vision provider"}
+    secret = get_secret_key()
+    with get_db() as db:
+        for key, value in [
+            ("vision_provider", vision_provider),
+            ("anthropic_api_key", anthropic_api_key.strip()),
+            ("anthropic_vision_model", anthropic_vision_model.strip()),
+            ("ollama_url", ollama_url.strip().rstrip("/")),
+            ("ollama_model", ollama_model.strip()),
+        ]:
+            stored = encrypt_value(value, secret) if key in SENSITIVE_KEYS and value else value
+            db.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = ?",
+                (key, stored, stored),
+            )
+    return RedirectResponse(url="/settings", status_code=303)
+
+
 @router.post("/lending")
 async def update_lending_settings(
     lending_overdue_days: str = Form("28"),

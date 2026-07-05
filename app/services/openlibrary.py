@@ -144,7 +144,8 @@ async def get_work_description(work_key: str, client: httpx.AsyncClient) -> str 
     return desc
 
 
-_SEARCH_FIELDS = "key,title,author_name,first_publish_year,publisher,cover_i,isbn,number_of_pages_median"
+_SEARCH_FIELDS = ("key,title,author_name,first_publish_year,publisher,cover_i,isbn,"
+                  "number_of_pages_median,language,editions,editions.isbn")
 
 
 async def search_books(query: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
@@ -168,7 +169,9 @@ async def _search(params: dict, client: httpx.AsyncClient, limit: int) -> list[d
     await _rate_limit()
     resp = await client.get(
         "https://openlibrary.org/search.json",
-        params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS},
+        # lang=en makes the `editions` subquery surface the best English
+        # edition per work, so translations don't win the ISBN pick
+        params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": "en"},
         headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
     )
     if resp.status_code != 200:
@@ -182,7 +185,10 @@ async def _search(params: dict, client: httpx.AsyncClient, limit: int) -> list[d
         if not title:
             continue
         authors = doc.get("author_name", [])
-        isbns = doc.get("isbn", [])
+        # Prefer the best-matching edition's ISBNs (language-aware), then
+        # fall back to the work-wide pool
+        edition_docs = (doc.get("editions") or {}).get("docs") or []
+        isbns = (edition_docs[0].get("isbn") if edition_docs else None) or doc.get("isbn", [])
         # Prefer ISBN-13 (starts with 978/979)
         isbn = None
         for i in isbns:
@@ -200,6 +206,7 @@ async def _search(params: dict, client: httpx.AsyncClient, limit: int) -> list[d
         results.append({
             "title": title,
             "work_key": doc.get("key"),
+            "languages": doc.get("language") or [],
             "authors": ", ".join(authors) if authors else None,
             "publish_year": doc.get("first_publish_year"),
             "publisher": doc.get("publisher", [None])[0] if doc.get("publisher") else None,

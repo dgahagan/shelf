@@ -33,7 +33,7 @@ from starlette.responses import Response, RedirectResponse
 
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.database import init_db, get_db
-from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags
+from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake
 from app.routers import auth_routes
 
 
@@ -52,7 +52,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "default-src 'self'; "
             "script-src 'self' 'unsafe-eval'; "
             "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: https:; "
+            "img-src 'self' data: blob: https:; "  # blob: for the intake photo preview
             "connect-src 'self'; "
             "font-src 'self' data:; "
             "frame-ancestors 'none';"
@@ -443,3 +443,4 @@ app.include_router(store.router)
 app.include_router(series.router)
 app.include_router(share.router)
 app.include_router(tags.router)
+app.include_router(intake.router)

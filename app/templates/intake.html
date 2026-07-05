@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Photo Intake — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto" x-data="intakePage()">
+    <h1 class="text-2xl font-bold mb-1">Photo Intake</h1>
+    <p class="text-sm text-shelf-muted mb-6">Photograph a shelf, let the vision model read the spines, then confirm which books to add.</p>
+
+    {% if not vision_provider %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-warning/30 p-6 text-sm">
+        <p class="font-medium text-shelf-warning mb-1">No vision provider configured</p>
+        <p class="text-shelf-muted">Set one up under <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent">Settings &rarr; Integrations &rarr; Photo Intake</a> — either an Anthropic API key (best accuracy) or a local Ollama model (free, private).</p>
+    </div>
+    {% else %}
+
+    <!-- Step 1: choose / capture photo -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3">
+            <input type="file" accept="image/*" capture="environment" x-ref="photoInput"
+                   @change="onFileChosen($event)"
+                   class="text-sm text-shelf-muted file:mr-3 file:rounded-lg file:border-0 file:bg-shelf-hover file:px-3 file:py-1.5 file:text-sm file:text-shelf-text hover:file:bg-shelf-border">
+            <button @click="analyze()" :disabled="!file || analyzing"
+                    class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50 whitespace-nowrap">
+                <span x-show="!analyzing">Read Spines</span>
+                <span x-show="analyzing">Reading&hellip;</span>
+            </button>
+        </div>
+        <p class="text-xs text-shelf-muted mt-2">Provider: <span class="text-shelf-text">{{ 'Anthropic API' if vision_provider == 'anthropic' else 'Ollama (local)' }}</span> &middot; photos are analyzed in memory and not stored.</p>
+        <template x-if="preview">
+            <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64">
+        </template>
+        <p x-show="error" x-cloak class="text-sm text-shelf-error mt-3" x-text="error"></p>
+    </div>
+
+    <!-- Step 2: review candidates -->
+    <div x-show="books.length > 0" x-cloak class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Found <span x-text="books.length"></span> books</h2>
+            <div class="flex gap-2 text-xs">
+                <button @click="books.forEach(b => b.include = true)" class="text-shelf-accent2 hover:text-shelf-accent">Select all</button>
+                <button @click="books.forEach(b => b.include = false)" class="text-shelf-muted hover:text-shelf-text">Deselect all</button>
+            </div>
+        </div>
+        <div class="space-y-2 mb-4">
+            <template x-for="(book, i) in books" :key="i">
+                <div class="flex items-center gap-2">
+                    <input type="checkbox" x-model="book.include"
+                           class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent shrink-0">
+                    <input type="text" x-model="book.title" placeholder="Title"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                    <input type="text" x-model="book.authors" placeholder="Author"
+                           class="w-48 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                </div>
+            </template>
+        </div>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-shelf-border">
+            <select x-model="locationId" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">No location</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+            <label class="flex items-center gap-2 text-sm text-shelf-muted cursor-pointer">
+                <input type="checkbox" x-model="owned" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                Owned (uncheck for wishlist)
+            </label>
+            <button @click="confirm()" :disabled="confirming || selectedCount() === 0"
+                    class="sm:ml-auto px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
+                <span x-show="!confirming">Add <span x-text="selectedCount()"></span> to Library</span>
+                <span x-show="confirming">Adding&hellip;</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Step 3: result -->
+    <div x-show="result" x-cloak class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-3">Done</h2>
+        <p class="text-sm text-shelf-muted mb-3">
+            Added <span class="text-shelf-success font-medium" x-text="result && result.added.length"></span>
+            <span x-show="result && result.skipped.length > 0">
+                &middot; skipped <span x-text="result && result.skipped.length"></span>
+            </span>
+            &mdash; covers are fetched in the background.
+        </p>
+        <div class="space-y-1 text-sm">
+            <template x-for="a in (result ? result.added : [])" :key="'a' + a.id">
+                <p><a :href="'/item/' + a.id" class="text-shelf-accent2 hover:text-shelf-accent" x-text="a.title"></a></p>
+            </template>
+            <template x-for="(s, i) in (result ? result.skipped : [])" :key="'s' + i">
+                <p class="text-shelf-muted"><span x-text="s.title"></span> <span class="text-xs">(<span x-text="s.reason"></span>)</span></p>
+            </template>
+        </div>
+        <button @click="reset()" class="mt-4 px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+            Scan Another Shelf
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<script src="/static/js/intake.js"></script>
+{% endblock %}

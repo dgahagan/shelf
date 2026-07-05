@@ -830,6 +830,57 @@
         </form>
     </div>
 
+    <!-- Photo Intake (Vision) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{ visionProvider: '{{ settings.get('vision_provider', '') }}' }">
+        <h2 class="text-lg font-semibold mb-1">Photo Intake (Vision)</h2>
+        <p class="text-sm text-shelf-muted mb-4">Bulk-add books by photographing a shelf &mdash; a vision model reads the spines. Use the Anthropic API (best accuracy, pay per photo) or a local Ollama model (free and private, needs a vision-capable model like gemma3).</p>
+        <form action="/api/settings/vision" method="post" class="space-y-3">
+            <div>
+                <label for="vision_provider" class="block text-sm font-medium text-shelf-muted mb-1">Provider</label>
+                <select id="vision_provider" name="vision_provider" x-model="visionProvider"
+                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">Disabled</option>
+                    <option value="anthropic">Anthropic API</option>
+                    <option value="ollama">Ollama (local)</option>
+                </select>
+            </div>
+            <div x-show="visionProvider === 'anthropic'" class="space-y-3">
+                <div>
+                    <label for="anthropic_api_key" class="block text-sm font-medium text-shelf-muted mb-1">Anthropic API Key</label>
+                    <input type="password" id="anthropic_api_key" name="anthropic_api_key"
+                           value="{{ settings.get('anthropic_api_key', '') }}" placeholder="sk-ant-..."
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Get one at console.anthropic.com. Stored encrypted; only used server-side.</p>
+                </div>
+                <div>
+                    <label for="anthropic_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
+                    <input type="text" id="anthropic_vision_model" name="anthropic_vision_model"
+                           value="{{ settings.get('anthropic_vision_model', '') }}" placeholder="claude-opus-4-8 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                </div>
+            </div>
+            <div x-show="visionProvider === 'ollama'" class="space-y-3">
+                <div>
+                    <label for="ollama_url" class="block text-sm font-medium text-shelf-muted mb-1">Ollama URL</label>
+                    <input type="text" id="ollama_url" name="ollama_url"
+                           value="{{ settings.get('ollama_url', '') }}" placeholder="http://localhost:11434 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                </div>
+                <div>
+                    <label for="ollama_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
+                    <input type="text" id="ollama_model" name="ollama_model"
+                           value="{{ settings.get('ollama_model', '') }}" placeholder="gemma3:12b (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;).</p>
+                </div>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+
     <!-- IGDB (Video Games) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{ igdbStatus: null, igdbTesting: false, showIgdbHelp: false, igdbId: '{{ settings.get('igdb_client_id', '') }}', igdbSecret: '{{ settings.get('igdb_client_secret', '') }}' }">

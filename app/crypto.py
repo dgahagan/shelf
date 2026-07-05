@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 SENSITIVE_KEYS: frozenset[str] = frozenset(
     {
         "abs_token",
+        "anthropic_api_key",
         "hardcover_token",
         "isbndb_api_key",
         "tmdb_api_key",
