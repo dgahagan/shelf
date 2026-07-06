@@ -1,0 +1,19 @@
+# Defense-in-depth: the Dockerfile only COPYs requirements.txt, app/,
+# static/, and entrypoint.sh, but keep secrets and local state out of the
+# build context entirely so a future COPY change can't leak them.
+.env
+data/
+data-dev/
+.git/
+.github/
+.venv/
+.pytest_cache/
+.coverage
+.playwright-mcp/
+.claude/
+docs/
+tests/
+screenshots/
+scripts/
+node_modules/
+*.md

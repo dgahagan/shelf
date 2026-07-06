@@ -43,6 +43,24 @@ jobs:
             # Manual dispatch override
             type=raw,value=${{ inputs.tag_override }},enable=${{ inputs.tag_override != '' }}
 
+      - name: Build image for secret scan
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: dangahagan/shelf:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image for leaked secrets
+        # Fails the publish if trufflehog finds a *verified* secret baked into
+        # any layer. Unverified matches are ignored — the python base image
+        # ships docstring examples (user:pass@host) that would false-positive.
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            trufflesecurity/trufflehog:latest docker \
+            --image dangahagan/shelf:scan --results=verified --fail
+
       - uses: docker/build-push-action@v6
         with:
           context: .
