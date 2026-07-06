@@ -53,9 +53,9 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Update Docker Hub description
-        # Docker Hub's description API rejects personal access tokens — this
-        # only works if DOCKERHUB_TOKEN is the account password. Non-fatal so
-        # a PAT-based setup still publishes; sync DOCKERHUB_README.md by hand.
+        # Needs DOCKERHUB_TOKEN to have Read, Write & Delete scope (Docker
+        # Hub's description API rejects lesser scopes with 403). Non-fatal so
+        # a description hiccup never blocks the image publish.
         continue-on-error: true
         uses: peter-evans/dockerhub-description@v4
         with:
