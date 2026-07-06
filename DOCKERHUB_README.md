@@ -14,7 +14,7 @@ docker run -d \
   --name shelf \
   -p 18888:18888 \
   -v ./shelf-data:/data:z \
-  dgahagan/shelf:latest
+  dangahagan/shelf:latest
 ```
 
 Open **https://localhost:18888** and create your admin account via the setup wizard. That's it.
@@ -28,7 +28,7 @@ Create a `docker-compose.yml`:
 ```yaml
 services:
   shelf:
-    image: dgahagan/shelf:latest
+    image: dangahagan/shelf:latest
     container_name: shelf
     ports:
       - "18888:18888"
@@ -165,9 +165,9 @@ docker compose up -d
 Or with `docker run`:
 
 ```bash
-docker pull dgahagan/shelf:latest
+docker pull dangahagan/shelf:latest
 docker stop shelf && docker rm shelf
-docker run -d --name shelf -p 18888:18888 -v ./shelf-data:/data:z dgahagan/shelf:latest
+docker run -d --name shelf -p 18888:18888 -v ./shelf-data:/data:z dangahagan/shelf:latest
 ```
 
 Your data in the `/data` volume is preserved across updates.

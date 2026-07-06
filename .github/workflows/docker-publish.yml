@@ -28,7 +28,7 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: dgahagan/shelf
+          images: dangahagan/shelf
           tags: |
             # For "v1.2.3" → "1.2.3"
             type=semver,pattern={{version}}
@@ -57,6 +57,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: dgahagan/shelf
+          repository: dangahagan/shelf
           readme-filepath: ./DOCKERHUB_README.md
           short-description: "Self-hosted home library catalog — barcode & shelf-photo scanning, metadata, lending, offline PWA"
