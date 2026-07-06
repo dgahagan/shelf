@@ -2,9 +2,9 @@ fastapi==0.135.2
 uvicorn[standard]==0.42.0
 jinja2==3.1.6
 httpx==0.28.1
-python-multipart==0.0.22
+python-multipart==0.0.31
 aiofiles==25.1.0
-PyJWT==2.12.0
+PyJWT==2.13.0
 bcrypt==4.3.0
-cryptography==46.0.6
+cryptography==48.0.1
 anthropic==0.116.0

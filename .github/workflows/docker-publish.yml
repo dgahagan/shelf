@@ -59,4 +59,4 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           repository: dgahagan/shelf
           readme-filepath: ./DOCKERHUB_README.md
-          short-description: "Self-hosted home library catalog with barcode scanning and automatic metadata lookup"
+          short-description: "Self-hosted home library catalog — barcode & shelf-photo scanning, metadata, lending, offline PWA"

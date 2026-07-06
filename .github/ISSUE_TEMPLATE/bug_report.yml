@@ -1,0 +1,41 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+      placeholder: I scanned a barcode in Add mode and...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Shelf version
+      description: Release tag or image tag (e.g. v0.1.0, latest), or commit hash if running from source
+      placeholder: v0.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running Shelf?
+      options:
+        - Docker Hub image
+        - Docker (built from source)
+        - From source (uvicorn)
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser / device
+      placeholder: Firefox 140 on Android 16
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: From Settings → Logs or `docker compose logs shelf`. Redact anything personal.
+      render: text

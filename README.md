@@ -1,5 +1,10 @@
 # Shelf
 
+[![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
+[![Docker Pulls](https://img.shields.io/docker/pulls/dgahagan/shelf)](https://hub.docker.com/r/dgahagan/shelf)
+[![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
+
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
 
 <p align="center">
@@ -40,6 +45,10 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 | Valuation Report | Browse (Tag Filter) |
 |------------------|---------------------|
 | ![Valuation Report](screenshots/valuation-report.png) | ![Tag Filter](screenshots/browse-tag-filter.png) |
+
+| Photo Intake |
+|--------------|
+| ![Photo Intake](screenshots/photo-intake.png) |
 
 ## Quick Start
 
@@ -103,6 +112,10 @@ data/
 | **Quick Rate** | Scan to mark items as read/completed |
 
 ### Photo Intake
+
+<p align="center">
+  <img src="screenshots/photo-intake.png" width="700" alt="Photo Intake — reviewing books detected from a shelf photo">
+</p>
 
 Snap a photo of a shelf and Shelf reads the spines. Open **Photo Intake** in
 the nav, upload the photo, and the detected books appear as an editable
@@ -296,4 +309,6 @@ make reports MODEL=claude-opus-4-6
 
 ## License
 
-Personal project. Source available for reference and self-hosting.
+[AGPL-3.0](LICENSE) — free to use, self-host, and modify. If you offer a
+modified version of Shelf as a network service, you must make your changes
+available under the same license.
