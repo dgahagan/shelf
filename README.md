@@ -8,8 +8,10 @@
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
 
 <p align="center">
-  <img src="screenshots/browse.png" width="800" alt="Browse your collection">
+  <img src="screenshots/demo.gif" width="800" alt="Photo Intake demo — a shelf photo is analyzed by AI vision, 11 books are detected and imported with covers and metadata">
 </p>
+
+<p align="center"><em>Photo Intake: snap a shelf, AI reads the spines, books land in your library with covers and metadata.</em></p>
 
 ## Why Shelf?
 
