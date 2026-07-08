@@ -8,7 +8,7 @@
     {% if not vision_provider %}
     <div class="bg-shelf-card rounded-xl border border-shelf-warning/30 p-6 text-sm">
         <p class="font-medium text-shelf-warning mb-1">No vision provider configured</p>
-        <p class="text-shelf-muted">Set one up under <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent">Settings &rarr; Integrations &rarr; Photo Intake</a> — either an Anthropic API key (best accuracy) or a local Ollama model (free, private).</p>
+        <p class="text-shelf-muted">Set one up under <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent">Settings &rarr; Integrations &rarr; Photo Intake</a> — an Anthropic API key (best accuracy), any OpenAI-compatible endpoint, or a local Ollama model (free, private).</p>
     </div>
     {% else %}
 
@@ -24,7 +24,7 @@
                 <span x-show="analyzing">Reading&hellip;</span>
             </button>
         </div>
-        <p class="text-xs text-shelf-muted mt-2">Provider: <span class="text-shelf-text">{{ 'Anthropic API' if vision_provider == 'anthropic' else 'Ollama (local)' }}</span> &middot; photos are analyzed in memory and not stored.</p>
+        <p class="text-xs text-shelf-muted mt-2">Provider: <span class="text-shelf-text">{{ {'anthropic': 'Anthropic API', 'openai': 'OpenAI-compatible', 'ollama': 'Ollama (local)'}.get(vision_provider, vision_provider) }}</span> &middot; photos are analyzed in memory and not stored.</p>
         <template x-if="preview">
             <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64" x-show="!needsChoice">
         </template>

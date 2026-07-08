@@ -18,7 +18,7 @@ A self-hosted home library catalog with barcode scanning, multi-mode scanning wo
 Most home library apps are cloud-hosted, mobile-only, or require you to manually enter every book. Shelf takes a different approach:
 
 - **Scan and done** — point your phone camera at a barcode or use a USB/Bluetooth barcode scanner and the book is cataloged in seconds, complete with cover art, author, series info, and description. Works out of the box with any scanner that sends Enter after the barcode (most do by default)
-- **Bulk-add from a photo** — snap a picture of a full shelf and a vision model reads the spines. Review the detected titles, then import them all with full metadata and covers. Works with the Anthropic API or a fully local Ollama model
+- **Bulk-add from a photo** — snap a picture of a full shelf and a vision model reads the spines. Review the detected titles, then import them all with full metadata and covers. Works with the Anthropic API, any OpenAI-compatible endpoint, or a fully local Ollama model
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate. The scan tab adapts to whatever you're doing: adding new items, lending to a friend, reorganizing shelves, or auditing a room
 - **Title search** — don't have a barcode? Search by title across Open Library (books), TMDb (movies), and IGDB (video games) and add directly from results
 - **Zero cloud dependency** — runs entirely on your network in a single Docker container with a SQLite database. Your data never leaves your home
@@ -128,6 +128,9 @@ cover art, and an author-match guard keeps wrong editions from slipping in.
 Configure a vision backend under Settings → Integrations → Photo Intake:
 
 - **Anthropic API** — best accuracy; pay-per-photo (typically a few cents)
+- **OpenAI-compatible** — any endpoint that speaks the OpenAI Chat Completions
+  API: OpenAI itself, OpenRouter, or a local server (vLLM, LM Studio, LocalAI).
+  Set the base URL, an optional API key, and a vision-capable model
 - **Ollama** — free and fully local with any vision-capable model
   (gemma3, qwen2.5vl, llama3.2-vision, …); accuracy depends on the model
 
@@ -239,7 +242,9 @@ Configure in Settings to unlock additional features:
 | **IGDB** (Twitch) | Video game metadata, cover art, and platform info | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
 | **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
 | **TMDb** | DVD/Blu-ray metadata and title search via UPC barcode | [themoviedb.org](https://www.themoviedb.org) |
-| **Anthropic** | Photo Intake spine recognition (or use a local Ollama model — no key needed) | [console.anthropic.com](https://console.anthropic.com) |
+| **Anthropic** | Photo Intake spine recognition (best accuracy) | [console.anthropic.com](https://console.anthropic.com) |
+| **OpenAI-compatible** | Photo Intake via any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, vLLM, LM Studio…) | [platform.openai.com](https://platform.openai.com) |
+| **Ollama** | Photo Intake with a fully local vision model — no key needed | [ollama.com](https://ollama.com) |
 
 ## Development
 

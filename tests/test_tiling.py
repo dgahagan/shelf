@@ -48,6 +48,14 @@ class TestIngestCap:
         cap = tiling.ingest_cap({"vision_provider": "ollama", "ollama_ingest_long_edge": "896"})
         assert cap == {"long_edge": 896, "max_pixels": 896 * 896}
 
+    def test_openai_default(self):
+        cap = tiling.ingest_cap({"vision_provider": "openai"})
+        assert cap == {"long_edge": 2048, "max_pixels": 2048 * 2048}
+
+    def test_openai_setting_override(self):
+        cap = tiling.ingest_cap({"vision_provider": "openai", "openai_ingest_long_edge": "1536"})
+        assert cap == {"long_edge": 1536, "max_pixels": 1536 * 1536}
+
 
 class TestDownscaleFactor:
     def test_small_image_untouched(self):
@@ -128,6 +136,10 @@ class TestComputeGrid:
 class TestCostEstimator:
     def test_ollama_is_free(self):
         assert tiling.estimate_cost_usd([(6000, 4000)], {"vision_provider": "ollama"}, 50) is None
+
+    def test_openai_is_unestimated(self):
+        # Pricing varies across OpenAI-compatible endpoints; no estimate shown.
+        assert tiling.estimate_cost_usd([(6000, 4000)], {"vision_provider": "openai"}, 50) is None
 
     def test_image_tokens_capped(self):
         # A 24MP source downscaled to 3.75MP would be 5000 tokens raw; capped at 4784

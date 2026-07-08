@@ -10,6 +10,7 @@ from tests.conftest import _insert_item
 
 OL_SEARCH_URL = "https://openlibrary.org/search.json"
 ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 OLLAMA_URL = "http://localhost:11434/api/chat"
 
 FAKE_JPEG = b"\xff\xd8\xff" + b"0" * 100
@@ -21,6 +22,17 @@ def _anthropic_response(payload: dict):
         "model": "claude-opus-4-8", "stop_reason": "end_turn", "stop_sequence": None,
         "content": [{"type": "text", "text": json.dumps(payload)}],
         "usage": {"input_tokens": 10, "output_tokens": 10},
+    })
+
+
+def _openai_response(payload: dict):
+    return httpx.Response(200, json={
+        "id": "chatcmpl_test", "object": "chat.completion", "model": "gpt-4o-mini",
+        "choices": [{
+            "index": 0, "finish_reason": "stop",
+            "message": {"role": "assistant", "content": json.dumps(payload)},
+        }],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 10, "total_tokens": 20},
     })
 
 
@@ -74,6 +86,50 @@ class TestDetectSpines:
     async def test_anthropic_without_key(self):
         with pytest.raises(vision.VisionError, match="API key"):
             await vision.detect_spines(ONE_IMAGE, {"vision_provider": "anthropic"})
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_provider(self):
+        route = respx.post(OPENAI_URL).mock(return_value=_openai_response(
+            {"books": [{"title": "Dune", "authors": "Frank Herbert"}]}))
+        books = await vision.detect_spines(ONE_IMAGE, {
+            "vision_provider": "openai", "openai_api_key": "sk-test",
+        })
+        assert books == [{"title": "Dune", "authors": "Frank Herbert"}]
+        # Bearer auth + data-URI image + json_object mode
+        req = route.calls[0].request
+        assert req.headers["authorization"] == "Bearer sk-test"
+        body = json.loads(req.content)
+        assert body["response_format"] == {"type": "json_object"}
+        content = body["messages"][0]["content"]
+        img = next(b for b in content if b["type"] == "image_url")
+        assert img["image_url"]["url"].startswith("data:image/jpeg;base64,")
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_custom_base_url(self):
+        route = respx.post("http://localhost:1234/v1/chat/completions").mock(
+            return_value=_openai_response({"books": [{"title": "Dune", "authors": None}]}))
+        books = await vision.detect_spines(ONE_IMAGE, {
+            "vision_provider": "openai", "openai_api_key": "sk-test",
+            "openai_base_url": "http://localhost:1234/v1",
+        })
+        assert route.called
+        assert books == [{"title": "Dune", "authors": None}]
+
+    @pytest.mark.asyncio
+    async def test_openai_without_key(self):
+        with pytest.raises(vision.VisionError, match="API key"):
+            await vision.detect_spines(ONE_IMAGE, {"vision_provider": "openai"})
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_auth_error(self):
+        respx.post(OPENAI_URL).mock(return_value=httpx.Response(401, json={"error": "bad key"}))
+        with pytest.raises(vision.VisionError, match="rejected"):
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "openai", "openai_api_key": "sk-bad",
+            })
 
     @respx.mock
     @pytest.mark.asyncio
@@ -137,6 +193,38 @@ class TestDetectSpinesTiled:
         })
         assert route.call_count == 3
         # Overlap duplicate merged; the copy with authors wins
+        assert books == [
+            {"title": "Dune", "authors": "Frank Herbert"},
+            {"title": "Solaris", "authors": "Stanislaw Lem"},
+        ]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_tiles_go_in_one_request(self):
+        route = respx.post(OPENAI_URL).mock(return_value=_openai_response(
+            {"books": [{"title": "Dune", "authors": None}]}))
+        await vision.detect_spines(ONE_IMAGE * 3, {
+            "vision_provider": "openai", "openai_api_key": "sk-test",
+        })
+        assert route.call_count == 1
+        content = json.loads(route.calls[0].request.content)["messages"][0]["content"]
+        assert sum(1 for b in content if b["type"] == "image_url") == 3
+        prompt = next(b["text"] for b in content if b["type"] == "text")
+        assert "overlapping tiles" in prompt and "3 images" in prompt
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_per_tile_fallback_over_cap(self, monkeypatch):
+        monkeypatch.setattr(vision, "MAX_TILES_PER_REQUEST", 2)
+        route = respx.post(OPENAI_URL).mock(side_effect=[
+            _openai_response({"books": [{"title": "Dune", "authors": "Frank Herbert"}]}),
+            _openai_response({"books": [{"title": "Dune", "authors": None}]}),
+            _openai_response({"books": [{"title": "Solaris", "authors": "Stanislaw Lem"}]}),
+        ])
+        books = await vision.detect_spines(ONE_IMAGE * 3, {
+            "vision_provider": "openai", "openai_api_key": "sk-test",
+        })
+        assert route.call_count == 3
         assert books == [
             {"title": "Dune", "authors": "Frank Herbert"},
             {"title": "Solaris", "authors": "Stanislaw Lem"},
@@ -270,6 +358,13 @@ class TestPlanEndpoint:
         self._configure(db, provider="ollama")
         data = admin_client.post("/api/intake/plan", json={"width": 6000, "height": 4000}).json()
         assert data["needs_choice"] is True
+        assert data["cost_as_is_usd"] is None
+        assert data["cost_tiled_usd"] is None
+
+    def test_openai_costs_are_null(self, admin_client, db):
+        self._configure(db, provider="openai")
+        data = admin_client.post("/api/intake/plan", json={"width": 6000, "height": 4000}).json()
+        assert data["ok"] is True
         assert data["cost_as_is_usd"] is None
         assert data["cost_tiled_usd"] is None
 

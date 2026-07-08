@@ -4,6 +4,15 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- **Photo Intake — OpenAI-compatible backend** — a third vision provider that
+  targets any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, or a local
+  server such as vLLM / LM Studio / LocalAI) via a configurable base URL, API
+  key, and model. Reuses the existing tiling and dedup pipeline.
+
 ## [0.1.0] - 2026-07-05
 
 First public release.

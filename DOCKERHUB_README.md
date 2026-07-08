@@ -100,7 +100,7 @@ data/
 ### Scanning and Cataloging
 - **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
 - **USB/Bluetooth scanner support** — works with any scanner that sends Enter after the barcode
-- **Photo intake** — bulk-add books from a photo of your shelves; a vision model (Anthropic API or fully local Ollama) reads the spines and you confirm before import
+- **Photo intake** — bulk-add books from a photo of your shelves; a vision model (Anthropic API, any OpenAI-compatible endpoint, or fully local Ollama) reads the spines and you confirm before import
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, Google Books, and more
 - **Cover art pipeline** — automatically fetches covers from multiple sources with manual upload fallback
@@ -153,7 +153,9 @@ Shelf works fully out of the box with no API keys. These optional integrations a
 | [IGDB](https://dev.twitch.tv/console) (Twitch) | Video game metadata, cover art, platform info | Yes |
 | [TMDb](https://www.themoviedb.org) | DVD/Blu-ray metadata from UPC barcodes | Yes |
 | [ISBNdb](https://isbndb.com) | Collection valuation with market prices | Paid |
-| [Anthropic](https://console.anthropic.com) | Photo Intake spine recognition (or use a local Ollama model — free) | Pay-per-use |
+| [Anthropic](https://console.anthropic.com) | Photo Intake spine recognition (best accuracy) | Pay-per-use |
+| [OpenAI-compatible](https://platform.openai.com) | Photo Intake via any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, vLLM, LM Studio…) | Pay-per-use / free |
+| [Ollama](https://ollama.com) | Photo Intake with a fully local vision model | Free |
 
 ## Updating
 

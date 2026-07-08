@@ -63,31 +63,46 @@ async def update_vision_settings(
     vision_provider: str = Form(""),
     anthropic_api_key: str = Form(""),
     anthropic_vision_model: str = Form(""),
+    openai_base_url: str = Form(""),
+    openai_api_key: str = Form(""),
+    openai_vision_model: str = Form(""),
+    openai_ingest_long_edge: str = Form(""),
     ollama_url: str = Form(""),
     ollama_model: str = Form(""),
     ollama_ingest_long_edge: str = Form(""),
     clear_anthropic_api_key: str = Form(""),
+    clear_openai_api_key: str = Form(""),
 ):
     """Save photo-intake vision settings.
 
     Separate handler (like /lending) so this partial form doesn't blank
     the other integration credentials.
     """
-    if vision_provider not in ("", "anthropic", "ollama"):
+    if vision_provider not in ("", "anthropic", "openai", "ollama"):
         return {"ok": False, "message": "Unknown vision provider"}
-    long_edge = ollama_ingest_long_edge.strip()
-    if long_edge and not long_edge.isdigit():
+    ollama_long_edge = ollama_ingest_long_edge.strip()
+    if ollama_long_edge and not ollama_long_edge.isdigit():
         return {"ok": False, "message": "Ollama image size must be a whole number of pixels"}
+    openai_long_edge = openai_ingest_long_edge.strip()
+    if openai_long_edge and not openai_long_edge.isdigit():
+        return {"ok": False, "message": "OpenAI image size must be a whole number of pixels"}
+    # Each API key clears independently via its own checkbox.
+    clears = {"anthropic_api_key": clear_anthropic_api_key == "on",
+              "openai_api_key": clear_openai_api_key == "on"}
     with get_db() as db:
         for key, value in [
             ("vision_provider", vision_provider),
             ("anthropic_api_key", anthropic_api_key.strip()),
             ("anthropic_vision_model", anthropic_vision_model.strip()),
+            ("openai_base_url", openai_base_url.strip().rstrip("/")),
+            ("openai_api_key", openai_api_key.strip()),
+            ("openai_vision_model", openai_vision_model.strip()),
+            ("openai_ingest_long_edge", openai_long_edge),
             ("ollama_url", ollama_url.strip().rstrip("/")),
             ("ollama_model", ollama_model.strip()),
-            ("ollama_ingest_long_edge", long_edge),
+            ("ollama_ingest_long_edge", ollama_long_edge),
         ]:
-            _upsert_setting(db, key, value, cleared=clear_anthropic_api_key == "on" and key == "anthropic_api_key")
+            _upsert_setting(db, key, value, cleared=clears.get(key, False))
     return RedirectResponse(url="/settings", status_code=303)
 
 

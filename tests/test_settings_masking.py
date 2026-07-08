@@ -120,6 +120,30 @@ class TestWriteOnlySemantics:
         with get_db() as db:
             assert get_setting(db, "anthropic_api_key") == ""
 
+    def test_openai_key_keep_and_clear(self, admin_client):
+        admin_client.post(
+            "/api/settings/vision",
+            data={"vision_provider": "openai", "openai_api_key": "sk-openai-secret"},
+            follow_redirects=False,
+        )
+        # Blank submit keeps the stored key (masked field posts empty)...
+        admin_client.post(
+            "/api/settings/vision",
+            data={"vision_provider": "openai", "openai_api_key": ""},
+            follow_redirects=False,
+        )
+        with get_db() as db:
+            assert get_setting(db, "openai_api_key") == "sk-openai-secret"
+        # ...and the OpenAI clear checkbox only clears the OpenAI key.
+        admin_client.post(
+            "/api/settings/vision",
+            data={"vision_provider": "openai", "openai_api_key": "",
+                  "clear_openai_api_key": "on"},
+            follow_redirects=False,
+        )
+        with get_db() as db:
+            assert get_setting(db, "openai_api_key") == ""
+
     def test_notify_url_keep_and_clear(self, admin_client):
         admin_client.post(
             "/api/settings/lending",
