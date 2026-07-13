@@ -1,17 +1,20 @@
 """Vision-based shelf-photo intake: read book spines from a photo.
 
-Two backends, selected by the `vision_provider` setting:
+Three backends, selected by the `vision_provider` setting:
 - "anthropic": Claude vision via the official SDK (best spine accuracy).
+- "openai": any OpenAI-compatible chat-completions endpoint (OpenAI itself,
+  Azure OpenAI, OpenRouter, or a local server like vLLM / LM Studio / LocalAI).
+  The base URL is configurable, so this one branch covers the whole family.
 - "ollama": local model via the Ollama REST API (free, private, needs a
   vision-capable model such as gemma3).
 
-Both return the same shape: a list of {"title": str, "authors": str|None}.
+All return the same shape: a list of {"title": str, "authors": str|None}.
 
 Input is a list of (bytes, mime) images. A single image is the normal path;
 multiple images are overlapping tiles of one photo (see services/tiling.py).
-For Anthropic up to MAX_TILES_PER_REQUEST tiles go in one request as multiple
-image blocks (the model merges overlap duplicates); beyond that, and always
-for Ollama, tiles are analyzed one call at a time and merged in code.
+For Anthropic and OpenAI up to MAX_TILES_PER_REQUEST tiles go in one request as
+multiple image blocks (the model merges overlap duplicates); beyond that, and
+always for Ollama, tiles are analyzed one call at a time and merged in code.
 """
 
 import base64
@@ -27,6 +30,8 @@ from app.config import MAX_TILES_PER_REQUEST
 logger = logging.getLogger(__name__)
 
 DEFAULT_ANTHROPIC_MODEL = "claude-opus-4-8"
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "gemma3:12b"
 
@@ -47,6 +52,13 @@ TILED_PROMPT_SUFFIX = (
     "ordered left-to-right then top-to-bottom. Adjacent tiles share an "
     "overlap region, so the same spine may appear in two tiles — merge such "
     "duplicates and list each distinct book exactly once."
+)
+
+# Appended for providers without a schema-enforced output mode (Ollama, and
+# OpenAI-compatible endpoints run in JSON-object mode). The word "JSON" here
+# also satisfies OpenAI's requirement when response_format is json_object.
+JSON_ONLY_SUFFIX = (
+    ' Respond with JSON only: {"books": [{"title": "...", "authors": "... or null"}]}'
 )
 
 # Fuzzy-title similarity at or above which two tile results are the same book
@@ -159,6 +171,14 @@ async def detect_spines(images: list[tuple[bytes, str]], settings: dict) -> list
             return merge_tile_books([books]) if len(images) > 1 else books
         results = [await _detect_anthropic([img], settings) for img in images]
         return merge_tile_books(results)
+    if provider == "openai":
+        if len(images) <= MAX_TILES_PER_REQUEST:
+            books = await _detect_openai(images, settings)
+            # The prompt asks the model to merge overlap duplicates; sweep
+            # once more in code to catch the ones it misses.
+            return merge_tile_books([books]) if len(images) > 1 else books
+        results = [await _detect_openai([img], settings) for img in images]
+        return merge_tile_books(results)
     if provider == "ollama":
         if len(images) == 1:
             return await _detect_ollama(images[0][0], settings)
@@ -222,6 +242,62 @@ async def _detect_anthropic(images: list[tuple[bytes, str]], settings: dict) -> 
         raise VisionError("The model returned an unreadable response — try again")
 
 
+async def _detect_openai(images: list[tuple[bytes, str]], settings: dict) -> list[dict]:
+    """Read spines via an OpenAI-compatible /chat/completions endpoint.
+
+    Uses httpx directly (no SDK) so any compatible server works and respx can
+    mock it in tests. Structured output is requested via response_format
+    json_object plus an explicit JSON instruction in the prompt — the widely
+    supported subset, rather than json_schema which many compatible servers
+    lack.
+    """
+    api_key = settings.get("openai_api_key")
+    if not api_key:
+        raise VisionError("OpenAI API key is not configured")
+    base_url = (settings.get("openai_base_url") or DEFAULT_OPENAI_BASE_URL).rstrip("/")
+    model = settings.get("openai_vision_model") or DEFAULT_OPENAI_MODEL
+
+    content: list[dict] = [{"type": "text", "text": _prompt_for(len(images)) + JSON_ONLY_SUFFIX}]
+    for image_bytes, mime in images:
+        b64 = base64.standard_b64encode(image_bytes).decode()
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:{mime};base64,{b64}"},
+        })
+
+    payload = {
+        "model": model,
+        # Classic Chat Completions field — the form every OpenAI-compatible
+        # server understands (reasoning models use max_completion_tokens, but
+        # those aren't the vision target here).
+        "max_tokens": 16000,
+        "response_format": {"type": "json_object"},
+        "messages": [{"role": "user", "content": content}],
+    }
+    headers = {"Authorization": f"Bearer {api_key}"}
+    try:
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+    except httpx.HTTPError:
+        raise VisionError(f"Could not reach the OpenAI API at {base_url}")
+    if resp.status_code in (401, 403):
+        raise VisionError("OpenAI API key was rejected — check it in Settings")
+    if resp.status_code != 200:
+        logger.warning("OpenAI vision call failed: HTTP %d %s", resp.status_code, resp.text[:200])
+        raise VisionError(f"OpenAI API error (HTTP {resp.status_code}) — try again")
+
+    try:
+        text = resp.json()["choices"][0]["message"]["content"] or ""
+    except (KeyError, IndexError, TypeError):
+        logger.warning("OpenAI vision returned an unexpected response shape")
+        raise VisionError("The OpenAI API returned an unexpected response — try again")
+    try:
+        return _clean(json.loads(text))
+    except json.JSONDecodeError:
+        logger.warning("OpenAI vision returned non-JSON output: %s", text[:200])
+        raise VisionError("The model returned an unreadable response — try again")
+
+
 async def _detect_ollama(image_bytes: bytes, settings: dict) -> list[dict]:
     url = (settings.get("ollama_url") or DEFAULT_OLLAMA_URL).rstrip("/")
     model = settings.get("ollama_model") or DEFAULT_OLLAMA_MODEL
@@ -232,7 +308,7 @@ async def _detect_ollama(image_bytes: bytes, settings: dict) -> list[dict]:
         "format": "json",
         "messages": [{
             "role": "user",
-            "content": PROMPT + ' Respond with JSON only: {"books": [{"title": "...", "authors": "... or null"}]}',
+            "content": PROMPT + JSON_ONLY_SUFFIX,
             "images": [base64.standard_b64encode(image_bytes).decode()],
         }],
     }

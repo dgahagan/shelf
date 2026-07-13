@@ -20,6 +20,7 @@ from app.config import (
     EXPECTED_BOOKS_PER_MEGAPIXEL,
     IMAGE_TOKEN_DIVISOR,
     OLLAMA_DEFAULT_INGEST_LONG_EDGE,
+    OPENAI_DEFAULT_INGEST_LONG_EDGE,
     PROMPT_OVERHEAD_TOKENS,
     TILE_OVERLAP_X,
     TILE_OVERLAP_Y,
@@ -48,6 +49,11 @@ def ingest_cap(settings: dict) -> dict:
         if any(m in model for m in ANTHROPIC_HIGHRES_MODELS):
             return dict(ANTHROPIC_HIGHRES_CAP)
         return dict(ANTHROPIC_STANDARD_CAP)
+    if provider == "openai":
+        # OpenAI-compatible endpoints downscale on their side; the knob is the
+        # effective long edge the model sees, so tiling kicks in above it.
+        long_edge = int(settings.get("openai_ingest_long_edge") or OPENAI_DEFAULT_INGEST_LONG_EDGE)
+        return {"long_edge": long_edge, "max_pixels": long_edge * long_edge}
     # Ollama: we control resolution entirely; treat the knob as the long edge
     long_edge = int(settings.get("ollama_ingest_long_edge") or OLLAMA_DEFAULT_INGEST_LONG_EDGE)
     return {"long_edge": long_edge, "max_pixels": long_edge * long_edge}
@@ -146,7 +152,12 @@ def expected_books(width: int, height: int) -> int:
 
 
 def estimate_cost_usd(images_dims: list[tuple[int, int]], settings: dict, books: int) -> float | None:
-    """Estimated dollars for one analyze call. None for local providers (free)."""
+    """Estimated dollars for one analyze call.
+
+    None when a price can't be pinned down: local Ollama (free), and
+    OpenAI-compatible endpoints whose model/pricing vary by provider (OpenAI,
+    Azure, OpenRouter, self-hosted). The UI simply omits the estimate then.
+    """
     if (settings.get("vision_provider") or "") != "anthropic":
         return None
     model = settings.get("anthropic_vision_model") or DEFAULT_ANTHROPIC_MODEL

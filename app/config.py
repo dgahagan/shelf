@@ -59,6 +59,9 @@ ANTHROPIC_HIGHRES_MODELS = ("opus-4-7", "opus-4-8", "sonnet-5", "fable-5")
 ANTHROPIC_HIGHRES_CAP = {"long_edge": 2576, "max_pixels": 3_750_000}
 ANTHROPIC_STANDARD_CAP = {"long_edge": 1568, "max_pixels": 1_150_000}
 OLLAMA_DEFAULT_INGEST_LONG_EDGE = 1024  # gemma3 crops at 896px; qwen2.5vl is dynamic
+# OpenAI-compatible endpoints downscale to ~2048px on the long edge for
+# high-detail vision. Operator-tunable since compatible servers vary.
+OPENAI_DEFAULT_INGEST_LONG_EDGE = 2048
 
 # Downscale factor at or above which the "what the model sees" preview and
 # the tiling offer appear. Below it the single-image path runs unchanged.

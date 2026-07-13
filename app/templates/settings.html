@@ -782,7 +782,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{ visionProvider: '{{ settings.get('vision_provider', '') }}' }">
         <h2 class="text-lg font-semibold mb-1">Photo Intake (Vision)</h2>
-        <p class="text-sm text-shelf-muted mb-4">Bulk-add books by photographing a shelf &mdash; a vision model reads the spines. Use the Anthropic API (best accuracy, pay per photo) or a local Ollama model (free and private, needs a vision-capable model like gemma3).</p>
+        <p class="text-sm text-shelf-muted mb-4">Bulk-add books by photographing a shelf &mdash; a vision model reads the spines. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3).</p>
         <form action="/api/settings/vision" method="post" class="space-y-3">
             <div>
                 <label for="vision_provider" class="block text-sm font-medium text-shelf-muted mb-1">Provider</label>
@@ -790,6 +790,7 @@
                         class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <option value="">Disabled</option>
                     <option value="anthropic">Anthropic API</option>
+                    <option value="openai">OpenAI-compatible</option>
                     <option value="ollama">Ollama (local)</option>
                 </select>
             </div>
@@ -811,6 +812,41 @@
                     <input type="text" id="anthropic_vision_model" name="anthropic_vision_model"
                            value="{{ settings.get('anthropic_vision_model', '') }}" placeholder="claude-opus-4-8 (default)"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                </div>
+            </div>
+            <div x-show="visionProvider === 'openai'" class="space-y-3">
+                <div>
+                    <label for="openai_base_url" class="block text-sm font-medium text-shelf-muted mb-1">Base URL</label>
+                    <input type="text" id="openai_base_url" name="openai_base_url"
+                           value="{{ settings.get('openai_base_url', '') }}" placeholder="https://api.openai.com/v1 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Any OpenAI-compatible <span class="font-mono text-xs">/chat/completions</span> endpoint &mdash; OpenAI, OpenRouter, or a local server (vLLM, LM Studio, LocalAI&hellip;).</p>
+                </div>
+                <div>
+                    <label for="openai_api_key" class="block text-sm font-medium text-shelf-muted mb-1">API Key</label>
+                    <input type="password" id="openai_api_key" name="openai_api_key" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['openai_api_key'] %}Saved — leave blank to keep{% else %}sk-...{% endif %}"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Stored encrypted; only used server-side. Local servers that need no key can leave this blank.</p>
+                    {% if secrets_saved['openai_api_key'] %}
+                    <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
+                        <input type="checkbox" name="clear_openai_api_key" class="rounded border-shelf-border"> Remove saved key
+                    </label>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="openai_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
+                    <input type="text" id="openai_vision_model" name="openai_vision_model"
+                           value="{{ settings.get('openai_vision_model', '') }}" placeholder="gpt-4o-mini (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model. Match this to whatever your endpoint serves.</p>
+                </div>
+                <div>
+                    <label for="openai_ingest_long_edge" class="block text-sm font-medium text-shelf-muted mb-1">Image size (long edge, px)</label>
+                    <input type="text" id="openai_ingest_long_edge" name="openai_ingest_long_edge" inputmode="numeric"
+                           value="{{ settings.get('openai_ingest_long_edge', '') }}" placeholder="2048 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; drives when Photo Intake offers high-res tiling.</p>
                 </div>
             </div>
             <div x-show="visionProvider === 'ollama'" class="space-y-3">
