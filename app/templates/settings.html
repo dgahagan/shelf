@@ -1254,13 +1254,13 @@
         <div class="border-t border-shelf-border pt-4">
             <h3 class="text-sm font-semibold text-shelf-muted mb-3">Add User</h3>
             <div class="grid grid-cols-2 gap-3">
-                <input x-model="newUser.username" type="text" placeholder="Username" required
+                <input x-model="newUsername" type="text" placeholder="Username" required
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
-                <input x-model="newUser.display_name" type="text" placeholder="Display Name (optional)"
+                <input x-model="newDisplayName" type="text" placeholder="Display Name (optional)"
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
-                <input x-model="newUser.password" type="password" placeholder="Password (min 8 chars)" required
+                <input x-model="newPassword" type="password" placeholder="Password (min 8 chars)" required
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
-                <select x-model="newUser.role"
+                <select x-model="newRole"
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>

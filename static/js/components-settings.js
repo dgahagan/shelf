@@ -9,6 +9,24 @@
 // Jinja-templated initial state is passed via data-* attributes on the
 // component root and read in init() from this.$el.dataset.
 
+// Fetch + parse JSON, but never throw: server responses to CSRF/auth
+// rejections (and unhandled 500s) are plain text/HTML, not JSON. Always
+// resolves to an {ok, message} shape so callers can surface real errors
+// instead of silently swallowing an uncaught exception.
+async function postJSON(url, opts) {
+    let r;
+    try {
+        r = await fetch(url, opts);
+    } catch {
+        return { ok: false, message: 'Network error — check your connection' };
+    }
+    try {
+        return await r.json();
+    } catch {
+        return { ok: false, message: r.ok ? 'Unexpected response from server' : `Request failed (${r.status})` };
+    }
+}
+
 document.addEventListener('alpine:init', function () {
 
     // settings.html — tab bar (persists active tab in localStorage)
@@ -387,32 +405,39 @@ document.addEventListener('alpine:init', function () {
     Alpine.data('usersPanel', function () {
         return {
             users: [],
-            newUser: { username: '', display_name: '', password: '', role: 'viewer' },
+            // Flat (not nested) properties: the Alpine CSP build cannot evaluate
+            // the assignment x-model needs for a nested path like "newUser.username".
+            newUsername: '',
+            newDisplayName: '',
+            newPassword: '',
+            newRole: 'viewer',
             addResult: false,
             async loadUsers() {
-                const r = await fetch('/api/users');
-                this.users = await r.json();
+                const d = await postJSON('/api/users', {});
+                if (Array.isArray(d)) this.users = d;
+                else console.error('Failed to load users:', d.message);
             },
             async addUser() {
                 this.addResult = false;
                 const form = new FormData();
-                form.append('username', this.newUser.username);
-                form.append('display_name', this.newUser.display_name);
-                form.append('password', this.newUser.password);
-                form.append('role', this.newUser.role);
-                const r = await fetch('/api/users', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
-                const d = await r.json();
+                form.append('username', this.newUsername);
+                form.append('display_name', this.newDisplayName);
+                form.append('password', this.newPassword);
+                form.append('role', this.newRole);
+                const d = await postJSON('/api/users', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 this.addResult = d;
                 if (d.ok) {
-                    this.newUser = { username: '', display_name: '', password: '', role: 'viewer' };
+                    this.newUsername = '';
+                    this.newDisplayName = '';
+                    this.newPassword = '';
+                    this.newRole = 'viewer';
                     await this.loadUsers();
                 }
             },
             async updateRole(id, role) {
                 const form = new FormData();
                 form.append('role', role);
-                const r = await fetch('/api/users/' + id + '/role', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
-                const d = await r.json();
+                const d = await postJSON('/api/users/' + id + '/role', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();
             },
@@ -421,14 +446,12 @@ document.addEventListener('alpine:init', function () {
                 if (!pw) return;
                 const form = new FormData();
                 form.append('password', pw);
-                const r = await fetch('/api/users/' + id + '/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
-                const d = await r.json();
+                const d = await postJSON('/api/users/' + id + '/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 alert(d.message);
             },
             async deleteUser(id, name) {
                 if (!confirm('Delete user ' + name + '?')) return;
-                const r = await fetch('/api/users/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
-                const d = await r.json();
+                const d = await postJSON('/api/users/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();
             }
