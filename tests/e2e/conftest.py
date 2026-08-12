@@ -10,6 +10,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -35,7 +36,38 @@ def _free_port() -> int:
 _SERVER_TIMEOUT = float(os.environ.get("E2E_SERVER_TIMEOUT", "30"))
 
 
-def _wait_for_server(url: str, timeout: float = _SERVER_TIMEOUT, proc: subprocess.Popen | None = None) -> None:
+class _OutputCapture:
+    """Drains a subprocess pipe on a background thread into a bounded buffer.
+
+    subprocess.PIPE has a small OS-level buffer (especially on Windows). If
+    nobody reads it, the child blocks the moment it fills — which stalls
+    uvicorn's own log writes and, since it's single-process, the whole server
+    with it. Reading continuously here keeps the pipe drained; the last N
+    lines are kept around for diagnostics if startup still fails.
+    """
+
+    def __init__(self, stream, max_lines: int = 200):
+        self._lines: list[str] = []
+        self._lock = threading.Lock()
+        self._thread = threading.Thread(target=self._drain, args=(stream, max_lines), daemon=True)
+        self._thread.start()
+
+    def _drain(self, stream, max_lines: int) -> None:
+        try:
+            for raw_line in iter(stream.readline, b""):
+                with self._lock:
+                    self._lines.append(raw_line.decode(errors="replace").rstrip("\n"))
+                    if len(self._lines) > max_lines:
+                        del self._lines[0]
+        except Exception:
+            pass
+
+    def tail(self) -> str:
+        with self._lock:
+            return "\n".join(self._lines)
+
+
+def _wait_for_server(url: str, timeout: float = _SERVER_TIMEOUT, output: "_OutputCapture | None" = None) -> None:
     import json
     import urllib.request
     deadline = time.monotonic() + timeout
@@ -47,22 +79,9 @@ def _wait_for_server(url: str, timeout: float = _SERVER_TIMEOUT, proc: subproces
                 return
         except Exception:
             time.sleep(0.2)
-    # On failure, capture and display server stderr for diagnosis
-    stderr_output = ""
-    if proc and proc.stderr:
-        try:
-            proc.stderr.flush()
-            stderr_output = proc.stderr.read().decode(errors="replace") if isinstance(proc.stderr.read, type(b"".decode)) else ""
-        except Exception:
-            pass
-        if not stderr_output:
-            try:
-                stderr_output = proc.stderr.read(8192).decode(errors="replace") if proc.stderr.readable() else ""
-            except Exception:
-                stderr_output = "(could not read stderr)"
     raise RuntimeError(
         f"Server at {url} did not start within {timeout}s\n"
-        f"Server stderr:\n{stderr_output}"
+        f"Server output:\n{output.tail() if output else '(not captured)'}"
     )
 
 
@@ -98,12 +117,13 @@ def live_server():
         cwd=str(APP_DIR),
         env=env,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
+    output = _OutputCapture(proc.stdout)
 
     base_url = f"http://127.0.0.1:{port}"
     try:
-        _wait_for_server(f"{base_url}/health", proc=proc)
+        _wait_for_server(f"{base_url}/health", output=output)
         yield {"url": base_url, "data_dir": data_dir, "port": port}
     finally:
         proc.terminate()
