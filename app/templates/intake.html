@@ -71,11 +71,13 @@
         <div class="space-y-2 mb-4">
             <template x-for="(book, i) in books" :key="i">
                 <div class="flex items-center gap-2">
-                    <input type="checkbox" x-model="book.include"
+                    {# :checked/:value + handler methods, not x-model="book.…": the
+                       Alpine CSP build cannot evaluate nested-path assignments #}
+                    <input type="checkbox" :checked="book.include" @change="toggleInclude(i)"
                            class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent shrink-0">
-                    <input type="text" x-model="book.title" placeholder="Title"
+                    <input type="text" :value="book.title" @input="setBookTitle(i, $event.target.value)" placeholder="Title"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
-                    <input type="text" x-model="book.authors" placeholder="Author"
+                    <input type="text" :value="book.authors" @input="setBookAuthors(i, $event.target.value)" placeholder="Author"
                            class="w-48 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                 </div>
             </template>

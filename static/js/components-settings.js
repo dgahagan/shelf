@@ -115,6 +115,12 @@ document.addEventListener('alpine:init', function () {
         return {
             libs: false, libsLoading: false, libsError: false, libsSaving: false, cleaning: false, cleanResult: false,
             excludedIds() { return this.libs.filter(l => !l.included).map(l => l.id); },
+            // Called from @change: the CSP build can't evaluate the nested
+            // assignment x-model="lib.included" would need.
+            toggleLib(id) {
+                var lib = this.libs.find(l => l.id === id);
+                if (lib) lib.included = !lib.included;
+            },
             loadLibs() {
                 this.libsLoading = true; this.libsError = false;
                 fetch('/api/sync/audiobookshelf/libraries')
@@ -151,7 +157,9 @@ document.addEventListener('alpine:init', function () {
             importCurrent: 0, importTotal: 0, importLastTitle: '',
             importLog: [], showImportLog: false,
             importOverwrite: false,
-            hcStatuses: { 1: true, 2: true, 3: true, 4: true, 5: true },
+            // Flat (not hcStatuses[n]) properties: the Alpine CSP build cannot
+            // evaluate the bracketed assignment x-model would need.
+            hcFilter1: true, hcFilter2: true, hcFilter3: true, hcFilter4: true, hcFilter5: true,
             exporting: false, exportResult: false,
             exportCurrent: 0, exportTotal: 0, exportLastTitle: '',
             exportLog: [], showExportLog: false,
@@ -198,7 +206,8 @@ document.addEventListener('alpine:init', function () {
                 this.importing = true; this.importResult = false;
                 this.importCurrent = 0; this.importTotal = 0;
                 this.importLastTitle = ''; this.importLog = []; this.showImportLog = false;
-                var sel = Object.entries(this.hcStatuses).filter(e => e[1]).map(e => e[0]).join(',');
+                var flags = { 1: this.hcFilter1, 2: this.hcFilter2, 3: this.hcFilter3, 4: this.hcFilter4, 5: this.hcFilter5 };
+                var sel = Object.entries(flags).filter(e => e[1]).map(e => e[0]).join(',');
                 var url = '/api/hardcover/import/stream?statuses=' + sel + '&overwrite=' + this.importOverwrite;
                 var self = this;
                 var es = new EventSource(url);

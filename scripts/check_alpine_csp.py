@@ -53,6 +53,14 @@ _FORBIDDEN = [
 ]
 
 _JINJA = re.compile(r"\{\{.*?\}\}|\{%-?.*?-?%\}", re.S)
+_JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.S)
+
+# x-model must bind a flat top-level property. The CSP build evaluates reads
+# of nested paths fine, but x-model also needs to *assign* on input, and the
+# CSP build prohibits property assignments — so x-model="user.name" or
+# x-model="flags[1]" silently never writes (issue #2). Use a flat property,
+# or :value/:checked plus an @input/@change handler method for loop items.
+_XMODEL_NESTED = re.compile(r"[.\[]")
 
 
 # htmx compiles these with new Function — also blocked without unsafe-eval.
@@ -72,6 +80,9 @@ def find_violations(root: Path = TEMPLATES) -> list[str]:
         except ValueError:
             display = path.relative_to(root)
         src = path.read_text()
+        # Jinja comments never reach the browser — blank them (preserving
+        # line numbers) so attribute-like text inside them isn't scanned.
+        src = _JINJA_COMMENT.sub(lambda m: "\n" * m.group(0).count("\n"), src)
         for pattern, why in _HTMX_EVAL:
             for m in pattern.finditer(src):
                 line = src.count("\n", 0, m.start()) + 1
@@ -81,6 +92,16 @@ def find_violations(root: Path = TEMPLATES) -> list[str]:
                 )
         for m in _ATTR.finditer(src):
             attr, value = m.group(1), _JINJA.sub("''", m.group(2))
+            if attr.startswith("x-model") and _XMODEL_NESTED.search(value):
+                line = src.count("\n", 0, m.start()) + 1
+                violations.append(
+                    f"{display}:{line}: {attr} binds a nested path "
+                    f"('{value.strip()}') — the CSP build prohibits the property "
+                    "assignment x-model needs, so typed values are silently "
+                    "dropped. Bind a flat top-level property, or use "
+                    ":value/:checked + an @input/@change handler method."
+                )
+                continue
             for pattern, why in _FORBIDDEN:
                 hit = pattern.search(value)
                 if hit:

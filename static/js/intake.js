@@ -140,6 +140,20 @@ function intakePage() {
             return this.books.filter(b => b.include).length;
         },
 
+        // Called from @change/@input in the review list: the Alpine CSP build
+        // cannot evaluate the nested assignment x-model="book.title" would need.
+        toggleInclude(i) {
+            this.books[i].include = !this.books[i].include;
+        },
+
+        setBookTitle(i, value) {
+            this.books[i].title = value;
+        },
+
+        setBookAuthors(i, value) {
+            this.books[i].authors = value;
+        },
+
         selectAll() {
             this.books.forEach(b => b.include = true);
         },

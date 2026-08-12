@@ -30,3 +30,20 @@ def test_lint_catches_violations(tmp_path):
     )
     violations = check_alpine_csp.find_violations(tmp_path)
     assert len(violations) == 2  # line 1 is CSP-safe; fetch/arrow and Math flagged
+
+
+def test_lint_catches_nested_xmodel(tmp_path):
+    """x-model on a nested/bracketed path silently never writes under the CSP
+    build (issue #2) — the lint must flag it. Nested paths in read-only
+    directives (x-text, :value) stay allowed."""
+    (tmp_path / "t.html").write_text(
+        '<input x-model="newUser.username">\n'
+        '<input type="checkbox" x-model="flags[1]">\n'
+        '<input x-model.number="form.qty">\n'
+        '<input x-model="flatProp">\n'
+        '<span x-text="user.name"></span>\n'
+        '<input :value="book.title" @input="setBookTitle(i, $event.target.value)">\n'
+    )
+    violations = check_alpine_csp.find_violations(tmp_path)
+    assert len(violations) == 3, "\n" + "\n".join(violations)
+    assert all("nested path" in v for v in violations)
