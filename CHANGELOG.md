@@ -6,12 +6,41 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-12
+
 ### Added
 
 - **Photo Intake — OpenAI-compatible backend** — a third vision provider that
   targets any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, or a local
   server such as vLLM / LM Studio / LocalAI) via a configurable base URL, API
   key, and model. Reuses the existing tiling and dedup pipeline.
+- **Photo Intake — location picker** — pick the destination location right at
+  the upload step; the last-used location is remembered for next time.
+
+### Fixed
+
+- **Add User was silently broken** — the Alpine CSP build cannot evaluate the
+  nested-path assignment `x-model="newUser.username"` needs, so the form
+  submitted empty fields no matter what was typed. Found, diagnosed, and fixed
+  by @exactmike ([#2](https://github.com/dgahagan/shelf/issues/2),
+  [#3](https://github.com/dgahagan/shelf/pull/3)).
+- **The same silent-write bug in three more places** — Audiobookshelf library
+  selection checkboxes, Hardcover import status filters, and title/author
+  edits in the Photo Intake review step all silently discarded input for the
+  same reason. All rebound CSP-safely.
+- **User-management errors are now visible** — CSRF/auth rejections returned
+  non-JSON bodies that crashed the response handling, so Add User, role
+  changes, password resets, and deletes failed with no feedback at all; they
+  now show the actual error ([#3](https://github.com/dgahagan/shelf/pull/3)).
+- The e2e test server no longer deadlocks when uvicorn's log output fills the
+  OS pipe buffer ([#3](https://github.com/dgahagan/shelf/pull/3)).
+
+### Changed
+
+- The Alpine CSP lint now rejects any `x-model` bound to a nested or bracketed
+  path, so this bug class can't reappear.
+- Docker publish hardening: the built image is secret-scanned before push, and
+  a build-context `.dockerignore` keeps local data out of the context.
 
 ## [0.1.0] - 2026-07-05
 
@@ -49,4 +78,5 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.2.0]: https://github.com/dgahagan/shelf/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dgahagan/shelf/releases/tag/v0.1.0
