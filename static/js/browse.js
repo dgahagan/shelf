@@ -154,7 +154,11 @@ function browsePage() {
 
         // item_row / item_card fragments: tap toggles selection in select
         // mode, otherwise navigates to the item detail page.
-        openOrToggle(id, url) {
+        openOrToggle(id, url, event) {
+            if (event && (event.ctrlKey || event.metaKey)) {
+                window.open(url, '_blank');
+                return;
+            }
             if (this.selectMode) this.toggleItem(id);
             else window.location = url;
         },
