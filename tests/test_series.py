@@ -200,6 +200,259 @@ class TestSeriesDescription:
         assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
 
 
+class TestSeriesRename:
+    """POST /api/series/{name:path}/rename — moves every item in a series to
+    another name; renaming onto an existing series merges the two."""
+
+    def _rename(self, client, name, new_name):
+        from urllib.parse import quote
+        # safe='/' (quote's default) keeps a literal slash in the path so
+        # {name:path} is exercised, matching the description tests.
+        return client.post(f"/api/series/{quote(name)}/rename",
+                           data={"new_name": new_name})
+
+    def _seed_meta(self, db, name, description, source="manual"):
+        db.execute(
+            "INSERT INTO series_meta (name, description, source, updated_at) "
+            "VALUES (?, ?, ?, datetime('now'))",
+            (name, description, source),
+        )
+        db.execute("COMMIT")
+
+    def _names(self, db):
+        return sorted(
+            (r["title"], r["series_name"])
+            for r in db.execute("SELECT title, series_name FROM items").fetchall()
+        )
+
+    def _meta(self, db, name):
+        return db.execute(
+            "SELECT description, source FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+
+    def test_moves_every_item_and_only_that_series(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000701", series_name="Dune Saga")
+        # Differently-cased rows belong to the same series (NOCASE) and move too.
+        _insert_item(db, title="Dune Messiah", isbn="9780900000702", series_name="dune saga")
+        # A similarly-named series is a different series and must not move.
+        _insert_item(db, title="Sandworms", isbn="9780900000703", series_name="Dune Saga Extras")
+        _insert_item(db, title="Loner", isbn="9780900000704")
+        db.execute("COMMIT")
+
+        data = self._rename(admin_client, "Dune Saga", "Dune Chronicles").json()
+        assert data["ok"] is True
+        assert data["name"] == "Dune Chronicles"
+        assert data["merged"] is False
+        assert data["count"] == 2
+
+        assert self._names(db) == [
+            ("Dune", "Dune Chronicles"),
+            ("Dune Messiah", "Dune Chronicles"),
+            ("Loner", None),
+            ("Sandworms", "Dune Saga Extras"),
+        ]
+
+    def test_carries_the_series_meta_row(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000705", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga", "A desert planet saga.", source="hardcover")
+
+        assert self._rename(admin_client, "Dune Saga", "Dune Chronicles").json()["ok"] is True
+
+        assert self._meta(db, "Dune Saga") is None
+        moved = self._meta(db, "Dune Chronicles")
+        assert moved["description"] == "A desert planet saga."
+        assert moved["source"] == "hardcover"
+
+    def test_merge_keeps_destination_description(self, admin_client, db):
+        _insert_item(db, title="Hyperion", isbn="9780900000706", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9780900000707", series_name="Cantos Dupe")
+        self._seed_meta(db, "Hyperion Cantos", "The good synopsis.")
+        self._seed_meta(db, "Cantos Dupe", "The stale synopsis.")
+
+        data = self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()
+        assert data["ok"] is True
+        assert data["merged"] is True
+        assert data["count"] == 1
+
+        assert self._names(db) == [
+            ("Endymion", "Hyperion Cantos"),
+            ("Hyperion", "Hyperion Cantos"),
+        ]
+        assert self._meta(db, "Cantos Dupe") is None
+        assert self._meta(db, "Hyperion Cantos")["description"] == "The good synopsis."
+
+    def test_merge_moves_description_when_destination_has_none(self, admin_client, db):
+        _insert_item(db, title="Hyperion", isbn="9780900000708", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9780900000709", series_name="Cantos Dupe")
+        self._seed_meta(db, "Cantos Dupe", "The only synopsis.", source="hardcover")
+
+        assert self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()["merged"] is True
+
+        assert self._meta(db, "Cantos Dupe") is None
+        moved = self._meta(db, "Hyperion Cantos")
+        assert moved["description"] == "The only synopsis."
+        assert moved["source"] == "hardcover"
+
+    def test_merge_keeps_positions_as_is(self, admin_client, db):
+        """Merging deliberately does not renumber — duplicate #1s are fine and
+        the existing gap detection surfaces them."""
+        _insert_item(db, title="Hyperion", isbn="9780900000710",
+                     series_name="Hyperion Cantos", series_position=1)
+        _insert_item(db, title="Endymion", isbn="9780900000711",
+                     series_name="Cantos Dupe", series_position=1)
+        db.execute("COMMIT")
+
+        assert self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()["ok"] is True
+
+        positions = sorted(
+            r["series_position"] for r in
+            db.execute("SELECT series_position FROM items").fetchall()
+        )
+        assert positions == [1, 1]
+
+    def test_case_only_rename_rejected(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000712", series_name="dune saga")
+        db.execute("COMMIT")
+
+        data = self._rename(admin_client, "dune saga", "Dune Saga").json()
+        assert data["ok"] is False
+        assert "already" in data["message"]
+        row = db.execute("SELECT series_name FROM items").fetchone()
+        assert row["series_name"] == "dune saga"
+
+    def test_empty_new_name_rejected(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000713", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        assert self._rename(admin_client, "Dune Saga", "   ").json()["ok"] is False
+        assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] == "Dune Saga"
+
+    def test_over_length_new_name_rejected(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000714", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        data = self._rename(admin_client, "Dune Saga", "x" * 1001).json()
+        assert data["ok"] is False
+        assert "too long" in data["message"]
+        assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] == "Dune Saga"
+
+    def test_unknown_series_rejected(self, admin_client, db):
+        data = self._rename(admin_client, "Nothing Here", "Something Else").json()
+        assert data["ok"] is False
+        assert data["message"] == "Series not found"
+
+    def test_name_with_slash_round_trips(self, admin_client, db):
+        _insert_item(db, title="Crossover", isbn="9780900000715", series_name="Foo / Bar")
+        self._seed_meta(db, "Foo / Bar", "Crossover series.")
+
+        data = self._rename(admin_client, "Foo / Bar", "Baz / Qux").json()
+        assert data["ok"] is True
+        assert data["name"] == "Baz / Qux"
+        assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] == "Baz / Qux"
+        assert self._meta(db, "Baz / Qux")["description"] == "Crossover series."
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000716", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        resp = self._rename(viewer_client, "Dune Saga", "Dune Chronicles")
+        assert resp.status_code in (401, 403)
+        assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] == "Dune Saga"
+
+
+class TestSeriesRemoveAll:
+    """POST /api/series/{name:path}/remove-all — disbands a series by
+    clearing series_name on every item that belongs to it."""
+
+    def _remove_all(self, client, name):
+        from urllib.parse import quote
+        # safe='/' (quote's default) keeps a literal slash in the path so
+        # {name:path} is exercised, matching the rename/description tests.
+        return client.post(f"/api/series/{quote(name)}/remove-all")
+
+    def _seed_meta(self, db, name, description, source="manual"):
+        db.execute(
+            "INSERT INTO series_meta (name, description, source, updated_at) "
+            "VALUES (?, ?, ?, datetime('now'))",
+            (name, description, source),
+        )
+        db.execute("COMMIT")
+
+    def _meta(self, db, name):
+        return db.execute(
+            "SELECT description, source FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+
+    def _names(self, db):
+        return sorted(
+            (r["title"], r["series_name"])
+            for r in db.execute("SELECT title, series_name FROM items").fetchall()
+        )
+
+    def test_clears_every_item_and_only_that_series(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000801", series_name="Dune Saga")
+        # Differently-cased rows belong to the same series (NOCASE) and clear too.
+        _insert_item(db, title="Dune Messiah", isbn="9780900000802", series_name="dune saga")
+        # A similarly-named series is a different series and must not clear.
+        _insert_item(db, title="Sandworms", isbn="9780900000803", series_name="Dune Saga Extras")
+        db.execute("COMMIT")
+
+        data = self._remove_all(admin_client, "Dune Saga").json()
+        assert data["ok"] is True
+        assert data["count"] == 2
+
+        assert self._names(db) == [
+            ("Dune", None),
+            ("Dune Messiah", None),
+            ("Sandworms", "Dune Saga Extras"),
+        ]
+
+    def test_gcs_the_series_meta_row(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000804", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga", "A desert planet saga.", source="hardcover")
+
+        assert self._remove_all(admin_client, "Dune Saga").json()["ok"] is True
+
+        assert self._meta(db, "Dune Saga") is None
+
+    def test_items_survive_series_less(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000805", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        assert self._remove_all(admin_client, "Dune Saga").json()["ok"] is True
+
+        row = db.execute(
+            "SELECT title, series_name FROM items WHERE isbn = ?", ("9780900000805",)
+        ).fetchone()
+        assert row is not None
+        assert row["title"] == "Dune"
+        assert row["series_name"] is None
+
+    def test_name_with_slash_round_trips(self, admin_client, db):
+        _insert_item(db, title="Crossover", isbn="9780900000806", series_name="Foo / Bar")
+        db.execute("COMMIT")
+
+        data = self._remove_all(admin_client, "Foo / Bar").json()
+        assert data["ok"] is True
+        assert data["count"] == 1
+        assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] is None
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000807", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        resp = self._remove_all(viewer_client, "Dune Saga")
+        assert resp.status_code in (401, 403)
+        assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] == "Dune Saga"
+
+    def test_unknown_series_rejected(self, admin_client, db):
+        data = self._remove_all(admin_client, "Nothing Here").json()
+        assert data["ok"] is False
+        assert data["message"] == "Series not found"
+
+
 class TestGetSeriesDescription:
     @pytest.mark.asyncio
     async def test_happy_path(self):

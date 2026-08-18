@@ -9,12 +9,17 @@ import logging
 from fastapi import APIRouter, Depends, Form, Request
 
 from app.auth import require_role
-from app.database import get_db, get_setting
+from app.database import gc_orphaned_series_meta, get_db, get_setting
 from app.services import hardcover
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Longest accepted series name. Matches the CSV importer's _CSV_MAX_TEXT
+# (app/routers/items.py) — the column's only other length guard — rather than
+# introducing a second, different limit for the same field.
+MAX_SERIES_NAME = 1000
 
 
 def find_gaps(positions: list) -> list[int]:
@@ -150,6 +155,107 @@ async def set_series_description(name: str, description: str = Form(""),
         else:
             db.execute("DELETE FROM series_meta WHERE name = ? COLLATE NOCASE", (name,))
         return {"ok": True, "name": name, "description": description or None}
+
+
+@router.post("/api/series/{name:path}/rename")
+async def rename_series(name: str, new_name: str = Form(""),
+                        _=Depends(require_role("editor"))):
+    """Move every item in a series to another series name.
+
+    Renaming onto a name that already has books *merges* the two — the direct
+    fix for the duplicate series records Hardcover produces (three "Dune").
+    `series_position` is deliberately left alone: two books legitimately
+    ending up at #1 is better than silently renumbering the user's data, and
+    the existing gap detection surfaces the result on the merged card.
+
+    `{name:path}` for the same slash-in-name reason as the description
+    endpoints. Editor role matches update_item — an editor can already do
+    this one item at a time.
+    """
+    name = name.strip()
+    new_name = (new_name or "").strip()
+    if not name:
+        return {"ok": False, "message": "Series name required"}
+    if not new_name:
+        return {"ok": False, "message": "New series name required"}
+    if len(new_name) > MAX_SERIES_NAME:
+        return {"ok": False,
+                "message": f"Series name too long (max {MAX_SERIES_NAME} chars)"}
+    # NOCASE is how every other series lookup matches, so a case-only edit is
+    # a no-op at the database level rather than a rename.
+    if name.casefold() == new_name.casefold():
+        return {"ok": False, "message": "That is already the series name"}
+
+    with get_db() as db:
+        count = db.execute(
+            "SELECT COUNT(*) AS c FROM items WHERE series_name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()["c"]
+        if not count:
+            return {"ok": False, "message": "Series not found"}
+
+        # Both reads happen before the UPDATE, while the two names still
+        # describe distinct sets of items.
+        merged = bool(db.execute(
+            "SELECT 1 FROM items WHERE series_name = ? COLLATE NOCASE LIMIT 1",
+            (new_name,),
+        ).fetchone())
+        src_meta = db.execute(
+            "SELECT description, source FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+        dst_meta = db.execute(
+            "SELECT description FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (new_name,),
+        ).fetchone()
+
+        db.execute(
+            "UPDATE items SET series_name = ? WHERE series_name = ? COLLATE NOCASE",
+            (new_name, name),
+        )
+
+        # The synopsis follows the series, or the rename quietly loses it.
+        # On a merge the destination's own synopsis wins; otherwise the
+        # source's moves across (a plain rename is just that case with no
+        # destination row). gc_orphaned_series_meta then drops the source
+        # row now that nothing references it — same connection, after the
+        # UPDATE, as its docstring requires.
+        src_desc = (src_meta["description"] or "").strip() if src_meta else ""
+        dst_desc = (dst_meta["description"] or "").strip() if dst_meta else ""
+        if src_desc and not dst_desc:
+            _upsert_series_description(db, new_name, src_meta["description"],
+                                       src_meta["source"])
+        gc_orphaned_series_meta(db, name)
+
+        return {"ok": True, "name": new_name, "merged": merged, "count": count}
+
+
+@router.post("/api/series/{name:path}/remove-all")
+async def remove_all_from_series(name: str, _=Depends(require_role("editor"))):
+    """Disband a series: clear series_name on every item that belongs to it.
+
+    The items themselves are untouched — only the series link is dropped.
+    `{name:path}` for the same slash-in-name reason as the description and
+    rename endpoints; editor role matches them too.
+    """
+    name = name.strip()
+    if not name:
+        return {"ok": False, "message": "Series name required"}
+
+    with get_db() as db:
+        cur = db.execute(
+            "UPDATE items SET series_name = NULL WHERE series_name = ? COLLATE NOCASE",
+            (name,),
+        )
+        count = cur.rowcount
+        if not count:
+            return {"ok": False, "message": "Series not found"}
+
+        # Same connection, after the UPDATE — nothing references this name
+        # any more, so its series_meta row (if any) is garbage.
+        gc_orphaned_series_meta(db, name)
+
+        return {"ok": True, "count": count}
 
 
 @router.post("/api/series/{name:path}/fetch-description")

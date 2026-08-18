@@ -1,5 +1,7 @@
 """Tests for item deletion (editor role, FK handling) and browse lent_out filter."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from app.database import get_db
@@ -256,10 +258,25 @@ class TestTitleSearchEndpoints:
         assert resp.content == b""
 
     def test_title_search_routes_by_media_type(self, admin_client):
-        # These will hit real APIs which may fail, but should not 500
-        # Book search (Open Library - no key needed)
-        resp = admin_client.get("/api/title-search?q=test&media_type=book")
+        # Book media_type should route to search_books, which calls Open
+        # Library. Mock that call so this test is deterministic and offline.
+        fake_results = [
+            {
+                "title": "Test Driven Development",
+                "work_key": "/works/OL123W",
+                "languages": ["eng"],
+                "authors": "Kent Beck",
+                "publish_year": 2002,
+                "publisher": "Addison-Wesley",
+                "cover_url": None,
+                "isbn": "9780321146533",
+                "page_count": 240,
+            }
+        ]
+        with patch("app.services.openlibrary.search_books", new=AsyncMock(return_value=fake_results)):
+            resp = admin_client.get("/api/title-search?q=test&media_type=book")
         assert resp.status_code == 200
+        assert b"Test Driven Development" in resp.content
 
     def test_dvd_search_without_api_key(self, admin_client):
         resp = admin_client.get("/api/dvds/search?q=test")

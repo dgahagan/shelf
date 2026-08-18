@@ -127,7 +127,7 @@ data/
 ### Collection Management
 - Filter and search by media type, location, reading status, ownership, lending status, and custom tags
 - Reading tracking — want-to-read, reading, and read with start/finish dates
-- Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover
+- Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover; series synopses, plus rename/merge/disband from the series card
 - Stats dashboard — books read per year, collection growth, top authors, and value-over-time charts
 - Locations — organize by room, shelf, or any system you like
 - Checkout system — lend to borrowers and track who has what, with overdue badges and an optional daily reminder digest (ntfy/webhook)

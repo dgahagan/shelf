@@ -16,9 +16,110 @@ document.addEventListener('alpine:init', function () {
             // Series synopsis (issue #6): read/edit state for the inline editor.
             description: '', editing: false, draft: '', saving: false,
             fetching: false, descError: '',
+            // Series membership management: rename/merge and disband.
+            menuOpen: false, renaming: false, confirmingRemove: false,
+            renameDraft: '', renameError: '', renameSaving: false,
+            removing: false, removeError: '', itemCount: 0, seriesNames: [],
             init() {
                 this.seriesName = this.$el.dataset.seriesName || '';
                 this.description = this.$el.dataset.description || '';
+                this.itemCount = parseInt(this.$el.dataset.itemCount || '0', 10);
+                // The page renders one shared <datalist> of every series name
+                // (series.html); reuse it rather than repeating the list on
+                // every card as a data-* attribute.
+                var list = document.getElementById('series-names');
+                this.seriesNames = list
+                    ? Array.prototype.map.call(list.options, o => o.value)
+                    : [];
+            },
+            toggleMenu() {
+                this.menuOpen = !this.menuOpen;
+            },
+            startRename() {
+                this.menuOpen = false;
+                this.confirmingRemove = false;
+                this.renameDraft = this.seriesName;
+                this.renameError = '';
+                this.renaming = true;
+            },
+            cancelRename() {
+                this.renaming = false;
+                this.renameError = '';
+            },
+            get mergeTarget() {
+                // NOCASE on the server, so match case-insensitively here too.
+                // The card's own name is a no-op rename, not a merge.
+                var draft = this.renameDraft.trim().toLowerCase();
+                if (!draft || draft === this.seriesName.trim().toLowerCase()) return '';
+                return this.seriesNames.find(n => n.trim().toLowerCase() === draft) || '';
+            },
+            get renameLabel() {
+                if (this.renameSaving) return 'Saving…';
+                return this.mergeTarget ? 'Merge into ' + this.mergeTarget : 'Rename';
+            },
+            submitRename() {
+                this.renameSaving = true;
+                this.renameError = '';
+                var self = this;
+                var body = new URLSearchParams();
+                body.set('new_name', this.renameDraft);
+                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.csrfToken() },
+                    body: body.toString()
+                })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.ok) {
+                            self.renameSaving = false;
+                            self.renameError = d.message || 'Rename failed';
+                            return;
+                        }
+                        showToast(d.merged
+                            ? 'Merged ' + self._books(d.count) + ' into ' + d.name
+                            : 'Series renamed to ' + d.name);
+                        // The card list is server-rendered and the grouping
+                        // just changed — reload rather than regroup client-side
+                        // (same call bulkUpdate() makes).
+                        setTimeout(() => location.reload(), 600);
+                    })
+                    .catch(() => { self.renameSaving = false; self.renameError = 'Rename failed'; });
+            },
+            startRemoveAll() {
+                this.menuOpen = false;
+                this.renaming = false;
+                this.removeError = '';
+                this.confirmingRemove = true;
+            },
+            cancelRemoveAll() {
+                this.confirmingRemove = false;
+                this.removeError = '';
+            },
+            get removeCountLabel() {
+                return this._books(this.itemCount);
+            },
+            submitRemoveAll() {
+                this.removing = true;
+                this.removeError = '';
+                var self = this;
+                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/remove-all', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': window.csrfToken() }
+                })
+                    .then(r => r.json())
+                    .then(d => {
+                        if (!d.ok) {
+                            self.removing = false;
+                            self.removeError = d.message || 'Remove failed';
+                            return;
+                        }
+                        showToast('Removed ' + self._books(d.count) + ' from the series');
+                        setTimeout(() => location.reload(), 600);
+                    })
+                    .catch(() => { self.removing = false; self.removeError = 'Remove failed'; });
+            },
+            _books(n) {
+                return n + (n === 1 ? ' book' : ' books');
             },
             startEdit() {
                 this.draft = this.description;

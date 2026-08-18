@@ -51,3 +51,61 @@ def test_series_synopsis_fetch_button_hidden_without_hardcover(live_server, auth
     authed_page.goto(f"{live_server['url']}/series")
     authed_page.wait_for_load_state("networkidle")
     expect(authed_page.get_by_test_id("fetch-synopsis")).to_have_count(0)
+
+
+def test_series_rename_regroups(live_server, authed_page):
+    """Renaming a series reloads the page with books regrouped under the new
+    name; the actions menu is available without Hardcover."""
+    insert_item(live_server["data_dir"], title="Alpha Vol 1", isbn="9780902000059",
+                series_name="Alpha Saga", series_position=1)
+    insert_item(live_server["data_dir"], title="Alpha Vol 2", isbn="9780902000066",
+                series_name="Alpha Saga", series_position=2)
+
+    authed_page.goto(f"{live_server['url']}/series")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = authed_page.get_by_test_id("series-card").filter(has_text="Alpha Saga")
+    card.get_by_test_id("series-actions").click()
+    card.get_by_test_id("rename-series").click()
+    card.get_by_test_id("rename-input").fill("Omega Saga")
+    card.get_by_test_id("rename-submit").click()
+
+    # submitRename() shows a toast then reloads after a 600ms setTimeout —
+    # wait it out rather than asserting on the pre-reload DOM.
+    authed_page.wait_for_timeout(1200)
+    authed_page.wait_for_load_state("networkidle")
+
+    renamed_card = authed_page.get_by_test_id("series-card").filter(has_text="Omega Saga")
+    expect(renamed_card).to_have_count(1)
+    expect(renamed_card).to_contain_text("Alpha Vol 1")
+    expect(renamed_card).to_contain_text("Alpha Vol 2")
+    # The old series name must be gone — not merely shadowed by "Omega Saga".
+    expect(authed_page.get_by_test_id("series-card").filter(has_text="Alpha Saga")).to_have_count(0)
+
+
+def test_series_remove_all_disbands(live_server, authed_page):
+    """Remove all books disbands the series but keeps the books in the
+    library — they should still show up on /browse."""
+    insert_item(live_server["data_dir"], title="Disband Vol 1", isbn="9780902000073",
+                series_name="Disband Saga", series_position=1)
+    insert_item(live_server["data_dir"], title="Disband Vol 2", isbn="9780902000080",
+                series_name="Disband Saga", series_position=2)
+
+    authed_page.goto(f"{live_server['url']}/series")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = authed_page.get_by_test_id("series-card").filter(has_text="Disband Saga")
+    card.get_by_test_id("series-actions").click()
+    card.get_by_test_id("remove-all").click()
+    card.get_by_test_id("remove-all-confirm").click()
+
+    # submitRemoveAll() shows a toast then reloads after a 600ms setTimeout.
+    authed_page.wait_for_timeout(1200)
+    authed_page.wait_for_load_state("networkidle")
+
+    expect(authed_page.get_by_test_id("series-card").filter(has_text="Disband Saga")).to_have_count(0)
+
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("Disband Vol 1")
+    expect(authed_page.locator("body")).to_contain_text("Disband Vol 2")

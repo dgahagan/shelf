@@ -6,6 +6,23 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-17
+
+### Added
+
+- **Rename, merge, and disband series from the Series page** — each series card
+  now has a `⋮` menu. *Rename series…* moves every book in the series to a new
+  name; typing the name of a series you already have merges the two, which is
+  the quick fix for duplicate series records (three "Dune", three "Hyperion
+  Cantos") that metadata lookup can leave behind. A merge deliberately **keeps
+  each book's existing position** rather than renumbering — two books can
+  legitimately land on #1, and the existing gap detection surfaces the result
+  on the merged card. The series synopsis follows the rename; on a merge the
+  destination's synopsis is kept if it has one, otherwise the other series'
+  synopsis moves across. *Remove all books…* disbands a series behind an inline
+  confirm: the books stay in your library, they just stop belonging to that
+  series, and the now-unused synopsis is cleaned up.
+
 ## [0.3.0] - 2026-08-16
 
 First release driven by community bug reports — thanks to
@@ -129,6 +146,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.4.0]: https://github.com/dgahagan/shelf/releases/tag/v0.4.0
 [0.3.0]: https://github.com/dgahagan/shelf/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dgahagan/shelf/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dgahagan/shelf/releases/tag/v0.1.0
