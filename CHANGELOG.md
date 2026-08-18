@@ -6,6 +6,57 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-16
+
+First release driven by community bug reports — thanks to
+[@LegendaryB](https://github.com/LegendaryB) for issues
+[#5](https://github.com/dgahagan/shelf/issues/5)–[#9](https://github.com/dgahagan/shelf/issues/9)
+and [@emre155](https://github.com/emre155) for
+[#10](https://github.com/dgahagan/shelf/pull/10).
+
+### Added
+
+- **Bulk-edit series** — set or clear the series on many items at once from the
+  Browse bulk action bar, with autocomplete over series you already own
+  ([#5](https://github.com/dgahagan/shelf/issues/5)).
+- **Series synopses** — each series on the Series page can carry its own
+  description, edited inline. With Hardcover configured, "Fetch synopsis"
+  pulls it automatically. Metadata is stored per series and cleaned up when a
+  series stops being referenced
+  ([#6](https://github.com/dgahagan/shelf/issues/6)).
+  Note that Hardcover populates series descriptions sparsely — most series
+  there have none, in which case Shelf says so and opens the editor so you can
+  write your own. Where several Hardcover records share a series name, all of
+  them are checked for a description, not just the first.
+
+### Fixed
+
+- **Infinite scroll never loaded a second page** — in *either* view. Both
+  layouts render inside an Alpine `<template x-if>`, whose content Alpine
+  clones into the DOM at runtime; htmx doesn't watch for that, so the
+  load-more sentinel was never wired up and scrolling past the first 60 items
+  did nothing. Browse now hands newly rendered content to htmx explicitly
+  ([#7](https://github.com/dgahagan/shelf/issues/7)).
+- **List view turned into cover cards while scrolling** — pagination didn't
+  carry the current view mode, so page 2 came back as grid cards and appended
+  them into the table ([#7](https://github.com/dgahagan/shelf/issues/7)).
+- **Filters were shown but not applied after leaving and returning to Browse**
+  — filter state now survives a trip to another page and is re-applied on
+  return, not just repainted into the controls
+  ([#8](https://github.com/dgahagan/shelf/issues/8)).
+- **The tag filter was silently dropped** by every filter change after the
+  first search ([#8](https://github.com/dgahagan/shelf/issues/8)).
+- **Search was wiped by any other filter change on narrow screens** — the
+  mobile and desktop search boxes share a name, so changing another filter
+  submitted both and the empty one won
+  ([#8](https://github.com/dgahagan/shelf/issues/8)).
+- **Middle-click and ctrl/cmd-click now open items in a new tab**, in both
+  grid and list view; item titles are real links again. Based on
+  [#10](https://github.com/dgahagan/shelf/pull/10) by
+  [@emre155](https://github.com/emre155), reimplemented for the Alpine CSP
+  build, which cannot evaluate the `window.open` call the original patch used
+  ([#9](https://github.com/dgahagan/shelf/issues/9)).
+
 ## [0.2.0] - 2026-08-12
 
 ### Added
@@ -78,5 +129,6 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.3.0]: https://github.com/dgahagan/shelf/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dgahagan/shelf/releases/tag/v0.2.0
 [0.1.0]: https://github.com/dgahagan/shelf/releases/tag/v0.1.0

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Browse — Shelf{% endblock %}
 {% block content %}
-<div x-data="browsePage">
+<div x-data="browsePage" data-initial-query="{{ initial_query or '' }}">
     <!-- Bulk Action Bar -->
     <div x-show="selectMode && selectedIds.length > 0" x-transition
          class="fixed bottom-0 inset-x-0 z-40 bg-shelf-card border-t border-shelf-border py-3 px-4 shadow-lg">
@@ -32,6 +32,24 @@
             </select>
             <button @click="bulkUpdate({reading_status: bulkStatusVal === '__clear__' ? '' : bulkStatusVal})" x-show="bulkStatusVal"
                     class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+            <!-- Series is a text input rather than a <select> (any name is
+                 valid, existing ones autocomplete), so it needs an explicit
+                 label — unlabelled it reads as a gap between the dropdowns. -->
+            <div class="flex items-center gap-1.5 pl-3 border-l border-shelf-border">
+                <label for="bulk-series" class="text-sm text-shelf-muted shrink-0">Series</label>
+                <input type="text" id="bulk-series" x-model="bulkSeriesVal" list="bulk-series-options"
+                       placeholder="Type or pick a series..."
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text w-52">
+                <datalist id="bulk-series-options">
+                    {% for name in series_names %}
+                    <option value="{{ name }}"></option>
+                    {% endfor %}
+                </datalist>
+                <button @click="bulkUpdate({series_name: bulkSeriesVal})" :disabled="!bulkSeriesVal"
+                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">Apply</button>
+                <button @click="bulkUpdate({series_name: '__clear__'})"
+                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text">Clear</button>
+            </div>
             <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">Delete Selected</button>
         </div>
     </div>
@@ -83,6 +101,7 @@
             </button>
             <!-- Search always visible on mobile -->
             <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
+                   x-model="searchQuery"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 flex-1 min-w-0">
@@ -90,6 +109,7 @@
         <div :class="filtersOpen ? 'flex' : 'hidden sm:flex'" class="flex-wrap items-center gap-3">
             <!-- Search (hidden on mobile since it's shown above) -->
             <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
+                   x-model="searchQuery"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
                    class="hidden sm:block bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">

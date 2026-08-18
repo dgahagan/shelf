@@ -674,3 +674,41 @@ async def get_series_books(series_name: str, token: str, client: httpx.AsyncClie
         return _parse_series_entries(entries) or None
 
     return None
+
+
+async def get_series_description(series_name: str, token: str, client: httpx.AsyncClient | None = None) -> str | None:
+    """Fetch a series' own synopsis from Hardcover, if any.
+
+    Deliberately separate from get_series_books rather than threading a second
+    return value through its intricate parsing pipeline (_parse_series_entries).
+    Best-effort only: schema drift (Hardcover rejects the `description` field),
+    a lookup failure, or a missing/blank synopsis all fall through to None via
+    _graphql's existing error handling — never raises, and never disturbs the
+    book-listing completeness check.
+
+    Hardcover routinely carries SEVERAL series rows under the same name (three
+    "Hyperion Cantos", three "Dune", ...), and usually only one of them — not
+    necessarily the first — has a description. So fetch the matches and take the
+    first non-empty one rather than trusting `limit: 1`; verified against a real
+    library where limit-1 missed a synopsis that did exist.
+
+    Returns None when no match has a description. Most Hardcover series simply
+    have none (44 of 49 in that same library), so a None here is the normal
+    case, not a malfunction — callers should say so rather than reporting an
+    error.
+    """
+    query = """
+    query ($name: String!) {
+      series(where: { name: { _eq: $name } }, limit: 25) {
+        description
+      }
+    }
+    """
+    data = await _graphql(query, {"name": series_name}, token=token, client=client)
+    if not data or not data.get("series"):
+        return None
+    for entry in data["series"]:
+        description = (entry or {}).get("description")
+        if isinstance(description, str) and description.strip():
+            return description.strip()
+    return None

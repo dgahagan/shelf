@@ -25,6 +25,19 @@
             </button>
         </div>
         <p class="text-xs text-shelf-muted mt-2">Provider: <span class="text-shelf-text">{{ {'anthropic': 'Anthropic API', 'openai': 'OpenAI-compatible', 'ollama': 'Ollama (local)'}.get(vision_provider, vision_provider) }}</span> &middot; photos are analyzed in memory and not stored.</p>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mt-4 pt-3 border-t border-shelf-border">
+            <label class="text-sm text-shelf-muted whitespace-nowrap" for="intake-location">Add books to</label>
+            <select id="intake-location" x-model="locationId" x-ref="locationSelect" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">No location</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}">{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+            <label class="flex items-center gap-2 text-sm text-shelf-muted cursor-pointer">
+                <input type="checkbox" x-model="owned" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                Owned (uncheck for wishlist)
+            </label>
+        </div>
         <template x-if="preview">
             <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64" x-show="!needsChoice">
         </template>
@@ -83,7 +96,7 @@
             </template>
         </div>
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 pt-3 border-t border-shelf-border">
-            <select x-model="locationId" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <select x-model="locationId" aria-label="Location" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="">No location</option>
                 {% for loc in locations %}
                 <option value="{{ loc.id }}">{{ loc.name }}</option>

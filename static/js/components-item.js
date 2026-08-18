@@ -13,8 +13,71 @@ document.addEventListener('alpine:init', function () {
         return {
             checking: false, result: false, error: false, added: {},
             seriesName: '',
+            // Series synopsis (issue #6): read/edit state for the inline editor.
+            description: '', editing: false, draft: '', saving: false,
+            fetching: false, descError: '',
             init() {
                 this.seriesName = this.$el.dataset.seriesName || '';
+                this.description = this.$el.dataset.description || '';
+            },
+            startEdit() {
+                this.draft = this.description;
+                this.descError = '';
+                this.editing = true;
+            },
+            cancelEdit() {
+                this.editing = false;
+                this.descError = '';
+            },
+            saveDescription() {
+                this.saving = true;
+                this.descError = '';
+                var self = this;
+                // Endpoint takes a Form body (mirrors tags.py), not JSON.
+                var body = new URLSearchParams();
+                body.set('description', this.draft);
+                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/description', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.csrfToken() },
+                    body: body.toString()
+                })
+                    .then(r => r.json())
+                    .then(d => {
+                        self.saving = false;
+                        if (d.ok) {
+                            self.description = d.description || '';
+                            self.editing = false;
+                            showToast('Synopsis saved');
+                        } else {
+                            self.descError = d.message || 'Save failed';
+                        }
+                    })
+                    .catch(() => { self.saving = false; self.descError = 'Save failed'; });
+            },
+            fetchDescription() {
+                this.fetching = true;
+                var self = this;
+                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/fetch-description', {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': window.csrfToken() }
+                })
+                    .then(r => r.json())
+                    .then(d => {
+                        self.fetching = false;
+                        if (d.ok) {
+                            self.description = d.description || '';
+                            showToast('Synopsis fetched from Hardcover');
+                        } else if (d.empty) {
+                            // Hardcover simply has no description for this
+                            // series — a normal outcome, not a failure. Open
+                            // the editor so writing one is the obvious step.
+                            showToast(d.message, 'info');
+                            self.startEdit();
+                        } else {
+                            showToast(d.message || 'No synopsis found', 'error');
+                        }
+                    })
+                    .catch(() => { self.fetching = false; showToast('Fetch failed', 'error'); });
             },
             get missingBooks() {
                 return this.result ? this.result.books.filter(x => x.status === 'missing') : [];

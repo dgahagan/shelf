@@ -197,6 +197,13 @@ CREATE TABLE IF NOT EXISTS item_tags (
     PRIMARY KEY (item_id, tag_id)
 );
 CREATE INDEX IF NOT EXISTS idx_item_tags_tag ON item_tags(tag_id);
+
+CREATE TABLE IF NOT EXISTS series_meta (
+    name       TEXT PRIMARY KEY COLLATE NOCASE,
+    description TEXT,
+    source     TEXT,
+    updated_at TEXT
+);
 """
 
 
@@ -292,6 +299,41 @@ def get_game_platforms(db) -> dict[str, str]:
         "SELECT slug, name FROM game_platforms ORDER BY sort_order, name"
     ).fetchall()
     return {r["slug"]: r["name"] for r in rows}
+
+
+def gc_orphaned_series_meta(db, *names: str | None) -> None:
+    """Delete series_meta rows for any of the given series names that no
+    longer have any item pointing at them (case-insensitive, matching the
+    NOCASE collation on both series_meta.name and series_name usage).
+
+    Pass the OLD series name(s) a write just moved items away from — a
+    series_meta row can only go orphaned when its name stops being
+    referenced, so there's never a reason to GC a brand-new name.
+
+    Call this against the same `db` connection/transaction that performed
+    the items UPDATE, and only after that UPDATE has executed. SQLite
+    connections see their own uncommitted writes, so this does not need to
+    wait for get_db()'s commit-on-exit — but it does need the UPDATE to have
+    already run on this connection, or the "still referenced?" check below
+    will see stale rows.
+
+    Modeled on the tag GC in app/routers/tags.py's remove_tag().
+    """
+    seen: set[str] = set()
+    for name in names:
+        if not name:
+            continue
+        key = name.strip().casefold()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        db.execute(
+            "DELETE FROM series_meta WHERE name = ? COLLATE NOCASE "
+            "AND NOT EXISTS ("
+            "SELECT 1 FROM items WHERE series_name = ? COLLATE NOCASE"
+            ")",
+            (name, name),
+        )
 
 
 def init_db():

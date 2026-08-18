@@ -107,6 +107,140 @@ class TestBrowseLentOutFilter:
         assert b"Returned Book" not in resp.content
 
 
+class TestBrowseViewModePagination:
+    """Template selection for /api/search must key off the `view` param sent by the
+    client (via hx-include="[name='view']" on the load-more sentinel), not just page
+    number — otherwise list-view infinite scroll appends grid cards. See issue #7."""
+
+    def test_page1_returns_full_grid_wrapper(self, admin_client, db):
+        _insert_item(db, title="Grid Wrapper Book", isbn="9780000000220")
+        db.commit()
+        resp = admin_client.get("/api/search?page=1")
+        assert resp.status_code == 200
+        assert b'data-testid="item-grid"' in resp.content
+
+    def test_page2_list_view_returns_rows(self, admin_client, db):
+        _insert_item(db, title="List Page2 First", isbn="9780000000221")
+        _insert_item(db, title="List Page2 Second", isbn="9780000000222")
+        db.commit()
+        resp = admin_client.get("/api/search?view=list&page=2&per_page=1")
+        assert resp.status_code == 200
+        assert b"<tr" in resp.content
+        assert b"cover-card" not in resp.content
+
+    def test_page2_without_view_returns_cards(self, admin_client, db):
+        _insert_item(db, title="Cards Page2 First", isbn="9780000000223")
+        _insert_item(db, title="Cards Page2 Second", isbn="9780000000224")
+        db.commit()
+        resp = admin_client.get("/api/search?page=2&per_page=1")
+        assert resp.status_code == 200
+        assert b"cover-card" in resp.content
+        assert b"<tr" not in resp.content
+
+    def test_page2_grid_view_returns_cards(self, admin_client, db):
+        _insert_item(db, title="Grid Page2 First", isbn="9780000000225")
+        _insert_item(db, title="Grid Page2 Second", isbn="9780000000226")
+        db.commit()
+        resp = admin_client.get("/api/search?view=grid&page=2&per_page=1")
+        assert resp.status_code == 200
+        assert b"cover-card" in resp.content
+        assert b"<tr" not in resp.content
+
+
+class TestBulkUpdateSeries:
+    def test_sets_series_name_on_multiple_items(self, admin_client, db):
+        item1 = _insert_item(db, title="Bulk Series One", isbn="9780000000230")
+        item2 = _insert_item(db, title="Bulk Series Two", isbn="9780000000231")
+        db.commit()
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item1, item2], "updates": {"series_name": "The Chronicles"}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["updated"] == 2
+
+        with get_db() as check_db:
+            rows = check_db.execute(
+                "SELECT id, series_name FROM items WHERE id IN (?, ?)", (item1, item2)
+            ).fetchall()
+        assert {r["series_name"] for r in rows} == {"The Chronicles"}
+
+    def test_clear_sentinel_sets_series_name_null(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Bulk Series Clear", isbn="9780000000232", series_name="Old Series"
+        )
+        db.commit()
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item_id], "updates": {"series_name": "__clear__"}},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["ok"] is True
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_name FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["series_name"] is None
+
+    def test_empty_series_name_rejected(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Bulk Series Empty", isbn="9780000000233", series_name="Keep Me"
+        )
+        db.commit()
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item_id], "updates": {"series_name": "   "}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is False
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_name FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["series_name"] == "Keep Me"
+
+    def test_disallowed_field_filtered_out(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Bulk Series Position", isbn="9780000000234", series_position=1
+        )
+        db.commit()
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item_id], "updates": {"series_position": 5}},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is False
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_position FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["series_position"] == 1
+
+    def test_viewer_cannot_bulk_update(self, client, viewer_user, db):
+        from app.auth import create_token
+        token = create_token(viewer_user["id"], viewer_user["username"], viewer_user["role"], viewer_user["display_name"])
+        client.cookies.set("access_token", token)
+        item_id = _insert_item(db, title="Bulk Series Role", isbn="9780000000235")
+        db.commit()
+
+        resp = client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item_id], "updates": {"series_name": "Nope"}},
+        )
+        assert resp.status_code in (401, 403)
+
+
 class TestTitleSearchEndpoints:
     def test_book_search_requires_auth(self, client):
         resp = client.get("/api/books/search?q=test", follow_redirects=False)

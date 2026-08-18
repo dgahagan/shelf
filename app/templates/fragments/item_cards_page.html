@@ -3,7 +3,7 @@
 {% endfor %}
 {% if has_more is defined and has_more %}
 <div id="load-more" class="col-span-full text-center py-4"
-     hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML">
+     hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="[name='view']">
     <div class="inline-block w-6 h-6 border-2 border-shelf-border border-t-shelf-accent rounded-full animate-spin"></div>
 </div>
 {% endif %}

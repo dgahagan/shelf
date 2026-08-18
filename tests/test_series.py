@@ -117,6 +117,196 @@ class TestSeriesCheck:
         assert admin_client.get("/api/series/check").json()["ok"] is False
 
 
+class TestSeriesDescription:
+    def _set_description(self, client, name, description):
+        from urllib.parse import quote
+        # quote() defaults to safe='/', so a literal slash in the series
+        # name survives into the URL path (exercising {name:path}) while
+        # spaces and other reserved characters still get encoded.
+        return client.post(f"/api/series/{quote(name)}/description",
+                           data={"description": description})
+
+    def test_description_in_page_context(self, admin_client, db):
+        # Template rendering of the description is a separate (not-yet-done)
+        # piece of work, so assert on the context passed to series.html
+        # rather than on rendered HTML text.
+        _insert_item(db, title="Dune", isbn="9780900000501", series_name="Dune Saga", series_position=1)
+        _insert_item(db, title="Hobbit", isbn="9780900000508", series_name="Middle Earth", series_position=1)
+        db.execute("COMMIT")
+        resp = self._set_description(admin_client, "Dune Saga", "A desert planet saga.")
+        assert resp.json()["ok"] is True
+
+        from app.main import app
+        original = app.state.templates.TemplateResponse
+        captured = {}
+
+        def capture(request, name, context=None, *a, **kw):
+            if name == "series.html":
+                captured["context"] = context
+            return original(request, name, context, *a, **kw)
+
+        with patch.object(app.state.templates, "TemplateResponse", side_effect=capture):
+            admin_client.get("/series")
+
+        by_name = {s["name"]: s for s in captured["context"]["series_list"]}
+        assert by_name["Dune Saga"]["description"] == "A desert planet saga."
+        assert by_name["Middle Earth"]["description"] is None
+
+    def test_upsert_overwrites_and_keeps_source(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000502", series_name="Dune Saga")
+        db.execute("COMMIT")
+        self._set_description(admin_client, "Dune Saga", "First version")
+        resp = self._set_description(admin_client, "Dune Saga", "Second version")
+        assert resp.json()["ok"] is True
+        row = db.execute(
+            "SELECT description, source FROM series_meta WHERE name = 'Dune Saga'"
+        ).fetchone()
+        assert row["description"] == "Second version"
+        assert row["source"] == "manual"
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 1
+
+    def test_nocase_name_matching(self, admin_client, db):
+        resp = self._set_description(admin_client, "the expanse", "Belters and beratnas.")
+        assert resp.json()["ok"] is True
+        row = db.execute(
+            "SELECT description FROM series_meta WHERE name = 'The Expanse'"
+        ).fetchone()
+        assert row is not None
+        assert row["description"] == "Belters and beratnas."
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        resp = self._set_description(viewer_client, "Dune Saga", "nope")
+        assert resp.status_code in (401, 403)
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_name_with_slash_and_spaces_round_trips(self, admin_client, db):
+        name = "Foo / Bar"
+        resp = self._set_description(admin_client, name, "Crossover series.")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["name"] == name
+        row = db.execute(
+            "SELECT description FROM series_meta WHERE name = ?", (name,)
+        ).fetchone()
+        assert row is not None
+        assert row["description"] == "Crossover series."
+
+    def test_empty_description_deletes_row(self, admin_client, db):
+        self._set_description(admin_client, "Dune Saga", "Something")
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 1
+        resp = self._set_description(admin_client, "Dune Saga", "   ")
+        assert resp.json()["ok"] is True
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+
+class TestGetSeriesDescription:
+    @pytest.mark.asyncio
+    async def test_happy_path(self):
+        from app.services import hardcover as hc
+        payload = {"series": [{"description": "A desert planet saga."}]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            desc = await hc.get_series_description("Dune Saga", "tok")
+        assert desc == "A desert planet saga."
+
+    @pytest.mark.asyncio
+    async def test_schema_drift_or_graphql_error_returns_none(self):
+        # _graphql already returns None on HTTP errors, GraphQL "errors", or
+        # exceptions — this simulates that (e.g. Hardcover rejecting the
+        # `description` field) and confirms get_series_description never raises.
+        from app.services import hardcover as hc
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=None)):
+            desc = await hc.get_series_description("Dune Saga", "tok")
+        assert desc is None
+
+    @pytest.mark.asyncio
+    async def test_series_not_found_returns_none(self):
+        from app.services import hardcover as hc
+        payload = {"series": []}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            desc = await hc.get_series_description("Nope", "tok")
+        assert desc is None
+
+    @pytest.mark.asyncio
+    async def test_blank_description_returns_none(self):
+        from app.services import hardcover as hc
+        payload = {"series": [{"description": "   "}]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            desc = await hc.get_series_description("Dune Saga", "tok")
+        assert desc is None
+
+    @pytest.mark.asyncio
+    async def test_picks_first_described_duplicate(self):
+        """Hardcover carries several series rows under one name and often only
+        a later one has a description (real case: three "Hyperion Cantos", three
+        "Dune"). Taking series[0] blindly missed synopses that did exist."""
+        from app.services import hardcover as hc
+        payload = {"series": [
+            {"description": None},
+            {"description": "   "},
+            {"description": "Seconds before the Earth is demolished..."},
+        ]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            desc = await hc.get_series_description("The Hitchhiker's Guide", "tok")
+        assert desc == "Seconds before the Earth is demolished..."
+
+    @pytest.mark.asyncio
+    async def test_all_duplicates_blank_returns_none(self):
+        from app.services import hardcover as hc
+        payload = {"series": [{"description": None}, {"description": ""},
+                              {"description": "  "}]}
+        with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
+            desc = await hc.get_series_description("Dune", "tok")
+        assert desc is None
+
+
+class TestFetchSeriesDescriptionEndpoint:
+    def _seed_token(self, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+
+    def test_persists_with_hardcover_source(self, admin_client, db):
+        self._seed_token(db)
+        with patch("app.services.hardcover.get_series_description",
+                   new=AsyncMock(return_value="A desert planet saga.")):
+            resp = admin_client.post("/api/series/Dune%20Saga/fetch-description")
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["description"] == "A desert planet saga."
+        row = db.execute(
+            "SELECT description, source FROM series_meta WHERE name = 'Dune Saga'"
+        ).fetchone()
+        assert row["description"] == "A desert planet saga."
+        assert row["source"] == "hardcover"
+
+    def test_no_description_found_writes_nothing(self, admin_client, db):
+        self._seed_token(db)
+        with patch("app.services.hardcover.get_series_description",
+                   new=AsyncMock(return_value=None)):
+            resp = admin_client.post("/api/series/Dune%20Saga/fetch-description")
+        data = resp.json()
+        assert data["ok"] is False
+        # Flagged as `empty` so the UI reports "Hardcover has none" rather than
+        # an error — most Hardcover series genuinely carry no description.
+        assert data["empty"] is True
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_no_token_configured(self, admin_client, db):
+        resp = admin_client.post("/api/series/Dune%20Saga/fetch-description")
+        data = resp.json()
+        assert data["ok"] is False
+        # A missing integration IS a real error, not the `empty` case.
+        assert data.get("empty") is not True
+        assert "not configured" in data["message"]
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        self._seed_token(db)
+        resp = viewer_client.post("/api/series/Dune%20Saga/fetch-description")
+        assert resp.status_code in (401, 403)
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+
 class TestGetSeriesBooksParsing:
     def _entry(self, book_id, title, position, authors=("Frank Herbert",), **book_extra):
         return {
@@ -225,3 +415,115 @@ class TestGetSeriesBooksParsing:
         with patch.object(hc, "_graphql", new=AsyncMock(return_value=payload)):
             books = await hc.get_series_books("Obscure", "tok")
         assert [b["title"] for b in books] == ["Obscure Vol 1", "Obscure Vol 2"]
+
+
+class TestSeriesMetaOrphanGC:
+    """Orphan GC for series_meta (issue #6): a series_meta row should be
+    deleted once no item's series_name still points at it, whether the
+    write came through the single-item edit form (update_item) or the
+    bulk-edit endpoint (bulk_update, including its __clear__ sentinel)."""
+
+    def _seed_meta(self, db, name, description="desc"):
+        db.execute(
+            "INSERT INTO series_meta (name, description, source, updated_at) "
+            "VALUES (?, ?, 'manual', datetime('now'))",
+            (name, description),
+        )
+        db.execute("COMMIT")
+
+    def _count(self, db, name):
+        return db.execute(
+            "SELECT COUNT(*) as c FROM series_meta WHERE name = ? COLLATE NOCASE", (name,)
+        ).fetchone()["c"]
+
+    # -- single-item edit path (update_item) --------------------------------
+
+    def test_rename_last_item_of_series_removes_orphaned_row(self, admin_client, db):
+        item_id = _insert_item(db, title="Dune", isbn="9780900000601", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga")
+
+        resp = admin_client.post(f"/api/items/{item_id}", data={"series_name": "New Series"})
+        assert resp.status_code in (200, 303)
+        assert self._count(db, "Dune Saga") == 0
+
+    def test_rename_one_of_several_keeps_row(self, admin_client, db):
+        item1 = _insert_item(db, title="Dune", isbn="9780900000602", series_name="Dune Saga")
+        _insert_item(db, title="Dune Messiah", isbn="9780900000603", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga")
+
+        resp = admin_client.post(f"/api/items/{item1}", data={"series_name": "Other Series"})
+        assert resp.status_code in (200, 303)
+        assert self._count(db, "Dune Saga") == 1
+
+    def test_rename_item_without_series_does_not_error(self, admin_client, db):
+        item_id = _insert_item(db, title="No Series Yet", isbn="9780900000604")
+        db.execute("COMMIT")
+
+        resp = admin_client.post(f"/api/items/{item_id}", data={"series_name": "New Series"})
+        assert resp.status_code in (200, 303)
+        assert self._count(db, "New Series") == 0
+
+    def test_partial_update_without_series_field_does_not_error(self, admin_client, db):
+        """A POST that omits series_name entirely (partial edit, cover-only
+        upload) must not touch the GC path — `fields` has no series_name key."""
+        item_id = _insert_item(db, title="Partial Update", isbn="9780900000610",
+                               series_name="Kept Series")
+        self._seed_meta(db, "Kept Series")
+
+        resp = admin_client.post(f"/api/items/{item_id}", data={"reading_status": "read"})
+        assert resp.status_code in (200, 303)
+        # Untouched: the series is still referenced and the meta row survives.
+        assert self._count(db, "Kept Series") == 1
+        row = db.execute("SELECT series_name FROM items WHERE id = ?", (item_id,)).fetchone()
+        assert row["series_name"] == "Kept Series"
+
+    def test_nocase_still_referenced_row_not_deleted(self, admin_client, db):
+        # meta row and items use different casing of the same series name
+        item1 = _insert_item(db, title="Leviathan Wakes", isbn="9780900000605",
+                              series_name="the expanse")
+        _insert_item(db, title="Caliban's War", isbn="9780900000606",
+                     series_name="THE EXPANSE")
+        self._seed_meta(db, "The Expanse")
+
+        # Move item1 off the series; item2's differently-cased series_name
+        # must still be recognized as referencing the same meta row.
+        resp = admin_client.post(f"/api/items/{item1}", data={"series_name": "Somewhere Else"})
+        assert resp.status_code in (200, 303)
+        assert self._count(db, "The Expanse") == 1
+
+    # -- bulk edit path (bulk_update) ----------------------------------------
+
+    def test_bulk_move_all_items_removes_orphaned_row(self, admin_client, db):
+        item1 = _insert_item(db, title="Dune", isbn="9780900000607", series_name="Dune Saga")
+        item2 = _insert_item(db, title="Dune Messiah", isbn="9780900000608", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga")
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item1, item2], "updates": {"series_name": "New Series"}},
+        )
+        assert resp.json()["ok"] is True
+        assert self._count(db, "Dune Saga") == 0
+
+    def test_bulk_clear_removes_orphaned_row(self, admin_client, db):
+        item_id = _insert_item(db, title="Dune", isbn="9780900000609", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga")
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item_id], "updates": {"series_name": "__clear__"}},
+        )
+        assert resp.json()["ok"] is True
+        assert self._count(db, "Dune Saga") == 0
+
+    def test_bulk_move_some_items_keeps_row(self, admin_client, db):
+        item1 = _insert_item(db, title="Dune", isbn="9780900000610", series_name="Dune Saga")
+        _insert_item(db, title="Dune Messiah", isbn="9780900000611", series_name="Dune Saga")
+        self._seed_meta(db, "Dune Saga")
+
+        resp = admin_client.post(
+            "/api/items/bulk-update",
+            json={"item_ids": [item1], "updates": {"series_name": "New Series"}},
+        )
+        assert resp.json()["ok"] is True
+        assert self._count(db, "Dune Saga") == 1

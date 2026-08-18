@@ -11,7 +11,7 @@ from app.auth import require_role
 
 logger = logging.getLogger(__name__)
 from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
-from app.database import get_db, get_setting, get_game_platforms
+from app.database import get_db, get_setting, get_game_platforms, gc_orphaned_series_meta
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
 from app.services import upc as upc_svc, tmdb, igdb
@@ -847,19 +847,37 @@ async def bulk_update(request: Request, _=Depends(require_role("admin"))):
     except (ValueError, TypeError):
         return {"ok": False, "message": "Invalid item IDs"}
 
-    allowed = {"media_type", "location_id", "reading_status", "owned"}
+    allowed = {"media_type", "location_id", "reading_status", "owned", "series_name"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:
         return {"ok": False, "message": "No valid fields to update"}
+
+    if "series_name" in filtered:
+        if filtered["series_name"] == "__clear__":
+            filtered["series_name"] = None
+        elif not str(filtered["series_name"]).strip():
+            return {"ok": False, "message": "Series name cannot be empty"}
 
     placeholders = ",".join("?" for _ in item_ids)
     set_clause = ", ".join(f"{k} = ?" for k in filtered)
 
     with get_db() as db:
+        old_series_names = []
+        if "series_name" in filtered:
+            old_series_names = [
+                r["series_name"] for r in db.execute(
+                    f"SELECT DISTINCT series_name FROM items WHERE id IN ({placeholders})",
+                    item_ids,
+                ).fetchall()
+            ]
+
         db.execute(
             f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id IN ({placeholders})",
             list(filtered.values()) + item_ids,
         )
+
+        if old_series_names:
+            gc_orphaned_series_meta(db, *old_series_names)
 
     return {"ok": True, "updated": len(item_ids)}
 
@@ -937,10 +955,24 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
     values = list(fields.values()) + [item_id]
 
     with get_db() as db:
+        old_series_name = None
+        if "series_name" in fields:
+            row = db.execute(
+                "SELECT series_name FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+            old_series_name = row["series_name"] if row else None
+
         db.execute(
             f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
             values,
         )
+
+        # Guarded: `fields` only carries series_name when the form submitted it
+        # (a cover-only or partial POST omits it entirely).
+        if "series_name" in fields and old_series_name:
+            new_series_name = fields["series_name"]
+            if old_series_name.strip().casefold() != (new_series_name or "").strip().casefold():
+                gc_orphaned_series_meta(db, old_series_name)
 
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"/item/{item_id}", status_code=303)

@@ -22,6 +22,21 @@ function intakePage() {
         planning: false,
         imageEl: null,
 
+        init() {
+            var saved = localStorage.getItem('shelf.intake.locationId');
+            if (saved) {
+                // Only restore if the location still exists — the select's
+                // options are the source of truth for valid ids.
+                this.$nextTick(() => {
+                    var sel = this.$refs.locationSelect;
+                    if (sel && Array.from(sel.options).some(o => o.value === saved)) {
+                        this.locationId = saved;
+                    }
+                });
+            }
+            this.$watch('locationId', v => localStorage.setItem('shelf.intake.locationId', v || ''));
+        },
+
         onFileChosen(e) {
             this.file = e.target.files[0] || null;
             this.error = false;

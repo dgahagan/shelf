@@ -85,6 +85,14 @@ async def browse(
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
+        series_names = [
+            row["series_name"]
+            for row in db.execute(
+                "SELECT DISTINCT series_name FROM items "
+                "WHERE series_name IS NOT NULL AND TRIM(series_name) != '' "
+                "ORDER BY series_name COLLATE NOCASE"
+            ).fetchall()
+        ]
         type_counts = {
             row["media_type"]: row["c"]
             for row in db.execute(
@@ -148,6 +156,7 @@ async def browse(
             "items": items,
             "media_types": MEDIA_TYPES,
             "locations": locations,
+            "series_names": series_names,
             "type_counts": type_counts,
             "all_tags": all_tags,
             "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag]) else total_count,
