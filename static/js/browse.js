@@ -19,21 +19,9 @@ function browsePage() {
         init() {
             this.searchQuery = this.$el.dataset.initialQuery || '';
             // Returning to a bare /browse re-applies the last filter set.
-            // Falls through to the sort-only restore when there's nothing stored.
-            if (!this.restoreFilters()) {
-                // Restore sort preference from localStorage (only if no sort in URL)
-                var urlSort = new URLSearchParams(window.location.search).get('sort');
-                if (!urlSort) {
-                    var saved = localStorage.getItem('shelf-sort');
-                    if (saved) {
-                        var sortEl = document.querySelector('[name="sort"]');
-                        if (sortEl && sortEl.querySelector('option[value="' + saved + '"]')) {
-                            sortEl.value = saved;
-                            if (saved !== 'newest') htmx.trigger(sortEl, 'change');
-                        }
-                    }
-                }
-            }
+            // Falls through to the sort-only restore when there's nothing stored
+            // (sessionStorage is per-tab, so a new tab always lands here).
+            if (!this.restoreFilters()) this.restoreSort();
             this.syncFilters();
             // Sync filter pills and URL after every HTMX swap.
             // afterSwap, not afterSettle: htmx fires afterSettle on a 20ms
@@ -128,6 +116,31 @@ function browsePage() {
             });
         },
 
+        // Issue #13: the sort-only fallback set the select's value but fired the
+        // request with htmx.trigger, which restoreFilters() had already learned
+        // is unreliable at init time (see its comment below) -- so the dropdown
+        // showed the saved sort while the rows stayed in the server's default
+        // newest-first order. Same htmx.ajax route as restoreFilters().
+        restoreSort() {
+            // A sort in the URL was already honoured by the server-rendered page.
+            if (new URLSearchParams(window.location.search).get('sort')) return;
+            var saved = localStorage.getItem('shelf-sort');
+            if (!saved || saved === 'newest') return;
+            var sortEl = document.querySelector('[name="sort"]');
+            if (!sortEl || !sortEl.querySelector('option[value="' + saved + '"]')) return;
+            this.setControlValue('sort', saved);
+            this.runSearch(new URLSearchParams({sort: saved}));
+        },
+
+        // Shared by restoreSort() and restoreFilters(). `view` is mandatory:
+        // without it the server renders grid cards that get swapped into a list
+        // table (the #7 bug).
+        runSearch(params) {
+            params.set('view', this.viewMode);
+            htmx.ajax('GET', '/api/search?' + params.toString(),
+                      {target: '#item-grid', swap: 'innerHTML'});
+        },
+
         // Issue #8: filters lived only in DOM controls + history.replaceState,
         // so leaving Browse and coming back via a bare href="/browse" showed
         // stale control values with nothing re-applying them. updateUrl()
@@ -164,14 +177,13 @@ function browsePage() {
                 any = true;
             });
             if (!any) return false;
-            applied.set('view', this.viewMode);
             // htmx.ajax rather than htmx.trigger on a control: htmx wires its
             // listeners on DOMContentLoaded, which races Alpine's deferred
             // init, so a synthetic 'change' here can land before htmx is
             // listening and be silently dropped. This fires the identical
             // request (same target and swap as the filter controls) and the
             // response's OOB swaps still refresh the filter-count dropdowns.
-            htmx.ajax('GET', '/api/search?' + applied.toString(), {target: '#item-grid', swap: 'innerHTML'});
+            this.runSearch(applied);
             return true;
         },
 

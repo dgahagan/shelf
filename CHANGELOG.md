@@ -6,6 +6,31 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-18
+
+Bugfix release for two [@LegendaryB](https://github.com/LegendaryB) reports:
+[#13](https://github.com/dgahagan/shelf/issues/13) and
+[#14](https://github.com/dgahagan/shelf/issues/14).
+
+### Fixed
+
+- **Sort preference is applied, not just displayed, in a new tab**
+  ([#13](https://github.com/dgahagan/shelf/issues/13)). Browse keeps your
+  filters in `sessionStorage` (per-tab) and your sort in `localStorage`
+  (persistent), so opening Shelf in a fresh tab hit a fallback path that set
+  the sort dropdown's value but fired its request with `htmx.trigger` — which
+  is unreliable during init, because htmx wires its listeners on
+  `DOMContentLoaded` and can miss a synthetic event dispatched by Alpine's
+  deferred setup. The dropdown read "Title A–Z" while the rows stayed in the
+  server's default newest-first order. That fallback now takes the same
+  `htmx.ajax` route the filter restore already used, and carries the current
+  view so a restored sort can't turn a list back into grid cards.
+- **List view button no longer clipped** in the Browse view toggle
+  ([#14](https://github.com/dgahagan/shelf/issues/14)). The toggle needs
+  `overflow-hidden` for its rounded corners, but as a flex item it was also
+  shrinking below its content width, so the right-hand button was cut off at
+  every desktop width. It no longer shrinks.
+
 ## [0.4.0] - 2026-08-17
 
 ### Added
@@ -146,6 +171,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.4.1]: https://github.com/dgahagan/shelf/releases/tag/v0.4.1
 [0.4.0]: https://github.com/dgahagan/shelf/releases/tag/v0.4.0
 [0.3.0]: https://github.com/dgahagan/shelf/releases/tag/v0.3.0
 [0.2.0]: https://github.com/dgahagan/shelf/releases/tag/v0.2.0

@@ -219,3 +219,117 @@ def test_browse_url_state_preserved(live_server, authed_page):
     authed_page.goto(f"{live_server['url']}/browse?mt=book")
     authed_page.wait_for_load_state("networkidle")
     assert "mt=book" in authed_page.url or authed_page.locator("body").is_visible()
+
+
+def _reset_browse_storage(page, base_url):
+    """Other tests in this module share the live server's browser context, so
+    a stale shelf-sort / shelf-view / shelf-browse-qs would decide the outcome
+    here. Clear them from the page's own origin before each scenario."""
+    page.goto(f"{base_url}/browse")
+    page.evaluate("() => { localStorage.clear(); sessionStorage.clear(); }")
+
+
+def test_browse_sort_restored_in_new_session(live_server, authed_page):
+    """Issue #13: the sort-only restore path (no stored filter querystring —
+    e.g. a brand new tab, since sessionStorage is per-tab) set the select's
+    value but fired the request with htmx.trigger, which is unreliable at init
+    time. The dropdown showed the saved sort while the rows stayed in the
+    server's default newest-first order. Both must now agree."""
+    # 'Zza' / 'Zzb' keep both items on page 1 under title_desc, and they stay on
+    # page 1 under the default order too — so a single pairwise comparison is
+    # valid under either ordering.
+    insert_item(live_server["data_dir"], title="Zza Sortprobe Alpha", media_type="book", isbn="9780000999011")
+    insert_item(live_server["data_dir"], title="Zzb Sortprobe Beta", media_type="book", isbn="9780000999012")
+
+    _reset_browse_storage(authed_page, live_server["url"])
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+
+    # Baseline: the unsorted default. Asserted via the control and URL rather
+    # than row order, because 'newest' ties on created_at for rows inserted in
+    # the same second and the tie-break is not defined.
+    grid = authed_page.locator("#item-grid")
+    expect(authed_page.locator("select[name=sort]")).to_have_value("newest")
+    assert "sort=" not in authed_page.url
+    default_text = grid.inner_text()
+    default_alpha_first = default_text.index("Zza Sortprobe Alpha") < default_text.index("Zzb Sortprobe Beta")
+
+    # title_desc is deterministic (Z->A) and, on this data, the opposite of
+    # whatever the default produced — so a stale default order is detectable.
+    authed_page.locator("select[name=sort]").select_option("title_desc")
+    expect(authed_page).to_have_url(re.compile(r"sort=title_desc"))
+    text = grid.inner_text()
+    assert text.index("Zzb Sortprobe Beta") < text.index("Zza Sortprobe Alpha")
+    assert default_alpha_first, (
+        "test needs the default order to differ from title_desc to be meaningful"
+    )
+
+    # Simulate a new tab: sessionStorage (the filter querystring) is per-tab and
+    # starts empty, while localStorage (the sort preference) persists. This is
+    # the branch restoreFilters() declines and restoreSort() must handle.
+    authed_page.evaluate("() => sessionStorage.removeItem('shelf-browse-qs')")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+
+    # Control repopulated...
+    expect(authed_page.locator("select[name=sort]")).to_have_value("title_desc")
+    # ...and, the actual regression, applied to the rows.
+    expect(authed_page).to_have_url(re.compile(r"sort=title_desc"))
+    text = authed_page.locator("#item-grid").inner_text()
+    assert text.index("Zzb Sortprobe Beta") < text.index("Zza Sortprobe Alpha"), (
+        "sort control shows title_desc but rows came back in the server's default order"
+    )
+
+
+def test_browse_sort_restore_keeps_list_view(live_server, authed_page):
+    """The restored-sort request must carry `view`, or the server renders grid
+    cards that get swapped into the list table (the issue #7 failure mode)."""
+    insert_item(live_server["data_dir"], title="Zzc Listprobe Alpha", media_type="book", isbn="9780000999013")
+    insert_item(live_server["data_dir"], title="Zzd Listprobe Beta", media_type="book", isbn="9780000999014")
+
+    _reset_browse_storage(authed_page, live_server["url"])
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("[data-testid='view-list']").click()
+    expect(authed_page.locator("#item-grid table")).to_have_count(1)
+    # title_desc, not title_asc: ascending happens to match the server's default
+    # row order here, so it could not tell a restored sort from a stale one.
+    authed_page.locator("select[name=sort]").select_option("title_desc")
+    expect(authed_page).to_have_url(re.compile(r"sort=title_desc"))
+
+    authed_page.evaluate("() => sessionStorage.removeItem('shelf-browse-qs')")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+
+    # Still a list, not grid cards stuffed into a table...
+    expect(authed_page.locator("#item-grid table")).to_have_count(1)
+    # ...and the sort survived alongside the view.
+    text = authed_page.locator("#item-grid").inner_text()
+    assert text.index("Zzd Listprobe Beta") < text.index("Zzc Listprobe Alpha")
+
+
+@pytest.mark.parametrize("width", [768, 1062, 1280])
+def test_browse_view_toggle_not_clipped(live_server, authed_page, width):
+    """Issue #14: the view toggle is a flex item with overflow-hidden (for its
+    rounded corners). Without shrink-0 it was squeezed below its content width
+    and the List button was clipped at every desktop width."""
+    authed_page.set_viewport_size({"width": width, "height": 800})
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+
+    metrics = authed_page.evaluate(
+        """() => {
+            const t = document.querySelector('[data-testid=view-toggle]');
+            const l = document.querySelector('[data-testid=view-list]');
+            const tb = t.getBoundingClientRect(), lb = l.getBoundingClientRect();
+            return {scrollW: t.scrollWidth, clientW: t.clientWidth,
+                    listRight: lb.right, toggleRight: tb.right};
+        }"""
+    )
+    assert metrics["scrollW"] <= metrics["clientW"], (
+        f"view toggle squeezed at {width}px: content {metrics['scrollW']}px "
+        f"in {metrics['clientW']}px box"
+    )
+    assert metrics["listRight"] <= metrics["toggleRight"] + 0.5, (
+        f"List view button clipped at {width}px"
+    )
