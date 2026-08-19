@@ -133,3 +133,53 @@ def test_manual_add_copy_from_picker(live_server, authed_page):
     expect(authed_page.locator("body")).to_contain_text("Acme Books")
     expect(authed_page.locator("body")).to_contain_text("Copy Saga")
     expect(authed_page.locator("body")).to_contain_text("Copy Shelf")
+
+
+def test_rescanning_a_manually_added_upc_reports_duplicate(live_server, authed_page):
+    """#20: the exact reported repro, end to end.
+
+    Scan an unresolvable UPC, add it manually, scan the same barcode again.
+    Before the fix step 4 offered the manual form a second time (the scan
+    path dedupes on items.upc, but manual_add filed the code in items.isbn)
+    and step 5 returned a 500 from an uncaught UNIQUE(isbn, media_type).
+
+    "888888888888" has a bad UPC-A check digit, so UPC Item DB rejects it on
+    format (HTTP 400) rather than as a catalog miss — the same deterministic,
+    network-independent route to not_found that
+    test_manual_add_copy_from_picker documents. It must differ from that
+    test's code: live_server is session-scoped, so both tests share one
+    database.
+    """
+    barcode = "888888888888"
+
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.select_option("#media-type", "dvd")
+    authed_page.fill("#isbn-input", barcode)
+    authed_page.press("#isbn-input", "Enter")
+
+    scan_result = authed_page.locator(".scan-result").first
+    expect(scan_result).to_contain_text("not found", timeout=20_000)
+
+    scan_result.locator("input[name=title]").fill("Unresolvable Disc")
+    scan_result.locator("button[type=submit]").click()
+    expect(authed_page.locator("a", has_text="Unresolvable Disc").first).to_be_visible(
+        timeout=10_000
+    )
+
+    # Step 4: the same barcode again. This is what used to re-offer the form.
+    failed_responses = []
+    authed_page.on(
+        "response",
+        lambda r: failed_responses.append((r.url, r.status)) if r.status >= 500 else None,
+    )
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.select_option("#media-type", "dvd")
+    authed_page.fill("#isbn-input", barcode)
+    authed_page.press("#isbn-input", "Enter")
+
+    scan_result = authed_page.locator(".scan-result").first
+    expect(scan_result).to_contain_text("duplicate", timeout=20_000)
+    expect(scan_result).to_contain_text("Unresolvable Disc")
+    assert failed_responses == []

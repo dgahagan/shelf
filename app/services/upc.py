@@ -7,6 +7,23 @@ def normalize_barcode(raw: str) -> str:
     return re.sub(r"[^0-9]", "", raw.strip())
 
 
+def normalize_upc(raw: str) -> str:
+    """Canonical storage form for a UPC/EAN barcode: EAN-13.
+
+    UPC-A is EAN-13 with a leading zero, so the same disc scanned as a
+    12-digit UPC-A and as a 13-digit EAN-13 has to land on one value or the
+    duplicate check silently misses. Everything is stored padded to 13.
+    Idempotent — passing an already-canonical code back through is a no-op.
+
+    This is the *storage* form only. External lookups (UPC Item DB, TMDb)
+    still get the barcode as scanned.
+    """
+    code = normalize_barcode(raw)
+    if len(code) == 12:
+        code = "0" + code
+    return code
+
+
 def detect_barcode_type(code: str) -> str:
     """Detect barcode type: 'isbn', 'upc', or 'unknown'."""
     code = normalize_barcode(code)

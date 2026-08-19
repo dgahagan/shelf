@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import sqlite3
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Form
@@ -141,11 +142,49 @@ def _manual_form_locations():
         return db.execute("SELECT id, name FROM locations ORDER BY sort_order, name").fetchall()
 
 
+def _find_duplicate_item(db, isbn13: str | None, upc_code: str | None, media_type: str) -> dict | None:
+    """Existing item carrying this barcode for this media type, if any.
+
+    Mirrors the two constraints an items insert can trip — UNIQUE(isbn,
+    media_type) and the partial unique index on (upc, media_type) — so a
+    caller can report a duplicate instead of letting IntegrityError escape.
+    """
+    if isbn13:
+        row = db.execute(
+            "SELECT id, title FROM items WHERE isbn = ? AND media_type = ?",
+            (isbn13, media_type),
+        ).fetchone()
+        if row:
+            return dict(row)
+    if upc_code:
+        row = db.execute(
+            "SELECT id, title FROM items WHERE upc = ? AND media_type = ?",
+            (upc_code, media_type),
+        ).fetchone()
+        if row:
+            return dict(row)
+        # Rows written before #20 kept the barcode in items.isbn, zero-padded
+        # by to_isbn13() — the same canonical form normalize_upc() produces,
+        # so this matches them exactly. Migration 21 re-files them, but it
+        # skips any row whose move would collide, and an older instance may
+        # still share the database. No real ISBN can land here: ISBN-13 is
+        # always 978/979, which detect_barcode_type() classifies as an ISBN.
+        row = db.execute(
+            "SELECT id, title FROM items WHERE isbn = ? AND media_type = ?",
+            (upc_code, media_type),
+        ).fetchone()
+        if row:
+            return dict(row)
+    return None
+
+
 def _find_item_by_barcode(raw: str) -> dict | None:
     """Find an existing item by ISBN or UPC barcode. Returns dict or None."""
-    isbn13 = isbn_svc.to_isbn13(raw)
     barcode_type = upc_svc.detect_barcode_type(raw)
-    upc_norm = upc_svc.normalize_barcode(raw) if barcode_type == "upc" else None
+    # to_isbn13() zero-pads a UPC-A into an ISBN-shaped string, so a UPC must
+    # not be looked up against items.isbn — that is what mis-filed them (#20).
+    isbn13 = isbn_svc.to_isbn13(raw) if barcode_type != "upc" else None
+    upc_norm = upc_svc.normalize_upc(raw) if barcode_type == "upc" else None
 
     with get_db() as db:
         if isbn13:
@@ -508,9 +547,22 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         )
 
     isbn = form.get("isbn", "").strip()
-    isbn13 = isbn_svc.to_isbn13(isbn) if isbn else None
-    isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if isbn13 else None
     media_type = form.get("media_type", "book")
+
+    # A UPC belongs in items.upc, never in items.isbn (#20). to_isbn13()
+    # will happily zero-pad a 12-digit UPC-A into something ISBN-shaped, so
+    # every manually-added disc and game used to be filed in the wrong
+    # column: the UPC scan path (which reads items.upc) could never find it
+    # again, and scanning the same barcode a second time offered the manual
+    # form again and then tripped UNIQUE(isbn, media_type) with a 500.
+    barcode_type = upc_svc.detect_barcode_type(isbn) if isbn else "unknown"
+    if barcode_type == "upc":
+        upc_code = upc_svc.normalize_upc(isbn)
+        isbn13 = isbn10 = None
+    else:
+        upc_code = None
+        isbn13 = isbn_svc.to_isbn13(isbn) if isbn else None
+        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if isbn13 else None
     pub_year = form.get("publish_year")
     platform = form.get("platform") or None
 
@@ -534,15 +586,34 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
             loc_row = db.execute("SELECT id FROM locations WHERE id = ?", (location_id,)).fetchone()
             if not loc_row:
                 location_id = None
-        cursor = db.execute(
-            """INSERT INTO items (title, authors, isbn, isbn10, media_type, publisher,
-               publish_year, platform, series_name, location_id, source)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
-            (title, form.get("authors"), isbn13, isbn10, media_type,
-             form.get("publisher"), int(pub_year) if pub_year else None, platform,
-             series_name, location_id),
+        existing = _find_duplicate_item(db, isbn13, upc_code, media_type)
+        if existing is None:
+            try:
+                cursor = db.execute(
+                    """INSERT INTO items (title, authors, isbn, isbn10, upc, media_type,
+                       publisher, publish_year, platform, series_name, location_id, source)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
+                    (title, form.get("authors"), isbn13, isbn10, upc_code, media_type,
+                     form.get("publisher"), int(pub_year) if pub_year else None, platform,
+                     series_name, location_id),
+                )
+                item_id = cursor.lastrowid
+            except sqlite3.IntegrityError:
+                # Lost a race with a concurrent add, or the barcode is on a row
+                # filed before the #20 re-file migration. Either way the user
+                # gets the duplicate card rather than a 500.
+                existing = _find_duplicate_item(db, isbn13, upc_code, media_type)
+                if existing is None:
+                    raise
+
+    if existing:
+        code = isbn13 or upc_code or ""
+        _log_scan(code, media_type, "duplicate", existing["id"])
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "duplicate", "isbn": code, "title": existing["title"],
+             "item_id": existing["id"]},
         )
-        item_id = cursor.lastrowid
 
     # Handle cover upload
     cover_path = None
@@ -568,13 +639,13 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         with get_db() as db:
             db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
 
-    _log_scan(isbn13 or "", media_type, "added", item_id)
+    _log_scan(isbn13 or upc_code or "", media_type, "added", item_id)
 
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {
             "status": "added",
-            "isbn": isbn13 or "",
+            "isbn": isbn13 or upc_code or "",
             "title": title,
             "authors": form.get("authors"),
             "cover_path": cover_path,
@@ -1646,11 +1717,15 @@ async def _enrich_import_covers(item_ids: list[int]) -> None:
 async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None, mode: str = "add"):
     """Handle UPC barcode scan — look up via UPC Item DB + TMDb (or IGDB for games)."""
     upc_norm = upc_svc.normalize_barcode(upc_code)
+    # upc_norm goes to UPC Item DB / TMDb as scanned; upc_key is the canonical
+    # EAN-13 form everything in the database is stored and matched on, so the
+    # same disc scanned as UPC-A and as EAN-13 dedupes to one row (#20).
+    upc_key = upc_svc.normalize_upc(upc_code)
 
     # Check duplicate
     with get_db() as db:
         existing = db.execute(
-            "SELECT id, title FROM items WHERE upc = ? AND media_type = ?", (upc_norm, media_type)
+            "SELECT id, title FROM items WHERE upc = ? AND media_type = ?", (upc_key, media_type)
         ).fetchone()
     if existing:
         _log_scan(upc_norm, media_type, "duplicate", existing["id"], mode)
@@ -1695,7 +1770,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             """INSERT INTO items (title, description, media_type, publish_year,
                location_id, upc, source) VALUES (?, ?, ?, ?, ?, ?, 'tmdb')""",
             (metadata["title"], metadata.get("description"), media_type,
-             metadata.get("publish_year"), loc_id, upc_norm),
+             metadata.get("publish_year"), loc_id, upc_key),
         )
         item_id = cursor.lastrowid
 
@@ -1787,7 +1862,7 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id
                 metadata.get("series_name") if metadata else None,
                 platform_val,
                 loc_id,
-                upc_norm,
+                upc_svc.normalize_upc(upc_norm),
                 source,
             ),
         )

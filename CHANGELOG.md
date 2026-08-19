@@ -6,6 +6,35 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-19
+
+A barcode-filing fix, from [#20](https://github.com/dgahagan/shelf/issues/20).
+
+### Fixed
+
+- **Manually adding a barcode nothing resolves, then scanning it again, no
+  longer returns a 500** ([#20](https://github.com/dgahagan/shelf/issues/20)).
+  Scanning an unresolvable barcode offers a manual-add form. Scanning that
+  same barcode afterwards offered the form *again* instead of reporting the
+  item you had just added — and submitting it a second time returned an HTTP
+  500 error page. Only discs and video games were affected; books were
+  always safe.
+
+  Underneath, a manual add stored the scanned code in the ISBN column, even
+  when it was a UPC — the conversion that normalises an ISBN will happily
+  zero-pad a 12-digit UPC into something ISBN-shaped. The UPC scan path
+  looks for discs by their UPC, so it could never find the row it had just
+  written. A UPC now goes where it belongs, which also means a later scan of
+  a disc you genuinely own finally matches it instead of offering to add a
+  duplicate.
+
+  Two related repairs come with it. The same disc scanned as a 12-digit
+  UPC-A and as a 13-digit EAN-13 used to produce two separate rows; both
+  forms now resolve to one. And existing libraries are repaired on upgrade —
+  mis-filed barcodes are moved to the right column automatically. Where a
+  mis-filed row *and* a correctly-filed one already exist for the same disc,
+  both are left in place for you to merge rather than one being discarded.
+
 ## [0.7.0] - 2026-08-19
 
 Archive import stops being a leap of faith. Found while running 0.6.0's
@@ -331,6 +360,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.7.1]: https://github.com/dgahagan/shelf/releases/tag/v0.7.1
 [0.7.0]: https://github.com/dgahagan/shelf/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dgahagan/shelf/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dgahagan/shelf/releases/tag/v0.5.0

@@ -95,6 +95,24 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
     (17, "Add series_meta hc_total column",   "ALTER TABLE series_meta ADD COLUMN hc_total INTEGER DEFAULT NULL"),
     (18, "Add series_meta hc_missing column", "ALTER TABLE series_meta ADD COLUMN hc_missing INTEGER DEFAULT NULL"),
     (19, "Add series_meta hc_checked_at column", "ALTER TABLE series_meta ADD COLUMN hc_checked_at TEXT DEFAULT NULL"),
+    # 20-21 re-file barcodes landed in the wrong column before #20 was fixed.
+    # Both are plain UPDATEs rather than schema changes, and both are written
+    # to be idempotent + collision-safe: _backfill_versions() replays every
+    # migration on a pre-version-tracking database and only swallows
+    # OperationalError, so an IntegrityError here would abort startup.
+    (20, "Canonicalize UPC codes to EAN-13",
+     """UPDATE items SET upc = '0' || upc
+        WHERE upc IS NOT NULL AND length(upc) = 12
+          AND NOT EXISTS (SELECT 1 FROM items o
+                          WHERE o.upc = '0' || items.upc
+                            AND o.media_type = items.media_type)"""),
+    (21, "Re-file UPC barcodes stored in the isbn column",
+     """UPDATE items SET upc = isbn, isbn = NULL, isbn10 = NULL
+        WHERE upc IS NULL AND isbn IS NOT NULL AND length(isbn) = 13
+          AND isbn NOT LIKE '978%' AND isbn NOT LIKE '979%'
+          AND NOT EXISTS (SELECT 1 FROM items o
+                          WHERE o.upc = items.isbn
+                            AND o.media_type = items.media_type)"""),
 )
 
 MIGRATION_TABLES = """

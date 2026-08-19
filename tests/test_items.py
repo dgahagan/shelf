@@ -349,8 +349,10 @@ class TestMigrationLoggingDefersOutsideTransaction:
         finally:
             conn.close()
 
-        # Migrations 15-19 are pending in this fixture.
-        assert len(logs) == 5
+        # Everything after 14 is pending in this fixture — derived rather than
+        # hardcoded so adding a migration doesn't fail this test.
+        pending = [m for m in MIGRATIONS if m[0] > 14]
+        assert len(logs) == len(pending)
         assert any("Applied migration 15" in line for line in logs)
         # Nothing was emitted while the transaction was open.
         assert [r for r in caplog.records if "Applied migration" in r.getMessage()] == []
