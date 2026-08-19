@@ -6,6 +6,56 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-19
+
+Archive import stops being a leap of faith. Found while running 0.6.0's
+importer against a real 665-item library.
+
+### Added
+
+- **Import preview — see exactly what an archive import will do before it
+  does it.** Settings → Data → Portable archive is now two steps: **Preview
+  import** reads the zip and reports what a merge would change without
+  writing anything, and only then does an **Import N items** button appear.
+  The preview names the numbers that matter — how many items are new, how
+  many are already in your library, how many would be updated, plus the
+  covers, series, reading-log entries and loans that ride along — and tells
+  you **how** each duplicate was matched: exactly, on ISBN, or heuristically,
+  on title and author.
+
+  That last distinction is the reason this exists. Most real libraries are
+  mostly ISBN-less — in the 665-item library this was built against, 74% of
+  duplicate matches came from the fuzzy title/author path — so the majority
+  of an import's decisions were guesses the user never saw before they were
+  acted on, irreversibly. Now they're shown first.
+
+  You can also switch parts of the import off: new items, updates to matched
+  items, covers, reading log, loans, valuation history. Each is a single
+  checkbox — there are deliberately no per-item checkboxes, which would mean
+  665 decisions to restore one backup. Anything you leave out is reported
+  back afterwards ("Reading log: 11 rows not imported"), so a deselection
+  never looks like data that silently vanished.
+
+  The plan you approve is the plan that runs. If the library changes between
+  the preview and the confirm, the affected items are left alone rather than
+  imported under a stale verdict, and counted as drifted in the report.
+
+### Changed
+
+- **Archive import no longer replaces existing cover art.** Previously,
+  importing in *Update duplicates* mode overwrote the cover file of every
+  matched item — so re-importing an old archive, or merging someone else's,
+  silently destroyed hand-picked covers with no way to get them back. On the
+  665-item library that was 630 cover files rewritten by a single import.
+
+  An archive cover now installs only onto an item that has **no** cover.
+  Replacing existing ones is an explicit opt-in — a "Replace existing covers"
+  checkbox that appears only in update mode, and only when there is something
+  to replace. This applies to the scriptable one-shot endpoint too:
+  `POST /api/import/archive` keeps its request and response shape and gains
+  an optional `replace_covers=true` form field, off by default. If you were
+  relying on the old overwrite behavior, pass it.
+
 ## [0.6.0] - 2026-08-18
 
 A portability release, from [@LegendaryB](https://github.com/LegendaryB)'s
@@ -281,6 +331,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.7.0]: https://github.com/dgahagan/shelf/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dgahagan/shelf/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dgahagan/shelf/releases/tag/v0.5.0
 [0.4.1]: https://github.com/dgahagan/shelf/releases/tag/v0.4.1

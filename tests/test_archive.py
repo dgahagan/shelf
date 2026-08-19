@@ -2,15 +2,25 @@
 app/routers/archive.py) — exporter, and the reader's security rail."""
 import io
 import json
+import os
 import re
 import shutil
+import time
 import zipfile
 
 import pytest
 
 from app import config
+from app.database import get_db
 from app.services import archive as archive_svc
-from app.services.archive import ArchiveError, build_archive, merge_archive, read_archive
+from app.services.archive import (
+    ArchiveError,
+    apply_plan,
+    build_archive,
+    merge_archive,
+    plan_archive,
+    read_archive,
+)
 from tests.conftest import _insert_borrower, _insert_item, _insert_location
 
 # Hostile fixtures are built in-test with zipfile — no binary blobs checked in.
@@ -694,24 +704,50 @@ class TestMergeUpdateModeNonEmptyLibrary:
         ).fetchall()]
         assert tags == ["sci-fi"]
 
-    def test_cover_overwritten_in_update_mode_even_when_local_present(self, db, tmp_path):
+    def _seed_local_cover(self, db, tmp_path):
+        """An updated item that already has a hand-picked cover on disk, plus
+        an archive offering a different one for it."""
         existing_id = _insert_item(db, title="Dune", isbn="9780441013593")
         config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
         local_cover = config.COVERS_DIR / f"{existing_id}.jpg"
-        local_cover.write_bytes(b"\xff\xd8\xff\xe0" + b"OLD" * 100)
-        db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (f"covers/{existing_id}.jpg", existing_id))
+        old_bytes = b"\xff\xd8\xff\xe0" + b"OLD" * 100
+        local_cover.write_bytes(old_bytes)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
+                   (f"covers/{existing_id}.jpg", existing_id))
         db.execute("COMMIT")
 
-        new_cover_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
+        new_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
         library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
-                               "media_type": "book", "cover": "covers/1.jpg"}]}
-        p = _write_zip(tmp_path / "a.zip", [("covers/1.jpg", new_cover_bytes)], library=json.dumps(library))
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        p = _write_zip(tmp_path / "a.zip", [("covers/1.jpg", new_bytes)],
+                       library=json.dumps(library))
+        return local_cover, old_bytes, new_bytes, p
+
+    def test_existing_cover_is_preserved_by_default(self, db, tmp_path):
+        """0.7.0 behavior change: update mode used to overwrite the local
+        cover file unconditionally, which destroyed hand-picked covers with
+        no way back. Filling a gap is safe; overwriting is not, so it moved
+        behind an opt-in."""
+        local_cover, old_bytes, _new, p = self._seed_local_cover(db, tmp_path)
 
         with read_archive(p) as reader:
             report = merge_archive(db, reader, mode="update")
 
+        assert report["updated"] == 1
+        assert report["covers_installed"] == 0
+        assert local_cover.read_bytes() == old_bytes
+
+    def test_existing_cover_replaced_only_with_replace_covers(self, db, tmp_path):
+        local_cover, _old, new_bytes, p = self._seed_local_cover(db, tmp_path)
+
+        with read_archive(p) as reader:
+            report = merge_archive(db, reader, mode="update", replace_covers=True)
+
+        assert report["updated"] == 1
+        # merge_archive folds replacements into covers_installed to keep the
+        # v1 report shape; apply_plan reports them separately.
         assert report["covers_installed"] == 1
-        assert local_cover.read_bytes() == new_cover_bytes
+        assert local_cover.read_bytes() == new_bytes
 
 
 class TestMergeIsbnLessDedupe:
@@ -907,3 +943,1045 @@ class TestImportArchiveEndpoint:
         resp = admin_client.post("/api/import/archive", data={"mode": "skip"})
         assert resp.status_code != 500
         assert "error" in resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Import planner — pure classification (docs/plan-import-preview-plan-apply.md)
+# ---------------------------------------------------------------------------
+
+_LIBRARY_TABLES = (
+    "items", "item_tags", "locations", "tags", "borrowers", "series_meta",
+    "reading_log", "checkouts", "valuation_history",
+)
+
+
+def _library_snapshot(db) -> dict:
+    """Every row of every archive-covered table, plus the covers dir listing —
+    the evidence that planning changed nothing at all."""
+    snap = {}
+    for table in _LIBRARY_TABLES:
+        rows = db.execute(f"SELECT * FROM {table}").fetchall()
+        snap[table] = sorted(tuple(r) for r in rows)
+    covers = []
+    if config.COVERS_DIR.exists():
+        covers = sorted((p.name, p.read_bytes()) for p in config.COVERS_DIR.iterdir() if p.is_file())
+    snap["__covers__"] = covers
+    return snap
+
+
+def _plan(db, tmp_path, library, entries=(), *, mode="skip", name="a.zip"):
+    p = _write_zip(tmp_path / name, list(entries), library=json.dumps(library))
+    with read_archive(p) as reader:
+        return plan_archive(db, reader, mode=mode)
+
+
+def _by_ref(plan) -> dict:
+    return {rec["ref"]: rec for rec in plan["items"]}
+
+
+class TestPlanPurity:
+    """plan_archive writes nothing — no rows, no get-or-create side effects,
+    no cover files. This is the property the whole preview flow rests on."""
+
+    def test_planning_a_populated_db_changes_nothing(self, db, tmp_path):
+        _seed_full_library(db)
+        before = _library_snapshot(db)
+
+        library = {
+            "items": [
+                # a match (skipped/updated), a create, and an errored item
+                {"id": 1, "title": "Dune", "authors": "Frank Herbert",
+                 "isbn": "9780441013593", "media_type": "book", "cover": "covers/1.jpg",
+                 "location": "Brand New Room", "tags": ["brand-new-tag"]},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000030",
+                 "media_type": "book", "cover": "covers/2.jpg",
+                 "location": "Another New Room", "tags": ["another-tag"]},
+                {"id": 3, "title": "  ", "isbn": "9780000000040", "media_type": "book"},
+            ],
+            "locations": [{"name": "Unreferenced Room", "sort_order": 3}],
+            "tags": [{"name": "unreferenced-tag"}],
+            "borrowers": [{"name": "Brand New Borrower"}],
+            "series": [{"name": "Brand New Series", "description": "x"}],
+            "reading_log": [{"item_id": 2, "status": "read"}],
+            "checkouts": [{"item_id": 2, "borrower": "Brand New Borrower"}],
+            "valuation_history": [{"total_value": 99, "priced_count": 5}],
+        }
+        entries = [("covers/1.jpg", _JPEG), ("covers/2.jpg", _JPEG)]
+
+        for mode in ("skip", "update"):
+            _plan(db, tmp_path, library, entries, mode=mode, name=f"{mode}.zip")
+            assert _library_snapshot(db) == before, f"plan_archive wrote something in {mode} mode"
+
+    def test_plan_never_constructs_http_client(self, db, tmp_path, monkeypatch):
+        import httpx
+
+        def _boom(*a, **k):
+            raise AssertionError("an HTTP client was constructed during planning")
+
+        monkeypatch.setattr(httpx, "AsyncClient", _boom)
+        monkeypatch.setattr(httpx, "Client", _boom)
+
+        _seed_full_library(db)
+        path = build_archive(db)
+        with read_archive(path) as reader:
+            plan = plan_archive(db, reader, mode="update")
+        assert plan["summary"]["items_total"] == 1
+
+
+class TestPlanVerdicts:
+    def test_isbn_match_skip_mode(self, db, tmp_path):
+        _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book"}]}
+        plan = _plan(db, tmp_path, library, mode="skip")
+        assert plan["mode"] == "skip"
+        assert plan["items"] == [{"ref": 1, "title": "Dune", "verdict": "skip",
+                                  "basis": "isbn", "cover": "none"}]
+        assert plan["summary"]["by_basis"] == {"isbn": 1, "title_authors": 0}
+
+    def test_isbn_match_update_mode(self, db, tmp_path):
+        _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book"}]}
+        plan = _plan(db, tmp_path, library, mode="update")
+        assert plan["mode"] == "update"
+        assert _by_ref(plan)[1]["verdict"] == "update"
+        assert _by_ref(plan)[1]["basis"] == "isbn"
+
+    def test_title_authors_match_both_modes(self, db, tmp_path):
+        _insert_item(db, title="Local Zine", authors="Some Author", isbn=None,
+                     media_type="comic")
+        db.execute("COMMIT")
+        # Casefold collision: the fuzzy path is NOCASE, like the merge's.
+        library = {"items": [{"id": 1, "title": "local zine", "authors": "SOME AUTHOR",
+                              "media_type": "comic"}]}
+
+        skip_plan = _plan(db, tmp_path, library, mode="skip", name="s.zip")
+        assert _by_ref(skip_plan)[1]["verdict"] == "skip"
+        assert _by_ref(skip_plan)[1]["basis"] == "title_authors"
+
+        update_plan = _plan(db, tmp_path, library, mode="update", name="u.zip")
+        assert _by_ref(update_plan)[1]["verdict"] == "update"
+        assert _by_ref(update_plan)[1]["basis"] == "title_authors"
+
+    def test_no_match_is_a_create_with_no_basis(self, db, tmp_path):
+        _insert_item(db, title="Local Zine", authors="Some Author", isbn=None,
+                     media_type="comic")
+        db.execute("COMMIT")
+        library = {"items": [
+            {"id": 1, "title": "Local Zine", "authors": "Different Author",
+             "media_type": "comic"},                                  # fuzzy miss
+            {"id": 2, "title": "Local Zine", "authors": "Some Author",
+             "media_type": "ebook"},                                  # media_type differs
+            {"id": 3, "title": "Elsewhere", "isbn": "9780000000030",
+             "media_type": "book"},                                   # isbn miss
+        ]}
+        plan = _plan(db, tmp_path, library, mode="update")
+        assert [r["verdict"] for r in plan["items"]] == ["create"] * 3
+        assert [r["basis"] for r in plan["items"]] == [None] * 3
+        assert plan["summary"]["by_basis"] == {"isbn": 0, "title_authors": 0}
+
+    def test_mixed_matrix_counts(self, db, tmp_path):
+        _insert_item(db, title="By Isbn", isbn="9780000000010")
+        _insert_item(db, title="By Title", authors="A", isbn=None, media_type="book")
+        db.execute("COMMIT")
+        library = {"items": [
+            {"id": 1, "title": "By Isbn", "isbn": "9780000000010", "media_type": "book"},
+            {"id": 2, "title": "By Title", "authors": "A", "media_type": "book"},
+            {"id": 3, "title": "New One", "isbn": "9780000000099", "media_type": "book"},
+        ]}
+        for mode, verdict in (("skip", "skip"), ("update", "update")):
+            plan = _plan(db, tmp_path, library, mode=mode, name=f"{mode}.zip")
+            s = plan["summary"]
+            assert s["create"] == 1
+            assert s[verdict] == 2
+            assert s["by_basis"] == {"isbn": 1, "title_authors": 1}
+
+
+class TestPlanCoverActions:
+    def test_create_with_cover_installs(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        plan = _plan(db, tmp_path, library, [("covers/1.jpg", _JPEG)])
+        assert _by_ref(plan)[1]["cover"] == "install"
+        assert plan["summary"]["covers_install"] == 1
+        assert plan["summary"]["covers_replace"] == 0
+
+    def test_no_cover_entry_is_none(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+                              "media_type": "book"}]}
+        plan = _plan(db, tmp_path, library)
+        assert _by_ref(plan)[1]["cover"] == "none"
+        assert plan["summary"]["covers_install"] == 0
+
+    def test_cover_declared_but_absent_from_zip_is_none(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        plan = _plan(db, tmp_path, library)  # no cover entries written
+        assert _by_ref(plan)[1]["cover"] == "none"
+
+    def test_matched_item_without_local_cover_installs(self, db, tmp_path):
+        _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        plan = _plan(db, tmp_path, library, [("covers/1.jpg", _JPEG)], mode="update")
+        assert _by_ref(plan)[1]["cover"] == "install"
+        assert plan["summary"]["covers_install"] == 1
+        assert plan["summary"]["covers_replace"] == 0
+
+    def test_matched_item_with_local_cover_is_a_replace(self, db, tmp_path):
+        existing_id = _insert_item(db, title="Dune", isbn="9780441013593")
+        config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
+        (config.COVERS_DIR / f"{existing_id}.jpg").write_bytes(_JPEG)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
+                   (f"covers/{existing_id}.jpg", existing_id))
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        plan = _plan(db, tmp_path, library, [("covers/1.jpg", _JPEG)], mode="update")
+        assert _by_ref(plan)[1]["cover"] == "replace"
+        assert plan["summary"]["covers_install"] == 0
+        assert plan["summary"]["covers_replace"] == 1
+
+    def test_skipped_item_does_no_cover_work(self, db, tmp_path):
+        """A skip is a skip: the merge touches no cover on a skipped item,
+        whether or not one is already on disk."""
+        _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        plan = _plan(db, tmp_path, library, [("covers/1.jpg", _JPEG)], mode="skip")
+        assert _by_ref(plan)[1]["cover"] == "none"
+        assert plan["summary"]["covers_install"] == 0
+        assert plan["summary"]["covers_replace"] == 0
+
+
+class TestPlanWouldCreate:
+    def test_existing_names_are_not_listed_case_insensitively(self, db, tmp_path):
+        _insert_location(db, name="Living Room")
+        db.execute("INSERT INTO tags (name) VALUES ('Sci-Fi')")
+        _insert_borrower(db, name="Alex")
+        db.execute("INSERT INTO series_meta (name) VALUES ('Dune Saga')")
+        db.execute("COMMIT")
+
+        library = {
+            "items": [{"id": 1, "title": "Dune Messiah", "isbn": "9780441172696",
+                       "media_type": "book", "location": "living room",
+                       "tags": ["sci-fi", "Owned"]}],
+            "locations": [{"name": "LIVING ROOM", "sort_order": 0}, {"name": "Attic"}],
+            "tags": [{"name": "SCI-FI"}],
+            "borrowers": [{"name": "ALEX"}, {"name": "Sam"}],
+            "series": [{"name": "DUNE SAGA"}, {"name": "Foundation"}],
+        }
+        plan = _plan(db, tmp_path, library)
+        wc = plan["summary"]["would_create"]
+        assert wc["locations"] == ["Attic"]
+        assert wc["tags"] == ["Owned"]
+        assert wc["borrowers"] == ["Sam"]
+        assert wc["series"] == ["Foundation"]
+
+    def test_skipped_items_contribute_no_names(self, db, tmp_path):
+        """Names ride in on items the import actually creates or updates —
+        a skipped item's location/tags are never touched by the merge."""
+        _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book", "location": "Skip Room",
+                              "tags": ["skip-tag"]}]}
+        plan = _plan(db, tmp_path, library, mode="skip")
+        assert plan["summary"]["would_create"]["locations"] == []
+        assert plan["summary"]["would_create"]["tags"] == []
+
+    def test_names_are_deduped_across_items(self, db, tmp_path):
+        library = {"items": [
+            {"id": 1, "title": "One", "isbn": "9780000000010", "media_type": "book",
+             "location": "Attic", "tags": ["shared"]},
+            {"id": 2, "title": "Two", "isbn": "9780000000020", "media_type": "book",
+             "location": "ATTIC", "tags": ["SHARED"]},
+        ]}
+        plan = _plan(db, tmp_path, library)
+        assert plan["summary"]["would_create"]["locations"] == ["Attic"]
+        assert plan["summary"]["would_create"]["tags"] == ["shared"]
+
+
+class TestPlanDuplicateDedupeKeys:
+    """The a92b8e7 invariant, at plan time: two archive items sharing one
+    dedupe key are two independent creates, not a create plus a skip."""
+
+    def test_duplicate_key_items_are_two_creates(self, db, tmp_path):
+        library = {"items": [
+            {"id": 1, "title": "Automate the Boring Stuff", "authors": "Al Sweigart",
+             "media_type": "ebook"},
+            {"id": 2, "title": "automate the boring stuff", "authors": "al sweigart",
+             "media_type": "ebook"},
+        ]}
+        plan = _plan(db, tmp_path, library)
+        assert [r["verdict"] for r in plan["items"]] == ["create", "create"]
+        assert plan["summary"]["create"] == 2
+        assert plan["summary"]["skip"] == 0
+
+    def test_duplicate_key_items_both_match_a_pre_existing_row(self, db, tmp_path):
+        """The bound is 'created by this import', not 'dedupe is off'."""
+        _insert_item(db, title="Automate the Boring Stuff", authors="Al Sweigart",
+                     isbn=None, media_type="ebook")
+        db.execute("COMMIT")
+        library = {"items": [
+            {"id": 1, "title": "Automate the Boring Stuff", "authors": "Al Sweigart",
+             "media_type": "ebook"},
+            {"id": 2, "title": "Automate the Boring Stuff", "authors": "Al Sweigart",
+             "media_type": "ebook"},
+        ]}
+        plan = _plan(db, tmp_path, library)
+        assert [r["verdict"] for r in plan["items"]] == ["skip", "skip"]
+
+
+class TestPlanSummary:
+    def test_counts_reconcile_with_item_records(self, db, tmp_path):
+        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        db.execute("COMMIT")
+        library = {"items": [
+            {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
+            {"id": 2, "title": "Brand New", "isbn": "9780000000030", "media_type": "book"},
+            {"id": 3, "title": "", "isbn": "9780000000040", "media_type": "book"},
+        ]}
+        plan = _plan(db, tmp_path, library)
+        s = plan["summary"]
+        assert s["items_total"] == len(plan["items"]) == 2
+        assert s["create"] + s["skip"] + s["update"] == s["items_total"]
+        assert s["create"] == 1 and s["skip"] == 1 and s["update"] == 0
+        assert s["errors"] == ["Archive item 3: missing title"]
+        assert sum(s["by_basis"].values()) == s["skip"] + s["update"]
+
+    def test_reading_log_and_checkouts_count_created_items_only(self, db, tmp_path):
+        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        db.execute("COMMIT")
+        library = {
+            "items": [
+                {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000030", "media_type": "book"},
+            ],
+            "reading_log": [
+                {"item_id": 1, "status": "read"},      # attaches to a skip — lands nowhere
+                {"item_id": 2, "status": "read"},
+                {"item_id": 2, "status": "reading"},
+                {"item_id": 99, "status": "read"},     # dangling ref
+            ],
+            "checkouts": [
+                {"item_id": 1, "borrower": "Alex"},
+                {"item_id": 2, "borrower": "Sam"},
+            ],
+        }
+        plan = _plan(db, tmp_path, library)
+        assert plan["summary"]["reading_log"] == 2
+        assert plan["summary"]["checkouts"] == 1
+        # Only the borrower on a checkout that actually lands is a would-create.
+        assert plan["summary"]["would_create"]["borrowers"] == ["Sam"]
+
+    def test_valuation_history_mergeability(self, db, tmp_path):
+        library = {"items": [], "valuation_history": [{"total_value": 99, "priced_count": 5},
+                                                      {"total_value": 12, "priced_count": 1}]}
+        plan = _plan(db, tmp_path, library, name="empty.zip")
+        assert plan["summary"]["valuation_history"] == {"rows": 2, "mergeable": True}
+
+        db.execute("INSERT INTO valuation_history (total_value, priced_count) VALUES (10, 1)")
+        db.execute("COMMIT")
+        plan = _plan(db, tmp_path, library, name="full.zip")
+        assert plan["summary"]["valuation_history"] == {"rows": 2, "mergeable": False}
+
+    def test_errors_are_capped(self, db, tmp_path):
+        library = {"items": [{"id": i, "title": "", "media_type": "book"} for i in range(30)]}
+        plan = _plan(db, tmp_path, library)
+        assert len(plan["summary"]["errors"]) == 20
+        assert plan["items"] == []
+        assert plan["summary"]["items_total"] == 0
+
+    def test_unknown_mode_falls_back_to_skip(self, db, tmp_path):
+        _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book"}]}
+        plan = _plan(db, tmp_path, library, mode="destroy-everything")
+        assert plan["mode"] == "skip"
+        assert _by_ref(plan)[1]["verdict"] == "skip"
+
+    def test_plan_matches_what_the_merge_then_does(self, db, tmp_path):
+        """The plan is only worth showing if apply agrees with it. Plan a
+        mixed archive, run the merge, and check the verdict counts line up."""
+        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        db.execute("COMMIT")
+        library = {
+            "items": [
+                {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000030",
+                 "media_type": "book", "cover": "covers/2.jpg"},
+                {"id": 3, "title": "Also New", "isbn": "9780000000050", "media_type": "book"},
+            ],
+        }
+        p = _write_zip(tmp_path / "a.zip", [("covers/2.jpg", _JPEG)],
+                       library=json.dumps(library))
+        with read_archive(p) as reader:
+            plan = plan_archive(db, reader, mode="skip")
+        with read_archive(p) as reader:
+            report = merge_archive(db, reader, mode="skip")
+        db.execute("COMMIT")
+
+        assert report["imported"] == plan["summary"]["create"]
+        assert report["skipped"] == plan["summary"]["skip"]
+        assert report["updated"] == plan["summary"]["update"]
+        assert report["covers_installed"] == plan["summary"]["covers_install"]
+
+
+# ---------------------------------------------------------------------------
+# Selective apply — plan/apply with selection and drift handling
+# ---------------------------------------------------------------------------
+
+def _plan_and_apply(db, path, *, mode="skip", selection=None, mutate=None):
+    """Plan an archive, optionally mutate the DB in between (drift), then
+    apply the plan. Two reader instances, as the real two-request flow uses."""
+    with read_archive(path) as reader:
+        plan = plan_archive(db, reader, mode=mode)
+    if mutate is not None:
+        mutate(db)
+    with read_archive(path) as reader:
+        report = apply_plan(db, reader, plan, selection)
+    return plan, report
+
+
+def _zip_for(tmp_path, library, entries=(), name="a.zip"):
+    return _write_zip(tmp_path / name, list(entries), library=json.dumps(library))
+
+
+class TestApplyPlanReportShape:
+    def test_report_is_the_v1_report_plus_the_new_keys(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+                              "media_type": "book"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
+        assert report == {
+            "imported": 1, "updated": 0, "skipped": 0, "errors": [],
+            "covers_installed": 0, "format": "shelf-archive",
+            "covers_replaced": 0, "drifted": 0,
+            "deselected": {"creates": 0, "updates": 0, "covers": 0,
+                           "reading_log": 0, "checkouts": 0, "valuation_history": 0},
+        }
+
+    def test_apply_uses_the_plans_mode_not_a_caller_supplied_one(self, db, tmp_path):
+        """You apply what you reviewed: an update-mode plan updates even
+        though apply_plan is never told a mode."""
+        existing_id = _insert_item(db, title="Dune", isbn="9780441013593")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book", "publisher": "Ace"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library), mode="update")
+        assert report["updated"] == 1
+        assert db.execute("SELECT publisher FROM items WHERE id = ?",
+                          (existing_id,)).fetchone()["publisher"] == "Ace"
+
+
+class TestApplyPlanSelection:
+    def _mixed_library(self):
+        return {
+            "items": [
+                {"id": 1, "title": "Already Here", "isbn": "9780000000010",
+                 "media_type": "book", "publisher": "Updated Press"},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000030",
+                 "media_type": "book", "cover": "covers/2.jpg"},
+            ],
+            "reading_log": [{"item_id": 2, "status": "read"},
+                            {"item_id": 2, "status": "reading"}],
+            "checkouts": [{"item_id": 2, "borrower": "Sam"}],
+            "valuation_history": [{"total_value": 99, "priced_count": 5}],
+        }
+
+    def _seed_match(self, db):
+        item_id = _insert_item(db, title="Already Here", isbn="9780000000010")
+        db.execute("COMMIT")
+        return item_id
+
+    def test_everything_selected_is_the_full_merge(self, db, tmp_path):
+        self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update")
+        db.execute("COMMIT")
+
+        assert report["imported"] == 1 and report["updated"] == 1
+        assert report["covers_installed"] == 1
+        assert report["deselected"] == {"creates": 0, "updates": 0, "covers": 0,
+                                        "reading_log": 0, "checkouts": 0,
+                                        "valuation_history": 0}
+        assert db.execute("SELECT COUNT(*) c FROM reading_log").fetchone()["c"] == 2
+        assert db.execute("SELECT COUNT(*) c FROM checkouts").fetchone()["c"] == 1
+        assert db.execute("SELECT COUNT(*) c FROM valuation_history").fetchone()["c"] == 1
+
+    def test_reading_log_deselected_leaves_items_but_no_rows(self, db, tmp_path):
+        self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"reading_log": False})
+        db.execute("COMMIT")
+
+        assert report["imported"] == 1
+        assert report["deselected"]["reading_log"] == 2
+        assert db.execute("SELECT COUNT(*) c FROM reading_log").fetchone()["c"] == 0
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Brand New'"
+        ).fetchone()["c"] == 1
+
+    def test_creates_deselected_applies_updates_only(self, db, tmp_path):
+        existing_id = self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"include_creates": False})
+        db.execute("COMMIT")
+
+        assert report["imported"] == 0
+        assert report["updated"] == 1
+        assert report["deselected"]["creates"] == 1
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 1
+        assert db.execute("SELECT publisher FROM items WHERE id = ?",
+                          (existing_id,)).fetchone()["publisher"] == "Updated Press"
+        # reading_log/checkouts hang off created items, so nothing lands and
+        # nothing is blamed on their own toggles.
+        assert report["deselected"]["reading_log"] == 0
+        assert db.execute("SELECT COUNT(*) c FROM reading_log").fetchone()["c"] == 0
+
+    def test_updates_deselected_applies_creates_only(self, db, tmp_path):
+        existing_id = self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"include_updates": False})
+        db.execute("COMMIT")
+
+        assert report["imported"] == 1
+        assert report["updated"] == 0
+        assert report["deselected"]["updates"] == 1
+        assert db.execute("SELECT publisher FROM items WHERE id = ?",
+                          (existing_id,)).fetchone()["publisher"] is None
+
+    def test_covers_deselected_installs_none(self, db, tmp_path):
+        self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"covers": False})
+        db.execute("COMMIT")
+
+        assert report["imported"] == 1
+        assert report["covers_installed"] == 0
+        assert report["deselected"]["covers"] == 1
+        new_id = db.execute("SELECT id FROM items WHERE title = 'Brand New'").fetchone()["id"]
+        assert not (config.COVERS_DIR / f"{new_id}.jpg").exists()
+        assert db.execute("SELECT cover_path FROM items WHERE id = ?",
+                          (new_id,)).fetchone()["cover_path"] is None
+
+    def test_checkouts_deselected(self, db, tmp_path):
+        self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"checkouts": False})
+        db.execute("COMMIT")
+        assert report["deselected"]["checkouts"] == 1
+        assert db.execute("SELECT COUNT(*) c FROM checkouts").fetchone()["c"] == 0
+
+    def test_valuation_history_deselected(self, db, tmp_path):
+        self._seed_match(db)
+        path = _zip_for(tmp_path, self._mixed_library(), [("covers/2.jpg", _JPEG)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"valuation_history": False})
+        db.execute("COMMIT")
+        assert report["deselected"]["valuation_history"] == 1
+        assert db.execute("SELECT COUNT(*) c FROM valuation_history").fetchone()["c"] == 0
+
+    def test_nothing_selected_writes_nothing_at_all(self, db, tmp_path):
+        """The strongest selection case: with every toggle off, apply must
+        leave the database exactly as it found it — including the
+        get-or-create side effects for locations/tags/borrowers/series."""
+        self._seed_match(db)
+        library = self._mixed_library()
+        library["locations"] = [{"name": "Attic", "sort_order": 0}]
+        library["tags"] = [{"name": "unloved"}]
+        library["borrowers"] = [{"name": "Sam"}]
+        library["series"] = [{"name": "Foundation"}]
+        path = _zip_for(tmp_path, library, [("covers/2.jpg", _JPEG)])
+        before = _library_snapshot(db)
+
+        _plan, report = _plan_and_apply(db, path, mode="update", selection={
+            "include_creates": False, "include_updates": False, "covers": False,
+            "reading_log": False, "checkouts": False, "valuation_history": False,
+        })
+
+        assert _library_snapshot(db) == before
+        assert report["deselected"]["creates"] == 1
+        assert report["deselected"]["updates"] == 1
+        assert report["deselected"]["valuation_history"] == 1
+
+
+class TestApplyPlanCoverSemantics:
+    def test_gap_is_filled_but_existing_cover_is_kept(self, db, tmp_path):
+        gap_id = _insert_item(db, title="No Cover", isbn="9780000000010")
+        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000020")
+        config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
+        old_bytes = b"\xff\xd8\xff\xe0" + b"OLD" * 100
+        (config.COVERS_DIR / f"{kept_id}.jpg").write_bytes(old_bytes)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
+                   (f"covers/{kept_id}.jpg", kept_id))
+        db.execute("COMMIT")
+
+        library = {"items": [
+            {"id": 1, "title": "No Cover", "isbn": "9780000000010",
+             "media_type": "book", "cover": "covers/1.jpg"},
+            {"id": 2, "title": "Has Cover", "isbn": "9780000000020",
+             "media_type": "book", "cover": "covers/2.jpg"},
+        ]}
+        new_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
+        path = _zip_for(tmp_path, library, [("covers/1.jpg", _JPEG),
+                                            ("covers/2.jpg", new_bytes)])
+        _plan, report = _plan_and_apply(db, path, mode="update")
+        db.execute("COMMIT")
+
+        assert report["covers_installed"] == 1
+        assert report["covers_replaced"] == 0
+        assert (config.COVERS_DIR / f"{gap_id}.jpg").read_bytes() == _JPEG
+        assert (config.COVERS_DIR / f"{kept_id}.jpg").read_bytes() == old_bytes
+
+    def test_replace_covers_opt_in_counts_separately(self, db, tmp_path):
+        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000020")
+        config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
+        (config.COVERS_DIR / f"{kept_id}.jpg").write_bytes(b"\xff\xd8\xff\xe0" + b"OLD" * 100)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
+                   (f"covers/{kept_id}.jpg", kept_id))
+        db.execute("COMMIT")
+
+        new_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
+        library = {"items": [{"id": 2, "title": "Has Cover", "isbn": "9780000000020",
+                              "media_type": "book", "cover": "covers/2.jpg"}]}
+        path = _zip_for(tmp_path, library, [("covers/2.jpg", new_bytes)])
+        _plan, report = _plan_and_apply(db, path, mode="update",
+                                        selection={"replace_covers": True})
+        db.execute("COMMIT")
+
+        assert report["covers_installed"] == 0
+        assert report["covers_replaced"] == 1
+        assert (config.COVERS_DIR / f"{kept_id}.jpg").read_bytes() == new_bytes
+
+    def test_plan_cover_counts_predict_the_apply(self, db, tmp_path):
+        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000020")
+        config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
+        (config.COVERS_DIR / f"{kept_id}.jpg").write_bytes(_JPEG)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
+                   (f"covers/{kept_id}.jpg", kept_id))
+        db.execute("COMMIT")
+
+        library = {"items": [
+            {"id": 1, "title": "Brand New", "isbn": "9780000000010",
+             "media_type": "book", "cover": "covers/1.jpg"},
+            {"id": 2, "title": "Has Cover", "isbn": "9780000000020",
+             "media_type": "book", "cover": "covers/2.jpg"},
+        ]}
+        path = _zip_for(tmp_path, library, [("covers/1.jpg", _JPEG),
+                                            ("covers/2.jpg", _JPEG)])
+        plan, report = _plan_and_apply(db, path, mode="update",
+                                       selection={"replace_covers": True})
+        db.execute("COMMIT")
+        assert report["covers_installed"] == plan["summary"]["covers_install"] == 1
+        assert report["covers_replaced"] == plan["summary"]["covers_replace"] == 1
+
+
+class TestApplyPlanDrift:
+    def test_item_that_appeared_between_plan_and_apply_is_skipped(self, db, tmp_path):
+        library = {"items": [
+            {"id": 1, "title": "Raced", "isbn": "9780000000010", "media_type": "book"},
+            {"id": 2, "title": "Untouched", "isbn": "9780000000020", "media_type": "book"},
+        ]}
+        path = _zip_for(tmp_path, library)
+
+        def race(db):
+            _insert_item(db, title="Raced", isbn="9780000000010")
+            db.execute("COMMIT")
+
+        _plan, report = _plan_and_apply(db, path, mode="skip", mutate=race)
+        db.execute("COMMIT")
+
+        # Item 1 was planned "create" but now matches a row — refuse to act
+        # on the stale verdict rather than quietly doing something else.
+        assert report["drifted"] == 1
+        assert report["imported"] == 1
+        assert report["skipped"] == 0
+        titles = {r["title"] for r in db.execute("SELECT title FROM items").fetchall()}
+        assert titles == {"Raced", "Untouched"}
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 2
+
+    def test_item_that_disappeared_between_plan_and_apply_is_drift(self, db, tmp_path):
+        existing_id = _insert_item(db, title="Vanishing", isbn="9780000000010")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Vanishing", "isbn": "9780000000010",
+                              "media_type": "book"}]}
+        path = _zip_for(tmp_path, library)
+
+        def vanish(db):
+            db.execute("DELETE FROM items WHERE id = ?", (existing_id,))
+            db.execute("COMMIT")
+
+        _plan, report = _plan_and_apply(db, path, mode="skip", mutate=vanish)
+
+        # Planned "skip", but the row it would have skipped is gone. Creating
+        # it now would exceed what the user reviewed.
+        assert report["drifted"] == 1
+        assert report["imported"] == 0
+        assert report["skipped"] == 0
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0
+
+    def test_drift_is_not_counted_as_deselection(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "Raced", "isbn": "9780000000010",
+                              "media_type": "book"}]}
+        path = _zip_for(tmp_path, library)
+
+        def race(db):
+            _insert_item(db, title="Raced", isbn="9780000000010")
+            db.execute("COMMIT")
+
+        _plan, report = _plan_and_apply(db, path, mode="skip", mutate=race)
+        assert report["drifted"] == 1
+        assert all(v == 0 for v in report["deselected"].values())
+
+    def test_duplicate_dedupe_keys_survive_plan_and_apply(self, db, tmp_path):
+        """The a92b8e7 invariant through the split: an archive holding two
+        rows under one dedupe key restores as two rows, and neither is
+        mistaken for drift when the first insert lands."""
+        _insert_item(db, title="Automate the Boring Stuff", authors="Al Sweigart",
+                     isbn=None, media_type="ebook")
+        _insert_item(db, title="automate the boring stuff", authors="al sweigart",
+                     isbn=None, media_type="ebook")
+        db.execute("COMMIT")
+        path = build_archive(db)
+        _wipe_library(db)
+
+        with read_archive(path) as reader:
+            plan = plan_archive(db, reader, mode="skip")
+        with read_archive(path) as reader:
+            report = apply_plan(db, reader, plan)
+        db.execute("COMMIT")
+
+        assert plan["summary"]["create"] == 2
+        assert report["imported"] == 2, report
+        assert report["drifted"] == 0, report
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 2
+
+    def test_full_library_round_trips_through_plan_and_apply(self, db, tmp_path):
+        _seed_full_library(db)
+        original_path = build_archive(db)
+        with zipfile.ZipFile(original_path) as zf:
+            original_library = json.loads(zf.read("library.json"))
+            original_covers = {n: zf.read(n) for n in zf.namelist() if n.startswith("covers/")}
+
+        _wipe_library(db)
+
+        with read_archive(original_path) as reader:
+            plan = plan_archive(db, reader, mode="skip")
+        with read_archive(original_path) as reader:
+            report = apply_plan(db, reader, plan)
+        db.execute("COMMIT")
+
+        assert report["imported"] == len(original_library["items"])
+        assert report["errors"] == []
+        assert report["covers_installed"] == len(original_covers)
+        assert report["drifted"] == 0
+
+        reimport_path = build_archive(db)
+        with zipfile.ZipFile(reimport_path) as zf:
+            new_library = json.loads(zf.read("library.json"))
+        assert _normalize_library(original_library) == _normalize_library(new_library)
+
+
+# ---------------------------------------------------------------------------
+# T4 — /plan and /apply endpoints; legacy endpoint recomposed
+# ---------------------------------------------------------------------------
+
+def _staging_dir():
+    """DATA_DIR / import_staging, resolved at call time — same trap the
+    module docstring in app/services/import_staging.py documents."""
+    return config.DATA_DIR / "import_staging"
+
+
+def _staged_files():
+    d = _staging_dir()
+    if not d.exists():
+        return []
+    return sorted(p.name for p in d.iterdir() if p.is_file())
+
+
+class TestPlanApplyEndpointAuth:
+    def test_editor_forbidden_on_plan(self, editor_client):
+        resp = editor_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(b"not a zip"), "application/zip")},
+            data={"mode": "skip"},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_forbidden_on_plan(self, viewer_client):
+        resp = viewer_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(b"not a zip"), "application/zip")},
+            data={"mode": "skip"},
+        )
+        assert resp.status_code == 403
+
+    def test_editor_forbidden_on_apply(self, editor_client):
+        resp = editor_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": "whatever", "mode": "skip"},
+        )
+        assert resp.status_code == 403
+
+    def test_viewer_forbidden_on_apply(self, viewer_client):
+        resp = viewer_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": "whatever", "mode": "skip"},
+        )
+        assert resp.status_code == 403
+
+
+class TestPlanEndpoint:
+    def test_plan_writes_nothing_but_stages_zip_and_plan(self, admin_client, db):
+        _seed_full_library(db)
+        export_resp = admin_client.get("/api/export/archive")
+        before = _library_snapshot(db)
+
+        resp = admin_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(export_resp.content), "application/zip")},
+            data={"mode": "skip"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        upload_id = body["upload_id"]
+        assert isinstance(upload_id, str) and upload_id
+        assert body["plan"]["summary"]["items_total"] == 1
+
+        # Purity holds through the endpoint too — the plan call is a read.
+        assert _library_snapshot(db) == before
+
+        assert _staged_files() == sorted([f"{upload_id}.zip", f"{upload_id}.plan.json"])
+
+    def test_invalid_upload_stages_nothing_and_refuses(self, admin_client):
+        resp = admin_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(b"this is definitely not a zip file"), "application/zip")},
+            data={"mode": "skip"},
+        )
+        assert resp.status_code != 500
+        body = resp.json()
+        assert "error" in body
+        assert "not a zip" in body["error"]
+        # The refusal shape is the extended one, zeroed.
+        assert body["covers_replaced"] == 0
+        assert body["drifted"] == 0
+        assert body["deselected"] == {"creates": 0, "updates": 0, "covers": 0,
+                                      "reading_log": 0, "checkouts": 0,
+                                      "valuation_history": 0}
+        assert _staged_files() == []
+
+    def test_no_file_uploaded_stages_nothing(self, admin_client):
+        resp = admin_client.post("/api/import/archive/plan", data={"mode": "skip"})
+        assert resp.status_code != 500
+        assert "error" in resp.json()
+        assert _staged_files() == []
+
+    def test_second_plan_evicts_the_first_staged_upload(self, admin_client, db):
+        _seed_full_library(db)
+        export_resp = admin_client.get("/api/export/archive")
+
+        resp1 = admin_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(export_resp.content), "application/zip")},
+            data={"mode": "skip"},
+        )
+        upload_id_1 = resp1.json()["upload_id"]
+
+        resp2 = admin_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(export_resp.content), "application/zip")},
+            data={"mode": "skip"},
+        )
+        upload_id_2 = resp2.json()["upload_id"]
+        assert upload_id_1 != upload_id_2
+        assert _staged_files() == sorted([f"{upload_id_2}.zip", f"{upload_id_2}.plan.json"])
+
+        # The first upload_id no longer applies — its files are gone.
+        apply_resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": upload_id_1, "mode": "skip"},
+        )
+        assert apply_resp.json()["error"] == "Preview expired — upload the archive again."
+
+
+class TestApplyEndpoint:
+    def _plan_via_endpoint(self, admin_client, zip_bytes, mode="skip"):
+        resp = admin_client.post(
+            "/api/import/archive/plan",
+            files={"file": ("a.zip", io.BytesIO(zip_bytes), "application/zip")},
+            data={"mode": mode},
+        )
+        assert resp.status_code == 200
+        return resp.json()["upload_id"]
+
+    def test_apply_honors_selection_reading_log_deselected(self, admin_client, db):
+        _seed_full_library(db)
+        export_resp = admin_client.get("/api/export/archive")
+        _wipe_library(db)
+
+        upload_id = self._plan_via_endpoint(admin_client, export_resp.content)
+
+        apply_resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": upload_id, "mode": "skip", "reading_log": "false"},
+        )
+        assert apply_resp.status_code == 200
+        report = apply_resp.json()
+        assert report["imported"] == 1
+        assert report["deselected"]["reading_log"] == 1
+
+        with get_db() as check_db:
+            assert check_db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 1
+            assert check_db.execute("SELECT COUNT(*) c FROM reading_log").fetchone()["c"] == 0
+
+        # The staged pair is consumed on a successful apply too.
+        assert _staged_files() == []
+
+    def test_unknown_upload_id_refuses_and_applies_nothing(self, admin_client, db):
+        before = _library_snapshot(db)
+        resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": "does-not-exist-at-all", "mode": "skip"},
+        )
+        assert resp.json()["error"] == "Preview expired — upload the archive again."
+        assert _library_snapshot(db) == before
+
+    def test_malformed_upload_id_refuses(self, admin_client):
+        resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": "../../etc/passwd", "mode": "skip"},
+        )
+        assert resp.json()["error"] == "Preview expired — upload the archive again."
+
+    def test_missing_upload_id_refuses(self, admin_client):
+        resp = admin_client.post("/api/import/archive/apply", data={"mode": "skip"})
+        assert resp.json()["error"] == "Preview expired — upload the archive again."
+
+    def test_expired_upload_id_refuses(self, admin_client, db):
+        _seed_full_library(db)
+        export_resp = admin_client.get("/api/export/archive")
+        upload_id = self._plan_via_endpoint(admin_client, export_resp.content)
+
+        old_time = time.time() - (31 * 60)  # past the 30-minute TTL
+        for f in _staging_dir().iterdir():
+            os.utime(f, (old_time, old_time))
+
+        resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": upload_id, "mode": "skip"},
+        )
+        assert resp.json()["error"] == "Preview expired — upload the archive again."
+
+    def test_apply_consumes_staged_files_even_when_it_errors(self, admin_client, db, monkeypatch):
+        import app.routers.archive as archive_router
+
+        _seed_full_library(db)
+        export_resp = admin_client.get("/api/export/archive")
+        upload_id = self._plan_via_endpoint(admin_client, export_resp.content)
+
+        def _boom(*a, **k):
+            raise ArchiveError("synthetic apply failure")
+
+        monkeypatch.setattr(archive_router, "apply_plan", _boom)
+
+        resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": upload_id, "mode": "skip"},
+        )
+        assert resp.json()["error"] == "synthetic apply failure"
+        assert _staged_files() == []
+
+    def test_stale_mode_disagreeing_with_plan_is_refused(self, admin_client, db):
+        _seed_full_library(db)
+        export_resp = admin_client.get("/api/export/archive")
+        # Plan under "skip"...
+        upload_id = self._plan_via_endpoint(admin_client, export_resp.content, mode="skip")
+
+        # ...then submit apply claiming "update" — a stale/tampered form.
+        resp = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": upload_id, "mode": "update"},
+        )
+        body = resp.json()
+        assert "error" in body
+        assert body["imported"] == 0 and body["updated"] == 0
+        # Nothing was consumed — the same upload_id still works once the
+        # form's mode is corrected.
+        assert _staged_files() == sorted([f"{upload_id}.zip", f"{upload_id}.plan.json"])
+
+        retry = admin_client.post(
+            "/api/import/archive/apply",
+            data={"upload_id": upload_id, "mode": "skip"},
+        )
+        assert retry.status_code == 200
+        assert "error" not in retry.json()
+
+
+class TestLegacyEndpointReplaceCovers:
+    """0.7.0 behavior change rides the legacy one-shot endpoint too: covers
+    on matched items are preserved by default, replaced only with the new
+    opt-in — matches TestMergeUpdateModeNonEmptyLibrary's service-level
+    coverage, exercised here through the router."""
+
+    def _seed_matched_item_with_cover(self, db, tmp_path):
+        existing_id = _insert_item(db, title="Dune", isbn="9780441013593")
+        config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
+        old_bytes = b"\xff\xd8\xff\xe0" + b"OLD" * 100
+        (config.COVERS_DIR / f"{existing_id}.jpg").write_bytes(old_bytes)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
+                   (f"covers/{existing_id}.jpg", existing_id))
+        db.execute("COMMIT")
+
+        new_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
+        library = {"items": [{"id": 1, "title": "Dune", "isbn": "9780441013593",
+                              "media_type": "book", "cover": "covers/1.jpg"}]}
+        p = _write_zip(tmp_path / "a.zip", [("covers/1.jpg", new_bytes)],
+                       library=json.dumps(library))
+        return existing_id, old_bytes, new_bytes, p
+
+    def test_existing_cover_kept_by_default(self, admin_client, db, tmp_path):
+        existing_id, old_bytes, _new, p = self._seed_matched_item_with_cover(db, tmp_path)
+
+        resp = admin_client.post(
+            "/api/import/archive",
+            files={"file": ("a.zip", io.BytesIO(p.read_bytes()), "application/zip")},
+            data={"mode": "update"},
+        )
+        assert resp.status_code == 200
+        report = resp.json()
+        assert report["updated"] == 1
+        assert report["covers_installed"] == 0
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT cover_path FROM items WHERE id = ?", (existing_id,)
+            ).fetchone()
+            assert row["cover_path"] == f"covers/{existing_id}.jpg"
+        assert (config.COVERS_DIR / f"{existing_id}.jpg").read_bytes() == old_bytes
+
+    def test_existing_cover_replaced_when_opted_in(self, admin_client, db, tmp_path):
+        existing_id, _old, new_bytes, p = self._seed_matched_item_with_cover(db, tmp_path)
+
+        resp = admin_client.post(
+            "/api/import/archive",
+            files={"file": ("a.zip", io.BytesIO(p.read_bytes()), "application/zip")},
+            data={"mode": "update", "replace_covers": "true"},
+        )
+        assert resp.status_code == 200
+        report = resp.json()
+        assert report["updated"] == 1
+        assert report["covers_installed"] == 1
+        assert (config.COVERS_DIR / f"{existing_id}.jpg").read_bytes() == new_bytes

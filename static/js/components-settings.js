@@ -382,16 +382,198 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
-    // settings.html — Portable archive import card
+    // settings.html — Portable archive import card.
+    //
+    // Two steps: preview (POST /api/import/archive/plan, writes nothing) then
+    // confirm (POST /api/import/archive/apply). Selection state is flat
+    // booleans — the Alpine CSP build silently drops a nested/bracketed
+    // x-model — and every count or label the card shows is computed here
+    // rather than in a template expression.
     Alpine.data('archivePanel', function () {
         return {
-            importResult: false, importing: false,
-            doImport(e) {
-                this.importing = true; this.importResult = false;
-                fetch('/api/import/archive', { method: 'POST', body: new FormData(e.target), headers: { 'X-CSRF-Token': window.csrfToken() } })
-                    .then(r => r.json())
-                    .then(d => { this.importResult = d; this.importing = false; })
-                    .catch(() => { this.importResult = { error: 'Import failed' }; this.importing = false; });
+            step: 1,                    // 1 choose · 2 review plan · 3 report
+            planning: false,
+            importing: false,
+            plan: false,
+            planMode: 'skip',
+            uploadId: '',
+            errorMessage: '',
+            importResult: false,
+            deselectedLines: [],
+            selCreates: true,
+            selUpdates: true,
+            selCovers: true,
+            selReplaceCovers: false,
+            selReadingLog: true,
+            selCheckouts: true,
+            selValuation: true,
+
+            resetSelection() {
+                this.selCreates = true;
+                this.selUpdates = true;
+                this.selCovers = true;
+                this.selReplaceCovers = false;   // overwriting a cover is always opt-in
+                this.selReadingLog = true;
+                this.selCheckouts = true;
+                this.selValuation = true;
+            },
+
+            doPlan(e) {
+                var self = this;
+                this.planning = true;
+                this.errorMessage = '';
+                this.importResult = false;
+                fetch('/api/import/archive/plan', {
+                    method: 'POST',
+                    body: new FormData(e.target),
+                    headers: { 'X-CSRF-Token': window.csrfToken() }
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        self.planning = false;
+                        if (d.error) { self.errorMessage = d.error; return; }
+                        self.plan = d.plan;
+                        self.planMode = d.plan.mode;
+                        self.uploadId = d.upload_id;
+                        self.resetSelection();
+                        self.step = 2;
+                    })
+                    .catch(function () {
+                        self.planning = false;
+                        self.errorMessage = 'Preview failed';
+                    });
+            },
+
+            doApply() {
+                var self = this;
+                this.importing = true;
+                this.errorMessage = '';
+                var body = new FormData();
+                body.append('upload_id', this.uploadId);
+                body.append('mode', this.planMode);
+                body.append('include_creates', this.selCreates ? 'true' : 'false');
+                body.append('include_updates', this.selUpdates ? 'true' : 'false');
+                body.append('covers', this.selCovers ? 'true' : 'false');
+                body.append('replace_covers', this.selReplaceCovers ? 'true' : 'false');
+                body.append('reading_log', this.selReadingLog ? 'true' : 'false');
+                body.append('checkouts', this.selCheckouts ? 'true' : 'false');
+                body.append('valuation_history', this.selValuation ? 'true' : 'false');
+                fetch('/api/import/archive/apply', {
+                    method: 'POST',
+                    body: body,
+                    headers: { 'X-CSRF-Token': window.csrfToken() }
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) {
+                        self.importing = false;
+                        self.importResult = d;
+                        self.deselectedLines = self.buildDeselectedLines(d);
+                        self.step = 3;
+                    })
+                    .catch(function () {
+                        self.importing = false;
+                        self.importResult = { error: 'Import failed' };
+                        self.deselectedLines = [];
+                        self.step = 3;
+                    });
+            },
+
+            startOver() {
+                // No server call: the staged upload is collected by the TTL
+                // sweep the next plan/apply request runs.
+                this.step = 1;
+                this.plan = false;
+                this.uploadId = '';
+                this.importResult = false;
+                this.deselectedLines = [];
+                this.errorMessage = '';
+                this.resetSelection();
+            },
+
+            plural(n, word) {
+                return n + ' ' + word + (n === 1 ? '' : 's');
+            },
+
+            importCount() {
+                if (!this.plan) { return 0; }
+                var n = 0;
+                if (this.selCreates) { n += this.plan.summary.create; }
+                if (this.selUpdates && this.planMode === 'update') { n += this.plan.summary.update; }
+                return n;
+            },
+
+            importLabel() {
+                return 'Import ' + this.plural(this.importCount(), 'item');
+            },
+
+            // "494 new, 168 already in your library (skipped), 3 to update"
+            verdictSentence() {
+                if (!this.plan) { return ''; }
+                var s = this.plan.summary;
+                var parts = [s.create + ' new'];
+                if (s.skip) { parts.push(s.skip + ' already in your library (skipped)'); }
+                if (s.update) { parts.push(s.update + ' to update'); }
+                return parts.join(', ');
+            },
+
+            // How many verdicts rest on the fuzzy title/author match — the
+            // path that covers most of an ISBN-less library.
+            basisNote() {
+                if (!this.plan) { return ''; }
+                var b = this.plan.summary.by_basis || {};
+                var parts = [];
+                if (b.title_authors) { parts.push(b.title_authors + ' matched by title/author'); }
+                if (b.isbn) { parts.push(b.isbn + ' by ISBN'); }
+                return parts.length ? parts.join(', ') : '';
+            },
+
+            payloadNote() {
+                if (!this.plan) { return ''; }
+                var s = this.plan.summary;
+                var wc = s.would_create || {};
+                var parts = [];
+                if (s.covers_install) { parts.push(this.plural(s.covers_install, 'cover')); }
+                if ((wc.series || []).length) { parts.push(wc.series.length + ' new series'); }
+                if ((wc.locations || []).length) { parts.push(this.plural(wc.locations.length, 'new location')); }
+                if ((wc.tags || []).length) { parts.push(this.plural(wc.tags.length, 'new tag')); }
+                if ((wc.borrowers || []).length) { parts.push(this.plural(wc.borrowers.length, 'new borrower')); }
+                if (s.reading_log) { parts.push(this.plural(s.reading_log, 'reading-log entry')); }
+                if (s.checkouts) { parts.push(this.plural(s.checkouts, 'loan')); }
+                return parts.length ? 'Plus ' + parts.join(', ') + '.' : '';
+            },
+
+            replaceCoversNote() {
+                if (!this.plan) { return ''; }
+                var n = this.plan.summary.covers_replace;
+                return n ? 'Replace ' + this.plural(n, 'existing cover') : 'Replace existing covers';
+            },
+
+            valuationNote() {
+                if (!this.plan) { return ''; }
+                var v = this.plan.summary.valuation_history || {};
+                if (!v.rows) { return ''; }
+                if (!v.mergeable) {
+                    return this.plural(v.rows, 'valuation-history row') + ' (not mergeable — this library already has valuation history)';
+                }
+                return this.plural(v.rows, 'valuation-history row');
+            },
+
+            buildDeselectedLines(report) {
+                var d = report && report.deselected;
+                if (!d) { return []; }
+                var lines = [];
+                if (d.creates) { lines.push(this.plural(d.creates, 'new item') + ' not imported (deselected)'); }
+                if (d.updates) { lines.push(this.plural(d.updates, 'item') + ' not updated (deselected)'); }
+                if (d.covers) { lines.push(this.plural(d.covers, 'cover') + ' not installed (deselected)'); }
+                if (d.reading_log) { lines.push('Reading log: ' + this.plural(d.reading_log, 'row') + ' not imported (deselected)'); }
+                if (d.checkouts) { lines.push('Loans: ' + this.plural(d.checkouts, 'row') + ' not imported (deselected)'); }
+                if (d.valuation_history) { lines.push('Valuation history: ' + this.plural(d.valuation_history, 'row') + ' not imported (deselected)'); }
+                return lines;
+            },
+
+            driftedNote() {
+                var n = this.importResult && this.importResult.drifted;
+                return n ? this.plural(n, 'item') + ' changed between the preview and the import, and were left alone.' : '';
             }
         };
     });

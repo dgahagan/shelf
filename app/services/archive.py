@@ -22,6 +22,7 @@ import json
 import logging
 import re
 import zipfile
+from collections import deque
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -615,27 +616,312 @@ def _sql_now(db) -> str:
     return db.execute("SELECT datetime('now')").fetchone()[0]
 
 
-def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
-    """Install a validated archive's library.json into this instance.
+# ---------------------------------------------------------------------------
+# Import planner — pure classification of what an import would do.
+# ---------------------------------------------------------------------------
+#
+# plan_archive() answers "what would importing this archive change?" without
+# changing anything. It is the read half of the merge, split out so the UI can
+# show a plan before the user commits to it (docs/plan-import-preview-plan-apply.md).
+# Purity is a hard, tested requirement: no inserts, no get-or-create, no cover
+# writes — name resolution here is lookup-only.
 
-    Dedupe key is (isbn, media_type); ISBN-less items fall back to
-    casefolded (title, authors, media_type). `mode="skip"` (default) skips
-    matches; `mode="update"` refreshes metadata on the matched item.
-    locations/tags/borrowers/series are get-or-create by NOCASE name and
-    never overwritten. reading_log/checkouts install only for newly created
-    items (archive-local id -> new real id). valuation_history installs
-    only into an empty table. Never opens an HTTP client — covers come from
-    the zip via reader.read_cover only.
+_NAME_LOOKUP_TABLES = {
+    "locations": "locations",
+    "tags": "tags",
+    "borrowers": "borrowers",
+    "series": "series_meta",
+}
+
+
+def _existing_names(db, kind: str) -> set[str]:
+    """Casefolded set of the names already present in a name-keyed table.
+
+    The merge matches these NOCASE; comparing casefolded keys in Python is the
+    read-only equivalent, and it costs one query per table instead of one per
+    candidate name."""
+    table = _NAME_LOOKUP_TABLES[kind]
+    rows = db.execute(f"SELECT name FROM {table}").fetchall()
+    return {(r["name"] or "").strip().casefold() for r in rows}
+
+
+def _dedupe_lookup(db, *, title: str, isbn_val: str | None, media: str,
+                   authors, max_id: int):
+    """The merge's dedupe lookup, plus the path that found it.
+
+    Returns (row_or_None, basis) where basis is "isbn" for the exact path and
+    "title_authors" for the casefolded fallback. Both branches are bounded to
+    rows that predate the import (id <= max_id) for the reason merge_archive
+    documents — at plan time nothing has been inserted, so the bound covers
+    every row and archive duplicates classify independently."""
+    if isbn_val:
+        row = db.execute(
+            "SELECT id FROM items WHERE isbn = ? AND media_type = ? AND id <= ?",
+            (isbn_val, media, max_id),
+        ).fetchone()
+        return row, "isbn"
+    row = db.execute(
+        "SELECT id FROM items WHERE (isbn IS NULL OR isbn = '') "
+        "AND media_type = ? AND title = ? COLLATE NOCASE "
+        "AND COALESCE(authors, '') = ? COLLATE NOCASE AND id <= ?",
+        (media, title, authors or "", max_id),
+    ).fetchone()
+    return row, "title_authors"
+
+
+def plan_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
+    """Classify what merging this archive would do, writing nothing.
+
+    Returns the plan contract:
+
+        {"mode": …,
+         "items": [{"ref", "title", "verdict", "basis", "cover"}, …],
+         "summary": {…}}
+
+    `verdict` is create/skip/update using the merge's own dedupe rules;
+    `basis` is the lookup path that produced a match (None for creates);
+    `cover` is what apply would do to the target item's cover file —
+    "install" when it will have none, "replace" when a matched item already
+    has one (which apply only does under the replace_covers opt-in), "none"
+    when no cover would be touched. Skipped items are "none": the merge does
+    no cover work at all on a skip.
+
+    Cover counts are an upper bound: entry presence is checked, but the bytes
+    are not validated here (that is MAX_COVER_SIZE worth of reading per cover,
+    and a cover that fails validation at apply time is simply not installed).
+
+    Items that can never import (no title) are left out of `items` and
+    reported in `summary["errors"]`, so the verdict counts always reconcile
+    with the item records.
     """
     if mode not in ("skip", "update"):
         mode = "skip"
     library = reader.library
+    cover_names = reader.cover_names
+
+    # Same bound as the merge's: everything currently in the table. Nothing is
+    # inserted here, so this is just "match only pre-existing rows".
+    max_id = db.execute("SELECT COALESCE(MAX(id), 0) AS m FROM items").fetchone()["m"]
+
+    existing = {kind: _existing_names(db, kind) for kind in _NAME_LOOKUP_TABLES}
+    pending: dict[str, dict[str, str]] = {kind: {} for kind in _NAME_LOOKUP_TABLES}
+
+    def note_name(kind: str, name) -> None:
+        """Record a name the import would have to create, first-seen spelling
+        wins. Lookup only — the get-or-create insert is apply's job."""
+        name = (name or "").strip()
+        if not name:
+            return
+        key = name.casefold()
+        if key in existing[kind] or key in pending[kind]:
+            return
+        pending[kind][key] = name
+
+    # The merge seeds its get-or-create caches from the top-level lists before
+    # touching items, so a location/tag/borrower that no item references still
+    # gets created. Mirror that here or the would-create lists come up short.
+    for loc in library.get("locations") or []:
+        note_name("locations", (loc or {}).get("name") if isinstance(loc, dict) else None)
+    for tag in library.get("tags") or []:
+        note_name("tags", (tag or {}).get("name") if isinstance(tag, dict) else None)
+    for b in library.get("borrowers") or []:
+        note_name("borrowers", (b or {}).get("name") if isinstance(b, dict) else None)
+    for s in library.get("series") or []:
+        note_name("series", (s or {}).get("name") if isinstance(s, dict) else None)
+
+    records: list[dict] = []
+    errors: list[str] = []
+    counts = {"create": 0, "skip": 0, "update": 0}
+    by_basis = {"isbn": 0, "title_authors": 0}
+    covers_install = 0
+    covers_replace = 0
+
+    for item in library.get("items") or []:
+        ref = item.get("id") if isinstance(item, dict) else None
+        try:
+            title = (item.get("title") or "").strip()
+            if not title:
+                errors.append(f"Archive item {ref}: missing title")
+                continue
+            isbn_val = (item.get("isbn") or "").strip() or None
+            media = (item.get("media_type") or "book").strip() or "book"
+            authors = item.get("authors")
+            cover_arcname = item.get("cover")
+            has_cover_entry = bool(cover_arcname) and cover_arcname in cover_names
+
+            row, basis = _dedupe_lookup(
+                db, title=title, isbn_val=isbn_val, media=media,
+                authors=authors, max_id=max_id,
+            )
+
+            if row is None:
+                verdict, basis = "create", None
+                cover = "install" if has_cover_entry else "none"
+                # Only an item that is actually created carries its
+                # location/tag names in; a match reuses whatever is there.
+                note_name("locations", item.get("location"))
+                for tag_name in item.get("tags") or []:
+                    note_name("tags", tag_name)
+            elif mode == "update":
+                verdict = "update"
+                if not has_cover_entry:
+                    cover = "none"
+                elif _has_local_cover(row["id"]):
+                    cover = "replace"
+                else:
+                    cover = "install"
+                note_name("locations", item.get("location"))
+                for tag_name in item.get("tags") or []:
+                    note_name("tags", tag_name)
+            else:
+                verdict, cover = "skip", "none"
+
+            counts[verdict] += 1
+            if basis:
+                by_basis[basis] += 1
+            if cover == "install":
+                covers_install += 1
+            elif cover == "replace":
+                covers_replace += 1
+
+            records.append({
+                "ref": ref, "title": title, "verdict": verdict,
+                "basis": basis, "cover": cover,
+            })
+        except Exception as e:
+            errors.append(f"Archive item {ref}: {e}")
+
+    created_refs = set()
+    for rec in records:
+        if rec["verdict"] != "create" or rec["ref"] is None:
+            continue
+        try:
+            created_refs.add(int(rec["ref"]))
+        except (TypeError, ValueError):
+            continue
+
+    # reading_log/checkouts attach to newly created items only (v1 contract),
+    # so anything pointing at a match or an errored item lands nowhere.
+    reading_log = sum(
+        1 for r in library.get("reading_log") or []
+        if isinstance(r, dict) and r.get("item_id") in created_refs
+    )
+    checkouts = sum(
+        1 for r in library.get("checkouts") or []
+        if isinstance(r, dict) and r.get("item_id") in created_refs
+    )
+    for r in library.get("checkouts") or []:
+        if isinstance(r, dict) and r.get("item_id") in created_refs:
+            note_name("borrowers", r.get("borrower"))
+
+    vh_rows = library.get("valuation_history") or []
+    vh_local = db.execute("SELECT COUNT(*) AS c FROM valuation_history").fetchone()["c"]
+
+    return {
+        "mode": mode,
+        "items": records,
+        "summary": {
+            "items_total": len(records),
+            "create": counts["create"],
+            "skip": counts["skip"],
+            "update": counts["update"],
+            "by_basis": dict(by_basis),
+            "covers_install": covers_install,
+            "covers_replace": covers_replace,
+            "would_create": {
+                kind: list(pending[kind].values()) for kind in _NAME_LOOKUP_TABLES
+            },
+            "reading_log": reading_log,
+            "checkouts": checkouts,
+            "valuation_history": {"rows": len(vh_rows), "mergeable": vh_local == 0},
+            "errors": errors[:20],
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# Selective apply — execute a plan, honoring the user's toggles.
+# ---------------------------------------------------------------------------
+
+SELECTION_DEFAULTS = {
+    "include_creates": True,
+    "include_updates": True,   # meaningful only in update mode
+    "covers": True,            # install covers for items that lack one
+    "replace_covers": False,   # overwrite an existing cover — always opt-in
+    "reading_log": True,
+    "checkouts": True,
+    "valuation_history": True,
+}
+
+
+def normalize_selection(selection: dict | None = None) -> dict:
+    """Fill a partial selection out with the defaults, coercing to bool.
+
+    Every toggle defaults on except `replace_covers`, which is opt-in
+    everywhere — service, both new endpoints, the legacy endpoint, and the
+    UI. Unknown keys are ignored."""
+    sel = dict(SELECTION_DEFAULTS)
+    for key in SELECTION_DEFAULTS:
+        if selection and key in selection:
+            sel[key] = bool(selection[key])
+    return sel
+
+
+def _ref_key(value):
+    """Archive-local ids as they come out of JSON are ints (or, in a
+    hand-made archive, strings or nothing). Anything else is coerced to a
+    stable string so a malformed id can't blow up the plan index."""
+    if isinstance(value, (int, str)) or value is None:
+        return value
+    return repr(value)
+
+
+def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = None) -> dict:
+    """Execute a plan produced by plan_archive, honoring `selection`.
+
+    The mode comes from the plan, not from the caller: you apply what you
+    reviewed. Each item is re-classified with the same lookups plan_archive
+    used, and acted on **only** where the fresh verdict equals the planned
+    one — anything that moved between plan and apply is left alone and
+    counted in `drifted`. Work the user switched off is counted in
+    `deselected` instead.
+
+    Cover semantics (changed from v1, deliberately — design decision 4): an
+    archive cover installs only onto an item that has no local cover file.
+    Overwriting an existing cover happens only under `replace_covers` and is
+    counted separately in `covers_replaced`; it is not counted as
+    "deselected", since it is opt-in rather than opted-out.
+
+    Returns the v1 report keys plus `covers_replaced`, `drifted`, and
+    `deselected`. Never opens an HTTP client — covers come from the zip via
+    reader.read_cover only.
+    """
+    sel = normalize_selection(selection)
+    mode = plan.get("mode")
+    if mode not in ("skip", "update"):
+        mode = "skip"
+    library = reader.library
+    cover_names = reader.cover_names
 
     imported = 0
     updated = 0
     skipped = 0
+    drifted = 0
     covers_installed = 0
+    covers_replaced = 0
     errors: list[str] = []
+    deselected = {
+        "creates": 0, "updates": 0, "covers": 0,
+        "reading_log": 0, "checkouts": 0, "valuation_history": 0,
+    }
+
+    # One deque per archive-local id rather than a plain dict: a hand-made
+    # archive can repeat an id, and pairing records positionally keeps each
+    # item matched to the verdict that was actually shown for it.
+    planned: dict[object, deque] = {}
+    for rec in plan.get("items") or []:
+        if isinstance(rec, dict):
+            planned.setdefault(_ref_key(rec.get("ref")), deque()).append(rec)
 
     loc_cache: dict[str, int | None] = {}
     tag_cache: dict[str, int | None] = {}
@@ -667,20 +953,24 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
 
     # Seed get-or-create caches from the top-level lists first, so a
     # genuinely-new location/tag/borrower picks up its sort_order (or plain
-    # name) even if no item happens to reference it first.
-    for loc in library.get("locations") or []:
-        get_location_id(loc.get("name"))
-    for tag in library.get("tags") or []:
-        get_tag_id(tag.get("name"))
-    for b in library.get("borrowers") or []:
-        get_borrower_id(b.get("name"))
-    _merge_series(db, library.get("series") or [])
+    # name) even if no item happens to reference it first — but only when the
+    # selection actually applies item work. With both creates and updates
+    # switched off, apply must leave the database exactly as it found it.
+    if sel["include_creates"] or sel["include_updates"]:
+        for loc in library.get("locations") or []:
+            get_location_id(loc.get("name"))
+        for tag in library.get("tags") or []:
+            get_tag_id(tag.get("name"))
+        for b in library.get("borrowers") or []:
+            get_borrower_id(b.get("name"))
+        _merge_series(db, library.get("series") or [])
 
     id_map: dict[int, int] = {}  # archive-local item id -> new real id (created items only)
 
-    # Highest item id that predates this import. SQLite hands new rows ids
-    # above the current maximum, so this cleanly separates "was already here"
-    # from "this import created it" — see the dedupe lookups below.
+    # Highest item id that predates this import, snapshotted once. SQLite
+    # hands new rows ids above the current maximum, so this cleanly separates
+    # "was already here" from "this import created it" — see the dedupe
+    # lookups below.
     pre_import_max_id = db.execute(
         "SELECT COALESCE(MAX(id), 0) AS m FROM items"
     ).fetchone()["m"]
@@ -692,6 +982,16 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
             if not title:
                 errors.append(f"Archive item {archive_id}: missing title")
                 continue
+
+            queue = planned.get(_ref_key(archive_id))
+            record = queue.popleft() if queue else None
+            if record is None:
+                # The plan says nothing about this item — it can only mean the
+                # plan and the archive have come apart. Treat it as drift
+                # rather than acting on something the user never saw.
+                drifted += 1
+                continue
+
             isbn_val = (item.get("isbn") or "").strip() or None
             media = (item.get("media_type") or "book").strip() or "book"
             authors = item.get("authors")
@@ -705,18 +1005,30 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
             # collection dedupes almost entirely on (title, authors), where
             # repeats are common. An archive is a faithful copy, not a
             # de-duplicator: duplicates in the source stay duplicates here.
-            if isbn_val:
-                existing = db.execute(
-                    "SELECT id FROM items WHERE isbn = ? AND media_type = ? AND id <= ?",
-                    (isbn_val, media, pre_import_max_id),
-                ).fetchone()
+            existing, _basis = _dedupe_lookup(
+                db, title=title, isbn_val=isbn_val, media=media,
+                authors=authors, max_id=pre_import_max_id,
+            )
+
+            # Re-classify now and compare against what the user reviewed. The
+            # DB can change between plan and apply; anything that moved is
+            # left alone rather than acted on under a stale verdict.
+            if existing is None:
+                verdict = "create"
+            elif mode == "update":
+                verdict = "update"
             else:
-                existing = db.execute(
-                    "SELECT id FROM items WHERE (isbn IS NULL OR isbn = '') "
-                    "AND media_type = ? AND title = ? COLLATE NOCASE "
-                    "AND COALESCE(authors, '') = ? COLLATE NOCASE AND id <= ?",
-                    (media, title, authors or "", pre_import_max_id),
-                ).fetchone()
+                verdict = "skip"
+            if verdict != record.get("verdict"):
+                drifted += 1
+                continue
+
+            if verdict == "create" and not sel["include_creates"]:
+                deselected["creates"] += 1
+                continue
+            if verdict == "update" and not sel["include_updates"]:
+                deselected["updates"] += 1
+                continue
 
             item_norm = dict(item)
             item_norm["title"] = title
@@ -729,12 +1041,14 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
 
             loc_name = item.get("location")
             cover_arcname = item.get("cover")
+            has_cover_entry = bool(cover_arcname) and cover_arcname in cover_names
+
+            if verdict == "skip":
+                skipped += 1
+                continue
 
             if existing:
                 real_id = existing["id"]
-                if mode != "update":
-                    skipped += 1
-                    continue
 
                 loc_id = get_location_id(loc_name) if (loc_name or "").strip() else None
                 _apply_item_update(db, real_id, item_norm, loc_id)
@@ -747,14 +1061,28 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
                         )
                 updated += 1
 
-                local_has_cover = _has_local_cover(real_id)
-                if cover_arcname and (not local_has_cover or mode == "update"):
-                    if _install_cover(reader, real_id, cover_arcname):
+                # v1 replaced the local cover on every matched item, which
+                # destroyed hand-picked covers unrecoverably. Now the archive
+                # cover fills a gap by default and overwrites only on the
+                # explicit opt-in (design decision 4).
+                if has_cover_entry:
+                    replacing = _has_local_cover(real_id)
+                    # `covers` gates filling a gap; `replace_covers`
+                    # independently gates overwriting. Declining to overwrite
+                    # isn't "deselected" work — it's the default.
+                    wanted = sel["replace_covers"] if replacing else sel["covers"]
+                    if not wanted:
+                        if not replacing:
+                            deselected["covers"] += 1
+                    elif _install_cover(reader, real_id, cover_arcname):
                         db.execute(
                             "UPDATE items SET cover_path = ? WHERE id = ?",
                             (f"covers/{real_id}.jpg", real_id),
                         )
-                        covers_installed += 1
+                        if replacing:
+                            covers_replaced += 1
+                        else:
+                            covers_installed += 1
             else:
                 loc_id = get_location_id(loc_name)
                 created_at = item_norm.get("created_at")
@@ -792,12 +1120,15 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
                         )
                 imported += 1
 
-                if cover_arcname and _install_cover(reader, real_id, cover_arcname):
-                    db.execute(
-                        "UPDATE items SET cover_path = ? WHERE id = ?",
-                        (f"covers/{real_id}.jpg", real_id),
-                    )
-                    covers_installed += 1
+                if has_cover_entry:
+                    if not sel["covers"]:
+                        deselected["covers"] += 1
+                    elif _install_cover(reader, real_id, cover_arcname):
+                        db.execute(
+                            "UPDATE items SET cover_path = ? WHERE id = ?",
+                            (f"covers/{real_id}.jpg", real_id),
+                        )
+                        covers_installed += 1
         except Exception as e:
             errors.append(f"Archive item {archive_id} ({item.get('title', '?')!r}): {e}")
 
@@ -806,6 +1137,9 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
     for row in library.get("reading_log") or []:
         new_id = id_map.get(row.get("item_id"))
         if new_id is None:
+            continue
+        if not sel["reading_log"]:
+            deselected["reading_log"] += 1
             continue
         try:
             db.execute(
@@ -823,6 +1157,9 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
     for row in library.get("checkouts") or []:
         new_id = id_map.get(row.get("item_id"))
         if new_id is None:
+            continue
+        if not sel["checkouts"]:
+            deselected["checkouts"] += 1
             continue
         try:
             borrower_id = get_borrower_id(row.get("borrower"))
@@ -845,7 +1182,9 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
     # valuation_history: only into an empty table — merging another
     # collection's totals would garble the chart.
     vh_rows = library.get("valuation_history") or []
-    if vh_rows:
+    if vh_rows and not sel["valuation_history"]:
+        deselected["valuation_history"] += len(vh_rows)
+    elif vh_rows:
         existing_count = db.execute("SELECT COUNT(*) AS c FROM valuation_history").fetchone()["c"]
         if existing_count == 0:
             for row in vh_rows:
@@ -870,4 +1209,42 @@ def merge_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
         "errors": errors[:20],
         "covers_installed": covers_installed,
         "format": FORMAT_NAME,
+        "covers_replaced": covers_replaced,
+        "drifted": drifted,
+        "deselected": deselected,
+    }
+
+
+def merge_archive(db, reader: ArchiveReader, mode: str = "skip",
+                  replace_covers: bool = False) -> dict:
+    """Install a validated archive's library.json into this instance.
+
+    The one-shot composition of the two halves: plan everything, then apply
+    everything. Kept for the legacy `POST /api/import/archive` endpoint and
+    for scriptability.
+
+    Dedupe key is (isbn, media_type); ISBN-less items fall back to
+    casefolded (title, authors, media_type). `mode="skip"` (default) skips
+    matches; `mode="update"` refreshes metadata on the matched item.
+    locations/tags/borrowers/series are get-or-create by NOCASE name and
+    never overwritten. reading_log/checkouts install only for newly created
+    items. valuation_history installs only into an empty table.
+
+    Covers changed in 0.7.0: an archive cover is installed only onto an item
+    with no local cover unless `replace_covers=True`. Replacements are folded
+    into `covers_installed` here so the v1 report shape — and the scripts
+    reading it — are unaffected; the plan/apply endpoints report them
+    separately.
+    """
+    if mode not in ("skip", "update"):
+        mode = "skip"
+    plan = plan_archive(db, reader, mode=mode)
+    report = apply_plan(db, reader, plan, {"replace_covers": replace_covers})
+    return {
+        "imported": report["imported"],
+        "updated": report["updated"],
+        "skipped": report["skipped"],
+        "errors": report["errors"],
+        "covers_installed": report["covers_installed"] + report["covers_replaced"],
+        "format": report["format"],
     }
