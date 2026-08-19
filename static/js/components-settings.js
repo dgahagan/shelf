@@ -382,6 +382,20 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
+    // settings.html — Portable archive import card
+    Alpine.data('archivePanel', function () {
+        return {
+            importResult: false, importing: false,
+            doImport(e) {
+                this.importing = true; this.importResult = false;
+                fetch('/api/import/archive', { method: 'POST', body: new FormData(e.target), headers: { 'X-CSRF-Token': window.csrfToken() } })
+                    .then(r => r.json())
+                    .then(d => { this.importResult = d; this.importing = false; })
+                    .catch(() => { this.importResult = { error: 'Import failed' }; this.importing = false; });
+            }
+        };
+    });
+
     // settings.html — Sharing card (copy-link buttons)
     Alpine.data('sharePanel', function () {
         return {

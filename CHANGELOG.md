@@ -6,6 +6,49 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-08-18
+
+A portability release, from [@LegendaryB](https://github.com/LegendaryB)'s
+[#16](https://github.com/dgahagan/shelf/issues/16).
+
+### Added
+
+- **Portable archive — export and import your whole library, covers included**
+  ([#16](https://github.com/dgahagan/shelf/issues/16)). Settings → Data has a
+  new **Portable archive** card. Export writes one zip — `library.json` plus
+  every cover file you have — covering items, locations, tags, series (with
+  synopses and completeness), reading log, borrowers, checkouts and valuation
+  history. Import merges that zip back into any Shelf instance and installs
+  the covers straight from the file, so a moved library never refetches a
+  single image from Open Library or Amazon.
+
+  This closes a real gap rather than adding a convenience. Shelf had two ways
+  to get data out and neither did the job: CSV export is twelve columns and
+  drops tags, notes, reading history and covers; a database backup is
+  complete but is the *whole instance* — password hashes and encrypted API
+  credentials included — and, because covers live on disk rather than in the
+  `.db`, restoring one silently leaves you with a library of blank spines.
+  The archive is the middle piece: your library, none of your credentials,
+  and the cover art that until now no mechanism preserved at all.
+
+  Import **merges**, it doesn't replace — a wholesale replace is what backup
+  restore is for. Duplicates are matched on ISBN + media type (title + author
+  for items with no ISBN) and you choose whether to skip them or let the
+  archive refresh their metadata. Locations, tags, borrowers and series are
+  matched by name regardless of case and never overwritten, so importing a
+  friend's archive can't clobber a synopsis you wrote. Reading history and
+  loans come across only for items the import actually creates, so
+  re-importing the same file twice doesn't double your history.
+
+  The archive is deliberately admin-only in both directions — it carries
+  notes, borrower names and your full reading history, which CSV export does
+  not. Uploaded archives are treated as hostile input regardless of who
+  uploads them: entry paths are checked against an exact expected layout
+  (no traversal, no absolute paths, no symlinks, no nested directories),
+  sizes are enforced on the bytes actually decompressed rather than on the
+  headers a zip bomb controls, and every cover is re-validated as an image
+  before it lands on disk.
+
 ## [0.5.0] - 2026-08-18
 
 Three feature requests from [@LegendaryB](https://github.com/LegendaryB)'s
@@ -238,6 +281,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.6.0]: https://github.com/dgahagan/shelf/releases/tag/v0.6.0
 [0.5.0]: https://github.com/dgahagan/shelf/releases/tag/v0.5.0
 [0.4.1]: https://github.com/dgahagan/shelf/releases/tag/v0.4.1
 [0.4.0]: https://github.com/dgahagan/shelf/releases/tag/v0.4.0

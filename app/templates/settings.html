@@ -1214,6 +1214,62 @@
         </div>
     </div>
 
+    <!-- Portable Archive -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="archivePanel">
+        <h2 class="text-lg font-semibold mb-1">Portable archive</h2>
+        <p class="text-sm text-shelf-muted mb-4">For moving between instances or apps; no credentials included.</p>
+        <div class="space-y-4">
+            <div>
+                <a href="/api/export/archive" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
+                    Export Archive
+                </a>
+            </div>
+
+            <div class="border-t border-shelf-border pt-4">
+                <p class="text-sm text-shelf-muted mb-2">Import a portable archive (.zip) exported from another Shelf instance, including covers.</p>
+                <form @submit.prevent="doImport">
+                    <div class="flex gap-2 items-end">
+                        <input type="file" name="file" accept=".zip" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
+                            <option value="skip">Skip duplicates</option>
+                            <option value="update">Update duplicates</option>
+                        </select>
+                        <button type="submit" :disabled="importing"
+                                class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50 whitespace-nowrap">
+                            <span x-show="!importing">Import</span>
+                            <span x-show="importing">Importing...</span>
+                        </button>
+                    </div>
+                </form>
+                <div x-show="importResult" class="mt-2 text-sm">
+                    <template x-if="importResult && importResult.error">
+                        <p class="text-shelf-error" x-text="importResult.error"></p>
+                    </template>
+                    <template x-if="importResult && !importResult.error">
+                        <p class="text-shelf-muted">
+                            Imported: <span x-text="importResult.imported" class="text-shelf-success"></span>,
+                            Updated: <span x-text="importResult.updated"></span>,
+                            Skipped: <span x-text="importResult.skipped"></span>
+                            <template x-if="importResult.covers_installed > 0">
+                                <span> · Covers installed: <span x-text="importResult.covers_installed"></span></span>
+                            </template>
+                            <template x-if="importResult.errors && importResult.errors.length > 0">
+                                <span class="text-shelf-error"> · Errors: <span x-text="importResult.errors.length"></span></span>
+                            </template>
+                        </p>
+                    </template>
+                    <template x-if="importResult && importResult.errors && importResult.errors.length > 0">
+                        <ul class="mt-1 text-xs text-shelf-error space-y-0.5">
+                            <template x-for="(err, i) in importResult.errors" :key="i">
+                                <li x-text="err"></li>
+                            </template>
+                        </ul>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
     </div><!-- /Data Tab -->
 
     <!-- Users Tab -->
