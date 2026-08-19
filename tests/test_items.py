@@ -427,6 +427,50 @@ class TestManualValueMigration:
         assert "manual_value" in cols_after
         applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
         assert 15 in applied
+
+    def test_migration_self_heals_column_present_without_version_row(self, tmp_path):
+        """Regression test: a real pre-0.5.0 -> 0.5.0+ upgrade can be
+        interrupted between migration 15's ALTER (which sqlite3 commits
+        immediately as DDL, independent of the pending transaction) and the
+        schema_version INSERT that records it — see G3's busy-timeout note
+        for how a real upgrade stalls mid-migration. That leaves
+        items.manual_value present but version 15 unrecorded, and every
+        subsequent startup replayed the same ALTER and crashed forever with
+        "duplicate column name: manual_value" instead of self-healing like
+        _backfill_versions already does for a first-run legacy DB.
+        """
+        db_path = tmp_path / "wedged.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        for version, description, sql in MIGRATIONS:
+            if version >= 15:
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.executescript(MIGRATION_TABLES)
+        conn.commit()
+
+        # Simulate the interrupted upgrade: the ALTER landed, its
+        # schema_version row didn't.
+        conn.execute("ALTER TABLE items ADD COLUMN manual_value REAL DEFAULT NULL")
+        conn.commit()
+
+        # A crashing restart must not raise, and must still finish applying
+        # every later migration (16-21) that never got a chance to run.
+        _run_migrations(conn)
+        conn.commit()
+
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert applied == {v for v, _, _ in MIGRATIONS}
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
+        assert {"complete", "hc_total", "hc_missing", "hc_checked_at"} <= cols
         conn.close()
 
 

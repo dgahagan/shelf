@@ -284,7 +284,19 @@ def _run_migrations(db: sqlite3.Connection) -> list[str]:
         for version, description, sql in MIGRATIONS:
             if version in applied:
                 continue
-            db.execute(sql)
+            try:
+                db.execute(sql)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+                # ALTER TABLE is DDL: sqlite3 commits it immediately,
+                # independent of this connection's pending transaction. A
+                # prior run that applied this ALTER but was interrupted
+                # before the INSERT below committed (see the busy-timeout
+                # note above) leaves the column present with no
+                # schema_version row — replaying the ALTER then fails
+                # forever unless treated the same as an already-applied
+                # migration, exactly as _backfill_versions already does.
             db.execute(
                 "INSERT INTO schema_version (version, description) VALUES (?, ?)",
                 (version, description),
