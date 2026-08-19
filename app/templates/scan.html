@@ -2,6 +2,7 @@
 {% block title %}Scan — Shelf{% endblock %}
 {% block head %}
 <script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+<script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="scanPage">
@@ -32,7 +33,19 @@
         </button>
         <div x-show="cameraActive" x-transition class="relative max-w-md mx-auto" style="display:none">
             <div id="camera-reader"
-                 class="rounded-xl overflow-hidden border border-shelf-border bg-black">
+                 class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                 x-show="!isZxingFallback">
+            </div>
+            <div id="zxing-video-container"
+                 class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                 x-show="isZxingFallback"
+                 style="display:none">
+                <video id="zxing-video"
+                       class="w-full"
+                       autoplay
+                       muted
+                       playsinline>
+                </video>
             </div>
             <!-- Scan result overlay -->
             <div x-show="scanPaused" x-transition

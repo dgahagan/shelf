@@ -13,6 +13,19 @@ function scanPage() {
         lastScanned: '',
         lastScanTime: 0,
         inventoryScannedIds: [],
+        isZxingFallback: false,
+        zxingReader: false,
+        zxingControls: false,
+        zxingVideo: false,
+
+        isIosDevice() {
+            var ua = navigator.userAgent;
+            return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+        },
+
+        shouldUseZxing() {
+            return this.isIosDevice();
+        },
 
         modes: [
             {id: 'add', label: 'Add'},
@@ -119,13 +132,20 @@ function scanPage() {
                 this.scanPaused = false;
                 this.scanResult = false;
                 await this.$nextTick();
-                this.scanner = new Html5Qrcode('camera-reader');
-                await this.scanner.start(
-                    { facingMode: 'environment' },
-                    { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
-                    (decodedText) => this.onScan(decodedText),
-                    () => {}
-                );
+
+                this.isZxingFallback = this.shouldUseZxing();
+
+                if (this.isZxingFallback) {
+                    await this.startZxingScanner();
+                } else {
+                    this.scanner = new Html5Qrcode('camera-reader');
+                    await this.scanner.start(
+                        { facingMode: 'environment' },
+                        { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
+                        (decodedText) => this.onScan(decodedText),
+                        () => {}
+                    );
+                }
             } catch (err) {
                 this.cameraActive = false;
                 if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
@@ -136,8 +156,63 @@ function scanPage() {
             }
         },
 
+        async startZxingScanner() {
+            if (!this.isZxingFallback) return;
+
+            await this.stopZxingScanner();
+            this.scanLoading = true;
+
+            var hints = new Map();
+            hints.set(ZXing.BrowserMultiFormatReader.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.EAN_8]);
+            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+
+            this.zxingReader = new ZXing.BrowserMultiFormatReader(hints, {
+                delayBetweenScanAttempts: 100,
+                delayBetweenScanSuccess: 250,
+            });
+
+            var constraints = {
+                audio: false,
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    facingMode: { ideal: 'environment' },
+                }
+            };
+
+            this.zxingVideo = document.getElementById('zxing-video');
+
+            try {
+                this.zxingControls = await this.zxingReader.decodeFromConstraints(constraints, this.zxingVideo, (result, error) => {
+                    if (result) {
+                        this.onScan(result.getText());
+                        return;
+                    }
+                });
+                this.scanLoading = false;
+            } catch (error) {
+                console.error('zxing start error', error);
+                this.cameraActive = false;
+                showToast('Camera access denied. Check browser permissions.', 'error');
+                this.scanLoading = false;
+            }
+        },
+
+        async stopZxingScanner() {
+            if (this.zxingControls) {
+                this.zxingControls.stop();
+                this.zxingControls = false;
+            }
+            if (this.zxingReader) {
+                this.zxingReader.reset();
+                this.zxingReader = false;
+            }
+        },
+
         async stopCamera() {
-            if (this.scanner) {
+            if (this.isZxingFallback) {
+                await this.stopZxingScanner();
+            } else if (this.scanner) {
                 try { await this.scanner.stop(); } catch(e) {}
                 this.scanner = false;
             }
@@ -151,7 +226,14 @@ function scanPage() {
             this.scanLoading = false;
             this.lastScanned = '';
             try {
-                this.scanner.resume();
+                if (this.isZxingFallback) {
+                    if (this.zxingControls) {
+                        this.zxingControls.stop();
+                        await this.startZxingScanner();
+                    }
+                } else {
+                    this.scanner.resume();
+                }
             } catch (err) {}
             this.scanPaused = false;
         },
@@ -178,7 +260,9 @@ function scanPage() {
             this.scanPaused = true;
             this.scanLoading = true;
             this.scanResult = false;
-            try { await this.scanner.pause(true); } catch(e) {}
+            if (!this.isZxingFallback) {
+                try { await this.scanner.pause(true); } catch(e) {}
+            }
 
             // Beep
             try {
