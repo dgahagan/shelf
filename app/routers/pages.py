@@ -1,9 +1,10 @@
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
 
+from app import nav
 from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
 from app.database import get_db, get_setting, get_game_platforms
@@ -229,7 +230,13 @@ async def intake(request: Request, _=Depends(require_role("editor"))):
 
 
 @router.get("/item/{item_id}")
-async def item_detail(request: Request, item_id: int, _=Depends(require_role("viewer"))):
+async def item_detail(
+    request: Request,
+    item_id: int,
+    from_: str = Query("", alias="from"),
+    _=Depends(require_role("viewer")),
+):
+    back = nav.back_target(from_)
     with get_db() as db:
         item = db.execute(
             "SELECT i.*, l.name as location_name FROM items i "
@@ -293,6 +300,7 @@ async def item_detail(request: Request, item_id: int, _=Depends(require_role("vi
         {
             "item": item,
             "item_id": item_id,
+            "back": back,
             "item_tags": item_tags,
             "all_tags": all_tags,
             "media_types": MEDIA_TYPES,
@@ -310,7 +318,13 @@ async def item_detail(request: Request, item_id: int, _=Depends(require_role("vi
 
 
 @router.get("/item/{item_id}/edit")
-async def item_edit(request: Request, item_id: int, _=Depends(require_role("editor"))):
+async def item_edit(
+    request: Request,
+    item_id: int,
+    from_: str = Query("", alias="from"),
+    _=Depends(require_role("editor")),
+):
+    back = nav.back_target(from_)
     with get_db() as db:
         item = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
         locations = db.execute(
@@ -322,7 +336,7 @@ async def item_edit(request: Request, item_id: int, _=Depends(require_role("edit
     return request.app.state.templates.TemplateResponse(
         request,
         "item_edit.html",
-        {"item": item, "media_types": MEDIA_TYPES, "game_platforms": game_platforms, "locations": locations},
+        {"item": item, "back": back, "media_types": MEDIA_TYPES, "game_platforms": game_platforms, "locations": locations},
     )
 
 
@@ -492,6 +506,7 @@ async def logs(
 async def settings(request: Request, _=Depends(require_role("admin"))):
     from app.config import is_env_override
     from app.database import get_all_settings
+    from app.nav import HIDEABLE_TABS, hidden_keys as nav_hidden_keys
     with get_db() as db:
         settings = get_all_settings(db)
         locations = db.execute(
@@ -506,6 +521,8 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
             "SELECT * FROM share_links ORDER BY created_at DESC"
         ).fetchall()
     env_overrides = {k for k in settings if is_env_override(k)}
+    # Which tabs are currently hidden, for the Navigation card's checkboxes.
+    hidden_nav_keys = nav_hidden_keys(settings)
     # Never hand decrypted credentials to the template — it only needs to know
     # whether one is saved. Fields are write-only; blank submit keeps the value.
     from app.crypto import SENSITIVE_KEYS
@@ -518,5 +535,6 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         "settings.html",
         {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
          "borrowers": borrowers, "env_overrides": env_overrides, "secrets_saved": secrets_saved,
-         "game_platforms_list": game_platforms_list},
+         "game_platforms_list": game_platforms_list,
+         "hideable_nav_tabs": HIDEABLE_TABS, "hidden_nav_keys": hidden_nav_keys},
     )

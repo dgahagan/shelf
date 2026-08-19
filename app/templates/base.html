@@ -27,37 +27,34 @@
             <div class="flex items-center justify-between h-14">
                 <div class="flex items-center gap-1">
                     <a href="/browse" class="text-lg font-bold text-shelf-accent2 tracking-tight mr-6">Shelf</a>
-                    <a href="/browse" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/browse' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Browse
-                    </a>
-                    {% if user and user.role in ('admin', 'editor') %}
-                    <a href="/scan" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/scan' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Scan
-                    </a>
-                    <a href="/intake" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/intake' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Intake
-                    </a>
-                    {% endif %}
-                    <a href="/store" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/store' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Store
-                    </a>
-                    <a href="/series" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/series' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Series
-                    </a>
-                    <a href="/discover" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/discover' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Discover
-                    </a>
-                    <a href="/stats" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/stats' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Stats
-                    </a>
-                    {% if user and user.role == 'admin' %}
-                    <a href="/settings" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/settings' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Settings
-                    </a>
-                    <a href="/logs" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == '/logs' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-                        Logs
-                    </a>
-                    {% endif %}
+
+                    <!-- Disclosure menu: below lg the full tab row overflows
+                         the bar (measured: 9 tabs need ~920px), so it
+                         collapses to this. Same nav_tabs source, two layouts. -->
+                    <div class="relative lg:hidden" x-data="navMenu"
+                         @click.outside="close()" @keydown.escape.window="close()">
+                        <button type="button" @click="toggle()" data-testid="nav-menu-button"
+                                aria-label="Main menu" :aria-expanded="open"
+                                class="px-2 py-2 rounded-md text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        </button>
+                        <div x-show="open" x-cloak data-testid="nav-menu-panel"
+                             class="absolute left-0 top-full mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg shadow-xl py-1 z-50">
+                            {% for tab in nav_tabs %}
+                            <a href="{{ tab.path }}" data-nav-menu-tab="{{ tab.key }}" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                                {{ tab.label }}
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="hidden lg:flex items-center gap-1">
+                        {% for tab in nav_tabs %}
+                        <a href="{{ tab.path }}" data-nav-tab="{{ tab.key }}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                            {{ tab.label }}
+                        </a>
+                        {% endfor %}
+                    </div>
                 </div>
                 {% if user %}
                 <div class="flex items-center gap-3" x-data="{ showAccount: false }">

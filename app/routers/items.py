@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
+from app import nav
 from app.auth import require_role
 
 logger = logging.getLogger(__name__)
@@ -1069,6 +1070,8 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
 @router.post("/items/{item_id}")
 async def update_item(request: Request, item_id: int, _=Depends(require_role("editor"))):
     form = await request.form()
+    back_key = nav.back_target(form.get("from"))["key"]
+    redirect_url = f"/item/{item_id}" + (f"?from={back_key}" if back_key else "")
     fields = {}
     for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
                 "publish_year", "page_count", "description", "series_name",
@@ -1099,7 +1102,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
 
     if not fields:
         from fastapi.responses import RedirectResponse
-        return RedirectResponse(url=f"/item/{item_id}", status_code=303)
+        return RedirectResponse(url=redirect_url, status_code=303)
 
     set_clause = ", ".join(f"{k} = ?" for k in fields)
     values = list(fields.values()) + [item_id]
@@ -1125,7 +1128,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                 gc_orphaned_series_meta(db, old_series_name)
 
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url=f"/item/{item_id}", status_code=303)
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.post("/items/{item_id}/reading-status")

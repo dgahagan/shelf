@@ -177,7 +177,7 @@
         <!-- Owned/wishlisted volumes -->
         <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
             {% for item in s['items'] %}
-            <a href="/item/{{ item.id }}" class="shrink-0 w-20 group" title="{{ item.title }}">
+            <a href="/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
                 <div class="relative">
                     {% if item.cover_path %}
                     <img src="/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">

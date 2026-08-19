@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import sys
 import tempfile
 from contextlib import contextmanager
 from pathlib import Path
@@ -7,6 +8,30 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+
+
+def _redirect_stale_path_constants(monkeypatch, data_dir, db_path, covers_dir):
+    """Point every already-imported app module's copy of a config path at tmp.
+
+    `from app.config import COVERS_DIR` freezes the value at import time, so
+    patching app.config alone leaves those modules writing to the real /data
+    — app.services.covers did exactly that, and a manual add with an ISBN
+    tried to mkdir /data/covers from the unit suite.
+
+    The bindings are discovered rather than listed so that a module gaining
+    one later is covered without anyone remembering to update this file. Any
+    app-module attribute with one of these three names is that config
+    constant by construction; the Path check keeps an unrelated same-named
+    value (a string, a mock) from being clobbered.
+    """
+    targets = {"DATA_DIR": data_dir, "DATABASE_PATH": db_path, "COVERS_DIR": covers_dir}
+    for name, module in list(sys.modules.items()):
+        if module is None or not (name == "app" or name.startswith("app.")):
+            continue
+        for attr, value in targets.items():
+            current = getattr(module, attr, None)
+            if isinstance(current, Path) and current != value:
+                monkeypatch.setattr(module, attr, value, raising=False)
 
 
 @pytest.fixture(autouse=True)
@@ -18,13 +43,17 @@ def _isolated_db(tmp_path, monkeypatch):
     covers_dir.mkdir()
     db_path = data_dir / "shelf.db"
 
+    # app.config is the source of truth: modules imported *after* this point
+    # read these values, and so does anything that resolves them at call time.
     monkeypatch.setattr("app.config.DATA_DIR", data_dir)
     monkeypatch.setattr("app.config.DATABASE_PATH", db_path)
     monkeypatch.setattr("app.config.COVERS_DIR", covers_dir)
 
-    # Also patch database module's imports (already resolved at import time)
-    monkeypatch.setattr("app.database.DATABASE_PATH", db_path)
-    monkeypatch.setattr("app.database.COVERS_DIR", covers_dir)
+    # Modules already imported that did `from app.config import COVERS_DIR`
+    # bound the real /data path at import time and never see the line above
+    # (app.services.archive documents the same trap), so redirect their
+    # copies too.
+    _redirect_stale_path_constants(monkeypatch, data_dir, db_path, covers_dir)
 
     # Reset cached secret key so each test gets a fresh one
     import app.auth as auth_mod
@@ -33,6 +62,11 @@ def _isolated_db(tmp_path, monkeypatch):
     # Reset cached encryption key — each test's key file lives in its own tmp dir
     import app.crypto as crypto_mod
     monkeypatch.setattr(crypto_mod, "_cached_encryption_key", None)
+
+    # Reset the nav settings cache — it would otherwise carry one test's
+    # integration config (and hidden-tab set) into the next test's nav.
+    import app.nav as nav_mod
+    monkeypatch.setattr(nav_mod, "_cached_settings", None)
 
     # Initialize schema
     from app.database import init_db

@@ -2,11 +2,12 @@
 {% block title %}Edit {{ item.title }} — Shelf{% endblock %}
 {% block content %}
 <div class="max-w-2xl mx-auto">
-    <a href="/item/{{ item.id }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; Back to item</a>
+    <a href="/item/{{ item.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; Back to item</a>
 
     <h1 class="text-2xl font-bold mb-6">Edit Item</h1>
 
     <form action="/api/items/{{ item.id }}" method="post" enctype="multipart/form-data" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+        <input type="hidden" name="from" value="{{ back.key }}">
 
         {% macro field(name, label, value, type="text", placeholder="") %}
         <div>
@@ -141,7 +142,7 @@
             <button type="submit" data-testid="save-btn" class="px-6 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>
-            <a href="/item/{{ item.id }}" class="px-6 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+            <a href="/item/{{ item.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="px-6 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
                 Cancel
             </a>
         </div>

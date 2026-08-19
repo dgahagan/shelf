@@ -20,6 +20,17 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
+    // base.html — responsive nav disclosure. Below lg the tab row is hidden
+    // and this drives the hamburger dropdown; open state is per-page-load
+    // (every tab is a full navigation), so there is nothing to persist.
+    Alpine.data('navMenu', function () {
+        return {
+            open: false,
+            toggle() { this.open = !this.open },
+            close() { this.open = false }
+        };
+    });
+
     // base.html — account modal (display name + password)
     Alpine.data('accountModal', function () {
         return {

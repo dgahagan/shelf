@@ -106,7 +106,7 @@
     <h2 class="text-lg font-semibold mb-4">Recently Added (Last 30 Days)</h2>
     <div class="space-y-2">
         {% for item in recent %}
-        <a href="/item/{{ item.id }}" class="flex items-center gap-3 p-2 rounded hover:bg-shelf-hover transition-colors">
+        <a href="/item/{{ item.id }}?from=stats" class="flex items-center gap-3 p-2 rounded hover:bg-shelf-hover transition-colors">
             {% if item.cover_path %}
             <img src="/{{ item.cover_path }}" alt="" class="w-8 h-12 object-cover rounded">
             {% else %}

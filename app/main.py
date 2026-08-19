@@ -404,16 +404,20 @@ def _template_response_with_user(request_or_self, *args, **kwargs):
     else:
         return _original_template_response(request_or_self, *args, **kwargs)
 
-    # Find the context dict and inject user
+    # Find the context dict and inject user + the nav tabs that user can see
+    from app.nav import visible_tabs
+    user = getattr(request.state, "user", None)
     context = kwargs.get('context', None)
     if context is None:
         # Context is a positional arg (3rd after request, name)
         for i, a in enumerate(args):
             if isinstance(a, dict):
-                a.setdefault("user", getattr(request.state, "user", None))
+                a.setdefault("user", user)
+                a.setdefault("nav_tabs", visible_tabs(user))
                 break
     else:
-        context.setdefault("user", getattr(request.state, "user", None))
+        context.setdefault("user", user)
+        context.setdefault("nav_tabs", visible_tabs(user))
 
     return _original_template_response(request_or_self, *args, **kwargs)
 

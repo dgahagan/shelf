@@ -89,6 +89,43 @@ class TestRestoreEncrypted:
             row = conn.execute("SELECT COUNT(*) c FROM items WHERE title='Backup Marker'").fetchone()
             assert row["c"] == 1
 
+    def test_restore_discards_changes_made_after_the_backup(self, admin_client, db):
+        """A restore must actually replace the database, not just appear to.
+
+        test_restore_roundtrip cannot tell the difference: the marker it
+        looks for is in the live database whether or not the restore did
+        anything. This one checks a row that exists *only* outside the
+        backup, so a no-op restore fails.
+
+        The regression it guards: restore used to overwrite shelf.db with a
+        filesystem copy, leaving the live -wal/-shm sidecars behind. Any
+        connection open at that moment — the `db` fixture here, a concurrent
+        request in production — keeps them alive, and SQLite replays that
+        stale WAL over the new file. The pre-restore rows come back and the
+        endpoint still reports success.
+        """
+        blob = self._encrypted_backup(admin_client)
+
+        db.execute(
+            "INSERT INTO items (title, media_type, source) "
+            "VALUES ('Added After Backup', 'book', 'test')"
+        )
+        db.commit()
+
+        resp = admin_client.post(
+            "/api/settings/restore",
+            files={"file": ("backup.db.enc", blob, "application/octet-stream")},
+            data={"passphrase": "hunter2"},
+        )
+        assert resp.json()["ok"] is True, resp.json()
+
+        from app.database import get_db
+        with get_db() as conn:
+            after = conn.execute(
+                "SELECT COUNT(*) c FROM items WHERE title='Added After Backup'"
+            ).fetchone()["c"]
+        assert after == 0, "restore reported success but left post-backup data in place"
+
     def test_restore_requires_passphrase(self, admin_client):
         blob = self._encrypted_backup(admin_client)
         resp = admin_client.post(

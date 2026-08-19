@@ -3,7 +3,7 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <!-- Back link -->
-    <a href="/browse" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; Back to collection</a>
+    <a href="{{ back.path }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; {{ back.label }}</a>
 
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <div class="flex flex-col sm:flex-row gap-6">
@@ -159,7 +159,7 @@
                     <p class="text-xs text-shelf-muted mb-1">Also available as:</p>
                     <div class="flex flex-wrap gap-2">
                         {% for li in linked_items %}
-                        <a href="/item/{{ li.id }}" class="px-2 py-1 bg-shelf-hover rounded text-xs text-shelf-text hover:bg-shelf-border transition-colors">
+                        <a href="/item/{{ li.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="px-2 py-1 bg-shelf-hover rounded text-xs text-shelf-text hover:bg-shelf-border transition-colors">
                             {{ media_types.get(li.media_type, li.media_type) }}
                         </a>
                         {% endfor %}
@@ -240,7 +240,7 @@
                 <!-- Actions -->
                 <div class="flex gap-3">
                     {% if user and user.role in ('admin', 'editor') %}
-                    <a href="/item/{{ item.id }}/edit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                    <a href="/item/{{ item.id }}/edit{% if back.key %}?from={{ back.key }}{% endif %}" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                         Edit
                     </a>
                     {% endif %}

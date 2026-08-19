@@ -6,6 +6,64 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-08-19
+
+Navigation, from [@LegendaryB](https://github.com/LegendaryB)'s
+[#17](https://github.com/dgahagan/shelf/issues/17) — plus two navigation bugs
+found alongside it, and a database-restore fix found while hardening the
+test suite.
+
+### Added
+
+- **Tabs for integrations you haven't set up now hide themselves**
+  ([#17](https://github.com/dgahagan/shelf/issues/17)). **Intake** disappears
+  until a vision provider is configured, and **Discover** until a Hardcover
+  token is saved. A tab that cannot do anything is a dead end, not a
+  preference, so this needs no setting and is on for every install. Configure
+  the integration and its tab returns on the next page load — no restart.
+
+- **Choose which tabs show, in Settings → Navigation.** A checkbox per tab,
+  instance-wide. **Browse** and **Settings** are deliberately not hideable —
+  the page that controls visibility has to stay reachable.
+
+  Hiding is presentation only. A hidden tab's URL still works, so bookmarks
+  and shared links keep working, and roles still decide what a viewer or
+  editor may reach — visibility settings never grant access, and never
+  override the role rules.
+
+  Tab *reordering*, also asked for in #17, is deliberately not here: an
+  order-picker costs more than the preference is worth on a nine-item bar.
+  Worth revisiting if a second person asks.
+
+### Fixed
+
+- **The nav bar no longer overflows the screen on phones and small windows.**
+  With every tab visible the bar ran off the right edge at any width below
+  about 920px, taking the whole page's horizontal scroll with it. Below
+  1024px the tabs now collapse into a menu button, which closes on Escape or
+  a click outside. Measured across 360–1920px: no horizontal overflow at any
+  width.
+
+- **Restoring a database backup actually restores it.** Restore replaced
+  `shelf.db` with a plain file copy while the database's `-wal`/`-shm`
+  sidecar files were still live, so SQLite replayed the stale write-ahead log
+  over the newly restored file. The usual result was the *pre-restore* data
+  coming straight back while the page reported success; the unlucky result
+  was `database disk image is malformed`. Restore now copies through SQLite's
+  own backup API, which takes the right locks and leaves the log consistent
+  with the file it belongs to.
+
+  The existing test could not have caught this: it looked for a marker row
+  that was present in the live database whether or not the restore had done
+  anything.
+
+- **"Back to collection" goes back where you actually came from.** Opening an
+  item from **Series** or from **Stats** and clicking back silently returned
+  you to Browse. The link now names the page you arrived from, and keeps it
+  across a hop between linked formats or a trip through the edit form.
+  Following an item from Browse, a search, or a bookmark still goes to
+  Browse.
+
 ## [0.7.1] - 2026-08-19
 
 A barcode-filing fix, from [#20](https://github.com/dgahagan/shelf/issues/20).
@@ -360,6 +418,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.8.0]: https://github.com/dgahagan/shelf/releases/tag/v0.8.0
 [0.7.1]: https://github.com/dgahagan/shelf/releases/tag/v0.7.1
 [0.7.0]: https://github.com/dgahagan/shelf/releases/tag/v0.7.0
 [0.6.0]: https://github.com/dgahagan/shelf/releases/tag/v0.6.0
