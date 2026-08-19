@@ -90,6 +90,35 @@ class TestStatsPage:
         assert "$" in html
 
 
+    def test_stats_total_uses_manual_override(self, admin_client, db):
+        _insert_item(db, title="Overridden", isbn="9780903000066",
+                     estimated_value=10.00, manual_value=50.00)
+        _insert_item(db, title="Estimated Only", isbn="9780903000073",
+                     estimated_value=20.00)
+        db.execute("COMMIT")
+
+        html = admin_client.get("/stats").text
+        # 50 (manual, overriding 10) + 20 (estimate) = 70
+        assert "$70" in html
+
+    def test_stats_total_falls_back_when_override_cleared(self, admin_client, db):
+        item_id = _insert_item(db, title="Overridden", isbn="9780903000080",
+                                estimated_value=10.00, manual_value=50.00)
+        _insert_item(db, title="Estimated Only", isbn="9780903000097",
+                     estimated_value=20.00)
+        db.execute("COMMIT")
+
+        html = admin_client.get("/stats").text
+        assert "$70" in html
+
+        db.execute("UPDATE items SET manual_value = NULL WHERE id = ?", (item_id,))
+        db.execute("COMMIT")
+
+        html = admin_client.get("/stats").text
+        # falls back to estimate: 10 + 20 = 30
+        assert "$30" in html
+
+
 class TestValuationSnapshot:
     def test_batch_valuation_writes_history(self, admin_client, db):
         _insert_item(db, title="Valuable", isbn="9780903000059")

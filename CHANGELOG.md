@@ -6,6 +6,73 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-08-18
+
+Three feature requests from [@LegendaryB](https://github.com/LegendaryB)'s
+second round of feedback:
+[#15](https://github.com/dgahagan/shelf/issues/15),
+[#18](https://github.com/dgahagan/shelf/issues/18) and
+[#19](https://github.com/dgahagan/shelf/issues/19).
+
+### Added
+
+- **Set your own value on an item**
+  ([#18](https://github.com/dgahagan/shelf/issues/18)). The item edit form has
+  a **Value** field that overrides the ISBNdb estimate everywhere a value is
+  shown — the Stats total, the item page, and the insurance valuation report,
+  where overridden rows are marked *manual* so a reader can tell owner-declared
+  figures from list prices. This matters most if you don't have an ISBNdb key:
+  estimates were the only source of value in the app, so the value tile and the
+  valuation report were simply empty for you. It also serves collectors whose
+  signed or rare editions are worth nothing like list price. The manual value
+  is stored separately from the estimate rather than replacing it, so a batch
+  valuation run still refreshes the estimate underneath, and clearing your
+  override falls straight back to it. CSV export carries both columns.
+- **Copy fields from an existing book when adding manually**
+  ([#19](https://github.com/dgahagan/shelf/issues/19)). Manual entry is where
+  you land whenever metadata lookup misses — obscure, foreign, and small-press
+  books — and entering a series one volume at a time meant retyping the same
+  author, publisher and shelf every time. The manual-add form now has a
+  **Copy from…** picker: start typing a title you already own, pick it, and the
+  author, publisher, year, platform, series and location are filled in for you
+  to edit before saving. The title is deliberately never copied. The form also
+  gained series and location fields, so "same series, same shelf" is a single
+  pick.
+- **Mark a series complete, and see which ones are**
+  ([#15](https://github.com/dgahagan/shelf/issues/15)). Series cards now carry
+  a completeness badge, and the `⋮` menu has *Mark complete* / *Unmark
+  complete*. Three signals, cheapest truth first: your manual override always
+  wins, because Hardcover's series data is often sparse or wrong once novellas
+  and omnibuses are involved; otherwise a stored Hardcover check result shows
+  ✓ Complete or "N missing" with the date it was checked; otherwise the
+  existing local gap detection stands. A series is never called complete on
+  position numbers alone — owning #1–#4 of a seven-book series has no local
+  gaps to find. **Check completeness** results are now saved rather than
+  discarded on reload, and All / Complete / Incomplete chips filter the page.
+
+### Changed
+
+- **Hardcover check results are stored on the series**, so a check survives a
+  reload. Marking, checking and renaming stay independent of each other: a
+  rename or merge carries the completeness flag and the stored check across
+  with the synopsis (on a merge the destination's own values win), and clearing
+  a synopsis no longer discards them — the series record is dropped only once
+  nothing is left on it.
+- **`cryptography` bumped 48.0.1 → 50.0.0**, clearing three advisories
+  (PYSEC-2026-3552/3553/3554) that were keeping the dependency audit red.
+
+### Fixed
+
+- **Upgrades no longer stall and print tracebacks while applying migrations.**
+  Shelf logs each applied migration, and log records are also written to the
+  database — but that write opened a second connection while the migration's
+  own transaction was still open, so every migration waited out SQLite's
+  five-second busy timeout and then failed with a stack trace. One migration
+  made this a five-second pause; this release has five, which would have meant
+  around half a minute of what looked like a failed upgrade. Migrations now log
+  once their transaction has committed, so an upgrade is immediate — and the
+  migration history actually reaches the Logs page instead of being dropped.
+
 ## [0.4.1] - 2026-08-18
 
 Bugfix release for two [@LegendaryB](https://github.com/LegendaryB) reports:
@@ -171,6 +238,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.5.0]: https://github.com/dgahagan/shelf/releases/tag/v0.5.0
 [0.4.1]: https://github.com/dgahagan/shelf/releases/tag/v0.4.1
 [0.4.0]: https://github.com/dgahagan/shelf/releases/tag/v0.4.0
 [0.3.0]: https://github.com/dgahagan/shelf/releases/tag/v0.3.0

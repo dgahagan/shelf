@@ -1,8 +1,10 @@
 """Tests for series completion tracking (routers/series.py, hardcover series query)."""
+import sqlite3
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.database import MIGRATIONS, SCHEMA, _run_migrations
 from app.routers.series import find_gaps
 from tests.conftest import _insert_item
 
@@ -117,6 +119,322 @@ class TestSeriesCheck:
         assert admin_client.get("/api/series/check").json()["ok"] is False
 
 
+class TestSeriesCheckPersistence:
+    """A successful /api/series/check call persists hc_total/hc_missing/
+    hc_checked_at to series_meta (T7) — everything else about check_series's
+    behavior lives in TestSeriesCheck above."""
+
+    def _seed(self, db):
+        _insert_item(db, title="Dune", isbn="9780900000901", series_name="Dune Saga",
+                     series_position=1, hardcover_book_id=101)
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+
+    def _hc_books(self):
+        return [
+            {"hardcover_book_id": 101, "title": "Dune", "authors": "Frank Herbert",
+             "cover_url": None, "year": 1965, "series_position": 1},
+            {"hardcover_book_id": 102, "title": "Dune Messiah", "authors": "Frank Herbert",
+             "cover_url": None, "year": 1969, "series_position": 2},
+        ]
+
+    def _meta(self, db, name="Dune Saga"):
+        return db.execute(
+            "SELECT description, source, complete, hc_total, hc_missing, hc_checked_at "
+            "FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+
+    def test_success_persists_hc_fields(self, admin_client, db):
+        self._seed(db)
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=self._hc_books())):
+            data = admin_client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+        assert data["ok"] is True
+
+        row = self._meta(db)
+        assert row is not None
+        assert row["hc_total"] == 2
+        assert row["hc_missing"] == 1
+        assert row["hc_checked_at"] is not None
+
+    def test_no_token_writes_nothing(self, admin_client, db):
+        data = admin_client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+        assert data["ok"] is False
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_lookup_failure_writes_nothing(self, admin_client, db):
+        self._seed(db)
+        with patch("app.services.hardcover.get_series_books", new=AsyncMock(return_value=None)):
+            data = admin_client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+        assert data["ok"] is False
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_series_with_no_local_items_writes_nothing(self, admin_client, db):
+        """check is a viewer-role GET, so it must not let any Hardcover-known
+        name create a series_meta row for a series this library doesn't hold."""
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=self._hc_books())):
+            data = admin_client.get("/api/series/check", params={"name": "Not Mine"}).json()
+        assert data["ok"] is True
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_check_does_not_disturb_existing_description(self, admin_client, db):
+        self._seed(db)
+        admin_client.post("/api/series/Dune%20Saga/description",
+                          data={"description": "A desert planet saga."})
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=self._hc_books())):
+            admin_client.get("/api/series/check", params={"name": "Dune Saga"})
+
+        row = self._meta(db)
+        assert row["description"] == "A desert planet saga."
+        assert row["source"] == "manual"
+        assert row["hc_total"] == 2
+        assert row["hc_missing"] == 1
+
+    def test_setting_description_does_not_disturb_stored_hc_fields(self, admin_client, db):
+        self._seed(db)
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=self._hc_books())):
+            admin_client.get("/api/series/check", params={"name": "Dune Saga"})
+        admin_client.post("/api/series/Dune%20Saga/description",
+                          data={"description": "A desert planet saga."})
+
+        row = self._meta(db)
+        assert row["description"] == "A desert planet saga."
+        assert row["hc_total"] == 2
+        assert row["hc_missing"] == 1
+
+
+class TestSeriesComplete:
+    """POST /api/series/{name:path}/complete — manual completeness override
+    (T7). Form contract: complete=1 sets the flag, complete=0 clears it back
+    to NULL (auto)."""
+
+    def _complete(self, client, name, value):
+        from urllib.parse import quote
+        return client.post(f"/api/series/{quote(name)}/complete",
+                           data={"complete": value})
+
+    def _row(self, db, name="Dune Saga"):
+        return db.execute(
+            "SELECT description, source, complete, hc_total, hc_missing "
+            "FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+
+    def test_sets_and_clears_flag(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000910", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        resp = self._complete(admin_client, "Dune Saga", "1")
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["complete"] is True
+        assert self._row(db)["complete"] == 1
+
+        resp = self._complete(admin_client, "Dune Saga", "0")
+        data = resp.json()
+        assert data["ok"] is True
+        assert data["complete"] is False
+        assert self._row(db)["complete"] is None
+
+    def test_does_not_touch_description_or_hc_fields(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000911", series_name="Dune Saga")
+        db.execute(
+            "INSERT INTO series_meta (name, description, source, hc_total, hc_missing, "
+            "hc_checked_at, updated_at) VALUES (?, ?, 'manual', 2, 1, datetime('now'), "
+            "datetime('now'))",
+            ("Dune Saga", "A desert planet saga."),
+        )
+        db.execute("COMMIT")
+
+        assert self._complete(admin_client, "Dune Saga", "1").json()["ok"] is True
+
+        row = self._row(db)
+        assert row["complete"] == 1
+        assert row["description"] == "A desert planet saga."
+        assert row["source"] == "manual"
+        assert row["hc_total"] == 2
+        assert row["hc_missing"] == 1
+
+    def test_unknown_series_rejected(self, admin_client, db):
+        data = self._complete(admin_client, "Nothing Here", "1").json()
+        assert data["ok"] is False
+        assert data["message"] == "Series not found"
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_invalid_value_rejected(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000912", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        data = self._complete(admin_client, "Dune Saga", "yes").json()
+        assert data["ok"] is False
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000913", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        resp = self._complete(viewer_client, "Dune Saga", "1")
+        assert resp.status_code in (401, 403)
+        assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+
+class TestSeriesPageMetaContext:
+    """/series page context carries complete/hc_* alongside description
+    (T7) — same casefold-matching join, extended to the new columns."""
+
+    def test_context_carries_new_fields_for_decorated_series(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000920", series_name="Dune Saga",
+                     series_position=1)
+        _insert_item(db, title="Hobbit", isbn="9780900000921", series_name="Middle Earth",
+                     series_position=1)
+        db.execute(
+            "INSERT INTO series_meta (name, complete, hc_total, hc_missing, hc_checked_at) "
+            "VALUES ('Dune Saga', 1, 3, 0, '2026-08-01 00:00:00')"
+        )
+        db.execute("COMMIT")
+
+        from app.main import app
+        original = app.state.templates.TemplateResponse
+        captured = {}
+
+        def capture(request, name, context=None, *a, **kw):
+            if name == "series.html":
+                captured["context"] = context
+            return original(request, name, context, *a, **kw)
+
+        with patch.object(app.state.templates, "TemplateResponse", side_effect=capture):
+            admin_client.get("/series")
+
+        by_name = {s["name"]: s for s in captured["context"]["series_list"]}
+        dune = by_name["Dune Saga"]
+        assert dune["complete"] == 1
+        assert dune["hc_total"] == 3
+        assert dune["hc_missing"] == 0
+        assert dune["hc_checked_at"] == "2026-08-01 00:00:00"
+
+        middle_earth = by_name["Middle Earth"]
+        assert middle_earth["complete"] is None
+        assert middle_earth["hc_total"] is None
+        assert middle_earth["hc_missing"] is None
+        assert middle_earth["hc_checked_at"] is None
+
+
+class TestSeriesPageCompletenessRendering:
+    """/series renders the completeness data the card component reads (T9).
+
+    The badge itself is drawn client-side from these data-* attributes, so the
+    server's contract is the attributes plus the filter chips.
+    """
+
+    def test_card_carries_completeness_data_attributes(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000930", series_name="Dune Saga")
+        _insert_item(db, title="Hobbit", isbn="9780900000931", series_name="Middle Earth")
+        db.execute(
+            "INSERT INTO series_meta (name, complete, hc_total, hc_missing, hc_checked_at) "
+            "VALUES ('Dune Saga', 1, 3, 0, '2026-08-01 00:00:00')"
+        )
+        db.execute("COMMIT")
+
+        html = admin_client.get("/series").text
+
+        assert 'data-complete="1"' in html
+        assert 'data-hc-total="3"' in html
+        assert 'data-hc-missing="0"' in html
+        assert 'data-hc-checked-at="2026-08-01 00:00:00"' in html
+        # The undecorated series renders empty attributes, not "None" — the
+        # component treats '' as unknown and 0 as a real count.
+        assert 'data-hc-missing="None"' not in html
+        assert 'data-complete="None"' not in html
+        assert html.count('data-complete=""') == 1
+
+    def test_filter_chips_render_with_series(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000932", series_name="Dune Saga")
+        db.execute("COMMIT")
+
+        html = admin_client.get("/series").text
+        assert 'data-testid="series-filter"' in html
+        assert 'data-testid="filter-complete"' in html
+        assert 'data-testid="filter-incomplete"' in html
+        assert 'data-testid="toggle-complete"' in html
+
+    def test_no_filter_chips_without_series(self, admin_client):
+        html = admin_client.get("/series").text
+        assert 'data-testid="series-filter"' not in html
+
+
+class TestSeriesMetaMigrations:
+    """Migrations 16-19 add series_meta.complete/hc_total/hc_missing/
+    hc_checked_at (app/database.py MIGRATIONS). Mirrors
+    TestManualValueMigration in tests/test_items.py for migration 15."""
+
+    NEW_COLUMNS = {"complete", "hc_total", "hc_missing", "hc_checked_at"}
+
+    def test_fresh_db_has_columns_and_version_rows(self, db):
+        # The autouse _isolated_db fixture already ran init_db() on a brand
+        # new database before this test — verify migrations 16-19 landed.
+        cols = {r["name"] for r in db.execute("PRAGMA table_info(series_meta)").fetchall()}
+        assert self.NEW_COLUMNS <= cols
+        applied = {r["version"] for r in db.execute("SELECT version FROM schema_version").fetchall()}
+        assert {16, 17, 18, 19} <= applied
+
+    def test_migrations_apply_to_legacy_db_missing_columns(self, tmp_path):
+        """Simulate a pre-T7 database: series_meta already exists in its old
+        4-column shape (name/description/source/updated_at — predating
+        complete/hc_*), migrations 1-15 applied.
+
+        series_meta's CREATE TABLE lives in MIGRATION_TABLES, not SCHEMA (a
+        different situation from items, whose table SCHEMA already contains).
+        On a truly fresh boot, MIGRATIONS' ALTERs for 16-19 run *before*
+        MIGRATION_TABLES creates series_meta, so those ALTERs are silently
+        swallowed there — which is why the new columns are also baked
+        straight into MIGRATION_TABLES' CREATE TABLE (mirroring the existing
+        users.token_version precedent for migration 13). This test instead
+        exercises the upgrade path: an already-existing series_meta table
+        (as a real pre-T7 install would have on disk) picking up 16-19 via
+        their ALTERs once schema_version already has rows.
+        """
+        db_path = tmp_path / "legacy.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        conn.execute(
+            "CREATE TABLE series_meta ("
+            "name TEXT PRIMARY KEY COLLATE NOCASE, description TEXT, "
+            "source TEXT, updated_at TEXT)"
+        )
+        for version, description, sql in MIGRATIONS:
+            if version in (16, 17, 18, 19):
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.commit()
+
+        cols_before = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
+        assert not (self.NEW_COLUMNS & cols_before)
+
+        _run_migrations(conn)
+        conn.commit()
+
+        cols_after = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
+        assert self.NEW_COLUMNS <= cols_after
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert {16, 17, 18, 19} <= applied
+        conn.close()
+
+
 class TestSeriesDescription:
     def _set_description(self, client, name, description):
         from urllib.parse import quote
@@ -198,6 +516,60 @@ class TestSeriesDescription:
         resp = self._set_description(admin_client, "Dune Saga", "   ")
         assert resp.json()["ok"] is True
         assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
+
+    def test_empty_description_keeps_row_carrying_completeness(self, admin_client, db):
+        """Clearing a synopsis must not take the #15 columns down with it —
+        before those existed the handler simply deleted the whole row."""
+        self._set_description(admin_client, "Dune Saga", "Something")
+        db.execute(
+            "UPDATE series_meta SET complete = 1 WHERE name = 'Dune Saga' COLLATE NOCASE"
+        )
+        db.execute("COMMIT")
+
+        assert self._set_description(admin_client, "Dune Saga", "").json()["ok"] is True
+
+        row = db.execute(
+            "SELECT description, source, complete FROM series_meta "
+            "WHERE name = 'Dune Saga' COLLATE NOCASE"
+        ).fetchone()
+        assert row is not None
+        assert row["description"] is None
+        assert row["source"] is None
+        assert row["complete"] == 1
+
+    def test_empty_description_keeps_row_carrying_stored_check(self, admin_client, db):
+        self._set_description(admin_client, "Dune Saga", "Something")
+        db.execute(
+            "UPDATE series_meta SET hc_total = 5, hc_missing = 2, "
+            "hc_checked_at = '2026-08-05 10:00:00' WHERE name = 'Dune Saga' COLLATE NOCASE"
+        )
+        db.execute("COMMIT")
+
+        assert self._set_description(admin_client, "Dune Saga", "").json()["ok"] is True
+
+        row = db.execute(
+            "SELECT description, hc_total, hc_missing, hc_checked_at FROM series_meta "
+            "WHERE name = 'Dune Saga' COLLATE NOCASE"
+        ).fetchone()
+        assert row is not None
+        assert row["description"] is None
+        assert row["hc_total"] == 5
+        assert row["hc_missing"] == 2
+        assert row["hc_checked_at"] == "2026-08-05 10:00:00"
+
+    def test_clearing_the_last_field_still_deletes_the_row(self, admin_client, db):
+        """Marked complete, then unmarked, then synopsis cleared — nothing is
+        left, so the row goes."""
+        _insert_item(db, title="Dune", isbn="9780900000521", series_name="Dune Saga")
+        db.execute("COMMIT")
+        self._set_description(admin_client, "Dune Saga", "Something")
+        admin_client.post("/api/series/Dune%20Saga/complete", data={"complete": "1"})
+        admin_client.post("/api/series/Dune%20Saga/complete", data={"complete": "0"})
+
+        assert self._set_description(admin_client, "Dune Saga", "").json()["ok"] is True
+        assert db.execute(
+            "SELECT COUNT(*) as c FROM series_meta WHERE name = 'Dune Saga' COLLATE NOCASE"
+        ).fetchone()["c"] == 0
 
 
 class TestSeriesRename:
@@ -293,6 +665,91 @@ class TestSeriesRename:
         moved = self._meta(db, "Hyperion Cantos")
         assert moved["description"] == "The only synopsis."
         assert moved["source"] == "hardcover"
+
+    def _seed_completeness(self, db, name, complete=None, hc_total=None,
+                           hc_missing=None, hc_checked_at=None):
+        """Seed (or decorate) a series_meta row with the #15 columns."""
+        db.execute(
+            "INSERT INTO series_meta (name, complete, hc_total, hc_missing, hc_checked_at) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(name) DO UPDATE SET "
+            "complete = excluded.complete, hc_total = excluded.hc_total, "
+            "hc_missing = excluded.hc_missing, hc_checked_at = excluded.hc_checked_at",
+            (name, complete, hc_total, hc_missing, hc_checked_at),
+        )
+        db.execute("COMMIT")
+
+    def _completeness(self, db, name):
+        return db.execute(
+            "SELECT complete, hc_total, hc_missing, hc_checked_at "
+            "FROM series_meta WHERE name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()
+
+    def test_plain_rename_carries_completeness_and_check(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900000801", series_name="Dune Saga")
+        self._seed_completeness(db, "Dune Saga", complete=1, hc_total=6,
+                                hc_missing=2, hc_checked_at="2026-08-01 10:00:00")
+
+        assert self._rename(admin_client, "Dune Saga", "Dune Chronicles").json()["ok"] is True
+
+        assert self._completeness(db, "Dune Saga") is None
+        moved = self._completeness(db, "Dune Chronicles")
+        assert moved["complete"] == 1
+        assert moved["hc_total"] == 6
+        assert moved["hc_missing"] == 2
+        # The original check date survives — a carried result must not claim
+        # to have been checked at rename time.
+        assert moved["hc_checked_at"] == "2026-08-01 10:00:00"
+
+    def test_merge_keeps_destination_completeness(self, admin_client, db):
+        _insert_item(db, title="Hyperion", isbn="9780900000802", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9780900000803", series_name="Cantos Dupe")
+        self._seed_completeness(db, "Hyperion Cantos", complete=1, hc_total=4,
+                                hc_missing=0, hc_checked_at="2026-08-02 10:00:00")
+        self._seed_completeness(db, "Cantos Dupe", complete=None, hc_total=99,
+                                hc_missing=42, hc_checked_at="2026-01-01 10:00:00")
+
+        assert self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()["merged"] is True
+
+        assert self._completeness(db, "Cantos Dupe") is None
+        kept = self._completeness(db, "Hyperion Cantos")
+        assert kept["complete"] == 1
+        assert kept["hc_total"] == 4
+        assert kept["hc_missing"] == 0
+        assert kept["hc_checked_at"] == "2026-08-02 10:00:00"
+
+    def test_merge_moves_completeness_when_destination_has_none(self, admin_client, db):
+        _insert_item(db, title="Hyperion", isbn="9780900000804", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9780900000805", series_name="Cantos Dupe")
+        self._seed_completeness(db, "Cantos Dupe", complete=1, hc_total=4,
+                                hc_missing=1, hc_checked_at="2026-08-03 10:00:00")
+
+        assert self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()["merged"] is True
+
+        moved = self._completeness(db, "Hyperion Cantos")
+        assert moved["complete"] == 1
+        assert moved["hc_total"] == 4
+        assert moved["hc_missing"] == 1
+        assert moved["hc_checked_at"] == "2026-08-03 10:00:00"
+
+    def test_merge_carries_column_groups_independently(self, admin_client, db):
+        """Destination has a synopsis but no check; source has a check but no
+        synopsis. Each group resolves on its own — neither write clobbers the
+        other, which is exactly what the separate upserts exist to guarantee."""
+        _insert_item(db, title="Hyperion", isbn="9780900000806", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9780900000807", series_name="Cantos Dupe")
+        self._seed_meta(db, "Hyperion Cantos", "The destination synopsis.")
+        self._seed_completeness(db, "Cantos Dupe", complete=1, hc_total=7,
+                                hc_missing=3, hc_checked_at="2026-08-04 10:00:00")
+
+        assert self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()["merged"] is True
+
+        assert self._meta(db, "Hyperion Cantos")["description"] == "The destination synopsis."
+        merged = self._completeness(db, "Hyperion Cantos")
+        assert merged["complete"] == 1
+        assert merged["hc_total"] == 7
+        assert merged["hc_missing"] == 3
 
     def test_merge_keeps_positions_as_is(self, admin_client, db):
         """Merging deliberately does not renumber — duplicate #1s are fine and

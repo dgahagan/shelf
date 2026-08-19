@@ -372,8 +372,8 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
             "ORDER BY created_at"
         ).fetchall()
         current_value = db.execute(
-            "SELECT COALESCE(SUM(estimated_value), 0) as v FROM items "
-            "WHERE estimated_value IS NOT NULL"
+            "SELECT COALESCE(SUM(COALESCE(manual_value, estimated_value)), 0) as v FROM items "
+            "WHERE COALESCE(manual_value, estimated_value) IS NOT NULL"
         ).fetchone()["v"]
 
     from datetime import date as _date

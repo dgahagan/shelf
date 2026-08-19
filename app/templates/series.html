@@ -13,16 +13,47 @@
 </div>
 {% endif %}
 
+<div x-data="seriesFilter">
+{% if series_list %}
+<div class="flex items-center gap-2 mb-4" data-testid="series-filter">
+    <button @click="setFilter('all')" data-testid="filter-all"
+            :class="filter === 'all' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
+            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">All</button>
+    <button @click="setFilter('complete')" data-testid="filter-complete"
+            :class="filter === 'complete' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
+            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">Complete</button>
+    <button @click="setFilter('incomplete')" data-testid="filter-incomplete"
+            :class="filter === 'incomplete' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
+            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">Incomplete</button>
+</div>
+{% endif %}
+
 <div class="space-y-6">
     {% for s in series_list %}
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-5"
          x-data="seriesCard"
          data-series-name="{{ s.name }}" data-description="{{ s.description or '' }}"
          data-item-count="{{ s['items']|length }}"
+         data-complete="{{ '1' if s.complete == 1 else '' }}"
+         data-hc-total="{{ s.hc_total if s.hc_total is not none else '' }}"
+         data-hc-missing="{{ s.hc_missing if s.hc_missing is not none else '' }}"
+         data-hc-checked-at="{{ s.hc_checked_at or '' }}"
          data-testid="series-card">
         <div class="flex items-start justify-between gap-3 flex-wrap">
             <div>
-                <h2 class="text-lg font-semibold">{{ s.name }}</h2>
+                <h2 class="text-lg font-semibold">
+                    {{ s.name }}
+                    {# Completeness badge (#15). Nothing renders when nothing is
+                       known — position math alone never claims a series is done. #}
+                    {# inline-block + whitespace-nowrap: without them the pill
+                       breaks mid-badge on a narrow screen, dropping "Complete"
+                       to the next line and clipping the tick at the card edge. #}
+                    <span x-show="isComplete" style="display:none" data-testid="series-complete-badge"
+                          class="ml-1 align-middle inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-success/20 text-shelf-success">&check; Complete</span>
+                    <span x-show="showMissing" style="display:none" data-testid="series-missing-badge"
+                          x-text="missingLabel"
+                          class="ml-1 align-middle inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-warning/20 text-shelf-warning"></span>
+                </h2>
                 <p class="text-xs text-shelf-muted mt-0.5">
                     {{ s.owned_count }} owned{% if s['items']|length != s.owned_count %} · {{ s['items']|length - s.owned_count }} wishlisted{% endif %}
                     {% if s.gaps %}
@@ -60,6 +91,9 @@
                          class="fixed inset-0 z-10"></div>
                     <div x-show="menuOpen" style="display:none"
                          class="absolute right-0 mt-1 w-48 py-1 bg-shelf-card border border-shelf-border rounded-lg shadow-lg z-20">
+                        <button @click="toggleComplete" :disabled="markingComplete"
+                                class="block w-full text-left px-3 py-1.5 text-xs text-shelf-text hover:bg-shelf-hover disabled:opacity-50"
+                                data-testid="toggle-complete" x-text="completeLabel"></button>
                         <button @click="startRename"
                                 class="block w-full text-left px-3 py-1.5 text-xs text-shelf-text hover:bg-shelf-hover"
                                 data-testid="rename-series">Rename series&hellip;</button>
@@ -193,6 +227,7 @@
         </template>
     </div>
     {% endfor %}
+</div>
 </div>
 
 {# One datalist for the whole page, not one per card — a per-card copy inside

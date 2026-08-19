@@ -94,7 +94,12 @@
                         <td class="px-3 py-1.5 text-shelf-muted">{{ item.authors or '' }}</td>
                         <td class="px-3 py-1.5 font-mono text-xs text-shelf-muted">{{ item.isbn or item.upc or '' }}</td>
                         <td class="px-3 py-1.5 text-shelf-muted">{{ media_types.get(item.media_type, item.media_type) }}</td>
-                        <td class="px-3 py-1.5 text-right font-mono">{% if item.estimated_value %}${{ "%.2f"|format(item.estimated_value) }}{% else %}&mdash;{% endif %}</td>
+                        <td class="px-3 py-1.5 text-right font-mono">
+                            {% if item.effective_value %}${{ "%.2f"|format(item.effective_value) }}{% else %}&mdash;{% endif %}
+                            {% if item.manual_value is not none %}
+                            <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold uppercase tracking-wide bg-shelf-accent2/10 text-shelf-accent2" title="Owner-declared value">manual</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>

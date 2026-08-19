@@ -253,16 +253,19 @@ async def valuation_report(request: Request, _=Depends(require_role("viewer"))):
 
     with get_db() as db:
         items = db.execute(
-            "SELECT i.*, l.name as location_name FROM items i "
+            "SELECT i.*, l.name as location_name, "
+            "COALESCE(i.manual_value, i.estimated_value) AS effective_value "
+            "FROM items i "
             "LEFT JOIN locations l ON i.location_id = l.id "
             "ORDER BY (l.name IS NULL), l.name COLLATE NOCASE, "
-            "(i.estimated_value IS NULL), i.estimated_value DESC, i.title COLLATE NOCASE"
+            "(COALESCE(i.manual_value, i.estimated_value) IS NULL), "
+            "COALESCE(i.manual_value, i.estimated_value) DESC, i.title COLLATE NOCASE"
         ).fetchall()
         total_with_isbn = db.execute("SELECT COUNT(*) as c FROM items WHERE isbn IS NOT NULL").fetchone()["c"]
 
     total_items = len(items)
-    priced = [i for i in items if i["estimated_value"]]
-    total_value = sum(i["estimated_value"] for i in priced)
+    priced = [i for i in items if i["effective_value"]]
+    total_value = sum(i["effective_value"] for i in priced)
     avg_price = total_value / len(priced) if priced else 0
     unpriced = total_items - len(priced)
     estimated_missing = avg_price * unpriced
@@ -276,8 +279,8 @@ async def valuation_report(request: Request, _=Depends(require_role("viewer"))):
             location_groups.append({"name": name, "items": [], "subtotal": 0.0, "priced_count": 0})
         group = location_groups[-1]
         group["items"].append(item)
-        if item["estimated_value"]:
-            group["subtotal"] += item["estimated_value"]
+        if item["effective_value"]:
+            group["subtotal"] += item["effective_value"]
             group["priced_count"] += 1
 
     from datetime import date

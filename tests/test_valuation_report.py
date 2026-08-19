@@ -45,3 +45,49 @@ class TestValuationReport:
     def test_empty_library(self, admin_client):
         html = admin_client.get("/api/valuation/report").text
         assert "No items in the library yet." in html
+
+
+class TestManualValueOverride:
+    def test_totals_and_sort_use_effective_value(self, admin_client, db):
+        office = _insert_location(db, "Office")
+        # Manual value lower than estimate — effective value should be the manual one.
+        _insert_item(db, title="Alpha High Estimate Low Manual", isbn="9780900000601",
+                     location_id=office, estimated_value=100.00, manual_value=10.00)
+        # Manual value higher than estimate — effective value should be the manual one.
+        _insert_item(db, title="Beta Low Estimate High Manual", isbn="9780900000618",
+                     location_id=office, estimated_value=5.00, manual_value=90.00)
+        db.execute("COMMIT")
+
+        html = admin_client.get("/api/valuation/report").text
+
+        # Effective total is 10 + 90 = 100.00, not the estimated_value sum (105.00) —
+        # a wrong column here would give the wrong total.
+        assert "$100.00" in html
+        assert "$105.00" not in html
+
+        # Sort is by effective value descending: Beta (effective 90) must rank
+        # above Alpha (effective 10) — sorting by estimated_value would reverse this.
+        assert html.index("Beta Low Estimate High Manual") < html.index("Alpha High Estimate Low Manual")
+
+    def test_manual_badge_marks_overridden_rows_only(self, admin_client, db):
+        _insert_item(db, title="Manual Priced Book", isbn="9780900000625",
+                     estimated_value=15.00, manual_value=99.00)
+        _insert_item(db, title="Plain Estimated Book", isbn="9780900000632",
+                     estimated_value=15.00)
+        db.execute("COMMIT")
+
+        html = admin_client.get("/api/valuation/report").text
+        assert "$99.00" in html
+        # Badge shows once, for the manually-overridden row only.
+        assert html.count(">manual<") == 1
+
+    def test_estimated_only_item_unaffected_by_manual_value_feature(self, admin_client, db):
+        """Regression guard: an item with no manual override behaves exactly
+        as before the feature — same displayed value, no badge."""
+        _insert_item(db, title="Estimate Only Book", isbn="9780900000649",
+                     estimated_value=42.00)
+        db.execute("COMMIT")
+
+        html = admin_client.get("/api/valuation/report").text
+        assert "$42.00" in html
+        assert html.count(">manual<") == 0

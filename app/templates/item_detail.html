@@ -72,7 +72,9 @@
                     {% if item.source %}
                     <div><span class="text-shelf-muted">Source:</span> {{ item.source }}</div>
                     {% endif %}
-                    {% if item.estimated_value %}
+                    {% if item.manual_value is not none %}
+                    <div><span class="text-shelf-muted">Value:</span> <span class="text-shelf-success">${{ "%.2f"|format(item.manual_value) }}</span> <span class="text-xs text-shelf-muted">(manual)</span></div>
+                    {% elif item.estimated_value %}
                     <div><span class="text-shelf-muted">Est. Value:</span> <span class="text-shelf-success">${{ "%.2f"|format(item.estimated_value) }}</span></div>
                     {% endif %}
                 </div>

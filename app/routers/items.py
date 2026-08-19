@@ -4,7 +4,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
@@ -12,6 +12,7 @@ from app.auth import require_role
 logger = logging.getLogger(__name__)
 from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
 from app.database import get_db, get_setting, get_game_platforms, gc_orphaned_series_meta
+from app.routers.series import MAX_SERIES_NAME
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
 from app.services import upc as upc_svc, tmdb, igdb
@@ -127,6 +128,17 @@ async def _fetch_preview_cover(isbn13: str, client: httpx.AsyncClient) -> str | 
     except Exception:
         pass
     return None
+
+
+def _manual_form_locations():
+    """Shelf options for the manual-add form's location picker (#19).
+
+    Only the scan_result.html branches that render the manual entry form
+    (status == 'not_found') need this — every other render of that fragment
+    shows a status card with no form.
+    """
+    with get_db() as db:
+        return db.execute("SELECT id, name FROM locations ORDER BY sort_order, name").fetchall()
 
 
 def _find_item_by_barcode(raw: str) -> dict | None:
@@ -423,6 +435,7 @@ async def scan_isbn(
                         "status": "not_found", "isbn": isbn13, "media_type": media_type,
                         "message": "Not found — add manually below",
                         "preview_cover": preview_cover,
+                        "locations": _manual_form_locations(),
                     },
                 )
 
@@ -501,14 +514,33 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
     pub_year = form.get("publish_year")
     platform = form.get("platform") or None
 
+    # #19 "copy from" prefill: series_name + location_id are optional and
+    # only reach here if the picker filled them in (or the user typed them).
+    series_name = form.get("series_name", "").strip() or None
+    if series_name and len(series_name) > MAX_SERIES_NAME:
+        series_name = series_name[:MAX_SERIES_NAME]
+    location_id_raw = form.get("location_id")
+    location_id = None
+    if location_id_raw:
+        try:
+            location_id = int(location_id_raw)
+        except (TypeError, ValueError):
+            location_id = None
+
     with get_db() as db:
         if platform and platform not in get_game_platforms(db):
             platform = None
+        if location_id is not None:
+            loc_row = db.execute("SELECT id FROM locations WHERE id = ?", (location_id,)).fetchone()
+            if not loc_row:
+                location_id = None
         cursor = db.execute(
             """INSERT INTO items (title, authors, isbn, isbn10, media_type, publisher,
-               publish_year, platform, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
+               publish_year, platform, series_name, location_id, source)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
             (title, form.get("authors"), isbn13, isbn10, media_type,
-             form.get("publisher"), int(pub_year) if pub_year else None, platform),
+             form.get("publisher"), int(pub_year) if pub_year else None, platform,
+             series_name, location_id),
         )
         item_id = cursor.lastrowid
 
@@ -553,6 +585,52 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
     )
     resp.headers["HX-Trigger"] = _toast_header(f"Added: {title[:50]}")
     return resp
+
+
+@router.get("/items/suggest")
+async def suggest_items(q: str = "", _=Depends(require_role("editor"))):
+    """Title-prefix suggestions for the manual-add "copy from" picker (#19).
+
+    JSON only (no HTMX fragment) — the picker is a small Alpine dropdown, not
+    a server-rendered list.
+    """
+    q = q.strip()[:200]
+    if not q:
+        return JSONResponse([])
+    with get_db() as db:
+        rows = db.execute(
+            "SELECT id, title, authors FROM items WHERE title LIKE ? "
+            "ORDER BY title COLLATE NOCASE LIMIT 10",
+            (f"{q}%",),
+        ).fetchall()
+    return JSONResponse([{"id": r["id"], "title": r["title"], "authors": r["authors"]} for r in rows])
+
+
+@router.get("/items/{item_id}/copy-template")
+async def copy_template(item_id: int, _=Depends(require_role("editor"))):
+    """Copyable-field subset of an item for manual-add prefill (#19).
+
+    Explicitly excludes title, isbn/upc, cover, reading status, value, and
+    notes — those are identity/state, not template, fields. Keep this key
+    set in sync with docs/plan-issues-15-18-19-quick-wins.md section B.
+    """
+    with get_db() as db:
+        row = db.execute(
+            """SELECT authors, publisher, publish_year, media_type, platform,
+               series_name, location_id FROM items WHERE id = ?""",
+            (item_id,),
+        ).fetchone()
+    if not row:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return JSONResponse({
+        "authors": row["authors"],
+        "publisher": row["publisher"],
+        "publish_year": row["publish_year"],
+        "media_type": row["media_type"],
+        "platform": row["platform"],
+        "series_name": row["series_name"],
+        "location_id": row["location_id"],
+    })
 
 
 @router.get("/search")
@@ -924,14 +1002,15 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
     for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
                 "publish_year", "page_count", "description", "series_name",
                 "series_position", "narrator", "duration_mins", "location_id", "notes",
-                "reading_status", "date_started", "date_finished", "owned", "platform"):
+                "reading_status", "date_started", "date_finished", "owned", "platform",
+                "manual_value"):
         val = form.get(key)
         if val is not None:
             if val == "" and key != "owned":
                 fields[key] = None
             elif key in ("publish_year", "page_count", "duration_mins", "location_id"):
                 fields[key] = int(val) if val else None
-            elif key == "series_position":
+            elif key in ("series_position", "manual_value"):
                 fields[key] = float(val) if val else None
             elif key == "owned":
                 fields[key] = int(val) if val else 0
@@ -1305,7 +1384,7 @@ async def export_csv(_=Depends(require_role("viewer"))):
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["title", "authors", "isbn", "media_type", "platform", "publisher", "publish_year", "page_count", "series_name", "location", "source", "estimated_value"])
+    writer.writerow(["title", "authors", "isbn", "media_type", "platform", "publisher", "publish_year", "page_count", "series_name", "location", "source", "estimated_value", "manual_value"])
 
     with get_db() as db:
         rows = db.execute(
@@ -1319,7 +1398,7 @@ async def export_csv(_=Depends(require_role("viewer"))):
             row["title"], row["authors"], row["isbn"], row["media_type"],
             row["platform"], row["publisher"], row["publish_year"], row["page_count"],
             row["series_name"], row["location_name"], row["source"],
-            row["estimated_value"],
+            row["estimated_value"], row["manual_value"],
         ])
 
     output.seek(0)
@@ -1606,7 +1685,8 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": media_type,
-             "message": "Not found — add manually below", "preview_cover": None},
+             "message": "Not found — add manually below", "preview_cover": None,
+             "locations": _manual_form_locations()},
         )
 
     loc_id = location_id if location_id and location_id > 0 else None
@@ -1671,7 +1751,8 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": "video_game",
-             "message": "Not found — add manually below", "preview_cover": None},
+             "message": "Not found — add manually below", "preview_cover": None,
+             "locations": _manual_form_locations()},
         )
 
     # Step 2: Search IGDB for metadata using that title

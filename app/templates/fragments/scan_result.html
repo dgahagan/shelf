@@ -1,5 +1,5 @@
 {% if status == 'not_found' %}
-<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4" x-data="{ showForm: true }">
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4" x-data="manualAddForm">
     <div class="flex items-center gap-4 mb-3">
         {% if preview_cover %}
         <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="">
@@ -20,6 +20,29 @@
             <input type="hidden" name="isbn" value="{{ isbn }}">
             <input type="hidden" name="media_type" value="{{ media_type }}">
             <p class="text-sm text-shelf-muted">Add this item manually:</p>
+
+            {# "Copy from…" picker (#19): prefills the shared fields from an
+               existing item so series entry isn't retyped book by book. #}
+            <div class="relative">
+                <input type="text" x-model="copyQuery" @input="onCopyInput()" autocomplete="off"
+                       placeholder="Copy from an existing item (optional)"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <div x-show="suggestions.length > 0" x-transition
+                     class="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-shelf-card border border-shelf-border rounded-lg shadow-lg">
+                    <template x-for="s in suggestions" :key="s.id">
+                        <button type="button" @click="pick(s)"
+                                class="block w-full text-left px-3 py-2 text-sm hover:bg-shelf-hover">
+                            <span class="text-shelf-text" x-text="s.title"></span>
+                            <span class="text-xs text-shelf-muted ml-1" x-text="s.authors"></span>
+                        </button>
+                    </template>
+                </div>
+                <p x-show="copiedFrom" class="text-xs text-shelf-success mt-1">
+                    Copied fields from <span x-text="copiedFrom"></span> — edit anything below before adding.
+                </p>
+                <p x-show="copyError" class="text-xs text-shelf-error mt-1" x-text="copyError"></p>
+            </div>
+
             <div class="grid grid-cols-2 gap-3">
                 <input type="text" name="title" placeholder="Title *" required
                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
@@ -69,6 +92,20 @@
                 </select>
             </div>
             {% endif %}
+            <div class="grid grid-cols-2 gap-3">
+                {# Short placeholders to match the fields above ("Publisher",
+                   "Year") — only Title is marked required. "Location
+                   (optional)" was truncated by the select at phone width. #}
+                <input type="text" name="series_name" placeholder="Series"
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <select name="location_id"
+                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">Location</option>
+                    {% for loc in locations or [] %}
+                    <option value="{{ loc.id }}">{{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <div>
                 <label class="text-xs text-shelf-muted">Cover image (optional)</label>
                 <input type="file" name="cover" accept="image/*"

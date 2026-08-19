@@ -1,8 +1,26 @@
 """E2E tests: scan page loads and mode switching."""
+import sqlite3
+from pathlib import Path
+
 import pytest
 from playwright.sync_api import expect
 
+from tests.e2e.conftest import insert_item
+
 pytestmark = pytest.mark.e2e
+
+
+def _insert_location(data_dir: Path, name: str) -> int:
+    """Insert a location row directly into the E2E SQLite DB; return its id
+    (mirrors conftest.insert_item — there's no shared locations helper)."""
+    db_path = data_dir / "shelf.db"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cur = conn.execute("INSERT INTO locations (name) VALUES (?)", (name,))
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
 
 
 def test_scan_page_loads(live_server, authed_page):
@@ -37,3 +55,81 @@ def test_scan_mode_switching(live_server, authed_page):
     mode_buttons.nth(1).click()
     authed_page.wait_for_load_state("networkidle")
     assert authed_page.locator("body").is_visible()
+
+
+def test_manual_add_copy_from_picker(live_server, authed_page):
+    """#19: the "Copy from an existing item" picker on the manual-add form
+    (reached from a not-found scan) prefills authors/publisher/series/
+    location from the picked item. Title is never copied, and the new
+    item's own title is saved as its own.
+
+    Proves the fix for the $el/$root bug in applyTemplate() —
+    static/js/components-item.js — where prefill silently no-opped because
+    it read a per-evaluation "current element" magic (first this.$el, then
+    this.$root — neither survives the async fetch().then() continuation
+    pick() runs it from) instead of a closure-captured rootEl set once in
+    init().
+
+    Reaching the not_found branch offline: the ISBN path (_lookup_metadata)
+    calls Open Library/Google Books directly, and a real network failure
+    there is caught as status="error" (not "not_found"), so it can't render
+    the manual-add form without live network. The UPC/DVD path is
+    different — tmdb.lookup_upc wraps its UPC Item DB lookup in a bare
+    except and returns None on any failure — so an unresolvable UPC
+    deterministically reaches not_found regardless of network reachability.
+    That's the offline-safe way into this form; there's no existing e2e
+    pattern for the ISBN not-found branch to follow instead.
+    """
+    data_dir = live_server["data_dir"]
+
+    loc_id = _insert_location(data_dir, "Copy Shelf")
+    insert_item(
+        data_dir, title="Copy Source Vol 1", media_type="book",
+        isbn="9780000004444", authors="Jane Doe", publisher="Acme Books",
+        series_name="Copy Saga", location_id=loc_id,
+    )
+
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    authed_page.select_option("#media-type", "dvd")
+    # "999999999999" fails UPC Item DB's own format validation (HTTP 400,
+    # not a catalog miss) — a stable, deterministic non-match. Plain
+    # all-zeros/all-repeated-digit codes are unreliable here because the
+    # trial API has real placeholder listings under some of them.
+    authed_page.fill("#isbn-input", "999999999999")
+    authed_page.press("#isbn-input", "Enter")
+
+    scan_result = authed_page.locator(".scan-result").first
+    expect(scan_result).to_contain_text("not found", timeout=20_000)
+
+    # Use the "Copy from…" picker.
+    copy_input = scan_result.locator("input[placeholder*='Copy from']")
+    copy_input.fill("Copy Source")
+    suggestion = scan_result.locator("button", has_text="Copy Source Vol 1")
+    suggestion.wait_for(state="visible", timeout=5_000)
+    suggestion.click()
+
+    # pick() prefills fields once its GET /copy-template response lands —
+    # wait for that specific field rather than a fixed sleep.
+    expect(scan_result.locator("input[name=authors]")).to_have_value("Jane Doe", timeout=5_000)
+    expect(scan_result.locator("input[name=publisher]")).to_have_value("Acme Books")
+    expect(scan_result.locator("input[name=series_name]")).to_have_value("Copy Saga")
+    expect(scan_result.locator("select[name=location_id]")).to_have_value(str(loc_id))
+    # Title is deliberately not copied — the whole point is a fresh title
+    # for a book that has never been in the collection.
+    expect(scan_result.locator("input[name=title]")).to_have_value("")
+
+    scan_result.locator("input[name=title]").fill("Copied Movie")
+    scan_result.locator("button[type=submit]").click()
+
+    new_link = authed_page.locator("a", has_text="Copied Movie").first
+    expect(new_link).to_be_visible(timeout=10_000)
+    new_link.click()
+    authed_page.wait_for_load_state("networkidle")
+
+    expect(authed_page.locator("body")).to_contain_text("Copied Movie")
+    expect(authed_page.locator("body")).to_contain_text("Jane Doe")
+    expect(authed_page.locator("body")).to_contain_text("Acme Books")
+    expect(authed_page.locator("body")).to_contain_text("Copy Saga")
+    expect(authed_page.locator("body")).to_contain_text("Copy Shelf")

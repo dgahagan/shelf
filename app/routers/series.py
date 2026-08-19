@@ -52,9 +52,12 @@ async def series_page(request: Request, _=Depends(require_role("viewer"))):
             "series_position IS NULL, series_position, title COLLATE NOCASE"
         ).fetchall()
         has_hardcover = bool(get_setting(db, "hardcover_token"))
-        descriptions = {
-            r["name"]: r["description"]
-            for r in db.execute("SELECT name, description FROM series_meta").fetchall()
+        meta_rows = {
+            r["name"]: dict(r)
+            for r in db.execute(
+                "SELECT name, description, complete, hc_total, hc_missing, hc_checked_at "
+                "FROM series_meta"
+            ).fetchall()
         }
 
     series: dict[str, dict] = {}
@@ -63,12 +66,17 @@ async def series_page(request: Request, _=Depends(require_role("viewer"))):
         entry["items"].append(dict(r))
 
     # series_meta.name is COLLATE NOCASE, so match case-insensitively here too
-    descriptions_ci = {name.casefold(): desc for name, desc in descriptions.items()}
+    meta_ci = {name.casefold(): meta for name, meta in meta_rows.items()}
 
     for entry in series.values():
         entry["owned_count"] = sum(1 for i in entry["items"] if i["owned"])
         entry["gaps"] = find_gaps([i["series_position"] for i in entry["items"]])
-        entry["description"] = descriptions_ci.get(entry["name"].casefold())
+        meta = meta_ci.get(entry["name"].casefold())
+        entry["description"] = meta["description"] if meta else None
+        entry["complete"] = meta["complete"] if meta else None
+        entry["hc_total"] = meta["hc_total"] if meta else None
+        entry["hc_missing"] = meta["hc_missing"] if meta else None
+        entry["hc_checked_at"] = meta["hc_checked_at"] if meta else None
 
     # Largest series first; ties alphabetical
     series_list = sorted(series.values(), key=lambda s: (-len(s["items"]), s["name"].casefold()))
@@ -113,7 +121,62 @@ async def check_series(name: str = "", _=Depends(require_role("viewer"))):
         out.append({**b, "status": status, "series_name": name})
 
     missing = sum(1 for b in out if b["status"] == "missing")
+
+    # Cache the result only for a series the library actually holds. This is a
+    # viewer-role GET, so without the guard any name Hardcover recognises would
+    # let a viewer create series_meta rows for series that do not exist here —
+    # and a check against an empty local set is meaningless anyway (every book
+    # would read as "missing"). Same not-found rule the complete endpoint uses.
+    if local:
+        with get_db() as db:
+            _upsert_series_check(db, name, len(out), missing)
+
     return {"ok": True, "series": name, "total": len(out), "missing": missing, "books": out}
+
+
+def _upsert_series_check(db, name: str, hc_total: int, hc_missing: int) -> None:
+    """Persist a Hardcover series-check result (check_series's cache fill).
+
+    Deliberately separate from _upsert_series_description: this write only
+    happens on a successful Hardcover lookup and must never disturb the
+    human-authored synopsis (description/source) or the manual completeness
+    override (complete) — it sets ONLY hc_total, hc_missing, hc_checked_at.
+    """
+    _upsert_series_check_row(db, name, hc_total, hc_missing, None)
+
+
+def _upsert_series_check_row(db, name: str, hc_total, hc_missing, checked_at) -> None:
+    """_upsert_series_check with an explicit check timestamp.
+
+    `checked_at=None` stamps the write as happening now (a fresh check). A
+    rename carrying an existing result across passes the original timestamp,
+    so the card keeps saying when the series was really checked.
+    """
+    db.execute(
+        "INSERT INTO series_meta (name, hc_total, hc_missing, hc_checked_at) "
+        "VALUES (?, ?, ?, COALESCE(?, datetime('now'))) "
+        "ON CONFLICT(name) DO UPDATE SET "
+        "hc_total = excluded.hc_total, "
+        "hc_missing = excluded.hc_missing, "
+        "hc_checked_at = excluded.hc_checked_at",
+        (name, hc_total, hc_missing, checked_at),
+    )
+
+
+def _gc_empty_series_meta(db, name: str) -> None:
+    """Drop a series_meta row that no longer carries anything.
+
+    Distinct from database.gc_orphaned_series_meta, which drops rows no item
+    references any more. This one drops rows whose every meaningful column is
+    empty — the state a cleared synopsis leaves behind on a series that was
+    never marked complete and never checked against Hardcover.
+    """
+    db.execute(
+        "DELETE FROM series_meta WHERE name = ? COLLATE NOCASE "
+        "AND description IS NULL AND complete IS NULL "
+        "AND hc_total IS NULL AND hc_missing IS NULL AND hc_checked_at IS NULL",
+        (name,),
+    )
 
 
 def _upsert_series_description(db, name: str, description: str, source: str) -> None:
@@ -138,10 +201,13 @@ async def set_series_description(name: str, description: str = Form(""),
     (e.g. "Foo / Bar") round-trip through the URL — a bare path param stops
     matching at the first `/`.
 
-    An empty/whitespace description deletes the series_meta row rather than
-    storing an empty string. This keeps the table free of empty rows and
-    matches the orphan-GC direction planned for series_name changes on items
-    (mirrors the tag GC in tags.py's remove_tag).
+    An empty/whitespace description clears the synopsis rather than storing an
+    empty string, and drops the row entirely once nothing else is left on it.
+    This keeps the table free of empty rows and matches the orphan-GC direction
+    planned for series_name changes on items (mirrors the tag GC in tags.py's
+    remove_tag). The row can no longer be deleted outright: since #15 it also
+    carries the completeness override and the cached Hardcover check, and
+    clearing a synopsis must not silently discard those.
     """
     name = name.strip()
     if not name:
@@ -153,8 +219,70 @@ async def set_series_description(name: str, description: str = Form(""),
         if description:
             _upsert_series_description(db, name, description, "manual")
         else:
-            db.execute("DELETE FROM series_meta WHERE name = ? COLLATE NOCASE", (name,))
+            db.execute(
+                "UPDATE series_meta SET description = NULL, source = NULL, "
+                "updated_at = datetime('now') WHERE name = ? COLLATE NOCASE",
+                (name,),
+            )
+            _gc_empty_series_meta(db, name)
         return {"ok": True, "name": name, "description": description or None}
+
+
+def _upsert_series_complete(db, name: str, complete: int | None) -> None:
+    """Set or clear the manual completeness override.
+
+    Independent of _upsert_series_description and _upsert_series_check —
+    sets ONLY the complete column, never description/source/hc_*.
+    """
+    db.execute(
+        "INSERT INTO series_meta (name, complete) "
+        "VALUES (?, ?) "
+        "ON CONFLICT(name) DO UPDATE SET complete = excluded.complete",
+        (name, complete),
+    )
+
+
+@router.post("/api/series/{name:path}/complete")
+async def set_series_complete(name: str, complete: str = Form(...),
+                              _=Depends(require_role("editor"))):
+    """Set or clear the manual "series complete" override in series_meta.
+
+    This is the top-priority signal in the three-state completeness model
+    (manual override > stored Hardcover check > local gap detection):
+    Hardcover's series data is often wrong or sparse (novellas, omnibuses),
+    so the user must be able to declare done-ness regardless of what a check
+    says.
+
+    `{name:path}` (not a plain `{name}`) so series names containing a slash
+    (e.g. "Foo / Bar") round-trip through the URL — a bare path param stops
+    matching at the first `/`, same reason as the description, rename, and
+    remove-all endpoints.
+
+    Form contract: `complete=1` marks the series manually complete;
+    `complete=0` clears the override back to auto (NULL, i.e. fall through
+    to the stored Hardcover check or local gap detection). No other values
+    are accepted.
+    """
+    name = name.strip()
+    if not name:
+        return {"ok": False, "message": "Series name required"}
+
+    complete = (complete or "").strip()
+    if complete not in ("0", "1"):
+        return {"ok": False, "message": "complete must be '0' or '1'"}
+    value = 1 if complete == "1" else None
+
+    with get_db() as db:
+        count = db.execute(
+            "SELECT COUNT(*) AS c FROM items WHERE series_name = ? COLLATE NOCASE",
+            (name,),
+        ).fetchone()["c"]
+        if not count:
+            return {"ok": False, "message": "Series not found"}
+
+        _upsert_series_complete(db, name, value)
+
+        return {"ok": True, "name": name, "complete": bool(value)}
 
 
 @router.post("/api/series/{name:path}/rename")
@@ -201,11 +329,13 @@ async def rename_series(name: str, new_name: str = Form(""),
             (new_name,),
         ).fetchone())
         src_meta = db.execute(
-            "SELECT description, source FROM series_meta WHERE name = ? COLLATE NOCASE",
+            "SELECT description, source, complete, hc_total, hc_missing, hc_checked_at "
+            "FROM series_meta WHERE name = ? COLLATE NOCASE",
             (name,),
         ).fetchone()
         dst_meta = db.execute(
-            "SELECT description FROM series_meta WHERE name = ? COLLATE NOCASE",
+            "SELECT description, complete, hc_total, hc_missing, hc_checked_at "
+            "FROM series_meta WHERE name = ? COLLATE NOCASE",
             (new_name,),
         ).fetchone()
 
@@ -214,17 +344,35 @@ async def rename_series(name: str, new_name: str = Form(""),
             (new_name, name),
         )
 
-        # The synopsis follows the series, or the rename quietly loses it.
-        # On a merge the destination's own synopsis wins; otherwise the
-        # source's moves across (a plain rename is just that case with no
-        # destination row). gc_orphaned_series_meta then drops the source
-        # row now that nothing references it — same connection, after the
-        # UPDATE, as its docstring requires.
+        # The whole meta row follows the series, or the rename quietly loses
+        # it. Each group is carried independently, on the same rule: on a
+        # merge the destination's own value wins, otherwise the source's moves
+        # across (a plain rename is just that case with no destination row).
+        # The groups are separate because the upserts are — writing the
+        # synopsis must not clobber a stored check, and vice versa.
+        # gc_orphaned_series_meta then drops the source row now that nothing
+        # references it — same connection, after the UPDATE, as its docstring
+        # requires.
         src_desc = (src_meta["description"] or "").strip() if src_meta else ""
         dst_desc = (dst_meta["description"] or "").strip() if dst_meta else ""
         if src_desc and not dst_desc:
             _upsert_series_description(db, new_name, src_meta["description"],
                                        src_meta["source"])
+
+        # Completeness override: the destination's own flag wins when it has one.
+        if src_meta and src_meta["complete"] is not None and (
+                not dst_meta or dst_meta["complete"] is None):
+            _upsert_series_complete(db, new_name, src_meta["complete"])
+
+        # Cached Hardcover check: carried as one unit — a total without its
+        # matching missing count and check date is not a usable result. On a
+        # merge the counts describe the destination's own listing, so they only
+        # move across when the destination has never been checked.
+        if src_meta and src_meta["hc_checked_at"] is not None and (
+                not dst_meta or dst_meta["hc_checked_at"] is None):
+            _upsert_series_check_row(db, new_name, src_meta["hc_total"],
+                                     src_meta["hc_missing"], src_meta["hc_checked_at"])
+
         gc_orphaned_series_meta(db, name)
 
         return {"ok": True, "name": new_name, "merged": merged, "count": count}

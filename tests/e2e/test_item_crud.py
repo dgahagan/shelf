@@ -56,6 +56,55 @@ def test_item_edit_save(live_server, authed_page):
     expect(authed_page.locator("body")).to_contain_text("Updated Title")
 
 
+def test_manual_value_overrides_estimate_then_falls_back(live_server, authed_page):
+    """#18: a manual value overrides the ISBNdb estimate in the Stats total
+    and the valuation report (with a "manual" badge); clearing it falls
+    back to the estimate everywhere."""
+    item_id = insert_item(
+        live_server["data_dir"],
+        title="Priced Book",
+        media_type="book",
+        isbn="9780000005678",
+        estimated_value=20.00,
+    )
+
+    # Set a manual value via the edit form.
+    authed_page.goto(f"{live_server['url']}/item/{item_id}/edit")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("input[name=manual_value]").fill("500")
+    authed_page.locator("button[type=submit]:has-text('Save')").click()
+    authed_page.wait_for_url(f"{live_server['url']}/item/{item_id}", timeout=10_000)
+
+    # Stats tile total reflects the manual value, not the ISBNdb estimate.
+    authed_page.goto(f"{live_server['url']}/stats")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("$500")
+
+    # Valuation report shows the effective value with a "manual" badge on
+    # the overridden row.
+    authed_page.goto(f"{live_server['url']}/api/valuation/report")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("Priced Book")
+    expect(authed_page.locator("body")).to_contain_text("$500.00")
+    expect(authed_page.locator('[title="Owner-declared value"]')).to_have_count(1)
+
+    # Clear the manual value — falls back to the ISBNdb estimate everywhere.
+    authed_page.goto(f"{live_server['url']}/item/{item_id}/edit")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("input[name=manual_value]").fill("")
+    authed_page.locator("button[type=submit]:has-text('Save')").click()
+    authed_page.wait_for_url(f"{live_server['url']}/item/{item_id}", timeout=10_000)
+
+    authed_page.goto(f"{live_server['url']}/stats")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("$20")
+
+    authed_page.goto(f"{live_server['url']}/api/valuation/report")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("$20.00")
+    expect(authed_page.locator('[title="Owner-declared value"]')).to_have_count(0)
+
+
 def test_item_delete(live_server, authed_page):
     """Deleting an item removes it and redirects to browse."""
     item_id = insert_item(

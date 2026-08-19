@@ -90,6 +90,11 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
     (12, "Add scan_log mode column",          "ALTER TABLE scan_log ADD COLUMN mode TEXT DEFAULT 'add'"),
     (13, "Add users token_version column",    "ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 1"),
     (14, "Add abs_library_id column",         "ALTER TABLE items ADD COLUMN abs_library_id TEXT DEFAULT NULL"),
+    (15, "Add manual_value column",           "ALTER TABLE items ADD COLUMN manual_value REAL DEFAULT NULL"),
+    (16, "Add series_meta complete column",   "ALTER TABLE series_meta ADD COLUMN complete INTEGER DEFAULT NULL"),
+    (17, "Add series_meta hc_total column",   "ALTER TABLE series_meta ADD COLUMN hc_total INTEGER DEFAULT NULL"),
+    (18, "Add series_meta hc_missing column", "ALTER TABLE series_meta ADD COLUMN hc_missing INTEGER DEFAULT NULL"),
+    (19, "Add series_meta hc_checked_at column", "ALTER TABLE series_meta ADD COLUMN hc_checked_at TEXT DEFAULT NULL"),
 )
 
 MIGRATION_TABLES = """
@@ -198,17 +203,30 @@ CREATE TABLE IF NOT EXISTS item_tags (
 );
 CREATE INDEX IF NOT EXISTS idx_item_tags_tag ON item_tags(tag_id);
 
+-- complete/hc_total/hc_missing/hc_checked_at are also added via ALTER in
+-- MIGRATIONS (16-19) for upgrades of a database that already has this
+-- table; baked in here too (same pattern as users.token_version above) so a
+-- brand-new database gets them immediately — on first boot the MIGRATIONS
+-- ALTERs run before this script creates the table, so they're no-ops here.
 CREATE TABLE IF NOT EXISTS series_meta (
-    name       TEXT PRIMARY KEY COLLATE NOCASE,
-    description TEXT,
-    source     TEXT,
-    updated_at TEXT
+    name          TEXT PRIMARY KEY COLLATE NOCASE,
+    description   TEXT,
+    source        TEXT,
+    updated_at    TEXT,
+    complete      INTEGER DEFAULT NULL,
+    hc_total      INTEGER DEFAULT NULL,
+    hc_missing    INTEGER DEFAULT NULL,
+    hc_checked_at TEXT DEFAULT NULL
 );
 """
 
 
-def _backfill_versions(db: sqlite3.Connection) -> set[int]:
-    """Detect already-applied migrations in pre-version-tracking databases."""
+def _backfill_versions(db: sqlite3.Connection) -> tuple[set[int], str]:
+    """Detect already-applied migrations in pre-version-tracking databases.
+
+    Returns the applied versions and a log line for the caller to emit later
+    (see _run_migrations for why nothing is logged from in here).
+    """
     applied = set()
     for version, description, sql in MIGRATIONS:
         try:
@@ -220,11 +238,21 @@ def _backfill_versions(db: sqlite3.Connection) -> set[int]:
             "INSERT INTO schema_version (version, description) VALUES (?, ?)",
             (version, description),
         )
-    logger.info("Backfilled %d migration version records", len(applied))
-    return applied
+    return applied, f"Backfilled {len(applied)} migration version records"
 
 
-def _run_migrations(db: sqlite3.Connection) -> None:
+def _run_migrations(db: sqlite3.Connection) -> list[str]:
+    """Apply pending migrations. Returns log lines for the caller to emit.
+
+    Nothing here logs directly, and callers must emit the returned lines only
+    after this connection's transaction has committed. SQLiteHandler writes
+    every log record to the log_entries table on a *second* connection to this
+    same database, so a log call from inside the migration write transaction
+    waits out SQLite's full busy timeout and then fails — five pending
+    migrations meant ~25s of startup and five tracebacks that looked, to
+    anyone upgrading, exactly like a failed migration.
+    """
+    logs: list[str] = []
     applied = {
         r["version"]
         for r in db.execute("SELECT version FROM schema_version").fetchall()
@@ -232,7 +260,8 @@ def _run_migrations(db: sqlite3.Connection) -> None:
 
     if not applied:
         # First run with version tracking — detect already-applied migrations
-        applied = _backfill_versions(db)
+        applied, backfill_log = _backfill_versions(db)
+        logs.append(backfill_log)
     else:
         for version, description, sql in MIGRATIONS:
             if version in applied:
@@ -242,10 +271,11 @@ def _run_migrations(db: sqlite3.Connection) -> None:
                 "INSERT INTO schema_version (version, description) VALUES (?, ?)",
                 (version, description),
             )
-            logger.info("Applied migration %d: %s", version, description)
+            logs.append(f"Applied migration {version}: {description}")
 
     db.executescript(MIGRATION_TABLES)
     _seed_game_platforms(db)
+    return logs
 
 
 def _seed_game_platforms(db: sqlite3.Connection) -> None:
@@ -341,7 +371,12 @@ def init_db():
     COVERS_DIR.mkdir(parents=True, exist_ok=True)
     with get_db() as db:
         db.executescript(SCHEMA)
-        _run_migrations(db)
+        migration_logs = _run_migrations(db)
+    # Only now, with the migration transaction committed and its connection
+    # closed, is it safe for SQLiteHandler to open its own connection and
+    # write these records to log_entries.
+    for line in migration_logs:
+        logger.info("%s", line)
 
 
 @contextmanager

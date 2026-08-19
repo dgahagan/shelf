@@ -1,5 +1,7 @@
 """Tests for scan modes: add, wishlist, lend, return, move, inventory, lookup, quick_rate."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from app.database import get_db
@@ -246,6 +248,46 @@ class TestQuickRateMode:
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
+
+
+class TestManualAddForm:
+    """The not_found branch of scan_result.html renders the manual entry form,
+    including the #19 copy-from picker and the series/location fields."""
+
+    def _scan_unknown(self, client):
+        with patch(
+            "app.routers.items._lookup_metadata",
+            new=AsyncMock(return_value=(None, "", {})),
+        ), patch(
+            "app.routers.items._fetch_preview_cover",
+            new=AsyncMock(return_value=None),
+        ):
+            return client.post("/api/scan", data={
+                "isbn": "9780000099993", "media_type": "book", "mode": "add",
+            })
+
+    def test_manual_form_has_copy_picker_and_new_fields(self, admin_client, db):
+        _insert_location(db, name="Living Room")
+        db.commit()
+
+        resp = self._scan_unknown(admin_client)
+        assert resp.status_code == 200
+        html = resp.text
+
+        assert 'x-data="manualAddForm"' in html
+        assert "Copy from an existing item" in html
+        assert 'name="series_name"' in html
+        assert 'name="location_id"' in html
+        # Locations must reach the fragment's context — this is wired at every
+        # render site that can show the form, and breaks silently if one is missed.
+        assert "Living Room" in html
+
+    def test_manual_form_renders_without_locations_configured(self, admin_client):
+        """No locations defined yet — the select still renders, empty."""
+        resp = self._scan_unknown(admin_client)
+        assert resp.status_code == 200
+        assert 'name="location_id"' in resp.text
+        assert ">Location</option>" in resp.text
 
 
 class TestRecentScans:

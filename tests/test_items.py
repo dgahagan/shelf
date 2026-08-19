@@ -1,11 +1,20 @@
 """Tests for item deletion (editor role, FK handling) and browse lent_out filter."""
 
+import logging
+import sqlite3
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.database import get_db
-from tests.conftest import _insert_item, _insert_borrower
+from app.database import (
+    MIGRATION_TABLES,
+    MIGRATIONS,
+    SCHEMA,
+    _run_migrations,
+    get_db,
+    init_db,
+)
+from tests.conftest import _insert_item, _insert_borrower, _insert_location
 
 
 class TestDeleteItem:
@@ -282,3 +291,383 @@ class TestTitleSearchEndpoints:
         resp = admin_client.get("/api/dvds/search?q=test")
         assert resp.status_code == 200
         assert b"TMDb API key not configured" in resp.content
+
+
+class TestMigrationLoggingDefersOutsideTransaction:
+    """_run_migrations must not log while its write transaction is open.
+
+    SQLiteHandler writes every record to log_entries on a second connection to
+    the same database, so logging from inside the migration transaction waits
+    out SQLite's busy timeout and then fails — seen as ~5s and a traceback per
+    pending migration on a real upgrade.
+    """
+
+    def _legacy_db(self, tmp_path, up_to):
+        """A database as a real 0.4.1 install left it: migrations 1-`up_to`
+        applied, and series_meta in its pre-#15 four-column shape.
+
+        It must NOT be built from the current MIGRATION_TABLES — that now bakes
+        the completeness columns into CREATE TABLE series_meta, so migrations
+        16-19 would hit "duplicate column" instead of the ALTER path a genuine
+        upgrade takes.
+        """
+        db_path = tmp_path / "legacy.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        conn.executescript(
+            "CREATE TABLE IF NOT EXISTS series_meta ("
+            "  name        TEXT PRIMARY KEY COLLATE NOCASE,"
+            "  description TEXT,"
+            "  source      TEXT,"
+            "  updated_at  TEXT"
+            ");"
+        )
+        for version, description, sql in MIGRATIONS:
+            if version > up_to:
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                # Tables created by MIGRATION_TABLES don't exist yet; those
+                # migrations are baked into their CREATE TABLE anyway.
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.commit()
+        return conn
+
+    def test_run_migrations_returns_lines_and_emits_none(self, tmp_path, caplog):
+        """The pending work is reported to the caller, not logged in place."""
+        conn = self._legacy_db(tmp_path, up_to=14)
+        try:
+            with caplog.at_level(logging.INFO, logger="app.database"):
+                logs = _run_migrations(conn)
+            conn.commit()
+        finally:
+            conn.close()
+
+        # Migrations 15-19 are pending in this fixture.
+        assert len(logs) == 5
+        assert any("Applied migration 15" in line for line in logs)
+        # Nothing was emitted while the transaction was open.
+        assert [r for r in caplog.records if "Applied migration" in r.getMessage()] == []
+
+    def test_init_db_emits_the_deferred_lines(self, tmp_path, monkeypatch, caplog):
+        """init_db logs them once the transaction has committed."""
+        # A directory of its own — the autouse _isolated_db fixture already
+        # owns tmp_path/data. init_db creates whatever is missing.
+        data_dir = tmp_path / "fresh"
+        covers_dir = data_dir / "covers"
+        db_path = data_dir / "shelf.db"
+        monkeypatch.setattr("app.database.DATABASE_PATH", db_path)
+        monkeypatch.setattr("app.database.COVERS_DIR", covers_dir)
+
+        with caplog.at_level(logging.INFO, logger="app.database"):
+            init_db()
+
+        messages = [r.getMessage() for r in caplog.records]
+        # A brand-new database takes the backfill path.
+        assert any("Backfilled" in m for m in messages)
+
+
+class TestManualValueMigration:
+    """Migration 15 adds items.manual_value (app/database.py MIGRATIONS).
+
+    No dedicated schema-migration test module exists elsewhere in tests/, so
+    this coverage lives here with the rest of the manual_value tests.
+    """
+
+    def test_fresh_db_has_manual_value_column_and_version_row(self, db):
+        # The autouse _isolated_db fixture already ran init_db() on a brand
+        # new database before this test — verify migration 15 landed.
+        cols = {r["name"] for r in db.execute("PRAGMA table_info(items)").fetchall()}
+        assert "manual_value" in cols
+        applied = {r["version"] for r in db.execute("SELECT version FROM schema_version").fetchall()}
+        assert 15 in applied
+
+    def test_migration_applies_to_legacy_db_missing_column(self, tmp_path):
+        """Simulate a pre-#18 database: migrations 1-14 applied, no manual_value."""
+        db_path = tmp_path / "legacy.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        # Mirrors app.database._backfill_versions: on first boot, migrations
+        # run against the bare SCHEMA before MIGRATION_TABLES creates the
+        # auxiliary tables (users, reading_log, etc.), so ALTERs against
+        # not-yet-existing tables/columns are expected and swallowed — those
+        # tables' base CREATE statements already bake the column in.
+        for version, description, sql in MIGRATIONS:
+            if version == 15:
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        # Now create the auxiliary tables, exactly as _run_migrations does
+        # after processing MIGRATIONS.
+        conn.executescript(MIGRATION_TABLES)
+        conn.commit()
+
+        cols_before = {r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()}
+        assert "manual_value" not in cols_before
+
+        _run_migrations(conn)
+        conn.commit()
+
+        cols_after = {r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()}
+        assert "manual_value" in cols_after
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert 15 in applied
+        conn.close()
+
+
+class TestManualValueEdit:
+    """POST /api/items/{id} write-path support for manual_value (#18)."""
+
+    def test_update_item_stores_manual_value_as_float(self, editor_client, db):
+        item_id = _insert_item(db, title="Manual Value Book", isbn="9780900000701")
+        db.commit()
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"manual_value": "19.99"})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT manual_value FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["manual_value"] == 19.99
+
+    def test_update_item_manual_value_zero_is_stored_not_dropped(self, editor_client, db):
+        item_id = _insert_item(db, title="Manual Value Zero", isbn="9780900000702")
+        db.commit()
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"manual_value": "0"})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT manual_value FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["manual_value"] == 0.0
+
+    def test_update_item_empty_manual_value_clears_override(self, editor_client, db):
+        item_id = _insert_item(
+            db, title="Manual Value Clear", isbn="9780900000703", manual_value=42.0
+        )
+        db.commit()
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"manual_value": ""})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT manual_value FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["manual_value"] is None
+
+
+class TestManualValueCsvExport:
+    """GET /api/export/csv carries manual_value as its own column (#18)."""
+
+    def test_export_includes_both_estimated_and_manual_value_columns(self, admin_client, db):
+        import csv
+        import io
+
+        _insert_item(
+            db, title="Csv Value Book", isbn="9780900000801",
+            estimated_value=9.99, manual_value=15.00,
+        )
+        db.commit()
+
+        resp = admin_client.get("/api/export/csv")
+        assert resp.status_code == 200
+
+        reader = csv.reader(io.StringIO(resp.text))
+        header = next(reader)
+        assert "estimated_value" in header
+        assert "manual_value" in header
+
+        row = dict(zip(header, next(reader)))
+        assert row["estimated_value"] == "9.99"
+        assert row["manual_value"] == "15.0"
+
+
+class TestManualValueBatchValuation:
+    """Batch ISBNdb valuation (valuation.py:116, POST /api/valuate/all) must
+    only ever write estimated_value — manual_value is a separate, user-owned
+    field it should never touch."""
+
+    def test_batch_valuation_leaves_manual_value_untouched(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Batch Valuation Book", isbn="9780900000901", manual_value=99.99,
+        )
+        db.execute("INSERT INTO settings (key, value) VALUES ('isbndb_api_key', 'k')")
+        db.commit()
+
+        with patch("app.services.isbndb.lookup_price", new=AsyncMock(return_value={"book": {}})), \
+             patch("app.services.isbndb.parse_price", return_value=12.5), \
+             patch("app.services.isbndb._load_cache", return_value={}), \
+             patch("app.services.isbndb._save_cache"):
+            resp = admin_client.post("/api/valuate/all")
+        assert resp.json()["priced"] == 1
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT estimated_value, manual_value FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["estimated_value"] == 12.5
+        assert row["manual_value"] == 99.99
+
+
+class TestCopyTemplate:
+    """GET /api/items/{id}/copy-template — copyable field subset for the
+    manual-add "copy from" picker (#19)."""
+
+    def test_returns_exact_field_subset(self, editor_client, db):
+        loc_id = _insert_location(db, name="Copy Template Shelf")
+        item_id = _insert_item(
+            db, title="Copy Source Book", isbn="9780900001001",
+            authors="Jane Author", publisher="Acme Press", publish_year=2020,
+            media_type="book", platform=None, series_name="The Great Series",
+            location_id=loc_id, notes="private notes", estimated_value=9.99,
+            manual_value=15.0, reading_status="reading", cover_path="covers/1.jpg",
+        )
+        db.commit()
+
+        resp = editor_client.get(f"/api/items/{item_id}/copy-template")
+        assert resp.status_code == 200
+        body = resp.json()
+
+        assert set(body.keys()) == {
+            "authors", "publisher", "publish_year", "media_type",
+            "platform", "series_name", "location_id",
+        }
+        assert body["authors"] == "Jane Author"
+        assert body["publisher"] == "Acme Press"
+        assert body["publish_year"] == 2020
+        assert body["media_type"] == "book"
+        assert body["platform"] is None
+        assert body["series_name"] == "The Great Series"
+        assert body["location_id"] == loc_id
+
+    def test_404_on_missing_id(self, editor_client, db):
+        resp = editor_client.get("/api/items/999999/copy-template")
+        assert resp.status_code == 404
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        item_id = _insert_item(db, title="Copy Forbidden", isbn="9780900001002")
+        db.commit()
+        resp = viewer_client.get(f"/api/items/{item_id}/copy-template")
+        assert resp.status_code in (401, 403)
+
+
+class TestSuggestItems:
+    """GET /api/items/suggest?q= — title-prefix suggestions for the
+    manual-add "copy from" picker (#19)."""
+
+    def test_matches_prefix_and_respects_limit(self, editor_client, db):
+        for i in range(15):
+            _insert_item(db, title=f"Suggest Prefix {i:02d}", isbn=f"97809000020{i:02d}")
+        _insert_item(db, title="Unrelated Title", isbn="9780900002099")
+        db.commit()
+
+        resp = editor_client.get("/api/items/suggest", params={"q": "Suggest Prefix"})
+        assert resp.status_code == 200
+        results = resp.json()
+        assert len(results) == 10
+        assert all(r["title"].startswith("Suggest Prefix") for r in results)
+        assert set(results[0].keys()) == {"id", "title", "authors"}
+
+    def test_empty_query_returns_empty_list(self, editor_client, db):
+        resp = editor_client.get("/api/items/suggest", params={"q": ""})
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_viewer_forbidden(self, viewer_client, db):
+        resp = viewer_client.get("/api/items/suggest", params={"q": "x"})
+        assert resp.status_code in (401, 403)
+
+
+class TestManualAddCopyFields:
+    """POST /api/items/manual accepts optional series_name + location_id so
+    the "copy from" picker can prefill them (#19)."""
+
+    def test_persists_series_name_and_location_id(self, editor_client, db):
+        loc_id = _insert_location(db, name="Manual Add Shelf")
+        db.commit()
+
+        resp = editor_client.post(
+            "/api/items/manual",
+            data={
+                "title": "Manual Add With Series",
+                "authors": "Some Author",
+                "series_name": "Manual Series",
+                "location_id": str(loc_id),
+            },
+        )
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_name, location_id FROM items WHERE title = ?",
+                ("Manual Add With Series",),
+            ).fetchone()
+        assert row["series_name"] == "Manual Series"
+        assert row["location_id"] == loc_id
+
+    def test_unknown_location_id_becomes_null(self, editor_client, db):
+        resp = editor_client.post(
+            "/api/items/manual",
+            data={"title": "Manual Add Bad Location", "location_id": "999999"},
+        )
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT location_id FROM items WHERE title = ?",
+                ("Manual Add Bad Location",),
+            ).fetchone()
+        assert row["location_id"] is None
+
+    def test_series_name_over_max_length_is_capped(self, editor_client, db):
+        """items.py caps series_name at MAX_SERIES_NAME (1000, shared with the
+        CSV importer / series rename) rather than rejecting the request."""
+        long_name = "x" * 1200
+
+        resp = editor_client.post(
+            "/api/items/manual",
+            data={"title": "Manual Add Long Series", "series_name": long_name},
+        )
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_name FROM items WHERE title = ?",
+                ("Manual Add Long Series",),
+            ).fetchone()
+        assert len(row["series_name"]) == 1000
+        assert row["series_name"] == "x" * 1000
+
+    def test_manual_add_without_new_fields_is_unaffected(self, editor_client, db):
+        """Regression: manual add with neither series_name nor location_id
+        must behave exactly as it did before #19."""
+        resp = editor_client.post(
+            "/api/items/manual",
+            data={"title": "Manual Add Plain", "authors": "Plain Author"},
+        )
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_name, location_id FROM items WHERE title = ?",
+                ("Manual Add Plain",),
+            ).fetchone()
+        assert row["series_name"] is None
+        assert row["location_id"] is None

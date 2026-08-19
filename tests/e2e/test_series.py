@@ -1,10 +1,31 @@
 """E2E: series page renders grouped series with local gap inference."""
+import sqlite3
+from pathlib import Path
+
 import pytest
 from playwright.sync_api import expect
 
 from tests.e2e.conftest import insert_item
 
 pytestmark = pytest.mark.e2e
+
+
+def _insert_series_meta(data_dir: Path, name: str, **kwargs) -> None:
+    """Insert a series_meta row directly (mirrors conftest.insert_item —
+    there's no shared series_meta helper). Used to seed a stored Hardcover
+    check result without a live Hardcover call (#15)."""
+    db_path = data_dir / "shelf.db"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cols = ", ".join(["name", *kwargs.keys()])
+        placeholders = ", ".join("?" for _ in range(len(kwargs) + 1))
+        conn.execute(
+            f"INSERT INTO series_meta ({cols}) VALUES ({placeholders})",
+            [name, *kwargs.values()],
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def test_series_page_groups_and_flags_gaps(live_server, authed_page):
@@ -109,3 +130,84 @@ def test_series_remove_all_disbands(live_server, authed_page):
     authed_page.wait_for_load_state("networkidle")
     expect(authed_page.locator("body")).to_contain_text("Disband Vol 1")
     expect(authed_page.locator("body")).to_contain_text("Disband Vol 2")
+
+
+def test_series_mark_complete_badge_and_filter(live_server, authed_page):
+    """#15: marking a series complete via the ⋮ menu shows the green
+    Complete badge on that card only, and the All/Complete/Incomplete
+    filter chips then show and hide the right cards.
+
+    Proves the fix for the $el/$root bug in setFilter() —
+    static/js/components-item.js — where the filter chips were a complete
+    no-op because the handler read this.$el (the clicked chip button)
+    instead of this.$root (the seriesFilter root containing the cards).
+    """
+    insert_item(live_server["data_dir"], title="Finished Vol 1", isbn="9780902000097",
+                series_name="Finished Trilogy", series_position=1)
+    insert_item(live_server["data_dir"], title="Ongoing Vol 1", isbn="9780902000103",
+                series_name="Ongoing Trilogy", series_position=1)
+
+    authed_page.goto(f"{live_server['url']}/series")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = authed_page.get_by_test_id("series-card").filter(has_text="Finished Trilogy")
+    other_card = authed_page.get_by_test_id("series-card").filter(has_text="Ongoing Trilogy")
+    expect(card.get_by_test_id("series-complete-badge")).to_be_hidden()
+
+    card.get_by_test_id("series-actions").click()
+    expect(card.get_by_test_id("toggle-complete")).to_contain_text("Mark complete")
+    card.get_by_test_id("toggle-complete").click()
+
+    # toggleComplete() shows a toast then reloads after a 600ms setTimeout —
+    # wait it out rather than asserting on the pre-reload DOM.
+    authed_page.wait_for_timeout(1200)
+    authed_page.wait_for_load_state("networkidle")
+
+    card = authed_page.get_by_test_id("series-card").filter(has_text="Finished Trilogy")
+    other_card = authed_page.get_by_test_id("series-card").filter(has_text="Ongoing Trilogy")
+    expect(card.get_by_test_id("series-complete-badge")).to_be_visible()
+    expect(card.get_by_test_id("series-complete-badge")).to_contain_text("Complete")
+    expect(other_card.get_by_test_id("series-complete-badge")).to_be_hidden()
+
+    # Filter chips: All | Complete | Incomplete over the already-rendered cards.
+    authed_page.get_by_test_id("filter-complete").click()
+    expect(card).to_be_visible()
+    expect(other_card).to_be_hidden()
+
+    authed_page.get_by_test_id("filter-incomplete").click()
+    expect(card).to_be_hidden()
+    expect(other_card).to_be_visible()
+
+    authed_page.get_by_test_id("filter-all").click()
+    expect(card).to_be_visible()
+    expect(other_card).to_be_visible()
+
+
+def test_series_stored_hardcover_check_survives_reload(live_server, authed_page):
+    """#15: a stored Hardcover check (hc_total/hc_missing/hc_checked_at in
+    series_meta) renders the "N missing" badge from server-rendered data on
+    every load — not just right after the check button runs — which is the
+    reload-survival property the feature added. Seeded directly since a
+    live Hardcover call isn't available in this offline suite."""
+    insert_item(live_server["data_dir"], title="Checked Vol 1", isbn="9780902000110",
+                series_name="Checked Saga", series_position=1)
+    _insert_series_meta(live_server["data_dir"], "Checked Saga",
+                         hc_total=5, hc_missing=2, hc_checked_at="2026-08-01T12:00:00")
+
+    authed_page.goto(f"{live_server['url']}/series")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = authed_page.get_by_test_id("series-card").filter(has_text="Checked Saga")
+    badge = card.get_by_test_id("series-missing-badge")
+    expect(badge).to_be_visible()
+    expect(badge).to_contain_text("2 missing")
+    expect(badge).to_contain_text("2026-08-01")
+
+    authed_page.reload()
+    authed_page.wait_for_load_state("networkidle")
+
+    card = authed_page.get_by_test_id("series-card").filter(has_text="Checked Saga")
+    badge = card.get_by_test_id("series-missing-badge")
+    expect(badge).to_be_visible()
+    expect(badge).to_contain_text("2 missing")
+    expect(badge).to_contain_text("2026-08-01")
