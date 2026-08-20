@@ -162,11 +162,17 @@ function scanPage() {
             await this.stopZxingScanner();
             this.scanLoading = true;
 
-            var hints = new Map();
-            hints.set(ZXing.BrowserMultiFormatReader.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.EAN_8]);
-            hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+            // @zxing/browser UMD exports as ZXingBrowser (not ZXing).
+            // DecodeHintType isn't re-exported — use the numeric enum values
+            // from @zxing/library: POSSIBLE_FORMATS=2, TRY_HARDER=3.
+            var HINT_POSSIBLE_FORMATS = 2;
+            var HINT_TRY_HARDER = 3;
 
-            this.zxingReader = new ZXing.BrowserMultiFormatReader(hints, {
+            var hints = new Map();
+            hints.set(HINT_POSSIBLE_FORMATS, [ZXingBrowser.BarcodeFormat.EAN_13, ZXingBrowser.BarcodeFormat.UPC_A, ZXingBrowser.BarcodeFormat.EAN_8]);
+            hints.set(HINT_TRY_HARDER, true);
+
+            this.zxingReader = new ZXingBrowser.BrowserMultiFormatReader(hints, {
                 delayBetweenScanAttempts: 100,
                 delayBetweenScanSuccess: 250,
             });
@@ -203,10 +209,10 @@ function scanPage() {
                 this.zxingControls.stop();
                 this.zxingControls = false;
             }
-            if (this.zxingReader) {
-                this.zxingReader.reset();
-                this.zxingReader = false;
-            }
+            // BrowserMultiFormatReader in @zxing/browser 0.1.5 has no reset();
+            // teardown is the IScannerControls handle from decodeFromConstraints,
+            // already stopped above.
+            this.zxingReader = false;
         },
 
         async stopCamera() {
