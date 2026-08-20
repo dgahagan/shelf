@@ -6,6 +6,68 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-20
+
+Collection values render in the currency you choose, requested by
+[@LegendaryB](https://github.com/LegendaryB)
+([#26](https://github.com/dgahagan/shelf/issues/26)).
+
+**This is display formatting, not conversion.** Shelf never converts amounts
+between currencies — see the note under the setting below for why, and what
+that means if you use ISBNdb valuation.
+
+### Added
+
+- **A display currency setting, and every value surface honours it**
+  ([#26](https://github.com/dgahagan/shelf/issues/26)). Settings → Collection
+  gains a currency picker covering 20 currencies. The stats tile, item detail,
+  the item-edit field label and its ISBNdb hint, the valuation report (summary
+  tiles, group subtotals, per-item cells and the grand total), the stats
+  valuation chart's tick labels and tooltips, and the live valuation run log
+  all switch to the currency you pick.
+
+  Symbol placement, spacing and precision follow the currency rather than
+  being bolted onto a dollar format: prefix currencies render tight
+  (`€1,234.56`), suffix currencies take a space (`1,234.56 kr`), and
+  zero-decimal currencies round (`¥1,235`). Thousands separators are now
+  applied everywhere — previously only the stats tile grouped them, so the
+  same number could render two ways on two pages.
+
+  **Amounts are never converted.** The setting relabels what a number *is*,
+  it does not restate it in another currency. Exchange-rate conversion was
+  considered and rejected: it needs a live rate feed in an app that is meant
+  to work offline, and it would make two insurance reports generated a week
+  apart disagree on the total with nothing in the collection changed — which
+  is exactly what an insurance document must not do. Manual values you type
+  need no conversion at all; they are already in your currency.
+
+  One consequence is called out in the UI rather than hidden. ISBNdb returns
+  **USD list prices**, so with a non-USD currency selected, batch valuation
+  stores USD amounts that then display with your symbol. A caveat now appears
+  beside the *Valuate Collection* button and in the valuation report footer
+  whenever the currency is not USD, so the numbers are never silently
+  mislabelled — most visibly in the report, whose whole purpose is insurance
+  documentation.
+
+  Existing installs are unaffected: USD is the default, and its output is
+  byte-for-byte what it was before.
+
+### Changed
+
+- **The build's test and asset tooling got substantially cheaper to run.**
+  `make test` is now quiet and parallel (~105s → ~17s), with
+  `make test-verbose` for the old per-test roll-call and `make test-fast` for
+  a re-run of just the last failures. `make checks-fast` splits the instant
+  offline lints out from the network-bound dependency audit, while
+  `make checks` keeps its full release meaning. `make css` resolves Tailwind
+  from a pinned `package.json` instead of refetching on every invocation, and
+  emits identical output. Building from source now also runs `npm install` as
+  part of `make setup`.
+
+  This also repaired `make verify`'s minimum-test-count guard, which had never
+  actually worked — its comparison silently evaluated as false regardless of
+  how many tests were present, so it would not have caught a deleted suite.
+
 ## [0.8.1] - 2026-08-20
 
 A permanent upgrade crash-loop, reported and fixed by
@@ -510,6 +572,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.9.0]: https://github.com/dgahagan/shelf/releases/tag/v0.9.0
 [0.8.1]: https://github.com/dgahagan/shelf/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dgahagan/shelf/releases/tag/v0.8.0
 [0.7.1]: https://github.com/dgahagan/shelf/releases/tag/v0.7.1

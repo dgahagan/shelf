@@ -1,0 +1,8 @@
+{
+  "name": "shelf",
+  "private": true,
+  "description": "Build tooling for Shelf's committed Tailwind stylesheet (see `make css`).",
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}

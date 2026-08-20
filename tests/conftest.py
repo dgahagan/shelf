@@ -68,6 +68,11 @@ def _isolated_db(tmp_path, monkeypatch):
     import app.nav as nav_mod
     monkeypatch.setattr(nav_mod, "_cached_settings", None)
 
+    # Reset the currency cache — otherwise one test's display currency
+    # leaks into the next test's money formatting.
+    import app.currency as currency_mod
+    monkeypatch.setattr(currency_mod, "_cached_currency", None)
+
     # Initialize schema
     from app.database import init_db
     init_db()

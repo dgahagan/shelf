@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse, FileResponse
 from app.auth import require_role
 from app.config import DATABASE_PATH, DATA_DIR
 from app.crypto import SENSITIVE_KEYS, encrypt_value, get_encryption_key
+from app.currency import CURRENCIES, invalidate_cache as invalidate_currency_cache
 from app.database import get_db
 from app.nav import HIDEABLE_KEYS, invalidate_cache as invalidate_nav_cache
 
@@ -156,6 +157,23 @@ async def update_nav_settings(request: Request):
     with get_db() as db:
         _upsert_setting(db, "nav_hidden_tabs", json.dumps(hidden))
     invalidate_nav_cache()
+    return RedirectResponse(url="/settings", status_code=303)
+
+
+@router.post("/display")
+async def update_display_settings(request: Request):
+    """Save the display currency.
+
+    Only writes when the posted code is a known ISO code — an unknown code
+    is silently dropped, same posture as /nav's key filtering. Display only:
+    Shelf never converts amounts between currencies.
+    """
+    form = await request.form()
+    code = (form.get("currency") or "").strip().upper()
+    if code in CURRENCIES:
+        with get_db() as db:
+            _upsert_setting(db, "currency", code)
+        invalidate_currency_cache()
     return RedirectResponse(url="/settings", status_code=303)
 
 

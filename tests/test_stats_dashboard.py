@@ -1,8 +1,20 @@
 """Tests for the stats dashboard: SVG chart builders and page aggregations."""
 from unittest.mock import AsyncMock, patch
 
+from app.currency import invalidate_cache
 from app.services.charts import area_chart, column_chart, hbar_chart, _nice_step
 from tests.conftest import _insert_item
+
+
+def _set_currency(db, code):
+    """Write the currency setting straight to the test DB and drop the cache."""
+    db.execute(
+        "INSERT INTO settings (key, value) VALUES ('currency', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = ?",
+        (code, code),
+    )
+    db.commit()
+    invalidate_cache()
 
 
 class TestChartBuilders:
@@ -49,6 +61,20 @@ class TestChartBuilders:
         assert _nice_step(0) == 1
         assert _nice_step(400) == 100
 
+    def test_value_suffix_empty_matches_no_suffix(self):
+        """value_suffix="" (the USD derivation) must append nothing — tick labels
+        stay identical to the no-suffix form, pinning the append mechanism rather
+        than comparing against pre-T4 output (struck as untestable)."""
+        pairs = [("2023", 5), ("2024", 12), ("2025", 8)]
+        assert column_chart(pairs) == column_chart(pairs, value_suffix="")
+        assert area_chart(pairs) == area_chart(pairs, value_suffix="")
+        assert hbar_chart(pairs) == hbar_chart(pairs, value_suffix="")
+
+    def test_value_suffix_appears_in_tick_and_title(self):
+        svg = column_chart([("2023", 5), ("2024", 12), ("2025", 8)], value_suffix=" kr")
+        assert "12 kr" in svg
+        assert "<title>2024: 12 kr</title>" in svg
+
 
 class TestStatsPage:
     def test_charts_render(self, admin_client, db):
@@ -89,6 +115,18 @@ class TestStatsPage:
         assert "Run batch valuations" not in html
         assert "$" in html
 
+    def test_valuation_chart_ticks_use_configured_currency(self, admin_client, db):
+        """The chart's own y-axis ticks (not just the KPI total) must carry the
+        configured currency's symbol, positioned per that currency's suffix flag."""
+        db.execute("INSERT INTO valuation_history (total_value, priced_count) VALUES (100, 5)")
+        db.execute("INSERT INTO valuation_history (total_value, priced_count) VALUES (150, 6)")
+        db.execute("COMMIT")
+        _set_currency(db, "EUR")
+
+        html = admin_client.get("/stats").text
+        chart_section = html.split('data-testid="chart-valuation"')[1].split("</svg>")[0]
+        assert "€" in chart_section
+        assert "$" not in chart_section
 
     def test_stats_total_uses_manual_override(self, admin_client, db):
         _insert_item(db, title="Overridden", isbn="9780903000066",
@@ -100,6 +138,18 @@ class TestStatsPage:
         html = admin_client.get("/stats").text
         # 50 (manual, overriding 10) + 20 (estimate) = 70
         assert "$70" in html
+
+    def test_stats_total_renders_in_configured_currency(self, admin_client, db):
+        _insert_item(db, title="Overridden", isbn="9780903000066",
+                     estimated_value=10.00, manual_value=50.00)
+        _insert_item(db, title="Estimated Only", isbn="9780903000073",
+                     estimated_value=20.00)
+        db.execute("COMMIT")
+        _set_currency(db, "EUR")
+
+        html = admin_client.get("/stats").text
+        # 50 (manual, overriding 10) + 20 (estimate) = 70
+        assert "€70" in html
 
     def test_stats_total_falls_back_when_override_cleared(self, admin_client, db):
         item_id = _insert_item(db, title="Overridden", isbn="9780903000080",

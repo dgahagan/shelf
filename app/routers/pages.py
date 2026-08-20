@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse
 from app import nav
 from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
+from app.currency import get_currency
 from app.database import get_db, get_setting, get_game_platforms
 from app.routers.items import SORT_OPTIONS
 
@@ -416,8 +417,13 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
         read_pairs, empty_message="Mark books as read (with a finish date) to build this chart")
     chart_growth = charts.area_chart(growth_pairs, empty_message="No items yet")
     chart_authors = charts.hbar_chart(top_authors, empty_message="No authors yet")
+    currency = get_currency()
+    if currency.suffix:
+        chart_value_prefix, chart_value_suffix = "", " " + currency.symbol
+    else:
+        chart_value_prefix, chart_value_suffix = currency.symbol, ""
     chart_valuation = (
-        charts.area_chart(valuation_pairs, value_prefix="$",
+        charts.area_chart(valuation_pairs, value_prefix=chart_value_prefix, value_suffix=chart_value_suffix,
                           empty_message="Run a batch valuation to start tracking value over time")
         if len(valuation_pairs) >= 2 else None
     )

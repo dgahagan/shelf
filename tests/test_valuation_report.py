@@ -1,5 +1,20 @@
 """Tests for the insurance valuation report (routers/valuation.py)."""
+import json
+from unittest.mock import AsyncMock, patch
+
+from app.currency import invalidate_cache
 from tests.conftest import _insert_item, _insert_location
+
+
+def _set_currency(db, code):
+    """Write the currency setting straight to the test DB and drop the cache."""
+    db.execute(
+        "INSERT INTO settings (key, value) VALUES ('currency', ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = ?",
+        (code, code),
+    )
+    db.commit()
+    invalidate_cache()
 
 
 class TestValuationReport:
@@ -23,6 +38,12 @@ class TestValuationReport:
         assert "Office subtotal (1 priced)" in html
         assert "$25.50" in html
         assert "Attic subtotal (1 priced)" in html
+
+    def test_renders_in_configured_currency(self, admin_client, db):
+        self._seed(db)
+        _set_currency(db, "EUR")
+        html = admin_client.get("/api/valuation/report").text
+        assert "€25.50" in html
 
     def test_includes_unpriced_items(self, admin_client, db):
         self._seed(db)
@@ -91,3 +112,84 @@ class TestManualValueOverride:
         html = admin_client.get("/api/valuation/report").text
         assert "$42.00" in html
         assert html.count(">manual<") == 0
+
+
+class TestValuateStream:
+    """GET /api/valuate/stream — all money formatting is server-side, so the
+    client never hardcodes a currency symbol (issue #26)."""
+
+    def _events(self, resp):
+        return [json.loads(line[6:]) for line in resp.text.splitlines()
+                if line.startswith("data: ")]
+
+    def _run(self, admin_client, db, price=12.5):
+        """Drive one streamed valuation over a single priced item."""
+        _insert_item(db, title="Streamed Book", isbn="9780900000700")
+        db.execute("INSERT INTO settings (key, value) VALUES ('isbndb_api_key', 'k')")
+        db.commit()
+        with patch("app.services.isbndb.lookup_price",
+                   new=AsyncMock(return_value={"book": {}})), \
+             patch("app.services.isbndb.parse_price", return_value=price), \
+             patch("app.services.isbndb._load_cache", return_value={}), \
+             patch("app.services.isbndb._save_cache"):
+            return self._events(admin_client.get("/api/valuate/stream"))
+
+    def test_progress_carries_a_priced_flag_and_formatted_status(self, admin_client, db):
+        events = self._run(admin_client, db)
+        progress = [e for e in events if e["type"] == "progress"]
+        assert progress and progress[0]["priced"] is True
+        # Server-formatted — the client no longer builds the symbol itself.
+        assert progress[0]["status"] == "$12.50"
+
+    def test_unpriced_item_reports_priced_false(self, admin_client, db):
+        events = self._run(admin_client, db, price=None)
+        progress = [e for e in events if e["type"] == "progress"]
+        assert progress and progress[0]["priced"] is False
+        assert progress[0]["status"] == "no price"
+
+    def test_done_carries_a_formatted_total(self, admin_client, db):
+        events = self._run(admin_client, db)
+        done = events[-1]
+        assert done["type"] == "done"
+        assert done["total_display"] == "$12.50"
+        # The raw count/total keys the panel still reads are untouched.
+        assert done["priced"] == 1 and done["total_value"] == 12.5
+
+    def test_amounts_render_in_the_configured_currency(self, admin_client, db):
+        _set_currency(db, "EUR")
+        events = self._run(admin_client, db)
+        progress = [e for e in events if e["type"] == "progress"]
+        assert progress[0]["status"] == "\u20ac12.50"
+        assert events[-1]["total_display"] == "\u20ac12.50"
+
+
+class TestISBNdbUSDCaveat:
+    """ISBNdb prices are USD list prices with no conversion applied \u2014 the
+    settings page and the report footer must each show a caveat, but only
+    when the configured currency is not USD (issue #26)."""
+
+    CAVEAT_TEXT = "ISBNdb prices are USD list prices"
+
+    def test_settings_page_shows_caveat_under_non_usd_currency(self, admin_client, db):
+        _set_currency(db, "EUR")
+        html = admin_client.get("/settings").text
+        assert self.CAVEAT_TEXT in html
+
+    def test_settings_page_hides_caveat_under_usd_default(self, admin_client):
+        html = admin_client.get("/settings").text
+        assert self.CAVEAT_TEXT not in html
+
+    def test_report_footer_shows_caveat_under_non_usd_currency(self, admin_client, db):
+        self._seed_priced_item(db)
+        _set_currency(db, "EUR")
+        html = admin_client.get("/api/valuation/report").text
+        assert self.CAVEAT_TEXT in html
+
+    def test_report_footer_hides_caveat_under_usd_default(self, admin_client, db):
+        self._seed_priced_item(db)
+        html = admin_client.get("/api/valuation/report").text
+        assert self.CAVEAT_TEXT not in html
+
+    def _seed_priced_item(self, db):
+        _insert_item(db, title="Priced Book", isbn="9780900000700", estimated_value=9.99)
+        db.execute("COMMIT")

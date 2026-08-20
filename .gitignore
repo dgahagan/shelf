@@ -6,3 +6,5 @@ docs/
 .coverage
 htmlcov/
 .claude/
+# Node build tooling (tailwind CLI) — see package.json
+node_modules/

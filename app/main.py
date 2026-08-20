@@ -32,6 +32,7 @@ from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
+from app.currency import CURRENCIES, format_money, get_currency
 from app.database import init_db, get_db
 from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive
 from app.routers import auth_routes
@@ -391,6 +392,9 @@ def strip_html(value: str) -> str:
     return html_mod.unescape(value).strip()
 
 templates.env.filters["strip_html"] = strip_html
+templates.env.filters["money"] = format_money
+templates.env.globals["currency"] = get_currency
+templates.env.globals["currencies"] = CURRENCIES
 
 # Wrap TemplateResponse to auto-inject 'user' from request.state
 _original_template_response = templates.TemplateResponse

@@ -13,20 +13,44 @@ Known traps live in `GOTCHAS.md` — check it before touching migrations, Alpine
 Run all `make` targets from inside this directory (`cd shelf && make ...`, never `make -C shelf` — some targets use git commands that break).
 
 ```bash
-make setup                 # one-time: dev deps + Playwright Chromium
-make test                  # unit/integration tests (excludes tests/e2e/)
+make setup                 # one-time: dev deps + npm (tailwind) + Playwright Chromium
+make test                  # unit/integration tests — quiet + parallel (excludes tests/e2e/)
+make test-fast             # re-run only last run's failures (--lf, serial)
+make test-verbose          # per-test roll-call, for humans
 make test-e2e              # Playwright E2E — spins up its own server, no dev server needed
 python -m pytest tests/test_items.py::test_name -v           # single unit test
 python -m pytest tests/e2e/test_scan.py -v -m e2e            # single E2E file
 make css                   # rebuild committed Tailwind stylesheet (required after template/JS changes)
 make check-csrf            # lint: raw fetch() calls must send X-CSRF-Token
 make check-alpine          # lint: templates stay compatible with Alpine CSP build
-make checks                # all static checks (deps audit, licenses, secrets, csrf, alpine)
+make checks-fast           # instant offline lints (secrets, csrf, alpine) — the inner-loop target
+make checks                # everything, incl. network pip-audit + licenses — before a release
 make dev / dev-down / dev-logs   # docker compose up/down/logs
 uvicorn app.main:app --reload    # run without Docker
 ```
 
 **Unit and E2E tests cannot run in a single pytest invocation** — always use the separate targets above.
+
+### Agent-efficiency conventions
+
+The dev loop is tuned for agent sessions, where command output is read into a context window
+far more often than by a human. Keep it that way:
+
+- **`make test` is quiet and parallel** (`-q --tb=short --no-header`, `-n auto --dist loadfile`).
+  It prints failures, not a roll-call — 917 `PASSED` lines is roughly 15k wasted tokens per run.
+  Reach for `make test-verbose` only when a human is reading, and `make test-fast` while
+  iterating on a specific failure.
+- **Run the slow things in the background** — `make test-e2e`, `docker compose build`, and
+  `make release` all take minutes. Launch them with Bash `run_in_background: true` and do other
+  work; the harness re-invokes on exit. Never launch in the background and then `sleep`-poll —
+  the completion notification *is* the signal.
+- **`make checks-fast` in the loop, `make checks` before a release.** The full target runs
+  `pip-audit` over the network and writes dated reports into `docs/reports/`.
+- **Prefer the `gh` CLI over the `github` MCP tools here.** The release procedure in
+  `../CLAUDE.md` already uses `gh` end to end, and `gh ... --jq` lets you bound the output size,
+  which the MCP tools do not.
+- If you add a dependency that spams warnings, silence it **by message** in `pytest.ini`'s
+  `filterwarnings`, never by blanket category — a muted category hides real deprecations.
 
 ## Architecture
 

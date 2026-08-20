@@ -66,7 +66,7 @@ Create a `.env` file alongside `docker-compose.yml` for host-specific config:
 
 ```bash
 # Add your machine's IP so you can access Shelf from other devices
-CERT_SAN=IP:192.168.1.50,DNS:shelf,DNS:localhost
+CERT_SAN=IP:192.168.1.100,DNS:shelf,DNS:localhost
 ```
 
 | Variable | Default | Description |

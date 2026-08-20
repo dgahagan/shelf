@@ -482,6 +482,26 @@ python -m pytest tests/test_items.py -k overlapping_runners -q
   hamburger) the nav rendered as a hamburger at *every* width — reproduced at
   1440px and 1920px. It presented as a responsive-layout regression and was
   entirely a cache. Fixed by bumping to `v3`.
+- **Mid-branch clarification:** the bump-before-re-pin rule protects
+  *shipped* versions. On a feature branch, bump `SW_VERSION` once in the
+  first commit whose rebuilt `app.css` actually differs, then freely re-pin
+  the digest under that new version in later commits of the same branch —
+  nothing has shipped under it. Never defer the bump to a branch-final
+  "verification" task: `test_precache_digest_matches_sw_version` runs inside
+  `make test`, so a per-task gate goes red at the *first* differing rebuild,
+  wedging an orchestrator between "never commit red" and the deferred bump.
+- **A template change does NOT imply an `app.css` change.** `make css` only
+  emits utilities the templates actually use, so markup built from classes
+  already present elsewhere rebuilds byte-identical and needs no bump at all.
+  Measured on the issue-26 currency branch (2026-08-20): four consecutive
+  template/JS tasks — a new settings form with a `<select>`, six value-render
+  filter swaps, an Alpine class-binding change plus a `w-16` → `w-24` widen,
+  and two conditional caveat lines — left `app.css` byte-identical every
+  time, and `SW_VERSION` correctly stayed `v3` for the whole branch. Check
+  `git status --short static/css/app.css` after `make css` rather than
+  assuming; also note that only `app.css` and `store.js` among CSS/JS are in
+  PRECACHE, so editing e.g. `components-settings.js` is not a G19 trigger.
+
 - **Verify:** the digest pinned for the current `SW_VERSION` must match the
   precached files on disk:
 

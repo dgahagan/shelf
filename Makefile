@@ -3,10 +3,20 @@ DATE  ?= $(shell date +%Y-%m-%d)
 export DATE
 DOCS  := docs/reports
 MODEL ?= claude-sonnet-4-6
-MIN_TESTS ?= 155
+MIN_TESTS ?= 880
 
-.PHONY: setup css test test-e2e test-all \
-        check-deps check-licenses check-secrets checks \
+# Test invocation flags. Quiet by default: `make test` output is read far more
+# often by agents than by humans, and one PASSED line per test (917 and rising)
+# buries the failures that actually matter. Use `make test-verbose` for the
+# per-test roll-call.
+PYTEST_FLAGS ?= -q --tb=short --no-header
+# --dist loadfile keeps a whole test file on one worker: tests/conftest.py
+# rebinds module-level path constants, so per-file affinity is the conservative
+# split. Never add -p no:cacheprovider here — test-fast's --lf needs the cache.
+PYTEST_PAR   ?= -n auto --dist loadfile
+
+.PHONY: setup css test test-verbose test-fast test-e2e test-all \
+        check-deps check-licenses check-secrets checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
         install-playwright install-hooks \
@@ -21,6 +31,7 @@ MIN_TESTS ?= 155
 
 setup:
 	pip install -r requirements-dev.txt
+	npm install
 	playwright install chromium
 	@echo "=== Setup complete ==="
 
@@ -29,19 +40,32 @@ setup:
 # ---------------------------------------------------------------------------
 
 # Rebuild the committed Tailwind stylesheet after changing templates,
-# static/js, or tailwind.config.js. Requires node/npx.
+# static/js, or tailwind.config.js. Resolves tailwind from node_modules
+# (version pinned in package.json) rather than re-fetching it over the network
+# on every invocation — run `npm install` / `make setup` first.
 css:
-	npx -y tailwindcss@3.4.17 -c tailwind.config.js -i static/css/input.css -o static/css/app.css --minify
+	npx tailwindcss -c tailwind.config.js -i static/css/input.css -o static/css/app.css --minify
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
 test:
-	python -m pytest tests/ -v --ignore=tests/e2e --tb=short
+	python -m pytest tests/ --ignore=tests/e2e $(PYTEST_FLAGS) $(PYTEST_PAR)
+
+# Per-test roll-call, for when a human is reading the output.
+test-verbose:
+	python -m pytest tests/ --ignore=tests/e2e -v --tb=short
+
+# Inner fix loop: re-run only what failed last time. Stays parallel because
+# --lf falls back to the *whole* suite when nothing failed last run, and a
+# serial fallback there costs 97s instead of 17s. (--lf is a collection-time
+# filter, so it composes fine with xdist — don't add -x, which does not.)
+test-fast:
+	python -m pytest tests/ --ignore=tests/e2e $(PYTEST_FLAGS) $(PYTEST_PAR) --lf
 
 test-e2e:
-	python -m pytest tests/e2e/ -v --tb=short -m e2e
+	python -m pytest tests/e2e/ $(PYTEST_FLAGS) -m e2e
 
 test-all: test test-e2e
 
@@ -68,7 +92,12 @@ check-csrf:
 check-alpine:
 	python scripts/check_alpine_csp.py
 
-checks: check-deps check-licenses check-secrets check-csrf check-alpine
+# Instant, offline lints — the inner-loop target.
+checks-fast: check-secrets check-csrf check-alpine
+
+# Everything, including the network-bound pip-audit and the dated report files.
+# Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.
+checks: checks-fast check-deps check-licenses
 
 # ---------------------------------------------------------------------------
 # Claude agent reports
@@ -139,11 +168,20 @@ fix:
 	@echo ""; echo "=== Changes made by fix agent ==="; git diff --stat || true
 	$(MAKE) verify
 
+# The count regex is anchored to the start of the line on purpose. A bare
+# '\d+' also matches the digits in "in 0.49s", yielding a multi-line count
+# that makes the comparison die with "integer expected" — which bash treats
+# as false, silently passing the guard no matter how many tests were deleted.
 verify: test-all
-	@count=$$(python -m pytest tests/ --ignore=tests/e2e --co -q 2>/dev/null | tail -1 | grep -oP '\d+'); \
-	if [ -n "$$count" ] && [ "$$count" -lt $(MIN_TESTS) ]; then \
+	@count=$$(python -m pytest tests/ --ignore=tests/e2e --co -q 2>/dev/null \
+		| grep -oP '^\d+(?= tests? collected)' | tail -1); \
+	if [ -z "$$count" ]; then \
+		echo "ERROR: could not determine unit test count"; exit 1; \
+	fi; \
+	if [ "$$count" -lt $(MIN_TESTS) ]; then \
 		echo "ERROR: Unit test count $$count < minimum $(MIN_TESTS)"; exit 1; \
-	fi
+	fi; \
+	echo "Unit test count: $$count (minimum $(MIN_TESTS))"
 	@echo "=== VERIFICATION PASSED ==="
 
 # ---------------------------------------------------------------------------

@@ -9,6 +9,7 @@ from starlette.responses import StreamingResponse
 
 from app.auth import require_role
 from app.config import MEDIA_TYPES
+from app.currency import format_money
 from app.database import get_db, get_all_settings
 from app.services import isbndb
 
@@ -209,7 +210,7 @@ async def valuate_all_stream(request: Request, _=Depends(require_role("admin")))
                             )
                         results["priced"] += 1
                         results["total_value"] += price
-                        status = f"${price:.2f}"
+                        status = format_money(price)
                     else:
                         results["not_found"] += 1
                         status = "no price"
@@ -217,13 +218,17 @@ async def valuate_all_stream(request: Request, _=Depends(require_role("admin")))
                     await queue.put({
                         "type": "progress", "current": i, "total": len(items),
                         "title": item["title"] or item["isbn"], "status": status,
+                        "priced": bool(price),
                     })
                     if i % 20 == 0:
                         isbndb._save_cache(cache)
 
             isbndb._save_cache(cache)
             _snapshot_valuation()
-            await queue.put({"type": "done", **results})
+            await queue.put({
+                "type": "done", **results,
+                "total_display": format_money(results["total_value"]),
+            })
         except Exception:
             logger.exception("Valuation failed")
             isbndb._save_cache(cache)

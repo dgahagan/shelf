@@ -262,7 +262,7 @@ document.addEventListener('alpine:init', function () {
                     if (d.type === 'progress') {
                         self.valCurrent = d.current; self.valTotal = d.total;
                         self.valLastTitle = d.title;
-                        self.valLog.push({i: d.current, t: d.title, s: d.status});
+                        self.valLog.push({i: d.current, t: d.title, s: d.status, p: !!d.priced});
                     } else if (d.type === 'done') {
                         self.valResult = d; self.valuating = false; es.close();
                     } else if (d.type === 'error') {

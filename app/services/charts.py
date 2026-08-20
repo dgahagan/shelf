@@ -46,7 +46,8 @@ def _empty(width: int, height: int, message: str) -> str:
     )
 
 
-def _grid_and_ticks(max_v: float, x0: int, x1: int, y0: int, y1: int, value_prefix: str = "") -> tuple[str, float]:
+def _grid_and_ticks(max_v: float, x0: int, x1: int, y0: int, y1: int, value_prefix: str = "",
+                    value_suffix: str = "") -> tuple[str, float]:
     """Horizontal hairlines + y tick labels. Returns (svg, scale_max)."""
     step = _nice_step(max_v)
     scale_max = step
@@ -60,7 +61,7 @@ def _grid_and_ticks(max_v: float, x0: int, x1: int, y0: int, y1: int, value_pref
             parts.append(f'<line x1="{x0}" y1="{y:.1f}" x2="{x1}" y2="{y:.1f}" stroke="{GRID}" stroke-width="1"/>')
         parts.append(
             f'<text x="{x0 - 6}" y="{y + 3.5:.1f}" text-anchor="end" fill="{TEXT_MUTED}" '
-            f'font-size="10">{value_prefix}{_fmt(v)}</text>'
+            f'font-size="10">{value_prefix}{_fmt(v)}{value_suffix}</text>'
         )
         v += step
     parts.append(f'<line x1="{x0}" y1="{y1}" x2="{x1}" y2="{y1}" stroke="{GRID}" stroke-width="1"/>')
@@ -79,7 +80,7 @@ def _rounded_top_bar(x: float, y: float, w: float, h: float, r: float = 4) -> st
 
 
 def column_chart(pairs: list[tuple[str, float]], width: int = 460, height: int = 200,
-                 value_prefix: str = "", empty_message: str = "No data yet") -> str:
+                 value_prefix: str = "", value_suffix: str = "", empty_message: str = "No data yet") -> str:
     """Vertical columns for (label, value) pairs, e.g. books read per year."""
     if not pairs or all(v == 0 for _, v in pairs):
         return _empty(width, height, empty_message)
@@ -87,7 +88,7 @@ def column_chart(pairs: list[tuple[str, float]], width: int = 460, height: int =
     pad_l, pad_r, pad_t, pad_b = 44, 8, 14, 22
     x0, x1, y0, y1 = pad_l, width - pad_r, pad_t, height - pad_b
     max_v = max(v for _, v in pairs)
-    grid, scale_max = _grid_and_ticks(max_v, x0, x1, y0, y1, value_prefix)
+    grid, scale_max = _grid_and_ticks(max_v, x0, x1, y0, y1, value_prefix, value_suffix)
 
     n = len(pairs)
     band = (x1 - x0) / n
@@ -99,7 +100,7 @@ def column_chart(pairs: list[tuple[str, float]], width: int = 460, height: int =
         bx = x0 + i * band + (band - bar_w) / 2
         bh = (v / scale_max) * (y1 - y0)
         by = y1 - bh
-        title = f"{label}: {value_prefix}{_fmt(v)}"
+        title = f"{label}: {value_prefix}{_fmt(v)}{value_suffix}"
         if v > 0:
             marks.append(
                 f'<path d="{_rounded_top_bar(bx, by, bar_w, bh)}" fill="{MARK}">'
@@ -116,7 +117,7 @@ def column_chart(pairs: list[tuple[str, float]], width: int = 460, height: int =
         if v > 0 and (i == max_idx or i == n - 1):
             labels.append(
                 f'<text x="{bx + bar_w / 2:.1f}" y="{by - 4:.1f}" text-anchor="middle" '
-                f'fill="{TEXT}" font-size="10">{value_prefix}{_fmt(v)}</text>'
+                f'fill="{TEXT}" font-size="10">{value_prefix}{_fmt(v)}{value_suffix}</text>'
             )
 
     return (
@@ -126,7 +127,7 @@ def column_chart(pairs: list[tuple[str, float]], width: int = 460, height: int =
 
 
 def area_chart(points: list[tuple[str, float]], width: int = 460, height: int = 200,
-               value_prefix: str = "", empty_message: str = "No data yet") -> str:
+               value_prefix: str = "", value_suffix: str = "", empty_message: str = "No data yet") -> str:
     """Single-series area/line, e.g. cumulative collection growth."""
     if not points:
         return _empty(width, height, empty_message)
@@ -138,7 +139,7 @@ def area_chart(points: list[tuple[str, float]], width: int = 460, height: int = 
     max_v = max(v for _, v in points)
     if max_v <= 0:
         return _empty(width, height, empty_message)
-    grid, scale_max = _grid_and_ticks(max_v, x0, x1, y0, y1, value_prefix)
+    grid, scale_max = _grid_and_ticks(max_v, x0, x1, y0, y1, value_prefix, value_suffix)
 
     n = len(points)
     coords = []
@@ -164,7 +165,7 @@ def area_chart(points: list[tuple[str, float]], width: int = 460, height: int = 
     end_label, end_value = points[-1]
     hover = (
         f'<polyline points="{line}" fill="none" stroke="transparent" stroke-width="14">'
-        f'<title>{escape(f"{end_label}: {value_prefix}{_fmt(end_value)} (latest)")}</title></polyline>'
+        f'<title>{escape(f"{end_label}: {value_prefix}{_fmt(end_value)}{value_suffix} (latest)")}</title></polyline>'
     )
 
     return (
@@ -176,13 +177,13 @@ def area_chart(points: list[tuple[str, float]], width: int = 460, height: int = 
         f'{hover}'
         f'<circle cx="{end_x:.1f}" cy="{end_y:.1f}" r="4" fill="{MARK}" stroke="#1a1d27" stroke-width="2"/>'
         f'<text x="{end_x + 8:.1f}" y="{end_y + 3.5:.1f}" fill="{TEXT}" font-size="10">'
-        f'{value_prefix}{_fmt(end_value)}</text>'
+        f'{value_prefix}{_fmt(end_value)}{value_suffix}</text>'
         f'{"".join(xlabels)}</svg>'
     )
 
 
 def hbar_chart(pairs: list[tuple[str, float]], width: int = 460,
-               value_prefix: str = "", empty_message: str = "No data yet") -> str:
+               value_prefix: str = "", value_suffix: str = "", empty_message: str = "No data yet") -> str:
     """Horizontal bars for (label, value), e.g. top authors. Height adapts."""
     if not pairs:
         return _empty(width, 120, empty_message)
@@ -210,9 +211,9 @@ def hbar_chart(pairs: list[tuple[str, float]], width: int = 460,
         parts.append(
             f'<text x="{label_w}" y="{cy + 3.5:.1f}" text-anchor="end" fill="{TEXT_MUTED}" '
             f'font-size="11">{escape(shown)}</text>'
-            f'<path d="{path}" fill="{MARK}"><title>{escape(f"{label}: {value_prefix}{_fmt(v)}")}</title></path>'
+            f'<path d="{path}" fill="{MARK}"><title>{escape(f"{label}: {value_prefix}{_fmt(v)}{value_suffix}")}</title></path>'
             f'<text x="{x0 + bw + 6:.1f}" y="{cy + 3.5:.1f}" fill="{TEXT}" '
-            f'font-size="11">{value_prefix}{_fmt(v)}</text>'
+            f'font-size="11">{value_prefix}{_fmt(v)}{value_suffix}</text>'
         )
 
     return (

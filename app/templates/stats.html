@@ -18,7 +18,7 @@
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
         <p class="text-shelf-muted text-sm">Est. Value</p>
-        <p class="text-3xl font-bold">{% if current_value %}${{ '{:,.0f}'.format(current_value) }}{% else %}—{% endif %}</p>
+        <p class="text-3xl font-bold">{% if current_value %}{{ current_value|money(0) }}{% else %}—{% endif %}</p>
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
         <p class="text-shelf-muted text-sm">With Covers</p>
