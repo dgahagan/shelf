@@ -13,6 +13,7 @@ from app.config import HTTP_TIMEOUT, TILING_THRESHOLD
 from app.database import get_db, get_all_settings
 from app.services import openlibrary, tiling, vision
 from app.services import isbn as isbn_svc
+from app.services import authors as authors_svc
 
 logger = logging.getLogger(__name__)
 
@@ -106,15 +107,6 @@ class IntakeConfirm(BaseModel):
     owned: bool = True
 
 
-def _authors_match(wanted: str | None, found: str | None) -> bool:
-    if not wanted:
-        return True
-    if not found:
-        return False
-    first = wanted.split(",")[0].strip().casefold()
-    return bool(first) and first in found.casefold()
-
-
 @router.post("/confirm")
 async def confirm_books(payload: IntakeConfirm):
     """Insert confirmed candidates as items via the normal metadata pipeline."""
@@ -144,7 +136,7 @@ async def confirm_books(payload: IntakeConfirm):
             try:
                 results = await openlibrary.search_by_title_author(
                     title, (book.authors or "").split(",")[0].strip() or None, client)
-                matches = [r for r in results if _authors_match(book.authors, r.get("authors"))]
+                matches = [r for r in results if authors_svc.matches(book.authors, r.get("authors"))]
                 english = [r for r in matches if "eng" in (r.get("languages") or [])]
                 if english or matches:
                     meta = (english or matches)[0]

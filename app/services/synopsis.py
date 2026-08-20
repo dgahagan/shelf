@@ -9,6 +9,7 @@ import re
 
 import httpx
 
+from app.services import authors as authors_svc
 from app.services import googlebooks, hardcover, openlibrary
 
 logger = logging.getLogger(__name__)
@@ -16,18 +17,6 @@ logger = logging.getLogger(__name__)
 # Media types the book-metadata sources can answer for. Games/movies get
 # descriptions from IGDB/TMDb at scan time and aren't backfilled here.
 BOOK_MEDIA_TYPES = ("book", "ebook", "audiobook", "kids_book")
-
-
-def _authors_match(wanted: str | None, found: str | None) -> bool:
-    """The item's first author must appear among the result's authors.
-    Guards against adaptations and study guides of famous titles, which
-    rank high in title searches."""
-    if not wanted:
-        return True
-    if not found:
-        return False
-    first = wanted.split(",")[0].strip().casefold()
-    return bool(first) and first in found.casefold()
 
 
 _STOPWORDS = frozenset({"the", "a", "an", "of", "and", "to", "in", "for"})
@@ -59,7 +48,7 @@ def _result_ok(authors: str | None, query_title: str, res: dict) -> bool:
     """Accept a search result: author match when we have an author,
     strict title overlap when we don't."""
     if authors:
-        return _authors_match(authors, res.get("authors"))
+        return authors_svc.matches(authors, res.get("authors"))
     return _title_close_enough(query_title, res.get("title"))
 
 

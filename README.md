@@ -17,7 +17,7 @@ A self-hosted home library catalog with barcode scanning, multi-mode scanning wo
 
 Most home library apps are cloud-hosted, mobile-only, or require you to manually enter every book. Shelf takes a different approach:
 
-- **Scan and done** — point your phone camera at a barcode or use a USB/Bluetooth barcode scanner and the book is cataloged in seconds, complete with cover art, author, series info, and description. Works out of the box with any scanner that sends Enter after the barcode (most do by default)
+- **Scan and done** — point your phone camera at a barcode or use a USB/Bluetooth barcode scanner and the book is cataloged in seconds, complete with cover art, author, series info, and description. Works out of the box with any scanner that sends Enter after the barcode (most do by default), and camera scanning works on iPhones and iPads as well as Android
 - **Bulk-add from a photo** — snap a picture of a full shelf and a vision model reads the spines. Review the detected titles, then import them all with full metadata and covers. Works with the Anthropic API, any OpenAI-compatible endpoint, or a fully local Ollama model
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate. The scan tab adapts to whatever you're doing: adding new items, lending to a friend, reorganizing shelves, or auditing a room
 - **Title search** — don't have a barcode? Search by title across Open Library (books), TMDb (movies), and IGDB (video games) and add directly from results
@@ -113,6 +113,12 @@ data/
 | **Lookup** | Scan to check if an item is in your collection — no changes made |
 | **Quick Rate** | Scan to mark items as read/completed |
 
+Camera scanning picks its decoder to suit the device: iOS Safari drives the
+camera with ZXing, every other platform uses html5-qrcode. The scan page and
+Store Mode share one engine, so both behave the same everywhere. Retail
+barcodes are covered — EAN-13, EAN-8, UPC-A and UPC-E. USB and Bluetooth
+scanners bypass the camera entirely and work regardless.
+
 ### Photo Intake
 
 <p align="center">
@@ -153,6 +159,7 @@ each option before anything is sent.
 - **Series tracking** — a Series page groups your library by series with position numbers, flags likely gaps, and (with Hardcover configured) checks the full series and adds missing volumes to your wishlist in one click. Each series can carry its own synopsis, written inline or fetched from Hardcover. Rename a series (renaming onto an existing name merges the two — the quick fix for duplicate series records left by metadata lookup) or disband it entirely, right from the series card
 - **Bulk editing** — select multiple items in Browse to move them, change type or reading status, or set and clear their series in one go
 - **Valuation report** — location-grouped, print-ready report of your collection's list-price value for insurance documentation ([print view](screenshots/valuation-report-print.png)); prices via ISBNdb
+- **Display currency** — pick from 20 currencies under Settings → Collection and every value surface follows. This is formatting, not conversion: Shelf never converts amounts between currencies, so the figure ISBNdb returns is the figure shown
 - **CSV import/export** — bulk operations and backups
 - **Portable archive** — export your whole collection as a single zip (items, tags, locations, series, reading log, checkouts, **and your cover art**) and merge it back into any Shelf instance without refetching a single cover. No credentials or instance-specific data are included, so it's the safe way to move servers or hand your library to someone else — unlike a database backup, which carries password hashes and encrypted API keys but no covers at all. Importing previews first: you see how many items are new, how many are already yours, how each duplicate was matched (exactly on ISBN, or heuristically on title and author), and you can leave parts of the archive out before anything is written
 - **Goodreads & StoryGraph migration** — upload your library export as-is; the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically
@@ -165,6 +172,12 @@ each option before anything is sent.
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
 
 ### Store Mode (Offline PWA)
+
+<p align="center">
+  <img src="screenshots/store-mode.gif" width="420" alt="Store Mode demo — three ISBNs checked in turn, returning Owned, On wishlist, and Not in library with the unknown book queued for sync">
+</p>
+
+<p align="center"><em>Standing in the shop: scan, and know instantly whether you already own it.</em></p>
 
 Open **Store** in the nav (or visit `/store`), and Shelf caches your library's
 ISBNs on the device. From then on, scanning a barcode answers instantly from

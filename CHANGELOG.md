@@ -6,6 +6,56 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-08-20
+
+Books whose author name carries an accent, a middle initial, or a stroked
+letter get their cover art again. If your library has items stuck without a
+cover, run Settings → Data → Maintenance → **Retry Missing Covers** after
+upgrading — it will now find many of them, and it now also looks at items it
+used to skip entirely.
+
+### Fixed
+
+- **Author matching no longer rejects the same person written a different
+  way.** Every metadata lookup checks the result's author before trusting
+  it — that guard is what stops a study guide or graded-reader adaptation
+  being mistaken for the real book. But the check was a plain substring
+  test, so it only accepted names spelled character-for-character alike,
+  and quietly rejected the same author written any other way:
+
+  | Your item says | The source says | Result |
+  |---|---|---|
+  | `Stanislaw Lem` | `Stanisław Lem` | no cover |
+  | `Richard P. Feynman` | `Richard Phillips Feynman` | no cover |
+  | `James Duane` | `James J. Duane` | no cover |
+
+  Matching now folds accents and stroked letters (`ł`, `ø`, `đ`, `ħ` — which
+  Unicode normalisation alone leaves untouched), and accepts an initial in
+  place of the name it abbreviates. Surnames must still agree exactly and
+  distinct given names are still rejected, so `Frank Herbert` continues not
+  to match `Brian Herbert` and the study-guide guard is unchanged.
+
+  **Photo intake was hit hardest**, because the vision model transcribes
+  whatever is printed on the spine — which is exactly where ASCII-ised
+  accents and abbreviated middle names come from. On the shelf photo used
+  for this project's own demo, 3 of 11 books lost their covers to this.
+
+  The check lived in three separately-maintained copies (item cover
+  enrichment, photo intake, synopsis lookup), all with the same flaw; they
+  are now one shared helper, so the next improvement lands on all three.
+
+- **"Retry Missing Covers" can now actually recover the items it is for.**
+  The button skipped every item that had no ISBN — `WHERE isbn IS NOT NULL`
+  — and for the rest tried only the ISBN cover chain, never the title and
+  author search. So the two groups most likely to be missing art (items
+  added without an ISBN, and editions whose ISBN has no cover anywhere)
+  were precisely the ones it could never fix.
+
+  Retry now considers every item without a cover and runs the same full
+  resolution the import path uses, including the title/author fallback and
+  storing any ISBN it recovers along the way. Combined with the author fix
+  above, a single run should clear a good deal of long-standing backlog.
+
 ## [0.10.0] - 2026-08-20
 
 Camera scanning now works on iOS Safari — on the scan page **and** in Store
@@ -629,6 +679,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.10.1]: https://github.com/dgahagan/shelf/releases/tag/v0.10.1
 [0.10.0]: https://github.com/dgahagan/shelf/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dgahagan/shelf/releases/tag/v0.9.0
 [0.8.1]: https://github.com/dgahagan/shelf/releases/tag/v0.8.1

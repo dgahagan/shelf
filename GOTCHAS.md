@@ -593,6 +593,48 @@ grep -rn "wait_for_function(" tests/e2e/
 
 ---
 
+## G22 — When comparing an author name against a metadata source's author
+
+- **Rule:** Use `app/services/authors.matches()`. Never write a fresh
+  substring test (`wanted in found.casefold()`) — it rejects the same person
+  written any other way, and the only symptom is missing cover art.
+- **Why:** Sources disagree on spelling in three routine ways: diacritics
+  (`Stanislaw` vs `Stanisław`), abbreviated middle names (`Richard P.` vs
+  `Richard Phillips`), and dropped middle initials (`James Duane` vs
+  `James J. Duane`). Photo intake is worst affected, since the vision model
+  transcribes what is printed on the spine. Note NFKD alone is not enough:
+  stroked letters (`ł ø đ ħ`) do not decompose and need the explicit fold
+  that `authors.normalize()` applies.
+- **Evidence:** `54388c4` (2026-08-20). Three copies of the broken check had
+  drifted into `routers/items.py`, `routers/intake.py` and
+  `services/synopsis.py`; 3 of 11 books in the project's own demo GIF lost
+  their covers to it.
+- **Verify:** no module has grown its own copy again:
+
+grep -rn "in found.casefold()" app/ | grep -v services/authors.py
+
+  (expect no output), and the shared helper still handles the regressions:
+  `python -m pytest tests/test_authors.py -q`.
+- **Status:** documented.
+
+## G23 — When capturing a demo or screenshot right after a photo-intake import
+
+- **Rule:** Wait for cover art to land before capturing. Poll the DB until
+  `cover_path IS NULL` stops changing — do not trust the Done panel.
+- **Why:** `/api/intake/confirm` fires `_enrich_import_covers` through
+  `asyncio.create_task` and returns immediately, so the Done panel renders
+  before any cover exists. Enrichment is serial with up to three network
+  round-trips per book, so eleven books can take a minute. A capture that
+  cuts straight to Browse shows a wall of blank covers that looks like a bug.
+- **Evidence:** `f618b11` (2026-08-20) — the previous demo GIF was recorded
+  this way and shipped for six weeks showing four cover-less books.
+- **Verify:** the import path is still fire-and-forget:
+
+grep -n "create_task(_enrich_import_covers" app/routers/intake.py
+
+  (expect 1 hit; if it becomes awaited, this entry retires).
+- **Status:** documented.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

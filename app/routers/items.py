@@ -19,6 +19,7 @@ from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
+from app.services import authors as authors_svc
 
 router = APIRouter(prefix="/api")
 
@@ -1270,17 +1271,14 @@ async def bulk_retry_covers(request: Request, _=Depends(require_role("admin"))):
     """Retry downloading covers for all items missing them."""
     with get_db() as db:
         items = db.execute(
-            "SELECT id, isbn FROM items WHERE cover_path IS NULL AND isbn IS NOT NULL"
+            "SELECT id FROM items WHERE cover_path IS NULL"
         ).fetchall()
 
     results = {"success": 0, "failed": 0, "total": len(items)}
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for item in items:
-            cover_path = await covers.download_cover(item["id"], item["isbn"], None, None, client)
-            if cover_path:
-                with get_db() as db:
-                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item["id"]))
+            if await resolve_missing_cover(item["id"], client):
                 results["success"] += 1
             else:
                 results["failed"] += 1
@@ -1293,7 +1291,7 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
     """SSE endpoint for bulk cover retry with progress updates."""
     with get_db() as db:
         items = db.execute(
-            "SELECT id, isbn, title FROM items WHERE cover_path IS NULL AND isbn IS NOT NULL"
+            "SELECT id, isbn, title FROM items WHERE cover_path IS NULL"
         ).fetchall()
 
     if not items:
@@ -1308,10 +1306,7 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
         try:
             async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 for i, item in enumerate(items, 1):
-                    cover_path = await covers.download_cover(item["id"], item["isbn"], None, None, client)
-                    if cover_path:
-                        with get_db() as db:
-                            db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item["id"]))
+                    if await resolve_missing_cover(item["id"], client):
                         results["success"] += 1
                         status = "found"
                     else:
@@ -1626,18 +1621,6 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     }
 
 
-def _authors_match(wanted: str | None, found: str | None) -> bool:
-    """The item's first author must appear among the result's authors.
-    Guards against adaptations and study guides of famous titles, which
-    rank high in title searches ('1984' -> a graded-reader adaptation)."""
-    if not wanted:
-        return True  # nothing to check against
-    if not found:
-        return False
-    first = wanted.split(",")[0].strip().casefold()
-    return bool(first) and first in found.casefold()
-
-
 async def _search_isbn_for_item(title: str, authors: str | None, client) -> tuple[str | None, str | None]:
     """Find (isbn, cover_url) by field-scoped title/author search on Open
     Library. Field search lets OL do the title matching itself, including
@@ -1649,68 +1632,80 @@ async def _search_isbn_for_item(title: str, authors: str | None, client) -> tupl
     first_author = (authors or "").split(",")[0].strip() or None
     results = await openlibrary.search_by_title_author(title, first_author, client)
     for res in results:
-        if _authors_match(authors, res.get("authors")):
+        if authors_svc.matches(authors, res.get("authors")):
             return res.get("isbn"), res.get("cover_url")
     return None, None
 
 
-async def _enrich_import_covers(item_ids: list[int]) -> None:
-    """Background task: fetch covers (and missing ISBNs) for imported items.
+async def resolve_missing_cover(item_id: int, client: httpx.AsyncClient) -> str | None:
+    """Find and store a cover for one item that has none.
 
-    Items with an ISBN try the standard cover chain first (Open Library
+    An item with an ISBN tries the standard cover chain first (Open Library
     covers -> Amazon -> Google Books). If that fails — or there is no ISBN —
     a title/author search finds the work's best-known edition instead
-    (imported edition ISBNs are often print-on-demand ones with no cover
+    (imported and print-on-demand edition ISBNs often have no cover
     anywhere). A recovered ISBN is stored on ISBN-less items unless another
-    item already holds it. Best-effort — failures are logged and skipped.
+    item already holds it.
+
+    Returns the stored cover path, or None if nothing was found. Items that
+    already have a cover are left alone.
+    """
+    with get_db() as db:
+        row = db.execute(
+            "SELECT title, authors, isbn, cover_path FROM items WHERE id = ?",
+            (item_id,),
+        ).fetchone()
+    if not row or row["cover_path"]:
+        return None
+
+    cover_path = None
+    if row["isbn"]:
+        cover_path = await covers.download_cover(
+            item_id, row["isbn"], None, None, client)
+
+    if not cover_path:
+        found_isbn, cover_url = await _search_isbn_for_item(
+            row["title"], row["authors"], client)
+        if found_isbn and not row["isbn"]:
+            isbn13 = isbn_svc.to_isbn13(found_isbn) or found_isbn
+            isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if len(isbn13) == 13 else None
+            with get_db() as db:
+                taken = db.execute(
+                    "SELECT id FROM items WHERE isbn = ? AND id != ?",
+                    (isbn13, item_id),
+                ).fetchone()
+                if not taken:
+                    db.execute(
+                        "UPDATE items SET isbn = ?, isbn10 = ?, "
+                        "updated_at = datetime('now') WHERE id = ?",
+                        (isbn13, isbn10, item_id),
+                    )
+        if cover_url:
+            cover_path = await covers.download_cover(
+                item_id, None, cover_url, None, client)
+        elif found_isbn and not row["isbn"]:
+            cover_path = await covers.download_cover(
+                item_id, found_isbn, None, None, client)
+
+    if cover_path:
+        with get_db() as db:
+            db.execute(
+                "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+                (cover_path, item_id),
+            )
+    return cover_path
+
+
+async def _enrich_import_covers(item_ids: list[int]) -> None:
+    """Background task: fetch covers for freshly imported items.
+
+    Best-effort — failures are logged and skipped.
     """
     enriched = 0
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for item_id in item_ids:
             try:
-                with get_db() as db:
-                    row = db.execute(
-                        "SELECT title, authors, isbn, cover_path FROM items WHERE id = ?",
-                        (item_id,),
-                    ).fetchone()
-                if not row or row["cover_path"]:
-                    continue
-
-                cover_path = None
-                if row["isbn"]:
-                    cover_path = await covers.download_cover(
-                        item_id, row["isbn"], None, None, client)
-
-                if not cover_path:
-                    found_isbn, cover_url = await _search_isbn_for_item(
-                        row["title"], row["authors"], client)
-                    if found_isbn and not row["isbn"]:
-                        isbn13 = isbn_svc.to_isbn13(found_isbn) or found_isbn
-                        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if len(isbn13) == 13 else None
-                        with get_db() as db:
-                            taken = db.execute(
-                                "SELECT id FROM items WHERE isbn = ? AND id != ?",
-                                (isbn13, item_id),
-                            ).fetchone()
-                            if not taken:
-                                db.execute(
-                                    "UPDATE items SET isbn = ?, isbn10 = ?, "
-                                    "updated_at = datetime('now') WHERE id = ?",
-                                    (isbn13, isbn10, item_id),
-                                )
-                    if cover_url:
-                        cover_path = await covers.download_cover(
-                            item_id, None, cover_url, None, client)
-                    elif found_isbn and not row["isbn"]:
-                        cover_path = await covers.download_cover(
-                            item_id, found_isbn, None, None, client)
-
-                if cover_path:
-                    with get_db() as db:
-                        db.execute(
-                            "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
-                            (cover_path, item_id),
-                        )
+                if await resolve_missing_cover(item_id, client):
                     enriched += 1
             except Exception:
                 logger.exception("Cover enrichment failed for imported item %d", item_id)
