@@ -182,30 +182,34 @@
     function toggleCamera() {
         var btn = $('camera-toggle');
         var readerEl = $('reader');
+        var zxingEl = $('store-zxing-container');
         if (scanner) {
             scanner.stop().catch(function () {}).then(function () {
                 scanner = null;
                 readerEl.classList.add('hidden');
+                zxingEl.classList.add('hidden');
                 btn.textContent = 'Scan with Camera';
             });
             return;
         }
-        readerEl.classList.remove('hidden');
-        btn.textContent = 'Stop Camera';
-        scanner = new Html5Qrcode('reader');
-        scanner.start(
-            { facingMode: 'environment' },
-            { fps: 10, qrbox: { width: 240, height: 140 } },
-            function (decoded) {
+        scanner = window.createBarcodeScanner({
+            html5ElId: 'reader',
+            videoEl: 'store-zxing-video',
+            html5Config: { fps: 10, qrbox: { width: 240, height: 140 } },
+            onDecode: function (decoded) {
                 var now = Date.now();
                 if (decoded === lastScan.code && now - lastScan.at < 3000) return;
                 lastScan = { code: decoded, at: now };
                 if (navigator.vibrate) navigator.vibrate(60);
                 showVerdict(decoded);
-            },
-            function () { /* per-frame decode misses are normal */ }
-        ).catch(function () {
+            }
+        });
+        var activeEl = scanner.engine === 'zxing' ? zxingEl : readerEl;
+        activeEl.classList.remove('hidden');
+        btn.textContent = 'Stop Camera';
+        scanner.start().catch(function () {
             readerEl.classList.add('hidden');
+            zxingEl.classList.add('hidden');
             btn.textContent = 'Scan with Camera';
             scanner = null;
             var note = $('verdict-note');

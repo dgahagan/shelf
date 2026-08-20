@@ -23,6 +23,9 @@ PINNED = {
     # v3 renames the cache, which makes activate() purge the stale one.
     "v2": "b90ab85864792d4f2089bebd97af476e3e660990fc472f91af3604d267132957",
     "v3": "b90ab85864792d4f2089bebd97af476e3e660990fc472f91af3604d267132957",
+    # v4 adds scanner-engine.js and the vendored zxing-browser blob to
+    # PRECACHE -- the store PWA now uses the shared scanner engine.
+    "v4": "9ce800c0bb4c3c1b6352582278a90be717ce651e02f7fb94d2c558ad3a139a6f",
 }
 
 

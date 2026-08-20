@@ -14,18 +14,6 @@ function scanPage() {
         lastScanTime: 0,
         inventoryScannedIds: [],
         isZxingFallback: false,
-        zxingReader: false,
-        zxingControls: false,
-        zxingVideo: false,
-
-        isIosDevice() {
-            var ua = navigator.userAgent;
-            return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
-        },
-
-        shouldUseZxing() {
-            return this.isIosDevice();
-        },
 
         modes: [
             {id: 'add', label: 'Add'},
@@ -131,23 +119,26 @@ function scanPage() {
                 this.cameraActive = true;
                 this.scanPaused = false;
                 this.scanResult = false;
+
+                this.scanner = window.createBarcodeScanner({
+                    html5ElId: 'camera-reader',
+                    videoEl: 'zxing-video',
+                    html5Config: { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
+                    onDecode: (decodedText) => this.onScan(decodedText)
+                });
+                this.isZxingFallback = this.scanner.engine === 'zxing';
+                this.scanLoading = this.isZxingFallback;
+
+                // Let the paired x-show containers settle before the engine
+                // grabs its target element.
                 await this.$nextTick();
 
-                this.isZxingFallback = this.shouldUseZxing();
-
-                if (this.isZxingFallback) {
-                    await this.startZxingScanner();
-                } else {
-                    this.scanner = new Html5Qrcode('camera-reader');
-                    await this.scanner.start(
-                        { facingMode: 'environment' },
-                        { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
-                        (decodedText) => this.onScan(decodedText),
-                        () => {}
-                    );
-                }
+                await this.scanner.start();
+                this.scanLoading = false;
             } catch (err) {
+                this.scanner = false;
                 this.cameraActive = false;
+                this.scanLoading = false;
                 if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
                     showToast('Camera requires HTTPS. Access Shelf via https:// and accept the certificate.', 'error');
                 } else {
@@ -156,70 +147,9 @@ function scanPage() {
             }
         },
 
-        async startZxingScanner() {
-            if (!this.isZxingFallback) return;
-
-            await this.stopZxingScanner();
-            this.scanLoading = true;
-
-            // @zxing/browser UMD exports as ZXingBrowser (not ZXing).
-            // DecodeHintType isn't re-exported — use the numeric enum values
-            // from @zxing/library: POSSIBLE_FORMATS=2, TRY_HARDER=3.
-            var HINT_POSSIBLE_FORMATS = 2;
-            var HINT_TRY_HARDER = 3;
-
-            var hints = new Map();
-            hints.set(HINT_POSSIBLE_FORMATS, [ZXingBrowser.BarcodeFormat.EAN_13, ZXingBrowser.BarcodeFormat.UPC_A, ZXingBrowser.BarcodeFormat.EAN_8]);
-            hints.set(HINT_TRY_HARDER, true);
-
-            this.zxingReader = new ZXingBrowser.BrowserMultiFormatReader(hints, {
-                delayBetweenScanAttempts: 100,
-                delayBetweenScanSuccess: 250,
-            });
-
-            var constraints = {
-                audio: false,
-                video: {
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    facingMode: { ideal: 'environment' },
-                }
-            };
-
-            this.zxingVideo = document.getElementById('zxing-video');
-
-            try {
-                this.zxingControls = await this.zxingReader.decodeFromConstraints(constraints, this.zxingVideo, (result, error) => {
-                    if (result) {
-                        this.onScan(result.getText());
-                        return;
-                    }
-                });
-                this.scanLoading = false;
-            } catch (error) {
-                console.error('zxing start error', error);
-                this.cameraActive = false;
-                showToast('Camera access denied. Check browser permissions.', 'error');
-                this.scanLoading = false;
-            }
-        },
-
-        async stopZxingScanner() {
-            if (this.zxingControls) {
-                this.zxingControls.stop();
-                this.zxingControls = false;
-            }
-            // BrowserMultiFormatReader in @zxing/browser 0.1.5 has no reset();
-            // teardown is the IScannerControls handle from decodeFromConstraints,
-            // already stopped above.
-            this.zxingReader = false;
-        },
-
         async stopCamera() {
-            if (this.isZxingFallback) {
-                await this.stopZxingScanner();
-            } else if (this.scanner) {
-                try { await this.scanner.stop(); } catch(e) {}
+            if (this.scanner) {
+                await this.scanner.stop();
                 this.scanner = false;
             }
             this.cameraActive = false;
@@ -232,14 +162,7 @@ function scanPage() {
             this.scanLoading = false;
             this.lastScanned = '';
             try {
-                if (this.isZxingFallback) {
-                    if (this.zxingControls) {
-                        this.zxingControls.stop();
-                        await this.startZxingScanner();
-                    }
-                } else {
-                    this.scanner.resume();
-                }
+                if (this.scanner) await this.scanner.resume();
             } catch (err) {}
             this.scanPaused = false;
         },
@@ -266,8 +189,8 @@ function scanPage() {
             this.scanPaused = true;
             this.scanLoading = true;
             this.scanResult = false;
-            if (!this.isZxingFallback) {
-                try { await this.scanner.pause(true); } catch(e) {}
+            if (this.scanner) {
+                try { await this.scanner.pause(); } catch(e) {}
             }
 
             // Beep

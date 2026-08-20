@@ -6,6 +6,63 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-08-20
+
+Camera scanning now works on iOS Safari — on the scan page **and** in Store
+Mode — reported by [@dgahagan](https://github.com/dgahagan)
+([#12](https://github.com/dgahagan/shelf/issues/12)) and largely built by
+[@fabian1512](https://github.com/fabian1512)
+([#23](https://github.com/dgahagan/shelf/pull/23)).
+
+**Store Mode re-downloads its offline files on first visit after upgrading.**
+The service worker cache version moved to v4 to pick up the new scanner
+files; this is automatic, but the first load needs a connection.
+
+### Fixed
+
+- **Barcode scanning on iOS Safari** ([#12](https://github.com/dgahagan/shelf/issues/12)).
+  Shelf's scanner used html5-qrcode everywhere, which has long-standing
+  camera-stream, autofocus and detection-rate problems on iOS Safari —
+  scanning was unreliable to the point of being unusable on iPhones and
+  iPads. Shelf now detects iOS and drives the camera with
+  [ZXing](https://github.com/zxing-js/browser) there instead, keeping
+  html5-qrcode byte-for-byte unchanged on every platform where it already
+  works. USB and Bluetooth scanners were never affected.
+
+  **Store Mode gets the fix too, not just the scan page.** Store Mode is the
+  take-your-phone-to-the-bookshop surface — the place an iOS camera is most
+  likely to be the only scanner available — and the original contribution
+  covered only the scan page. Both pages now share one scanner engine, so
+  the next engine fix cannot land on one page and miss the other, which is
+  exactly how Store Mode was left behind by this bug in the first place.
+
+  The ZXing path restricts decoding to the 1D retail formats (EAN-13, EAN-8,
+  UPC-A, UPC-E), requests a 1080p-ideal stream and enables ZXing's
+  try-harder mode — those settings are what buy the detection rate on iOS.
+  UPC-E is new to the format list, which matters for video-game and DVD
+  barcodes.
+
+  Engine selection is a device check, not a preference: there is no setting
+  to override it, because html5-qrcode on iOS does not fail — it starts
+  successfully and simply detects poorly, so there is nothing to detect at
+  runtime.
+
+### Added
+
+- **Vendored JavaScript is now verified against its pinned hashes.** Shelf
+  ships all third-party JS locally rather than from a CDN, with SHA-384
+  hashes recorded in `static/vendor/HASHES` — but nothing checked them.
+  A test now recomputes every vendored file's hash and fails if a blob or a
+  hash line was altered, in either direction, so a modified dependency
+  cannot pass unnoticed.
+
+### Changed
+
+- **Both camera pages share a single scanner engine module.** The camera
+  lifecycle — engine selection, start, stop, pause, resume — moved into one
+  framework-free module used by the scan page and Store Mode alike. No
+  user-visible behaviour changed on any platform that already worked.
+
 ## [0.9.0] - 2026-08-20
 
 Collection values render in the currency you choose, requested by
@@ -572,6 +629,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.10.0]: https://github.com/dgahagan/shelf/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dgahagan/shelf/releases/tag/v0.9.0
 [0.8.1]: https://github.com/dgahagan/shelf/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dgahagan/shelf/releases/tag/v0.8.0

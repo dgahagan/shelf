@@ -9,6 +9,8 @@
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     <link rel="stylesheet" href="/static/css/app.css">
     <script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+    <script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
+    <script src="/static/js/scanner-engine.js"></script>
     <script defer src="/static/js/store.js"></script>
 </head>
 <body class="min-h-screen">
@@ -26,6 +28,9 @@
 
         <!-- Camera scanner -->
         <div id="reader" class="rounded-xl overflow-hidden border border-shelf-border hidden"></div>
+        <div id="store-zxing-container" class="rounded-xl overflow-hidden border border-shelf-border hidden">
+            <video id="store-zxing-video" class="w-full" autoplay muted playsinline></video>
+        </div>
         <button id="camera-toggle" data-testid="camera-toggle"
                 class="w-full px-4 py-3 bg-shelf-accent text-white rounded-xl text-sm font-medium hover:bg-shelf-accent2 transition-colors">
             Scan with Camera

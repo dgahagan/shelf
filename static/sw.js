@@ -9,13 +9,15 @@
  *  - Everything else passes through untouched: the service worker must never
  *    interfere with the main app or its API calls.
  */
-const SW_VERSION = 'v3';
+const SW_VERSION = 'v4';
 const CACHE = `shelf-store-${SW_VERSION}`;
 
 const PRECACHE = [
     '/static/css/app.css',
     '/static/js/store.js',
+    '/static/js/scanner-engine.js',
     '/static/vendor/html5-qrcode-2.3.8.min.js',
+    '/static/vendor/zxing-browser-0.1.5.min.js',
     '/static/manifest.webmanifest',
     '/static/icons/icon-192.png',
     '/static/icons/icon-512.png',

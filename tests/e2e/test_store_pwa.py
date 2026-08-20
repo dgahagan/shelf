@@ -9,7 +9,7 @@ import sqlite3
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import insert_item, wait_for_video_ready
 
 pytestmark = pytest.mark.e2e
 
@@ -130,5 +130,59 @@ def test_store_page_no_csp_violations(live_server, browser, setup_admin):
         pg.wait_for_load_state("networkidle")
         violations = pg.evaluate("window.__cspViolations")
         assert violations == [], violations
+    finally:
+        ctx.close()
+
+
+# --- Camera engine selection -------------------------------------------------
+#
+# The store is the surface issue #12 exists for — a phone in a bookshop — so
+# both engines are pinned here, not just the iOS one. The default path is the
+# majority path and is the one toggleCamera() was rewritten around.
+
+IOS_UA = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
+    "Mobile/15E148 Safari/604.1"
+)
+
+
+def _start_store_camera(live_server, ctx, setup_admin):
+    pg = _login(live_server, ctx, setup_admin)
+    pg.goto(f"{live_server['url']}/store")
+    expect(pg.get_by_test_id("status-line")).to_contain_text("titles cached", timeout=10_000)
+    pg.get_by_test_id("camera-toggle").click()
+    return pg
+
+
+def test_store_camera_uses_zxing_on_ios(live_server, browser, setup_admin):
+    """iOS UA -> the ZXing container is the live one, and its stream starts."""
+    ctx = browser.new_context(user_agent=IOS_UA)
+    try:
+        pg = _start_store_camera(live_server, ctx, setup_admin)
+
+        expect(pg.locator("#store-zxing-container")).to_be_visible()
+        expect(pg.locator("#reader")).to_be_hidden()
+
+        # Liveness before the failure assertion: container visibility alone
+        # would pass even if ZXing threw on its first line.
+        wait_for_video_ready(pg, "#store-zxing-video")
+        expect(pg.locator("body")).not_to_contain_text("Camera unavailable")
+    finally:
+        ctx.close()
+
+
+def test_store_camera_uses_html5_qrcode_by_default(live_server, browser, setup_admin):
+    """Default UA -> html5-qrcode renders into #reader; ZXing stays hidden."""
+    ctx = browser.new_context()
+    try:
+        pg = _start_store_camera(live_server, ctx, setup_admin)
+
+        expect(pg.locator("#reader")).to_be_visible()
+        expect(pg.locator("#store-zxing-container")).to_be_hidden()
+
+        # html5-qrcode injects its own <video> into #reader once live.
+        wait_for_video_ready(pg, "#reader video")
+        expect(pg.locator("body")).not_to_contain_text("Camera unavailable")
     finally:
         ctx.close()

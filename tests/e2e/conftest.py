@@ -135,6 +135,30 @@ def live_server():
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+def wait_for_video_ready(page, selector: str, timeout_ms: int = 15_000) -> None:
+    """Block until `selector`'s video element reports `readyState >= 2`.
+
+    Polled from Python rather than via `page.wait_for_function`: Playwright
+    runs that predicate through `eval()` inside the page, and the app's CSP
+    ("script-src \'self\'", no \'unsafe-eval\') refuses it on /store. A bare
+    `page.evaluate` expression goes through Runtime.evaluate instead and is
+    unaffected.
+    """
+    expr = (
+        f"document.querySelector({selector!r}) && "
+        f"document.querySelector({selector!r}).readyState >= 2"
+    )
+    deadline = time.monotonic() + timeout_ms / 1000
+    while time.monotonic() < deadline:
+        if page.evaluate(expr):
+            return
+        page.wait_for_timeout(100)
+    raise AssertionError(
+        f"{selector} never reached readyState >= 2 within {timeout_ms}ms "
+        "- the camera stream did not start"
+    )
+
+
 @pytest.fixture(scope="session")
 def playwright_instance():
     with sync_playwright() as pw:
@@ -144,7 +168,16 @@ def playwright_instance():
 @pytest.fixture(scope="session")
 def browser(playwright_instance):
     """Headless Chromium browser, shared across session."""
-    b = playwright_instance.chromium.launch(headless=True)
+    b = playwright_instance.chromium.launch(
+        headless=True,
+        # Grant getUserMedia without a prompt and back it with Chromium's
+        # synthetic video device, so the camera-path tests can actually start
+        # a stream. Inert for every test that never calls getUserMedia.
+        args=[
+            "--use-fake-ui-for-media-stream",
+            "--use-fake-device-for-media-stream",
+        ],
+    )
     yield b
     b.close()
 

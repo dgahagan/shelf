@@ -497,7 +497,11 @@ python -m pytest tests/test_items.py -k overlapping_runners -q
   template/JS tasks — a new settings form with a `<select>`, six value-render
   filter swaps, an Alpine class-binding change plus a `w-16` → `w-24` widen,
   and two conditional caveat lines — left `app.css` byte-identical every
-  time, and `SW_VERSION` correctly stayed `v3` for the whole branch. Check
+  time, and `SW_VERSION` correctly stayed `v3` for the whole branch. Confirmed
+  again on the issue-12 scanner branch (2026-08-20): two more template tasks —
+  a new `<script>` tag pair on `scan.html`, and a whole new video container
+  plus scripts on `store.html` — both rebuilt byte-identical, because every
+  class involved was already emitted elsewhere. Check
   `git status --short static/css/app.css` after `make css` rather than
   assuming; also note that only `app.css` and `store.js` among CSS/JS are in
   PRECACHE, so editing e.g. `components-settings.js` is not a G19 trigger.
@@ -552,6 +556,40 @@ git grep -nI '<<<<<<<\|>>>>>>>' HEAD -- . && echo "MARKERS — do not push" || e
 
 - **Status:** documented. Lint candidate: the parity diff is already
   mechanical and could be a `make check-parity` target.
+
+## G21 — When an E2E test needs to wait on page state
+
+- **Rule:** Don't reach for `page.wait_for_function`. Playwright runs its
+  polling predicate through `eval()` **inside the page**, and the app's CSP
+  (`script-src 'self'`, no `'unsafe-eval'`) refuses it:
+  `EvalError: Refused to evaluate a string as JavaScript`. Both predicate
+  forms fail — an arrow function *and* a bare expression string. Use a
+  Python-side poll over `page.evaluate("<expression>")` instead; that goes
+  through CDP `Runtime.evaluate` and never calls `eval` in the page.
+  `tests/e2e/conftest.py::wait_for_video_ready` is the worked example.
+- **Why:** the failure is **page-specific and therefore invisible in review**.
+  The *identical* call passes on `/scan` and fails on `/store`, so a test
+  written against the scan page looks like a safe pattern to copy, and the
+  copy breaks only once it lands on the store page. It surfaces as a
+  Playwright `Error`, not an assertion failure, so it reads like a
+  Playwright/environment problem rather than a CSP one. Note that
+  `tests/e2e/test_store_pwa.py:42`'s long-standing `wait_for_function` on
+  `navigator.serviceWorker.ready` **does** pass — its presence is not
+  evidence that the API is safe here.
+- **Evidence:** `bcc81a6` (2026-08-20, issue #12 iOS scanner branch). Two new
+  store-page camera tests failed on `wait_for_function` while the two
+  equivalent scan-page tests passed; replaced with the shared
+  `wait_for_video_ready()` helper and all 74 e2e went green.
+- **Verify:** exactly one call site may exist — the service-worker wait. Any
+  second hit is a live risk:
+
+```bash
+grep -rn "wait_for_function(" tests/e2e/
+# expect exactly one line: tests/e2e/test_store_pwa.py's serviceWorker.ready wait
+```
+
+- **Status:** documented. Lint candidate: the grep above is a `make check-*`
+  target away.
 
 ---
 
