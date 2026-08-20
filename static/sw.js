@@ -9,7 +9,7 @@
  *  - Everything else passes through untouched: the service worker must never
  *    interfere with the main app or its API calls.
  */
-const SW_VERSION = 'v2';
+const SW_VERSION = 'v3';
 const CACHE = `shelf-store-${SW_VERSION}`;
 
 const PRECACHE = [

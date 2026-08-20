@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 DATE  ?= $(shell date +%Y-%m-%d)
 export DATE
-DOCS  := docs
+DOCS  := docs/reports
 MODEL ?= claude-sonnet-4-6
 MIN_TESTS ?= 155
 
@@ -80,7 +80,7 @@ $(DOCS):
 report-review: $(DOCS)
 	@test ! -f $(DOCS)/CODE_REVIEW_$(DATE).md || (echo "WARN: $(DOCS)/CODE_REVIEW_$(DATE).md already exists — use 'make FORCE=1 report-review' to overwrite"; [ "$(FORCE)" = "1" ] || exit 1)
 	@output=$$(claude --model $(MODEL) --max-turns 30 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
-		"Review the shelf/ codebase. Write a comprehensive code review report to shelf/docs/CODE_REVIEW_$(DATE).md. \
+		"Review the shelf/ codebase. Write a comprehensive code review report to shelf/docs/reports/CODE_REVIEW_$(DATE).md. \
 		Use these severity levels: CRITICAL (security/data-loss), HIGH (correctness/reliability), MEDIUM (maintainability), LOW (style/nits)." \
 		2>&1); echo "$$output"; \
 	if echo "$$output" | grep -q "Reached max turns"; then \
@@ -91,7 +91,7 @@ report-review: $(DOCS)
 report-security: $(DOCS)
 	@test ! -f $(DOCS)/SECURITY_AUDIT_$(DATE).md || (echo "WARN: $(DOCS)/SECURITY_AUDIT_$(DATE).md already exists — use 'make FORCE=1 report-security' to overwrite"; [ "$(FORCE)" = "1" ] || exit 1)
 	@output=$$(claude --model $(MODEL) --max-turns 30 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
-		"Audit the shelf/ codebase for security issues. Write findings to shelf/docs/SECURITY_AUDIT_$(DATE).md. \
+		"Audit the shelf/ codebase for security issues. Write findings to shelf/docs/reports/SECURITY_AUDIT_$(DATE).md. \
 		Use these severity levels: CRITICAL (security/data-loss), HIGH (correctness/reliability), MEDIUM (maintainability), LOW (style/nits)." \
 		2>&1); echo "$$output"; \
 	if echo "$$output" | grep -q "Reached max turns"; then \
@@ -102,7 +102,7 @@ report-security: $(DOCS)
 report-test: $(DOCS)
 	@test ! -f $(DOCS)/TEST_AUDIT_$(DATE).md || (echo "WARN: $(DOCS)/TEST_AUDIT_$(DATE).md already exists — use 'make FORCE=1 report-test' to overwrite"; [ "$(FORCE)" = "1" ] || exit 1)
 	@output=$$(claude --model $(MODEL) --max-turns 30 --allowedTools "Write,Edit,Read,Glob,Grep,Bash" -p \
-		"Audit test coverage for shelf/. Identify gaps and write findings to shelf/docs/TEST_AUDIT_$(DATE).md. \
+		"Audit test coverage for shelf/. Identify gaps and write findings to shelf/docs/reports/TEST_AUDIT_$(DATE).md. \
 		Use these severity levels: CRITICAL (security/data-loss), HIGH (correctness/reliability), MEDIUM (maintainability), LOW (style/nits)." \
 		2>&1); echo "$$output"; \
 	if echo "$$output" | grep -q "Reached max turns"; then \

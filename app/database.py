@@ -1,4 +1,5 @@
 import logging
+import re
 import sqlite3
 from contextlib import contextmanager
 from typing import Sequence
@@ -239,6 +240,37 @@ CREATE TABLE IF NOT EXISTS series_meta (
 """
 
 
+# Last migration that shipped before the loop became atomic (issue #24).
+# Only these could have applied their ALTER without recording it, so only
+# these may be legitimately replayed.
+_PRE_ATOMIC_MAX_VERSION = 21
+
+
+def _is_benign_migration_error(version: int, exc: sqlite3.OperationalError) -> bool:
+    """True for the two ways a migration can fail harmlessly and still count
+    as applied. Everything else is a defect in the migration SQL and must
+    reach the caller instead of being silently recorded.
+
+    Matching on the message alone is not enough: a typo'd table name produces
+    the same "no such table" as a table MIGRATION_TABLES has not created yet,
+    and a migration that re-adds an existing base column produces the same
+    "duplicate column name" as an interrupted replay. Both are bound here to
+    the invariant that actually makes them benign.
+    """
+    msg = str(exc)
+    if "duplicate column name" in msg:
+        return version <= _PRE_ATOMIC_MAX_VERSION
+    match = re.search(r"no such table: (?:\w+\.)?(\w+)", msg)
+    if match:
+        # G1: every MIGRATION_TABLES CREATE bakes in the columns its ALTERs
+        # add, and it runs after the migration loop — so for the tables it
+        # manages the ALTER is redundant by design and recording the version
+        # is correct. A table it will not create is a typo or a removed
+        # table; recording that would make the divergence permanent.
+        return f"CREATE TABLE IF NOT EXISTS {match.group(1)}" in MIGRATION_TABLES
+    return False
+
+
 def _backfill_versions(db: sqlite3.Connection) -> tuple[set[int], str]:
     """Detect already-applied migrations in pre-version-tracking databases.
 
@@ -249,8 +281,12 @@ def _backfill_versions(db: sqlite3.Connection) -> tuple[set[int], str]:
     for version, description, sql in MIGRATIONS:
         try:
             db.execute(sql)
-        except sqlite3.OperationalError:
-            pass  # column already exists — migration was previously applied
+        except sqlite3.OperationalError as e:
+            # Already applied, or the table is one MIGRATION_TABLES creates
+            # complete below. Anything else is a genuine defect and must not
+            # be recorded as applied.
+            if not _is_benign_migration_error(version, e):
+                raise
         applied.add(version)
         db.execute(
             "INSERT INTO schema_version (version, description) VALUES (?, ?)",
@@ -284,23 +320,43 @@ def _run_migrations(db: sqlite3.Connection) -> list[str]:
         for version, description, sql in MIGRATIONS:
             if version in applied:
                 continue
+            # One transaction per migration, so the schema change and the row
+            # that records it commit together or not at all.
+            #
+            # Without this, a migration's ALTER could land while its
+            # schema_version row did not, wedging the database permanently
+            # (issue #24). The mechanism is narrower than it looks: under
+            # sqlite3's default (legacy) transaction control an implicit
+            # transaction is opened before DML only, never before DDL. So an
+            # ALTER issued while no transaction was open ran in autocommit and
+            # landed alone, while its INSERT opened a transaction that stayed
+            # pending until the executescript below — which is why only the
+            # *first* pending migration wedged and every later one in the same
+            # run rolled back cleanly.
+            db.execute("BEGIN IMMEDIATE")
+            # Re-read under the write lock. `applied` was sampled before the
+            # loop, so it is stale if another runner (a concurrent boot, or a
+            # restore migrating the live database) committed this version
+            # while we waited for the lock.
+            if db.execute(
+                "SELECT 1 FROM schema_version WHERE version = ?", (version,)
+            ).fetchone():
+                db.commit()
+                continue
             try:
                 db.execute(sql)
             except sqlite3.OperationalError as e:
-                if "duplicate column name" not in str(e):
+                if not _is_benign_migration_error(version, e):
                     raise
-                # ALTER TABLE is DDL: sqlite3 commits it immediately,
-                # independent of this connection's pending transaction. A
-                # prior run that applied this ALTER but was interrupted
-                # before the INSERT below committed (see the busy-timeout
-                # note above) leaves the column present with no
-                # schema_version row — replaying the ALTER then fails
-                # forever unless treated the same as an already-applied
-                # migration, exactly as _backfill_versions already does.
+                # An earlier interrupted run already applied this ALTER but
+                # never recorded it, or MIGRATION_TABLES creates the table
+                # complete below. Either way it counts as applied, exactly as
+                # _backfill_versions already does.
             db.execute(
                 "INSERT INTO schema_version (version, description) VALUES (?, ?)",
                 (version, description),
             )
+            db.commit()
             logs.append(f"Applied migration {version}: {description}")
 
     db.executescript(MIGRATION_TABLES)

@@ -7,7 +7,9 @@ import pytest
 from app.nav import (
     ALWAYS_VISIBLE,
     HIDEABLE_KEYS,
+    HIDEABLE_TABS,
     NAV_TABS,
+    hideable_tab_states,
     invalidate_cache,
     visible_tabs,
 )
@@ -331,3 +333,176 @@ def test_navigation_card_renders_with_expected_checkbox_state(admin_client, db):
 
     scan_input = re.search(r'<input[^>]*name="scan"[^>]*>', html).group(0)
     assert "checked" in scan_input
+
+
+# --- Settings page: auto-hidden tab annotations (issue #22) ------------------
+#
+# The checkbox and the hint answer two different questions, so every test here
+# asserts *both*: "checked" alone passes on the buggy build that shipped a
+# checked box for a tab missing from the nav, and the hint alone can't prove
+# the preference survived.
+
+def _row(html, key):
+    """The Navigation card row for one tab key. Rows contain no nested divs,
+    so a non-greedy match to the first closing tag is the whole row."""
+    import re
+    m = re.search(rf'<div data-nav-setting-row="{key}".*?</div>', html, re.S)
+    assert m, f"no Navigation-card row rendered for {key!r}"
+    return m.group(0)
+
+
+def _is_checked(row):
+    import re
+    return "checked" in re.search(r"<input[^>]*>", row).group(0)
+
+
+def _has_hint(row):
+    return "Hidden until" in row
+
+
+def test_discover_row_is_checked_and_hinted_without_a_token(admin_client, db):
+    """The actual fix: not manually hidden (so checked) *and* unavailable (so
+    hinted). Either assertion alone passes on the pre-fix build."""
+    row = _row(admin_client.get("/settings").text, "discover")
+    assert _is_checked(row)
+    assert _has_hint(row)
+    assert "a Hardcover token" in row
+    assert 'data-testid="configure-discover"' in row
+
+
+def test_discover_row_loses_the_hint_once_a_token_is_saved(admin_client, db):
+    _set(db, "hardcover_token", "hc-token")
+    row = _row(admin_client.get("/settings").text, "discover")
+    assert _is_checked(row)
+    assert not _has_hint(row)
+    assert 'data-testid="configure-discover"' not in row
+
+
+def test_intake_row_is_hinted_until_a_vision_provider_is_set(admin_client, db):
+    row = _row(admin_client.get("/settings").text, "intake")
+    assert _is_checked(row)
+    assert _has_hint(row)
+    assert "a vision provider" in row
+
+    _set(db, "vision_provider", "ollama")
+    row = _row(admin_client.get("/settings").text, "intake")
+    assert _is_checked(row)
+    assert not _has_hint(row)
+
+
+def test_a_tab_without_requirements_never_renders_a_hint(admin_client, db):
+    row = _row(admin_client.get("/settings").text, "stats")
+    assert _is_checked(row)
+    assert not _has_hint(row)
+
+
+def test_an_env_provided_token_leaves_the_discover_row_unhinted(admin_client, db, monkeypatch):
+    """The settings card must agree with the nav bar on env-only credentials.
+
+    `get_all_settings()` — what the route reads for every other field — omits
+    keys with no row in the table, so feeding it to `hideable_tab_states()`
+    would render "Hidden until a Hardcover token is set" beside a Discover tab
+    that is visible in the nav. Pins the no-argument call in the route.
+    """
+    monkeypatch.setenv("HARDCOVER_TOKEN", "env-token")
+    invalidate_cache()
+    row = _row(admin_client.get("/settings").text, "discover")
+    assert _is_checked(row)
+    assert not _has_hint(row)
+    assert "discover" in _keys(ADMIN)  # and the nav bar agrees
+
+
+def test_a_manually_hidden_unavailable_tab_is_unchecked_and_hinted(admin_client, db):
+    """The fourth hidden/available combination. A template written as
+    `checked` when `not hidden or not available` passes every other test here
+    but renders this row checked."""
+    _set(db, "nav_hidden_tabs", json.dumps(["discover"]))
+    row = _row(admin_client.get("/settings").text, "discover")
+    assert not _is_checked(row)
+    assert _has_hint(row)
+
+
+def test_saving_the_form_while_a_tab_is_auto_hidden_keeps_the_preference(admin_client, db):
+    """The trap the disabled-checkbox alternative would have shipped.
+
+    A disabled checkbox posts nothing, and `update_nav_settings` derives
+    hidden = HIDEABLE_KEYS - checked — so saving this form would have written
+    Discover into `nav_hidden_tabs` permanently, and configuring Hardcover
+    later would not have brought it back.
+    """
+    r = _post_nav(admin_client, HIDEABLE_KEYS)  # every box checked, no token
+    assert r.status_code == 303
+    assert "discover" not in _keys(ADMIN)  # still auto-hidden, correctly
+
+    row = db.execute("SELECT value FROM settings WHERE key = 'nav_hidden_tabs'").fetchone()
+    assert "discover" not in json.loads(row["value"])
+
+    r = admin_client.post("/api/settings", data={"hardcover_token": "hc-token"},
+                          follow_redirects=False)
+    assert r.status_code == 303
+    assert "discover" in _keys(ADMIN)
+
+
+# --- hideable_tab_states() ---------------------------------------------------
+
+def _state(states, key):
+    return next(s for s in states if s["key"] == key)
+
+
+def test_discover_available_reflects_the_token(db):
+    states = hideable_tab_states()
+    assert _state(states, "discover")["available"] is False
+    _set(db, "hardcover_token", "hc-token")
+    assert _state(hideable_tab_states(), "discover")["available"] is True
+
+
+def test_intake_available_without_a_provider_is_false(db):
+    assert _state(hideable_tab_states(), "intake")["available"] is False
+
+
+def test_intake_available_anthropic_without_a_key_is_false(db):
+    _set(db, "vision_provider", "anthropic")
+    assert _state(hideable_tab_states(), "intake")["available"] is False
+
+
+def test_intake_available_ollama_on_defaults_is_true(db):
+    _set(db, "vision_provider", "ollama")
+    assert _state(hideable_tab_states(), "intake")["available"] is True
+
+
+@pytest.mark.parametrize("key", ["stats", "store"])
+def test_tabs_without_requires_are_always_available(db, key):
+    state = _state(hideable_tab_states(), key)
+    assert state["available"] is True
+    assert state["requirement_label"] == ""
+
+
+def test_hidden_is_independent_of_available(db):
+    _set(db, "nav_hidden_tabs", json.dumps(["discover"]))
+    state = _state(hideable_tab_states(), "discover")
+    assert state["hidden"] is True
+    assert state["available"] is False  # no token — unrelated to the hide
+
+
+def test_requiring_tabs_carry_the_label_the_settings_hint_renders(db):
+    """The hint text is built from this string, so pin it here rather than
+    only at the template layer."""
+    states = hideable_tab_states()
+    assert _state(states, "discover")["requirement_label"] == "a Hardcover token"
+    assert _state(states, "intake")["requirement_label"] == "a vision provider"
+
+
+def test_returns_every_hideable_key_in_registry_order(db):
+    states = hideable_tab_states()
+    assert [s["key"] for s in states] == [t["key"] for t in HIDEABLE_TABS]
+
+
+def test_env_provided_token_counts_as_configured_with_no_argument(db, monkeypatch):
+    """Mirrors test_env_provided_token_counts_as_configured above, but pins
+    hideable_tab_states() to the no-arg path: passing a settings dict from
+    get_all_settings() would silently break env-only credentials, since that
+    dict doesn't run through get_setting()'s env-override logic."""
+    monkeypatch.setenv("HARDCOVER_TOKEN", "env-token")
+    invalidate_cache()
+    states = hideable_tab_states()
+    assert _state(states, "discover")["available"] is True

@@ -144,6 +144,34 @@ def test_navigation_card_round_trips(live_server, nav_page):
     expect(nav_page.locator('[data-nav-tab="series"]')).to_be_visible()
 
 
+def test_configure_jumps_to_the_integrations_tab(live_server, nav_page):
+    """The Configure link beside an auto-hidden tab must actually switch tabs.
+
+    This is the only gate on the button's `setTab('integrations')` target:
+    `make check-alpine` validates expression syntax but never resolves method
+    names or tab values, so a typo would ship silently past every other check.
+    `nav_page`'s baseline has no Hardcover token, which is what renders the
+    Discover row's hint in the first place.
+    """
+    base = live_server["url"]
+    nav_page.goto(f"{base}/settings")
+    nav_page.wait_for_load_state("networkidle")
+    # setTab persists to localStorage and the browser context is shared across
+    # the session, so pick the starting tab rather than inheriting one.
+    nav_page.locator('[data-testid="tab-library"]').click()
+
+    nav_form = nav_page.locator('form[action="/api/settings/nav"]')
+    expect(nav_form).to_be_visible()
+
+    nav_page.locator('[data-testid="configure-discover"]').click()
+
+    expect(nav_page.locator("#hardcover_token")).to_be_visible()
+    expect(nav_form).to_be_hidden()
+
+    # Leave the shared context on the tab the other tests expect.
+    nav_page.locator('[data-testid="tab-library"]').click()
+
+
 # ---------------------------------------------------------------------------
 # (e) — responsive layout: no horizontal overflow, row/menu swap, menu nav
 # ---------------------------------------------------------------------------

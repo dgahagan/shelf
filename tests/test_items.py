@@ -427,6 +427,7 @@ class TestManualValueMigration:
         assert "manual_value" in cols_after
         applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
         assert 15 in applied
+        conn.close()
 
     def test_migration_self_heals_column_present_without_version_row(self, tmp_path):
         """Regression test: a real pre-0.5.0 -> 0.5.0+ upgrade can be
@@ -471,6 +472,255 @@ class TestManualValueMigration:
         assert applied == {v for v, _, _ in MIGRATIONS}
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
         assert {"complete", "hc_total", "hc_missing", "hc_checked_at"} <= cols
+        conn.close()
+
+    # -- atomicity (#24 part 2) ------------------------------------------
+
+    def _legacy_db_path(self, tmp_path, up_to):
+        """A 0.4.1-era database on disk: migrations 1-`up_to` recorded, and
+        series_meta still in its pre-#15 four-column shape.
+
+        Deliberately NOT built from the current MIGRATION_TABLES — that bakes
+        the completeness columns into CREATE TABLE series_meta, which would
+        route migrations 16-19 through the duplicate-column tolerance instead
+        of the real ALTER path a genuine upgrade takes.
+        """
+        db_path = tmp_path / "legacy.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        conn.executescript(
+            "CREATE TABLE IF NOT EXISTS series_meta ("
+            "  name        TEXT PRIMARY KEY COLLATE NOCASE,"
+            "  description TEXT,"
+            "  source      TEXT,"
+            "  updated_at  TEXT"
+            ");"
+        )
+        for version, description, sql in MIGRATIONS:
+            if version > up_to:
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.commit()
+        conn.close()
+        return db_path
+
+    def test_migration_and_version_record_commit_together(self, tmp_path):
+        """A crash between a migration's ALTER and its schema_version row must
+        roll BOTH back, not leave the column behind.
+
+        This is the assertion that would have made #24 impossible. On the
+        pre-transaction code the ALTER ran with no transaction open, so
+        sqlite3 autocommitted it (legacy transaction control opens an implicit
+        transaction before DML only, never DDL) and the column survived a
+        crash that lost its version row -- wedging the database forever.
+        """
+
+        class _Rows:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def fetchall(self):
+                return self._rows
+
+            def fetchone(self):
+                return self._rows[0] if self._rows else None
+
+        class _FailOnVersionInsert:
+            """Raises when migration `version`'s schema_version row is written
+            -- the exact historical crash point, after the ALTER."""
+
+            def __init__(self, conn, version):
+                self._conn = conn
+                self._version = version
+
+            def execute(self, sql, params=()):
+                if "INSERT INTO schema_version" in sql and params and params[0] == self._version:
+                    raise RuntimeError("simulated crash before the version row committed")
+                return self._conn.execute(sql, params)
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+        db_path = self._legacy_db_path(tmp_path, up_to=15)
+
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        with pytest.raises(RuntimeError):
+            _run_migrations(_FailOnVersionInsert(conn, 16))
+        # Drop the connection without committing, as a killed container would.
+        conn.close()
+
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert "complete" not in cols, "migration 16's ALTER outlived its transaction"
+        assert 16 not in applied
+
+        # ...and the next boot completes the upgrade cleanly.
+        _run_migrations(conn)
+        conn.commit()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert {"complete", "hc_total", "hc_missing", "hc_checked_at"} <= cols
+        assert applied == {v for v, _, _ in MIGRATIONS}
+        conn.close()
+
+    def test_overlapping_runners_do_not_double_apply(self, tmp_path):
+        """Two runners that snapshot `applied` before either takes the write
+        lock must both finish cleanly.
+
+        The loser used to tolerate the winner's duplicate column and then die
+        on the duplicate schema_version row (version is INTEGER PRIMARY KEY),
+        crashing one startup. Reachable on a single container: the restore
+        endpoint migrates the live database while a boot may be running.
+        """
+
+        class _Rows:
+            def __init__(self, rows):
+                self._rows = rows
+
+            def fetchall(self):
+                return self._rows
+
+            def fetchone(self):
+                return self._rows[0] if self._rows else None
+
+        class _LetOtherRunnerFinish:
+            """Runs `other` to completion between this runner's snapshot and
+            its loop, so this runner enters the loop with a stale snapshot."""
+
+            def __init__(self, conn, other):
+                self._conn = conn
+                self._other = other
+                self._fired = False
+
+            def execute(self, sql, params=()):
+                cur = self._conn.execute(sql, params)
+                if not self._fired and "SELECT version FROM schema_version" in sql:
+                    self._fired = True
+                    rows = cur.fetchall()
+                    _run_migrations(self._other)
+                    self._other.commit()
+                    return _Rows(rows)
+                return cur
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+        db_path = self._legacy_db_path(tmp_path, up_to=15)
+
+        winner = sqlite3.connect(str(db_path))
+        winner.row_factory = sqlite3.Row
+        loser = sqlite3.connect(str(db_path))
+        loser.row_factory = sqlite3.Row
+
+        # The loser snapshots {1..15}, the winner then applies and commits
+        # 16-21, and only afterwards does the loser walk its stale list.
+        _run_migrations(_LetOtherRunnerFinish(loser, winner))
+        loser.commit()
+
+        dupes = loser.execute(
+            "SELECT version FROM schema_version GROUP BY version HAVING COUNT(*) > 1"
+        ).fetchall()
+        assert dupes == []
+        applied = {r["version"] for r in loser.execute("SELECT version FROM schema_version").fetchall()}
+        assert applied == {v for v, _, _ in MIGRATIONS}
+        cols = {r["name"] for r in loser.execute("PRAGMA table_info(series_meta)").fetchall()}
+        assert {"complete", "hc_total", "hc_missing", "hc_checked_at"} <= cols
+        winner.close()
+        loser.close()
+
+
+
+class TestMigrationDefectsPropagate:
+    """A genuine defect in migration SQL must reach the caller, not be
+    recorded as applied (#24 part 3).
+
+    The tolerance that heals a wedged database is bound to the invariants
+    that make it safe: "duplicate column name" only for migrations that
+    shipped before the loop became atomic, "no such table" only for tables
+    MIGRATION_TABLES actually creates. Anything else is a defect, and
+    swallowing it would make the schema divergence permanent and silent.
+    """
+
+    # Not "ADD COLUM oops TEXT": SQLite's COLUMN keyword is optional, so that
+    # SUCCEEDS, adding a column literally named "COLUM". This one really is
+    # malformed ("unrecognized token: 9bad").
+    BAD_SYNTAX = "ALTER TABLE items ADD COLUMN 9bad TEXT"
+    UNMANAGED_TABLE = "ALTER TABLE itemz ADD COLUMN oops TEXT"
+    EXISTING_COLUMN = "ALTER TABLE items ADD COLUMN title TEXT"
+
+    def _current_db(self, tmp_path):
+        """A fully up-to-date database — forces the incremental branch."""
+        conn = sqlite3.connect(str(tmp_path / "current.db"))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        for version, description, sql in MIGRATIONS:
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.executescript(MIGRATION_TABLES)
+        conn.commit()
+        return conn
+
+    def _pre_versioning_db(self, tmp_path):
+        """A pre-version-tracking database — empty schema_version forces the
+        backfill branch."""
+        conn = sqlite3.connect(str(tmp_path / "legacy.db"))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        conn.commit()
+        return conn
+
+    def _patch(self, monkeypatch, sql):
+        monkeypatch.setattr(
+            "app.database.MIGRATIONS",
+            tuple(MIGRATIONS) + ((99, "Deliberately broken migration", sql),),
+        )
+
+    def _assert_raises_and_unrecorded(self, conn):
+        with pytest.raises(sqlite3.OperationalError):
+            _run_migrations(conn)
+        # The failed migration deliberately leaves its transaction open for
+        # the caller to dispose of (get_db rolls back in production).
+        conn.rollback()
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert 99 not in applied
+        conn.close()
+
+    @pytest.mark.parametrize("sql_attr", ["BAD_SYNTAX", "UNMANAGED_TABLE", "EXISTING_COLUMN"])
+    def test_defect_propagates_on_incremental_path(self, tmp_path, monkeypatch, sql_attr):
+        self._patch(monkeypatch, getattr(self, sql_attr))
+        self._assert_raises_and_unrecorded(self._current_db(tmp_path))
+
+    @pytest.mark.parametrize("sql_attr", ["BAD_SYNTAX", "UNMANAGED_TABLE", "EXISTING_COLUMN"])
+    def test_defect_propagates_on_backfill_path(self, tmp_path, monkeypatch, sql_attr):
+        self._patch(monkeypatch, getattr(self, sql_attr))
+        self._assert_raises_and_unrecorded(self._pre_versioning_db(tmp_path))
+
+    def test_shipped_migrations_still_tolerate_their_benign_replays(self, tmp_path):
+        """The tightening must not break the two live benign cases: a legacy
+        database replays every shipped ALTER (duplicate columns) and ALTERs
+        series_meta/users before MIGRATION_TABLES creates them."""
+        conn = self._pre_versioning_db(tmp_path)
+        _run_migrations(conn)
+        conn.commit()
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert applied == {v for v, _, _ in MIGRATIONS}
         conn.close()
 
 

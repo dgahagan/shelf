@@ -6,6 +6,98 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-20
+
+A permanent upgrade crash-loop, reported and fixed by
+[@exactmike](https://github.com/exactmike)
+([#24](https://github.com/dgahagan/shelf/issues/24)) — plus two smaller
+issues found while verifying 0.8.0.
+
+**If your container is stuck crash-looping on `duplicate column name`, this
+release fixes it with no manual intervention.** Upgrade and start it; the
+database repairs itself on boot.
+
+### Fixed
+
+- **Upgrading no longer leaves the container permanently crash-looping**
+  ([#24](https://github.com/dgahagan/shelf/issues/24),
+  [PR #25](https://github.com/dgahagan/shelf/pull/25) by
+  [@exactmike](https://github.com/exactmike)). A migration's `ALTER TABLE`
+  could land on disk while the `schema_version` row recording it did not. On
+  the next boot the migration replayed against a column that already existed,
+  crashed with `duplicate column name: manual_value` *before* reaching the
+  write that would have recorded it, and did the same thing on every restart
+  after that. Confirmed on 0.5.0 through 0.8.0, on databases old enough to
+  still have migrations pending.
+
+  The mechanism is narrower than it first appears, and it explains the
+  fingerprint. Python's `sqlite3` opens an implicit transaction before *DML*
+  only, never before DDL — so an `ALTER` issued with no transaction open runs
+  in autocommit and lands by itself, while every later `ALTER` in the same run
+  joins the pending transaction and rolls back cleanly. Only the *first*
+  pending migration was ever exposed, which is why this looked like a
+  one-column problem.
+
+  A wedged database now heals itself on the next start: the already-applied
+  migration is recorded rather than replayed, and every migration behind it
+  applies normally.
+
+- **Migrations are now atomic, so this class of wedge cannot recur.** Each
+  migration's schema change and the row recording it commit in one
+  transaction — killed mid-upgrade, both roll back together. The fix above
+  repairs databases already broken; this stops new ones from breaking, for any
+  future migration shape rather than only the `ADD COLUMN` case that was
+  reported.
+
+  Two related hardening changes came with it. A migration against a table that
+  doesn't exist yet is tolerated only when the table is one the schema
+  bootstrap genuinely creates later — a typo'd table name now fails loudly at
+  boot instead of being silently recorded as applied. And two migration runs
+  that overlap (a restore landing while the app is starting) no longer collide
+  on a duplicate version row.
+
+- **Static assets no longer serve stale after an upgrade**
+  ([#21](https://github.com/dgahagan/shelf/issues/21)). `/static` and
+  `/covers` sent `ETag` and `Last-Modified` but no `Cache-Control`, so
+  browsers fell back to heuristic freshness and could keep executing an old
+  `components.js` for weeks. In 0.8.0 that surfaced as the mobile nav menu
+  rendering permanently expanded with an unresponsive hamburger button —
+  `Undefined variable: navMenu` in the console — because the cached script
+  predated the component. Both mounts now send `Cache-Control: no-cache`,
+  which forces revalidation and costs only cheap 304s. Covers needed it too:
+  they are overwritten in place at a stable path.
+
+  A tripwire test now pins the service worker's precache list to a digest of
+  the files it names, so changing a precached asset without bumping
+  `SW_VERSION` fails the suite rather than shipping a stale cache.
+
+- **The offline service worker no longer serves a stale stylesheet after an
+  upgrade.** `app.css` is precached and served cache-first, and its cache name
+  is keyed to `SW_VERSION` — which stayed `v2` across releases whose `app.css`
+  differed. Anyone who had opened the offline store page kept getting the
+  older stylesheet indefinitely: cache-first means the request never reaches
+  the network, so neither the `Cache-Control` fix above nor a hard refresh
+  could dislodge it.
+
+  The visible result was the nav bar rendering as a hamburger menu **at every
+  window width**, because the cached stylesheet predated the responsive
+  breakpoint rules the current markup depends on. Bumping to `v3` renames the
+  cache, so the service worker's activate step purges the old one and
+  re-fetches every precached file. No action needed on upgrade.
+
+### Changed
+
+- **Settings → Navigation now says when a tab is hidden because its
+  integration isn't set up** ([#22](https://github.com/dgahagan/shelf/issues/22)).
+  A tab auto-hidden for a missing Hardcover token or vision provider still
+  showed as checked, which reads as a broken setting. Those rows now carry
+  *"Hidden until … is set"* and a **Configure** link straight to the relevant
+  integration.
+
+  The checkbox deliberately keeps its original meaning — "not manually
+  hidden" — and stays enabled, so a preference set now survives configuring
+  the integration later.
+
 ## [0.8.0] - 2026-08-19
 
 Navigation, from [@LegendaryB](https://github.com/LegendaryB)'s
@@ -418,6 +510,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.8.1]: https://github.com/dgahagan/shelf/releases/tag/v0.8.1
 [0.8.0]: https://github.com/dgahagan/shelf/releases/tag/v0.8.0
 [0.7.1]: https://github.com/dgahagan/shelf/releases/tag/v0.7.1
 [0.7.0]: https://github.com/dgahagan/shelf/releases/tag/v0.7.0

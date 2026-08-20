@@ -46,7 +46,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         # No 'unsafe-inline', no CDN hosts, and no 'unsafe-eval': all JS is
         # served from /static and Alpine is the CSP build (no new Function) —
-        # see docs/plans/CSP_BUNDLING.md and docs/plans/ALPINE_CSP.md.
+        # see docs/archive/completed/CSP_BUNDLING.md and docs/archive/completed/ALPINE_CSP.md.
         # scripts/check_alpine_csp.py keeps template expressions parseable.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "
@@ -424,13 +424,26 @@ def _template_response_with_user(request_or_self, *args, **kwargs):
 templates.TemplateResponse = _template_response_with_user
 app.state.templates = templates
 
-# Static files
-static_dir = Path(__file__).parent.parent / "static"
-app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+# Static files.
+# StaticFiles sends ETag/Last-Modified but no Cache-Control, so browsers fall
+# back to RFC 9111 heuristic freshness and can serve stale assets for weeks
+# after an upgrade (issue #21). `no-cache` forces revalidation on every use;
+# the existing validators turn that into cheap 304s. file_response() is the
+# one hook both 200 and 304 responses flow through.
+class CacheControlStaticFiles(StaticFiles):
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
 
-# Serve cached covers from data volume
+
+static_dir = Path(__file__).parent.parent / "static"
+app.mount("/static", CacheControlStaticFiles(directory=str(static_dir)), name="static")
+
+# Serve cached covers from data volume (same staleness bug: covers are
+# overwritten in place at a stable path, so they need revalidation too)
 COVERS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/covers", StaticFiles(directory=str(COVERS_DIR)), name="covers")
+app.mount("/covers", CacheControlStaticFiles(directory=str(COVERS_DIR)), name="covers")
 
 # Health check (unauthenticated, for container orchestration)
 @app.get("/health")

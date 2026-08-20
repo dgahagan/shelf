@@ -95,6 +95,41 @@ def _is_configured(requirement: str, settings: dict[str, str]) -> bool:
     return True  # an unknown requirement never hides a tab
 
 
+# What each requirement needs, for the settings UI's explanatory hint.
+REQUIREMENT_LABELS = {
+    "vision": "a vision provider",
+    "hardcover": "a Hardcover token",
+}
+
+
+def hideable_tab_states(settings: dict[str, str] | None = None) -> list[dict]:
+    """Each hideable tab with both inputs to its visibility.
+
+    -> {"key", "label", "hidden", "available", "requirement_label"}
+
+    `available` is the auto-hide input (integration configured or not);
+    `hidden` is the manual-hide input (the settings checkbox). The two are
+    independent — a tab can be checked visible but still unavailable, or
+    manually hidden despite being fully configured. Callers combine them as
+    needed; this just reports both so the UI can explain the difference.
+    """
+    if settings is None:
+        settings = _nav_settings()
+    hidden = hidden_keys(settings)
+    states = []
+    for tab in HIDEABLE_TABS:
+        requires = tab.get("requires")
+        available = _is_configured(requires, settings) if requires else True
+        states.append({
+            "key": tab["key"],
+            "label": tab["label"],
+            "hidden": tab["key"] in hidden,
+            "available": available,
+            "requirement_label": REQUIREMENT_LABELS.get(requires, ""),
+        })
+    return states
+
+
 def hidden_keys(settings: dict[str, str] | None = None) -> set[str]:
     """The manually hidden tab keys, tolerating absent or malformed values."""
     raw = (settings if settings is not None else _nav_settings()).get("nav_hidden_tabs")

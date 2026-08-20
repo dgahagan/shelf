@@ -376,6 +376,54 @@ class TestSeriesMetaMigrations:
 
     NEW_COLUMNS = {"complete", "hc_total", "hc_missing", "hc_checked_at"}
 
+    def test_upgrade_without_series_meta_table_does_not_crash(self, tmp_path):
+        """The second crash-loop on the same path (#24, unreported upstream).
+
+        series_meta is created by MIGRATION_TABLES, which runs *after* the
+        migration loop. A pre-0.5.0 database whose schema_version stops at 15
+        therefore reaches migrations 16-19 before the table exists at all, and
+        crashed with "no such table: series_meta" — the same wedge as the
+        reported bug, with a different message that PR #25's duplicate-column
+        check did not match.
+
+        Recording the versions here is correct rather than a concession: G1
+        requires every MIGRATION_TABLES CREATE to bake in the columns its
+        ALTERs add, so the table created after the loop already has them.
+        """
+        db_path = tmp_path / "no_series_meta.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)  # SCHEMA only — no series_meta anywhere
+        for version, description, sql in MIGRATIONS:
+            if version > 15:
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.commit()
+
+        tables = {
+            r["name"]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+        assert "series_meta" not in tables
+
+        _run_migrations(conn)
+        conn.commit()
+
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert {16, 17, 18, 19} <= applied
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(series_meta)").fetchall()}
+        assert self.NEW_COLUMNS <= cols
+        conn.close()
+
     def test_fresh_db_has_columns_and_version_rows(self, db):
         # The autouse _isolated_db fixture already ran init_db() on a brand
         # new database before this test — verify migrations 16-19 landed.

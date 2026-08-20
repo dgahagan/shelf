@@ -303,12 +303,12 @@ make install-playwright   # downloads headless Chromium
 
 ```bash
 make qa          # run tests, checks, and generate reports
-# review docs/CODE_REVIEW_*.md, SECURITY_AUDIT_*.md, TEST_AUDIT_*.md
+# review docs/reports/CODE_REVIEW_*.md, SECURITY_AUDIT_*.md, TEST_AUDIT_*.md
 make fix         # Claude reads reports and applies fixes interactively
 make verify      # confirm all tests still pass
 ```
 
-Reports land in `docs/` with today's date (e.g. `docs/CODE_REVIEW_2026-03-27.md`) and are gitignored — they're regenerated each QA cycle.
+Reports land in `docs/reports/` with today's date (e.g. `docs/reports/CODE_REVIEW_2026-03-27.md`) and are gitignored — they're regenerated each QA cycle. Superseded copies are demoted to `docs/archive/reports/`; see `docs/README.md` for the full docs layout.
 
 Report targets default to `claude-sonnet-4-6`. Override with `MODEL=` for a deeper pre-release audit:
 

@@ -32,17 +32,32 @@
     <!-- Navigation -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-1">Navigation</h2>
-        <p class="text-sm text-shelf-muted mb-4">Choose which tabs show in the nav bar. Browse and Settings always stay visible.</p>
+        <p class="text-sm text-shelf-muted mb-4">Choose which tabs show in the nav bar. Browse and Settings always stay visible. Tabs for integrations that aren't set up stay hidden until you configure them.</p>
         <form action="/api/settings/nav" method="post" class="space-y-3">
             <div>
                 <span class="block text-sm font-medium text-shelf-muted mb-2">Show in navigation</span>
                 <div class="space-y-2">
-                    {% for tab in hideable_nav_tabs %}
-                    <label class="flex items-center gap-2 text-sm">
-                        <input type="checkbox" name="{{ tab.key }}" class="rounded border-shelf-border"
-                               {% if tab.key not in hidden_nav_keys %}checked{% endif %}>
-                        {{ tab.label }}
-                    </label>
+                    {% for tab in hideable_nav_tab_states %}
+                    {# The checkbox means "not manually hidden" and stays enabled even when the
+                       tab is auto-hidden, so a preference set now survives configuring the
+                       integration later. The Configure button is a sibling of the label, never
+                       inside it — a button nested in a label is interactive content that can
+                       toggle the checkbox. #}
+                    <div data-nav-setting-row="{{ tab.key }}" class="flex items-center gap-2 text-sm">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" name="{{ tab.key }}" class="rounded border-shelf-border"
+                                   {% if not tab.hidden %}checked{% endif %}>
+                            {{ tab.label }}
+                        </label>
+                        {% if not tab.available %}
+                        <span class="text-xs text-shelf-muted">
+                            Hidden until {{ tab.requirement_label }} is set —
+                            <button type="button" data-testid="configure-{{ tab.key }}"
+                                    @click="setTab('integrations')"
+                                    class="text-shelf-accent2 hover:underline">Configure</button>
+                        </span>
+                        {% endif %}
+                    </div>
                     {% endfor %}
                 </div>
             </div>

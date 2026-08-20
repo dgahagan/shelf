@@ -1,6 +1,7 @@
 # Gotchas — traps agents (and humans) keep hitting
 
 Trigger-keyed, curated institutional memory for this codebase. Read by
+`/design-plan` (a design that trips a trigger is a design defect),
 `/impl-plan` (cite applicable ids in task notes), `/plan-review` (check the
 plan addresses matching entries), and `/run-plan` (inject matching entries
 into subagent prompts).
@@ -135,7 +136,7 @@ PY
   only registered components. Found live during the CSP migration
   (setup.html), refound whenever a page ships JS without registration.
 - **Evidence:** `907e732` (2026-07-05, CSP-build migration; the old
-  `docs/plans/ALPINE_CSP.md` "gotchas discovered live" list, item 1).
+  `docs/archive/completed/ALPINE_CSP.md` "gotchas discovered live" list, item 1).
 - **Verify:** every `x-data` name in templates resolves to a registration
   (any `UNREGISTERED` line = trap sprung):
 
@@ -288,6 +289,249 @@ grep -rhoE 'x-data="[A-Za-z_$][A-Za-z0-9_$]*[("]' app/templates/ \
   reset: `python -m pytest tests/test_conftest_isolation.py -q` and
   `grep -c "_cached" tests/conftest.py` (expect ≥ 3).
 - **Status:** documented.
+
+## G14 — When a test file needs the FastAPI `app` object
+
+- **Rule:** Import it inside the test function or a fixture
+  (`from app.main import app`), never at module level. Module-level imports
+  in `tests/` run at *collection* time, before the autouse `_isolated_db`
+  fixture repoints `DATA_DIR` — so `app.main`'s import-time side effects
+  (e.g. `COVERS_DIR.mkdir`) hit the real configured path and collection
+  dies (`PermissionError: /data` in dev) or pollutes a live data dir.
+- **Why:** The conftest itself imports `app.main` only inside its client
+  fixture for exactly this reason, but nothing stops a new test file from
+  doing it at module scope — the failure is at collection, interrupts the
+  whole run, and looks like an environment problem, not a test bug. Sibling
+  of the `COVERS_DIR` import-freeze trap in `shelf/CLAUDE.md`, one layer
+  earlier.
+- **Evidence:** `2665aa6` (2026-08-19, hit while adding
+  `tests/test_static_caching.py` for issue #21; fixed before commit).
+- **Verify:** no test module imports `app.main` at module level (any hit =
+  trap sprung):
+
+```bash
+grep -n "^from app.main import\|^import app.main" tests/*.py tests/e2e/*.py
+# expect no output
+```
+
+- **Status:** documented. Lint candidate: the grep above is a one-liner
+  away from a `make check-*` target.
+
+## G15 — When a helper written against `get_setting` is handed a `get_all_settings()` dict
+
+- **Rule:** `get_all_settings()` returns only keys that have a **row** in the
+  `settings` table, and overlays env values only onto those keys. A key
+  configured purely by env var — `HARDCOVER_TOKEN` is the live case — is
+  absent from that dict entirely, while `get_setting(db, key)` returns the env
+  value with no row. So helpers that accept an optional settings dict
+  (`nav.hidden_keys`, `nav._is_configured`, `nav.hideable_tab_states`) must
+  either be called with **no argument** (reading through `_nav_settings()`) or
+  be fed a dict built key-by-key via `get_setting` — never the raw
+  `get_all_settings()` result, whenever an env-only key could change the
+  answer.
+- **Why:** The two accessors look interchangeable and agree on every DB-backed
+  deployment, so the divergence surfaces only on env-configured installs and
+  stays invisible to any test that seeds the DB. It nearly shipped in issue
+  #22: the settings page would have rendered "Hidden until a Hardcover token
+  is set" beside a Discover tab that the nav bar was displaying — the exact
+  UI half-truth that issue existed to fix, inverted. Caught on paper by two
+  independent plan reviews before any code was written.
+- **Evidence:** `bd1ef81` (2026-08-19, issue #22 — the settings route calls
+  `hideable_tab_states()` with no argument, and
+  `tests/test_nav.py::test_an_env_provided_token_leaves_the_discover_row_unhinted`
+  plus its helper-level sibling pin that contract; both fail if the dict is
+  passed). Divergence itself predates this and is pinned by
+  `tests/test_settings.py::TestGetSetting::test_env_var_used_when_no_db_value`.
+- **Verify:** the divergence still exists (prints `DIVERGES`; `SAME` means
+  `get_all_settings` learned env fallthrough and this entry retires):
+
+```bash
+DATA_DIR=$(mktemp -d) HARDCOVER_TOKEN=tok python - <<'PY'
+from app.database import init_db, get_db, get_setting, get_all_settings
+init_db()
+with get_db() as db:
+    a = get_setting(db, "hardcover_token")
+    b = get_all_settings(db).get("hardcover_token")
+print("DIVERGES" if (a == "tok" and b is None) else "SAME")
+PY
+```
+
+- **Status:** documented. Not a lint candidate as stated — deciding whether a
+  given call site cares about env-only keys needs judgement, not a grep.
+
+## G16 — When a sequence of sqlite3 statements mixes DDL and DML and must be atomic
+
+- **Rule:** Wrap it in an explicit `BEGIN`. Under Python `sqlite3`'s default
+  (legacy) transaction control an implicit transaction opens before **DML
+  only, never before DDL** — so an `ALTER`/`CREATE`/`DROP` issued while no
+  transaction is open runs in autocommit and lands immediately and alone,
+  while the same statement inside an open transaction joins it and rolls
+  back normally. The asymmetry means only the *first* statement of a cold
+  sequence is exposed.
+- **Why:** Issue #24 — a permanent upgrade crash-loop. Migration 15's ALTER
+  autocommitted alone, the `INSERT INTO schema_version` that should have
+  recorded it opened a transaction that died with the container, and every
+  restart replayed the ALTER into `duplicate column name: manual_value`
+  forever. It also explains the bug's confusing fingerprint: exactly one
+  wedged column with later migrations still pending, because 16–19 joined
+  the pending transaction and rolled back cleanly. The reporter's diagnosis
+  ("sqlite3 commits DDL immediately") was plausible, competent, and wrong —
+  that behavior was removed in Python 3.6.
+- **Evidence:** `b9d3ccf` (2026-08-20, issue #24 / PR #25 by @exactmike).
+- **Verify:** DDL must still run in autocommit while DML opens the implicit
+  transaction. A failing first assert means sqlite3's transaction control
+  changed and this entry needs a re-check:
+
+```bash
+python - <<'PY'
+import sqlite3
+db = sqlite3.connect(":memory:")
+db.execute("CREATE TABLE t (a)")
+db.execute("ALTER TABLE t ADD COLUMN b")
+assert db.in_transaction is False, "DDL opened a transaction — re-check G16"
+db.execute("INSERT INTO t (a) VALUES (1)")
+assert db.in_transaction is True, "DML no longer opens the implicit transaction"
+print("OK")
+PY
+```
+
+- **Status:** documented.
+
+## G17 — When writing deliberately-malformed SQL for a negative test
+
+- **Rule:** Verify it actually raises before trusting it. SQLite's
+  `ALTER TABLE ... ADD [COLUMN]` makes the `COLUMN` keyword **optional**, so
+  the natural-looking typo `ALTER TABLE items ADD COLUM oops TEXT`
+  *succeeds*, quietly adding a column named `COLUM` of type `oops TEXT`.
+  Shapes that do raise: `ADD COLUMN 9bad TEXT` (unrecognized token),
+  `ADD COLUMN` alone (incomplete input), `CREATE INDEX ix ON t (nope)`
+  (no such column).
+- **Why:** A negative test built on non-failing SQL asserts nothing. This
+  exact string was specified in the issue #24 implementation plan and
+  independently reasoned about as "produces a syntax error" by **two** plan
+  reviews (Claude Code and Codex) before execution caught it — the shape is
+  convincing enough to survive review, so the only reliable check is running
+  it.
+- **Evidence:** `2665630` (2026-08-20, issue #24 T3 defect-propagation
+  tests).
+- **Verify:** the plausible typo still silently succeeds — if this starts
+  raising, SQLite tightened its parser and the entry can be relaxed:
+
+```bash
+python - <<'PY'
+import sqlite3
+db = sqlite3.connect(":memory:")
+db.execute("CREATE TABLE items (a)")
+db.execute("ALTER TABLE items ADD COLUM oops TEXT")
+cols = [r[1] for r in db.execute("PRAGMA table_info(items)")]
+assert "COLUM" in cols, "SQLite now rejects the optional-COLUMN typo — relax G17"
+print("OK — still silently creates:", cols)
+PY
+```
+
+- **Status:** documented.
+
+## G18 — When acting on a set that was read before taking the write lock
+
+- **Rule:** Re-check the specific row under the lock. `BEGIN IMMEDIATE`
+  serializes writers, but a snapshot taken *before* it is stale by the time
+  the lock is granted — another writer may have committed while you waited.
+  Read, act, and record inside the same transaction.
+- **Why:** `_run_migrations` samples `applied` once before its loop. Two
+  overlapping runners both saw the same pending set; the one that lost the
+  `BEGIN IMMEDIATE` race then tolerated the winner's duplicate column and
+  died on `UNIQUE constraint failed: schema_version.version`, crashing one
+  startup while the database itself stayed consistent. Reachable on a single
+  container, not just multi-replica: the backup-restore endpoint
+  (`app/routers/settings.py`) runs `init_db()` against the live database
+  while a boot may be in progress.
+- **Evidence:** `b9d3ccf` (2026-08-20, found by the Codex plan review of
+  issue #24 and reproduced in
+  `tests/test_items.py::TestManualValueMigration::test_overlapping_runners_do_not_double_apply`).
+- **Verify:** the regression test must still pass — it drives a second runner
+  to completion inside the first runner's snapshot read:
+
+```bash
+python -m pytest tests/test_items.py -k overlapping_runners -q
+```
+
+- **Status:** documented.
+
+## G19 — When changing a file listed in the service worker's PRECACHE
+
+- **Rule:** Bump `SW_VERSION` in `static/sw.js`. Re-pinning the digest in
+  `tests/test_store.py`'s `PINNED` dict *without* bumping turns the suite
+  green while every returning browser keeps the old file indefinitely — the
+  cache is named `shelf-store-${SW_VERSION}`, and only a rename makes
+  `activate()` purge the stale one. `static/css/app.css` is precached and is
+  regenerated by `make css` on most template changes, so this is a routine
+  hazard, not an exotic one.
+- **Why:** Precached paths are served **cache-first**
+  (`caches.match(path).then(hit => hit || fetch(...))`), so the request never
+  reaches the network. `Cache-Control: no-cache` (issue #21) cannot help, and
+  neither can Ctrl+Shift+R — Cache Storage is not the HTTP cache. Worse, the
+  whole class is **invisible to our verification**: unit tests, Playwright
+  E2E (fresh context, no persisted service worker), and `curl` all bypass
+  Cache Storage entirely. Prod can return a perfectly correct
+  `cache-control: no-cache` for an asset the user's browser will never
+  request.
+- **Evidence:** v0.8.1 live pass (2026-08-20). `SW_VERSION` stayed `v2` while
+  `app.css` changed across releases, so a browser that precached under v2 held
+  a pre-0.8.0 stylesheet containing **no `lg:` breakpoint rules**. Against
+  current markup (`hidden lg:flex` on the tab row, `lg:hidden` on the
+  hamburger) the nav rendered as a hamburger at *every* width — reproduced at
+  1440px and 1920px. It presented as a responsive-layout regression and was
+  entirely a cache. Fixed by bumping to `v3`.
+- **Verify:** the digest pinned for the current `SW_VERSION` must match the
+  precached files on disk:
+
+```bash
+python -m pytest tests/test_store.py -k precache_digest -q
+```
+
+  This catches *future* drift only. It cannot know what content a previous
+  release shipped under the same `SW_VERSION`, so when a precached file
+  changes, **bump the version — never just re-pin**. To check by hand, load
+  the app in a browser profile that has visited before (not a fresh
+  incognito window) and confirm DevTools → Application → Cache Storage holds
+  the expected `shelf-store-*` name.
+- **Status:** documented; partially linted by
+  `test_precache_digest_matches_sw_version`, which covers changed-content
+  detection but not shipped-history or the verification blind spot above.
+
+## G20 — When syncing `shelf/` to the public repo after a PR was merged upstream
+
+- **Rule:** Sync by **content**, not by replaying a diff. Wipe the clone's
+  tree and extract `git archive main shelf/` over it, then gate on the
+  `git ls-tree` parity check. Do **not** use the `git apply -p2` step: once
+  anything landed on the public repo that the monorepo also contains (a
+  merged community PR), that patch no longer applies.
+- **Why:** `git apply -p2` fails outright — safe, you notice. The tempting
+  fix, `git apply -3 -p2`, is the trap: `--check` reports success, the real
+  apply prints "Applied patch to 'x' **with conflicts**", and it writes
+  conflict markers into the file. `git add -A && commit` then swallows them
+  silently. The result is a public repo containing a file that does not even
+  parse, and the release tag builds a Docker image from it.
+  Also note the diff base is **not** the previous monorepo `main` commit —
+  find the commit whose `shelf/` tree actually matches the last public
+  release, since unreleased work may sit between them.
+- **Evidence:** v0.8.1 (2026-08-20). PR #25 was merged on GitHub first to
+  preserve @exactmike's authorship, so the release diff no longer applied.
+  `git apply -3 -p2` left `<<<<<<< ours` markers at lines 323/337/370 of
+  `app/database.py`; the file failed `ast.parse`. Caught in a throwaway clone
+  before any push. The correct baseline was `a0d6132`, not `main`'s tip —
+  issues #21 and #22 were merged but unreleased.
+- **Verify:** the parity diff must be empty before pushing, and no markers:
+
+```bash
+git ls-tree -r HEAD | sort > /tmp/gh.txt
+(cd ~/work/personal/library && git ls-tree -r main shelf/ | sed 's#\tshelf/#\t#' | sort) > /tmp/parent.txt
+diff /tmp/parent.txt /tmp/gh.txt && echo PARITY
+git grep -nI '<<<<<<<\|>>>>>>>' HEAD -- . && echo "MARKERS — do not push" || echo "clean"
+```
+
+- **Status:** documented. Lint candidate: the parity diff is already
+  mechanical and could be a `make check-parity` target.
 
 ---
 

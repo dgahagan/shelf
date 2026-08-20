@@ -1,9 +1,29 @@
 """Tests for the PWA store mode (routers/store.py)."""
+import hashlib
+import re
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from tests.conftest import _insert_item
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SW_PATH = REPO_ROOT / "static" / "sw.js"
+STATIC_ROOT = REPO_ROOT / "static"
+
+# Pinned sha256 digest of the precached files' contents, keyed by SW_VERSION.
+# Recompute and update this after bumping SW_VERSION in static/sw.js (e.g.
+# following a `make css` rebuild of app.css).
+PINNED = {
+    # v2 shipped across more than one release with *different* app.css
+    # contents (this digest is only the last of them), so browsers that
+    # precached under v2 kept serving whichever app.css they saw first --
+    # cache-first, so neither Cache-Control nor a hard refresh dislodged it.
+    # v3 renames the cache, which makes activate() purge the stale one.
+    "v2": "b90ab85864792d4f2089bebd97af476e3e660990fc472f91af3604d267132957",
+    "v3": "b90ab85864792d4f2089bebd97af476e3e660990fc472f91af3604d267132957",
+}
 
 
 class TestStorePage:
@@ -28,6 +48,81 @@ class TestStorePage:
         resp = admin_client.get("/static/manifest.webmanifest")
         assert resp.status_code == 200
         assert '"start_url": "/store"' in resp.text
+
+
+class TestSwPrecacheDigest:
+    def _parse_sw(self):
+        src = SW_PATH.read_text()
+
+        version_match = re.search(r"SW_VERSION\s*=\s*['\"]([^'\"]+)['\"]", src)
+        assert version_match, (
+            f"Could not find SW_VERSION in {SW_PATH} — the parsing regex in "
+            "TestSwPrecacheDigest no longer matches the source. Update the "
+            "regex (or this tripwire is silently disarmed)."
+        )
+        version = version_match.group(1)
+
+        precache_match = re.search(r"PRECACHE\s*=\s*\[(.*?)\]", src, re.S)
+        assert precache_match, (
+            f"Could not find a PRECACHE = [...] list in {SW_PATH} — the "
+            "parsing regex in TestSwPrecacheDigest no longer matches the "
+            "source. Update the regex (or this tripwire is silently "
+            "disarmed)."
+        )
+        # Capture every quoted entry (not just /static/ ones) so a future
+        # out-of-tree entry fails the startswith assertion instead of being
+        # silently dropped from the digest.
+        entries = re.findall(r"['\"]([^'\"]+)['\"]", precache_match.group(1))
+        assert entries, (
+            f"PRECACHE in {SW_PATH} parsed as empty — the parsing regex in "
+            "TestSwPrecacheDigest no longer matches the source. Update the "
+            "regex (or this tripwire is silently disarmed)."
+        )
+
+        return version, entries
+
+    def test_precache_entries_resolve_to_static_files(self):
+        _version, entries = self._parse_sw()
+
+        for url_path in entries:
+            assert url_path.startswith("/static/"), (
+                f"PRECACHE entry {url_path!r} in {SW_PATH} does not start "
+                "with /static/ — service worker precaching only covers "
+                "files under static/."
+            )
+            assert ".." not in Path(url_path).parts, (
+                f"PRECACHE entry {url_path!r} in {SW_PATH} contains a '..' "
+                "path component — refusing to resolve it to disk."
+            )
+            disk_path = STATIC_ROOT / url_path.removeprefix("/static/")
+            assert disk_path.is_file(), (
+                f"PRECACHE entry {url_path!r} in {SW_PATH} does not map to "
+                f"an existing file at {disk_path}."
+            )
+
+    def test_precache_digest_matches_sw_version(self):
+        version, entries = self._parse_sw()
+
+        h = hashlib.sha256()
+        for url_path in sorted(entries):
+            disk_path = STATIC_ROOT / url_path.removeprefix("/static/")
+            h.update(url_path.encode("utf-8"))
+            h.update(disk_path.read_bytes())
+        digest = h.hexdigest()
+
+        assert version in PINNED, (
+            f"SW_VERSION {version!r} in {SW_PATH} has no pinned digest in "
+            "tests/test_store.py's PINNED dict. Record the new digest "
+            f"there: PINNED[{version!r}] = {digest!r}"
+        )
+        assert digest == PINNED[version], (
+            "A precached file's contents changed without bumping "
+            f"SW_VERSION (currently {version!r} in {SW_PATH}). This "
+            "includes `make css` rebuilds of static/css/app.css — that is "
+            "expected to trip this check. Fix: bump SW_VERSION in "
+            "static/sw.js, then re-pin the digest in this test's PINNED "
+            f"dict to {digest!r}."
+        )
 
 
 class TestStoreData:

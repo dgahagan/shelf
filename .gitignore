@@ -5,3 +5,4 @@ __pycache__/
 docs/
 .coverage
 htmlcov/
+.claude/

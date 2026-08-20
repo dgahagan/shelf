@@ -367,7 +367,7 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
             "ORDER BY i.created_at DESC LIMIT 20"
         ).fetchall()
 
-        # --- Dashboard chart data (see docs/plans/STATS_DASHBOARD.md) ---
+        # --- Dashboard chart data (see docs/archive/completed/STATS_DASHBOARD.md) ---
         read_by_year = db.execute(
             "SELECT substr(date_finished, 1, 4) as y, COUNT(*) as c FROM items "
             "WHERE reading_status = 'read' AND date_finished IS NOT NULL "
@@ -506,7 +506,7 @@ async def logs(
 async def settings(request: Request, _=Depends(require_role("admin"))):
     from app.config import is_env_override
     from app.database import get_all_settings
-    from app.nav import HIDEABLE_TABS, hidden_keys as nav_hidden_keys
+    from app.nav import hideable_tab_states
     with get_db() as db:
         settings = get_all_settings(db)
         locations = db.execute(
@@ -521,8 +521,14 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
             "SELECT * FROM share_links ORDER BY created_at DESC"
         ).fetchall()
     env_overrides = {k for k in settings if is_env_override(k)}
-    # Which tabs are currently hidden, for the Navigation card's checkboxes.
-    hidden_nav_keys = nav_hidden_keys(settings)
+    # Both inputs to each hideable tab's visibility, for the Navigation card.
+    # Deliberately called with no argument: `settings` above comes from
+    # `get_all_settings`, which only carries keys that have a row in the
+    # table — a credential supplied purely by env var (HARDCOVER_TOKEN) is
+    # missing from it, and the card would claim Discover is unconfigured
+    # while the nav bar shows it. The no-arg path reads the same env-aware
+    # snapshot the nav itself uses.
+    hideable_nav_tab_states = hideable_tab_states()
     # Never hand decrypted credentials to the template — it only needs to know
     # whether one is saved. Fields are write-only; blank submit keeps the value.
     from app.crypto import SENSITIVE_KEYS
@@ -536,5 +542,5 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
          "borrowers": borrowers, "env_overrides": env_overrides, "secrets_saved": secrets_saved,
          "game_platforms_list": game_platforms_list,
-         "hideable_nav_tabs": HIDEABLE_TABS, "hidden_nav_keys": hidden_nav_keys},
+         "hideable_nav_tab_states": hideable_nav_tab_states},
     )

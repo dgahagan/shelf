@@ -1,4 +1,4 @@
-"""Series completion tracking. See docs/plans/SERIES_TRACKING.md.
+"""Series completion tracking. See docs/archive/completed/SERIES_TRACKING.md.
 
 /series groups the library by series_name with local gap inference;
 /api/series/check consults Hardcover for the full series so missing volumes
