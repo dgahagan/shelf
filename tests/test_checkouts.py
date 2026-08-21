@@ -1,5 +1,7 @@
 """Tests for app.routers.checkouts — borrowers, checkout, checkin, overdue."""
 
+from contextlib import contextmanager
+
 import pytest
 
 from app.database import get_db
@@ -41,9 +43,159 @@ class TestBorrowers:
         )
         db.commit()
         resp = admin_client.post(f"/api/borrowers/{bid}/delete", follow_redirects=False)
-        # Should return error JSON, not redirect
-        assert resp.json()["ok"] is False
-        assert "active checkouts" in resp.json()["message"]
+        # A plain form post gets a page back, not raw JSON (issue #29).
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/settings?borrower_error=active"
+        with get_db() as check_db:
+            assert check_db.execute("SELECT id FROM borrowers WHERE id = ?", (bid,)).fetchone() is not None
+            assert check_db.execute(
+                "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ?", (bid,)
+            ).fetchone()["c"] == 1
+
+    def test_delete_borrower_with_returned_history_succeeds(self, admin_client, db):
+        """Regression pin for issue #29: a completed loan used to 500 the delete."""
+        bid = _insert_borrower(db, "Erin")
+        item_id = _insert_item(db, title="Returned Book", isbn="9780000000101")
+        db.execute(
+            "INSERT INTO checkouts (item_id, borrower_id, checked_out, checked_in) "
+            "VALUES (?, ?, datetime('now'), datetime('now'))",
+            (item_id, bid),
+        )
+        db.commit()
+        resp = admin_client.post(f"/api/borrowers/{bid}/delete", follow_redirects=False)
+        assert resp.status_code == 303
+        assert resp.headers["location"] == "/settings"
+        with get_db() as check_db:
+            assert check_db.execute("SELECT id FROM borrowers WHERE id = ?", (bid,)).fetchone() is None
+            assert check_db.execute(
+                "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ?", (bid,)
+            ).fetchone()["c"] == 0
+
+    def test_delete_borrower_history_is_scoped(self, admin_client, db):
+        """Only the deleted borrower's rows go — a co-borrower on the same item stays."""
+        item_id = _insert_item(db, title="Shared Book", isbn="9780000000102")
+        a_id = _insert_borrower(db, "Aaron")
+        b_id = _insert_borrower(db, "Bianca")
+        for borrower_id in (a_id, b_id):
+            db.execute(
+                "INSERT INTO checkouts (item_id, borrower_id, checked_out, checked_in) "
+                "VALUES (?, ?, datetime('now'), datetime('now'))",
+                (item_id, borrower_id),
+            )
+        db.commit()
+        resp = admin_client.post(f"/api/borrowers/{a_id}/delete", follow_redirects=False)
+        assert resp.status_code == 303
+        with get_db() as check_db:
+            assert check_db.execute("SELECT id FROM borrowers WHERE id = ?", (a_id,)).fetchone() is None
+            assert check_db.execute("SELECT id FROM borrowers WHERE id = ?", (b_id,)).fetchone() is not None
+            assert check_db.execute(
+                "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ?", (a_id,)
+            ).fetchone()["c"] == 0
+            assert check_db.execute(
+                "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ?", (b_id,)
+            ).fetchone()["c"] == 1
+
+    def test_delete_borrower_guard_reads_under_write_lock(self, admin_client, db, monkeypatch):
+        """G18: the active-loan guard must be read while holding the write lock.
+
+        Without `BEGIN IMMEDIATE` first, sqlite3 opens no transaction for the
+        guard SELECT, so another connection could commit a checkout between
+        the read and the DELETE and have it destroyed as "history". Probe
+        from inside the route: at the moment the guard runs, a competing
+        writer must already be locked out.
+        """
+        import sqlite3
+
+        import app.config
+        import app.routers.checkouts as checkouts_mod
+
+        bid = _insert_borrower(db, "Frida")
+        _insert_item(db, title="Lockable", isbn="9780000000103")
+        db.commit()
+
+        probe_results = []
+        real_get_db = checkouts_mod.get_db
+
+        class LockProbingConnection:
+            """Passes everything through, but probes the lock at guard time."""
+
+            def __init__(self, conn):
+                self._conn = conn
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+            def execute(self, sql, *args, **kwargs):
+                result = self._conn.execute(sql, *args, **kwargs)
+                if "checked_in IS NULL" in sql:
+                    rival = sqlite3.connect(str(app.config.DATABASE_PATH), timeout=0)
+                    try:
+                        rival.execute("BEGIN IMMEDIATE")
+                        probe_results.append("acquired")
+                        rival.rollback()
+                    except sqlite3.OperationalError as exc:
+                        probe_results.append(f"locked: {exc}")
+                    finally:
+                        rival.close()
+                return result
+
+        @contextmanager
+        def probing_get_db():
+            with real_get_db() as conn:
+                yield LockProbingConnection(conn)
+
+        monkeypatch.setattr(checkouts_mod, "get_db", probing_get_db)
+        resp = admin_client.post(f"/api/borrowers/{bid}/delete", follow_redirects=False)
+        assert resp.status_code == 303
+
+        assert probe_results, "guard query never ran — the probe did not fire"
+        assert probe_results[0].startswith("locked"), (
+            "a rival writer could take the write lock while the guard was being "
+            f"read (got {probe_results[0]!r}) — the route is missing its "
+            "BEGIN IMMEDIATE, or takes it after the guard SELECT (G18)"
+        )
+
+    def test_delete_borrower_rolls_back_on_failure(self, admin_client, db, monkeypatch):
+        """The checkout delete must not commit unless the borrower delete does."""
+        import app.routers.checkouts as checkouts_mod
+
+        bid = _insert_borrower(db, "Gus")
+        item_id = _insert_item(db, title="Rollback Book", isbn="9780000000104")
+        db.execute(
+            "INSERT INTO checkouts (item_id, borrower_id, checked_out, checked_in) "
+            "VALUES (?, ?, datetime('now'), datetime('now'))",
+            (item_id, bid),
+        )
+        db.commit()
+
+        real_get_db = checkouts_mod.get_db
+
+        class FailingBorrowerDelete:
+            def __init__(self, conn):
+                self._conn = conn
+
+            def __getattr__(self, name):
+                return getattr(self._conn, name)
+
+            def execute(self, sql, *args, **kwargs):
+                if "DELETE FROM borrowers" in sql:
+                    raise RuntimeError("boom")
+                return self._conn.execute(sql, *args, **kwargs)
+
+        @contextmanager
+        def failing_get_db():
+            with real_get_db() as conn:
+                yield FailingBorrowerDelete(conn)
+
+        monkeypatch.setattr(checkouts_mod, "get_db", failing_get_db)
+        with pytest.raises(RuntimeError):
+            admin_client.post(f"/api/borrowers/{bid}/delete", follow_redirects=False)
+
+        with get_db() as check_db:
+            assert check_db.execute(
+                "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ?", (bid,)
+            ).fetchone()["c"] == 1, "checkout delete committed without the borrower delete"
+            assert check_db.execute("SELECT id FROM borrowers WHERE id = ?", (bid,)).fetchone() is not None
 
     def test_borrower_requires_admin(self, editor_client):
         resp = editor_client.post("/api/borrowers", data={"name": "Hacker"}, follow_redirects=False)

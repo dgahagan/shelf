@@ -526,18 +526,36 @@ async def logs(
     )
 
 
+BORROWER_ERROR_MESSAGES = {
+    "active": "That borrower still has an active loan — check the item in before removing them.",
+}
+
+
 @router.get("/settings")
 async def settings(request: Request, _=Depends(require_role("admin"))):
     from app.config import is_env_override
     from app.database import get_all_settings
     from app.nav import hideable_tab_states
+    # Known codes only — never reflect the raw query param into the template.
+    borrower_error_message = BORROWER_ERROR_MESSAGES.get(request.query_params.get("borrower_error"))
     with get_db() as db:
         settings = get_all_settings(db)
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
         item_count = db.execute("SELECT COUNT(*) as c FROM items").fetchone()["c"]
-        borrowers = db.execute("SELECT * FROM borrowers ORDER BY name").fetchall()
+        # Carries each borrower's *returned* loan count for the delete
+        # confirmation's copy. Returned rows only: the dialog fires before the
+        # POST, so before the active-loan guard — counting an open loan here
+        # would tell the user a current loan is a "past loan record".
+        borrowers = db.execute(
+            "SELECT b.*, "
+            "COALESCE(SUM(CASE WHEN c.checked_in IS NOT NULL THEN 1 ELSE 0 END), 0) "
+            "AS returned_loan_count "
+            "FROM borrowers b "
+            "LEFT JOIN checkouts c ON c.borrower_id = b.id "
+            "GROUP BY b.id ORDER BY b.name"
+        ).fetchall()
         game_platforms_list = db.execute(
             "SELECT * FROM game_platforms ORDER BY sort_order, name"
         ).fetchall()
@@ -566,5 +584,6 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
          "borrowers": borrowers, "env_overrides": env_overrides, "secrets_saved": secrets_saved,
          "game_platforms_list": game_platforms_list,
-         "hideable_nav_tab_states": hideable_nav_tab_states},
+         "hideable_nav_tab_states": hideable_nav_tab_states,
+         "borrower_error_message": borrower_error_message},
     )

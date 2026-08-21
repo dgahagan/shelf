@@ -664,3 +664,19 @@ document.addEventListener('alpine:init', function () {
     });
 
 });
+
+// Delete confirmations for the plain <form method="post"> deletes on the
+// Settings page. Inline `onclick="return confirm(...)"` is dead under this
+// app's CSP (script-src 'self', no unsafe-inline / unsafe-hashes), so those
+// forms carry a `data-confirm` attribute and this one delegated listener
+// runs the native dialog instead. Native confirm() from an external file is
+// CSP-clean — the same pattern deleteUser() above and browse.js already use.
+//
+// Deliberately NOT an Alpine component: there is no state to register, and
+// the message is assembled server-side in Jinja so the copy stays greppable.
+document.addEventListener('submit', function (e) {
+    const form = e.target;
+    if (!form || !form.getAttribute) return;
+    const msg = form.getAttribute('data-confirm');
+    if (msg && !confirm(msg)) e.preventDefault();
+});

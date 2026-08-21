@@ -4,6 +4,7 @@ import os
 import pytest
 
 from app.database import get_db, get_setting, get_all_settings
+from tests.conftest import _insert_borrower, _insert_item, _insert_location
 
 
 class TestGetSetting:
@@ -82,3 +83,120 @@ class TestMetadataSearchLangSetting:
             "/api/settings/display", data={"metadata_search_lang": "de"}, follow_redirects=False
         )
         assert r.status_code == 403
+
+
+# --- GET /settings?borrower_error= — blocked-delete banner -------------------
+
+class TestBorrowerErrorBanner:
+    def test_known_code_renders_fixed_message(self, admin_client):
+        html = admin_client.get("/settings?borrower_error=active").text
+        assert "That borrower still has an active loan — check the item in before removing them." in html
+        assert 'data-testid="borrower-error-banner"' in html
+
+    def test_unknown_code_renders_no_banner(self, admin_client):
+        html = admin_client.get("/settings?borrower_error=bogus").text
+        assert 'data-testid="borrower-error-banner"' not in html
+
+    def test_no_code_renders_no_banner(self, admin_client):
+        html = admin_client.get("/settings").text
+        assert 'data-testid="borrower-error-banner"' not in html
+
+
+# --- Settings delete confirmations (CSP-clean data-confirm) ------------------
+
+class TestDeleteConfirmations:
+    """The three destructive Settings forms carry a working confirm message.
+
+    Inline `onclick="return confirm(...)"` never ran under this app's CSP, so
+    these assertions check the *exact* attribute value, not merely that the
+    attribute exists — an empty or wrong `data-confirm` would ship a dead
+    confirmation and would also make the e2e accept-path test vacuous.
+    """
+
+    def _seed_checkout(self, db, item_id, borrower_id, returned):
+        db.execute(
+            "INSERT INTO checkouts (item_id, borrower_id, checked_out, checked_in) "
+            "VALUES (?, ?, datetime('now'), " + ("datetime('now')" if returned else "NULL") + ")",
+            (item_id, borrower_id),
+        )
+
+    def test_borrower_with_returned_loans_shows_the_count(self, admin_client, db):
+        bid = _insert_borrower(db, "Hana")
+        item_id = _insert_item(db, title="Counted", isbn="9780000000201")
+        self._seed_checkout(db, item_id, bid, returned=True)
+        self._seed_checkout(db, item_id, bid, returned=True)
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert (
+            "data-confirm=\"Remove borrower 'Hana'? This also permanently "
+            "deletes their 2 past loan record(s).\"" in html
+        )
+
+    def test_borrower_without_loans_shows_plain_message(self, admin_client, db):
+        _insert_borrower(db, "Ines")
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert 'data-confirm="Remove borrower \'Ines\'?"' in html
+        assert "past loan record(s)" not in html
+
+    def test_active_loan_is_not_counted_as_past(self, admin_client, db):
+        """Mixed state: the dialog fires before the server's active-loan guard,
+        so an open loan must not be described as a past record."""
+        bid = _insert_borrower(db, "Jonas")
+        item_id = _insert_item(db, title="Mixed", isbn="9780000000202")
+        self._seed_checkout(db, item_id, bid, returned=True)
+        self._seed_checkout(db, item_id, bid, returned=False)
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert (
+            "data-confirm=\"Remove borrower 'Jonas'? This also permanently "
+            "deletes their 1 past loan record(s).\"" in html
+        )
+
+    def test_active_only_borrower_shows_plain_message(self, admin_client, db):
+        bid = _insert_borrower(db, "Kira")
+        item_id = _insert_item(db, title="OpenLoan", isbn="9780000000203")
+        self._seed_checkout(db, item_id, bid, returned=False)
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert 'data-confirm="Remove borrower \'Kira\'?"' in html
+        assert "past loan record(s)" not in html
+
+    def test_location_form_carries_exact_confirm(self, admin_client, db):
+        _insert_location(db, "Shelf A")
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert 'data-confirm="Delete location \'Shelf A\'?"' in html
+
+    def test_platform_form_carries_exact_confirm(self, admin_client, db):
+        db.execute(
+            "INSERT INTO game_platforms (slug, name, sort_order) VALUES (?, ?, ?)",
+            ("zzz-e2e", "Test Console", 999),
+        )
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert (
+            "data-confirm=\"Delete platform 'Test Console'? Items using it "
+            "will have their platform cleared.\"" in html
+        )
+
+    def test_no_dead_inline_confirm_handlers_remain(self, admin_client, db):
+        """The converted forms must not fall back to an inline confirm.
+
+        Scoped to the `onclick="return confirm(` pattern rather than all
+        inline handlers: base.html's shortcut-modal buttons carry their own
+        dead onclick attributes, which are a separate feature area and are
+        explicitly out of scope for this branch.
+        """
+        _insert_borrower(db, "Lars")
+        _insert_location(db, "Shelf B")
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert 'onclick="return confirm(' not in html
+
+    def test_apostrophe_in_name_is_escaped_not_injected(self, admin_client, db):
+        """Jinja autoescaping owns the attribute value — no |safe anywhere."""
+        _insert_borrower(db, "O'Brien")
+        db.commit()
+        html = admin_client.get("/settings").text
+        assert "data-confirm=\"Remove borrower 'O&#39;Brien'?\"" in html

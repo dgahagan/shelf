@@ -437,6 +437,14 @@ PY
   serializes writers, but a snapshot taken *before* it is stale by the time
   the lock is granted — another writer may have committed while you waited.
   Read, act, and record inside the same transaction.
+- **This is not a migration rule.** Its evidence is a migration, so plans keep
+  filing it under "no migration → not triggered" and skip it. The trigger is
+  the *shape*: any guard-then-write route qualifies. `get_db()` gives you a
+  connection with sqlite3's default deferred isolation, which opens no
+  transaction for a bare `SELECT` — so a route that counts rows, decides, and
+  then deletes takes its write lock only at the DELETE, and anything committed
+  in that window is acted on blind. `db.execute("BEGIN IMMEDIATE")` must be
+  the **first** statement in the `with get_db()` block, above the guard query.
 - **Why:** `_run_migrations` samples `applied` once before its loop. Two
   overlapping runners both saw the same pending set; the one that lost the
   `BEGIN IMMEDIATE` race then tolerated the winner's duplicate column and
@@ -448,11 +456,22 @@ PY
 - **Evidence:** `b9d3ccf` (2026-08-20, found by the Codex plan review of
   issue #24 and reproduced in
   `tests/test_items.py::TestManualValueMigration::test_overlapping_runners_do_not_double_apply`).
-- **Verify:** the regression test must still pass — it drives a second runner
-  to completion inside the first runner's snapshot read:
+  Second instance, non-migration: `dcd2771` (2026-08-20, issue #29). Adding a
+  cascade delete to `delete_borrower` turned its active-loan guard into a
+  read-before-write: a checkout committed between the guard and the DELETE
+  would have been destroyed as "history". The foreign key had been making that
+  interleaving fail safe, and the cascade removed that accidental protection —
+  a plan review caught it, the impl plan had filed G18 as "not triggered, no
+  migration". **Whenever a fix removes a constraint that was implicitly
+  serializing something, re-ask what was holding the invariant.**
+- **Verify:** both regression tests must still pass — the migration one drives
+  a second runner to completion inside the first runner's snapshot read, and
+  the route one probes from inside the guard that a rival writer is already
+  locked out:
 
 ```bash
 python -m pytest tests/test_items.py -k overlapping_runners -q
+python -m pytest tests/test_checkouts.py -k guard_reads_under_write_lock -q
 ```
 
 - **Status:** documented.
@@ -725,6 +744,83 @@ grep -rn "INSERT INTO items" app/ --include='*.py' | grep -cv test
 ```bash
 grep -n 'normalize("NFC"' app/services/dnb.py       # expect >= 1
 python -m pytest tests/test_dnb.py -q                # translator-exclusion asserted
+```
+
+- **Status:** documented.
+
+## G27 — When treating a portable archive export as an undo for deleted rows
+
+- **Rule:** It is not one. Portable **merge** import restores `checkouts` and
+  `reading_log` rows only for items the import **newly creates**; for an item
+  that already exists in the destination it matches and skips the dependent
+  rows. So exporting before a destructive change and re-importing after does
+  **not** put the history back. Real recovery is a full pre-change database
+  restore (discarding everything since) or an import into a fresh/empty
+  library. Never write "the archive export is the recovery path" into a design
+  doc without checking which rows actually come back.
+- **Why:** The skip is deliberate — attaching history to matched items would
+  duplicate it on every repeat import — but it makes a superficially
+  successful import look like recovery. The borrower gets recreated by name,
+  the item is right there, and the loan rows are silently still gone. That
+  reads as "restored" to anyone not diffing row counts. It is doubly
+  dangerous in a design doc, where it can be used to justify a destructive
+  default ("it's undoable") that is not undoable at all.
+- **Evidence:** found by the Codex plan review of issue #29 (2026-08-20) in
+  `docs/plan-issue-29-borrower-delete.md`, where a pre-delete export was
+  offered as the recovery path for cascade-deleted loan history; corrected
+  before any code was written. Mechanism at `app/services/archive.py:968`
+  (`id_map` covers created items only) and `:1135-1160` (dependent-row skip),
+  pinned by
+  `tests/test_archive.py::TestPlanSummary::test_reading_log_and_checkouts_count_created_items_only`.
+- **Verify:** the skip must still be the pinned behaviour:
+
+```bash
+python -m pytest tests/test_archive.py -k reading_log_and_checkouts_count_created_items_only -q
+```
+
+- **Status:** documented.
+
+## G28 — When an E2E test handles a `confirm()`/`alert()` dialog
+
+- **Rule:** Record the dialog message and assert on what was recorded — never
+  just `page.on("dialog", lambda d: d.accept())` followed by "and the row is
+  gone". If the confirmation is missing, empty, or its listener is broken, the
+  plain form still submits, the row still disappears, the handler never fires,
+  and the test passes over a dead confirmation.
+
+```python
+messages = []
+def accept(dialog):
+    messages.append(dialog.message)
+    dialog.accept()
+page.once("dialog", accept)
+remove_button.click()
+assert messages == ["Delete location 'Shelf A'?"]
+```
+
+- **Why:** This is the only place the CSP-dead-handler class is visible at all
+  — inline `onclick="return confirm(...)"` is silently refused by
+  `script-src 'self'`, and unit tests, which assert on server-rendered HTML,
+  cannot see it. An accept-and-assume test converts the one gate that could
+  catch it into a rubber stamp. The same reasoning applies one layer down: a
+  unit test asserting `data-confirm` is merely *present* passes on
+  `data-confirm=""`, so assert the exact string there too.
+- **Evidence:** `1709fc2` (2026-08-20, issue #29). The blind spot was found by
+  the Codex plan review before the tests were written, and the finished pins
+  were mutation-checked: deleting the delegated submit listener fails 4 of 4,
+  and restoring the dead inline `onclick` — the exact state shipped in
+  v0.10.1 — fails 3 of 4. Two older call sites still have the blind spot and
+  are worth tightening whenever those files are next touched:
+  `tests/e2e/test_item_crud.py:122` and
+  `tests/e2e/test_csrf_and_xss_fixes.py:49`, both of which install a bare
+  accepting handler and never assert it fired. (The sibling at
+  `test_csrf_and_xss_fixes.py:66` does it right — it appends `d.message`
+  before dismissing.)
+- **Verify:** every dialog handler in the e2e suite records its message —
+  each hit below should sit next to an assertion on the recorded list:
+
+```bash
+grep -rn 'on("dialog"\|once("dialog"' tests/e2e/
 ```
 
 - **Status:** documented.

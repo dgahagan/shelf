@@ -58,13 +58,29 @@ async def create_borrower(name: str = Form(...), _=Depends(require_role("admin")
 
 @router.post("/borrowers/{borrower_id}/delete")
 async def delete_borrower(borrower_id: int, _=Depends(require_role("admin"))):
+    """Remove a borrower and, with them, their completed loan history.
+
+    `checkouts.borrower_id` has no ON DELETE action and foreign keys are
+    enforced, so deleting a borrower who has ever returned a book used to
+    raise IntegrityError and 500 (issue #29). Their history goes with them,
+    matching what deleting a location or a platform already does.
+    """
     with get_db() as db:
+        # Take the write lock *before* reading the guard. sqlite3 opens no
+        # transaction for a bare SELECT, so without this the active-loan
+        # count is read outside any lock and a checkout committed between
+        # that read and the DELETE below would be destroyed as "history".
+        # The foreign key used to make that interleaving fail safe; the
+        # cascade removes that accidental protection, so the lock replaces
+        # it. Read, decide, and write are now one serialized unit.
+        db.execute("BEGIN IMMEDIATE")
         active = db.execute(
             "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ? AND checked_in IS NULL",
             (borrower_id,),
         ).fetchone()["c"]
         if active > 0:
-            return {"ok": False, "message": "Borrower has active checkouts"}
+            return RedirectResponse(url="/settings?borrower_error=active", status_code=303)
+        db.execute("DELETE FROM checkouts WHERE borrower_id = ?", (borrower_id,))
         db.execute("DELETE FROM borrowers WHERE id = ?", (borrower_id,))
     return RedirectResponse(url="/settings", status_code=303)
 

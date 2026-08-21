@@ -6,6 +6,53 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-08-20
+
+Removing a borrower who had ever returned a book failed with a 500, reported
+by [@LegendaryB](https://github.com/LegendaryB)
+([#29](https://github.com/dgahagan/shelf/issues/29)). Fixing it surfaced a
+second, quieter problem in the same corner of Settings: none of the
+delete confirmations were running at all.
+
+### Fixed
+
+- **Removing a borrower with past loans no longer returns a 500**
+  ([#29](https://github.com/dgahagan/shelf/issues/29), reported by
+  [@LegendaryB](https://github.com/LegendaryB)). Lend a book, take it back,
+  then try to remove the borrower — the delete failed with a server error,
+  and it kept failing. A borrower became permanently undeletable the moment
+  their first loan completed.
+
+  Loan rows reference the borrower and the database enforces that reference,
+  so deleting a borrower who still had history attached was rejected
+  outright. The original guard only checked for loans that were still *out*,
+  which is why a borrower with nothing on loan still could not be removed.
+  Removing a borrower now removes their completed loan history with them —
+  the same "clean up the references and delete" behaviour that removing a
+  location or a platform has always had. Their loans disappear from the
+  affected items' history; other borrowers' loans on those same items are
+  untouched.
+
+  Note that this is not reversible in place. A backup taken before the
+  deletion restores it; a portable archive export does not, because merge
+  import will not re-attach loan history to books you still have. The
+  confirmation dialog now tells you how many past loan records are about to
+  go, which brings us to the second half of this release.
+
+- **Delete confirmations on the Settings page actually appear now.** Every
+  "are you sure?" on that page — borrowers, locations, and game platforms —
+  had been silently dead. The confirmation was wired up as an inline
+  handler, and Shelf's content-security policy refuses to run those, so all
+  three destructive deletes fired immediately on click with nothing asked.
+  There was no error and no visible symptom; the dialog simply never
+  happened. All three now use a policy-clean handler and genuinely ask
+  first, and there is browser-level test coverage pinning that they do.
+
+- **A borrower who still has a book out gets a real answer.** Attempting
+  that removal used to dump a line of raw JSON into the browser, which you
+  had to navigate back from. It now returns you to Settings with a plain
+  explanation that the item needs checking in first.
+
 ## [0.11.0] - 2026-08-20
 
 The metadata half of internationalization. Shelf now knows what language an
@@ -729,6 +776,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.11.1]: https://github.com/dgahagan/shelf/releases/tag/v0.11.1
 [0.11.0]: https://github.com/dgahagan/shelf/releases/tag/v0.11.0
 [0.10.1]: https://github.com/dgahagan/shelf/releases/tag/v0.10.1
 [0.10.0]: https://github.com/dgahagan/shelf/releases/tag/v0.10.0
