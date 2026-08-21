@@ -10,10 +10,11 @@ from pydantic import BaseModel
 
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT, TILING_THRESHOLD
-from app.database import get_db, get_all_settings
+from app.database import get_db, get_all_settings, get_setting
 from app.services import openlibrary, tiling, vision
 from app.services import isbn as isbn_svc
 from app.services import authors as authors_svc
+from app.services import national
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,10 @@ async def confirm_books(payload: IntakeConfirm):
     added, skipped = [], []
     new_item_ids: list[int] = []
 
+    with get_db() as db:
+        search_lang = get_setting(db, "metadata_search_lang") or "en"
+    preferred_marc = national.iso_to_marc(search_lang)
+
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for book in payload.books:
             title = book.title.strip()
@@ -130,18 +135,29 @@ async def confirm_books(payload: IntakeConfirm):
                 continue
 
             # Enrich via Open Library field-scoped search (same guard as
-            # imports); prefer English works so translated editions don't
-            # win just by ranking first
+            # imports); prefer the configured search-language works so
+            # translated editions don't win just by ranking first
             meta = {}
             try:
                 results = await openlibrary.search_by_title_author(
-                    title, (book.authors or "").split(",")[0].strip() or None, client)
+                    title, (book.authors or "").split(",")[0].strip() or None, client,
+                    lang=search_lang)
                 matches = [r for r in results if authors_svc.matches(book.authors, r.get("authors"))]
-                english = [r for r in matches if "eng" in (r.get("languages") or [])]
-                if english or matches:
-                    meta = (english or matches)[0]
+                preferred = [r for r in matches if preferred_marc in (r.get("languages") or [])]
+                if preferred or matches:
+                    meta = (preferred or matches)[0]
             except httpx.HTTPError:
                 logger.debug("Intake metadata search failed for %r", title)
+
+            # Edition language: preferred-language match wins, else map the
+            # chosen result's first language code, else unknown.
+            language = None
+            if meta:
+                meta_langs = meta.get("languages") or []
+                if preferred_marc in meta_langs:
+                    language = national.to_iso639_1(preferred_marc)
+                elif meta_langs:
+                    language = national.to_iso639_1(meta_langs[0])
 
             isbn13 = None
             isbn10 = None
@@ -160,8 +176,9 @@ async def confirm_books(payload: IntakeConfirm):
                         continue
                 cursor = db.execute(
                     "INSERT INTO items (title, authors, isbn, isbn10, media_type, "
-                    "publisher, publish_year, page_count, location_id, owned, source) "
-                    "VALUES (?, ?, ?, ?, 'book', ?, ?, ?, ?, ?, 'photo_intake')",
+                    "publisher, publish_year, page_count, location_id, owned, source, "
+                    "language) "
+                    "VALUES (?, ?, ?, ?, 'book', ?, ?, ?, ?, ?, 'photo_intake', ?)",
                     (
                         title,
                         book.authors or meta.get("authors"),
@@ -172,6 +189,7 @@ async def confirm_books(payload: IntakeConfirm):
                         meta.get("page_count"),
                         payload.location_id,
                         int(payload.owned),
+                        language,
                     ),
                 )
                 new_item_ids.append(cursor.lastrowid)

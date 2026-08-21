@@ -72,6 +72,31 @@
         </div>
     </template>
 
+    <!-- Working indicators: analyze and confirm are long vision/network
+         calls — the button-label swap alone is invisible on mobile -->
+    <div x-show="analyzing" x-cloak
+         class="bg-shelf-card rounded-xl border border-shelf-accent/40 p-5 mb-6 flex items-center gap-4">
+        <svg class="animate-spin h-6 w-6 text-shelf-accent shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        <div>
+            <p class="text-sm font-medium">Reading spines&hellip;</p>
+            <p class="text-xs text-shelf-muted">The vision model is analyzing your photo &mdash; large shelves can take a minute.</p>
+        </div>
+    </div>
+    <div x-show="confirming" x-cloak
+         class="bg-shelf-card rounded-xl border border-shelf-accent/40 p-5 mb-6 flex items-center gap-4">
+        <svg class="animate-spin h-6 w-6 text-shelf-accent shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+        </svg>
+        <div>
+            <p class="text-sm font-medium">Adding books&hellip;</p>
+            <p class="text-xs text-shelf-muted">Looking up metadata for each selected book &mdash; a few seconds per book.</p>
+        </div>
+    </div>
+
     <!-- Step 2: review candidates -->
     <div x-show="books.length > 0" x-cloak class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
         <div class="flex items-center justify-between mb-4">

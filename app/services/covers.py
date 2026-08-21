@@ -20,6 +20,7 @@ ALLOWED_COVER_DOMAINS = {
     "hardcover.app",
     "assets.hardcover.app",
     "images.igdb.com",
+    "portal.dnb.de",  # DNB/MVB cover service for German (978-3) ISBNs
 }
 
 # Suffix-matched domains (subdomain rotates): covers.openlibrary.org serves
@@ -47,6 +48,14 @@ async def download_cover(item_id: int, isbn: str | None, cover_url: str | None, 
     # Try Hardcover cover image
     if hardcover_cover_url and is_allowed_cover_url(hardcover_cover_url):
         if await _download(hardcover_cover_url, dest, client):
+            return f"covers/{item_id}.jpg"
+
+    # Try the DNB/MVB cover service for German-group ISBNs (probe 2026-08-20:
+    # stable ISBN-keyed URL, image/jpeg on hit, 404 on miss, no redirects) —
+    # non-German ISBNs never pay the extra call
+    if isbn and isbn.startswith("9783"):
+        url = f"https://portal.dnb.de/opac/mvb/cover?isbn={isbn}"
+        if await _download(url, dest, client):
             return f"covers/{item_id}.jpg"
 
     # Try Amazon product image (reliable for most books, but only for 978-prefix ISBNs)

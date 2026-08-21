@@ -66,6 +66,15 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
     if covers:
         result["cover_id"] = covers[0]
 
+    # Edition language, e.g. [{"key": "/languages/ger"}] -> "de"
+    languages = data.get("languages") or []
+    if languages and isinstance(languages[0], dict):
+        from app.services.national import to_iso639_1
+
+        lang = to_iso639_1(languages[0].get("key"))
+        if lang:
+            result["language"] = lang
+
     return result
 
 
@@ -148,13 +157,14 @@ _SEARCH_FIELDS = ("key,title,author_name,first_publish_year,publisher,cover_i,is
                   "number_of_pages_median,language,editions,editions.isbn")
 
 
-async def search_books(query: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
+async def search_books(query: str, client: httpx.AsyncClient, limit: int = 10,
+                        lang: str = "en") -> list[dict]:
     """Search Open Library by title. Returns list of book summaries."""
-    return await _search({"q": query}, client, limit)
+    return await _search({"q": query}, client, limit, lang)
 
 
 async def search_by_title_author(title: str, author: str | None, client: httpx.AsyncClient,
-                                 limit: int = 5) -> list[dict]:
+                                 limit: int = 5, lang: str = "en") -> list[dict]:
     """Field-scoped search — Open Library matches the title itself (including
     alternate titles, so '1984' finds 'Nineteen Eighty-Four'). Callers must
     still check authors: adaptations/study guides of famous titles rank high.
@@ -162,16 +172,17 @@ async def search_by_title_author(title: str, author: str | None, client: httpx.A
     params = {"title": title}
     if author:
         params["author"] = author
-    return await _search(params, client, limit)
+    return await _search(params, client, limit, lang)
 
 
-async def _search(params: dict, client: httpx.AsyncClient, limit: int) -> list[dict]:
+async def _search(params: dict, client: httpx.AsyncClient, limit: int, lang: str = "en") -> list[dict]:
     await _rate_limit()
     resp = await client.get(
         "https://openlibrary.org/search.json",
-        # lang=en makes the `editions` subquery surface the best English
-        # edition per work, so translations don't win the ISBN pick
-        params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": "en"},
+        # lang makes the `editions` subquery surface the best edition per
+        # work in the caller's configured search language, so translations
+        # in other languages don't win the ISBN pick
+        params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": lang},
         headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
     )
     if resp.status_code != 200:

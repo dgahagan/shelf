@@ -43,6 +43,19 @@
                 </select>
                 <p class="text-xs text-shelf-muted mt-2">Display only — Shelf never converts amounts between currencies.</p>
             </div>
+            <div>
+                <label for="metadata_search_lang" class="block text-sm font-medium text-shelf-muted mb-2">Metadata search language</label>
+                {# Options come straight from the SEARCH_LANGS registry in
+                   app/services/national.py. #}
+                {% set selected_search_lang = settings.get("metadata_search_lang", "en") %}
+                <select id="metadata_search_lang" name="metadata_search_lang"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    {% for code, name in search_langs.items() %}
+                    <option value="{{ code }}" {% if selected_search_lang == code %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-shelf-muted mt-2">Preferred language for Open Library title searches — browse search, CSV-import ISBN recovery, and shelf-photo intake.</p>
+            </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>

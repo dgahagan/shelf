@@ -6,7 +6,57 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
-## [0.10.1] - 2026-08-20
+## [0.11.0] - 2026-08-20
+
+The metadata half of internationalization. Shelf now knows what language an
+edition is in, lets a bilingual household browse by it, and gives German
+ISBNs a first-class metadata source: the Deutsche Nationalbibliothek.
+
+### Added
+
+- **DNB metadata source for German ISBNs.** Scans and adds of `978-3` ISBNs
+  consult the Deutsche Nationalbibliothek's SRU catalog (free, no key, CC0
+  metadata) *before* the usual Open Library → Hardcover → Google Books
+  cascade — the national bibliography is authoritative for its own
+  registration group. A DNB miss falls through to the existing cascade
+  unchanged, and non-German ISBNs behave exactly as before. The routing is a
+  registry (`ISBN prefix → provider`), so future national sources are one
+  client file and one line each.
+- **Edition language, everywhere it needs to be.** Items have a `language`
+  field (ISO 639-1), captured automatically from DNB, Open Library, Google
+  Books, and photo intake; editable on the add and edit forms (unmappable
+  codes are preserved, never silently discarded); shown on the item page.
+  Existing libraries are backfilled once from unambiguous ISBN registration
+  groups (`978-0/1` → English, `978-3` → German, …) — items outside the
+  unambiguous set stay unset.
+- **Browse language filter.** Appears only when your library actually
+  contains language data, offers only the languages it contains, and
+  composes with every other filter — counts included.
+- **Search-language setting.** Settings → Display → *Metadata search
+  language* steers title search, CSV-import ISBN recovery, and the
+  photo-intake edition preference toward your language's editions, so a
+  German user's spine photos stop resolving to English editions. Defaults
+  to English — nothing changes unless you change it.
+- **DNB cover art.** German ISBNs try the DNB/MVB cover service after the
+  existing sources, filling covers Open Library and Amazon often miss.
+- **Library archives carry language** through export → import round trips;
+  archives from older versions import cleanly.
+- **Scan feedback on manual entry.** Typing an ISBN and hitting Enter now
+  pops a toast with the outcome (added / duplicate / invalid) — previously
+  the result card landed below the fold and the submit looked like a
+  silent no-op.
+- **Photo intake shows it is working.** A visible spinner panel during
+  spine analysis ("large shelves can take a minute") and while adding the
+  confirmed books — the old button-label swap was easy to miss on mobile.
+
+### Fixed
+
+- **Browse filter dropdowns went dead after the first change.** The
+  cross-filter count refresh replaces the dropdowns via an out-of-band
+  swap, but the swapped-in elements were never re-wired — so the second
+  and every later dropdown change silently did nothing until a page
+  reload. Present in every release since the counts shipped; caught by
+  this release's new end-to-end coverage.
 
 Books whose author name carries an accent, a middle initial, or a stroked
 letter get their cover art again. If your library has items stuck without a
@@ -679,6 +729,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.11.0]: https://github.com/dgahagan/shelf/releases/tag/v0.11.0
 [0.10.1]: https://github.com/dgahagan/shelf/releases/tag/v0.10.1
 [0.10.0]: https://github.com/dgahagan/shelf/releases/tag/v0.10.0
 [0.9.0]: https://github.com/dgahagan/shelf/releases/tag/v0.9.0

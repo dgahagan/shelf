@@ -503,8 +503,13 @@ python -m pytest tests/test_items.py -k overlapping_runners -q
   plus scripts on `store.html` — both rebuilt byte-identical, because every
   class involved was already emitted elsewhere. Check
   `git status --short static/css/app.css` after `make css` rather than
-  assuming; also note that only `app.css` and `store.js` among CSS/JS are in
-  PRECACHE, so editing e.g. `components-settings.js` is not a G19 trigger.
+  assuming; also check `static/sw.js:15-23` for what is actually precached —
+  the list has grown (among app CSS/JS it now holds `app.css`, `store.js`,
+  and `scanner-engine.js` plus vendored scanner libs), but most JS (e.g.
+  `browse.js`, `components-settings.js`) is not in PRECACHE, so editing it
+  is not a G19 trigger. Confirmed again on the intl-metadata branch
+  (2026-08-20): five template/JS tasks, every rebuild byte-identical,
+  `SW_VERSION` untouched.
 
 - **Verify:** the digest pinned for the current `SW_VERSION` must match the
   precached files on disk:
@@ -633,6 +638,95 @@ grep -rn "in found.casefold()" app/ | grep -v services/authors.py
 grep -n "create_task(_enrich_import_covers" app/routers/intake.py
 
   (expect 1 hit; if it becomes awaited, this entry retires).
+- **Status:** documented.
+
+## G24 — When adding a filter parameter to Browse
+
+- **Rule:** A new Browse filter touches FOUR places or it silently drops:
+  (1) the `hx-include` lists in `browse.html` (9 of them), (2) the
+  `hx-include` lists on the OOB-swapped selects in
+  `fragments/filter_counts_oob.html` — after the first `/api/search`
+  response those replace the in-DOM selects, so an edit to browse.html
+  alone is undone by the first swap, (3) `search_items`' from-scratch
+  count rebuilds (`loc_conds`, and `rs_conds_clean` when reading_status is
+  active) in addition to `base_conds`, (4) `filterNames()` + the chip list
+  in `static/js/browse.js` and `qs_parts` for load-more. Related trap,
+  fixed `7d543cd`: htmx does NOT re-process the OOB-swapped selects — their
+  `hx-trigger` listeners die with the replaced node. browse.js's
+  `htmx:afterSwap` listener re-processes unprocessed filter controls; a new
+  OOB-swapped interactive control must be covered by `filterNames()` (or
+  its own re-process), or it goes dead after the first swap.
+- **Why:** The filter *appears* to work in isolation and in unit tests; the
+  include-drop only manifests when a second filter changes after a swap,
+  the count skew only when the new filter is active, and the dead-control
+  trap only on the *second* sequential dropdown change — all invisible at
+  unit level. The dead-control bug shipped in every release up to 0.10.1
+  before the intl-metadata branch's compose e2e caught it.
+- **Evidence:** R1/R3 caught on paper by the intl-metadata plan review
+  (2026-08-20) before code was written; the dead-OOB-selects bug found live
+  by T10's compose e2e and fixed in `7d543cd` (2026-08-20).
+- **Verify:** the two templates must agree on the includable filter names,
+  and the re-process loop must still exist:
+
+```bash
+grep -oh "\[name='[a-z_]*'\]" app/templates/browse.html app/templates/fragments/filter_counts_oob.html | sort -u
+# every name used in one file's hx-include lists must appear in the other's
+grep -n "htmx.process" static/js/browse.js   # expect >= 1, in the afterSwap listener
+python -m pytest tests/e2e/test_browse.py::test_browse_language_filter_narrows_and_composes -q -m e2e  # needs live env
+```
+
+- **Status:** documented.
+
+## G25 — When adding a metadata column that should be captured at item creation
+
+- **Rule:** `_save_item` is NOT the single insert path. `INSERT INTO items`
+  exists at ~13 sites (grep it): `_save_item`, `manual_add`, photo-intake
+  confirm (`intake.py`), CSV import, Hardcover sync/discover
+  (`routers/hardcover.py` ×2), ABS sync, store bare-wishlist fallback,
+  game/DVD adds, archive import. Enumerate them and decide capture-or-gap
+  per site — never claim "everything funnels through `_save_item`".
+- **Why:** The intl-metadata impl plan asserted intake funnels through
+  `_save_item`; it does not — the headline photo-intake path would have
+  silently stored NULL for the new `language` column. Caught by the plan
+  review (R2); intake was wired explicitly in `a82b9c8`.
+- **Evidence:** caught on paper by the intl-metadata plan review
+  (2026-08-20).
+- **Verify:** the site count still makes "single funnel" claims false:
+
+```bash
+grep -rn "INSERT INTO items" app/ --include='*.py' | grep -cv test
+# expect > 5; if this ever drops to ~1-2, retire this entry
+```
+
+- **Status:** documented.
+
+## G26 — When parsing MARC21 records from a national-bibliography source
+
+- **Rule:** Two normalizations are mandatory, or the data is subtly wrong:
+  (1) MARC21-xml text arrives as **decomposed (NFD) Unicode** — "Köhlmeier"
+  is `o` + combining diaeresis — so normalize every extracted subfield to
+  NFC before storing (`dnb._text` is the worked example), or search/display
+  diverges from NFC text from other sources; (2) **700 added entries are
+  not authors** by default — translators/editors carry `$4 trl` / `$e
+  Übersetzer` relators, so filter 700 to author relators (`$4 aut`, `$e
+  Verfasser*`, or no relator at all) before joining into `authors`
+  (`dnb._is_author_relator`). The registry in `app/services/national.py`
+  makes new providers one file + one line — a copy that skips either step
+  looks correct in every quick test.
+- **Why:** Both defects are invisible in ASCII-only fixtures and
+  single-author books: the NFD form renders identically in a terminal, and
+  most records have no 700 entries. The DNB client's first fixture
+  (Hawking) shipped both traps at once — two translators would have joined
+  the authors string, in NFD.
+- **Evidence:** `2d8ba6f` (2026-08-20, intl-metadata T2 — both caught
+  during orchestrator review of the first real fixtures).
+- **Verify:** the shared client still normalizes and filters:
+
+```bash
+grep -n 'normalize("NFC"' app/services/dnb.py       # expect >= 1
+python -m pytest tests/test_dnb.py -q                # translator-exclusion asserted
+```
+
 - **Status:** documented.
 
 ## Graveyard

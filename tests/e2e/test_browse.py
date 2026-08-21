@@ -333,3 +333,33 @@ def test_browse_view_toggle_not_clipped(live_server, authed_page, width):
     assert metrics["listRight"] <= metrics["toggleRight"] + 0.5, (
         f"List view button clipped at {width}px"
     )
+
+
+def test_browse_language_filter_narrows_and_composes(live_server, authed_page):
+    """T10: the language filter narrows the row set and composes with the
+    media-type filter — including after the OOB swap replaces the selects."""
+    insert_item(live_server["data_dir"], title="Sprachprobe Deutsch",
+                media_type="book", isbn="9783000777001", language="de")
+    insert_item(live_server["data_dir"], title="Sprachprobe Deutsch Disc",
+                media_type="dvd", isbn="9783000777002", language="de")
+    insert_item(live_server["data_dir"], title="Sprachprobe English",
+                media_type="book", isbn="9780000777003", language="en")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+
+    # Select renders (library now contains languages) and narrows to German
+    lang_el = authed_page.locator("select#language-filter")
+    expect(lang_el).to_be_visible()
+    lang_el.select_option("de")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("Sprachprobe Deutsch")
+    expect(authed_page.locator("body")).not_to_contain_text("Sprachprobe English")
+
+    # Compose with media type ON THE SWAPPED SELECT (exercises the OOB
+    # fragment's hx-include carrying [name='language'] — R1)
+    type_el = authed_page.locator("select#type-filter")
+    type_el.select_option("book")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("body")).to_contain_text("Sprachprobe Deutsch")
+    expect(authed_page.locator("body")).not_to_contain_text("Sprachprobe Deutsch Disc")
+    expect(authed_page.locator("body")).not_to_contain_text("Sprachprobe English")

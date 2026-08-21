@@ -107,6 +107,14 @@
                 </select>
             </div>
             <div>
+                <select name="language" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">Language (unknown)</option>
+                    {% for code, label in search_langs.items() %}
+                    <option value="{{ code }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
                 <label class="text-xs text-shelf-muted">Cover image (optional)</label>
                 <input type="file" name="cover" accept="image/*"
                        class="block w-full text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text hover:file:bg-shelf-border mt-1">

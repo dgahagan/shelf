@@ -61,6 +61,14 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
         elif ident["type"] == "ISBN_13":
             result["isbn"] = ident["identifier"]
 
+    # Edition language: BCP-47 (e.g. "de", "de-DE") -> ISO 639-1
+    if info.get("language"):
+        from app.services.national import to_iso639_1
+
+        lang = to_iso639_1(info["language"])
+        if lang:
+            result["language"] = lang
+
     # Series info from subtitle or title
     series = info.get("seriesInfo")
     if series:

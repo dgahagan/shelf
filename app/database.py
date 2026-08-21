@@ -114,6 +114,29 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
           AND NOT EXISTS (SELECT 1 FROM items o
                           WHERE o.upc = items.isbn
                             AND o.media_type = items.media_type)"""),
+    (22, "Add language column", "ALTER TABLE items ADD COLUMN language TEXT DEFAULT NULL"),
+    (23, "Backfill language from ISBN registration group",
+     """UPDATE items SET language = CASE
+            WHEN substr(isbn, 1, 5) = '97910' THEN 'fr'
+            WHEN substr(isbn, 1, 5) = '97884' THEN 'es'
+            WHEN substr(isbn, 1, 5) = '97885' THEN 'pt'
+            WHEN substr(isbn, 1, 5) = '97887' THEN 'da'
+            WHEN substr(isbn, 1, 5) = '97888' THEN 'it'
+            WHEN substr(isbn, 1, 5) = '97912' THEN 'it'
+            WHEN substr(isbn, 1, 5) = '97890' THEN 'nl'
+            WHEN substr(isbn, 1, 5) = '97891' THEN 'sv'
+            WHEN substr(isbn, 1, 5) = '97911' THEN 'ko'
+            WHEN substr(isbn, 1, 4) = '9780' THEN 'en'
+            WHEN substr(isbn, 1, 4) = '9781' THEN 'en'
+            WHEN substr(isbn, 1, 4) = '9798' THEN 'en'
+            WHEN substr(isbn, 1, 4) = '9782' THEN 'fr'
+            WHEN substr(isbn, 1, 4) = '9783' THEN 'de'
+            WHEN substr(isbn, 1, 4) = '9784' THEN 'ja'
+            WHEN substr(isbn, 1, 4) = '9785' THEN 'ru'
+            WHEN substr(isbn, 1, 4) = '9787' THEN 'zh'
+            ELSE NULL
+        END
+        WHERE language IS NULL AND isbn IS NOT NULL"""),
 )
 
 MIGRATION_TABLES = """

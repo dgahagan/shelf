@@ -43,3 +43,42 @@ class TestGetAllSettings:
         monkeypatch.setenv("ABS_URL", "http://env")
         result = get_all_settings(db)
         assert result["abs_url"] == "http://env"
+
+
+# --- POST /api/settings/display — metadata_search_lang ----------------------
+
+class TestMetadataSearchLangSetting:
+    def test_default_is_en_with_no_settings_row(self, db):
+        assert (get_setting(db, "metadata_search_lang") or "en") == "en"
+
+    def test_unknown_code_writes_nothing(self, admin_client, db):
+        r = admin_client.post(
+            "/api/settings/display", data={"metadata_search_lang": "xx"}, follow_redirects=False
+        )
+        assert r.status_code == 303
+        row = db.execute("SELECT value FROM settings WHERE key = 'metadata_search_lang'").fetchone()
+        assert row is None
+
+    def test_valid_code_persists(self, admin_client, db):
+        r = admin_client.post(
+            "/api/settings/display", data={"metadata_search_lang": "de"}, follow_redirects=False
+        )
+        assert r.status_code == 303
+        row = db.execute("SELECT value FROM settings WHERE key = 'metadata_search_lang'").fetchone()
+        assert row["value"] == "de"
+
+        # ...and the reloaded page pre-selects it in the dropdown.
+        html = admin_client.get("/settings").text
+        assert '<option value="de" selected>German</option>' in html
+
+    def test_editor_cannot_post_display_settings(self, editor_client):
+        r = editor_client.post(
+            "/api/settings/display", data={"metadata_search_lang": "de"}, follow_redirects=False
+        )
+        assert r.status_code == 403
+
+    def test_viewer_cannot_post_display_settings(self, viewer_client):
+        r = viewer_client.post(
+            "/api/settings/display", data={"metadata_search_lang": "de"}, follow_redirects=False
+        )
+        assert r.status_code == 403

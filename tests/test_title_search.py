@@ -79,6 +79,26 @@ class TestOpenLibrarySearch:
             results = await search_books("book", client)
         assert results[0]["isbn"] == "9780123456786"
 
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_search_defaults_lang_param_to_en(self):
+        route = respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(200, json={"docs": []})
+        )
+        async with httpx.AsyncClient() as client:
+            await search_books("book", client)
+        assert route.calls.last.request.url.params["lang"] == "en"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_search_forwards_configured_lang_param(self):
+        route = respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(200, json={"docs": []})
+        )
+        async with httpx.AsyncClient() as client:
+            await search_books("buch", client, lang="de")
+        assert route.calls.last.request.url.params["lang"] == "de"
+
 
 class TestTmdbSearchMovies:
     @respx.mock

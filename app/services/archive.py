@@ -60,7 +60,7 @@ _ITEM_COLUMNS = (
     "duration_mins", "source", "notes", "reading_status", "date_started",
     "date_finished", "owned", "estimated_value", "manual_value",
     "value_updated_at", "hardcover_book_id", "hardcover_edition_id",
-    "hardcover_user_book_id", "created_at", "updated_at",
+    "hardcover_user_book_id", "language", "created_at", "updated_at",
 )
 
 

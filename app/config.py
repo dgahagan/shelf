@@ -97,6 +97,7 @@ EXPECTED_BOOKS_MIN = 20
 EXPECTED_BOOKS_MAX = 200
 
 OPENLIBRARY_RATE_LIMIT = 0.34  # seconds between requests (~3/sec)
+DNB_RATE_LIMIT = 1.0  # seconds between requests (be a good citizen of the DNB SRU catalog)
 HARDCOVER_RATE_LIMIT = 1.0  # seconds between requests (60/min API limit)
 
 # HTTP client defaults

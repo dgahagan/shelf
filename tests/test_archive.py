@@ -564,6 +564,49 @@ class TestRoundTripFreshInstance:
         assert _normalize_library(original_library) == _normalize_library(new_library)
         assert sorted(original_covers.values()) == sorted(new_covers.values())
 
+    def test_round_trip_with_language(self, db):
+        """Language column survives export→import→export round trip."""
+        loc_id = _insert_location(db, name="Shelf")
+        item_id = _insert_item(
+            db,
+            title="Dune",
+            authors="Frank Herbert",
+            isbn="9780441013593",
+            media_type="book",
+            location_id=loc_id,
+        )
+        # Seed the item with language='de' (German)
+        db.execute("UPDATE items SET language = ? WHERE id = ?", ("de", item_id))
+        db.execute("COMMIT")
+
+        original_path = build_archive(db)
+        with zipfile.ZipFile(original_path) as zf:
+            original_library = json.loads(zf.read("library.json"))
+
+        # Verify language is in the export
+        assert original_library["items"][0]["language"] == "de"
+
+        _wipe_library(db)
+
+        with read_archive(original_path) as reader:
+            report = merge_archive(db, reader, mode="skip")
+        db.execute("COMMIT")
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+
+        # Verify the imported item has language='de' (query by title, not id, since id changed)
+        imported_item = db.execute("SELECT language FROM items WHERE title = 'Dune'").fetchone()
+        assert imported_item is not None
+        assert imported_item["language"] == "de"
+
+        # Export again and verify language survived the round trip
+        reimport_path = build_archive(db)
+        with zipfile.ZipFile(reimport_path) as zf:
+            new_library = json.loads(zf.read("library.json"))
+
+        assert new_library["items"][0]["language"] == "de"
+
 
 class TestRoundTripDuplicateDedupeKeys:
     """Regression: a library holding two genuinely distinct items under one
@@ -623,6 +666,33 @@ class TestRoundTripDuplicateDedupeKeys:
         assert report["imported"] == 0, report
         assert report["skipped"] == 2, report
         assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 2
+
+
+class TestArchiveBackwardsCompatibilityLanguage:
+    """Archives created before language support must import cleanly with
+    language ending up NULL."""
+
+    def test_import_archive_without_language_key(self, db, tmp_path):
+        """An archive missing the language key on items imports clean,
+        resulting in NULL language values."""
+        library = {
+            "items": [{
+                "id": 1, "title": "Dune", "authors": "Frank Herbert",
+                "isbn": "9780441013593", "media_type": "book",
+                # Note: no "language" key here
+            }],
+        }
+        p = _write_zip(tmp_path / "no_language.zip", [], library=json.dumps(library))
+
+        with read_archive(p) as reader:
+            report = merge_archive(db, reader, mode="skip")
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+
+        # Verify the imported item has language=NULL
+        item = db.execute("SELECT language FROM items WHERE title = 'Dune'").fetchone()
+        assert item["language"] is None
 
 
 class TestMergeSkipModeNonEmptyLibrary:

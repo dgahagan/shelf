@@ -2,6 +2,9 @@
 
 import logging
 import sqlite3
+
+import httpx
+import respx
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -291,6 +294,24 @@ class TestTitleSearchEndpoints:
         resp = admin_client.get("/api/dvds/search?q=test")
         assert resp.status_code == 200
         assert b"TMDb API key not configured" in resp.content
+
+    @respx.mock
+    def test_book_search_defaults_to_en_with_no_setting(self, admin_client, db):
+        route = respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(200, json={"docs": []})
+        )
+        admin_client.get("/api/books/search?q=test")
+        assert route.calls.last.request.url.params["lang"] == "en"
+
+    @respx.mock
+    def test_book_search_forwards_configured_search_lang(self, admin_client, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('metadata_search_lang', 'de')")
+        db.execute("COMMIT")
+        route = respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(200, json={"docs": []})
+        )
+        admin_client.get("/api/books/search?q=test")
+        assert route.calls.last.request.url.params["lang"] == "de"
 
 
 class TestMigrationLoggingDefersOutsideTransaction:
@@ -640,6 +661,126 @@ class TestManualValueMigration:
         loser.close()
 
 
+class TestLanguageMigrations:
+    """Migrations 22 (items.language column) and 23 (backfill language from
+    the ISBN-13 registration group) in app/database.py MIGRATIONS.
+    """
+
+    def _legacy_db_up_to_21(self, tmp_path):
+        """A pre-#22 database: migrations 1-21 applied, no language column."""
+        db_path = tmp_path / "legacy.db"
+        conn = sqlite3.connect(str(db_path))
+        conn.row_factory = sqlite3.Row
+        conn.executescript(SCHEMA)
+        for version, description, sql in MIGRATIONS:
+            if version >= 22:
+                continue
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+            conn.execute(
+                "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                (version, description),
+            )
+        conn.executescript(MIGRATION_TABLES)
+        conn.commit()
+        return conn
+
+    def test_fresh_db_has_language_column_and_version_rows(self, db):
+        # The autouse _isolated_db fixture already ran init_db() on a brand
+        # new database before this test — verify migrations 22/23 landed.
+        cols = {r["name"] for r in db.execute("PRAGMA table_info(items)").fetchall()}
+        assert "language" in cols
+        applied = {r["version"] for r in db.execute("SELECT version FROM schema_version").fetchall()}
+        assert {22, 23} <= applied
+
+    def test_migrations_apply_to_legacy_db_missing_column(self, tmp_path):
+        conn = self._legacy_db_up_to_21(tmp_path)
+
+        cols_before = {r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()}
+        assert "language" not in cols_before
+
+        _run_migrations(conn)
+        conn.commit()
+
+        cols_after = {r["name"] for r in conn.execute("PRAGMA table_info(items)").fetchall()}
+        assert "language" in cols_after
+        applied = {r["version"] for r in conn.execute("SELECT version FROM schema_version").fetchall()}
+        assert {22, 23} <= applied
+        conn.close()
+
+    def test_backfill_sets_language_from_isbn_registration_group(self, tmp_path):
+        conn = self._legacy_db_up_to_21(tmp_path)
+
+        de_id = _insert_item(conn, title="German", isbn="9783161484100")
+        es_id = _insert_item(conn, title="Spanish", isbn="9788408175942")
+        conn.commit()
+
+        _run_migrations(conn)
+        conn.commit()
+
+        de_lang = conn.execute("SELECT language FROM items WHERE id = ?", (de_id,)).fetchone()["language"]
+        es_lang = conn.execute("SELECT language FROM items WHERE id = ?", (es_id,)).fetchone()["language"]
+        assert de_lang == "de"
+        assert es_lang == "es"
+        conn.close()
+
+    def test_backfill_never_overwrites_existing_language(self, tmp_path):
+        conn = self._legacy_db_up_to_21(tmp_path)
+
+        # language column doesn't exist yet on this legacy DB, so the
+        # explicit value is set immediately after migration 22 adds it and
+        # before migration 23's backfill runs.
+        item_id = _insert_item(conn, title="Already Tagged", isbn="9783161484100")
+        conn.commit()
+
+        for version, description, sql in MIGRATIONS:
+            if version == 22:
+                conn.execute(sql)
+                conn.execute("UPDATE items SET language = 'fr' WHERE id = ?", (item_id,))
+                conn.execute(
+                    "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                    (version, description),
+                )
+            elif version == 23:
+                conn.execute(sql)
+                conn.execute(
+                    "INSERT INTO schema_version (version, description) VALUES (?, ?)",
+                    (version, description),
+                )
+        conn.commit()
+
+        lang = conn.execute("SELECT language FROM items WHERE id = ?", (item_id,)).fetchone()["language"]
+        assert lang == "fr"
+        conn.close()
+
+    def test_backfill_leaves_unlisted_group_null(self, tmp_path):
+        conn = self._legacy_db_up_to_21(tmp_path)
+
+        item_id = _insert_item(conn, title="Unlisted Group", isbn="9786500000000")
+        conn.commit()
+
+        _run_migrations(conn)
+        conn.commit()
+
+        lang = conn.execute("SELECT language FROM items WHERE id = ?", (item_id,)).fetchone()["language"]
+        assert lang is None
+        conn.close()
+
+    def test_backfill_leaves_null_isbn_untouched(self, tmp_path):
+        conn = self._legacy_db_up_to_21(tmp_path)
+
+        item_id = _insert_item(conn, title="No ISBN", isbn=None)
+        conn.commit()
+
+        _run_migrations(conn)
+        conn.commit()
+
+        lang = conn.execute("SELECT language FROM items WHERE id = ?", (item_id,)).fetchone()["language"]
+        assert lang is None
+        conn.close()
+
 
 class TestMigrationDefectsPropagate:
     """A genuine defect in migration SQL must reach the caller, not be
@@ -967,3 +1108,288 @@ class TestManualAddCopyFields:
             ).fetchone()
         assert row["series_name"] is None
         assert row["location_id"] is None
+
+
+class TestDnbRoutingAndLanguageCapture:
+    """T4 — 978-3 lookups route through DNB first; edition language is
+    captured from every source and persisted by _save_item."""
+
+    DNB_META = {"title": "Deutsches Buch", "authors": "Erika Autorin", "language": "de"}
+
+    async def test_9783_scan_consults_dnb_first(self):
+        from app.routers.items import _lookup_metadata
+
+        dnb_mock = AsyncMock(return_value=dict(self.DNB_META))
+        ol_mock = AsyncMock()
+        with patch("app.services.dnb.lookup", new=dnb_mock), \
+             patch("app.services.openlibrary.lookup", new=ol_mock):
+            metadata, source, hc_ids = await _lookup_metadata("9783608963762", None, None)
+
+        assert source == "dnb"
+        assert metadata["language"] == "de"
+        dnb_mock.assert_awaited_once()
+        ol_mock.assert_not_awaited()
+
+    async def test_dnb_miss_falls_through_to_openlibrary(self):
+        from app.routers.items import _lookup_metadata
+
+        ol_meta = {"title": "OL Book"}
+        with patch("app.services.dnb.lookup", new=AsyncMock(return_value=None)), \
+             patch("app.services.openlibrary.lookup", new=AsyncMock(return_value=dict(ol_meta))):
+            metadata, source, _ = await _lookup_metadata("9783608963762", None, None)
+
+        assert source == "openlibrary"
+        assert metadata["title"] == "OL Book"
+
+    async def test_non_german_isbn_never_touches_dnb(self):
+        from app.routers.items import _lookup_metadata
+
+        dnb_mock = AsyncMock()
+        with patch("app.services.dnb.lookup", new=dnb_mock), \
+             patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "US Book"})):
+            metadata, source, _ = await _lookup_metadata("9780441172719", None, None)
+
+        assert source == "openlibrary"
+        dnb_mock.assert_not_awaited()
+
+    async def test_dnb_raising_is_swallowed_and_cascade_proceeds(self):
+        from app.routers.items import _lookup_metadata
+
+        with patch("app.services.dnb.lookup", new=AsyncMock(side_effect=RuntimeError("boom"))), \
+             patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "OL Book"})):
+            metadata, source, _ = await _lookup_metadata("9783608963762", None, None)
+
+        assert source == "openlibrary"
+        assert metadata["title"] == "OL Book"
+
+    async def test_hardcover_enrich_fires_for_dnb_hit(self):
+        from app.routers.items import _lookup_metadata
+
+        hc_data = {
+            "series_name": "Die Reihe", "series_position": 2,
+            "description": "Klappentext", "hardcover_book_id": 5,
+            "hardcover_edition_id": 7, "cover_url": None,
+        }
+        with patch("app.services.dnb.lookup", new=AsyncMock(return_value=dict(self.DNB_META))), \
+             patch("app.services.hardcover.lookup_by_isbn", new=AsyncMock(return_value=hc_data)):
+            metadata, source, hc_ids = await _lookup_metadata("9783608963762", "tok", None)
+
+        assert source == "dnb"
+        assert metadata["series_name"] == "Die Reihe"
+        assert metadata["description"] == "Klappentext"
+        assert hc_ids["hardcover_book_id"] == 5
+
+    def test_save_item_persists_language(self, db):
+        from app.routers.items import _save_item
+
+        item_id = _save_item(dict(self.DNB_META), "9783608963762", "book", None, "dnb", {})
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT language, source FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["language"] == "de"
+        assert row["source"] == "dnb"
+
+    def test_save_item_without_language_stores_null(self, db):
+        from app.routers.items import _save_item
+
+        item_id = _save_item({"title": "No Lang"}, "9780441172719", "book", None, "openlibrary", {})
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT language FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["language"] is None
+
+    @respx.mock
+    async def test_openlibrary_lookup_captures_edition_language(self):
+        respx.get("https://openlibrary.org/isbn/9783161484100.json").mock(
+            return_value=httpx.Response(200, json={
+                "title": "Buch", "languages": [{"key": "/languages/ger"}],
+            })
+        )
+        from app.services import openlibrary
+
+        async with httpx.AsyncClient() as client:
+            result = await openlibrary.lookup("9783161484100", client)
+        assert result["language"] == "de"
+
+    @respx.mock
+    async def test_googlebooks_lookup_captures_language(self):
+        respx.get("https://www.googleapis.com/books/v1/volumes").mock(
+            return_value=httpx.Response(200, json={
+                "items": [{"volumeInfo": {"title": "Buch", "language": "de"}}],
+            })
+        )
+        from app.services import googlebooks
+
+        async with httpx.AsyncClient() as client:
+            result = await googlebooks.lookup("9783161484100", client)
+        assert result["language"] == "de"
+
+
+class TestLanguageOnEditAndDetail:
+    """T6 — language on manual add, edit form, and item detail."""
+
+    def test_update_item_sets_language(self, editor_client, db):
+        item_id = _insert_item(db, title="Language Edit Book", isbn="9780900001101")
+        db.commit()
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"language": "de"})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT language FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["language"] == "de"
+
+    def test_update_item_empty_language_clears_to_null(self, editor_client, db):
+        item_id = _insert_item(
+            db, title="Language Clear Book", isbn="9780900001102", language="de",
+        )
+        db.commit()
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"language": ""})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT language FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["language"] is None
+
+    def test_manual_add_persists_language(self, editor_client, db):
+        resp = editor_client.post(
+            "/api/items/manual",
+            data={"title": "Manual Add With Language", "language": "de"},
+        )
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT language FROM items WHERE title = ?",
+                ("Manual Add With Language",),
+            ).fetchone()
+        assert row["language"] == "de"
+
+    def test_detail_page_shows_language_display_name(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Language Detail Book", isbn="9780900001103", language="de",
+        )
+        db.commit()
+
+        resp = admin_client.get(f"/item/{item_id}")
+        assert resp.status_code == 200
+        assert "German" in resp.text
+
+    def test_edit_form_renders_unmappable_stored_code_as_selected(self, editor_client, db):
+        item_id = _insert_item(
+            db, title="Language Unmappable Book", isbn="9780900001104", language="tlh",
+        )
+        db.commit()
+
+        resp = editor_client.get(f"/item/{item_id}/edit")
+        assert resp.status_code == 200
+        assert '<option value="tlh" selected>tlh</option>' in resp.text
+
+
+class TestLanguageFilter:
+    """T7 — Browse language filter, both server sites (/browse and /api/search)."""
+
+    def _seed(self, db):
+        loc = _insert_location(db, "Office")
+        _insert_item(db, title="German Novel", isbn="9783000000001",
+                     language="de", location_id=loc, reading_status="read")
+        _insert_item(db, title="German Comic", isbn="9783000000002",
+                     language="de", media_type="comic")
+        _insert_item(db, title="English Novel", isbn="9780000000101",
+                     language="en", location_id=loc, reading_status="read")
+        _insert_item(db, title="No Lang", isbn="9780000000102")
+        db.commit()
+        return loc
+
+    def test_search_filter_narrows(self, viewer_client, db):
+        self._seed(db)
+        resp = viewer_client.get("/api/search", params={"language": "de"})
+        assert resp.status_code == 200
+        assert b"German Novel" in resp.content
+        assert b"German Comic" in resp.content
+        assert b"English Novel" not in resp.content
+
+    def test_search_absent_param_no_condition(self, viewer_client, db):
+        self._seed(db)
+        resp = viewer_client.get("/api/search")
+        assert b"German Novel" in resp.content
+        assert b"English Novel" in resp.content
+        assert b"No Lang" in resp.content
+
+    def test_search_composes_with_media_type_and_q(self, viewer_client, db):
+        self._seed(db)
+        resp = viewer_client.get("/api/search", params={
+            "language": "de", "media_type_filter": "book", "q": "Novel",
+        })
+        assert b"German Novel" in resp.content
+        assert b"German Comic" not in resp.content
+        assert b"English Novel" not in resp.content
+
+    def test_load_more_querystring_roundtrips_language(self, viewer_client, db):
+        for i in range(70):
+            _insert_item(db, title=f"DE Book {i}", isbn=f"97830000100{i:02d}",
+                         language="de")
+        db.commit()
+        resp = viewer_client.get("/api/search", params={"language": "de"})
+        assert b"language=de" in resp.content  # load-more URL carries it
+
+    def test_oob_selects_include_language_in_hx_include(self, viewer_client, db):
+        """R1: the OOB-swapped selects must re-include [name='language'] or
+        the next filter change after a swap silently drops the filter."""
+        self._seed(db)
+        resp = viewer_client.get("/api/search", params={"language": "de"})
+        html = resp.content.decode()
+        import re
+        oob_selects = re.findall(r'<select[^>]*hx-swap-oob="true"[^>]*>', html)
+        assert len(oob_selects) >= 4
+        for sel in oob_selects:
+            assert "[name='language']" in sel, sel
+
+    def test_location_counts_respect_language(self, viewer_client, db):
+        """R3: loc_conds is rebuilt from scratch — it must include the
+        language condition."""
+        loc = self._seed(db)
+        resp = viewer_client.get("/api/search", params={"language": "de"})
+        html = resp.content.decode()
+        # Office holds 1 German item (German Novel) and 1 English item;
+        # with language=de active the location option must count only 1.
+        import re
+        m = re.search(r"<option[^>]*>Office(?: \((\d+)\))?</option>", html)
+        assert m, "Office option missing"
+        assert m.group(1) == "1", html[m.start()-200:m.end()+100]
+
+    def test_reading_status_counts_respect_language(self, viewer_client, db):
+        """R3: rs_conds_clean is rebuilt from scratch — it must include the
+        language condition."""
+        self._seed(db)
+        resp = viewer_client.get("/api/search", params={
+            "language": "de", "reading_status": "read",
+        })
+        html = resp.content.decode()
+        import re
+        m = re.search(r'<option value="read"[^>]*>Read(?: \((\d+)\))?</option>', html)
+        assert m, "Read option missing"
+        # 2 items are 'read' overall but only 1 is German.
+        assert m.group(1) == "1", m.group(0)
+
+    def test_browse_renders_select_only_when_languages_exist(self, viewer_client, db):
+        resp = viewer_client.get("/browse")
+        assert b'id="language-filter"' not in resp.content
+        self._seed(db)
+        resp = viewer_client.get("/browse")
+        assert b'id="language-filter"' in resp.content
+        # Display names come from SEARCH_LANGS
+        assert b">German<" in resp.content
+
+    def test_browse_language_param_filters_page(self, viewer_client, db):
+        self._seed(db)
+        resp = viewer_client.get("/browse", params={"language": "de"})
+        assert b"German Novel" in resp.content
+        assert b"English Novel" not in resp.content

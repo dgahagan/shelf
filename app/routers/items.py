@@ -16,7 +16,7 @@ from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
 from app.database import get_db, get_setting, get_game_platforms, gc_orphaned_series_meta
 from app.routers.series import MAX_SERIES_NAME
 from app.services import isbn as isbn_svc
-from app.services import openlibrary, googlebooks, hardcover, covers
+from app.services import openlibrary, googlebooks, hardcover, covers, national
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
 from app.services import authors as authors_svc
@@ -40,11 +40,26 @@ def _toast_header(message: str, toast_type: str = "success") -> str:
 
 async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient) -> tuple[dict | None, str, dict]:
     """Look up book metadata across sources. Returns (metadata, source, hc_ids)."""
-    metadata = await openlibrary.lookup(isbn13, client)
-    if metadata:
-        source = "openlibrary"
-    else:
-        source = "manual"
+    metadata = None
+    source = "manual"
+
+    # National-bibliography routing: for registration groups with an
+    # authoritative national source (e.g. 978-3 -> DNB), consult it before
+    # the general cascade. A miss falls through unchanged.
+    provider = national.provider_for(isbn13)
+    if provider:
+        try:
+            metadata = await provider.lookup(isbn13, client)
+        except Exception:
+            logger.debug("National provider lookup failed for ISBN %s", isbn13, exc_info=True)
+            metadata = None
+        if metadata:
+            source = provider.__name__.rsplit(".", 1)[-1]
+
+    if not metadata:
+        metadata = await openlibrary.lookup(isbn13, client)
+        if metadata:
+            source = "openlibrary"
 
     hc_ids = {}
     if not metadata and hc_token:
@@ -90,9 +105,9 @@ def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | 
         cursor = db.execute(
             """INSERT INTO items (title, subtitle, authors, isbn, isbn10, media_type,
                publisher, publish_year, page_count, description, series_name,
-               series_position, location_id, source,
+               series_position, location_id, source, language,
                hardcover_book_id, hardcover_edition_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 metadata["title"],
                 metadata.get("subtitle"),
@@ -108,6 +123,7 @@ def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | 
                 metadata.get("series_position"),
                 loc_id,
                 source,
+                metadata.get("language"),
                 hc_ids.get("hardcover_book_id"),
                 hc_ids.get("hardcover_edition_id"),
             ),
@@ -567,6 +583,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if isbn13 else None
     pub_year = form.get("publish_year")
     platform = form.get("platform") or None
+    language = form.get("language", "").strip() or None
 
     # #19 "copy from" prefill: series_name + location_id are optional and
     # only reach here if the picker filled them in (or the user typed them).
@@ -593,11 +610,11 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
             try:
                 cursor = db.execute(
                     """INSERT INTO items (title, authors, isbn, isbn10, upc, media_type,
-                       publisher, publish_year, platform, series_name, location_id, source)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
+                       publisher, publish_year, platform, series_name, location_id, language, source)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
                     (title, form.get("authors"), isbn13, isbn10, upc_code, media_type,
                      form.get("publisher"), int(pub_year) if pub_year else None, platform,
-                     series_name, location_id),
+                     series_name, location_id, language),
                 )
                 item_id = cursor.lastrowid
             except sqlite3.IntegrityError:
@@ -719,6 +736,7 @@ async def search_items(
     owned: str = "",
     lent_out: str = "",
     tag: str = "",
+    language: str = "",
     view: str = "",
     page: int = 1,
     per_page: int = DEFAULT_PAGE_SIZE,
@@ -753,6 +771,12 @@ async def search_items(
             "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
         )
         base_params.append(tag)
+    if language:
+        # In base_conds so the type/owned count groups inherit it via their
+        # list(base_conds) copies; the loc_conds and rs_conds_clean rebuilds
+        # below re-add it by hand.
+        base_conds.append("i.language = ?")
+        base_params.append(language)
 
     # Full conditions = base + type + owned
     conditions = list(base_conds)
@@ -841,6 +865,9 @@ async def search_items(
                     "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
                 )
                 loc_params.append(tag)
+            if language:
+                loc_conds.append("i.language = ?")
+                loc_params.append(language)
             if mt:
                 loc_conds.append("i.media_type = ?")
                 loc_params.append(mt)
@@ -891,6 +918,9 @@ async def search_items(
                         "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
                     )
                     rs_params_clean.append(tag)
+                if language:
+                    rs_conds_clean.append("i.language = ?")
+                    rs_params_clean.append(language)
                 if mt:
                     rs_conds_clean.append("i.media_type = ?")
                     rs_params_clean.append(mt)
@@ -952,6 +982,8 @@ async def search_items(
     if tag:
         from urllib.parse import quote
         qs_parts.append(f"tag={quote(tag)}")
+    if language:
+        qs_parts.append(f"language={language}")
     if view:
         qs_parts.append(f"view={view}")
     qs_parts.append(f"page={page + 1}")
@@ -1078,7 +1110,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                 "publish_year", "page_count", "description", "series_name",
                 "series_position", "narrator", "duration_mins", "location_id", "notes",
                 "reading_status", "date_started", "date_finished", "owned", "platform",
-                "manual_value"):
+                "manual_value", "language"):
         val = form.get(key)
         if val is not None:
             if val == "" and key != "owned":
@@ -1629,8 +1661,11 @@ async def _search_isbn_for_item(title: str, authors: str | None, client) -> tupl
     Goodreads exports omit ISBNs for many editions (Kindle especially);
     this recovers one so the cover chain and future lookups can work.
     """
+    with get_db() as db:
+        search_lang = get_setting(db, "metadata_search_lang") or "en"
+
     first_author = (authors or "").split(",")[0].strip() or None
-    results = await openlibrary.search_by_title_author(title, first_author, client)
+    results = await openlibrary.search_by_title_author(title, first_author, client, lang=search_lang)
     for res in results:
         if authors_svc.matches(authors, res.get("authors")):
             return res.get("isbn"), res.get("cover_url")
@@ -2044,8 +2079,11 @@ async def search_books(
     if not q.strip():
         return HTMLResponse("")
 
+    with get_db() as db:
+        search_lang = get_setting(db, "metadata_search_lang") or "en"
+
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await openlibrary.search_books(q.strip(), client, limit=10)
+        results = await openlibrary.search_books(q.strip(), client, limit=10, lang=search_lang)
 
     return templates.TemplateResponse(
         request, "fragments/book_search_results.html",

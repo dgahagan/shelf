@@ -30,6 +30,17 @@ function browsePage() {
             // would silently defeat restoreFilters(). afterSwap fires on the
             // same elements, the same number of times, but synchronously.
             document.body.addEventListener('htmx:afterSwap', () => {
+                // htmx does not re-process the filter selects swapped in via
+                // hx-swap-oob — their change triggers die with the replaced
+                // node, so every dropdown change after the first would
+                // silently do nothing. Re-process any filter control htmx
+                // doesn't know about (guarded, so live controls are
+                // untouched).
+                this.filterNames().forEach(function(name) {
+                    document.querySelectorAll('[name="' + name + '"]').forEach(function(el) {
+                        if (!el['htmx-internal-data']) htmx.process(el);
+                    });
+                });
                 this.syncFilters();
                 this.updateUrl();
             });
@@ -104,7 +115,7 @@ function browsePage() {
         // Names of every filter control that participates in the querystring,
         // in the order updateUrl() writes them.
         filterNames() {
-            return ['q', 'media_type_filter', 'location_filter', 'sort', 'reading_status', 'owned', 'lent_out', 'tag'];
+            return ['q', 'media_type_filter', 'location_filter', 'sort', 'reading_status', 'owned', 'lent_out', 'tag', 'language'];
         },
 
         // Write a value into every input sharing this name. Used instead of
@@ -205,6 +216,7 @@ function browsePage() {
                 {name: 'lent_out', prefix: ''},
                 {name: 'reading_status', prefix: 'Status'},
                 {name: 'tag', prefix: 'Tag'},
+                {name: 'language', prefix: 'Language'},
                 {name: 'sort', prefix: 'Sort', skip: 'newest'},
             ];
             filterDefs.forEach(function(def) {

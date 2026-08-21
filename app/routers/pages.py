@@ -30,6 +30,7 @@ async def browse(
     owned: str = "",
     lent_out: str = "",
     tag: str = "",
+    language: str = "",
     _=Depends(require_role("viewer")),
 ):
     with get_db() as db:
@@ -60,6 +61,9 @@ async def browse(
         if media_type_filter:
             conditions.append("i.media_type = ?")
             params.append(media_type_filter)
+        if language:
+            conditions.append("i.language = ?")
+            params.append(language)
         if owned == "1":
             conditions.append("i.owned = 1")
         elif owned == "0":
@@ -128,6 +132,16 @@ async def browse(
         from app.routers.tags import get_all_tags
         all_tags = get_all_tags(db)
 
+        # Languages present in the library — the filter only renders/offers
+        # what actually exists.
+        item_languages = [
+            row["language"]
+            for row in db.execute(
+                "SELECT DISTINCT language FROM items "
+                "WHERE language IS NOT NULL AND language != '' ORDER BY language"
+            ).fetchall()
+        ]
+
         has_more = len(items) < total_filtered
 
         # Build load-more URL preserving filters
@@ -148,6 +162,8 @@ async def browse(
             qs_parts.append(f"lent_out={lent_out}")
         if tag:
             qs_parts.append(f"tag={quote(tag)}")
+        if language:
+            qs_parts.append(f"language={language}")
         qs_parts.append("page=2")
         load_more_url = "/api/search?" + "&".join(qs_parts)
 
@@ -161,15 +177,16 @@ async def browse(
             "series_names": series_names,
             "type_counts": type_counts,
             "all_tags": all_tags,
-            "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag]) else total_count,
+            "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag, language]) else total_count,
             "owned_count": owned_count,
             "wishlist_count": wishlist_count,
             "lent_out_count": lent_out_count,
             "location_counts": location_counts,
             "no_location_count": no_location_count,
             "reading_status_counts": reading_status_counts,
+            "item_languages": item_languages,
             "has_more": has_more,
-            "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag]),
+            "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag, language]),
             "load_more_url": load_more_url,
             "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
             "initial_query": q,
@@ -181,6 +198,7 @@ async def browse(
                 "owned": owned,
                 "lent_out": lent_out,
                 "tag": tag,
+                "language": language,
             },
         },
     )

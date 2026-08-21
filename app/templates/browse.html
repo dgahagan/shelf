@@ -103,7 +103,7 @@
             <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
                    x-model="searchQuery"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
-                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 flex-1 min-w-0">
         </div>
         <div :class="filtersOpen ? 'flex' : 'hidden sm:flex'" class="flex-wrap items-center gap-3">
@@ -111,14 +111,14 @@
             <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
                    x-model="searchQuery"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
-                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                   hx-include="[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                    class="hidden sm:block bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 w-48">
 
             {% set f = initial_filters or {} %}
             <!-- Media Type Filter -->
             <select id="type-filter" name="media_type_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                    hx-include="[name='q'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.media_type_filter else '' }}>All Types ({{ total_count }})</option>
                 {% for key, label in media_types.items() %}
@@ -132,7 +132,7 @@
             <!-- Location Filter -->
             <select id="location-filter" name="location_filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations ({{ total_count }})</option>
                 {% for loc in locations %}
@@ -144,7 +144,7 @@
             <!-- Owned / Wishlist Filter -->
             <select id="owned-filter" name="owned"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out'],[name='tag'],[name='view']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.owned else '' }}>All ({{ total_count }})</option>
                 <option value="1" {{ 'selected' if f.owned == '1' else '' }}>Owned ({{ owned_count }})</option>
@@ -154,7 +154,7 @@
             <!-- Lent Out Filter -->
             <select name="lent_out"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='tag'],[name='view']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='tag'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.lent_out else '' }}>All Items</option>
                 <option value="1" {{ 'selected' if f.lent_out == '1' else '' }}>Lent Out{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
@@ -163,7 +163,7 @@
             <!-- Reading Status Filter -->
             <select id="reading-status-filter" name="reading_status"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='owned'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.reading_status else '' }}>All Statuses</option>
                 {% set rsc = reading_status_counts or {} %}
@@ -176,7 +176,7 @@
             {% if all_tags %}
             <select id="tag-filter" name="tag"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='view']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="" {{ 'selected' if not f.tag else '' }}>All Tags</option>
                 {% for t in all_tags %}
@@ -185,10 +185,23 @@
             </select>
             {% endif %}
 
+            <!-- Language Filter (only when the library has languages) -->
+            {% if item_languages %}
+            <select id="language-filter" name="language"
+                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='sort'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="" {{ 'selected' if not f.language else '' }}>All Languages</option>
+                {% for code in item_languages %}
+                <option value="{{ code }}" {{ 'selected' if f.language == code else '' }}>{{ search_langs.get(code, code) }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+
             <!-- Sort -->
             <select name="sort"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
-                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='view']"
+                    hx-include="[name='q'],[name='media_type_filter'],[name='location_filter'],[name='reading_status'],[name='owned'],[name='lent_out'],[name='tag'],[name='language'],[name='view']"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                 <option value="newest" {{ 'selected' if f.sort == 'newest' or not f.sort else '' }}>Most Recent</option>
                 <option value="oldest" {{ 'selected' if f.sort == 'oldest' else '' }}>Oldest First</option>

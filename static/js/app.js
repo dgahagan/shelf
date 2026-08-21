@@ -70,6 +70,22 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
     if (action === 'clear-scan-input') {
         var input = el.querySelector('#isbn-input');
         if (input) { input.value = ''; input.focus(); }
+        // Typed/Enter entry has no camera overlay, and the result card lands
+        // in #scan-results below the fold — toast the outcome so the user
+        // sees something happen without scrolling. (The camera path POSTs
+        // via fetch, not htmx, so this never double-fires.)
+        var card = ok && document.querySelector('#scan-results > :first-child');
+        if (card) {
+            var title = card.querySelector('.font-medium');
+            var badge = card.querySelector('span[class*="rounded-full"]');
+            var errMsg = card.querySelector('.text-shelf-error:not(span)');
+            var label = badge ? badge.textContent.trim() : 'Done';
+            var isErr = card.innerHTML.indexOf('bg-shelf-error') !== -1 ||
+                        card.innerHTML.indexOf('bg-shelf-warning') !== -1;
+            var text = errMsg ? errMsg.textContent.trim()
+                              : label + (title ? ': ' + title.textContent.trim() : '');
+            showToast(text, isErr ? 'warning' : 'success');
+        }
     } else if (action === 'clear-title-search' && ok) {
         var si = document.getElementById('title-search-input') || document.getElementById('game-search-input');
         if (si) si.value = '';

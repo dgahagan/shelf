@@ -323,6 +323,70 @@ class TestAnalyzeEndpoint:
         ])
         assert resp.json()["ok"] is False
 
+    @respx.mock
+    def test_language_persisted_from_preferred_language_match(self, admin_client, db):
+        """T4/R2: intake's own INSERT captures language — a preferred-language
+        (currently English) match stores that language's ISO code."""
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
+            "title": "Dune", "author_name": ["Frank Herbert"],
+            "isbn": ["9780441172719"], "language": ["eng", "ger"],
+        }]}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "authors": "Frank Herbert"}],
+        })
+        assert resp.json()["ok"] is True
+        row = db.execute("SELECT language FROM items WHERE title = 'Dune'").fetchone()
+        assert row["language"] == "en"
+
+    @respx.mock
+    def test_language_persisted_from_nonpreferred_match(self, admin_client, db):
+        """A match with no preferred-language edition stores the mapped first
+        language of the chosen result."""
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
+            "title": "Der Prozess", "author_name": ["Franz Kafka"],
+            "isbn": ["9783161484100"], "language": ["ger"],
+        }]}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Der Prozess", "authors": "Franz Kafka"}],
+        })
+        assert resp.json()["ok"] is True
+        row = db.execute("SELECT language FROM items WHERE title = 'Der Prozess'").fetchone()
+        assert row["language"] == "de"
+
+    @respx.mock
+    def test_language_null_without_metadata(self, admin_client, db):
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Obscure Zine 2", "authors": None}],
+        })
+        row = db.execute("SELECT language FROM items WHERE title = 'Obscure Zine 2'").fetchone()
+        assert row["language"] is None
+
+    @respx.mock
+    def test_language_preference_honors_configured_search_lang(self, admin_client, db):
+        """T5: metadata_search_lang='de' makes the German edition win over
+        the English one for the same title/author, and the ISO code that
+        ends up on the inserted item is 'de'."""
+        db.execute("INSERT INTO settings (key, value) VALUES ('metadata_search_lang', 'de')")
+        db.execute("COMMIT")
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [
+            {
+                "title": "Die Verwandlung", "author_name": ["Franz Kafka"],
+                "isbn": ["9780000000016"], "language": ["eng"],
+            },
+            {
+                "title": "Die Verwandlung", "author_name": ["Franz Kafka"],
+                "isbn": ["9783150000010"], "language": ["ger"],
+            },
+        ]}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Die Verwandlung", "authors": "Franz Kafka"}],
+        })
+        assert resp.json()["ok"] is True
+        row = db.execute("SELECT isbn, language FROM items WHERE title = 'Die Verwandlung'").fetchone()
+        assert row["isbn"] == "9783150000010"
+        assert row["language"] == "de"
+
     def test_viewer_forbidden(self, viewer_client):
         resp = self._upload(viewer_client)
         assert resp.status_code in (401, 403)

@@ -354,7 +354,9 @@ class TestRefileMigrations:
         )
         conn.commit()
 
-        for _, _, sql in MIGRATIONS[-2:]:
+        for version, _desc, sql in MIGRATIONS:
+            if version not in (20, 21):
+                continue
             conn.execute(sql)
             conn.execute(sql)
         conn.commit()

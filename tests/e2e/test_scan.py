@@ -262,3 +262,15 @@ def test_scan_camera_uses_html5_qrcode_by_default(live_server, browser, setup_ad
         _expect_no_camera_error(pg)
     finally:
         ctx.close()
+
+
+def test_manual_entry_shows_toast_feedback(live_server, authed_page):
+    """Typed ISBN + Enter surfaces a toast — the result card lands below the
+    fold, so without this the submit looks like a silent no-op."""
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.fill("#isbn-input", "not-an-isbn")
+    authed_page.press("#isbn-input", "Enter")
+    toast = authed_page.locator("#toast-container > div").first
+    expect(toast).to_be_visible(timeout=5_000)
+    expect(toast).to_contain_text("Invalid", timeout=5_000)

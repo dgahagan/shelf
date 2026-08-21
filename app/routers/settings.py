@@ -11,6 +11,7 @@ from app.crypto import SENSITIVE_KEYS, encrypt_value, get_encryption_key
 from app.currency import CURRENCIES, invalidate_cache as invalidate_currency_cache
 from app.database import get_db
 from app.nav import HIDEABLE_KEYS, invalidate_cache as invalidate_nav_cache
+from app.services.national import SEARCH_LANGS
 
 router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
 
@@ -162,11 +163,12 @@ async def update_nav_settings(request: Request):
 
 @router.post("/display")
 async def update_display_settings(request: Request):
-    """Save the display currency.
+    """Save the display currency and metadata search language.
 
-    Only writes when the posted code is a known ISO code — an unknown code
-    is silently dropped, same posture as /nav's key filtering. Display only:
-    Shelf never converts amounts between currencies.
+    Only writes when the posted code is known — an unknown code is silently
+    dropped, same posture as /nav's key filtering. Currency is display
+    only: Shelf never converts amounts between currencies. The search
+    language steers which language's editions Open Library search prefers.
     """
     form = await request.form()
     code = (form.get("currency") or "").strip().upper()
@@ -174,6 +176,12 @@ async def update_display_settings(request: Request):
         with get_db() as db:
             _upsert_setting(db, "currency", code)
         invalidate_currency_cache()
+
+    search_lang = (form.get("metadata_search_lang") or "").strip()
+    if search_lang in SEARCH_LANGS:
+        with get_db() as db:
+            _upsert_setting(db, "metadata_search_lang", search_lang)
+
     return RedirectResponse(url="/settings", status_code=303)
 
 

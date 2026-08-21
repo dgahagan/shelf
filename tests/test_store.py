@@ -26,6 +26,9 @@ PINNED = {
     # v4 adds scanner-engine.js and the vendored zxing-browser blob to
     # PRECACHE -- the store PWA now uses the shared scanner engine.
     "v4": "9ce800c0bb4c3c1b6352582278a90be717ce651e02f7fb94d2c558ad3a139a6f",
+    # v5: app.css rebuild — the intake "working" spinner panels emit new
+    # utilities (border-shelf-accent/40, opacity-25/75 at top level).
+    "v5": "1d9ebffdde8b3970bd28ea41ae248efde0e41ccae5f6bbe95bdd7b44a318ec29",
 }
 
 
