@@ -29,6 +29,10 @@ PINNED = {
     # v5: app.css rebuild — the intake "working" spinner panels emit new
     # utilities (border-shelf-accent/40, opacity-25/75 at top level).
     "v5": "1d9ebffdde8b3970bd28ea41ae248efde0e41ccae5f6bbe95bdd7b44a318ec29",
+    # v6: the store.js provenance comment was repointed from docs/ to
+    # .devdocs/ (workflow-migration Phase 3). Comment-only — no behaviour
+    # change — but store.js is precached, so its bytes are pinned here.
+    "v6": "7ea788c2ffc51038262a04a0f440f1afc932ca02235349308fe2b32b792f120f",
 }
 
 

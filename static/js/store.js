@@ -1,4 +1,4 @@
-/* Store Mode — offline "do I own this?" checks. See docs/plans/PWA_STORE_MODE.md.
+/* Store Mode — offline "do I own this?" checks. See .devdocs/archive/completed/PWA_STORE_MODE.md.
  *
  * Library data lives in localStorage (fetched from /api/store/data whenever
  * online); scans are matched against it entirely client-side. Unknown scans

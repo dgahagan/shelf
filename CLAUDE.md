@@ -45,7 +45,7 @@ far more often than by a human. Keep it that way:
   work; the harness re-invokes on exit. Never launch in the background and then `sleep`-poll —
   the completion notification *is* the signal.
 - **`make checks-fast` in the loop, `make checks` before a release.** The full target runs
-  `pip-audit` over the network and writes dated reports into `docs/reports/`.
+  `pip-audit` over the network and writes dated reports into `reports/`.
 - **Prefer the `gh` CLI over the `github` MCP tools here.** The release procedure in
   `../CLAUDE.md` already uses `gh` end to end, and `gh ... --jq` lets you bound the output size,
   which the MCP tools do not.

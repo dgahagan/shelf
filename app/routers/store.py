@@ -1,6 +1,6 @@
 """Store mode: offline-capable PWA for "do I own this?" checks in bookstores.
 
-See docs/archive/completed/PWA_STORE_MODE.md. The /store page and its assets are
+See .devdocs/archive/completed/PWA_STORE_MODE.md. The /store page and its assets are
 precached by the service worker (static/sw.js); library data is fetched from
 /api/store/data and kept in localStorage on the device; barcodes scanned
 offline for unknown books queue locally and are flushed to /api/store/queue

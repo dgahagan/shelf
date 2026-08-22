@@ -48,7 +48,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         # No 'unsafe-inline', no CDN hosts, and no 'unsafe-eval': all JS is
         # served from /static and Alpine is the CSP build (no new Function) —
-        # see docs/archive/completed/CSP_BUNDLING.md and docs/archive/completed/ALPINE_CSP.md.
+        # see .devdocs/archive/completed/CSP_BUNDLING.md and .devdocs/archive/completed/ALPINE_CSP.md.
         # scripts/check_alpine_csp.py keeps template expressions parseable.
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; "

@@ -24,7 +24,7 @@ into subagent prompts).
   the memory. An entry whose trap no longer exists gets retired, not deleted.
 - Soft cap ~40 active entries: past that, prune, promote to lints, or split
   by domain.
-- This file is **committed** (unlike `docs/`): these are codebase facts that
+- This file is **committed** (unlike `.devdocs/`): these are codebase facts that
   help any contributor, and the lint-graduation path needs them in history.
   No personal info, ever (repo is subtree-published).
 
@@ -136,7 +136,7 @@ PY
   only registered components. Found live during the CSP migration
   (setup.html), refound whenever a page ships JS without registration.
 - **Evidence:** `907e732` (2026-07-05, CSP-build migration; the old
-  `docs/archive/completed/ALPINE_CSP.md` "gotchas discovered live" list, item 1).
+  `.devdocs/archive/completed/ALPINE_CSP.md` "gotchas discovered live" list, item 1).
 - **Verify:** every `x-data` name in templates resolves to a registration
   (any `UNREGISTERED` line = trap sprung):
 
@@ -528,7 +528,17 @@ python -m pytest tests/test_checkouts.py -k guard_reads_under_write_lock -q
   `browse.js`, `components-settings.js`) is not in PRECACHE, so editing it
   is not a G19 trigger. Confirmed again on the intl-metadata branch
   (2026-08-20): five template/JS tasks, every rebuild byte-identical,
-  `SW_VERSION` untouched.
+  `SW_VERSION` untouched. **Before writing "expected byte-identical" into a
+  plan, check each utility the new markup introduces** rather than eyeballing
+  it: `grep -c '\.<class>{' static/css/app.css`, escaping the way Tailwind
+  does (`mt-0\.5`, `bg-shelf-accent\/20`). A class that reads as generic
+  (`mt-6`, `pt-6`, `mt-8`) is not necessarily emitted — the issue-31 plan
+  asserted byte-identical while its own proposed markup carried `mt-6`, which
+  no template uses and `app.css` does not contain. Caught on paper by
+  `/plan-review` (R1) and fixed by placing the block inside the existing
+  `space-y-6` container instead of giving it a top margin; the rebuild was
+  then byte-identical for real and `SW_VERSION` stayed `v5` (`698a0a8`,
+  2026-08-21).
 
 - **Verify:** the digest pinned for the current `SW_VERSION` must match the
   precached files on disk:
@@ -766,7 +776,7 @@ python -m pytest tests/test_dnb.py -q                # translator-exclusion asse
   dangerous in a design doc, where it can be used to justify a destructive
   default ("it's undoable") that is not undoable at all.
 - **Evidence:** found by the Codex plan review of issue #29 (2026-08-20) in
-  `docs/plan-issue-29-borrower-delete.md`, where a pre-delete export was
+  `.devdocs/archive/completed/plan-issue-29-borrower-delete.md`, where a pre-delete export was
   offered as the recovery path for cascade-deleted loan history; corrected
   before any code was written. Mechanism at `app/services/archive.py:968`
   (`id_map` covers created items only) and `:1135-1160` (dependent-row skip),
@@ -975,7 +985,7 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
   adversarial data — for cover work that means authorless, ISBN-less non-book
   rows titled after famous books.
 - **Evidence:** issue-27 live QA (2026-08-21), written up in
-  `docs/archive/completed/qa-issue-27-outbound-queue.md`; fixes in `39b4e9f`.
+  `.devdocs/archive/completed/qa-issue-27-outbound-queue.md`; fixes in `39b4e9f`.
 - **Verify:** judgement, not a grep — but the gate env vars that hide
   background work are findable:
 
@@ -985,6 +995,44 @@ grep -rn "SHELF_DISABLE_COVER_ENRICH" tests/ app/
 ```
 
 - **Status:** documented. Not a lint candidate.
+
+## G34 — When an E2E test asserts membership in a capped or sampled list
+
+- **Rule:** `live_server` is session-scoped (`tests/e2e/conftest.py`) and
+  `make test-e2e` runs serially, so every row every earlier file seeded is
+  still in the database when your file runs. A "my seeded title appears in
+  the strip / the top N" assertion is only valid if the title is *guaranteed*
+  to sort inside the cap. Seed a title that sorts first under the list's
+  collation (`"000 …"` for `COLLATE NOCASE` — nothing else in the suite
+  starts with `0`), or assert a cap-independent property instead: the absence
+  of a row that should never match, or a count regex rather than a number.
+- **Why:** the pin passes today by accident of how many rows earlier files
+  happened to leave behind, and goes red the day an unrelated file adds a few
+  alphabetically-early titles — which reads as a feature regression in code
+  nobody touched. Same family as G31: a test that looks like coverage and
+  defends nothing (or defends the wrong thing).
+- **Evidence:** caught on paper by the issue-31 `/plan-review` (R2,
+  2026-08-21). The plan's `E2E Unassigned Book` already had at least eight
+  earlier-sorting seriesless titles ahead of it (`1984`, `Book To Delete`,
+  `Bulk Target`, `Clearable Novel`, `CSP Probe Book`, `Disband Vol 1/2`,
+  `Dune`) against a 12-cover cap, plus an unknown number of UI-created rows.
+  Shipped as `000 E2E Unassigned Book` plus a
+  `r"\d+ books? with no series"` count regex (`009bf27`). **Measured after
+  the fact by instrumenting the test over a full serial run: the server held
+  184 seriesless books by the time `test_series.py` ran** — against a cap of
+  12. The review estimated "at least eight" earlier-sorting titles and was
+  low by an order of magnitude; the original assertion would have been red on
+  its first run, not merely fragile later. Prefer measuring the depth over
+  estimating it.
+- **Verify:** the two facts the rule rests on still hold:
+
+```bash
+grep -n 'scope="session"' tests/e2e/conftest.py   # the server fixture is still session-scoped
+grep -n "^test-e2e" -A1 Makefile                  # still serial (no -n)
+```
+
+- **Status:** documented. Not a lint candidate — which list is capped is a
+  judgement call, not a grep.
 
 ## Graveyard
 

@@ -1016,7 +1016,7 @@ class TestImportArchiveEndpoint:
 
 
 # ---------------------------------------------------------------------------
-# Import planner — pure classification (docs/plan-import-preview-plan-apply.md)
+# Import planner — pure classification (.devdocs/archive/completed/plan-import-preview-plan-apply.md)
 # ---------------------------------------------------------------------------
 
 _LIBRARY_TABLES = (

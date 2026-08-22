@@ -386,7 +386,7 @@ async def stats(request: Request, _=Depends(require_role("viewer"))):
             "ORDER BY i.created_at DESC LIMIT 20"
         ).fetchall()
 
-        # --- Dashboard chart data (see docs/archive/completed/STATS_DASHBOARD.md) ---
+        # --- Dashboard chart data (see .devdocs/archive/completed/STATS_DASHBOARD.md) ---
         read_by_year = db.execute(
             "SELECT substr(date_finished, 1, 4) as y, COUNT(*) as c FROM items "
             "WHERE reading_status = 'read' AND date_finished IS NOT NULL "

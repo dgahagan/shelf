@@ -309,6 +309,11 @@ document.addEventListener('alpine:init', function () {
                     var show = value === 'all' || (value === 'complete' ? complete : !complete);
                     card.style.display = show ? '' : 'none';
                 });
+                // The Unassigned block (issue #31) is not a series and makes no
+                // completeness claim either way, so it shows under All only — never
+                // filed under Incomplete by the unknown-counts-as-incomplete rule above.
+                var unassigned = rootEl.querySelector('[data-testid="unassigned-card"]');
+                if (unassigned) unassigned.style.display = value === 'all' ? '' : 'none';
             }
         };
     });

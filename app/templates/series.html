@@ -227,6 +227,34 @@
         </template>
     </div>
     {% endfor %}
+    {% if unassigned_total %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-5"
+         data-testid="unassigned-card">
+        <h2 class="text-lg font-semibold">Unassigned</h2>
+        <p class="text-xs text-shelf-muted mt-0.5" data-testid="unassigned-count">
+            {{ unassigned_total }} book{{ '' if unassigned_total == 1 else 's' }} with no series
+            {%- if unassigned_total > unassigned_items|length %} · showing {{ unassigned_items|length }}{% endif %}</p>
+        <p class="text-sm text-shelf-muted mt-2">These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card.</p>
+        <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
+            {% for item in unassigned_items %}
+            <a href="/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
+                <div class="relative">
+                    {% if item.cover_path %}
+                    <img src="/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">
+                    {% else %}
+                    <div class="w-20 bg-shelf-hover rounded-lg border border-shelf-border flex items-center justify-center p-1" style="height:120px">
+                        <span class="text-[10px] text-shelf-muted text-center leading-tight">{{ item.title[:40] }}</span>
+                    </div>
+                    {% endif %}
+                    {% if not item.owned %}
+                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded font-medium">Wishlist</span>
+                    {% endif %}
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 </div>
 </div>
 

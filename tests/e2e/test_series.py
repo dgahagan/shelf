@@ -1,4 +1,5 @@
 """E2E: series page renders grouped series with local gap inference."""
+import re
 import sqlite3
 from pathlib import Path
 
@@ -211,3 +212,74 @@ def test_series_stored_hardcover_check_survives_reload(live_server, authed_page)
     expect(badge).to_be_visible()
     expect(badge).to_contain_text("2 missing")
     expect(badge).to_contain_text("2026-08-01")
+
+
+def test_series_unassigned_block_lists_seriesless_books(live_server, authed_page):
+    """#31: books with no series show in the Unassigned pseudo-block; non-book
+    media does not, and the block carries no series affordances.
+
+    The strip is capped at UNASSIGNED_STRIP_CAP and ordered by
+    `title COLLATE NOCASE`, and `live_server` is session-scoped — by the time
+    this file runs, earlier e2e files have left dozens of seriesless books
+    behind. Seed a title that sorts first under NOCASE ('0' precedes every
+    digit/letter title the suite seeds) so membership is cap-independent.
+    """
+    insert_item(live_server["data_dir"], title="000 E2E Unassigned Book",
+                isbn="9780902000127")
+    insert_item(live_server["data_dir"], title="E2E Unassigned Disc",
+                isbn="9780902000134", media_type="dvd")
+
+    authed_page.goto(f"{live_server['url']}/series")
+    authed_page.wait_for_load_state("networkidle")
+
+    block = authed_page.get_by_test_id("unassigned-card")
+    expect(block).to_be_visible()
+    expect(block).to_contain_text("000 E2E Unassigned Book")
+    expect(block).not_to_contain_text("E2E Unassigned Disc")
+    # Non-book media is out of scope entirely, not merely past the cap.
+    expect(authed_page.locator("body")).not_to_contain_text("E2E Unassigned Disc")
+
+    # Cap- and order-independent: only the shape of the count line is pinned.
+    expect(block.get_by_test_id("unassigned-count")).to_contain_text(
+        re.compile(r"\d+ books? with no series")
+    )
+
+    # The seriesless book is not inside any real series card...
+    expect(authed_page.get_by_test_id("series-card")
+           .filter(has_text="000 E2E Unassigned Book")).to_have_count(0)
+    # ...and the block renders none of the series affordances.
+    expect(block.get_by_test_id("series-actions")).to_have_count(0)
+    expect(block.get_by_test_id("edit-synopsis")).to_have_count(0)
+    # The pseudo-entry must never reach the rename/merge datalist.
+    expect(authed_page.locator(
+        'datalist#series-names option[value="Unassigned"]')).to_have_count(0)
+
+
+def test_series_unassigned_block_hidden_by_completeness_chips(live_server, authed_page):
+    """#31: the Unassigned block makes no completeness claim, so it shows
+    under All only — the unknown-counts-as-incomplete rule must not file it
+    under Incomplete. The real series card keeps its existing behaviour."""
+    insert_item(live_server["data_dir"], title="000 E2E Chip Loose Book",
+                isbn="9780902000141")
+    # Chips only render when series_list is non-empty.
+    insert_item(live_server["data_dir"], title="Chip Saga Vol 1",
+                isbn="9780902000158", series_name="E2E Chip Saga", series_position=1)
+
+    authed_page.goto(f"{live_server['url']}/series")
+    authed_page.wait_for_load_state("networkidle")
+
+    block = authed_page.get_by_test_id("unassigned-card")
+    real_card = authed_page.get_by_test_id("series-card").filter(has_text="E2E Chip Saga")
+    expect(block).to_be_visible()
+
+    authed_page.get_by_test_id("filter-complete").click()
+    expect(block).to_be_hidden()
+
+    authed_page.get_by_test_id("filter-incomplete").click()
+    expect(block).to_be_hidden()
+    # Unknown completeness still counts as incomplete for a real series.
+    expect(real_card).to_be_visible()
+
+    authed_page.get_by_test_id("filter-all").click()
+    expect(block).to_be_visible()
+    expect(real_card).to_be_visible()

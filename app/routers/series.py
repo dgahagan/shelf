@@ -1,4 +1,4 @@
-"""Series completion tracking. See docs/archive/completed/SERIES_TRACKING.md.
+"""Series completion tracking. See .devdocs/archive/completed/SERIES_TRACKING.md.
 
 /series groups the library by series_name with local gap inference;
 /api/series/check consults Hardcover for the full series so missing volumes
@@ -20,6 +20,13 @@ router = APIRouter()
 # (app/routers/items.py) — the column's only other length guard — rather than
 # introducing a second, different limit for the same field.
 MAX_SERIES_NAME = 1000
+
+# Media types that can belong to a series. Deliberately a local literal,
+# not an import of items.BOOK_MEDIA_TYPES / synopsis.BOOK_MEDIA_TYPES (which
+# already disagree about comics) — see docs: issue #31 design plan §1.
+UNASSIGNED_MEDIA_TYPES = ("book", "kids_book", "audiobook", "ebook", "comic")
+# Covers shown in the Unassigned strip; the heading always shows the true total.
+UNASSIGNED_STRIP_CAP = 12
 
 
 def find_gaps(positions: list) -> list[int]:
@@ -59,6 +66,20 @@ async def series_page(request: Request, _=Depends(require_role("viewer"))):
                 "FROM series_meta"
             ).fetchall()
         }
+        _unassigned_where = (
+            "(series_name IS NULL OR TRIM(series_name) = '') "
+            f"AND media_type IN ({','.join('?' * len(UNASSIGNED_MEDIA_TYPES))})"
+        )
+        unassigned_total = db.execute(
+            f"SELECT COUNT(*) FROM items WHERE {_unassigned_where}",
+            UNASSIGNED_MEDIA_TYPES,
+        ).fetchone()[0]
+        unassigned_items = [dict(r) for r in db.execute(
+            "SELECT id, title, authors, cover_path, series_name, series_position, "
+            f"owned, reading_status FROM items WHERE {_unassigned_where} "
+            "ORDER BY title COLLATE NOCASE LIMIT ?",
+            (*UNASSIGNED_MEDIA_TYPES, UNASSIGNED_STRIP_CAP),
+        ).fetchall()]
 
     series: dict[str, dict] = {}
     for r in rows:
@@ -83,7 +104,12 @@ async def series_page(request: Request, _=Depends(require_role("viewer"))):
 
     return templates.TemplateResponse(
         request, "series.html",
-        {"series_list": series_list, "has_hardcover": has_hardcover},
+        {
+            "series_list": series_list,
+            "has_hardcover": has_hardcover,
+            "unassigned_items": unassigned_items,
+            "unassigned_total": unassigned_total,
+        },
     )
 
 

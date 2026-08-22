@@ -45,7 +45,10 @@ class TestSeriesPage:
         html = admin_client.get("/series").text
         assert "Dune Saga" in html
         assert "Middle Earth" in html
-        assert "No Series" not in html
+        # The seriesless book does not get a series card of its own — it
+        # lands in the Unassigned block instead.
+        assert html.count('data-testid="series-card"') == 2
+        assert html.index('data-testid="unassigned-card"') < html.index("No Series")
         # Largest series first
         assert html.index("Dune Saga") < html.index("Middle Earth")
 
@@ -68,6 +71,115 @@ class TestSeriesPage:
         db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
         db.execute("COMMIT")
         assert "Check completeness" in admin_client.get("/series").text
+
+
+class TestUnassignedBlock:
+    def test_unassigned_block_books_only(self, admin_client, db):
+        _insert_item(db, title="Loose Book", isbn="9780900001001", media_type="book")
+        _insert_item(db, title="Loose Comic", isbn="9780900001002", media_type="comic")
+        _insert_item(db, title="Loose Kids Book", isbn="9780900001003", media_type="kids_book")
+        _insert_item(db, title="Loose DVD", isbn="9780900001004", media_type="dvd")
+        _insert_item(db, title="Loose CD", isbn="9780900001005", media_type="cd")
+        _insert_item(db, title="Loose Game", isbn="9780900001006", media_type="video_game")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert 'data-testid="unassigned-card"' in html
+        assert "3 books with no series" in html
+        block_start = html.index('data-testid="unassigned-card"')
+        after_block = html[block_start:]
+        assert "Loose Book" in after_block
+        assert "Loose Comic" in after_block
+        assert "Loose Kids Book" in after_block
+        assert "Loose DVD" not in html
+        assert "Loose CD" not in html
+        assert "Loose Game" not in html
+
+    def test_item_with_series_not_in_unassigned(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900001010", series_name="Dune Saga", series_position=1)
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert html.count('data-testid="series-card"') == 1
+        assert 'data-testid="unassigned-card"' not in html
+
+    def test_whitespace_series_name_counts_as_unassigned(self, admin_client, db):
+        _insert_item(db, title="Blank Series Name", isbn="9780900001011", series_name="   ")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert 'data-testid="unassigned-card"' in html
+        assert "Blank Series Name" in html
+        assert html.count('data-testid="series-card"') == 0
+
+    def test_unassigned_count_is_true_total_when_capped(self, admin_client, db):
+        from app.routers.series import UNASSIGNED_STRIP_CAP
+
+        n = UNASSIGNED_STRIP_CAP + 3
+        for i in range(n):
+            _insert_item(db, title=f"Cap Book {i:03d}", isbn=f"978090000{2000 + i}")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert f"{n} books with no series" in html
+        block_start = html.index('data-testid="unassigned-card"')
+        after_block = html[block_start:]
+        assert after_block.count("?from=series") == UNASSIGNED_STRIP_CAP
+        # The remainder rides in the count line, not as a trailing strip tile:
+        # the tile sat past the strip's right edge at every viewport width
+        # (live QA 2026-08-22), and this matches the gaps[:8] / "+N more"
+        # idiom the design cited at series.html:59-63.
+        assert f"showing {UNASSIGNED_STRIP_CAP}" in after_block
+        assert 'data-testid="unassigned-more"' not in html
+
+    def test_unassigned_count_omits_showing_when_not_capped(self, admin_client, db):
+        """Below the cap the strip is the whole set, so the count line must not
+        imply a remainder."""
+        _insert_item(db, title="Lonely Book", isbn="9780900001060")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert "1 book with no series" in html
+        assert "showing" not in html[html.index('data-testid="unassigned-card"'):]
+
+    def test_series_header_counts_real_series_only(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900001020", series_name="Dune Saga", series_position=1)
+        _insert_item(db, title="Hobbit", isbn="9780900001021", series_name="Middle Earth", series_position=1)
+        _insert_item(db, title="No Series", isbn="9780900001022")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert 'Series <span class="text-shelf-muted text-lg font-normal">(2)</span>' in html
+
+    def test_unassigned_block_renders_with_zero_series(self, admin_client, db):
+        _insert_item(db, title="Only Loose Book", isbn="9780900001030")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert "No series yet" in html
+        assert 'data-testid="unassigned-card"' in html
+        assert 'data-testid="series-filter"' not in html
+
+    def test_unassigned_block_has_no_series_controls(self, admin_client, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        _insert_item(db, title="Only Loose Book", isbn="9780900001040")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert 'data-testid="unassigned-card"' in html
+        for marker in (
+            'data-testid="series-actions"',
+            "rename-series",
+            "remove-all",
+            "toggle-complete",
+            "edit-synopsis",
+            "check-series",
+            "fetch-synopsis",
+            'x-data="seriesCard"',
+        ):
+            assert marker not in html
+        assert '<option value="Unassigned">' not in html
+
+    def test_real_series_named_unassigned_coexists(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn="9780900001050", series_name="Unassigned", series_position=1)
+        _insert_item(db, title="Loose Book", isbn="9780900001051")
+        db.execute("COMMIT")
+        html = admin_client.get("/series").text
+        assert html.count('data-testid="series-card"') == 1
+        assert html.count('data-testid="unassigned-card"') == 1
+        assert html.count('<option value="Unassigned">') == 1
 
 
 class TestSeriesCheck:

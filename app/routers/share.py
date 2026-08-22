@@ -1,4 +1,4 @@
-"""Public read-only share links. See docs/archive/completed/SHARE_LINKS.md.
+"""Public read-only share links. See .devdocs/archive/completed/SHARE_LINKS.md.
 
 /share/<token> is the app's only intentionally unauthenticated page. It is
 GET-only, rate-limited, marked noindex, and renders a deliberately minimal

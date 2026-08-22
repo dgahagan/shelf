@@ -534,7 +534,7 @@ async def sync_reading_statuses(token: str) -> dict:
     return {"updated": updated, "unchanged": unchanged, "total": len(linked)}
 
 
-# --- Series completeness (see docs/archive/completed/SERIES_TRACKING.md) ---
+# --- Series completeness (see .devdocs/archive/completed/SERIES_TRACKING.md) ---
 
 
 def _parse_series_entries(entries: list) -> list[dict]:

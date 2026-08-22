@@ -1,6 +1,6 @@
 """Portable library archive — export/import between Shelf instances.
 
-Format contract (frozen — see docs/plan-issue-16-portable-export-import-impl.md):
+Format contract (frozen — see .devdocs/archive/completed/plan-issue-16-portable-export-import-impl.md):
 
     manifest.json          {"format": "shelf-archive", "version": 1,
                             "exported_at": <ISO-8601 UTC>, "app_version": null,
@@ -622,7 +622,7 @@ def _sql_now(db) -> str:
 #
 # plan_archive() answers "what would importing this archive change?" without
 # changing anything. It is the read half of the merge, split out so the UI can
-# show a plan before the user commits to it (docs/plan-import-preview-plan-apply.md).
+# show a plan before the user commits to it (.devdocs/archive/completed/plan-import-preview-plan-apply.md).
 # Purity is a hard, tested requirement: no inserts, no get-or-create, no cover
 # writes — name resolution here is lookup-only.
 

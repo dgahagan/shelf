@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-// Replaces the former cdn.tailwindcss.com runtime config (see docs/plans/CSP_BUNDLING.md).
+// Replaces the former cdn.tailwindcss.com runtime config (see .devdocs/archive/completed/CSP_BUNDLING.md).
 // Rebuild static/css/app.css with `make css` after changing templates or this file.
 module.exports = {
   darkMode: 'class',

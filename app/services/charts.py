@@ -5,7 +5,7 @@ Pure functions returning SVG markup strings (templates insert them with
 other user data reach SVG text nodes. No JS: hover uses native <title>
 tooltips, which keeps the page fully CSP-compliant.
 
-Visual spec (see docs/archive/completed/STATS_DASHBOARD.md): single-hue marks in the
+Visual spec (see .devdocs/archive/completed/STATS_DASHBOARD.md): single-hue marks in the
 brand accent (validated against the dark surface), bars <=24px with 4px
 rounded data-ends, 2px lines, 10%-opacity area fills, hairline gridlines,
 selective labels in text tokens.

@@ -735,7 +735,7 @@ async def copy_template(item_id: int, _=Depends(require_role("editor"))):
 
     Explicitly excludes title, isbn/upc, cover, reading status, value, and
     notes — those are identity/state, not template, fields. Keep this key
-    set in sync with docs/plan-issues-15-18-19-quick-wins.md section B.
+    set in sync with .devdocs/archive/completed/plan-issues-15-18-19-quick-wins.md section B.
     """
     with get_db() as db:
         row = db.execute(

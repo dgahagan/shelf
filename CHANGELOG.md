@@ -6,6 +6,42 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-22
+
+A book with no series assigned was unreachable. The Series page filtered those
+items out of existence, and Browse has no series filter of any kind — so the
+only way to find them was to already know their titles. They now surface as an
+Unassigned block at the bottom of the Series page, reported by
+[@LegendaryB](https://github.com/LegendaryB)
+([#31](https://github.com/dgahagan/shelf/issues/31)).
+
+### Added
+
+- **Books with no series now appear on the Series page**, in an "Unassigned"
+  block after your real series. The heading carries the true total — "1014
+  books with no series" — and the strip below it shows a sample of twelve
+  covers, with "· showing 12" in the count line when there are more. Click any
+  cover to open the item and set a series on its edit page.
+
+  It is deliberately not a series. It has no rename, disband, mark-complete,
+  synopsis or Hardcover-check controls, it is excluded from the `Series (N)`
+  heading count, it never appears in the rename autocomplete, and it sorts
+  last rather than by size — an unassigned pile is usually the biggest group
+  in a library, and it should not become the headline of a page about series.
+
+  The Complete and Incomplete filter chips hide it. A pile of unsorted books
+  makes no claim about completeness either way, and filing it under
+  "Incomplete" would be exactly the kind of claim the three-state model exists
+  to avoid.
+
+  Scope is books — `book`, `kids_book`, `audiobook`, `ebook` and `comic`. CDs,
+  DVDs and video games essentially never carry a series, so including them
+  would bury the books you were looking for.
+
+  If your library has no series at all, the block still renders alongside the
+  "No series yet" message — that is exactly when knowing how many unsorted
+  books you have is most useful.
+
 ## [0.12.0] - 2026-08-21
 
 Scanning a stack of books used to get slower and flakier the longer you went:
@@ -834,6 +870,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.13.0]: https://github.com/dgahagan/shelf/releases/tag/v0.13.0
 [0.12.0]: https://github.com/dgahagan/shelf/releases/tag/v0.12.0
 [0.11.1]: https://github.com/dgahagan/shelf/releases/tag/v0.11.1
 [0.11.0]: https://github.com/dgahagan/shelf/releases/tag/v0.11.0
