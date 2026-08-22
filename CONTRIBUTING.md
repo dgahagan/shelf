@@ -7,29 +7,37 @@ Here's what that means in practice:
   your version, browser, and any relevant logs (Settings → Logs, or
   `docker compose logs shelf`).
 - **Feature requests are welcome** — no promises. The roadmap follows what my
-  own library needs first.
+  own library needs first, but user reports regularly shape it.
 - **Pull requests are considered**, but there's no SLA on review. For anything
   bigger than a small fix, open an issue first so we can talk about the
   approach before you invest time.
+- **Docs fixes are always welcome** — the user guide lives in
+  [`docs/`](docs/README.md); a typo PR needs no issue.
 
-## Development Setup
+Please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Development setup
 
 ```bash
 git clone https://github.com/dgahagan/shelf.git
 cd shelf
-pip install -r requirements.txt -r requirements-dev.txt
-make install-playwright   # one-time: headless Chromium for E2E tests
-docker compose up -d      # or: uvicorn app.main:app --reload
+pip install -r requirements.txt
+make setup                # dev deps, npm (Tailwind), Playwright Chromium
+make dev                  # docker compose up -d --build
+# or: DATA_DIR=./data-dev uvicorn app.main:app --reload
 ```
 
-## Before You Submit
+Full details — running, testing, project layout, the rules that bite — are in
+[docs/development.md](docs/development.md) and
+[docs/architecture.md](docs/architecture.md).
 
-Run the QA pipeline locally — there's a Makefile that orchestrates everything:
+## Before you submit
 
 ```bash
-make test       # unit + integration tests
-make test-e2e   # Playwright E2E tests (needs a live local server)
-make checks     # dependency audit, license check, secret scan, CSRF lint, Alpine CSP lint
+make test        # unit + integration tests
+make test-e2e    # Playwright E2E tests (starts its own server)
+make checks      # dependency audit, license check, secret scan, CSRF lint, Alpine CSP lint
+make css         # if you touched templates or Tailwind classes — commit the rebuilt CSS
 ```
 
 Notes:
@@ -40,8 +48,14 @@ Notes:
   (`make check-csrf` enforces this).
 - Templates must stay compatible with the Alpine.js CSP build
   (`make check-alpine`).
-- Run `make css` after changing templates or Tailwind classes — the stylesheet
-  is built locally and vendored, no CDNs.
+- `MIGRATIONS` in `app/database.py` is append-only — never edit or reorder an
+  existing entry.
+- No CDN references — all JS and CSS is vendored in `static/`.
+- `GOTCHAS.md` lists the project's known traps; skim the headings before
+  touching migrations, Alpine components, covers or the service worker.
+
+Add a line under `[Unreleased]` in `CHANGELOG.md` for anything user-visible.
+The PR template asks which checks you ran; fill it in.
 
 ## License
 

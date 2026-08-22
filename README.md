@@ -52,6 +52,14 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 |--------------|--------|
 | ![Photo Intake](screenshots/photo-intake.png) | ![Series](screenshots/series.png) |
 
+## Documentation
+
+Full docs live in [`docs/`](docs/README.md):
+
+- [Installation](docs/installation.md) · [Configuration](docs/configuration.md) · [HTTPS & reverse proxy](docs/https-and-reverse-proxy.md) · [Upgrading & backups](docs/upgrading-and-backups.md)
+- **User guide:** [Getting started](docs/user-guide/getting-started.md) · [Scanning](docs/user-guide/scanning.md) · [Photo Intake](docs/user-guide/photo-intake.md) · [Browse](docs/user-guide/browse-and-search.md) · [Items](docs/user-guide/items.md) · [Series](docs/user-guide/series.md) · [Lending](docs/user-guide/lending.md) · [Wishlist & Store Mode](docs/user-guide/wishlist-and-store-mode.md) · [Sharing](docs/user-guide/sharing.md) · [Stats & valuation](docs/user-guide/stats-and-valuation.md) · [Import & export](docs/user-guide/import-and-export.md) · [Integrations](docs/user-guide/integrations.md) · [Users & roles](docs/user-guide/users-and-roles.md)
+- [FAQ](docs/faq.md) · [Troubleshooting](docs/troubleshooting.md) · [Development](docs/development.md) · [Architecture](docs/architecture.md)
+
 ## Quick Start
 
 ```bash
@@ -263,6 +271,8 @@ Configure in Settings to unlock additional features:
 | **Ollama** | Photo Intake with a fully local vision model — no key needed | [ollama.com](https://ollama.com) |
 
 ## Development
+
+See [docs/development.md](docs/development.md) for the full guide and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. The essentials:
 
 ```bash
 # Rebuild after code changes

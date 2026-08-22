@@ -15,6 +15,7 @@ data-dev/
 reports/
 tests/
 screenshots/
+docs/
 scripts/
 node_modules/
 *.md
