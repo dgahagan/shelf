@@ -440,6 +440,26 @@ def get_game_platforms(db) -> dict[str, str]:
     return {r["slug"]: r["name"] for r in rows}
 
 
+def get_reading_history(db, item_id: int) -> list:
+    """Every reading_log row for an item, newest first.
+
+    Read-only; rendered by fragments/reading_status.html from BOTH of its
+    renderers — pages.item_detail and items.set_reading_status. Wiring only
+    one of them leaves the fragment's history silently empty after an HTMX
+    status toggle.
+
+    No LIMIT: the "Read N times" heading must be the true count, and a
+    per-item row count is bounded by human reading. Rows are not filtered by
+    status — the app only ever inserts 'read', and archive-imported rows
+    should render too. Indexed by idx_reading_log_item.
+    """
+    return db.execute(
+        "SELECT id, status, date_started, date_finished FROM reading_log "
+        "WHERE item_id = ? ORDER BY date_finished DESC, id DESC",
+        (item_id,),
+    ).fetchall()
+
+
 def gc_orphaned_series_meta(db, *names: str | None) -> None:
     """Delete series_meta rows for any of the given series names that no
     longer have any item pointing at them (case-insensitive, matching the

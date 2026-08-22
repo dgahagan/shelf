@@ -8,8 +8,9 @@ from app import nav
 from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
 from app.currency import get_currency
-from app.database import get_db, get_setting, get_game_platforms
+from app.database import get_db, get_setting, get_game_platforms, get_reading_history
 from app.routers.items import SORT_OPTIONS
+from app.routers.series import find_gaps
 
 router = APIRouter()
 
@@ -313,6 +314,35 @@ async def item_detail(
         item_tags = get_item_tags(db, item_id)
         all_tags = get_all_tags(db)
 
+        reading_history = get_reading_history(db, item_id)
+
+        # Series progress from two labelled sources: local siblings and the
+        # Hardcover series_meta row. Never blended into one number — see
+        # .devdocs plan §4. NOCASE identity, matching /api/series/check, the
+        # series_meta key, and (since this branch) /series's own grouping.
+        series_progress = None
+        if item["series_name"] and item["series_name"].strip():
+            siblings = db.execute(
+                "SELECT owned, series_position FROM items "
+                "WHERE series_name = ? COLLATE NOCASE",
+                (item["series_name"],),
+            ).fetchall()
+            positions = [r["series_position"] for r in siblings]
+            whole = [int(p) for p in positions
+                     if p is not None and float(p).is_integer() and float(p) >= 1]
+            meta = db.execute(
+                "SELECT hc_total, hc_missing, hc_checked_at FROM series_meta "
+                "WHERE name = ? COLLATE NOCASE",
+                (item["series_name"],),
+            ).fetchone()
+            series_progress = {
+                "count": len(siblings),
+                "owned": sum(1 for r in siblings if r["owned"]),
+                "top": max(whole) if whole else None,
+                "gaps": find_gaps(positions),
+                "hc_total": meta["hc_total"] if meta else None,
+            }
+
     return request.app.state.templates.TemplateResponse(
         request,
         "item_detail.html",
@@ -332,6 +362,8 @@ async def item_detail(
             "linked_items": linked_items,
             "linked_abs_items": linked_abs_items,
             "abs_url": abs_url,
+            "reading_history": reading_history,
+            "series_progress": series_progress,
         },
     )
 

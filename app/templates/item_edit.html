@@ -9,10 +9,10 @@
     <form action="/api/items/{{ item.id }}" method="post" enctype="multipart/form-data" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
         <input type="hidden" name="from" value="{{ back.key }}">
 
-        {% macro field(name, label, value, type="text", placeholder="") %}
+        {% macro field(name, label, value, type="text", placeholder="", step="") %}
         <div>
             <label for="{{ name }}" class="block text-sm font-medium text-shelf-muted mb-1">{{ label }}</label>
-            <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value or '' }}" placeholder="{{ placeholder }}"
+            <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value if value is not none else '' }}" placeholder="{{ placeholder }}"{% if step %} step="{{ step }}"{% endif %}
                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
         </div>
         {% endmacro %}
@@ -59,9 +59,10 @@
             {{ field("publish_year", "Year", item.publish_year, type="number") }}
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-4">
             {{ field("page_count", "Pages", item.page_count, type="number") }}
             {{ field("series_name", "Series", item.series_name) }}
+            {{ field("series_position", "Series #", item.series_position, type="number", step="any") }}
         </div>
 
         <div>

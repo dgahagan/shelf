@@ -255,6 +255,22 @@ def page(live_server, browser, setup_admin):
 # ---------------------------------------------------------------------------
 
 
+def insert_reading_log(data_dir: Path, item_id: int, count: int = 1) -> None:
+    """Insert `count` completed-read rows for an item in the E2E SQLite DB."""
+    db_path = data_dir / "shelf.db"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        for _ in range(count):
+            conn.execute(
+                "INSERT INTO reading_log (item_id, status, date_started, date_finished) "
+                "VALUES (?, 'read', '2026-01-01', '2026-01-15')",
+                (item_id,),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def insert_item(data_dir: Path, **kwargs) -> int:
     """Insert a test item directly into the E2E SQLite DB; return its id."""
     db_path = data_dir / "shelf.db"

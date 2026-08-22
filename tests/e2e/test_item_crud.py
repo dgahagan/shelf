@@ -2,7 +2,7 @@
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import insert_item, insert_reading_log
 
 pytestmark = pytest.mark.e2e
 
@@ -118,13 +118,24 @@ def test_item_delete(live_server, authed_page):
     authed_page.wait_for_load_state("networkidle")
 
     # Click delete — may be a button that fires a DELETE request via HTMX
-    # or a form submit. Handle dialog confirmation if any.
-    authed_page.on("dialog", lambda d: d.accept())
+    # or a form submit. Record the confirmation message rather than blindly
+    # accepting: an accept-and-assume handler passes even when the confirm is
+    # missing or its listener is dead, because the plain submit still fires
+    # and the row still disappears (G28).
+    messages = []
+
+    def accept(dialog):
+        messages.append(dialog.message)
+        dialog.accept()
+
+    authed_page.once("dialog", accept)
     delete_btn = authed_page.locator(
         "button:has-text('Delete'), a:has-text('Delete'), [hx-delete], [data-testid='delete-btn']"
     ).first
     delete_btn.click()
     authed_page.wait_for_load_state("networkidle")
+
+    assert messages == ["Delete 'Book To Delete'?"]
 
     # Should be gone — either redirected to browse or item no longer shows
     if "/item/" not in authed_page.url:
@@ -133,3 +144,62 @@ def test_item_delete(live_server, authed_page):
     else:
         # Still on item page — check for 404 / removal message
         assert authed_page.locator("body").inner_text() != ""
+
+
+def test_reading_history_survives_status_toggle(live_server, authed_page):
+    """Browser-level counterpart to the fragment pin: the swapped-in
+    reading-status fragment must still carry its history."""
+    item_id = insert_item(
+        live_server["data_dir"],
+        title="Reread Across A Toggle",
+        media_type="book",
+        isbn="9780000009123",
+    )
+    insert_reading_log(live_server["data_dir"], item_id, count=2)
+
+    authed_page.goto(f"{live_server['url']}/item/{item_id}")
+    authed_page.wait_for_load_state("networkidle")
+
+    history = authed_page.locator("[data-testid=reading-history]")
+    expect(history).to_be_visible()
+    expect(history).to_contain_text("Read 2 times")
+
+    # "Want to Read" also contains "Read" — scope it and match exactly.
+    authed_page.locator("#reading-status-section").get_by_role(
+        "button", name="Read", exact=True
+    ).click()
+
+    # Locator auto-wait, not wait_for_function: the app's CSP refuses eval (G21).
+    expect(authed_page.locator("[data-testid=reading-history]")).to_contain_text(
+        "Read 3 times"
+    )
+
+
+def test_fractional_series_position_round_trips_in_browser(live_server, authed_page):
+    """A stored non-half position must be editable in a real browser.
+
+    Under step="0.5" this fails, but not for the obvious reason: an input's
+    step base defaults to its `value` content attribute when `min` is absent,
+    so the stored 2.25 is itself valid on load and only values off the
+    2.25 + 0.5k grid are rejected. Correcting the novella to 2.5 — the exact
+    half-step the original step="0.5" was reaching for — is such a value, and
+    the browser then blocks submission of the *whole* form with no server-side
+    signal. step="any" (design 6 rev 3) accepts it."""
+    item_id = insert_item(
+        live_server["data_dir"],
+        title="Novella At Two And A Quarter",
+        media_type="book",
+        isbn="9780000009124",
+        series_name="Quarter Saga",
+        series_position=2.25,
+    )
+
+    authed_page.goto(f"{live_server['url']}/item/{item_id}/edit")
+    authed_page.wait_for_load_state("networkidle")
+
+    position = authed_page.locator("#series_position")
+    expect(position).to_have_value("2.25")
+    position.fill("2.5")
+    authed_page.locator("[data-testid=save-btn]").click()
+
+    expect(authed_page.locator("body")).to_contain_text("#2.5")

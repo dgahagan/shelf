@@ -30,4 +30,16 @@
         {% if item.date_finished %}Finished: {{ item.date_finished }}{% endif %}
     </div>
     {% endif %}
+    {% if reading_history and reading_history|length >= 2 %}
+    <details class="mt-2" data-testid="reading-history">
+        <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">Read {{ reading_history|length }} times</summary>
+        <div class="mt-2 space-y-1">
+            {% for r in reading_history %}
+            <div class="text-xs text-shelf-muted flex gap-2">
+                <span>{{ (r.date_started or '—')[:10] }}</span><span>→</span><span>{{ (r.date_finished or '—')[:10] }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
 </div>

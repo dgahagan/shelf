@@ -819,11 +819,13 @@ assert messages == ["Delete location 'Shelf A'?"]
   the Codex plan review before the tests were written, and the finished pins
   were mutation-checked: deleting the delegated submit listener fails 4 of 4,
   and restoring the dead inline `onclick` — the exact state shipped in
-  v0.10.1 — fails 3 of 4. Two older call sites still have the blind spot and
-  are worth tightening whenever those files are next touched:
-  `tests/e2e/test_item_crud.py:122` and
-  `tests/e2e/test_csrf_and_xss_fixes.py:49`, both of which install a bare
-  accepting handler and never assert it fired. (The sibling at
+  v0.10.1 — fails 3 of 4. Two older call sites had the same blind spot;
+  `tests/e2e/test_item_crud.py`'s delete test was tightened on 2026-08-22
+  (`fab8e05`, item-detail-hidden-fields T5) and now records the message and
+  asserts `["Delete 'Book To Delete'?"]`. **One remains:**
+  `tests/e2e/test_csrf_and_xss_fixes.py:49` still installs a bare accepting
+  handler and never asserts it fired — tighten it whenever that file is next
+  touched. (The sibling at
   `test_csrf_and_xss_fixes.py:66` does it right — it appends `d.message`
   before dismissing.)
 - **Verify:** every dialog handler in the e2e suite records its message —
@@ -1033,6 +1035,78 @@ grep -n "^test-e2e" -A1 Makefile                  # still serial (no -n)
 
 - **Status:** documented. Not a lint candidate — which list is capped is a
   judgement call, not a grep.
+
+## G35 — When giving an `<input type="number">` a `step` other than `any`
+
+- **Rule:** Use `step="any"` unless you can name the fixed grid every stored
+  value will ever sit on. A numeric input's **step base is its `value` content
+  attribute** when `min` is absent — not zero — so `step` constrains *edits
+  relative to the value already in the row*, and the constraint blocks
+  submission of the **whole form**, silently, with no server-side signal.
+- **Why:** the failure is invisible from both ends. Server-side coercion
+  (`float(val)`, no rounding or range check) happily stores any value a sync
+  path writes, and a TestClient POST bypasses constraint validation entirely —
+  so every unit gate stays green while a real browser refuses to save the form.
+  The value-attribute step base also makes the trap *look* absent in casual
+  testing: a stored `2.25` renders as `value="2.25"` and is perfectly valid on
+  load; only editing it to something off the 2.25 + 0.5k grid breaks. That is
+  the common case, not the exotic one — correcting a novella to `2.5` under
+  `step="0.5"` is exactly what fails.
+- **Corollary for the pin:** an E2E test of this must edit to a value **off
+  the stored value's grid**. A test that edits `2.25` → `4.25` passes under
+  `step="0.5"` (4.25 *is* on the 2.25 + 0.5k grid) and defends nothing — the
+  G31 mutation check is what catches that.
+- **Evidence:** `74e6cd8` / `fab8e05` (2026-08-22, item-detail-hidden-fields
+  T4/T5). The design plan first settled `step="0.5"` for `series_position`;
+  the impl plan substituted `any`, the Codex review escalated the conflict
+  (R1), and implementation then measured the actual mechanism in Chromium and
+  corrected the stated rationale in both plans. The first draft of the browser
+  pin passed under the mutated `step="0.5"` for exactly the grid reason above.
+- **`min` pins the base.** An explicit `min` overrides the value attribute as
+  the step base, which makes the grid predictable again — that is why the two
+  other numeric inputs in the app are fine: `manual_value` is
+  `step="0.01" min="0"` (`item_edit.html:84`) and `lending_overdue_days` is
+  `step="1" min="0"` (`settings.html:206`). So the rule in practice: `any`, or
+  a `step` **with** a `min`. Never a bare `step`.
+- **Verify:** every `step` in a template is `any`, or is paired with a `min`
+  on the same element. Any hit below needs a look:
+
+```bash
+# item_edit.html's field() macro is excluded: its own step="" default and
+# its {% if step %} render are plumbing, not call sites.
+grep -rn 'step="' app/templates/ | grep -v 'step="any"' | grep -v 'min=' \
+  | grep -vE 'macro field|\{\{ step \}\}'
+```
+
+- **Status:** documented.
+
+## G36 — When a test asserts a form field round-trips
+
+- **Rule:** Submit **what the form actually rendered**, not a hand-picked
+  subset of fields. Scrape the value out of the rendered HTML and post that
+  back. A POST carrying only the field you changed never exercises the other
+  fields at all, so it passes identically against a template that renders them
+  wrong.
+- **Why:** the whole class of "the form blanks a value and the save writes the
+  blank back as NULL" bugs lives in the gap between what the template renders
+  and what the browser submits. `update_item` skips any key absent from the
+  form (`form.get(key)` is `None` → untouched) and maps `""` → NULL — so
+  posting `{"title": …}` alone leaves the column alone whether or not the
+  input was blanked, while a real browser submits every named input in the
+  form, blank included. The subset-POST test reads as a round-trip pin and
+  defends nothing.
+- **Evidence:** `74e6cd8` (2026-08-22, item-detail-hidden-fields T4). The
+  `field()` macro rendered `value="{{ value or '' }}"`, blanking a stored `0`
+  so any later save wrote NULL over it (Codex review R7). The pin's first
+  draft posted only `title` and passed against the unfixed macro; rewritten to
+  re-post the value the form rendered, it fails against it. Same family as
+  G31 — verify the pin against the broken code before trusting it.
+- **A cheaper sibling worth remembering:** counting a *name* to prove "exactly
+  one card/row" also over-counts. A single `/series` card repeats its series
+  name four times (heading, rename input, two action forms); count a
+  structural marker (`data-testid="series-card"`) instead. Found the same day
+  (`b2cdb12`).
+- **Status:** documented.
 
 ## Graveyard
 

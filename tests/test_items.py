@@ -1,6 +1,7 @@
 """Tests for item deletion (editor role, FK handling) and browse lent_out filter."""
 
 import logging
+import re
 import sqlite3
 
 import httpx
@@ -1291,6 +1292,78 @@ class TestLanguageOnEditAndDetail:
         resp = editor_client.get(f"/item/{item_id}/edit")
         assert resp.status_code == 200
         assert '<option value="tlh" selected>tlh</option>' in resp.text
+
+
+class TestSeriesPositionEditField:
+    """T4 — series_position input on the edit form."""
+
+    def test_edit_form_renders_series_position_with_current_value(self, editor_client, db):
+        item_id = _insert_item(
+            db, title="Series Position Book", isbn="9780900001108", series_position=2.5,
+        )
+        db.commit()
+
+        resp = editor_client.get(f"/item/{item_id}/edit")
+        assert resp.status_code == 200
+        assert (
+            '<input type="number" id="series_position" name="series_position" '
+            'value="2.5" placeholder="" step="any"'
+        ) in resp.text
+
+    def test_edit_form_round_trips_series_position(self, editor_client, db):
+        item_id = _insert_item(db, title="Series Position Round Trip", isbn="9780900001109")
+        db.commit()
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"series_position": "4.5"})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_position FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["series_position"] == 4.5
+
+        resp = editor_client.post(f"/api/items/{item_id}", data={"series_position": ""})
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_position FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["series_position"] is None
+
+    def test_edit_form_preserves_zero_series_position(self, editor_client, db):
+        item_id = _insert_item(
+            db, title="Series Position Zero Book", isbn="9780900001110", series_position=0,
+        )
+        db.commit()
+
+        resp = editor_client.get(f"/item/{item_id}/edit")
+        assert resp.status_code == 200
+        assert (
+            '<input type="number" id="series_position" name="series_position" '
+            'value="0.0" placeholder="" step="any"'
+        ) in resp.text
+
+        # Replay what the rendered form actually submits. Posting only `title`
+        # would never send series_position at all, so the endpoint would leave
+        # it alone no matter what the macro rendered — that shape passes even
+        # against the bug. The loss path is: the macro blanks the input, the
+        # browser submits series_position="", and update_item maps "" to NULL.
+        rendered = re.search(
+            r'name="series_position" value="([^"]*)"', resp.text
+        ).group(1)
+        resp = editor_client.post(
+            f"/api/items/{item_id}",
+            data={"title": "Series Position Zero Book Updated", "series_position": rendered},
+        )
+        assert resp.status_code == 200
+
+        with get_db() as check_db:
+            row = check_db.execute(
+                "SELECT series_position FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+        assert row["series_position"] == 0.0
 
 
 class TestLanguageFilter:

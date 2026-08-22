@@ -13,7 +13,8 @@ from app.auth import require_role
 
 logger = logging.getLogger(__name__)
 from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
-from app.database import get_db, get_setting, get_game_platforms, gc_orphaned_series_meta
+from app.database import (get_db, get_setting, get_game_platforms, gc_orphaned_series_meta,
+                          get_reading_history)
 from app.routers.series import MAX_SERIES_NAME
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers, national
@@ -1245,6 +1246,12 @@ async def set_reading_status(request: Request, item_id: int, status: str = Form(
             (item_id,),
         ).fetchone()
 
+        # Same connection as the reading_log INSERT above, and after it, so
+        # this read sees its own uncommitted write. The fragment is rendered
+        # from here as well as from pages.item_detail; both must pass the
+        # history or a status toggle swaps in a section whose history vanished.
+        reading_history = get_reading_history(db, item_id)
+
     # Fire-and-forget: push status to Hardcover if linked
     if item["hardcover_user_book_id"]:
         asyncio.create_task(_push_status_to_hardcover(item_id, status))
@@ -1252,7 +1259,7 @@ async def set_reading_status(request: Request, item_id: int, status: str = Form(
     label = {"want_to_read": "Want to Read", "reading": "Reading", "read": "Read"}.get(status, "Cleared")
     resp = templates.TemplateResponse(
         request, "fragments/reading_status.html",
-        {"item": item},
+        {"item": item, "reading_history": reading_history},
     )
     resp.headers["HX-Trigger"] = _toast_header(f"Status: {label}")
     return resp

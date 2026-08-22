@@ -24,7 +24,7 @@
             <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-shelf-muted mt-1">
                 {% if book.year %}<span>{{ book.year }}</span>{% endif %}
                 {% if book.pages %}<span>{{ book.pages }}p</span>{% endif %}
-                {% if book.series_name %}<span>{{ book.series_name }}{% if book.series_position %} #{{ book.series_position|int }}{% endif %}</span>{% endif %}
+                {% if book.series_name %}<span>{{ book.series_name }}{% if book.series_position %} #{{ book.series_position|int if book.series_position == book.series_position|int else book.series_position }}{% endif %}</span>{% endif %}
                 {% if book.rating %}<span>{{ "%.1f"|format(book.rating) }}/5</span>{% endif %}
             </div>
             {% if book.description %}

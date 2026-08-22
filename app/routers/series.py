@@ -81,10 +81,25 @@ async def series_page(request: Request, _=Depends(require_role("viewer"))):
             (*UNASSIGNED_MEDIA_TYPES, UNASSIGNED_STRIP_CAP),
         ).fetchall()]
 
+    # Group by NOCASE identity, not raw spelling: series_meta.name, the rename
+    # and disband endpoints, /api/series/check and the item detail page's
+    # progress line are all case-insensitive, so grouping by raw spelling here
+    # was the odd one out — it split "Dune Saga" / "dune saga" into two cards
+    # that every other surface treats as one series.
     series: dict[str, dict] = {}
     for r in rows:
-        entry = series.setdefault(r["series_name"], {"name": r["series_name"], "items": []})
+        entry = series.setdefault(
+            r["series_name"].casefold(),
+            {"name": r["series_name"], "items": [], "_spellings": {}},
+        )
+        entry["_spellings"][r["series_name"]] = entry["_spellings"].get(r["series_name"], 0) + 1
         entry["items"].append(dict(r))
+
+    for entry in series.values():
+        # Display spelling: the most common variant, ties broken by binary sort
+        # order so the choice is deterministic across runs.
+        spellings = entry.pop("_spellings")
+        entry["name"] = min(spellings.items(), key=lambda kv: (-kv[1], kv[0]))[0]
 
     # series_meta.name is COLLATE NOCASE, so match case-insensitively here too
     meta_ci = {name.casefold(): meta for name, meta in meta_rows.items()}

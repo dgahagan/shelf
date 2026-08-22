@@ -1397,3 +1397,53 @@ class TestSeriesMetaOrphanGC:
         )
         assert resp.json()["ok"] is True
         assert self._count(db, "Dune Saga") == 1
+
+
+class TestHardcoverSearchFragment:
+    """T3 — the Hardcover search fragment renders fractional series positions."""
+
+    def test_hardcover_search_fragment_renders_fractional_position(self, admin_client, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+
+        book = {
+            "hardcover_book_id": 1,
+            "title": "Novella",
+            "authors": "A",
+            "series_name": "S",
+            "series_position": 2.5,
+            "year": 2020,
+            "pages": 120,
+            "rating": 4.0,
+            "description": "",
+            "cover_url": "",
+        }
+        with patch("app.routers.hardcover.hardcover.search_books",
+                   AsyncMock(return_value=[book])):
+            html = admin_client.get("/api/hardcover/search?q=novella").text
+
+        assert "#2.5" in html
+        assert "#2<" not in html
+
+    def test_hardcover_search_fragment_renders_whole_position_without_decimal(self, admin_client, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+
+        book = {
+            "hardcover_book_id": 2,
+            "title": "Volume Three",
+            "authors": "A",
+            "series_name": "S",
+            "series_position": 3.0,
+            "year": 2021,
+            "pages": 300,
+            "rating": 4.0,
+            "description": "",
+            "cover_url": "",
+        }
+        with patch("app.routers.hardcover.hardcover.search_books",
+                   AsyncMock(return_value=[book])):
+            html = admin_client.get("/api/hardcover/search?q=volume").text
+
+        assert "#3" in html
+        assert "#3.0" not in html

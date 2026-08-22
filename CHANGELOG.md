@@ -6,6 +6,72 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-08-22
+
+The `items` table carries 36 columns. The detail page rendered 20 of them and
+the edit form exposed 20 — but not the same 20, and ten were visible in
+neither. The gaps were not cosmetic: the page never told you when a book
+entered your catalogue, whether you actually owned it, how old its valuation
+was, or that you had read it three times. This release surfaces the item
+record's own facts, as distinct from the book's.
+
+### Added
+
+- **A record footer on the item page** — `Added 2026-03-14 · Updated
+  2026-08-02 · via audiobookshelf` — in a muted line below the action buttons.
+  `Source` moves here out of the metadata grid, where it never belonged: the
+  grid answers "what is this book", the footer answers "what is this row".
+
+- **A Wishlist badge** beside the title when an item is not owned. Browse has
+  badged wishlist items for a while; the detail page did not, so the one page
+  that shows a book in full was the one page that would not tell you whether
+  you own it.
+
+- **An as-of date on estimated values** — `$24.00 (as of 2026-03-01)` — so a
+  price fetched eight months ago no longer looks like today's. Manual values
+  deliberately keep their `(manual)` marker with no date: nothing records when
+  you typed one, and showing a date there would assert something false.
+
+- **Reading history.** A book you have finished more than once now shows a
+  collapsed `Read 3 times` section listing every logged read with its start
+  and finish dates. It renders from both places the reading-status control is
+  drawn, so marking a book read updates the count in place rather than
+  swapping in a section whose history vanished.
+
+- **Series progress on the item page**, from two clearly separated sources:
+  `· you own 3 of 1–4, missing #2` from your own shelves, and `· 7 in series
+  (Hardcover)` when a Hardcover series record exists. They are never blended
+  into one number — a local gap count and a published series length answer
+  different questions, and merging them produces a figure that is true of
+  neither. The series name now links to the Series page.
+
+- **A Series # field on the edit form.** `series_position` has been writable
+  through the API all along but had no input on the form — you could store a
+  position and then never correct it. Fractional positions (a `#2.5` novella)
+  are accepted and now render as `#2.5` rather than being truncated to `#2` on
+  the item page and in Hardcover search results.
+
+- **An admin-only Integration IDs block**, collapsed at the bottom of the item
+  page: the internal id, ISBN-10, UPC, and the Audiobookshelf and Hardcover
+  identifiers. Read-only and admin-only — these are sync-owned, and
+  hand-editing them desynchronises an item silently. Editors and viewers do
+  not see the block at all.
+
+### Changed
+
+- **Series that differ only in capitalisation are now one series on the Series
+  page.** `Dune Saga` and `dune saga` previously produced two cards, even
+  though renaming, disbanding, completeness checks and the Hardcover record
+  all already treated them as the same series. The Series page was the odd one
+  out; it now groups case-insensitively like everything else, displaying the
+  most common spelling.
+
+### Fixed
+
+- **The edit form no longer erases a stored value of `0`.** Any numeric field
+  holding zero rendered as an empty input, and saving the form — even after
+  changing something unrelated — wrote the blank back as NULL.
+
 ## [0.13.0] - 2026-08-22
 
 A book with no series assigned was unreachable. The Series page filtered those
@@ -870,6 +936,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.14.0]: https://github.com/dgahagan/shelf/releases/tag/v0.14.0
 [0.13.0]: https://github.com/dgahagan/shelf/releases/tag/v0.13.0
 [0.12.0]: https://github.com/dgahagan/shelf/releases/tag/v0.12.0
 [0.11.1]: https://github.com/dgahagan/shelf/releases/tag/v0.11.1
