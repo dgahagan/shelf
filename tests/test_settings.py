@@ -4,6 +4,7 @@ import os
 import pytest
 
 from app.database import get_db, get_setting, get_all_settings
+from app.services import cover_queue
 from tests.conftest import _insert_borrower, _insert_item, _insert_location
 
 
@@ -200,3 +201,38 @@ class TestDeleteConfirmations:
         db.commit()
         html = admin_client.get("/settings").text
         assert "data-confirm=\"Remove borrower 'O&#39;Brien'?\"" in html
+
+
+# --- GET /settings — cover queue status line ---------------------------------
+
+class TestCoverQueueStatusLine:
+    """Queue depth, gave-up count and cover-less item count on the Maintenance card.
+
+    `cover_queue`'s module state (queue + `_failed`) is reset by the autouse
+    `_isolated_db` fixture in conftest.py, which is what makes these
+    assertions order-independent (GOTCHAS G13).
+    """
+
+    def test_empty_queue_and_no_failures_renders_no_status_line(self, admin_client):
+        html = admin_client.get("/settings").text
+        assert 'data-testid="cover-queue-status"' not in html
+
+    def test_queued_item_renders_status_line(self, admin_client):
+        cover_queue.enqueue(1)
+        html = admin_client.get("/settings").text
+        assert 'data-testid="cover-queue-status"' in html
+        assert "1 cover lookup queued" in html
+
+    def test_gave_up_count_renders(self, admin_client):
+        cover_queue._failed = 2
+        html = admin_client.get("/settings").text
+        assert "2 gave up since startup" in html
+
+    def test_missing_covers_count_reflects_seeded_rows(self, admin_client, db):
+        _insert_item(db, title="No Cover One", isbn="9780000000301")
+        _insert_item(db, title="No Cover Two", isbn="9780000000302")
+        _insert_item(db, title="Has Cover", isbn="9780000000303", cover_path="/covers/x.jpg")
+        db.commit()
+        cover_queue.enqueue(1)
+        html = admin_client.get("/settings").text
+        assert "2 items without a cover" in html

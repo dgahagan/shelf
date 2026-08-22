@@ -134,3 +134,77 @@ class TestBulkRetryEndpoint:
         db.commit()
         resp = viewer_client.post("/api/covers/bulk-retry")
         assert resp.status_code in (401, 403)
+
+    def test_skips_non_book_media_types(self, admin_client, db):
+        """QA F1 / GOTCHAS G29: a book-catalogue resolver must never see a
+        DVD, game or CD.
+
+        Caught in live QA, not by any test: the bulk retry wrote Dune the
+        *novel's* ISBN and cover onto a cover-less DVD row titled "Dune",
+        because resolve_missing_cover's title-search fallback accepts the
+        first Open Library hit when the item has no authors.
+        """
+        book = _insert_item(db, title="A Book", isbn="9780000000003")
+        _insert_item(db, title="Dune", isbn=None, media_type="dvd")
+        _insert_item(db, title="The Hobbit", isbn=None, media_type="video_game")
+        _insert_item(db, title="Abbey Road", isbn=None, media_type="cd")
+        db.commit()
+
+        with patch("app.routers.items.resolve_missing_cover",
+                   new=AsyncMock(return_value="covers/1.jpg")) as resolve:
+            resp = admin_client.post("/api/covers/bulk-retry")
+
+        assert resp.json()["total"] == 1
+        assert [c.args[0] for c in resolve.await_args_list] == [book]
+
+    def test_one_failing_item_does_not_abort_the_sweep(self, admin_client, db):
+        """QA F2: an Open Library search timeout used to 500 the endpoint and
+        throw away the covers already fetched in that run."""
+        import httpx
+
+        _insert_item(db, title="First", isbn="9780000000004")
+        _insert_item(db, title="Slow", isbn="9780000000005")
+        _insert_item(db, title="Third", isbn="9780000000006")
+        db.commit()
+
+        with patch("app.routers.items.resolve_missing_cover",
+                   new=AsyncMock(side_effect=[
+                       "covers/1.jpg", httpx.ReadTimeout("slow"), "covers/3.jpg",
+                   ])):
+            resp = admin_client.post("/api/covers/bulk-retry")
+
+        assert resp.status_code == 200
+        assert resp.json() == {"success": 2, "failed": 1, "total": 3}
+
+
+class TestBulkRetryStream:
+    def test_stream_skips_non_book_media_types(self, admin_client, db):
+        """The UI button uses the SSE variant — same filter must apply."""
+        book = _insert_item(db, title="A Book", isbn="9780000000007")
+        _insert_item(db, title="Dune", isbn=None, media_type="dvd")
+        db.commit()
+
+        with patch("app.routers.items.resolve_missing_cover",
+                   new=AsyncMock(return_value="covers/1.jpg")) as resolve:
+            resp = admin_client.get("/api/covers/bulk-retry/stream")
+            body = resp.text
+
+        assert resp.status_code == 200
+        assert '"total": 1' in body
+        assert [c.args[0] for c in resolve.await_args_list] == [book]
+
+    def test_stream_survives_one_failing_item(self, admin_client, db):
+        import httpx
+
+        _insert_item(db, title="First", isbn="9780000000008")
+        _insert_item(db, title="Slow", isbn="9780000000009")
+        db.commit()
+
+        with patch("app.routers.items.resolve_missing_cover",
+                   new=AsyncMock(side_effect=["covers/1.jpg", httpx.ReadTimeout("slow")])):
+            body = admin_client.get("/api/covers/bulk-retry/stream").text
+
+        # Reaches "done" with a counted failure rather than aborting at "error".
+        assert '"type": "done"' in body
+        assert '"success": 1' in body
+        assert '"failed": 1' in body

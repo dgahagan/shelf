@@ -319,3 +319,135 @@ class TestRecentScans:
     def test_recent_scans_requires_auth(self, client):
         resp = client.get("/api/recent-scans?mode=add", follow_redirects=False)
         assert resp.status_code in (303, 401)
+
+
+class TestScanCoverQueue:
+    """Scan queues its cover instead of downloading it in-request (issue #27)."""
+
+    def _scan(self, client, isbn, metadata, source="openlibrary", hc_ids=None, mode="add"):
+        with patch(
+            "app.routers.items._lookup_metadata",
+            AsyncMock(return_value=(metadata, source, hc_ids or {})),
+        ), patch(
+            "app.services.covers.download_cover", AsyncMock(return_value="covers/x.jpg")
+        ) as download:
+            resp = client.post("/api/scan", data={
+                "isbn": isbn, "media_type": "book", "mode": mode,
+            })
+        return resp, download
+
+    def test_scan_queues_cover_and_does_not_download_in_request(self, admin_client, db):
+        from app.services import cover_queue
+
+        metadata = {"title": "Queued Book", "authors": "A. Writer", "cover_id": 123,
+                    "cover_url": "https://example.test/c.jpg"}
+        resp, download = self._scan(admin_client, "9780000000101", metadata)
+
+        assert resp.status_code == 200
+        download.assert_not_awaited()
+
+        stats = cover_queue.stats()
+        assert stats["queued"] == 1
+
+        job = cover_queue._get_queue().get_nowait()
+        assert job.hints == {
+            "cover_url": "https://example.test/c.jpg",
+            "cover_id": 123,
+            "hardcover_cover_url": None,
+        }
+
+        row = db.execute(
+            "SELECT cover_path FROM items WHERE id = ?", (job.item_id,)
+        ).fetchone()
+        assert row["cover_path"] is None
+
+    def test_scan_card_renders_the_poller(self, admin_client, db):
+        from app.services import cover_queue
+
+        metadata = {"title": "Polled Book", "authors": "A. Writer", "cover_id": 5}
+        resp, _ = self._scan(admin_client, "9780000000102", metadata)
+        job = cover_queue._get_queue().get_nowait()
+
+        html = resp.text
+        assert f'hx-get="/api/items/{job.item_id}/cover-status?attempt=1"' in html
+        assert "delay:1500ms" in html
+        assert "data-cover-pending" in html
+
+    def test_hardcover_source_routes_its_cover_to_the_hardcover_hint(self, admin_client, db):
+        from app.services import cover_queue
+
+        metadata = {"title": "HC Book", "authors": "A. Writer",
+                    "cover_url": "https://hc.test/c.jpg"}
+        self._scan(admin_client, "9780000000103", metadata, source="hardcover")
+
+        job = cover_queue._get_queue().get_nowait()
+        assert job.hints["cover_url"] is None
+        assert job.hints["hardcover_cover_url"] == "https://hc.test/c.jpg"
+
+    def test_wishlist_mode_still_sets_owned_zero_and_enqueues(self, admin_client, db):
+        from app.services import cover_queue
+
+        metadata = {"title": "Wanted Book", "authors": "A. Writer"}
+        resp, _ = self._scan(admin_client, "9780000000104", metadata, mode="wishlist")
+        assert resp.status_code == 200
+
+        job = cover_queue._get_queue().get_nowait()
+        row = db.execute("SELECT owned FROM items WHERE id = ?", (job.item_id,)).fetchone()
+        assert row["owned"] == 0
+
+
+class TestCoverStatusEndpoint:
+    """The bounded poll fragment."""
+
+    def test_cover_present_returns_the_image_and_stops_polling(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Has Cover", isbn="9780000000110", cover_path="covers/7.jpg"
+        )
+        db.commit()
+        resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=1")
+        assert resp.status_code == 200
+        assert 'src="/covers/7.jpg"' in resp.text
+        assert "hx-get" not in resp.text
+
+    def test_first_poll_schedules_the_second(self, admin_client, db):
+        item_id = _insert_item(db, title="Pending", isbn="9780000000111")
+        db.commit()
+        resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=1")
+        assert f'hx-get="/api/items/{item_id}/cover-status?attempt=2"' in resp.text
+        assert "delay:3000ms" in resp.text
+
+    def test_last_poll_settles(self, admin_client, db):
+        item_id = _insert_item(db, title="Pending", isbn="9780000000112")
+        db.commit()
+        resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=2")
+        assert "hx-get" not in resp.text
+        assert "data-cover-settled" in resp.text
+
+    def test_attempt_is_clamped(self, admin_client, db):
+        item_id = _insert_item(db, title="Pending", isbn="9780000000113")
+        db.commit()
+        resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=99")
+        assert resp.status_code == 200
+        assert "hx-get" not in resp.text
+        assert "data-cover-settled" in resp.text
+
+    def test_unknown_item_settles_with_200(self, admin_client):
+        """An item deleted mid-poll must not produce an htmx error swap."""
+        resp = admin_client.get("/api/items/999999/cover-status?attempt=1")
+        assert resp.status_code == 200
+        assert "hx-get" not in resp.text
+        assert "data-cover-settled" in resp.text
+
+    def test_viewer_may_read_it(self, viewer_client, db):
+        item_id = _insert_item(db, title="Pending", isbn="9780000000114")
+        db.commit()
+        resp = viewer_client.get(f"/api/items/{item_id}/cover-status")
+        assert resp.status_code == 200
+
+    def test_unauthenticated_is_redirected(self, client, db):
+        item_id = _insert_item(db, title="Pending", isbn="9780000000115")
+        db.commit()
+        resp = client.get(
+            f"/api/items/{item_id}/cover-status", follow_redirects=False
+        )
+        assert resp.status_code == 303

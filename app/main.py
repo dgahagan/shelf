@@ -353,10 +353,14 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(_periodic_abs_sync())
     hc_task = asyncio.create_task(_periodic_hardcover_sync())
     loan_task = asyncio.create_task(_periodic_loan_reminders())
+    from app.services import cover_queue
+    cover_task = cover_queue.start()
     yield
     task.cancel()
     hc_task.cancel()
     loan_task.cancel()
+    if cover_task is not None:
+        cover_task.cancel()
 
 
 app = FastAPI(title="Shelf", lifespan=lifespan)

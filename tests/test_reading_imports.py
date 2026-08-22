@@ -329,17 +329,24 @@ class TestGenericStillWorks:
 
 
 class TestCoverEnrichment:
+    """`resolve_missing_cover`'s own logic — enrichment no longer runs it
+
+    inline via `_enrich_import_covers`; that function just hands item ids to
+    the cover queue now (see TestEnrichImportCoversQueues below). These
+    tests drive the resolver directly, same as tests/test_cover_retry.py.
+    """
+
     @pytest.mark.asyncio
     async def test_enrich_sets_cover_path(self, db):
         from tests.conftest import _insert_item
-        from app.routers.items import _enrich_import_covers
+        from app.routers import items as items_router
 
         item_id = _insert_item(db, title="Enrich Me", isbn="9780441013593")
         db.execute("COMMIT")  # make visible to the task's own connections
 
         with patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
-            await _enrich_import_covers([item_id])
+            await items_router.resolve_missing_cover(item_id, None)
             dl.assert_awaited_once()
 
         from app.database import get_db
@@ -350,14 +357,14 @@ class TestCoverEnrichment:
     @pytest.mark.asyncio
     async def test_enrich_skips_items_with_cover(self, db):
         from tests.conftest import _insert_item
-        from app.routers.items import _enrich_import_covers
+        from app.routers import items as items_router
 
         item_id = _insert_item(db, title="Has Cover", isbn="9780553283686",
                                cover_path="covers/existing.jpg")
         db.execute("COMMIT")
 
         with patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
-            await _enrich_import_covers([item_id])
+            await items_router.resolve_missing_cover(item_id, None)
             dl.assert_not_awaited()
 
     @pytest.mark.asyncio
@@ -365,7 +372,7 @@ class TestCoverEnrichment:
         """Items imported without an ISBN (Goodreads omits them for many
         editions) get one from an Open Library title/author search."""
         from tests.conftest import _insert_item
-        from app.routers.items import _enrich_import_covers
+        from app.routers import items as items_router
 
         item_id = _insert_item(db, title="The Gray Man", authors="Mark Greaney",
                                isbn=None)
@@ -378,7 +385,7 @@ class TestCoverEnrichment:
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
-            await _enrich_import_covers([item_id])
+            await items_router.resolve_missing_cover(item_id, None)
             dl.assert_awaited_once()
             assert dl.await_args.args[2] == "https://covers.example/1.jpg"
 
@@ -395,7 +402,7 @@ class TestCoverEnrichment:
         """Adaptations and study guides of famous titles rank high in title
         searches — a hit by a different author must not be applied."""
         from tests.conftest import _insert_item
-        from app.routers.items import _enrich_import_covers
+        from app.routers import items as items_router
 
         item_id = _insert_item(db, title="1984", authors="George Orwell", isbn=None)
         db.execute("COMMIT")
@@ -406,7 +413,7 @@ class TestCoverEnrichment:
         with patch("app.routers.items.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
-            await _enrich_import_covers([item_id])
+            await items_router.resolve_missing_cover(item_id, None)
             dl.assert_not_awaited()
 
         from app.database import get_db
@@ -420,7 +427,7 @@ class TestCoverEnrichment:
         one from the work's best-known edition via title search — but its
         existing ISBN is never overwritten."""
         from tests.conftest import _insert_item
-        from app.routers.items import _enrich_import_covers
+        from app.routers import items as items_router
 
         item_id = _insert_item(db, title="Pride and Prejudice", authors="Jane Austen",
                                isbn="9781102008545")
@@ -437,7 +444,7 @@ class TestCoverEnrichment:
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(side_effect=dl_side_effect)) as dl:
-            await _enrich_import_covers([item_id])
+            await items_router.resolve_missing_cover(item_id, None)
             assert dl.await_count == 2  # own-ISBN attempt, then search cover
 
         from app.database import get_db
@@ -452,7 +459,7 @@ class TestCoverEnrichment:
         """If another item already holds the recovered ISBN, keep the cover
         but leave this item's ISBN empty (no UNIQUE surprises, no mislinks)."""
         from tests.conftest import _insert_item
-        from app.routers.items import _enrich_import_covers
+        from app.routers import items as items_router
 
         _insert_item(db, title="Already Here", isbn="9780515147018")
         item_id = _insert_item(db, title="The Gray Man", authors="Mark Greaney",
@@ -466,7 +473,7 @@ class TestCoverEnrichment:
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")):
-            await _enrich_import_covers([item_id])
+            await items_router.resolve_missing_cover(item_id, None)
 
         from app.database import get_db
         with get_db() as conn:
@@ -474,6 +481,35 @@ class TestCoverEnrichment:
                                (item_id,)).fetchone()
         assert row["isbn"] is None
         assert row["cover_path"] == f"covers/{item_id}.jpg"
+
+
+class TestEnrichImportCoversQueues:
+    """`_enrich_import_covers` now just hands item ids to the cover queue —
+    no download happens on this path anymore, that's the worker's job."""
+
+    @pytest.mark.asyncio
+    async def test_enrich_import_covers_queues_items(self, db):
+        from tests.conftest import _insert_item
+        from app.routers.items import _enrich_import_covers
+        from app.services import cover_queue
+
+        item_id_a = _insert_item(db, title="Queue Me A", isbn="9780441013593")
+        item_id_b = _insert_item(db, title="Queue Me B", isbn="9780553283686")
+        db.execute("COMMIT")
+
+        with patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
+            await _enrich_import_covers([item_id_a, item_id_b])
+            dl.assert_not_awaited()
+
+        assert cover_queue.stats()["queued"] == 2
+
+    @pytest.mark.asyncio
+    async def test_enrich_import_covers_empty_list_queues_nothing(self, db):
+        from app.routers.items import _enrich_import_covers
+        from app.services import cover_queue
+
+        await _enrich_import_covers([])
+        assert cover_queue.stats()["queued"] == 0
 
 
 class TestSplitSeriesTitle:

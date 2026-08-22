@@ -73,6 +73,18 @@ def _isolated_db(tmp_path, monkeypatch):
     import app.currency as currency_mod
     monkeypatch.setattr(currency_mod, "_cached_currency", None)
 
+    # Reset the per-host rate limiter registry. Its asyncio.Locks bind to the
+    # loop they are first awaited on, and each test runs its own loop, so a
+    # carried-over registry would hand a test a lock from a dead loop.
+    import app.services.outbound as outbound_mod
+    outbound_mod.reset()
+
+    # Reset the cover enrichment queue. Its asyncio.Queue binds to the loop
+    # it is created on, and the counters are process-global, so a carried-over
+    # queue leaks depth and gave-up counts into unrelated tests.
+    import app.services.cover_queue as cover_queue_mod
+    cover_queue_mod.reset()
+
     # Initialize schema
     from app.database import init_db
     init_db()

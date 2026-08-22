@@ -1079,6 +1079,14 @@
                     </template>
                 </div>
 
+                {% if cover_queue_stats.queued or cover_queue_stats.failed %}
+                <p class="text-xs text-shelf-muted mt-2" data-testid="cover-queue-status">
+                    {{ cover_queue_stats.queued }} cover lookup{{ 's' if cover_queue_stats.queued != 1 }} queued
+                    {% if cover_queue_stats.failed %} &middot; {{ cover_queue_stats.failed }} gave up since startup{% endif %}
+                    &middot; {{ missing_covers }} item{{ 's' if missing_covers != 1 }} without a cover
+                </p>
+                {% endif %}
+
                 <!-- Detail log toggle -->
                 <div x-show="retryLog.length > 0" class="mt-2">
                     <button @click="showRetryLog = !showRetryLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">

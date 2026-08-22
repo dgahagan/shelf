@@ -4,6 +4,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import COVERS_DIR
+from app.services import outbound
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +113,8 @@ async def search_cover_by_title(title: str, author: str | None, client: httpx.As
         q = title
         if author:
             q += f"+inauthor:{author.split(',')[0].split('&')[0].strip()}"
-        resp = await client.get(
+        resp = await outbound.fetch(
+            client, "GET",
             "https://www.googleapis.com/books/v1/volumes",
             params={"q": q, "maxResults": "5"},
             timeout=10,
@@ -137,7 +139,8 @@ async def search_cover_by_title(title: str, author: str | None, client: httpx.As
         params = {"title": title, "limit": "5"}
         if author:
             params["author"] = author.split(",")[0].strip()
-        resp = await client.get(
+        resp = await outbound.fetch(
+            client, "GET",
             "https://openlibrary.org/search.json",
             params=params,
             timeout=10,
@@ -191,7 +194,7 @@ async def _download_to_item(item_id: int, url: str, client: httpx.AsyncClient) -
 async def _download(url: str, dest, client: httpx.AsyncClient) -> bool:
     """Download an image URL to dest. Returns True on success."""
     try:
-        resp = await client.get(url, follow_redirects=True)
+        resp = await outbound.fetch(client, "GET", url, follow_redirects=True, retry_timeouts=True)
         if resp.status_code != 200:
             logger.debug("Cover download failed for %s: HTTP %d", url, resp.status_code)
             return False

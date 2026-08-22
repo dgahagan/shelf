@@ -134,7 +134,11 @@
 {% else %}
 <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
     {# Cover image or placeholder #}
-    {% if cover_path %}
+    {% if cover_pending %}
+    {# Scan queues its cover, so the card renders first and this polls it in. #}
+    {% set attempt = 0 %}
+    {% include "fragments/cover_thumb.html" %}
+    {% elif cover_path %}
     <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="">
     {% else %}
     <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">

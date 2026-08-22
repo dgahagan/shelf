@@ -1,16 +1,15 @@
 """ISBNdb API client for book price lookups. Ported from tools/valuate.py."""
 
-import asyncio
 import json
 import time
 
 import httpx
 
 from app.config import DATA_DIR
+from app.services import outbound
 
 ISBNDB_API_URL = "https://api2.isbndb.com/book/{isbn}"
 CACHE_FILE = DATA_DIR / ".isbn_price_cache.json"
-RATE_LIMIT_DELAY = 3.0  # seconds between requests
 CACHE_MAX_AGE_DAYS = 365
 
 
@@ -60,6 +59,7 @@ async def lookup_price(isbn13: str, api_key: str, client: httpx.AsyncClient, cac
         return entry["data"]
 
     try:
+        await outbound.acquire("api2.isbndb.com")
         resp = await client.get(
             ISBNDB_API_URL.format(isbn=isbn13),
             headers={"Authorization": api_key},
@@ -79,5 +79,4 @@ async def lookup_price(isbn13: str, api_key: str, client: httpx.AsyncClient, cac
         data = None
 
     cache[isbn13] = {"data": data, "fetched_at": time.time()}
-    await asyncio.sleep(RATE_LIMIT_DELAY)
     return data

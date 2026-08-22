@@ -2,6 +2,7 @@
 
 import httpx
 
+from app.services import outbound
 
 TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search/movie"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
@@ -11,7 +12,8 @@ UPC_LOOKUP_URL = "https://api.upcitemdb.com/prod/trial/lookup"
 async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -> dict | None:
     """Search TMDb by title, return first result as metadata dict."""
     try:
-        resp = await client.get(
+        resp = await outbound.fetch(
+            client, "GET",
             TMDB_SEARCH_URL,
             params={"query": title},
             headers={"Authorization": f"Bearer {api_key}"},
@@ -40,7 +42,7 @@ async def lookup_upc(upc: str, tmdb_api_key: str, client: httpx.AsyncClient) -> 
     # Step 1: get title from UPC
     title = None
     try:
-        resp = await client.get(UPC_LOOKUP_URL, params={"upc": upc}, timeout=10)
+        resp = await outbound.fetch(client, "GET", UPC_LOOKUP_URL, params={"upc": upc}, timeout=10)
         if resp.status_code == 200:
             data = resp.json()
             items = data.get("items", [])
@@ -65,7 +67,8 @@ async def lookup_upc(upc: str, tmdb_api_key: str, client: httpx.AsyncClient) -> 
 async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
     """Search TMDb by title, return multiple results."""
     try:
-        resp = await client.get(
+        resp = await outbound.fetch(
+            client, "GET",
             TMDB_SEARCH_URL,
             params={"query": query},
             headers={"Authorization": f"Bearer {api_key}"},

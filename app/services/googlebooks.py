@@ -2,12 +2,15 @@ import logging
 
 import httpx
 
+from app.services import outbound
+
 logger = logging.getLogger(__name__)
 
 
 async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
     """Look up a book by ISBN via Google Books API. Returns metadata dict or None."""
-    resp = await client.get(
+    resp = await outbound.fetch(
+        client, "GET",
         "https://www.googleapis.com/books/v1/volumes",
         params={"q": f"isbn:{isbn}"},
     )
@@ -84,7 +87,8 @@ async def search_by_title_author(title: str, author: str | None, client: httpx.A
     query = f'intitle:"{title}"'
     if author:
         query += f' inauthor:"{author}"'
-    resp = await client.get(
+    resp = await outbound.fetch(
+        client, "GET",
         "https://www.googleapis.com/books/v1/volumes",
         params={"q": query, "maxResults": str(limit)},
     )

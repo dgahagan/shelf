@@ -1,4 +1,5 @@
 """E2E tests: scan page loads and mode switching."""
+import base64
 import sqlite3
 from pathlib import Path
 
@@ -274,3 +275,101 @@ def test_manual_entry_shows_toast_feedback(live_server, authed_page):
     toast = authed_page.locator("#toast-container > div").first
     expect(toast).to_be_visible(timeout=5_000)
     expect(toast).to_contain_text("Invalid", timeout=5_000)
+
+
+# A genuinely valid 1x1 JPEG. A file with only the magic bytes would still
+# fail to decode, and a broken <img alt=""> can collapse to a zero-size box —
+# which is why these tests also assert on count rather than visibility.
+_TINY_JPEG = base64.b64decode(
+    "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRof"
+    "Hh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAAB"
+    "AAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q=="
+)
+
+# htmx processes a swapped-in subtree, so injecting the fragment and calling
+# htmx.process reproduces exactly what a real scan does — without needing the
+# live Open Library lookup an ISBN scan would require (see this file's
+# manual-add docstring for why no e2e scans an ISBN). This runs through CDP,
+# not page-side eval, so the strict CSP does not refuse it.
+_INJECT = """(html) => {
+    const el = document.getElementById('scan-results');
+    el.innerHTML = html;
+    htmx.process(el);
+}"""
+
+
+def _set_cover_path(data_dir: Path, item_id: int, cover_path: str) -> None:
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        conn.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def test_scan_cover_poll_swaps_in_cover_when_it_lands(live_server, authed_page):
+    """#27: the scan card's placeholder polls until the queued cover lands.
+
+    The worker is off in E2E (SHELF_DISABLE_COVER_ENRICH), so the cover
+    "landing" is simulated by writing the row between the first render and
+    the first poll — which is precisely the race the poller exists to close.
+    """
+    data_dir = live_server["data_dir"]
+    url = live_server["url"]
+
+    item_id = insert_item(data_dir, title="Poll Lands", isbn="9780000007001")
+
+    covers_dir = data_dir / "covers"
+    covers_dir.mkdir(parents=True, exist_ok=True)
+    (covers_dir / "poll-lands.jpg").write_bytes(_TINY_JPEG)
+
+    # The card as a fresh scan would render it: pending, first poller armed.
+    fragment = authed_page.request.get(
+        f"{url}/api/items/{item_id}/cover-status?attempt=0"
+    ).text()
+    assert "data-cover-pending" in fragment
+
+    # The cover lands while the card is on screen.
+    _set_cover_path(data_dir, item_id, "covers/poll-lands.jpg")
+
+    authed_page.goto(f"{url}/scan")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.evaluate(_INJECT, fragment)
+
+    expect(
+        authed_page.locator("#scan-results img[src='/covers/poll-lands.jpg']")
+    ).to_have_count(1, timeout=10_000)
+
+
+def test_scan_cover_poll_settles_after_two_attempts(live_server, authed_page):
+    """The poll is bounded: two attempts, then it stops asking."""
+    data_dir = live_server["data_dir"]
+    url = live_server["url"]
+
+    item_id = insert_item(data_dir, title="Poll Settles", isbn="9780000007002")
+
+    fragment = authed_page.request.get(
+        f"{url}/api/items/{item_id}/cover-status?attempt=0"
+    ).text()
+
+    authed_page.goto(f"{url}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    polls = []
+    authed_page.on(
+        "request",
+        lambda r: polls.append(r.url) if "/cover-status" in r.url else None,
+    )
+
+    authed_page.evaluate(_INJECT, fragment)
+
+    # No wait_for_function (G21) — Playwright's own polling does the waiting.
+    expect(authed_page.locator("#scan-results [data-cover-settled]")).to_have_count(
+        1, timeout=15_000
+    )
+
+    assert len(polls) == 2, f"expected exactly 2 polls, got {polls}"
+    assert (
+        authed_page.locator("#scan-results [data-cover-settled]").get_attribute("hx-get")
+        is None
+    )

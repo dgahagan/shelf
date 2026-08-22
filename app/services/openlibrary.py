@@ -1,22 +1,20 @@
-import asyncio
 import logging
 
 import httpx
 
-from app.config import OPENLIBRARY_RATE_LIMIT
+from app.services import outbound
 
 logger = logging.getLogger(__name__)
 
-_last_request = 0.0
+# Open Library grants 3 req/s only to requests identifying themselves with an
+# app name AND contact information (https://openlibrary.org/developers/api);
+# without it the published rate is 1 req/s. A public project URL only — never
+# a personal email — this directory is subtree-published to a public repo.
+USER_AGENT = "Shelf/1.0 (+https://github.com/dgahagan/shelf)"
 
 
 async def _rate_limit():
-    global _last_request
-    now = asyncio.get_event_loop().time()
-    wait = OPENLIBRARY_RATE_LIMIT - (now - _last_request)
-    if wait > 0:
-        await asyncio.sleep(wait)
-    _last_request = asyncio.get_event_loop().time()
+    await outbound.acquire("openlibrary.org")
 
 
 async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
@@ -24,7 +22,7 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
     await _rate_limit()
     resp = await client.get(
         f"https://openlibrary.org/isbn/{isbn}.json",
-        headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
     if resp.status_code != 200:
@@ -92,7 +90,7 @@ async def _resolve_author(edition_data: dict, client: httpx.AsyncClient) -> str 
     await _rate_limit()
     work_resp = await client.get(
         f"https://openlibrary.org{works[0]['key']}.json",
-        headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
     if work_resp.status_code != 200:
@@ -118,7 +116,7 @@ async def _fetch_author_name(author_key: str, client: httpx.AsyncClient) -> str 
     await _rate_limit()
     resp = await client.get(
         f"https://openlibrary.org{author_key}.json",
-        headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
     if resp.status_code != 200:
@@ -141,7 +139,7 @@ async def get_work_description(work_key: str, client: httpx.AsyncClient) -> str 
     await _rate_limit()
     resp = await client.get(
         f"https://openlibrary.org{work_key}.json",
-        headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
+        headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
     if resp.status_code != 200:
@@ -183,7 +181,7 @@ async def _search(params: dict, client: httpx.AsyncClient, limit: int, lang: str
         # work in the caller's configured search language, so translations
         # in other languages don't win the ISBN pick
         params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": lang},
-        headers={"User-Agent": "Shelf/1.0 (home library catalog)"},
+        headers={"User-Agent": USER_AGENT},
     )
     if resp.status_code != 200:
         logger.debug("Open Library search failed for %r: HTTP %d", params, resp.status_code)

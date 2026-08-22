@@ -17,6 +17,7 @@ from app.database import get_db, get_setting, get_game_platforms, gc_orphaned_se
 from app.routers.series import MAX_SERIES_NAME
 from app.services import isbn as isbn_svc
 from app.services import openlibrary, googlebooks, hardcover, covers, national
+from app.services import cover_queue
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
 from app.services import authors as authors_svc
@@ -133,12 +134,14 @@ def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | 
 
 async def _fetch_preview_cover(isbn13: str, client: httpx.AsyncClient) -> str | None:
     """Try to grab an Amazon cover preview for manual-add fallback."""
+    from app.services import outbound
+
     isbn10 = isbn_svc.isbn13_to_isbn10(isbn13)
     if not isbn10:
         return None
     preview_url = f"https://images-na.ssl-images-amazon.com/images/P/{isbn10}.01._SCLZZZZZZZ_SX500_.jpg"
     try:
-        resp = await client.get(preview_url, follow_redirects=True)
+        resp = await outbound.fetch(client, "GET", preview_url, follow_redirects=True)
         if resp.status_code == 200 and len(resp.content) > 1000:
             tmp_path = covers.COVERS_DIR / f"preview_{isbn13}.jpg"
             covers.COVERS_DIR.mkdir(parents=True, exist_ok=True)
@@ -503,17 +506,15 @@ async def scan_isbn(
                 with get_db() as db:
                     db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
 
-            # Download cover
+            # Queue the cover instead of downloading it in-request. The
+            # hints are the exact three inputs the download used to take, so
+            # the worker runs the same chain this request would have.
             hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
-            cover_path = await covers.download_cover(
-                item_id, isbn13,
-                metadata.get("cover_url") if source != "hardcover" else None,
-                metadata.get("cover_id"), client,
-                hardcover_cover_url=hc_cover,
-            )
-            if cover_path:
-                with get_db() as db:
-                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+            cover_queue.enqueue(item_id, hints={
+                "cover_url": metadata.get("cover_url") if source != "hardcover" else None,
+                "cover_id": metadata.get("cover_id"),
+                "hardcover_cover_url": hc_cover,
+            })
 
     except httpx.TimeoutException:
         logger.warning("Timeout looking up ISBN %s", isbn13)
@@ -541,7 +542,8 @@ async def scan_isbn(
             "isbn": isbn13,
             "title": metadata["title"],
             "authors": metadata.get("authors"),
-            "cover_path": cover_path,
+            "cover_path": None,
+            "cover_pending": True,
             "item_id": item_id,
             "source": source,
             "media_type_label": MEDIA_TYPES.get(media_type, media_type),
@@ -549,6 +551,37 @@ async def scan_isbn(
     )
     resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
     return resp
+
+
+MAX_COVER_POLLS = 2
+
+
+@router.get("/items/{item_id}/cover-status")
+async def cover_status(request: Request, item_id: int, attempt: int = 0, _=Depends(require_role("viewer"))):
+    """Fragment: the scan card's cover thumbnail, or the next poller.
+
+    Scan queues its cover download, so the result card renders before the
+    cover exists and this endpoint is what swaps it in. Read-only, so viewer
+    is the right role and GET keeps it CSRF-exempt.
+
+    An unknown item renders the settled placeholder with a 200 — an item
+    deleted mid-poll must not produce an htmx error swap.
+    """
+    templates = request.app.state.templates
+    attempt = max(0, min(attempt, MAX_COVER_POLLS))
+    with get_db() as db:
+        row = db.execute(
+            "SELECT cover_path FROM items WHERE id = ?", (item_id,)
+        ).fetchone()
+    if not row:
+        return templates.TemplateResponse(
+            request, "fragments/cover_thumb.html",
+            {"item_id": item_id, "cover_path": None, "attempt": MAX_COVER_POLLS},
+        )
+    return templates.TemplateResponse(
+        request, "fragments/cover_thumb.html",
+        {"item_id": item_id, "cover_path": row["cover_path"], "attempt": attempt},
+    )
 
 
 @router.post("/items/manual")
@@ -1298,21 +1331,42 @@ async def cover_select(request: Request, item_id: int, url: str = Form(...), _=D
     return resp
 
 
+# Bulk cover retry is restricted to book media types for the same reason the
+# startup requeue is (GOTCHAS G29): resolve_missing_cover's fallback is a
+# book-catalogue title search that accepts the first Open Library hit when the
+# item has no authors, then writes that book's ISBN onto the row. Sweeping a
+# cover-less DVD or video game through it attaches a novel's cover and ISBN to
+# the disc. Non-book cover misses are re-fetched from the item page instead.
+_COVER_RETRY_PLACEHOLDERS = ", ".join(
+    "?" for _ in cover_queue.COVER_REQUEUE_MEDIA_TYPES
+)
+
+
 @router.post("/covers/bulk-retry")
 async def bulk_retry_covers(request: Request, _=Depends(require_role("admin"))):
-    """Retry downloading covers for all items missing them."""
+    """Retry downloading covers for all book items missing them."""
     with get_db() as db:
         items = db.execute(
-            "SELECT id FROM items WHERE cover_path IS NULL"
+            f"SELECT id FROM items WHERE cover_path IS NULL "
+            f"AND media_type IN ({_COVER_RETRY_PLACEHOLDERS})",
+            cover_queue.COVER_REQUEUE_MEDIA_TYPES,
         ).fetchall()
 
     results = {"success": 0, "failed": 0, "total": len(items)}
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for item in items:
-            if await resolve_missing_cover(item["id"], client):
-                results["success"] += 1
-            else:
+            try:
+                if await resolve_missing_cover(item["id"], client):
+                    results["success"] += 1
+                else:
+                    results["failed"] += 1
+            except Exception:
+                # One slow or broken item must not abort the sweep and throw
+                # away the covers already fetched in this run. Open Library's
+                # search endpoint is slow and is not routed through
+                # outbound.fetch, so a ReadTimeout here is routine.
+                logger.exception("Cover retry failed for item %d", item["id"])
                 results["failed"] += 1
 
     return results
@@ -1323,7 +1377,9 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
     """SSE endpoint for bulk cover retry with progress updates."""
     with get_db() as db:
         items = db.execute(
-            "SELECT id, isbn, title FROM items WHERE cover_path IS NULL"
+            f"SELECT id, isbn, title FROM items WHERE cover_path IS NULL "
+            f"AND media_type IN ({_COVER_RETRY_PLACEHOLDERS})",
+            cover_queue.COVER_REQUEUE_MEDIA_TYPES,
         ).fetchall()
 
     if not items:
@@ -1338,10 +1394,19 @@ async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("adm
         try:
             async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 for i, item in enumerate(items, 1):
-                    if await resolve_missing_cover(item["id"], client):
-                        results["success"] += 1
-                        status = "found"
-                    else:
+                    try:
+                        if await resolve_missing_cover(item["id"], client):
+                            results["success"] += 1
+                            status = "found"
+                        else:
+                            results["failed"] += 1
+                            status = "not found"
+                    except Exception:
+                        # Per-item guard: without it one Open Library search
+                        # timeout ends the whole run at "error" and the user
+                        # loses the progress already made.
+                        logger.exception(
+                            "Cover retry failed for item %d", item["id"])
                         results["failed"] += 1
                         status = "not found"
 
@@ -1672,7 +1737,9 @@ async def _search_isbn_for_item(title: str, authors: str | None, client) -> tupl
     return None, None
 
 
-async def resolve_missing_cover(item_id: int, client: httpx.AsyncClient) -> str | None:
+async def resolve_missing_cover(
+    item_id: int, client: httpx.AsyncClient, hints: dict | None = None
+) -> str | None:
     """Find and store a cover for one item that has none.
 
     An item with an ISBN tries the standard cover chain first (Open Library
@@ -1681,6 +1748,12 @@ async def resolve_missing_cover(item_id: int, client: httpx.AsyncClient) -> str 
     (imported and print-on-demand edition ISBNs often have no cover
     anywhere). A recovered ISBN is stored on ISBN-less items unless another
     item already holds it.
+
+    `hints` carries a caller's own cover inputs (`cover_url`, `cover_id`,
+    `hardcover_cover_url`) — the scan path passes the ones it already looked
+    up, so queueing its download does not change which sources get tried.
+    With hints the first attempt runs even for an ISBN-less item, since a
+    hinted `cover_url` alone can resolve it.
 
     Returns the stored cover path, or None if nothing was found. Items that
     already have a cover are left alone.
@@ -1694,7 +1767,16 @@ async def resolve_missing_cover(item_id: int, client: httpx.AsyncClient) -> str 
         return None
 
     cover_path = None
-    if row["isbn"]:
+    if hints:
+        cover_path = await covers.download_cover(
+            item_id,
+            row["isbn"],
+            hints.get("cover_url"),
+            hints.get("cover_id"),
+            client,
+            hardcover_cover_url=hints.get("hardcover_cover_url"),
+        )
+    elif row["isbn"]:
         cover_path = await covers.download_cover(
             item_id, row["isbn"], None, None, client)
 
@@ -1732,19 +1814,15 @@ async def resolve_missing_cover(item_id: int, client: httpx.AsyncClient) -> str 
 
 
 async def _enrich_import_covers(item_ids: list[int]) -> None:
-    """Background task: fetch covers for freshly imported items.
+    """Background task: hand off freshly imported items to the cover queue.
 
-    Best-effort — failures are logged and skipped.
+    Kept as an async function behind `asyncio.create_task` at both call
+    sites even though it no longer awaits any network I/O itself — the
+    queue's own worker does the downloading. That preserves the
+    fire-and-forget shape both call sites already rely on.
     """
-    enriched = 0
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        for item_id in item_ids:
-            try:
-                if await resolve_missing_cover(item_id, client):
-                    enriched += 1
-            except Exception:
-                logger.exception("Cover enrichment failed for imported item %d", item_id)
-    logger.info("Import cover enrichment done: %d/%d covers fetched", enriched, len(item_ids))
+    queued = cover_queue.enqueue_many(item_ids)
+    logger.info("Queued %d items for cover enrichment", queued)
 
 
 async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None, mode: str = "add"):

@@ -536,6 +536,7 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
     from app.config import is_env_override
     from app.database import get_all_settings
     from app.nav import hideable_tab_states
+    from app.services import cover_queue
     # Known codes only — never reflect the raw query param into the template.
     borrower_error_message = BORROWER_ERROR_MESSAGES.get(request.query_params.get("borrower_error"))
     with get_db() as db:
@@ -544,6 +545,10 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
         item_count = db.execute("SELECT COUNT(*) as c FROM items").fetchone()["c"]
+        missing_covers = db.execute(
+            "SELECT COUNT(*) AS c FROM items WHERE cover_path IS NULL"
+        ).fetchone()["c"]
+        cover_queue_stats = cover_queue.stats()
         # Carries each borrower's *returned* loan count for the delete
         # confirmation's copy. Returned rows only: the dialog fires before the
         # POST, so before the active-loan guard — counting an open loan here
@@ -585,5 +590,6 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
          "borrowers": borrowers, "env_overrides": env_overrides, "secrets_saved": secrets_saved,
          "game_platforms_list": game_platforms_list,
          "hideable_nav_tab_states": hideable_nav_tab_states,
-         "borrower_error_message": borrower_error_message},
+         "borrower_error_message": borrower_error_message,
+         "missing_covers": missing_covers, "cover_queue_stats": cover_queue_stats},
     )

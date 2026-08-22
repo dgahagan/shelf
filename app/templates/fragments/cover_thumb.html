@@ -1,0 +1,34 @@
+{# Cover thumbnail for a scan result card.
+
+   Three states, driven by `attempt` (polls completed so far):
+     cover landed          -> the <img>, no poller
+     pending, more polls   -> placeholder + a delayed hx-get for the next poll
+     settled               -> placeholder, no hx-* attributes
+
+   Scan downloads its cover on the queue worker now, so the card renders
+   before the cover exists and this fragment swaps itself until it lands.
+   Bounded at two polls: scan = 1 request + <= 2 polls, which keeps a fast
+   scanner under the 60/min /api/ rate limit.
+
+   Pure HTMX by design — no Alpine component, no <script>, no fetch() — so
+   the strict CSP and both tripwires stay untriggered. The hx-* attributes
+   sit on the element being swapped, which is what makes `load delay:` fire
+   on each freshly swapped placeholder.
+#}
+{# The delay is written as a conditional rather than a tuple subscript:
+   scripts/check_alpine_csp.py scans the raw template text, so a Jinja `[...]`
+   inside hx-trigger reads as an htmx event filter and trips the tripwire. #}
+{% set max_polls = 2 %}
+{% set delay_ms = 1500 if attempt == 0 else 3000 %}
+{% if cover_path %}
+<img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="">
+{% elif attempt < max_polls %}
+<div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs"
+     data-cover-pending
+     hx-get="/api/items/{{ item_id }}/cover-status?attempt={{ attempt + 1 }}"
+     hx-trigger="load delay:{{ delay_ms }}ms"
+     hx-swap="outerHTML">+</div>
+{% else %}
+<div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs"
+     data-cover-settled>+</div>
+{% endif %}

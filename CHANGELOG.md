@@ -6,6 +6,64 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-21
+
+Scanning a stack of books used to get slower and flakier the longer you went:
+every scan downloaded its cover while you waited, and nothing paced or retried
+the requests going out. Covers now download in the background, and every
+outbound lookup is throttled per host and retried on transient failures
+([#27](https://github.com/dgahagan/shelf/issues/27)).
+
+### Changed
+
+- **Scanning no longer waits for the cover.** The result card appears as soon
+  as the metadata lookup finishes, with a placeholder that fills itself in a
+  second or two later. Covers are fetched by a background worker instead of
+  inside the scan request, so a slow or unresponsive cover host no longer
+  holds up the scan — which is what made bulk scanning degrade.
+
+  If the worker is busy — a big import draining, say — the placeholder settles
+  after a couple of seconds rather than polling forever. The cover still
+  arrives; it shows up on the next page load. CSV import and photo-intake
+  enrichment go through the same queue, and a restart re-queues anything added
+  in the last 48 hours that is still missing a cover.
+
+- **Outbound lookups are paced and retried.** Every metadata and cover request
+  now goes through a shared per-host rate limiter and, where appropriate, a
+  bounded retry with backoff that honours `Retry-After`. Hosts are paced
+  independently, so a slow Hardcover response no longer delays an Open Library
+  lookup.
+
+  The pacing follows each service's published guidance. Notably, Open Library
+  limits ISBN-keyed cover requests to 100 per IP per 5 minutes and returns a
+  403 beyond that — which previously read as "no cover found" and left large
+  imports silently blank. Shelf now paces that host accordingly and identifies
+  itself with a contact URL, as Open Library asks.
+
+  Timeouts are retried only off the request path. A scan still fails after a
+  single timeout rather than retrying two more times, so the worst case for a
+  scan is what it always was.
+
+- **Settings shows what the cover queue is doing.** A line under Retry Missing
+  Covers reports how many lookups are queued, how many gave up since startup,
+  and how many items have no cover — visible when there is something to
+  report, so a batch that quietly failed is no longer invisible.
+
+### Fixed
+
+- **Retry Missing Covers no longer attaches book covers to DVDs, games and
+  CDs.** The bulk retry swept every item without a cover, including non-books,
+  and handed them to a book-catalogue title search. Because that search accepts
+  the first match when an item has no author listed, a DVD called "Dune" could
+  end up with the novel's cover — and the novel's ISBN written onto it. The
+  sweep is now restricted to books; covers for discs and games are re-fetched
+  from the item page, which uses the sources that can actually answer for them.
+
+- **A single slow lookup no longer aborts a bulk cover retry.** One Open
+  Library timeout returned a server error and discarded the covers already
+  fetched in that run. Each item is now handled independently, so the run
+  finishes and reports what it managed.
+
 ## [0.11.1] - 2026-08-20
 
 Removing a borrower who had ever returned a book failed with a 500, reported
@@ -776,6 +834,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.12.0]: https://github.com/dgahagan/shelf/releases/tag/v0.12.0
 [0.11.1]: https://github.com/dgahagan/shelf/releases/tag/v0.11.1
 [0.11.0]: https://github.com/dgahagan/shelf/releases/tag/v0.11.0
 [0.10.1]: https://github.com/dgahagan/shelf/releases/tag/v0.10.1

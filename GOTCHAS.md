@@ -825,6 +825,167 @@ grep -rn 'on("dialog"\|once("dialog"' tests/e2e/
 
 - **Status:** documented.
 
+## G29 — When a background or bulk sweep selects items by `cover_path IS NULL`
+
+- **Rule:** Filter to book media types before handing the rows to
+  `resolve_missing_cover`. Its title-search fallback
+  (`_search_isbn_for_item`) accepts the first Open Library hit when the item
+  has no authors — `authors.matches(None, found)` returns `True` by design,
+  "nothing to check against" — and then **stores the found ISBN** on
+  ISBN-less items. For DVDs, video games and CDs that means a novel's cover
+  and a book ISBN written onto the disc.
+- **Why:** Non-book items are routinely cover-less (an IGDB/TMDb poster miss
+  stores nothing), and every unit test mocks the search, so the wrong-cover
+  path is invisible until real data. Until issue #27 the only way in was the
+  admin-invoked Retry Missing Covers button; the cover queue's startup
+  requeue would have made it automatic, on every boot, for everything added
+  in the last 48h. `cover_queue.COVER_REQUEUE_MEDIA_TYPES` is the filter.
+- **Evidence:** caught on paper by the issue-27 plan review (R1) before the
+  sweep became automatic; filter shipped in `10caf32` (2026-08-21). Mechanism
+  at `app/routers/items.py` (`resolve_missing_cover` → `_search_isbn_for_item`)
+  and `app/services/authors.py:86-87`.
+- **Then it actually happened.** Live QA of that same branch found the
+  *admin* Retry Missing Covers sweep — which the plan did not filter, because
+  it predated the plan — writing Dune the novel's ISBN (`9780425038918`) and a
+  180×283 book cover onto a cover-less DVD row titled "Dune". Fixed in
+  `39b4e9f` (2026-08-21) by filtering both `bulk_retry_covers` and
+  `bulk_retry_covers_stream`. **The lesson worth carrying: documenting a rule
+  is not the same as enforcing it.** When you add an entry here because one
+  call site was fixed, grep for the *other* call sites in the same commit —
+  this entry shipped with two live violations of its own rule still in the
+  tree, one of them the user-facing button.
+- **Verify:** the permissive match still exists (a failing assert means the
+  helper changed and this entry needs re-checking), and no sweep is
+  unfiltered:
+
+```bash
+python -c "from app.services.authors import matches; assert matches(None, 'Anyone')"
+grep -n "cover_path IS NULL" app/routers/*.py app/services/*.py
+# each hit must be book-filtered or admin-invoked
+```
+
+- **Status:** documented.
+
+## G30 — When setting or "tidying" anything that paces Open Library
+
+- **Rule:** Two separate published limits, and one of them depends on a
+  request header:
+  - **`covers.openlibrary.org`** — cover access by keys *other than*
+    CoverID/OLID (i.e. ISBN/LCCN/OCLC) is capped at **100 requests per IP
+    per 5 minutes**, returning **403 Forbidden** past it. That is a 3.0s
+    interval, and `HOST_RATE_LIMITS` must not go below it. ID-keyed URLs are
+    unlimited but share the host, so a per-host limiter cannot tell them
+    apart and must pace for the limited one.
+  - **`openlibrary.org`** — **1 req/s by default, 3 req/s only for
+    identified requests**: a `User-Agent` carrying the app name *and contact
+    information*. `openlibrary.USER_AGENT` carries a project URL for exactly
+    this reason. **If that contact is ever dropped, the 0.34s interval
+    becomes a policy violation** and must go to 1.0.
+- **Why:** both failures are silent. A 403 is not transient, so
+  `outbound.fetch` correctly does not retry it, `covers._download` reads the
+  non-200 as "no cover", and a bulk import just goes blank past ~100 items —
+  the exact symptom of issue #27, with a throttle that *looks* generous. And
+  a User-Agent reads like cosmetic string cleanup, so nothing connects
+  editing it to a rate-limit table in another file. Every test mocks the
+  host, so neither shows up before real data.
+- **Evidence:** figures confirmed live from
+  https://openlibrary.org/dev/docs/api/covers ("Currently only 100
+  requests/IP are allowed for every 5 minutes") and
+  https://openlibrary.org/developers/api, during issue-27 T1 (2026-08-21,
+  `ce1003c`); the User-Agent gained its contact URL in `4c98146` after that
+  check found the existing header did not earn the 3/s rate.
+- **Verify:**
+
+```bash
+python -c "from app.config import HOST_RATE_LIMITS as H; assert H['covers.openlibrary.org'] >= 3.0"
+python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' in U, 'no contact -> openlibrary.org must be 1.0'"
+```
+
+- **Status:** documented; both halves linted by
+  `tests/test_outbound.py::test_openlibrary_covers_interval_is_at_least_three_seconds`
+  and `tests/test_outbound_clients.py::test_user_agent_carries_contact_info`.
+
+## G31 — When writing a test that pins a race, an ordering rule, or a bug you just fixed
+
+- **Rule:** Run the new test against the **broken** implementation before
+  trusting it. Revert the fix (or hand-mutate it), confirm the test fails,
+  then restore. A pin that passes both ways is worse than no pin: it reads
+  as coverage and defends nothing.
+- **Why:** concurrency and ordering assertions are unusually good at looking
+  right while asserting the wrong property. Two instances in one branch:
+  - The issue-27 plan *specified* a rate-limiter race pin as "assert the
+    second caller observed the first's updated timestamp", implemented by
+    counting sleeps — but **both** the locked and the unlocked limiter sleep
+    twice, so it passed against a deliberately unlocked `acquire()`.
+    Rewriting it against a fake monotonic clock that the patched sleep
+    advances — asserting the two callers *return* an interval apart — made
+    it fail on the broken shape (`assert 0.0 >= 0.05`).
+  - `tests/test_security_fixes.py::TestCoverRedirectValidation`'s "rejects"
+    test kept passing after `_download` moved to `outbound.fetch`, purely
+    because the now-unused `AsyncMock` returned a non-200, which happened to
+    be the expected reject. Its sibling failed outright, which is the only
+    reason anyone looked.
+  A cheap corollary: when a test mocks a transport by method name
+  (`client.get`), changing which method the code calls silently detaches it
+  rather than failing it.
+- **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
+  queue's requeue-filter and head-of-line pins were mutation-checked the same
+  way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
+- **Verify:** judgement, not a grep — this one cannot be linted. When
+  reviewing such a test, ask what implementation change would make it fail.
+- **Status:** documented. Not a lint candidate.
+
+## G32 — When putting a Jinja expression inside an `hx-*` attribute
+
+- **Rule:** Avoid `[` and `]` in the Jinja. `scripts/check_alpine_csp.py`
+  scans **raw template text**, Jinja and all, and its htmx rule flags
+  `hx-trigger="...["` as an event filter (which htmx would compile with
+  `new Function`, blocked by the CSP). A server-side subscript such as
+  `{{ (1500, 3000)[attempt] }}` therefore trips the tripwire even though
+  htmx only ever sees the rendered number. Use a conditional
+  (`{% set delay_ms = 1500 if attempt == 0 else 3000 %}`) instead.
+- **Why:** the lint is right to be blunt — it cannot parse Jinja without
+  rendering it — but the failure names an htmx construct that is not in the
+  file, so it reads as a false alarm and invites weakening the tripwire
+  rather than rewriting one line of template.
+- **Evidence:** `bcdf799` (2026-08-21, issue #27 — `fragments/cover_thumb.html`
+  computing its poll delay).
+- **Verify:** `make check-alpine` (already in `make checks`).
+- **Status:** documented.
+
+## G33 — When a background worker or lifespan task is the feature
+
+- **Rule:** Test drive it with the worker actually **running** before calling
+  the work done. The unit suite mocks it and the E2E suite disables it
+  (`SHELF_DISABLE_COVER_ENRICH=1`), so a green gate says nothing about whether
+  the background half works. Boot a real server against a temp `DATA_DIR`
+  with the gate env var **unset**, and drive it in a browser.
+- **Why:** every gate this repo has is deliberately blind here, and that is
+  the correct design for the gates — offline, deterministic tests must not
+  depend on a live worker or a live network. The blindness is the price, and
+  the only way to pay it back is one manual pass. The issue-27 queue shipped
+  with 1149 unit + 82 e2e green; a 15-minute live pass then found a
+  data-corrupting bug (see G29) and a 500 within the first three interactions.
+  Both were in *adjacent, pre-existing* code the branch never touched, which
+  is exactly the region no task-scoped test was ever going to cover.
+- **What the pass should cover, at minimum:** the worker draining for real
+  against the live upstream; the throttle actually pacing (read the request
+  timestamps in the log, do not assume); a restart, to exercise any startup
+  requeue; and the *adjacent* admin/bulk paths that touch the same rows, with
+  adversarial data — for cover work that means authorless, ISBN-less non-book
+  rows titled after famous books.
+- **Evidence:** issue-27 live QA (2026-08-21), written up in
+  `docs/archive/completed/qa-issue-27-outbound-queue.md`; fixes in `39b4e9f`.
+- **Verify:** judgement, not a grep — but the gate env vars that hide
+  background work are findable:
+
+```bash
+grep -rn "SHELF_DISABLE_COVER_ENRICH" tests/ app/
+# every hit is a place the automated suites are deliberately blind
+```
+
+- **Status:** documented. Not a lint candidate.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

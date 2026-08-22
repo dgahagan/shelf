@@ -70,7 +70,7 @@ class TestCoverRedirectValidation:
         mock_resp.content = b"\xff\xd8\xff" + b"x" * 2000  # valid-looking JPEG
 
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.request = AsyncMock(return_value=mock_resp)
 
         result = await _download(trusted_url, dest, mock_client)
         assert result is False
@@ -91,7 +91,7 @@ class TestCoverRedirectValidation:
         mock_resp.content = jpeg_content
 
         mock_client = AsyncMock()
-        mock_client.get = AsyncMock(return_value=mock_resp)
+        mock_client.request = AsyncMock(return_value=mock_resp)
 
         result = await _download(
             "https://covers.openlibrary.org/b/id/123-L.jpg", dest, mock_client

@@ -9,6 +9,8 @@ import time
 
 import httpx
 
+from app.services import outbound
+
 logger = logging.getLogger(__name__)
 
 TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
@@ -62,7 +64,8 @@ async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClie
         return _token
 
     try:
-        resp = await client.post(
+        resp = await outbound.fetch(
+            client, "POST",
             TWITCH_TOKEN_URL,
             params={
                 "client_id": client_id,
@@ -117,7 +120,8 @@ async def search_games(
     query = "; ".join(parts) + ";"
 
     try:
-        resp = await client.post(
+        resp = await outbound.fetch(
+            client, "POST",
             f"{IGDB_API_URL}/games",
             headers=headers,
             content=query,
@@ -160,7 +164,8 @@ async def lookup_game(
     )
 
     try:
-        resp = await client.post(
+        resp = await outbound.fetch(
+            client, "POST",
             f"{IGDB_API_URL}/games",
             headers=headers,
             content=query,
@@ -186,7 +191,8 @@ async def test_credentials(client_id: str, client_secret: str, client: httpx.Asy
 
     # Quick test query
     try:
-        resp = await client.post(
+        resp = await outbound.fetch(
+            client, "POST",
             f"{IGDB_API_URL}/games",
             headers={"Client-ID": client_id, "Authorization": f"Bearer {token}"},
             content="fields name; limit 1;",

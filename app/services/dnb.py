@@ -14,7 +14,6 @@ via app.services.national.to_iso639_1 (unmappable codes are stored
 lowercased as received rather than dropped).
 """
 
-import asyncio
 import logging
 import re
 import unicodedata
@@ -22,7 +21,7 @@ import xml.etree.ElementTree as ET
 
 import httpx
 
-from app.config import DNB_RATE_LIMIT
+from app.services import outbound
 
 logger = logging.getLogger(__name__)
 
@@ -30,16 +29,9 @@ SRU_URL = "https://services.dnb.de/sru/dnb"
 SRU_NS = "http://www.loc.gov/zing/srw/"
 MARC_NS = "http://www.loc.gov/MARC21/slim"
 
-_last_request = 0.0
-
 
 async def _rate_limit():
-    global _last_request
-    now = asyncio.get_event_loop().time()
-    wait = DNB_RATE_LIMIT - (now - _last_request)
-    if wait > 0:
-        await asyncio.sleep(wait)
-    _last_request = asyncio.get_event_loop().time()
+    await outbound.acquire("services.dnb.de")
 
 
 def _invert_name(name: str) -> str:

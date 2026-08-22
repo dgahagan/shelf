@@ -96,9 +96,40 @@ EXPECTED_BOOKS_PER_MEGAPIXEL = 8  # rough spine density for output estimate
 EXPECTED_BOOKS_MIN = 20
 EXPECTED_BOOKS_MAX = 200
 
-OPENLIBRARY_RATE_LIMIT = 0.34  # seconds between requests (~3/sec)
-DNB_RATE_LIMIT = 1.0  # seconds between requests (be a good citizen of the DNB SRU catalog)
-HARDCOVER_RATE_LIMIT = 1.0  # seconds between requests (60/min API limit)
+# Minimum seconds between requests to a given outbound host, enforced by
+# app.services.outbound.acquire(). A host that is absent means "no pacing"
+# (interval 0.0) — that is the correct entry for LAN/self-hosted targets and
+# for hosts that publish no limit, not an oversight.
+#
+# Read this table as `app.config.HOST_RATE_LIMITS` at call time. A
+# `from app.config import HOST_RATE_LIMITS` freezes the reference at import
+# and breaks test overrides (the "Config import trap" in CLAUDE.md); tests
+# override single hosts with monkeypatch.setitem.
+HOST_RATE_LIMITS: dict[str, float] = {
+    # Open Library grants 1 req/s by default and 3 req/s to requests that
+    # identify themselves with an app name AND contact information
+    # (https://openlibrary.org/developers/api). openlibrary.py sends a
+    # contact URL in its User-Agent, so 3/s applies. If that header ever
+    # loses its contact info, this must drop to 1.0.
+    "openlibrary.org": 0.34,
+    # Two services behind one host: CoverID/OLID-keyed URLs are unlimited,
+    # every other key (ISBN, LCCN, OCLC) is capped at 100 requests per IP
+    # per 5 minutes and returns 403 past it
+    # (https://openlibrary.org/dev/docs/api/covers). 403 is not transient,
+    # so exceeding this reads as "no cover found" and fails silently — a
+    # per-host interval cannot tell the two key types apart, so pace for the
+    # limited one. Do not lower below 3.0.
+    "covers.openlibrary.org": 3.0,
+    "services.dnb.de": 1.0,  # DNB SRU catalog — good citizenship
+    "portal.dnb.de": 1.0,  # DNB cover host, same citizenship
+    "api.hardcover.app": 1.0,  # 60/min API limit
+    "api2.isbndb.com": 3.0,  # was isbndb's own 3s post-request sleep
+    "www.googleapis.com": 0.25,  # Google Books quota is per-day; light pacing only
+    "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
+    "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
+    "api.themoviedb.org": 0.1,  # no hard per-second cap
+    "api.upcitemdb.com": 1.0,  # trial tier has burst limits
+}
 
 # HTTP client defaults
 HTTP_TIMEOUT = 15  # seconds for external API calls

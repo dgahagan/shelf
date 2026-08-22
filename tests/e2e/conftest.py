@@ -104,7 +104,10 @@ def live_server():
         "DATA_DIR": str(data_dir),
         "SHELF_DISABLE_RATE_LIMIT": "1",
         "SHELF_DEV_INSECURE_COOKIES": "1",
-        "SHELF_DISABLE_COVER_ENRICH": "1",  # no outbound cover fetches from E2E
+        # Disables the cover-enrichment queue worker and its startup requeue
+        # too, so E2E makes no outbound cover fetches. enqueue() still works —
+        # jobs simply sit, which is what the cover-poll tests rely on.
+        "SHELF_DISABLE_COVER_ENRICH": "1",
     }
 
     proc = subprocess.Popen(

@@ -1,26 +1,18 @@
 """Hardcover.app GraphQL API client for book metadata and library sync."""
 
-import asyncio
 import logging
-import time
 
 import httpx
+
+from app.services import outbound
 
 logger = logging.getLogger(__name__)
 
 API_URL = "https://api.hardcover.app/v1/graphql"
-RATE_LIMIT = 1.0  # seconds between requests (60/min limit, stay safe at 1/sec)
-
-_last_request = 0.0
 
 
 async def _rate_limit():
-    global _last_request
-    now = time.monotonic()
-    wait = RATE_LIMIT - (now - _last_request)
-    if wait > 0:
-        await asyncio.sleep(wait)
-    _last_request = time.monotonic()
+    await outbound.acquire("api.hardcover.app")
 
 
 async def _graphql(
