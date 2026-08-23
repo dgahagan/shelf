@@ -236,3 +236,12 @@ class TestCoverQueueStatusLine:
         cover_queue.enqueue(1)
         html = admin_client.get("/settings").text
         assert "2 items without a cover" in html
+
+
+class TestVisionIngestKnobHelpText:
+    """The ingest long-edge knob now governs the as-is Photo Intake upload,
+    not only the tiling offer (issue #32) — both provider knobs say so."""
+
+    def test_settings_vision_help_text_mentions_the_as_is_upload(self, admin_client):
+        html = admin_client.get("/settings").text
+        assert html.count("uploads when you send a photo as-is") == 2

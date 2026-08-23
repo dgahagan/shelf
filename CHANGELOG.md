@@ -6,6 +6,79 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-08-23
+
+Photo Intake uploaded your photo at full resolution, and a modern phone camera
+makes that a problem. A 50-megapixel still is around 8 MB and 8160 pixels down
+its long edge, while the model resizes every image on arrival and never looks
+at more than a fraction of those pixels — so each send pushed roughly eleven
+times more data up the link than the model would ever see. Worse, Anthropic
+refuses any image over 8000 pixels on a side, which is exactly what a recent
+flagship phone produces, and all Shelf could tell you was "try again". This
+release shrinks the photo in your browser before it is sent, and makes a
+provider's refusal say what it actually objected to.
+
+### Fixed
+
+- **A 50-megapixel phone photo sends and reads.** Photos over the model's
+  limit were rejected outright; the same photo now uploads at a fraction of the
+  size and comes back with the books in it. A real 6144 × 8160 Pixel still went
+  from a 7.6 MB upload that Anthropic refused to a 0.66 MB upload that read all
+  eleven spines.
+
+- **Choosing a different photo while one is being analyzed no longer mixes them
+  up.** Previously the first photo's results could land under the second
+  photo's preview. The photo-choosing buttons now grey out for the duration of
+  an analysis, and a replacement arriving by any other route discards the
+  older analysis rather than displaying it.
+
+- **Send as-is and Send high-res pressed together send one photo, not two.**
+  Tapping both in quick succession used to start two analyses and bill for
+  both.
+
+### Changed
+
+- **Send as-is uploads a resized copy, at exactly the size the model ingests.**
+  Nothing larger goes up once Shelf knows what the provider will accept. This
+  also applies to a plain **Read Photo** when the photo is over the model's
+  ingest size but not by enough to trigger the tiling offer — a band where the
+  old behaviour uploaded the full file for no benefit. **Send high-res
+  (tiled) is unchanged**: tiles are still cropped at full resolution, which is
+  the entire point of that option. If the plan step fails for any reason, the
+  original file is sent exactly as before, so a hiccup there is never fatal.
+
+- **The "what the AI will see" preview is now drawn the same way the upload
+  is.** Same resizing pass, same dimensions — so the image you judge for
+  legibility before paying for tiles is the image that gets sent, rather than a
+  rougher approximation of it. The resize now steps down in halves rather than
+  in one jump, which is gentler on small text like spine lettering. The
+  provider may still adjust the image slightly on its own ingest.
+
+- **For Ollama and OpenAI-compatible providers, the Image size setting now sets
+  the upload size too.** It previously only decided when the high-res tiling
+  offer appeared. If you run a model that reads larger images natively, raise
+  it — at the 1024 default a 50-megapixel photo uploads at about 0.2 MB, at
+  3000 it uploads at about 1.1 MB. Anthropic and OpenAI have fixed ingest sizes
+  of their own, so nothing changes there.
+
+- **A provider that rejects a photo now says why.** Instead of "Anthropic API
+  error (HTTP 400) — try again", the error line carries the provider's own
+  explanation — for example that the image exceeds 8000 pixels on a side.
+  Transient failures (rate limits, timeouts, server errors) keep the old "try
+  again" wording, because retrying is genuinely the right response to those.
+  The same applies to OpenAI-compatible endpoints. Ollama is unchanged: its
+  error responses are not shaped like the cloud APIs' and its common failure
+  already had a tailored message.
+
+- **Each analysis logs what it uploaded** — one line per request naming every
+  part's filename, type and size, visible on the Logs page. Useful for
+  confirming a photo really was resized before it went out, or for sizing a
+  tiled send.
+
+There is still no way to cancel an analysis once it has started, and no rotate
+or crop step before sending — a stale analysis is discarded rather than
+aborted, and tiling is the crop.
+
 ## [0.16.0] - 2026-08-22
 
 Photo Intake only ever offered a plain file picker. On a desktop that meant a
@@ -1054,6 +1127,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.16.1]: https://github.com/dgahagan/shelf/releases/tag/v0.16.1
 [0.16.0]: https://github.com/dgahagan/shelf/releases/tag/v0.16.0
 [0.15.0]: https://github.com/dgahagan/shelf/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dgahagan/shelf/releases/tag/v0.14.0

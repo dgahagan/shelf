@@ -551,6 +551,20 @@ python -m pytest tests/test_checkouts.py -k guard_reads_under_write_lock -q
   declared G19 inapplicable and omitted the gate; the rebuild did turn out
   byte-identical, so the bug was in the reasoning, not the output — which is
   exactly the kind that survives to the run where it isn't.
+- **And it is not only *class strings* in JS — bare English words count.**
+  Tailwind's extractor pulls candidate tokens out of the whole scanned file,
+  identifiers and comment prose included, then keeps any that happen to name a
+  real utility. `var shrink = …` and a comment about a provider's `resize`
+  options emitted `.shrink{flex-shrink:1}` and `.resize{resize:both}` — two
+  dead rules from JS containing no class attribute at all. So "this JS has no
+  class strings, therefore no rebuild" is the same wrong question one level
+  down: `shrink`, `resize`, `grid`, `table`, `fixed`, `block`, `container`,
+  `visible`, `flex`, `order`, `filter`, `transform` and friends are all
+  ordinary programming words *and* Tailwind utilities. Evidence: `dc07a51`
+  (2026-08-23, issue-32 T2) — the plan's own G19 pre-check said "expected
+  byte-identical", reasoning only about markup; `SW_VERSION` went `v6` → `v7`
+  and `tests/test_store.py`'s `PINNED` gained a `v7` digest in the same
+  commit. Run `make css` and look; never reason your way past it.
 - **Verify:** the digest pinned for the current `SW_VERSION` must match the
   precached files on disk:
 
@@ -1188,8 +1202,10 @@ grep -rn "^\s\+from app\.\(routers\|services\)\." app/ --include='*.py'
 grep -rn "setattr(.*_enrich_import_covers\|setattr(.*_lookup_metadata\|setattr(.*_save_item" tests/
 ```
 
-  (the second grep's hits must all name `app.routers.items`, never
-  `app.routers.intake` / `app.routers.store`.)
+  (the second grep's hits must all resolve to `app.routers.items`, never
+  `app.routers.intake` / `app.routers.store` — as of 2026-08-23 all four hits
+  patch it through the `items_router` import alias, so grep for the alias too,
+  not just the dotted path.)
 - **Status:** documented.
 
 ## G38 — When a camera viewfinder has more than one way to leave or restart it
@@ -1257,6 +1273,47 @@ python -m pytest tests/e2e/test_intake.py -m e2e -k latest_photo_plan_wins -q
 - **Status:** documented. Lint candidate: a grep for `async` component methods
   that write `this.` state after a second `await` without an identity check
   would be noisy but not impossible.
+
+## G40 — When an E2E test asserts on the *bytes* a browser uploaded
+
+- **Rule:** Playwright's `route.request.post_data_buffer` **elides the payload
+  of a file-backed multipart part.** The recorded body carries the boundary,
+  the `Content-Disposition` with the real `filename=`, the `Content-Type` —
+  and then zero bytes. Only parts built in the page (a `Blob` from
+  `canvas.toBlob`, a synthesized `File`) are inlined. So assert filenames and
+  absences from the recorded body, and get the *sizes* from the browser: an
+  `add_init_script` that wraps `window.fetch` and records
+  `opts.body.getAll('<field>').map(p => ({name: p.name, size: p.size, type:
+  p.type}))` onto a `window.__…` global, read back with `page.evaluate`.
+- **Why:** the failure mode is inverted and quiet. `assert FIXTURE.read_bytes()
+  in body` fails against *correct* code, which reads as a product bug and
+  invites "fixing" the product; and the reflex repair — fall back to
+  `assert b"fixture.jpg" in body` — silently downgrades a byte-identity claim
+  to a filename claim that a re-encode under the same name would still pass.
+  The in-page recorder is also the better assertion on its own terms: it is
+  the browser's own view of what it is about to send, so it states the
+  contract rather than an artifact of the recording.
+- **Evidence:** `a6a6842` (2026-08-23, issue-32 T4). The plan specified
+  `assert FIXTURE_PHOTO.read_bytes() in body` for "an in-cap photo uploads
+  unchanged"; it failed against working code with an empty part in the body.
+  The pre-existing `test_latest_photo_plan_wins` had asserted only
+  `b"eleven_books.jpg" in uploads[-1]` since 2026-08-22 — the workaround was
+  already in the file, undocumented, and the plan read it as style. Replaced
+  with `_record_upload_parts()` pinning `{name, size, type}` exactly; the
+  "force `shrink = true`" mutation fails on it, which the filename check
+  would have survived.
+- **Verify:** any e2e assertion about upload *content* must read
+  `window.__uploadParts` (or an equivalent in-page recorder), not the routed
+  request body:
+
+```bash
+grep -rn "post_data_buffer" tests/e2e/
+# every hit may assert filenames/absence only; byte or size claims must come
+# from the page
+```
+
+- **Status:** documented. Not a lint candidate — it is a judgement about what
+  a given assertion actually proves.
 
 ## Graveyard
 

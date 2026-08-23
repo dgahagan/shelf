@@ -928,7 +928,7 @@
                     <input type="text" id="openai_ingest_long_edge" name="openai_ingest_long_edge" inputmode="numeric"
                            value="{{ settings.get('openai_ingest_long_edge', '') }}" placeholder="2048 (default)"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; drives when Photo Intake offers high-res tiling.</p>
+                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling.</p>
                 </div>
             </div>
             <div x-show="visionProvider === 'ollama'" class="space-y-3">
@@ -950,7 +950,7 @@
                     <input type="text" id="ollama_ingest_long_edge" name="ollama_ingest_long_edge" inputmode="numeric"
                            value="{{ settings.get('ollama_ingest_long_edge', '') }}" placeholder="1024 (default)"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; drives when Photo Intake offers high-res tiling.</p>
+                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling.</p>
                 </div>
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">

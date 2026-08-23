@@ -67,6 +67,15 @@ or **Find cover**.
 - Is a provider configured and does its **Test** pass?
 - Local model too small for the job: try a cloud model once to compare.
 - Accept the **tiling** offer for high-resolution photos.
+- An error starting "Anthropic rejected the request" or "OpenAI API
+  rejected the request" quotes the provider's own reason (trimmed to a
+  sentence or so) — the usual fixes are the high-res offer or a smaller
+  photo; an error ending in "try again" is a transient one worth retrying.
+- **Logs** shows an `Intake analyze:` line for every send, naming each
+  uploaded part's filename, type and size — a quick way to confirm a photo
+  really was resized before it went out (a resized as-is send appears as
+  `photo.jpg`, an unmodified one keeps the original filename, a tiled send
+  lists one `tile-N.jpg` per tile).
 - Glare, angle, distance — see [Photo Intake](user-guide/photo-intake.md#getting-good-results).
 
 ## Store Mode isn't offline

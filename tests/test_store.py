@@ -33,6 +33,11 @@ PINNED = {
     # .devdocs/ (workflow-migration Phase 3). Comment-only — no behaviour
     # change — but store.js is precached, so its bytes are pinned here.
     "v6": "7ea788c2ffc51038262a04a0f440f1afc932ca02235349308fe2b32b792f120f",
+    # v7: app.css rebuild — intake.js's downscale helper (issue #32) uses the
+    # bare words `shrink` and `resize` in a variable name and its comments, and
+    # Tailwind's extractor scans static/js/**, so it now emits .shrink and
+    # .resize. Two dead rules, but app.css is precached, so the bump is real.
+    "v7": "7da4b1f46b6d2137a3bc6428933023478ab4b206c92a0ea84d17ed499ab6feec",
 }
 
 

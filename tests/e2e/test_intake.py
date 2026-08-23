@@ -76,6 +76,44 @@ def _png_bytes(width, height):
             + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
 
 
+def _jpeg_dims(buf):
+    """(width, height) of the first JPEG in a multipart body, stdlib only.
+
+    Pillow is importable here but undeclared (see `_png_bytes`), so the SOF
+    marker is walked by hand. Chromium's `toBlob('image/jpeg')` emits a
+    baseline SOF0; C4/C8/CC are DHT/JPG/DAC, not frame headers.
+    """
+    import struct
+
+    i = buf.find(b"\xff\xd8\xff")
+    assert i != -1, "no JPEG SOI marker in the recorded body"
+    i += 2
+    while i < len(buf) - 1:
+        if buf[i] != 0xFF:
+            i += 1
+            continue
+        marker = buf[i + 1]
+        if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
+            i += 2
+            continue
+        seglen = struct.unpack(">H", buf[i + 2:i + 4])[0]
+        if 0xC0 <= marker <= 0xCF and marker not in (0xC4, 0xC8, 0xCC):
+            h, w = struct.unpack(">HH", buf[i + 5:i + 9])
+            return (w, h)
+        i += 2 + seglen
+    raise AssertionError("no SOF marker found in the recorded JPEG")
+
+
+def _jpeg_slice(buf):
+    """The first JPEG in a multipart body, SOI through EOI, as bytes."""
+    buf = bytes(buf)
+    start = buf.find(b"\xff\xd8\xff")
+    assert start != -1, "no JPEG SOI marker in the recorded body"
+    end = buf.rfind(b"\xff\xd9")
+    assert end > start, "no JPEG EOI marker after the SOI"
+    return buf[start:end + 2]
+
+
 def _csrf_headers(page):
     return {"X-CSRF-Token": page.evaluate("() => window.csrfToken()")}
 
@@ -488,3 +526,348 @@ def test_confirm_round_trip_sends_edits_and_persists_them(live_server, intake_pa
     assert row["media_type"] == "dvd"
     assert row["isbn"] is None
     assert row["source"] == "photo_intake"
+
+
+# --- issue #32: the as-is upload is downscaled to the plan's preview size ----
+
+def _choose_and_plan(live_server, page, name, width, height):
+    """Choose a synthesized photo and return the real /plan response for it.
+
+    /plan runs for real against the live server (the `intake_page` fixture's
+    contract), so the expected preview dims come from the server, never from a
+    constant this test would have to keep in step with `app/config.py`.
+    """
+    page.goto(f"{live_server['url']}/intake")
+    page.wait_for_load_state("networkidle")
+    with page.expect_response("**/api/intake/plan") as resp:
+        page.locator("[data-testid=intake-choose-input]").set_input_files(
+            {"name": name, "mimeType": "image/png",
+             "buffer": _png_bytes(width, height)})
+    return resp.value.json()
+
+
+def _centre_pixel_of_recorded_jpeg(page, body):
+    """Decode the recorded JPEG back in the page and read its centre pixel.
+
+    `_png_bytes` paints solid 0x80 grey, so a resample of it is still grey —
+    which makes this a positive check that the canvas was actually *drawn*
+    into. A sized-but-undrawn canvas encodes to black or transparent.
+    `img-src blob:` (app/main.py) admits the object URL.
+    """
+    import base64
+
+    return page.evaluate(
+        """async (b64) => {
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+            const url = URL.createObjectURL(new Blob([bytes], {type: 'image/jpeg'}));
+            const img = new Image();
+            await new Promise((res, rej) => {
+                img.onload = res; img.onerror = rej; img.src = url;
+            });
+            const c = document.createElement('canvas');
+            c.width = 1; c.height = 1;
+            c.getContext('2d').drawImage(
+                img, Math.floor(img.width / 2), Math.floor(img.height / 2), 1, 1, 0, 0, 1, 1);
+            URL.revokeObjectURL(url);
+            return Array.from(c.getContext('2d').getImageData(0, 0, 1, 1).data);
+        }""",
+        base64.b64encode(_jpeg_slice(body)).decode(),
+    )
+
+
+def _record_upload_parts(page):
+    """Record each `photos` part's name, size and MIME as the page sees it.
+
+    Playwright's `request.post_data_buffer` elides a *file-backed* multipart
+    part (`test_latest_photo_plan_wins` only ever asserts on the filename for
+    that reason), so "the fixture went up unchanged" is not checkable from the
+    recorded body alone. The browser's own FormData is, and it is also the
+    more direct statement of the contract. CDP-injected, so the CSP's ban on
+    eval does not apply (tests/e2e/test_csp.py has the same precedent).
+    """
+    page.add_init_script("""
+        (() => {
+          window.__uploadParts = [];
+          const orig = window.fetch;
+          window.fetch = function (url, opts) {
+            const u = typeof url === 'string' ? url : (url && url.url) || '';
+            if (u.indexOf('/api/intake/analyze') !== -1 && opts && opts.body
+                && typeof opts.body.getAll === 'function') {
+              window.__uploadParts = opts.body.getAll('photos').map(
+                p => ({name: p.name, size: p.size, type: p.type}));
+            }
+            return orig.apply(this, arguments);
+          };
+        })();
+    """)
+
+
+def test_send_as_is_uploads_the_plan_preview_size(live_server, intake_page):
+    """Send as-is must upload the plan's preview pixels, not the original file.
+
+    Before issue #32 the raw 8-12 MB phone still went up untouched and
+    Anthropic rejected anything over 8000 px outright.
+    """
+    page = intake_page
+    uploads = []
+    page.route("**/api/intake/analyze",
+               lambda route: (uploads.append(route.request.post_data_buffer),
+                              route.fulfill(json=ANALYZE_RESPONSE)))
+
+    plan = _choose_and_plan(live_server, page, "big.png", 3000, 2000)
+    assert plan["needs_choice"] is True, "3000x2000 must reach the tiling card"
+    assert plan["preview"]["w"] < 3000, "the plan must actually downscale"
+    expect(page.locator("[data-testid=intake-model-preview]")).to_be_visible()
+
+    page.locator("[data-testid=intake-send-as-is]").click()
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+
+    assert uploads, "no /api/intake/analyze request was recorded"
+    body = bytes(uploads[-1])
+    assert b'filename="photo.jpg"' in body, "the downscaled part was not sent"
+    assert b"big.png" not in body, "the original file went up as well"
+    assert _jpeg_dims(body) == (plan["preview"]["w"], plan["preview"]["h"])
+
+    r, g, b, a = _centre_pixel_of_recorded_jpeg(page, body)
+    assert a == 255
+    for channel in (r, g, b):
+        assert abs(channel - 128) <= 12, \
+            f"uploaded JPEG is not the fixture grey: {(r, g, b, a)}"
+
+
+def test_preview_canvas_is_the_uploaded_size(live_server, intake_page):
+    """The "what the AI will see" canvas is the same resample, same size —
+    and it is produced by stepped halving, not one aliasing draw."""
+    page = intake_page
+    # Record every 5-argument drawImage so the intermediate step is visible.
+    # add_init_script is CDP-injected, not eval'd in the page, so the CSP does
+    # not block it (tests/e2e/test_csp.py has the same precedent).
+    page.add_init_script("""
+        (() => {
+          window.__draws = [];
+          const proto = CanvasRenderingContext2D.prototype;
+          const orig = proto.drawImage;
+          proto.drawImage = function () {
+            if (arguments.length === 5) {
+              window.__draws.push([arguments[3], arguments[4]]);
+            }
+            return orig.apply(this, arguments);
+          };
+        })();
+    """)
+
+    plan = _choose_and_plan(live_server, page, "big.png", 3000, 2000)
+    assert plan["needs_choice"] is True
+
+    # G21: Python-side poll, never page.wait_for_function (CSP blocks eval).
+    canvas = "() => { const c = document.querySelector('[data-testid=intake-model-preview]'); return c ? {w: c.width, h: c.height} : {w: 0, h: 0}; }"
+    deadline = time.time() + 10
+    dims = page.evaluate(canvas)
+    while dims["w"] == 0 and time.time() < deadline:
+        time.sleep(0.1)
+        dims = page.evaluate(canvas)
+    assert dims == {"w": plan["preview"]["w"], "h": plan["preview"]["h"]}
+
+    pixel = page.evaluate(
+        """() => {
+            const c = document.querySelector('[data-testid=intake-model-preview]');
+            return Array.from(c.getContext('2d').getImageData(
+                Math.floor(c.width / 2), Math.floor(c.height / 2), 1, 1).data);
+        }"""
+    )
+    assert pixel[3] == 255
+    for channel in pixel[:3]:
+        assert abs(channel - 128) <= 12, f"preview canvas was not drawn: {pixel}"
+
+    # 3000 > 2 * 1024, so exactly one halving precedes the final draw.
+    draws = page.evaluate("() => window.__draws")
+    final = [plan["preview"]["w"], plan["preview"]["h"]]
+    assert final in draws, f"no draw at the preview size; saw {draws}"
+    assert [1500, 1000] in draws, \
+        f"no intermediate halving step — the resampler drew in one pass: {draws}"
+    assert draws.index([1500, 1000]) < draws.index(final)
+
+
+def test_photo_within_cap_uploads_unchanged(live_server, intake_page):
+    """A photo already inside the model's ingest size goes up byte-identical.
+
+    The fixture is 770x1022 against the Ollama default cap of 1024 — clear by
+    2 px on the long edge. If this test goes red after a cap or fixture
+    change, that margin is why.
+    """
+    page = intake_page
+    uploads = []
+    page.route("**/api/intake/analyze",
+               lambda route: (uploads.append(route.request.post_data_buffer),
+                              route.fulfill(json=ANALYZE_RESPONSE)))
+    _record_upload_parts(page)
+
+    page.goto(f"{live_server['url']}/intake")
+    page.wait_for_load_state("networkidle")
+    page.locator("[data-testid=intake-choose-input]").set_input_files(str(FIXTURE_PHOTO))
+    expect(page.locator("[data-testid=intake-low-res]")).to_be_visible()
+    page.locator("button", has_text="Read Photo").click()
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+
+    assert page.evaluate("() => window.__uploadParts") == [{
+        "name": FIXTURE_PHOTO.name,
+        "size": FIXTURE_PHOTO.stat().st_size,
+        "type": "image/jpeg",
+    }], "the fixture was re-encoded rather than sent unchanged"
+
+    assert uploads, "no /api/intake/analyze request was recorded"
+    body = bytes(uploads[-1])
+    assert b"eleven_books.jpg" in body
+    assert b"photo.jpg" not in body
+    # A file-backed part is elided from the recorded body; a re-encoded Blob
+    # would be inlined, so no inline JPEG is a second read on the same fact.
+    assert b"\xff\xd8\xff" not in body
+
+
+def test_read_photo_downscales_over_cap_below_tiling_threshold(live_server, intake_page):
+    """The (1, 1.5) factor band: over the cap, but not enough to offer tiling.
+
+    1400x900 against the 1024 cap gives a factor of about 1.37, under
+    `TILING_THRESHOLD`, so there is no tiling card and Read Photo is the click
+    target — and it must still downscale.
+    """
+    page = intake_page
+    uploads = []
+    page.route("**/api/intake/analyze",
+               lambda route: (uploads.append(route.request.post_data_buffer),
+                              route.fulfill(json=ANALYZE_RESPONSE)))
+
+    plan = _choose_and_plan(live_server, page, "middle.png", 1400, 900)
+    assert plan["needs_choice"] is False, "1400x900 must not reach the tiling card"
+    assert plan["preview"]["w"] < 1400, "the plan must still downscale"
+
+    page.locator("button", has_text="Read Photo").click()
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+
+    assert uploads, "no /api/intake/analyze request was recorded"
+    body = bytes(uploads[-1])
+    assert b'filename="photo.jpg"' in body
+    assert b"middle.png" not in body
+    assert _jpeg_dims(body) == (plan["preview"]["w"], plan["preview"]["h"])
+
+
+def test_send_as_is_and_high_res_in_one_tick_fetch_once(live_server, intake_page):
+    """Two send buttons clicked in one tick must produce one request.
+
+    The file's ONE bounded timed negative, deliberately: under the mutation
+    (no `|| this.analyzing` early return) the second fetch fires only after
+    makeTileBlobs()'s toBlob awaits resolve, tens of ms later, and there is no
+    positive in-page signal for "a second request would have fired by now".
+    """
+    page = intake_page
+    calls = []
+    page.route("**/api/intake/analyze",
+               lambda route: (calls.append(1),
+                              route.fulfill(json=ANALYZE_RESPONSE)))
+
+    plan = _choose_and_plan(live_server, page, "big.png", 3000, 2000)
+    assert plan["needs_choice"] is True
+    expect(page.locator("[data-testid=intake-send-as-is]")).to_be_visible()
+
+    page.evaluate("""() => {
+        document.querySelector('[data-testid=intake-send-as-is]').click();
+        document.querySelector('[data-testid=intake-send-tiled]').click();
+    }""")
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+    expect(page.locator("text=Reading your photo")).to_be_hidden()
+
+    page.wait_for_timeout(500)
+    assert len(calls) == 1, f"analyze() is not single-flight: {len(calls)} requests"
+
+
+def test_replacing_the_photo_during_analysis_keeps_the_new_photos_rows(
+        live_server, intake_page):
+    """A stale analysis must never write its rows over the current photo's.
+
+    The chooser buttons are disabled for the duration (G38), so the replace is
+    done programmatically through the hidden input — which is exactly why the
+    generation guard in analyze() has to exist as well (G39).
+    """
+    page = intake_page
+    # Hold photo A's /analyze response until the test releases it, and count
+    # deliveries so the release can be waited on positively rather than slept
+    # past (G31: a negative assertion must not be satisfied by the
+    # not-yet-happened state).
+    page.add_init_script("""
+        (() => {
+          let n = 0;
+          window.__analyzeDelivered = 0;
+          const orig = window.fetch;
+          window.fetch = function (url, opts) {
+            const u = typeof url === 'string' ? url : (url && url.url) || '';
+            const p = orig.apply(this, arguments);
+            if (u.indexOf('/api/intake/analyze') === -1) return p;
+            n += 1;
+            if (n === 1) {
+              return p.then(r => new Promise(res => {
+                window.__releaseA = () => { window.__analyzeDelivered += 1; res(r); };
+              }));
+            }
+            return p.then(r => { window.__analyzeDelivered += 1; return r; });
+          };
+        })();
+    """)
+
+    call = {"n": 0}
+
+    def _analyze_route(route):
+        call["n"] += 1
+        if call["n"] == 1:
+            route.fulfill(json={"ok": True, "books": [
+                {"title": "Stale A1", "authors": None, "isbn": None, "source": "read"},
+                {"title": "Stale A2", "authors": None, "isbn": None, "source": "read"},
+            ]})
+        else:
+            route.fulfill(json=ANALYZE_RESPONSE)
+
+    page.route("**/api/intake/analyze", _analyze_route)
+
+    page.goto(f"{live_server['url']}/intake")
+    page.wait_for_load_state("networkidle")
+    chooser = page.locator("[data-testid=intake-choose-input]")
+    chooser.set_input_files(str(FIXTURE_PHOTO))
+    # 770 < LOW_RES_LONG_EDGE, so the advisory card is up throughout A's
+    # analysis (analyze() never clears `lowRes`) and all four chooser buttons
+    # are attached; headless Chromium reports getUserMedia, so the x-show on
+    # Take photo / Take another photo holds (tests/e2e/conftest.py).
+    expect(page.locator("[data-testid=intake-low-res]")).to_be_visible()
+    page.locator("button", has_text="Read Photo").click()
+
+    for tid in ("intake-take-photo", "intake-choose-photo",
+                "intake-retake", "intake-choose-another"):
+        expect(page.locator(f"[data-testid={tid}]")).to_be_disabled()
+
+    # Photo B, through the hidden input — the disabled buttons are bypassed on
+    # purpose, which is the case the generation guard defends.
+    with page.expect_response("**/api/intake/plan"):
+        chooser.set_input_files({"name": "b.png", "mimeType": "image/png",
+                                 "buffer": _png_bytes(900, 700)})
+    page.locator("button", has_text="Read Photo").click()
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+    # Row titles live in input values, not text nodes.
+    expect(page.locator("[data-testid=intake-row]").first.locator(
+        "input[placeholder=Title]")).to_have_value("E2E Read Book")
+
+    # Now let A's response land, and wait for it positively (G21: a
+    # Python-side poll over page.evaluate, never page.wait_for_function).
+    page.evaluate("() => window.__releaseA()")
+    deadline = time.time() + 10
+    while page.evaluate("() => window.__analyzeDelivered") < 2 and time.time() < deadline:
+        time.sleep(0.1)
+    assert page.evaluate("() => window.__analyzeDelivered") == 2, \
+        "photo A's held response never landed — the pin would be vacuous"
+
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+    titles = page.locator("[data-testid=intake-row] input[placeholder=Title]")
+    expect(titles.first).to_have_value("E2E Read Book")
+    assert "Stale A1" not in page.evaluate(
+        "() => Array.from(document.querySelectorAll("
+        "'[data-testid=intake-row] input[placeholder=Title]')).map(i => i.value).join('|')")
+    expect(page.locator("text=Reading your photo")).to_be_hidden()

@@ -34,10 +34,11 @@ function intakePage() {
         lowRes: false,
         photoW: 0,
         photoH: 0,
-        // Monotonic token for the async plan. Every continuation in planPhoto()
-        // must prove it still owns the current photo before writing shared
-        // state — otherwise a slow plan for photo A lands on photo B and
-        // analyze() crops and sends A's pixels under B's name.
+        // Monotonic token for the async plan. Every continuation in setPhoto(),
+        // planPhoto() and analyze() must prove it still owns the current photo
+        // before writing shared state — otherwise a slow plan for photo A lands
+        // on photo B and analyze() crops and sends A's pixels under B's name,
+        // or A's rows land under B's preview.
         photoGeneration: 0,
 
         init() {
@@ -77,6 +78,7 @@ function intakePage() {
             this.needsChoice = false;
             this.imageEl = null;
             this.lowRes = false;
+            this.analyzing = false;
             this.photoW = 0;
             this.photoH = 0;
             if (this.preview) URL.revokeObjectURL(this.preview);
@@ -86,6 +88,10 @@ function intakePage() {
             var gen = ++this.photoGeneration;
             // Never leave a stream running once a photo has been chosen.
             await this.closeViewfinder();
+            // A's capture.stop() can resolve after B's whole plan round-trip:
+            // planPhoto(oldGen) would then set `planning` and return stale
+            // without clearing it, leaving Read Photo disabled forever.
+            if (gen !== this.photoGeneration) return;
             if (this.file) this.planPhoto(gen);
         },
 
@@ -203,9 +209,14 @@ function intakePage() {
         drawModelPreview() {
             var canvas = this.$refs.modelPreview;
             if (!canvas || !this.imageEl || !this.plan) return;
-            canvas.width = this.plan.preview.w;
-            canvas.height = this.plan.preview.h;
-            canvas.getContext('2d').drawImage(this.imageEl, 0, 0, canvas.width, canvas.height);
+            // Same resampler the as-is upload is encoded from, at the same
+            // dimensions — this canvas is what the user reads to decide whether
+            // to pay for tiles, so it must not judge the model more harshly
+            // than the provider's own resizer would.
+            var src = this.resampleImage(this.plan.preview.w, this.plan.preview.h);
+            canvas.width = src.width;
+            canvas.height = src.height;
+            canvas.getContext('2d').drawImage(src, 0, 0);
         },
 
         fmtCost(usd) {
@@ -215,6 +226,50 @@ function intakePage() {
 
         tileCount() {
             return this.plan ? this.plan.tiles.length : 0;
+        },
+
+        // Downscale imageEl to exactly w x h by repeated halving. A single-step
+        // drawImage from 8160 -> 2576 aliases, and spine text is exactly the
+        // fine detail that damages — each step stays within 2x so the browser's
+        // bilinear filter has something to average. Not
+        // createImageBitmap(file, {resizeWidth, ...}): Safari ignores the resize
+        // options, and its imageOrientation defaults have moved between Chrome
+        // versions, whereas <img> + drawImage applies EXIF orientation the same
+        // way makeTileBlobs() already relies on. Known ceiling, recorded not
+        // handled: older iOS Safari refuses canvases above ~16 MP of area, so a
+        // source above ~67 MP (108 MP phone modes) makes the first ceil(cur/2)
+        // step exceed it and draws nothing — see the design plan's Out of scope
+        // (revisit trigger: a blank-photo report from an iPhone).
+        resampleImage(w, h) {
+            var srcW = this.imageEl.naturalWidth;
+            var srcH = this.imageEl.naturalHeight;
+            var src = this.imageEl;
+            while (srcW > 2 * w || srcH > 2 * h) {
+                var stepW = Math.max(w, Math.ceil(srcW / 2));
+                var stepH = Math.max(h, Math.ceil(srcH / 2));
+                var step = document.createElement('canvas');
+                step.width = stepW;
+                step.height = stepH;
+                var stepCtx = step.getContext('2d');
+                stepCtx.imageSmoothingEnabled = true;
+                stepCtx.imageSmoothingQuality = 'high';
+                stepCtx.drawImage(src, 0, 0, stepW, stepH);
+                // Release the previous intermediate; peak extra memory stays at
+                // one half-size canvas.
+                if (src !== this.imageEl) src.width = 0;
+                src = step;
+                srcW = stepW;
+                srcH = stepH;
+            }
+            var out = document.createElement('canvas');
+            out.width = w;
+            out.height = h;
+            var ctx = out.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(src, 0, 0, w, h);
+            if (src !== this.imageEl) src.width = 0;
+            return out;
         },
 
         async makeTileBlobs() {
@@ -232,27 +287,54 @@ function intakePage() {
         },
 
         async analyze(tiled) {
-            if (!this.file) return;
-            // Analysis can run for a minute; the camera must not stay lit.
-            await this.closeViewfinder();
+            // Single-flight per photo: the busy flag is set before the first
+            // suspension point, so Send as-is and Send high-res clicked in one
+            // tick produce one request rather than two.
+            if (!this.file || this.analyzing) return;
+            // The photo this run belongs to. Every continuation below proves it
+            // still owns the page before writing shared state, and a loser
+            // returns without clearing `analyzing` — the replacer clears it.
+            var gen = this.photoGeneration;
             this.analyzing = true;
             this.error = false;
             this.books = [];
             this.result = false;
+            // Analysis can run for a minute; the camera must not stay lit.
+            await this.closeViewfinder();
+            if (gen !== this.photoGeneration) return;
             try {
                 var form = new FormData();
                 if (tiled && this.plan.tiles.length && this.imageEl) {
                     var blobs = await this.makeTileBlobs();
+                    if (gen !== this.photoGeneration) return;
                     blobs.forEach((b, i) => form.append('photos', b, 'tile-' + i + '.jpg'));
                 } else {
-                    form.append('photos', this.file);
+                    // Never upload more pixels than the provider will ingest:
+                    // /plan's preview dims are exactly what it resizes to.
+                    // factor is rounded (a 2586px photo reports 1.0), preview
+                    // is exact — and emptyPlan()'s {w:0,h:0} falls through to
+                    // the original bytes, so a failed plan stays non-fatal.
+                    var p = this.plan.preview;
+                    var shrink = p.w > 0 && (p.w < this.photoW || p.h < this.photoH) && this.imageEl;
+                    if (shrink) {
+                        var src = this.resampleImage(p.w, p.h);
+                        var blob = await new Promise(resolve =>
+                            src.toBlob(resolve, 'image/jpeg', 0.92));
+                        if (gen !== this.photoGeneration) return;
+                        if (blob) form.append('photos', blob, 'photo.jpg');
+                        else form.append('photos', this.file);
+                    } else {
+                        form.append('photos', this.file);
+                    }
                 }
                 var resp = await fetch('/api/intake/analyze', {
                     method: 'POST',
                     headers: { 'X-CSRF-Token': window.csrfToken() },
                     body: form,
                 });
+                if (gen !== this.photoGeneration) return;
                 var data = await resp.json();
+                if (gen !== this.photoGeneration) return;
                 if (data.ok) {
                     this.needsChoice = false;
                     this.books = data.books.map(b => ({
@@ -263,6 +345,7 @@ function intakePage() {
                     this.error = data.message || 'Analysis failed';
                 }
             } catch (e) {
+                if (gen !== this.photoGeneration) return;
                 this.error = 'Analysis failed: ' + e.message;
             }
             this.analyzing = false;
@@ -351,6 +434,7 @@ function intakePage() {
             this.needsChoice = false;
             this.imageEl = null;
             this.lowRes = false;
+            this.analyzing = false;
             this.source = 'file';
             this.photoW = 0;
             this.photoH = 0;

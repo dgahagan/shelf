@@ -112,6 +112,29 @@ class VisionError(Exception):
     """User-presentable vision failure (config or upstream error)."""
 
 
+def _error_detail(body: object) -> str | None:
+    """Pull a human-readable message out of a provider's parsed error body.
+
+    Covers the Anthropic/OpenAI shape ({"error": {"message": ...}}), the
+    string-error shape some OpenAI-compatible servers use ({"error": "..."}),
+    and a bare {"message": ...}. Never raises, whatever `body` is.
+    """
+    if isinstance(body, dict):
+        error = body.get("error")
+        if isinstance(error, dict) and isinstance(error.get("message"), str):
+            return " ".join(error["message"].split())
+        if isinstance(error, str) and error:
+            return " ".join(error.split())
+        message = body.get("message")
+        if isinstance(message, str):
+            return " ".join(message.split())
+    return None
+
+
+def _clip(s: str, n: int = 300) -> str:
+    return s if len(s) <= n else s[:n] + "…"
+
+
 def clean_isbn(raw: object) -> str | None:
     """A checksum-valid ISBN-13 from provider output, or None.
 
@@ -302,7 +325,11 @@ async def _detect_anthropic(images: list[tuple[bytes, str]], settings: dict) -> 
     except anthropic.AuthenticationError:
         raise VisionError("Anthropic API key was rejected — check it in Settings")
     except anthropic.APIStatusError as e:
-        logger.warning("Anthropic vision call failed: HTTP %d", e.status_code)
+        detail = _error_detail(e.body)
+        logger.warning("Anthropic vision call failed: HTTP %d %s",
+                        e.status_code, _clip(detail or str(e.message), 500))
+        if 400 <= e.status_code < 500 and e.status_code not in (408, 409, 429) and detail:
+            raise VisionError(f"Anthropic rejected the request (HTTP {e.status_code}): {_clip(detail)}")
         raise VisionError(f"Anthropic API error (HTTP {e.status_code}) — try again")
     except anthropic.APIConnectionError:
         raise VisionError("Could not reach the Anthropic API — check your connection")
@@ -360,7 +387,15 @@ async def _detect_openai(images: list[tuple[bytes, str]], settings: dict) -> lis
     if resp.status_code in (401, 403):
         raise VisionError("OpenAI API key was rejected — check it in Settings")
     if resp.status_code != 200:
-        logger.warning("OpenAI vision call failed: HTTP %d %s", resp.status_code, resp.text[:200])
+        try:
+            body = resp.json()
+        except ValueError:
+            body = None
+        detail = _error_detail(body)
+        logger.warning("OpenAI vision call failed: HTTP %d %s",
+                        resp.status_code, _clip(detail or resp.text, 500))
+        if 400 <= resp.status_code < 500 and resp.status_code not in (408, 409, 429) and detail:
+            raise VisionError(f"OpenAI API rejected the request (HTTP {resp.status_code}): {_clip(detail)}")
         raise VisionError(f"OpenAI API error (HTTP {resp.status_code}) — try again")
 
     try:

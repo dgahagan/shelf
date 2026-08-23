@@ -82,6 +82,7 @@ async def analyze_photo(photos: list[UploadFile] = File(...)):
     single photo, cropped client-side in reading order (see /plan).
     """
     images: list[tuple[bytes, str]] = []
+    parts: list[str] = []
     for photo in photos:
         mime = (photo.content_type or "").lower()
         if mime not in vision.ALLOWED_MIME:
@@ -92,8 +93,11 @@ async def analyze_photo(photos: list[UploadFile] = File(...)):
         if not image_bytes:
             return {"ok": False, "message": "Empty upload"}
         images.append((image_bytes, mime))
+        parts.append(f"{photo.filename or '-'} {mime} {len(image_bytes)} B")
     if not images:
         return {"ok": False, "message": "Empty upload"}
+
+    logger.info("Intake analyze: %d photo(s) — %s", len(parts), ", ".join(parts))
 
     with get_db() as db:
         settings = get_all_settings(db)

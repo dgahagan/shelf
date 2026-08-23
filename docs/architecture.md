@@ -76,12 +76,16 @@ exceeds the provider's ingest cap and offers tiling with a cost estimate, or
 `LOW_RES_LONG_EDGE`, `config.py`) and returns a `low_res` advisory flag
 instead; the two are mutually exclusive by construction. Provider knowledge
 stays server-side (a stated invariant of the endpoint), so the UI only
-renders the flags it's handed, never computes them →
+renders the flags it's handed, never computes them → the as-is upload is
+resized in the browser to the plan's preview size before `/analyze` (the
+tiled path still crops at full resolution), so the model receives the
+preview's resample, JPEG-encoded →
 `/api/intake/analyze` sends the image(s) to the configured backend
-(Anthropic, OpenAI-compatible, Ollama — one interface, three adapters) →
-tile results are merged and de-duplicated → the user edits → `/confirm`
-runs each row through the metadata pipeline and enqueues covers. Photos are
-never stored.
+(Anthropic, OpenAI-compatible, Ollama — one interface, three adapters),
+logging each part's filename, MIME type and byte size → tile results are
+merged and de-duplicated → the user edits → `/confirm` runs each row
+through the metadata pipeline and enqueues covers. Photos are never
+stored.
 
 ## Background tasks
 

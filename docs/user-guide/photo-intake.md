@@ -21,7 +21,8 @@ For Anthropic enter an API key and pick a model. For OpenAI-compatible enter
 the base URL, an optional key, and a vision-capable model name. For Ollama
 enter the server URL and model. Both OpenAI-compatible and Ollama have an
 "ingest long edge" field — the resolution the model actually sees — which
-drives the tiling decision below; the defaults match common models.
+sets the size Shelf uploads when you send a photo as-is, and drives the
+tiling decision below; the defaults match common models.
 
 The **Photo Intake** nav tab appears once a provider is saved.
 
@@ -39,7 +40,14 @@ The **Photo Intake** nav tab appears once a provider is saved.
 2. If the photo is much larger than the model will ingest, Shelf shows a
    **"what the model will see"** preview and offers to split it into
    overlapping tiles, with a cost estimate for each choice. More tiles = more
-   legible spines = more tokens. Pick one.
+   legible spines = more tokens. Pick one, or choose **Send as-is**. Send
+   as-is — and a plain **Read Photo**, when the photo is over the model's
+   ingest size but not by enough to trigger the tiling offer — sends a copy
+   resized to that same preview size: the preview canvas is drawn from the
+   identical resample, and the upload is that image JPEG-encoded (the model
+   may still resize it slightly further on ingest). Once the plan is known,
+   nothing larger than the model's ingest size is uploaded, so the upload is
+   smaller and faster too.
 3. Wait for analysis. Detected books appear as an editable list. Each row
    carries a title, an author, an **ISBN** (pre-filled when the model read
    one off a back cover, and editable), and a **media type** picker — it
@@ -63,7 +71,9 @@ Nothing is imported until you confirm, and the photo itself is never stored.
 - **Resolution matters more than megapixels suggest.** Models downscale;
   a 12 MP phone photo of a 1.5 m shelf leaves each spine a few pixels wide
   after downscaling. That is exactly when the tiling offer appears — accept
-  it.
+  it. For Ollama and OpenAI-compatible providers, the **Image size**
+  setting now sets the size Shelf uploads as-is as well as when tiling is
+  offered — raise it for a model that reads larger images natively.
 - **Low-resolution advisory.** When a photo is small rather than oversized —
   a desktop webcam frame, or a library photo a messaging app re-compressed —
   Shelf shows "This photo may be too small to read" with **Take another

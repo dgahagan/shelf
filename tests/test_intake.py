@@ -1,7 +1,10 @@
 """Tests for shelf-photo bulk intake (services/vision.py + routers/intake.py)."""
+import functools
 import json
+import logging
 import sqlite3
 
+import anthropic
 import httpx
 import pytest
 import respx
@@ -206,6 +209,118 @@ class TestDetectSpines:
         respx.post(OLLAMA_URL).mock(return_value=httpx.Response(404, json={"error": "model not found"}))
         with pytest.raises(vision.VisionError, match="ollama pull"):
             await vision.detect_spines(ONE_IMAGE, {"vision_provider": "ollama"})
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_anthropic_400_surfaces_provider_message(self, caplog):
+        respx.post(ANTHROPIC_URL).mock(return_value=httpx.Response(400, json={
+            "type": "error",
+            "error": {"type": "invalid_request_error", "message": "image exceeds 8000x8000 pixels"},
+        }))
+        with caplog.at_level(logging.WARNING, logger="app.services.vision"):
+            with pytest.raises(vision.VisionError) as ei:
+                await vision.detect_spines(ONE_IMAGE, {
+                    "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+                })
+        assert "image exceeds 8000x8000 pixels" in str(ei.value)
+        assert "HTTP 400" in str(ei.value)
+        assert "try again" not in str(ei.value)
+        assert "8000x8000" in caplog.text
+
+    @respx.mock
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [500, 429, 408, 409])
+    async def test_anthropic_5xx_and_transient_4xx_keep_generic_wording(self, status, monkeypatch):
+        """Guard test: passes against both the old and new code by design —
+        it pins that transient/server statuses keep the "try again" wording
+        rather than surfacing the provider detail, but doesn't exercise the
+        new detail-surfacing path itself."""
+        monkeypatch.setattr(anthropic, "AsyncAnthropic",
+                             functools.partial(anthropic.AsyncAnthropic, max_retries=0))
+        respx.post(ANTHROPIC_URL).mock(return_value=httpx.Response(status, json={
+            "type": "error",
+            "error": {"type": "api_error", "message": "Internal server error"},
+        }))
+        with pytest.raises(vision.VisionError) as ei:
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+            })
+        assert f"HTTP {status}" in str(ei.value)
+        assert "try again" in str(ei.value)
+        assert "Internal server error" not in str(ei.value)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status, detail", [
+        (403, "permission denied for this key"),
+        (404, "model: claude-nope not found"),
+    ])
+    async def test_anthropic_other_4xx_carry_the_provider_detail(self, status, detail):
+        """Records that only 401 is tailored on the Anthropic branch
+        (AuthenticationError) — every other 4xx carrying a detail now
+        surfaces it instead of the generic wording."""
+        respx.post(ANTHROPIC_URL).mock(return_value=httpx.Response(status, json={
+            "type": "error", "error": {"type": "some_error", "message": detail},
+        }))
+        with pytest.raises(vision.VisionError) as ei:
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+            })
+        assert detail in str(ei.value)
+        assert f"HTTP {status}" in str(ei.value)
+        assert "try again" not in str(ei.value)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_anthropic_4xx_without_detail_keeps_generic_wording(self):
+        respx.post(ANTHROPIC_URL).mock(return_value=httpx.Response(400, text="nope"))
+        with pytest.raises(vision.VisionError) as ei:
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+            })
+        assert str(ei.value) == "Anthropic API error (HTTP 400) — try again"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_400_surfaces_provider_message(self, caplog):
+        respx.post(OPENAI_URL).mock(return_value=httpx.Response(400, json={
+            "error": {"message": "Invalid image data", "type": "invalid_request_error"},
+        }))
+        with caplog.at_level(logging.WARNING, logger="app.services.vision"):
+            with pytest.raises(vision.VisionError) as ei:
+                await vision.detect_spines(ONE_IMAGE, {
+                    "vision_provider": "openai", "openai_api_key": "sk-test",
+                })
+        assert "Invalid image data" in str(ei.value)
+        assert "HTTP 400" in str(ei.value)
+        assert "try again" not in str(ei.value)
+        assert "Invalid image data" in caplog.text
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_400_string_error_shape(self):
+        respx.post(OPENAI_URL).mock(return_value=httpx.Response(400, json={
+            "error": "unsupported image",
+        }))
+        with pytest.raises(vision.VisionError) as ei:
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "openai", "openai_api_key": "sk-test",
+            })
+        assert "unsupported image" in str(ei.value)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_5xx_keeps_generic_wording(self):
+        respx.post(OPENAI_URL).mock(return_value=httpx.Response(502, json={
+            "error": {"message": "bad gateway"},
+        }))
+        with pytest.raises(vision.VisionError) as ei:
+            await vision.detect_spines(ONE_IMAGE, {
+                "vision_provider": "openai", "openai_api_key": "sk-test",
+            })
+        assert "HTTP 502" in str(ei.value)
+        assert "try again" in str(ei.value)
+        assert "bad gateway" not in str(ei.value)
 
 
 class TestOutboundContract:
@@ -540,6 +655,32 @@ class TestAnalyzeEndpoint:
         monkeypatch.setattr(vision, "detect_spines", fake_detect)
         resp = self._upload(admin_client)
         assert resp.json() == {"ok": False, "message": "No books were recognized in this photo"}
+
+    def test_provider_message_reaches_the_response(self, admin_client, monkeypatch):
+        async def fake_detect(images, settings):
+            raise vision.VisionError(
+                "Anthropic rejected the request (HTTP 400): image exceeds 8000x8000 pixels")
+        monkeypatch.setattr(vision, "detect_spines", fake_detect)
+        resp = self._upload(admin_client)
+        assert resp.json()["message"] == (
+            "Anthropic rejected the request (HTTP 400): image exceeds 8000x8000 pixels")
+
+    def test_analyze_logs_each_uploaded_part(self, admin_client, monkeypatch, caplog):
+        async def fake_detect(images, settings):
+            return []
+        monkeypatch.setattr(vision, "detect_spines", fake_detect)
+        png = b"\x89PNG\r\n\x1a\n" + b"1" * 20
+        with caplog.at_level(logging.INFO, logger="app.routers.intake"):
+            admin_client.post("/api/intake/analyze", files=[
+                ("photos", ("tile-0.jpg", FAKE_JPEG, "image/jpeg")),
+                ("photos", ("tile-1.png", png, "image/png")),
+            ])
+        matches = [r for r in caplog.records if "Intake analyze: 2 photo(s)" in r.getMessage()]
+        assert len(matches) == 1
+        message = matches[0].getMessage()
+        first = f"tile-0.jpg image/jpeg {len(FAKE_JPEG)} B"
+        second = f"tile-1.png image/png {len(png)} B"
+        assert message.index(first) < message.index(second)
 
 
 class TestPlanEndpoint:
@@ -1112,6 +1253,142 @@ class TestIntakePage:
         assert js.count("photoGeneration") >= 4
         assert "gen !== this.photoGeneration" in js
         assert "closeViewfinder" in js
+
+    def test_intake_js_resampler_uses_high_quality_stepped_downscale(self):
+        """The as-is upload and the preview canvas share one stepped resampler.
+
+        A single-step drawImage from 8160 -> 2576 aliases, and spine text is
+        exactly the fine detail that damages (design plan section 2).
+        """
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        assert re.search(r"\n        resampleImage\(w, h\) \{", js), \
+            "resampleImage(w, h) method definition not found"
+        assert re.search(r"imageSmoothingQuality\s*=\s*'high'", js)
+        block = re.search(r"\n        resampleImage\(w, h\) \{.*?\n        \},", js, re.S)
+        assert block, "resampleImage block not found in static/js/intake.js"
+        body = block.group(0)
+        assert re.search(r"\b(while|for)\b", body), \
+            "resampleImage must step down rather than draw once"
+
+    def test_intake_js_preview_canvas_uses_the_shared_resampler(self):
+        """drawModelPreview() must draw what the upload is encoded from."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"\n        drawModelPreview\(\) \{.*?\n        \},", js, re.S)
+        assert block, "drawModelPreview block not found in static/js/intake.js"
+        body = block.group(0)
+        assert "resampleImage(" in body
+        assert "drawImage(this.imageEl" not in body
+
+    def test_intake_js_as_is_send_downscales_to_the_plan_preview(self):
+        """The non-tiled branch encodes the plan's preview dims, and the
+        unchanged-bytes path survives for photos already within the cap."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"\n        async analyze\(tiled\) \{.*?\n        \},", js, re.S)
+        assert block, "analyze() block not found in static/js/intake.js"
+        body = block.group(0)
+        assert "resampleImage(" in body
+        assert "'photo.jpg'" in body
+        assert "plan.preview" in body
+        assert "toBlob(" in body
+        assert "form.append('photos', this.file)" in body
+
+    def test_intake_page_marks_the_preview_canvas_and_send_buttons(self, admin_client, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', 'ollama')")
+        db.execute("COMMIT")
+        html = admin_client.get("/intake").text
+        for tid in ("intake-model-preview", "intake-send-as-is", "intake-send-tiled"):
+            assert html.count(f'data-testid="{tid}"') == 1, tid
+
+    def test_intake_js_analyze_checks_generation_after_every_await(self):
+        """G39: every continuation in analyze() must prove it still owns the
+        photo before writing shared state — one guard after each await, plus
+        one in the catch block, so a stale run writes neither rows nor errors.
+
+        Comment lines are stripped first: a comment that merely says "await"
+        must not be able to satisfy this pin.
+        """
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"\n        async analyze\(tiled\) \{.*?\n        \},", js, re.S)
+        assert block, "analyze() block not found in static/js/intake.js"
+        body = "\n".join(
+            line for line in block.group(0).splitlines()
+            if not line.lstrip().startswith("//")
+        )
+        awaits = body.count("await ")
+        guards = body.count("gen !== this.photoGeneration")
+        assert awaits >= 5, f"expected at least 5 awaits in analyze(), found {awaits}"
+        assert guards == awaits + 1, (
+            f"analyze() has {awaits} awaits but {guards} generation checks — "
+            "expected one after every await plus the catch-block guard"
+        )
+        catch_block = re.search(r"\} catch \(e\) \{.*?\n            \}", body, re.S)
+        assert catch_block, "catch block not found in analyze()"
+        assert "gen !== this.photoGeneration" in catch_block.group(0)
+        assert "var gen = this.photoGeneration" in body
+        assert body.index("var gen = this.photoGeneration") < body.index("await ")
+
+    def test_intake_js_analyze_is_single_flight(self):
+        """Send as-is and Send high-res in one tick must yield one request:
+        the busy flag is set before the first await, behind an early return."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"\n        async analyze\(tiled\) \{.*?\n        \},", js, re.S)
+        assert block, "analyze() block not found in static/js/intake.js"
+        body = block.group(0)
+        assert "|| this.analyzing) return" in body
+        assert body.index("this.analyzing = true") < body.index("await ")
+
+    def test_intake_js_replacing_the_photo_clears_analyzing(self):
+        """The replacer clears the busy flag, so a new photo is never stuck
+        behind the stale run's spinner (the loser leaves `analyzing` alone)."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        for pattern in (r"\n        async setPhoto\(file\) \{.*?\n        \},",
+                        r"\n        async reset\(\) \{.*?\n        \},"):
+            block = re.search(pattern, js, re.S)
+            assert block, f"block {pattern!r} not found in static/js/intake.js"
+            assert "analyzing = false" in block.group(0), pattern
+
+    def test_intake_js_set_photo_rechecks_generation_after_closing_the_viewfinder(self):
+        """G39 applied to setPhoto()'s own continuation: a stale A resuming
+        after B's plan would call planPhoto(oldGen), which sets `planning`
+        before its first await and returns stale without clearing it."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"\n        async setPhoto\(file\) \{.*?\n        \},", js, re.S)
+        assert block, "setPhoto() block not found in static/js/intake.js"
+        body = "\n".join(
+            line for line in block.group(0).splitlines()
+            if not line.lstrip().startswith("//")
+        )
+        assert re.search(
+            r"await this\.closeViewfinder\(\);\s*\n\s*if \(gen !== this\.photoGeneration\) return;",
+            body,
+        ), "the statement after `await this.closeViewfinder();` must be the generation guard"
+
+    def test_intake_page_disables_chooser_while_analyzing(self, admin_client, db):
+        """G38: every control that acts on the previous input is disabled for
+        the long async step — the four chooser buttons, not just two."""
+        import re
+        db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', 'ollama')")
+        db.execute("COMMIT")
+        html = admin_client.get("/intake").text
+        for tid in ("intake-take-photo", "intake-choose-photo",
+                    "intake-retake", "intake-choose-another"):
+            tag = re.search(r'<button[^>]*data-testid="%s"[^>]*>' % tid, html, re.S)
+            assert tag, f"button {tid} not found"
+            assert re.search(r':disabled="[^"]*analyzing', tag.group(0)), tid
 
     def test_intake_js_payload_has_no_source(self):
         """Static pin for the "source is client-side only" contract."""
