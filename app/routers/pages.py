@@ -245,7 +245,8 @@ async def intake(request: Request, _=Depends(require_role("editor"))):
     return request.app.state.templates.TemplateResponse(
         request,
         "intake.html",
-        {"locations": locations, "vision_provider": provider},
+        {"locations": locations, "vision_provider": provider,
+         "media_types": MEDIA_TYPES},
     )
 
 

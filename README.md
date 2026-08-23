@@ -18,7 +18,7 @@ A self-hosted home library catalog with barcode scanning, multi-mode scanning wo
 Most home library apps are cloud-hosted, mobile-only, or require you to manually enter every book. Shelf takes a different approach:
 
 - **Scan and done** — point your phone camera at a barcode or use a USB/Bluetooth barcode scanner and the book is cataloged in seconds, complete with cover art, author, series info, and description. Works out of the box with any scanner that sends Enter after the barcode (most do by default), and camera scanning works on iPhones and iPads as well as Android
-- **Bulk-add from a photo** — snap a picture of a full shelf and a vision model reads the spines. Review the detected titles, then import them all with full metadata and covers. Works with the Anthropic API, any OpenAI-compatible endpoint, or a fully local Ollama model
+- **Bulk-add from a photo** — snap a picture of a full shelf, a stack, or books laid face-up, and a vision model reads the spines and recognizes the covers. Review the candidate list — each row carries the ISBN read off a back cover, a per-row media type, and a marker on rows the model recognized rather than read — then import them all. Works with the Anthropic API, any OpenAI-compatible endpoint, or a fully local Ollama model
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate. The scan tab adapts to whatever you're doing: adding new items, lending to a friend, reorganizing shelves, or auditing a room
 - **Title search** — don't have a barcode? Search by title across Open Library (books), TMDb (movies), and IGDB (video games) and add directly from results
 - **Zero cloud dependency** — runs entirely on your network in a single Docker container with a SQLite database. Your data never leaves your home
@@ -134,11 +134,15 @@ scanners bypass the camera entirely and work regardless.
   <img src="screenshots/photo-intake.png" width="700" alt="Photo Intake — reviewing books detected from a shelf photo">
 </p>
 
-Snap a photo of a shelf and Shelf reads the spines. Open **Photo Intake** in
-the nav, upload the photo, and the detected books appear as an editable
-candidate list — nothing is imported until you confirm. Confirmed rows run
-through the normal metadata pipeline, so they arrive with full metadata and
-cover art, and an author-match guard keeps wrong editions from slipping in.
+Snap a photo of a shelf — or of books stacked or laid face-up — and Shelf
+reads the spines it can read and recognizes the covers it can't. Open
+**Photo Intake** in the nav, upload the photo, and the detected books appear
+as an editable candidate list: title, author, the ISBN read off a back cover
+if one was in frame, a per-row media type, and a marker on rows identified
+from the cover rather than read. Nothing is imported until you confirm.
+Rows with an ISBN then get the same lookup a barcode scan does; the rest are
+matched on title and author behind an author-match guard, and the Done panel
+shows which rows found no metadata.
 
 Configure a vision backend under Settings → Integrations → Photo Intake:
 
@@ -266,7 +270,7 @@ Configure in Settings to unlock additional features:
 | **IGDB** (Twitch) | Video game metadata, cover art, and platform info | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
 | **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
 | **TMDb** | DVD/Blu-ray metadata and title search via UPC barcode | [themoviedb.org](https://www.themoviedb.org) |
-| **Anthropic** | Photo Intake spine recognition (best accuracy) | [console.anthropic.com](https://console.anthropic.com) |
+| **Anthropic** | Photo Intake — reads spines and recognizes covers (best accuracy) | [console.anthropic.com](https://console.anthropic.com) |
 | **OpenAI-compatible** | Photo Intake via any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, vLLM, LM Studio…) | [platform.openai.com](https://platform.openai.com) |
 | **Ollama** | Photo Intake with a fully local vision model — no key needed | [ollama.com](https://ollama.com) |
 

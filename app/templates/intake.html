@@ -3,7 +3,7 @@
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="intakePage">
     <h1 class="text-2xl font-bold mb-1">Photo Intake</h1>
-    <p class="text-sm text-shelf-muted mb-6">Photograph a shelf, let the vision model read the spines, then confirm which books to add.</p>
+    <p class="text-sm text-shelf-muted mb-6">Photograph books on a shelf, in a stack, or face-up &mdash; front cover is fine. The vision model reads spines and recognizes covers; a readable back-cover barcode gives exact-edition metadata. Review the list, then confirm.</p>
 
     {% if not vision_provider %}
     <div class="bg-shelf-card rounded-xl border border-shelf-warning/30 p-6 text-sm">
@@ -20,7 +20,7 @@
                    class="text-sm text-shelf-muted file:mr-3 file:rounded-lg file:border-0 file:bg-shelf-hover file:px-3 file:py-1.5 file:text-sm file:text-shelf-text hover:file:bg-shelf-border">
             <button @click="analyze(false)" :disabled="!file || analyzing || planning" x-show="!needsChoice"
                     class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50 whitespace-nowrap">
-                <span x-show="!analyzing">Read Spines</span>
+                <span x-show="!analyzing">Read Photo</span>
                 <span x-show="analyzing">Reading&hellip;</span>
             </button>
         </div>
@@ -81,7 +81,7 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
         </svg>
         <div>
-            <p class="text-sm font-medium">Reading spines&hellip;</p>
+            <p class="text-sm font-medium">Reading your photo&hellip;</p>
             <p class="text-xs text-shelf-muted">The vision model is analyzing your photo &mdash; large shelves can take a minute.</p>
         </div>
     </div>
@@ -108,15 +108,27 @@
         </div>
         <div class="space-y-2 mb-4">
             <template x-for="(book, i) in books" :key="i">
-                <div class="flex items-center gap-2">
-                    {# :checked/:value + handler methods, not x-model="book.…": the
-                       Alpine CSP build cannot evaluate nested-path assignments #}
+                <div class="flex flex-wrap items-center gap-2" data-testid="intake-row">
+                    {# :checked/:value/@change + handler methods, not x-model="book.…"
+                       (inputs AND the select): the Alpine CSP build cannot evaluate
+                       nested-path assignments #}
                     <input type="checkbox" :checked="book.include" @change="toggleInclude(i)"
                            class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent shrink-0">
                     <input type="text" :value="book.title" @input="setBookTitle(i, $event.target.value)" placeholder="Title"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                    <span x-show="book.source === 'recognized'" x-cloak data-testid="intake-recognized"
+                          title="Identified from the cover, not read — double-check"
+                          class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">recognized</span>
                     <input type="text" :value="book.authors" @input="setBookAuthors(i, $event.target.value)" placeholder="Author"
                            class="w-48 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                    <input type="text" :value="book.isbn" @input="setBookIsbn(i, $event.target.value)" placeholder="ISBN"
+                           inputmode="numeric" data-testid="intake-isbn"
+                           class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                    <select :value="book.media_type" @change="setBookMediaType(i, $event.target.value)"
+                            aria-label="Media type" data-testid="intake-media-type"
+                            class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                        {% for key, label in media_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                    </select>
                 </div>
             </template>
         </div>
@@ -150,8 +162,10 @@
             &mdash; covers are fetched in the background.
         </p>
         <div class="space-y-1 text-sm">
+            {# single root element per x-for row — the vendored CSP build renders
+               firstElementChild only #}
             <template x-for="a in (result ? result.added : [])" :key="'a' + a.id">
-                <p><a :href="'/item/' + a.id" class="text-shelf-accent2 hover:text-shelf-accent" x-text="a.title"></a></p>
+                <p data-testid="intake-added-row"><a :href="'/item/' + a.id" class="text-shelf-accent2 hover:text-shelf-accent" x-text="a.title"></a><span x-show="!a.matched" x-cloak data-testid="intake-no-metadata" class="text-xs text-shelf-muted ml-1">&mdash; no metadata found, added title only</span></p>
             </template>
             <template x-for="(s, i) in (result ? result.skipped : [])" :key="'s' + i">
                 <p class="text-shelf-muted"><span x-text="s.title"></span> <span class="text-xs">(<span x-text="s.reason"></span>)</span></p>

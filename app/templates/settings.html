@@ -864,7 +864,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="{ visionProvider: '{{ settings.get('vision_provider', '') }}' }">
         <h2 class="text-lg font-semibold mb-1">Photo Intake (Vision)</h2>
-        <p class="text-sm text-shelf-muted mb-4">Bulk-add books by photographing a shelf &mdash; a vision model reads the spines. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3).</p>
+        <p class="text-sm text-shelf-muted mb-4">Bulk-add books by photographing a shelf, a stack, or covers face-up &mdash; a vision model reads spines and recognizes covers. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3).</p>
         <form action="/api/settings/vision" method="post" class="space-y-3">
             <div>
                 <label for="vision_provider" class="block text-sm font-medium text-shelf-muted mb-1">Provider</label>

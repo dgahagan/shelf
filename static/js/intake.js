@@ -140,7 +140,8 @@ function intakePage() {
                 if (data.ok) {
                     this.needsChoice = false;
                     this.books = data.books.map(b => ({
-                        title: b.title, authors: b.authors || '', include: true,
+                        title: b.title, authors: b.authors || '', isbn: b.isbn || '',
+                        source: b.source || 'read', media_type: 'book', include: true,
                     }));
                 } else {
                     this.error = data.message || 'Analysis failed';
@@ -169,6 +170,14 @@ function intakePage() {
             this.books[i].authors = value;
         },
 
+        setBookIsbn(i, value) {
+            this.books[i].isbn = value;
+        },
+
+        setBookMediaType(i, value) {
+            this.books[i].media_type = value;
+        },
+
         selectAll() {
             this.books.forEach(b => b.include = true);
         },
@@ -188,8 +197,11 @@ function intakePage() {
                         'X-CSRF-Token': window.csrfToken(),
                     },
                     body: JSON.stringify({
+                        // `source` is deliberately not sent: it drives the
+                        // review-row hint only, and the server has no use for it.
                         books: this.books.filter(b => b.include).map(b => ({
                             title: b.title, authors: b.authors || null,
+                            isbn: b.isbn || null, media_type: b.media_type,
                         })),
                         location_id: this.locationId ? parseInt(this.locationId) : null,
                         owned: this.owned,

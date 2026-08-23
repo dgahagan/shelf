@@ -1,4 +1,4 @@
-"""Vision-based shelf-photo intake: read book spines from a photo.
+"""Vision-based shelf-photo intake: read book spines and recognize covers.
 
 Three backends, selected by the `vision_provider` setting:
 - "anthropic": Claude vision via the official SDK (best spine accuracy).
@@ -8,7 +8,11 @@ Three backends, selected by the `vision_provider` setting:
 - "ollama": local model via the Ollama REST API (free, private, needs a
   vision-capable model such as gemma3).
 
-All return the same shape: a list of {"title": str, "authors": str|None}.
+All return the same shape: a list of
+{"title": str, "authors": str|None, "isbn": str|None, "source": "read"|"recognized"}.
+`isbn` is a checksum-validated ISBN-13 transcribed from the photo (never
+recalled from the model's knowledge); `source` says whether the row was
+read off the item or recognized from its cover art.
 
 Input is a list of (bytes, mime) images. A single image is the normal path;
 multiple images are overlapping tiles of one photo (see services/tiling.py).
@@ -26,6 +30,7 @@ import re
 import httpx
 
 from app.config import MAX_TILES_PER_REQUEST
+from app.services import isbn as isbn_svc
 
 logger = logging.getLogger(__name__)
 
@@ -39,18 +44,29 @@ MAX_IMAGE_BYTES = 10 * 1024 * 1024
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 PROMPT = (
-    "This photo shows books — on a shelf, in a stack, or laid out. Text on "
-    "spines may run vertically or horizontally. Examine the image carefully, "
-    "section by section, and list EVERY distinct book you can identify — do "
-    "not stop after the most obvious ones. Use the exact title as printed and "
-    "the author if readable (null if not). Skip objects that are not books "
-    "and do not guess titles you cannot actually read."
+    "This photo shows books — on a shelf, in a stack, or laid out face-up with "
+    "the front or back cover showing. Text on spines may run vertically or "
+    "horizontally, and a cover may be rotated or upside down. Examine the image "
+    "carefully, section by section, and list EVERY distinct book you can "
+    "identify — do not stop after the most obvious ones. For each book: "
+    "(1) If the text is legible, transcribe it exactly — the title as printed, "
+    'the author if readable (null if not) — and set "source" to "read". '
+    "(2) If the text is absent, illegible, or too partial to stand on its own "
+    "but you recognize the book from its cover — artwork, design, typography, "
+    "stylized or partial text — give its canonical title and author and set "
+    '"source" to "recognized". Prefer "read" whenever the full title is legible, '
+    "and never replace a legible title with a different book's. "
+    '(3) Give "isbn" only if the ISBN digits are actually printed and readable '
+    "in the photo, usually beside the back-cover barcode, and transcribe those "
+    "digits exactly. Never supply an ISBN from memory or from what you know "
+    "about the book — use null whenever the digits are not visible. "
+    "(4) Skip objects that are not books."
 )
 
 TILED_PROMPT_SUFFIX = (
     " IMPORTANT: these {n} images are overlapping tiles of ONE photograph, "
     "ordered left-to-right then top-to-bottom. Adjacent tiles share an "
-    "overlap region, so the same spine may appear in two tiles — merge such "
+    "overlap region, so the same book may appear in two tiles — merge such "
     "duplicates and list each distinct book exactly once."
 )
 
@@ -58,7 +74,12 @@ TILED_PROMPT_SUFFIX = (
 # OpenAI-compatible endpoints run in JSON-object mode). The word "JSON" here
 # also satisfies OpenAI's requirement when response_format is json_object.
 JSON_ONLY_SUFFIX = (
-    ' Respond with JSON only: {"books": [{"title": "...", "authors": "... or null"}]}'
+    # A concrete valid row, never placeholder literals: a schema-less model
+    # copies "... or null" and "read or recognized" through verbatim, and
+    # _clean would coerce the latter to "read", silently dropping the badge.
+    ' Respond with JSON only. Each "source" must be exactly "read" or '
+    '"recognized"; use JSON null for an unread author or ISBN. Example: '
+    '{"books": [{"title": "Dune", "authors": null, "isbn": null, "source": "read"}]}'
 )
 
 # Fuzzy-title similarity at or above which two tile results are the same book
@@ -74,8 +95,10 @@ BOOKS_SCHEMA = {
                 "properties": {
                     "title": {"type": "string"},
                     "authors": {"type": ["string", "null"]},
+                    "isbn": {"type": ["string", "null"]},
+                    "source": {"type": "string", "enum": ["read", "recognized"]},
                 },
-                "required": ["title", "authors"],
+                "required": ["title", "authors", "isbn", "source"],
                 "additionalProperties": False,
             },
         }
@@ -89,8 +112,31 @@ class VisionError(Exception):
     """User-presentable vision failure (config or upstream error)."""
 
 
+def clean_isbn(raw: object) -> str | None:
+    """A checksum-valid ISBN-13 from provider output, or None.
+
+    Deliberately does **not** go through isbn_svc.to_isbn13: that helper is
+    lenient by design and its UPC-A branch would turn a 12-digit OCR dropout
+    into a bogus "0…" code. Anything that is not a checksum-valid ISBN-10 or
+    ISBN-13 — including a 12-digit string — is dropped to None.
+    """
+    if not isinstance(raw, str):
+        return None
+    candidate = isbn_svc.normalize_isbn(raw)
+    if isbn_svc.validate_isbn10(candidate):
+        return isbn_svc.isbn10_to_isbn13(candidate)
+    if isbn_svc.validate_isbn13(candidate):
+        return candidate
+    return None
+
+
 def _clean(raw: object) -> list[dict]:
-    """Validate/normalize a provider response into [{title, authors}]."""
+    """Validate/normalize a provider response into [{title, authors, isbn, source}].
+
+    All four keys are always present: JSON-object-mode providers omit keys
+    freely, so absent/unrecognized values are filled in rather than skipped.
+    `source` is "read" unless the model explicitly said "recognized".
+    """
     books = []
     if isinstance(raw, dict):
         for entry in raw.get("books") or []:
@@ -103,7 +149,13 @@ def _clean(raw: object) -> list[dict]:
             authors = authors.strip() if isinstance(authors, str) else None
             if authors and authors.lower() in ("null", "none", "n/a", "unknown"):
                 authors = None
-            books.append({"title": title, "authors": authors or None})
+            source = entry.get("source")
+            books.append({
+                "title": title,
+                "authors": authors or None,
+                "isbn": clean_isbn(entry.get("isbn")),
+                "source": source if source in ("read", "recognized") else "read",
+            })
     return books
 
 
@@ -123,8 +175,11 @@ def _authors_compatible(a: str | None, b: str | None) -> bool:
 def merge_tile_books(book_lists: list[list[dict]]) -> list[dict]:
     """Intra-batch dedup across tile results (fuzzy title + author match).
 
-    Spines in overlap regions appear in two adjacent tiles; keep one copy,
-    preferring the more complete entry (has authors, then longer title).
+    Books in overlap regions appear in two adjacent tiles; keep one copy,
+    preferring the more complete entry (has an ISBN, then authors, then read
+    over recognized, then longer title) and letting it inherit authors the
+    loser carried. Two non-null, unequal ISBNs are never the same book, so
+    they never merge whatever the titles score.
     This is separate from — and upstream of — the already-in-inventory
     check performed at confirm time.
     """
@@ -135,7 +190,13 @@ def merge_tile_books(book_lists: list[list[dict]]) -> list[dict]:
             key = _normalize_title(book["title"])
             dupe_at = None
             for i, existing_key in enumerate(keys):
-                if not _authors_compatible(book["authors"], merged[i]["authors"]):
+                if not _authors_compatible(book.get("authors"), merged[i].get("authors")):
+                    continue
+                # Two distinct identifiers are two books, however alike the
+                # titles read — a back cover straddling a tile boundary is the
+                # only way one book carries two.
+                new_isbn, seen_isbn = book.get("isbn"), merged[i].get("isbn")
+                if new_isbn and seen_isbn and new_isbn != seen_isbn:
                     continue
                 if key == existing_key or difflib.SequenceMatcher(
                         None, key, existing_key).ratio() >= MERGE_SIMILARITY:
@@ -145,14 +206,30 @@ def merge_tile_books(book_lists: list[list[dict]]) -> list[dict]:
                 merged.append(dict(book))
                 keys.append(key)
             elif _more_complete(book, merged[dupe_at]):
-                merged[dupe_at] = dict(book)
+                winner = dict(book)
+                if not winner.get("authors"):
+                    winner["authors"] = merged[dupe_at].get("authors")
+                merged[dupe_at] = winner
                 keys[dupe_at] = key
+            elif not merged[dupe_at].get("authors"):
+                merged[dupe_at]["authors"] = book.get("authors")
     return merged
 
 
 def _more_complete(candidate: dict, current: dict) -> bool:
-    if bool(candidate["authors"]) != bool(current["authors"]):
-        return bool(candidate["authors"])
+    """Precedence: has ISBN, then has authors, then read over recognized, then longer title.
+
+    Reads every key with .get() so two-key dicts from older callers and tests
+    still compare cleanly.
+    """
+    if bool(candidate.get("isbn")) != bool(current.get("isbn")):
+        return bool(candidate.get("isbn"))
+    if bool(candidate.get("authors")) != bool(current.get("authors")):
+        return bool(candidate.get("authors"))
+    candidate_read = candidate.get("source", "read") == "read"
+    current_read = current.get("source", "read") == "read"
+    if candidate_read != current_read:
+        return candidate_read
     return len(candidate["title"]) > len(current["title"])
 
 

@@ -511,6 +511,62 @@ class TestEnrichImportCoversQueues:
         await _enrich_import_covers([])
         assert cover_queue.stats()["queued"] == 0
 
+    @pytest.mark.asyncio
+    async def test_non_book_items_are_not_queued(self, db):
+        """A non-book row is dropped at the shared hand-off before it ever
+        reaches the queue (G29) — resolve_missing_cover's title-search
+        fallback would otherwise write a book's ISBN and cover onto it."""
+        from tests.conftest import _insert_item
+        from app.routers.items import _enrich_import_covers
+        from app.services import cover_queue
+
+        book_id = _insert_item(db, title="A Book", isbn="9780441013593", media_type="book")
+        dvd_id = _insert_item(db, title="A DVD", isbn=None, media_type="dvd")
+        db.execute("COMMIT")
+
+        await _enrich_import_covers([book_id, dvd_id])
+
+        assert cover_queue.stats()["queued"] == 1
+        queued_job = cover_queue._get_queue().get_nowait()
+        assert queued_job.item_id == book_id
+
+    def test_filter_preserves_order_and_chunks(self, db, monkeypatch):
+        """Chunking must not reorder results — pin input order against a
+        chunk size small enough to force multiple round-trips."""
+        from tests.conftest import _insert_item
+        from app.services import cover_queue
+
+        monkeypatch.setattr(cover_queue, "FILTER_CHUNK_SIZE", 3)
+        ids = [_insert_item(db, title=f"Book {i}", isbn=f"978000000{i:04d}")
+               for i in range(7)]
+        db.execute("COMMIT")
+        # Query in an order deliberately different from insertion (= id/db)
+        # order, so a filter that quietly returns database order fails this.
+        query_order = list(reversed(ids))
+
+        result = cover_queue.filter_cover_eligible(query_order)
+
+        assert result == query_order
+
+    def test_csv_covers_queued_counts_only_book_rows(self, admin_client, monkeypatch, db):
+        """import_csv's covers_queued count — and what it hands to the
+        fire-and-forget enrichment task — must reflect only book-ish rows
+        (G29), not every row that happened to get an ISBN."""
+        monkeypatch.delenv("SHELF_DISABLE_COVER_ENRICH", raising=False)
+        csv_content = (
+            "title,authors,isbn,media_type\n"
+            "Some Book,Someone,9780000000111,book\n"
+            "Some DVD,,9780000000222,dvd"
+        )
+        with patch("app.routers.items._enrich_import_covers", new=AsyncMock()) as enrich:
+            data = _post_csv(admin_client, csv_content, enrich_covers="1").json()
+
+        assert data["covers_queued"] == 1
+        book_id = db.execute(
+            "SELECT id FROM items WHERE isbn = '9780000000111'"
+        ).fetchone()["id"]
+        enrich.assert_called_once_with([book_id])
+
 
 class TestSplitSeriesTitle:
     def test_standard_form(self):

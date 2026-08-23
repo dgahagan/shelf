@@ -24,7 +24,9 @@ column imports. `isbn` and `media_type` dedupe against existing items;
 rows that already exist are skipped and reported. Options:
 
 - **Fetch covers and metadata** — after import, look each ISBN up in the
-  background and fill in covers, publishers, descriptions.
+  background and fill in covers, publishers, descriptions. Only book-ish
+  media types are enriched: discs and games are left alone, because a
+  title-only lookup for one can match a novel of the same name.
 - **To-read → wishlist** — rows with a to-read status arrive unowned.
 
 Errors are reported per row (missing title, over-long fields); the rest of

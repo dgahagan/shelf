@@ -90,8 +90,8 @@ VISION_PRICING = {
     "haiku": (1.00, 5.00),
 }
 VISION_PRICING_DEFAULT = (5.00, 25.00)
-PROMPT_OVERHEAD_TOKENS = 300  # system-ish prompt + JSON schema scaffolding
-TOKENS_PER_BOOK = 40  # ~1 JSON row of title + authors
+PROMPT_OVERHEAD_TOKENS = 500  # unified spine+cover prompt + JSON schema scaffolding
+TOKENS_PER_BOOK = 60  # ~1 JSON row, e.g. {"title": "Dune", "authors": "Frank Herbert", "isbn": "9780441172719", "source": "read"}
 EXPECTED_BOOKS_PER_MEGAPIXEL = 8  # rough spine density for output estimate
 EXPECTED_BOOKS_MIN = 20
 EXPECTED_BOOKS_MAX = 200

@@ -26,6 +26,33 @@ def to_isbn13(raw: str) -> str | None:
     return None
 
 
+def validate_isbn10(s: str) -> bool:
+    if not isinstance(s, str) or not s:
+        return False
+    isbn = normalize_isbn(s)
+    if len(isbn) != 10:
+        return False
+    if not isbn[:9].isdigit():
+        return False
+    if not (isbn[9].isdigit() or isbn[9] == "X"):
+        return False
+    digits = [10 if c == "X" else int(c) for c in isbn]
+    total = sum((10 - i) * d for i, d in enumerate(digits))
+    return total % 11 == 0
+
+
+def validate_isbn13(s: str) -> bool:
+    if not isinstance(s, str) or not s:
+        return False
+    isbn = normalize_isbn(s)
+    if len(isbn) != 13 or not isbn.isdigit():
+        return False
+    if not (isbn.startswith("978") or isbn.startswith("979")):
+        return False
+    total = sum(int(d) * (1 if i % 2 == 0 else 3) for i, d in enumerate(isbn))
+    return total % 10 == 0
+
+
 def isbn13_to_isbn10(isbn13: str) -> str | None:
     if len(isbn13) != 13 or not isbn13.startswith("978"):
         return None

@@ -2,7 +2,14 @@
 
 import pytest
 
-from app.services.isbn import normalize_isbn, isbn10_to_isbn13, to_isbn13, isbn13_to_isbn10
+from app.services.isbn import (
+    normalize_isbn,
+    isbn10_to_isbn13,
+    to_isbn13,
+    isbn13_to_isbn10,
+    validate_isbn10,
+    validate_isbn13,
+)
 from app.services.upc import normalize_barcode, detect_barcode_type, validate_upc
 
 
@@ -66,6 +73,66 @@ class TestToIsbn13:
     def test_invalid_returns_none(self):
         assert to_isbn13("invalid") is None
         assert to_isbn13("12345") is None
+
+
+class TestValidateIsbn10:
+    def test_valid_isbn10(self):
+        assert validate_isbn10("0441172717") is True
+
+    def test_valid_isbn10_with_x_check_digit(self):
+        assert validate_isbn10("054792822X") is True
+
+    def test_x_only_valid_in_check_digit_position(self):
+        assert validate_isbn10("04411X2717") is False
+
+    def test_wrong_length_rejected(self):
+        assert validate_isbn10("044117271") is False
+        assert validate_isbn10("04411727171") is False
+
+    def test_bad_check_digit_rejected(self):
+        assert validate_isbn10("0441172718") is False
+
+    def test_none_returns_false(self):
+        assert validate_isbn10(None) is False
+
+    def test_empty_string_returns_false(self):
+        assert validate_isbn10("") is False
+
+    def test_non_string_returns_false(self):
+        assert validate_isbn10(123) is False
+
+
+class TestValidateIsbn13:
+    def test_valid_isbn13_978(self):
+        assert validate_isbn13("9780441172719") is True
+
+    def test_valid_isbn13_from_isbn10_conversion(self):
+        assert validate_isbn13("9780547928227") is True
+
+    def test_valid_isbn13_979_prefix(self):
+        assert validate_isbn13("9791234567896") is True
+
+    def test_transposition_rejected(self):
+        assert validate_isbn13("9780441172791") is False
+
+    def test_single_digit_slip_rejected(self):
+        assert validate_isbn13("9780441172710") is False
+
+    def test_977_prefix_rejected(self):
+        assert validate_isbn13("9770441172718") is False
+
+    def test_wrong_length_rejected(self):
+        assert validate_isbn13("978044117271") is False
+        assert validate_isbn13("97804411727191") is False
+
+    def test_none_returns_false(self):
+        assert validate_isbn13(None) is False
+
+    def test_empty_string_returns_false(self):
+        assert validate_isbn13("") is False
+
+    def test_non_string_returns_false(self):
+        assert validate_isbn13(123) is False
 
 
 # --- UPC ---

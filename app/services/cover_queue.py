@@ -115,6 +115,45 @@ def stats() -> dict:
     return {"queued": qsize + (1 if _current else 0), "failed": _failed}
 
 
+FILTER_CHUNK_SIZE = 500  # stay under SQLite's default bound-parameter cap
+
+
+def filter_cover_eligible(item_ids: list[int]) -> list[int]:
+    """Narrow a producer's ids to the book-ish media types cover enrichment
+    is safe for (G29).
+
+    `resolve_missing_cover`'s title-search fallback accepts the first Open
+    Library hit when an item has no authors (`authors.matches(None, …)` is
+    True by design) and then stores the ISBN it finds — fine for a
+    book-catalogue lookup, wrong for an authorless DVD or video game, which
+    would acquire a novel's ISBN and cover. `enqueue_many` applies no media
+    filter itself, so this is the shared hand-off both current producers —
+    photo-intake confirm's `_enrich_import_covers` and CSV import's
+    `import_csv` (`app/routers/items.py`) — must call before enqueueing.
+
+    Chunked at FILTER_CHUNK_SIZE ids per query (SQLite's bound-parameter
+    cap). Returns eligible ids in the same order they were passed in, not
+    database order. `[]` in is `[]` out, with no query at all.
+    """
+    if not item_ids:
+        return []
+
+    media_placeholders = ", ".join("?" for _ in COVER_REQUEUE_MEDIA_TYPES)
+    eligible_ids: set[int] = set()
+    for start in range(0, len(item_ids), FILTER_CHUNK_SIZE):
+        chunk = item_ids[start:start + FILTER_CHUNK_SIZE]
+        id_placeholders = ", ".join("?" for _ in chunk)
+        with get_db() as db:
+            rows = db.execute(
+                f"SELECT id FROM items WHERE id IN ({id_placeholders}) "
+                f"AND media_type IN ({media_placeholders})",
+                (*chunk, *COVER_REQUEUE_MEDIA_TYPES),
+            ).fetchall()
+        eligible_ids.update(row["id"] for row in rows)
+
+    return [item_id for item_id in item_ids if item_id in eligible_ids]
+
+
 async def _next_ready_job(queue: asyncio.Queue) -> Job:
     """Take the next job whose backoff has elapsed.
 

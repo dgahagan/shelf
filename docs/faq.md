@@ -33,7 +33,8 @@ EAN-13 (ISBN-13 and UPC-like), EAN-8, UPC-A, UPC-E. ISBN-10s can be typed.
 
 **What about books with no barcode?**
 Title search (Open Library), manual add, or Photo Intake of the cover
-face-up.
+face-up — the model recognizes the cover, and reads the printed ISBN if the
+back cover is showing.
 
 **Can several people use it?**
 Yes: admin / editor / viewer roles on one shared library. Per-user reading

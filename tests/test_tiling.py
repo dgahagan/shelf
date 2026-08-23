@@ -13,6 +13,7 @@ from app.config import (
     TILE_OVERLAP_X,
     TILE_OVERLAP_Y,
 )
+import app.config as config
 from app.services import tiling
 
 ANTHROPIC = {"vision_provider": "anthropic"}
@@ -162,6 +163,26 @@ class TestCostEstimator:
         # The delta is purely input-token driven; both include the same
         # output estimate, so tiled stays within an order of magnitude.
         assert tiled < as_is * 10
+
+    def test_output_estimate_tracks_tokens_per_book(self):
+        """The estimator must read TOKENS_PER_BOOK, not a literal of its own.
+
+        Read `config.TOKENS_PER_BOOK` at call time — `tiling.py` imports the
+        constant by name, so a `from app.config import ...` here (or a
+        monkeypatch of it) would agree with a stale tiling.py either way.
+        """
+        dims = [(2000, 2000)]
+        settings = {**ANTHROPIC, "anthropic_vision_model": "claude-haiku-4-5"}
+        _, out_price = config.VISION_PRICING["haiku"]
+        delta = (tiling.estimate_cost_usd(dims, settings, 20)
+                 - tiling.estimate_cost_usd(dims, settings, 10))
+        assert delta == pytest.approx(10 * config.TOKENS_PER_BOOK * out_price / 1e6)
+
+    def test_row_constants_cover_the_four_key_row(self):
+        # Accuracy-hygiene floor for the isbn+source row and the longer
+        # unified prompt; >= keeps a later recount from failing this.
+        assert config.TOKENS_PER_BOOK >= 60
+        assert config.PROMPT_OVERHEAD_TOKENS >= 500
 
     def test_pricing_comes_from_config(self):
         haiku = tiling.estimate_cost_usd(

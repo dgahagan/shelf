@@ -6,7 +6,9 @@ an 11-book shelf photo with human-verified titles. This script is the
 regression benchmark for any future model swap: run it, record the score.
 
 Usage:
-    # Score a saved provider response: {"books": [{"title": ..., "authors": ...}]}
+    # Score a saved provider response:
+    #   {"books": [{"title": ..., "authors": ..., "isbn": ..., "source": ...}]}
+    # Scoring is title-only; the isbn/source keys are ignored here.
     python scripts/eval_intake.py response.json
 
     # Call the provider configured in the app database on the fixture photo

@@ -1,5 +1,6 @@
 """Tests for shelf-photo bulk intake (services/vision.py + routers/intake.py)."""
 import json
+import sqlite3
 
 import httpx
 import pytest
@@ -45,8 +46,8 @@ class TestClean:
             "garbage",
         ]}
         assert vision._clean(raw) == [
-            {"title": "Dune", "authors": "Frank Herbert"},
-            {"title": "Hobbit", "authors": None},
+            {"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"},
+            {"title": "Hobbit", "authors": None, "isbn": None, "source": "read"},
         ]
 
     def test_non_dict(self):
@@ -61,6 +62,64 @@ class TestClean:
             {"title": "Traction", "authors": "Unknown"},
         ]}
         assert all(b["authors"] is None for b in vision._clean(raw))
+
+    def test_isbn_cleaned_or_nulled(self):
+        raw = {"books": [
+            {"title": "Hyphenated", "isbn": "978-0-441-17271-9"},
+            {"title": "Ten digit", "isbn": "0441172717"},
+            {"title": "Twelve digits", "isbn": "044117271912"},
+            {"title": "Bad checksum", "isbn": "9780441172710"},
+            {"title": "Integer", "isbn": 9780441172719},
+            {"title": "Absent"},
+        ]}
+        assert [b["isbn"] for b in vision._clean(raw)] == [
+            "9780441172719", "9780441172719", None, None, None, None,
+        ]
+
+    def test_source_defaults_to_read(self):
+        raw = {"books": [
+            {"title": "Absent"},
+            {"title": "Null", "source": None},
+            {"title": "Guessed", "source": "guessed"},
+            {"title": "Numeric", "source": 7},
+            {"title": "Recognized", "source": "recognized"},
+        ]}
+        assert [b["source"] for b in vision._clean(raw)] == [
+            "read", "read", "read", "read", "recognized",
+        ]
+
+
+class TestCleanIsbn:
+    def test_valid_forms_become_isbn13(self):
+        assert vision.clean_isbn("978 0 441 17271 9") == "9780441172719"
+        assert vision.clean_isbn("0-441-17271-7") == "9780441172719"
+
+    def test_invalid_forms_are_none(self):
+        assert vision.clean_isbn("044117271912") is None   # 12 digits: never UPC-A
+        assert vision.clean_isbn("9780441172710") is None  # bad check digit
+        assert vision.clean_isbn(None) is None
+        assert vision.clean_isbn(9780441172719) is None
+
+
+class TestPromptAndSchema:
+    def test_schema_requires_all_four_keys(self):
+        items = vision.BOOKS_SCHEMA["properties"]["books"]["items"]
+        assert items["required"] == ["title", "authors", "isbn", "source"]
+        assert items["properties"]["isbn"]["type"] == ["string", "null"]
+        assert items["properties"]["source"]["enum"] == ["read", "recognized"]
+        assert items["additionalProperties"] is False
+
+    def test_prompt_drops_the_transcription_only_wording(self):
+        assert "do not guess titles" not in vision.PROMPT
+        assert "spines only" not in vision.PROMPT
+        # The ISBN-from-knowledge ban is the one rule with no other defence.
+        assert "from memory" in vision.PROMPT
+
+    def test_json_only_suffix_gives_a_rule_not_placeholder_literals(self):
+        assert 'must be exactly "read" or "recognized"' in vision.JSON_ONLY_SUFFIX
+        assert "null" in vision.JSON_ONLY_SUFFIX
+        assert "read or recognized" not in vision.JSON_ONLY_SUFFIX
+        assert "... or null" not in vision.JSON_ONLY_SUFFIX
 
 
 ONE_IMAGE = [(FAKE_JPEG, "image/jpeg")]
@@ -80,7 +139,7 @@ class TestDetectSpines:
         books = await vision.detect_spines(ONE_IMAGE, {
             "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
         })
-        assert books == [{"title": "Dune", "authors": "Frank Herbert"}]
+        assert books == [{"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"}]
 
     @pytest.mark.asyncio
     async def test_anthropic_without_key(self):
@@ -95,7 +154,7 @@ class TestDetectSpines:
         books = await vision.detect_spines(ONE_IMAGE, {
             "vision_provider": "openai", "openai_api_key": "sk-test",
         })
-        assert books == [{"title": "Dune", "authors": "Frank Herbert"}]
+        assert books == [{"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"}]
         # Bearer auth + data-URI image + json_object mode
         req = route.calls[0].request
         assert req.headers["authorization"] == "Bearer sk-test"
@@ -115,7 +174,7 @@ class TestDetectSpines:
             "openai_base_url": "http://localhost:1234/v1",
         })
         assert route.called
-        assert books == [{"title": "Dune", "authors": None}]
+        assert books == [{"title": "Dune", "authors": None, "isbn": None, "source": "read"}]
 
     @pytest.mark.asyncio
     async def test_openai_without_key(self):
@@ -139,7 +198,7 @@ class TestDetectSpines:
                         "content": '{"books": [{"title": "Dune", "authors": null}]}'},
         }))
         books = await vision.detect_spines(ONE_IMAGE, {"vision_provider": "ollama"})
-        assert books == [{"title": "Dune", "authors": None}]
+        assert books == [{"title": "Dune", "authors": None, "isbn": None, "source": "read"}]
 
     @respx.mock
     @pytest.mark.asyncio
@@ -147,6 +206,48 @@ class TestDetectSpines:
         respx.post(OLLAMA_URL).mock(return_value=httpx.Response(404, json={"error": "model not found"}))
         with pytest.raises(vision.VisionError, match="ollama pull"):
             await vision.detect_spines(ONE_IMAGE, {"vision_provider": "ollama"})
+
+
+class TestOutboundContract:
+    """The four-key row must survive to the wire, per provider transport."""
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_anthropic_request_carries_the_isbn_schema(self):
+        route = respx.post(ANTHROPIC_URL).mock(return_value=_anthropic_response({"books": []}))
+        await vision.detect_spines(ONE_IMAGE, {
+            "vision_provider": "anthropic", "anthropic_api_key": "sk-ant-test",
+        })
+        body = json.loads(route.calls[0].request.content)
+        schema = body["output_config"]["format"]["schema"]
+        assert schema["properties"]["books"]["items"]["required"] == [
+            "title", "authors", "isbn", "source",
+        ]
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_openai_prompt_carries_the_json_rule(self):
+        route = respx.post(OPENAI_URL).mock(return_value=_openai_response({"books": []}))
+        await vision.detect_spines(ONE_IMAGE, {
+            "vision_provider": "openai", "openai_api_key": "sk-test",
+        })
+        content = json.loads(route.calls[0].request.content)["messages"][0]["content"]
+        prompt = next(b["text"] for b in content if b["type"] == "text")
+        assert 'must be exactly "read" or "recognized"' in prompt
+        assert "read or recognized" not in prompt
+        assert "... or null" not in prompt
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_ollama_prompt_carries_the_json_rule(self):
+        route = respx.post(OLLAMA_URL).mock(return_value=httpx.Response(200, json={
+            "message": {"content": '{"books": []}'},
+        }))
+        await vision.detect_spines(ONE_IMAGE, {"vision_provider": "ollama"})
+        prompt = json.loads(route.calls[0].request.content)["messages"][0]["content"]
+        assert 'must be exactly "read" or "recognized"' in prompt
+        assert "read or recognized" not in prompt
+        assert "... or null" not in prompt
 
 
 class TestDetectSpinesTiled:
@@ -194,8 +295,8 @@ class TestDetectSpinesTiled:
         assert route.call_count == 3
         # Overlap duplicate merged; the copy with authors wins
         assert books == [
-            {"title": "Dune", "authors": "Frank Herbert"},
-            {"title": "Solaris", "authors": "Stanislaw Lem"},
+            {"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"},
+            {"title": "Solaris", "authors": "Stanislaw Lem", "isbn": None, "source": "read"},
         ]
 
     @respx.mock
@@ -226,8 +327,8 @@ class TestDetectSpinesTiled:
         })
         assert route.call_count == 3
         assert books == [
-            {"title": "Dune", "authors": "Frank Herbert"},
-            {"title": "Solaris", "authors": "Stanislaw Lem"},
+            {"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"},
+            {"title": "Solaris", "authors": "Stanislaw Lem", "isbn": None, "source": "read"},
         ]
 
     @respx.mock
@@ -238,7 +339,7 @@ class TestDetectSpinesTiled:
         }))
         books = await vision.detect_spines(ONE_IMAGE * 2, {"vision_provider": "ollama"})
         assert route.call_count == 2
-        assert books == [{"title": "Dune", "authors": None}]
+        assert books == [{"title": "Dune", "authors": None, "isbn": None, "source": "read"}]
 
 
 class TestMergeTileBooks:
@@ -279,6 +380,48 @@ class TestMergeTileBooks:
         # Similarity below threshold keeps them apart OR merge keeps longer;
         # either way the full title must survive.
         assert any(b["title"] == "Thinking, Fast and Slow" for b in merged)
+
+    def test_isbn_bearing_copy_wins_over_authors_bearing(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Dune", "authors": None, "isbn": "9780441172719", "source": "read"}],
+            [{"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"}],
+        ])
+        assert len(merged) == 1
+        assert merged[0]["isbn"] == "9780441172719"
+        assert merged[0]["authors"] == "Frank Herbert"
+
+    def test_isbn_bearing_copy_wins_in_the_other_input_order(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Dune", "authors": "Frank Herbert", "isbn": None, "source": "read"}],
+            [{"title": "Dune", "authors": None, "isbn": "9780441172719", "source": "read"}],
+        ])
+        assert len(merged) == 1
+        assert merged[0]["isbn"] == "9780441172719"
+        assert merged[0]["authors"] == "Frank Herbert"
+
+    def test_read_beats_recognized_when_otherwise_equal(self):
+        merged = vision.merge_tile_books([
+            [{"title": "Corduroy", "authors": "Don Freeman", "isbn": None,
+              "source": "recognized"}],
+            [{"title": "Corduroy", "authors": "Don Freeman", "isbn": None,
+              "source": "read"}],
+        ])
+        assert len(merged) == 1
+        assert merged[0]["source"] == "read"
+
+    def test_distinct_isbns_never_merge(self):
+        # Same author, 0.958 title similarity — collapsed today, and must not
+        # be once each copy carries its own identifier.
+        volumes = [
+            {"title": "The Walking Dead Volume 1", "authors": "Robert Kirkman",
+             "isbn": "9781582406725", "source": "read"},
+            {"title": "The Walking Dead Volume 2", "authors": "Robert Kirkman",
+             "isbn": "9781582406756", "source": "read"},
+        ]
+        assert len(vision.merge_tile_books([[volumes[0]], [volumes[1]]])) == 2
+        # The deferred no-ISBN half of the guard: still collapses.
+        without = [{**v, "isbn": None} for v in volumes]
+        assert len(vision.merge_tile_books([[without[0]], [without[1]]])) == 1
 
 
 class TestAnalyzeEndpoint:
@@ -391,6 +534,13 @@ class TestAnalyzeEndpoint:
         resp = self._upload(viewer_client)
         assert resp.status_code in (401, 403)
 
+    def test_analyze_empty_message_drops_spines(self, admin_client, monkeypatch):
+        async def fake_detect(images, settings):
+            return []
+        monkeypatch.setattr(vision, "detect_spines", fake_detect)
+        resp = self._upload(admin_client)
+        assert resp.json() == {"ok": False, "message": "No books were recognized in this photo"}
+
 
 class TestPlanEndpoint:
     def _configure(self, db, provider="anthropic"):
@@ -497,9 +647,341 @@ class TestConfirmEndpoint:
         assert row["isbn"] is None
         assert row["owned"] == 0
 
+    def test_unknown_media_type_rejected(self, admin_client):
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Something", "media_type": "vinyl"}],
+        })
+        assert resp.status_code == 422
+
+    @respx.mock
+    def test_media_type_persisted(self, admin_client, db):
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Watchmen", "authors": None, "media_type": "comic"}],
+        })
+        assert resp.json()["ok"] is True
+        row = db.execute("SELECT media_type FROM items WHERE title = 'Watchmen'").fetchone()
+        assert row["media_type"] == "comic"
+
+    def test_title_dupe_check_respects_media_type(self, admin_client, db):
+        _insert_item(db, title="Dune", isbn=None, media_type="book", authors="Frank Herbert")
+        db.execute("COMMIT")
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "authors": "Frank Herbert", "media_type": "dvd"}],
+        })
+        data = resp.json()
+        assert data["skipped"] == []
+        assert len(data["added"]) == 1
+
+    @respx.mock
+    def test_isbn_dupe_check_respects_media_type(self, admin_client, db):
+        _insert_item(db, title="Goodnight Moon (1st ed)", isbn="9780060775858", media_type="book")
+        db.execute("COMMIT")
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
+            "title": "Goodnight Moon", "author_name": None, "isbn": ["9780060775858"],
+        }]}))
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Goodnight Moon", "authors": None, "media_type": "kids_book"}],
+        })
+        data = resp.json()
+        assert data["skipped"] == []
+        assert len(data["added"]) == 1
+
+        resp2 = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Goodnight Moon", "authors": None, "media_type": "book"}],
+        })
+        assert resp2.json()["skipped"][0]["reason"] == "ISBN already in library"
+
+    @respx.mock
+    def test_non_book_row_makes_no_ol_call(self, admin_client, db):
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "The Matrix", "authors": None, "media_type": "dvd"}],
+        })
+        assert route.called is False
+        data = resp.json()
+        assert len(data["added"]) == 1
+        assert data["added"][0]["matched"] is False
+        row = db.execute("SELECT * FROM items WHERE title = 'The Matrix'").fetchone()
+        assert row["media_type"] == "dvd"
+        assert row["isbn"] is None
+
+    @respx.mock
+    def test_matched_flag_true_with_metadata_false_without(self, admin_client, db):
+        respx.get(OL_SEARCH_URL).mock(side_effect=[
+            httpx.Response(200, json={"docs": [{
+                "title": "Dune", "author_name": ["Frank Herbert"], "isbn": ["9780441172719"],
+            }]}),
+            httpx.Response(200, json={"docs": []}),
+        ])
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [
+                {"title": "Dune", "authors": "Frank Herbert"},
+                {"title": "Obscure Zine 3", "authors": None},
+            ],
+        })
+        data = resp.json()
+        assert data["added"][0]["matched"] is True
+        assert data["added"][1]["matched"] is False
+
+    @respx.mock
+    def test_bad_location_is_not_reported_as_isbn_duplicate(self, admin_client, db):
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        with pytest.raises(sqlite3.IntegrityError):
+            admin_client.post("/api/intake/confirm", json={
+                "books": [{"title": "Bad Location Book", "authors": None}],
+                "location_id": 999999,
+            })
+        row = db.execute("SELECT id FROM items WHERE title = 'Bad Location Book'").fetchone()
+        assert row is None
+
     def test_viewer_forbidden(self, viewer_client):
         resp = viewer_client.post("/api/intake/confirm", json={"books": []})
         assert resp.status_code in (401, 403)
+
+
+ISBN13 = "9780441172719"
+ISBN10 = "0441172717"
+
+FULL_META = {
+    "title": "Dune", "authors": "Frank Herbert", "subtitle": "A Novel",
+    "description": "Spice.", "series_name": "Dune Chronicles",
+    "series_position": 1, "language": "en", "publisher": "Ace",
+    "publish_year": 1965, "page_count": 412,
+}
+HC_IDS = {"hardcover_book_id": 42, "hardcover_edition_id": 99}
+
+
+def _patch_lookup(monkeypatch, result=None, raises=None, record=None):
+    """Patch items._lookup_metadata — confirm's lazy import resolves it there."""
+    async def fake(isbn13, hc_token, client):
+        if record is not None:
+            record.append({"isbn13": isbn13, "hc_token": hc_token})
+        if raises:
+            raise raises
+        return result
+    import app.routers.items as items_router
+    monkeypatch.setattr(items_router, "_lookup_metadata", fake)
+    return fake
+
+
+class TestConfirmWithIsbn:
+    """The printed-ISBN cascade: strong path, 6a seed, 6b clear."""
+
+    @respx.mock
+    def test_valid_isbn_uses_cascade_and_saves_full_record(self, admin_client, db, monkeypatch):
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", HC_IDS))
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "DUNE", "authors": "F. Herbert",
+                       "isbn": "978-0-441-17271-9", "media_type": "kids_book"}],
+            "owned": False,
+        })
+        data = resp.json()
+        assert data["added"] == [{"title": "Dune", "id": data["added"][0]["id"], "matched": True}]
+        row = db.execute("SELECT * FROM items WHERE isbn = ?", (ISBN13,)).fetchone()
+        assert row["title"] == "Dune"                 # catalogue's, not the row's
+        assert row["subtitle"] == "A Novel"
+        assert row["description"] == "Spice."
+        assert row["series_name"] == "Dune Chronicles"
+        assert row["media_type"] == "kids_book"
+        assert row["source"] == "photo_intake"
+        assert row["owned"] == 0
+        assert row["hardcover_book_id"] == 42
+        assert route.called is False                  # no weak-path search
+
+    @respx.mock
+    def test_hardcover_token_loaded_via_get_setting(self, admin_client, monkeypatch):
+        # G15: an env-only token is invisible to get_all_settings.
+        monkeypatch.setenv("HARDCOVER_TOKEN", "env-tok")
+        calls = []
+        _patch_lookup(monkeypatch, result=(None, "manual", {}), record=calls)
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}],
+        })
+        assert calls and calls[0]["hc_token"] == "env-tok"
+
+    @respx.mock
+    def test_client_isbn_is_revalidated(self, admin_client, db, monkeypatch):
+        calls = []
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}), record=calls)
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": "044117271912"}],   # 12 digits, never UPC-A
+        })
+        assert calls == []                            # cascade never consulted
+        assert route.called is True                   # weak path taken instead
+        assert db.execute("SELECT isbn FROM items WHERE title = 'Dune'").fetchone()["isbn"] is None
+
+    @respx.mock
+    def test_cascade_miss_seeds_printed_isbn(self, admin_client, db, monkeypatch):
+        # 6a: nothing contradicted the digits, so they stay on the row.
+        _patch_lookup(monkeypatch, result=(None, "manual", {}))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}],
+        })
+        assert resp.json()["added"][0]["matched"] is False
+        row = db.execute("SELECT * FROM items WHERE title = 'Dune'").fetchone()
+        assert row["isbn"] == ISBN13 and row["isbn10"] == ISBN10
+
+    @respx.mock
+    def test_cascade_exception_seeds_isbn_and_batch_continues(self, admin_client, db, monkeypatch):
+        _patch_lookup(monkeypatch, raises=RuntimeError("upstream on fire"))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}, {"title": "Solaris"}],
+        })
+        assert [a["title"] for a in resp.json()["added"]] == ["Dune", "Solaris"]
+        assert db.execute(
+            "SELECT isbn FROM items WHERE title = 'Dune'").fetchone()["isbn"] == ISBN13
+
+    @respx.mock
+    def test_guard_rejection_clears_isbn(self, admin_client, db, monkeypatch, caplog):
+        # 6b: the cascade resolved it and it names a different book.
+        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        with caplog.at_level("WARNING"):
+            admin_client.post("/api/intake/confirm", json={
+                "books": [{"title": "Dune", "isbn": ISBN13}],
+            })
+        row = db.execute("SELECT * FROM items WHERE title = 'Dune'").fetchone()
+        assert row["isbn"] is None and row["isbn10"] is None
+        assert route.called is True                   # book row still gets the weak path
+        assert "discarding" in caplog.text
+
+    @respx.mock
+    def test_guard_rejected_non_book_row_makes_no_ol_call(self, admin_client, db, monkeypatch):
+        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13, "media_type": "dvd"}],
+        })
+        assert route.called is False
+        row = db.execute("SELECT * FROM items WHERE title = 'Dune'").fetchone()
+        assert row["isbn"] is None and row["media_type"] == "dvd"
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_guard_rejected_isbn_does_not_resolve_a_cover(
+            self, admin_client, db, monkeypatch):
+        """Worker-boundary regression: an insert-only pin would miss this.
+
+        `resolve_missing_cover` tries a stored isbn first and treats its mere
+        presence as trust, so a persisted 6b identifier fetches the other
+        book's cover in the background, after the user was told "added".
+        """
+        from unittest.mock import AsyncMock
+        import app.routers.items as items_router
+
+        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}],
+        })
+        item_id = db.execute("SELECT id FROM items WHERE title = 'Dune'").fetchone()["id"]
+
+        download = AsyncMock(return_value=None)
+        monkeypatch.setattr(items_router.covers, "download_cover", download)
+        monkeypatch.setattr(items_router, "_search_isbn_for_item",
+                            AsyncMock(return_value=(None, None)))
+        await items_router.resolve_missing_cover(item_id, None)
+
+        for call in download.await_args_list:
+            assert ISBN13 not in [a for a in call.args if isinstance(a, str)]
+
+    @respx.mock
+    def test_printed_isbn_wins_over_weak_path_isbn(self, admin_client, db, monkeypatch):
+        _patch_lookup(monkeypatch, result=(None, "manual", {}))   # 6a
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
+            "title": "Dune", "author_name": ["Frank Herbert"], "isbn": ["9780425038918"],
+        }]}))
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "authors": "Frank Herbert", "isbn": ISBN13}],
+        })
+        assert db.execute(
+            "SELECT isbn FROM items WHERE title = 'Dune'").fetchone()["isbn"] == ISBN13
+
+    @respx.mock
+    def test_isbn_dupe_checked_before_cascade(self, admin_client, db, monkeypatch):
+        _insert_item(db, title="Dune (1965 ed)", isbn=ISBN13, media_type="book")
+        db.execute("COMMIT")
+        calls = []
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}), record=calls)
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13, "media_type": "book"}],
+        })
+        assert resp.json()["skipped"][0]["reason"] == "ISBN already in library"
+        assert calls == []
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13, "media_type": "comic"}],
+        })
+        assert calls and calls[0]["isbn13"] == ISBN13
+
+    @respx.mock
+    def test_both_insert_paths_reach_cover_handoff(self, admin_client, db, monkeypatch):
+        """Strong-path ids must reach the hand-off too — _save_item only inserts."""
+        from unittest.mock import AsyncMock
+        import app.routers.items as items_router
+
+        monkeypatch.delenv("SHELF_DISABLE_COVER_ENRICH", raising=False)
+        enrich = AsyncMock(return_value=None)
+        monkeypatch.setattr(items_router, "_enrich_import_covers", enrich)
+
+        async def fake(isbn13, hc_token, client):
+            return (FULL_META, "openlibrary", {}) if isbn13 == ISBN13 else (None, "manual", {})
+        monkeypatch.setattr(items_router, "_lookup_metadata", fake)
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13},
+                      {"title": "Solaris", "isbn": "9780156027601"}],
+        })
+        strong = db.execute("SELECT id FROM items WHERE title = 'Dune'").fetchone()["id"]
+        weak = db.execute("SELECT id FROM items WHERE title = 'Solaris'").fetchone()["id"]
+        # Called, not awaited: create_task schedules on the TestClient portal loop.
+        enrich.assert_called_once_with([strong, weak])
+
+    @respx.mock
+    def test_bad_location_on_strong_path_is_not_reported_as_isbn_duplicate(
+            self, admin_client, monkeypatch):
+        # The strong path has its own IntegrityError handler; a FK failure
+        # there must re-raise, not be labelled an ISBN duplicate either.
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        with pytest.raises(sqlite3.IntegrityError):
+            admin_client.post("/api/intake/confirm", json={
+                "books": [{"title": "Dune", "isbn": ISBN13}],
+                "location_id": 999999,
+            })
+
+    @respx.mock
+    def test_integrity_error_is_classified_on_strong_path(self, admin_client, db, monkeypatch):
+        """The cascade await is the window a rival writer can commit in."""
+        import app.routers.items as items_router
+        from tests.conftest import _insert_item as insert
+
+        async def fake(isbn13, hc_token, client):
+            from app.database import get_db
+            with get_db() as rival:
+                insert(rival, title="Dune (rival)", isbn=ISBN13, media_type="book")
+            return FULL_META, "openlibrary", {}
+        monkeypatch.setattr(items_router, "_lookup_metadata", fake)
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13, "media_type": "book"}],
+        })
+        data = resp.json()
+        assert data["added"] == []
+        assert data["skipped"][0]["reason"] == "ISBN already in library"
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE isbn = ?", (ISBN13,)).fetchone()["c"] == 1
 
 
 class TestIntakePage:
@@ -511,5 +993,35 @@ class TestIntakePage:
         db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', 'ollama')")
         db.execute("COMMIT")
         html = admin_client.get("/intake").text
-        assert "Read Spines" in html
+        assert "Read Photo" in html
         assert "Ollama (local)" in html
+        assert "front cover is fine" in html
+        # The intro no longer promises spines only. intake.html:54 keeps its
+        # "read the spines" wording deliberately — the tiling card is about
+        # dense shelf photos, which is the one case face-up covers never hit.
+        assert "let the vision model read the spines" not in html
+        assert "Reading spines" not in html
+
+    def test_review_row_renders_new_controls(self, admin_client, db):
+        from app.config import MEDIA_TYPES
+        db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', 'ollama')")
+        db.execute("COMMIT")
+        html = admin_client.get("/intake").text
+        assert 'data-testid="intake-isbn"' in html
+        assert 'data-testid="intake-media-type"' in html
+        assert 'data-testid="intake-recognized"' in html
+        assert "setBookMediaType(" in html
+        for key in MEDIA_TYPES:
+            assert f'<option value="{key}">' in html
+        assert 'data-testid="intake-no-metadata"' in html
+
+    def test_intake_js_payload_has_no_source(self):
+        """Static pin for the "source is client-side only" contract."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"books: this\.books\.filter\(.*?\}\)\),", js, re.S)
+        assert block, "confirm payload block not found in static/js/intake.js"
+        payload = block.group(0)
+        assert "media_type" in payload and "isbn" in payload
+        assert "source" not in payload

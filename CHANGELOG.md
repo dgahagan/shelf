@@ -6,6 +6,76 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-08-22
+
+Photo Intake could only read spines. That left out the books least likely to
+have a usable barcode in the first place — kids' picture books too thin to
+print a spine, vintage manuals, anything you would naturally lay flat — and it
+threw away the ISBN printed on a back cover even when the photo showed it
+plainly. This release makes a face-up photo a first-class input: covers are
+recognized as well as read, a printed ISBN gets the same lookup a barcode scan
+does, and each candidate row carries its own media type so a DVD in the pile
+stops being filed as a book.
+
+### Added
+
+- **Face-up covers are read.** Photograph books on a shelf, in a stack, or laid
+  flat with the front cover showing. The model reads the spines it can read and
+  identifies the covers it can't, so a barcode-less picture book gets a row
+  where a spine photo would have given you nothing. Recognition leans on a
+  printed title or byline to anchor itself, so a cover carrying no text at all
+  is the hardest case and may produce no row rather than a recognized one.
+
+- **A `recognized` marker on rows the model identified rather than read.** A
+  title lifted off cover art is usually right and occasionally confidently
+  wrong. The badge sits on the row itself — no hovering, no guessing which rows
+  deserve a second look before you confirm.
+
+- **Printed ISBNs reach the catalogue.** If a back cover with its barcode
+  happens to be the side in frame, the ISBN beside it is read, checksum-checked
+  and pre-filled into an editable field on the row. Confirming that row runs the
+  same lookup a barcode scan does, so it arrives with exact-edition publisher,
+  year, page count and cover art instead of a title-and-author guess.
+
+  A misread ISBN is dropped to blank rather than guessed at, and a valid ISBN
+  naming a visibly different book is rejected rather than trusted — a wrong
+  edition costs you nothing, a wrong book costs you a catalogue entry.
+
+- **A media type per candidate row.** Set a row to DVD / Blu-ray, video game or
+  any other type before confirming. The duplicate check is scoped to that type,
+  so the ebook of *The Hobbit* no longer blocks the hardback, and non-book rows
+  skip the book-cover lookup entirely. Discs and games are classified, not
+  looked up: setting a row to DVD keeps it out of the book catalogue, but there
+  is no TMDb or IGDB lookup from an intake row yet.
+
+- **The Done panel says which rows found nothing.** A row that imported on title
+  alone now reads `— no metadata found, added title only`, so a thin result is
+  visible at import time rather than discovered weeks later on the item page.
+
+### Changed
+
+- **The Photo Intake button now reads "Read Photo"**, not "Read Spines" — the
+  page no longer does only spines.
+
+- **Cover enrichment skips non-book rows**, in photo intake *and* in CSV import.
+  An authorless DVD or video game sent through the cover pipeline could match
+  the first Open Library hit for its title and acquire a novel's ISBN and cover
+  art. Both paths now filter to book-ish media types before queueing. If you
+  have imported discs or games by CSV with cover enrichment on, check them.
+
+- **Cost estimates rose slightly.** The unified spine-and-cover prompt is longer
+  and each returned row now carries an ISBN and a source, so the preview
+  estimates more tokens per book than it used to. The estimate changed; the
+  price per token did not.
+
+### Fixed
+
+- **A correctly-read ISBN is no longer discarded when the back cover prints an
+  alternative title.** `The Hobbit or There and Back Again` on the cover against
+  `The Hobbit` in the catalogue was treated as a disagreement and the ISBN
+  thrown away — whether it survived came down to whether the cover printed a
+  colon. The `or …` / `, or …` form is now recognized as the same book.
+
 ## [0.14.0] - 2026-08-22
 
 The `items` table carries 36 columns. The detail page rendered 20 of them and
@@ -936,6 +1006,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.15.0]: https://github.com/dgahagan/shelf/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dgahagan/shelf/releases/tag/v0.14.0
 [0.13.0]: https://github.com/dgahagan/shelf/releases/tag/v0.13.0
 [0.12.0]: https://github.com/dgahagan/shelf/releases/tag/v0.12.0

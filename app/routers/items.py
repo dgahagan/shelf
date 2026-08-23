@@ -1713,8 +1713,11 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
 
     covers_queued = 0
     if enrich_covers and new_item_ids and not os.environ.get("SHELF_DISABLE_COVER_ENRICH"):
-        covers_queued = len(new_item_ids)
-        asyncio.create_task(_enrich_import_covers(new_item_ids))
+        eligible = cover_queue.filter_cover_eligible(new_item_ids)
+        covers_queued = len(eligible)
+        # The hand-off filters again — deliberate, keeps it idempotent and
+        # safe for any future producer (G29).
+        asyncio.create_task(_enrich_import_covers(eligible))
 
     return {
         "imported": imported,
@@ -1827,9 +1830,20 @@ async def _enrich_import_covers(item_ids: list[int]) -> None:
     sites even though it no longer awaits any network I/O itself — the
     queue's own worker does the downloading. That preserves the
     fire-and-forget shape both call sites already rely on.
+
+    Filters to book-ish media types before enqueueing (G29) — `enqueue_many`
+    applies no filter itself, and this is the shared hand-off both
+    producers (photo-intake confirm and CSV import) go through.
     """
-    queued = cover_queue.enqueue_many(item_ids)
-    logger.info("Queued %d items for cover enrichment", queued)
+    eligible = cover_queue.filter_cover_eligible(item_ids)
+    queued = cover_queue.enqueue_many(eligible)
+    if queued != len(item_ids):
+        logger.info(
+            "Queued %d of %d items for cover enrichment (non-book rows skipped)",
+            queued, len(item_ids),
+        )
+    else:
+        logger.info("Queued %d items for cover enrichment", queued)
 
 
 async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None, mode: str = "add"):

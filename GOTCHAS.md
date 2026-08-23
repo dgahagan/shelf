@@ -866,6 +866,14 @@ grep -rn 'on("dialog"\|once("dialog"' tests/e2e/
   call site was fixed, grep for the *other* call sites in the same commit —
   this entry shipped with two live violations of its own rule still in the
   tree, one of them the user-facing button.
+- **Third instance, pre-emptive** (`feat/intake-covers`, 2026-08-22): per-row
+  media type turned photo-intake confirm into a *new* producer of authorless,
+  ISBN-less non-book rows feeding the same hand-off. Rather than filter at the
+  new producer, the filter moved into the shared hand-off
+  (`items._enrich_import_covers` → `cover_queue.filter_cover_eligible`), which
+  also closed the latent instance behind CSV import. **Filter at the shared
+  choke point, not at each producer** — a fourth producer then arrives safe by
+  default.
 - **Verify:** the permissive match still exists (a failing assert means the
   helper changed and this entry needs re-checking), and no sweep is
   unfiltered:
@@ -940,6 +948,19 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
   A cheap corollary: when a test mocks a transport by method name
   (`client.get`), changing which method the code calls silently detaches it
   rather than failing it.
+  Two more ways a pin survives its own mutation, both found on
+  `feat/intake-covers` (2026-08-22):
+  - **A fallback branch absorbs it.** The title-guard matrix's
+    whitespace-only row was meant to pin the whitespace collapse, but with
+    the collapse removed the two titles still scored 0.926 on the similarity
+    fallback and the row passed. Ask which *branch* of the implementation
+    your pin actually lands in, not just which behaviour it describes; the
+    fix was a second row whose damage is large enough to miss the fallback.
+  - **A duplicated handler needs one pin each.** Intake classifies
+    `IntegrityError` on two insert paths (weak-path INSERT, `_save_item`).
+    Deleting the classification from the strong path left the whole suite
+    green, because the only pin exercised the weak path's copy. When you
+    copy a guard into a second code path, copy its pin too.
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1106,6 +1127,41 @@ grep -rn 'step="' app/templates/ | grep -v 'step="any"' | grep -v 'min=' \
   name four times (heading, rename input, two action forms); count a
   structural marker (`data-testid="series-card"`) instead. Found the same day
   (`b2cdb12`).
+- **Status:** documented.
+
+## G37 — When patching a symbol the code imports *inside* a function
+
+- **Rule:** Patch it on the module that **defines** it, not the module that
+  uses it. `confirm_books` does `from app.routers.items import
+  _enrich_import_covers` at call time, so `monkeypatch.setattr(app.routers.intake,
+  "_enrich_import_covers", ...)` sets an attribute nothing ever reads — the
+  deferred import re-resolves `app.routers.items._enrich_import_covers` on
+  every call and gets the real one.
+- **Why:** the failure is silent and inverted: the test passes, the mock
+  records nothing, and the assertion you thought was the point
+  (`assert_called_once_with(...)`) is never reached — or worse, a
+  "was not called" assertion passes for the wrong reason. This repo uses the
+  in-function import deliberately to break import cycles, so the pattern is
+  spreading: `store.py:92` (`_lookup_metadata`/`_save_item`),
+  `intake.py` (the same two, plus `_enrich_import_covers`),
+  `items.py::_fetch_preview_cover` (`outbound`). Every one of them is a
+  wrong-patch-target waiting to happen. Module-level imports have the mirror
+  trap and the opposite fix — there the *using* module holds its own
+  reference, so that is what must be patched.
+- **Evidence:** called out in the `intake-covers` plan review (Codex R2) and
+  written into the plan's test text before it could bite; the same reasoning
+  drove the `_lookup_metadata` patches in
+  `tests/test_intake.py::TestConfirmWithIsbn` (`2061862`, 2026-08-22).
+- **Verify:** every in-function import is a candidate — list them, then check
+  that any test patching one of those names targets the defining module:
+
+```bash
+grep -rn "^\s\+from app\.\(routers\|services\)\." app/ --include='*.py'
+grep -rn "setattr(.*_enrich_import_covers\|setattr(.*_lookup_metadata\|setattr(.*_save_item" tests/
+```
+
+  (the second grep's hits must all name `app.routers.items`, never
+  `app.routers.intake` / `app.routers.store`.)
 - **Status:** documented.
 
 ## Graveyard
