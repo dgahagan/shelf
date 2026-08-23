@@ -1,9 +1,12 @@
 # HTTPS & reverse proxy
 
 Shelf serves HTTPS from the first start, with a self-signed certificate it
-generates into `data/certs/`. HTTPS is not optional: phone cameras
-(`getUserMedia`) and the offline Store Mode (service workers) only work on a
-secure origin.
+generates into `data/certs/`. HTTPS is not optional: a secure origin is
+mandatory for anything using `getUserMedia` — the barcode scanner and Photo
+Intake's desktop webcam viewfinder — and for the offline Store Mode (service
+workers). The one exception is Photo Intake's **Take photo** button on a
+phone, which opens the native camera app via an HTML capture input rather
+than `getUserMedia`, and so works even over plain `http://`.
 
 ## The certificate warning
 

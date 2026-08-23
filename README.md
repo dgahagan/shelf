@@ -101,7 +101,7 @@ data/
 ### Scanning and Metadata
 - **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate
-- **Photo intake** — bulk-add books from a photo of your shelves using a vision model (see [Photo Intake](#photo-intake))
+- **Photo intake** — bulk-add books from a photo of your shelves using a vision model, snapped with the phone or webcam or uploaded (see [Photo Intake](#photo-intake))
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books, with German (978-3) ISBNs routed through the Deutsche Nationalbibliothek (DNB) first
 - **Edition language** — captured on lookup, editable on items, filterable in Browse; a settings dropdown picks the preferred language for title searches
@@ -136,7 +136,7 @@ scanners bypass the camera entirely and work regardless.
 
 Snap a photo of a shelf — or of books stacked or laid face-up — and Shelf
 reads the spines it can read and recognizes the covers it can't. Open
-**Photo Intake** in the nav, upload the photo, and the detected books appear
+**Photo Intake** in the nav, take or upload the photo, and the detected books appear
 as an editable candidate list: title, author, the ISBN read off a back cover
 if one was in frame, a per-row media type, and a marker on rows identified
 from the cover rather than read. Nothing is imported until you confirm.

@@ -67,6 +67,15 @@ OPENAI_DEFAULT_INGEST_LONG_EDGE = 2048
 # the tiling offer appear. Below it the single-image path runs unchanged.
 TILING_THRESHOLD = 1.5
 
+# Absolute source long-edge (pixels) below which a photo is flagged low-res,
+# separate from the tiling decision. A 1080p video-track grab (1920) and a
+# messaging-app-recompressed library photo fall below it; a native phone
+# still (>=3000) sits above it. This is absolute source pixels, not a ratio
+# to the provider cap -- a ratio would double-fire with the tiling card in
+# the [1.5, 2) factor band and mis-fire on the Anthropic high-res 2576 cap
+# and on operator-raised Ollama caps.
+LOW_RES_LONG_EDGE = 2400
+
 # Directional overlap: vertical cut lines bisect spines, so they get generous
 # overlap; horizontal cuts run between shelf rows and need little.
 TILE_OVERLAP_X = 0.12  # fraction of tile width

@@ -15,14 +15,39 @@
     <!-- Step 1: choose / capture photo -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
         <div class="flex flex-col sm:flex-row sm:items-center gap-3">
-            <input type="file" accept="image/*" capture="environment" x-ref="photoInput"
-                   @change="onFileChosen($event)"
-                   class="text-sm text-shelf-muted file:mr-3 file:rounded-lg file:border-0 file:bg-shelf-hover file:px-3 file:py-1.5 file:text-sm file:text-shelf-text hover:file:bg-shelf-border">
-            <button @click="analyze(false)" :disabled="!file || analyzing || planning" x-show="!needsChoice"
+            <!-- Two explicit affordances. The library input carries no `capture`
+                 so phones offer the photo library; the capture input carries it
+                 so they open the camera app. takePhoto() routes between them and
+                 the desktop viewfinder at click time. -->
+            <input type="file" accept="image/*" class="hidden" x-ref="photoInput"
+                   @change="onFileChosen($event)" data-testid="intake-choose-input">
+            <input type="file" accept="image/*" capture="environment" class="hidden" x-ref="captureInput"
+                   @change="onFileChosen($event)" data-testid="intake-capture-input">
+            <button type="button" @click="takePhoto()" x-show="cameraAvailable" x-cloak
+                    :disabled="viewfinder" data-testid="intake-take-photo"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap">Take photo</button>
+            <button type="button" @click="$refs.photoInput.click()"
+                    :disabled="viewfinder" data-testid="intake-choose-photo"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap">Choose photo</button>
+            <button @click="analyze(false)" :disabled="!file || analyzing || planning || viewfinder" x-show="!needsChoice"
                     class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50 whitespace-nowrap">
                 <span x-show="!analyzing">Read Photo</span>
                 <span x-show="analyzing">Reading&hellip;</span>
             </button>
+        </div>
+        <!-- Desktop webcam viewfinder. Always in the DOM (x-show, not x-if): the
+             <video> must exist before createPhotoCapture() resolves it, and an
+             x-if would re-create it on every retake. -->
+        <div data-testid="intake-viewfinder" x-show="viewfinder" x-cloak class="mt-4">
+            <div class="rounded-xl overflow-hidden border border-shelf-border bg-black">
+                <video id="intake-video" class="w-full" autoplay muted playsinline></video>
+            </div>
+            <div class="flex gap-3 mt-3">
+                <button type="button" @click="grabFrame()" data-testid="intake-capture-btn"
+                        class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors whitespace-nowrap">Capture</button>
+                <button type="button" @click="cancelViewfinder()" data-testid="intake-capture-cancel"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors whitespace-nowrap">Cancel</button>
+            </div>
         </div>
         <p class="text-xs text-shelf-muted mt-2">Provider: <span class="text-shelf-text">{{ {'anthropic': 'Anthropic API', 'openai': 'OpenAI-compatible', 'ollama': 'Ollama (local)'}.get(vision_provider, vision_provider) }}</span> &middot; photos are analyzed in memory and not stored.</p>
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 mt-4 pt-3 border-t border-shelf-border">
@@ -39,7 +64,7 @@
             </label>
         </div>
         <template x-if="preview">
-            <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64" x-show="!needsChoice">
+            <img :src="preview" alt="Shelf photo preview" class="mt-4 rounded-lg max-h-64" x-show="!needsChoice && !viewfinder">
         </template>
         <p x-show="error" x-cloak class="text-sm text-shelf-error mt-3" x-text="error"></p>
     </div>
@@ -69,6 +94,25 @@
                 </button>
             </div>
             <p class="text-xs text-shelf-muted mt-2">High-res splits the original into overlapping full-resolution tiles so every spine stays legible. Cost estimates are approximate.</p>
+        </div>
+    </template>
+
+    <!-- Step 1c: low-resolution advisory. Advisory, not a gate — Read Photo
+         stays enabled. Mutually exclusive with the tiling card above: the
+         server only sets low_res when needs_choice is false. -->
+    <template x-if="lowRes">
+        <div data-testid="intake-low-res" class="bg-shelf-card rounded-xl border border-shelf-warning/30 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-shelf-warning mb-1">This photo may be too small to read</h2>
+            <p class="text-sm text-shelf-muted mb-3">
+                This photo is <span class="text-shelf-text font-medium" x-text="photoW"></span>&times;<span class="text-shelf-text font-medium" x-text="photoH"></span>.
+                Spines this small often don't read well &mdash; take or choose another photo, or click Read Photo anyway.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3">
+                <button type="button" @click="takePhoto()" x-show="cameraAvailable" x-cloak data-testid="intake-retake"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors whitespace-nowrap">Take another photo</button>
+                <button type="button" @click="$refs.photoInput.click()" data-testid="intake-choose-another"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors whitespace-nowrap">Choose another photo</button>
+            </div>
         </div>
     </template>
 
@@ -178,5 +222,6 @@
     {% endif %}
 </div>
 
+<script src="/static/js/intake-capture.js"></script>
 <script src="/static/js/intake.js"></script>
 {% endblock %}

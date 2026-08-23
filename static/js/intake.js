@@ -21,8 +21,31 @@ function intakePage() {
         needsChoice: false,
         planning: false,
         imageEl: null,
+        // Camera capture. `supportsCapture` is HTML Media Capture (phones open
+        // the camera app and return a full-res still); where it is absent we
+        // offer a getUserMedia viewfinder instead (desktop webcam). Both paths
+        // end in setPhoto(), so nothing downstream forks.
+        cameraAvailable: false,
+        supportsCapture: false,
+        viewfinder: false,
+        capture: false,
+        source: 'file',
+        // Low-resolution advisory, decided server-side by /api/intake/plan.
+        lowRes: false,
+        photoW: 0,
+        photoH: 0,
+        // Monotonic token for the async plan. Every continuation in planPhoto()
+        // must prove it still owns the current photo before writing shared
+        // state — otherwise a slow plan for photo A lands on photo B and
+        // analyze() crops and sends A's pixels under B's name.
+        photoGeneration: 0,
 
         init() {
+            // Capability, not user-agent: an Android tablet in desktop mode and
+            // a touchscreen Chromebook both get the right path this way.
+            this.supportsCapture = 'capture' in document.createElement('input');
+            this.cameraAvailable = this.supportsCapture ||
+                !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
             var saved = localStorage.getItem('shelf.intake.locationId');
             if (saved) {
                 // Only restore if the location still exists — the select's
@@ -38,23 +61,50 @@ function intakePage() {
         },
 
         onFileChosen(e) {
-            this.file = e.target.files[0] || null;
+            // Which input fired decides what Retake re-opens later.
+            this.source = (e.target === this.$refs.captureInput) ? 'camera' : 'file';
+            this.setPhoto(e.target.files[0] || false);
+        },
+
+        // The one funnel every photo enters by, whether it came from the
+        // library input, the camera-app input, or a viewfinder grab.
+        async setPhoto(file) {
+            this.file = file;
             this.error = false;
             this.books = [];
             this.result = false;
             this.plan = emptyPlan();
             this.needsChoice = false;
             this.imageEl = null;
+            this.lowRes = false;
+            this.photoW = 0;
+            this.photoH = 0;
             if (this.preview) URL.revokeObjectURL(this.preview);
             this.preview = this.file ? URL.createObjectURL(this.file) : false;
-            if (this.file) this.planPhoto();
+            // Clear both inputs so re-choosing the same file re-fires `change`.
+            this.clearInputs();
+            var gen = ++this.photoGeneration;
+            // Never leave a stream running once a photo has been chosen.
+            await this.closeViewfinder();
+            if (this.file) this.planPhoto(gen);
         },
 
-        async planPhoto() {
+        clearInputs() {
+            if (this.$refs.photoInput) this.$refs.photoInput.value = '';
+            if (this.$refs.captureInput) this.$refs.captureInput.value = '';
+        },
+
+        async planPhoto(gen) {
             this.planning = true;
             try {
                 var img = await this.loadImage(this.preview);
+                // A late continuation from a previous photo must not write to
+                // shared state, and must not clear `planning` out from under
+                // the photo that is actually current.
+                if (gen !== this.photoGeneration) return;
                 this.imageEl = img;
+                this.photoW = img.naturalWidth;
+                this.photoH = img.naturalHeight;
                 var resp = await fetch('/api/intake/plan', {
                     method: 'POST',
                     headers: {
@@ -64,17 +114,81 @@ function intakePage() {
                     body: JSON.stringify({ width: img.naturalWidth, height: img.naturalHeight }),
                 });
                 var data = await resp.json();
+                if (gen !== this.photoGeneration) return;
                 if (data.ok) {
                     this.plan = data;
                     this.needsChoice = data.needs_choice;
+                    this.lowRes = !!data.low_res;
                     if (this.needsChoice) this.$nextTick(() => this.drawModelPreview());
                 }
                 // Plan failures are non-fatal: fall back to the plain flow.
             } catch (e) {
+                if (gen !== this.photoGeneration) return;
                 this.plan = emptyPlan();
                 this.needsChoice = false;
+                this.lowRes = false;
             }
             this.planning = false;
+        },
+
+        // Routed at click time, not at load: the capture input on phones,
+        // the in-page viewfinder on a desktop with a webcam.
+        takePhoto() {
+            if (this.supportsCapture) {
+                this.$refs.captureInput.click();
+                return;
+            }
+            this.openViewfinder();
+        },
+
+        async openViewfinder() {
+            // Single entry: `viewfinder` is set synchronously below, so it also
+            // covers the window while getUserMedia is still in flight. Two
+            // rapid clicks must never acquire two streams.
+            if (this.viewfinder) return;
+            this.viewfinder = true;
+            this.error = false;
+            // Framing a new photo shouldn't leave the old photo's advisory up.
+            this.lowRes = false;
+            if (!this.capture) {
+                this.capture = window.createPhotoCapture({
+                    videoEl: document.getElementById('intake-video'),
+                });
+            }
+            try {
+                await this.capture.start();
+            } catch (err) {
+                this.viewfinder = false;
+                showToast(err && err.name === 'NotFoundError'
+                    ? 'No camera found. Use Choose photo instead.'
+                    : 'Camera access denied. Check browser permissions for this site.',
+                    'error');
+            }
+        },
+
+        async grabFrame() {
+            var blob;
+            try {
+                blob = await this.capture.grab();
+            } catch (e) {
+                showToast('Could not capture a frame \u2014 try again.', 'error');
+                return;
+            }
+            await this.closeViewfinder();
+            this.source = 'camera';
+            await this.setPhoto(new File([blob], 'capture.jpg', { type: 'image/jpeg' }));
+        },
+
+        // The single teardown funnel. Capture, Cancel, choosing another file,
+        // analyzing and reset all route through it, so no exit from the
+        // viewfinder leaves a track live and the camera LED on.
+        async closeViewfinder() {
+            if (this.capture) await this.capture.stop();
+            this.viewfinder = false;
+        },
+
+        cancelViewfinder() {
+            return this.closeViewfinder();
         },
 
         loadImage(url) {
@@ -119,6 +233,8 @@ function intakePage() {
 
         async analyze(tiled) {
             if (!this.file) return;
+            // Analysis can run for a minute; the camera must not stay lit.
+            await this.closeViewfinder();
             this.analyzing = true;
             this.error = false;
             this.books = [];
@@ -221,17 +337,27 @@ function intakePage() {
             this.confirming = false;
         },
 
-        reset() {
+        async reset() {
             this.file = false;
             if (this.preview) URL.revokeObjectURL(this.preview);
             this.preview = false;
             this.books = [];
             this.result = false;
             this.error = false;
-            this.plan = null;
+            // emptyPlan(), not null: the CSP evaluator throws on a null
+            // dereference in a template guard, and the tiling card's
+            // x-text="plan.factor" would hit exactly that.
+            this.plan = emptyPlan();
             this.needsChoice = false;
             this.imageEl = null;
-            if (this.$refs.photoInput) this.$refs.photoInput.value = '';
+            this.lowRes = false;
+            this.source = 'file';
+            this.photoW = 0;
+            this.photoH = 0;
+            // A plan still in flight must not write back into a reset page.
+            this.photoGeneration++;
+            this.clearInputs();
+            await this.closeViewfinder();
         },
     };
 }

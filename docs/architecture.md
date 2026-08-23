@@ -71,7 +71,12 @@ get throttled.
 
 `routers/intake.py` + `services/vision.py` + `services/tiling.py`. The client
 reports image dimensions → `/api/intake/plan` decides whether the photo
-exceeds the provider's ingest cap and offers tiling with a cost estimate →
+exceeds the provider's ingest cap and offers tiling with a cost estimate, or
+— when it doesn't — whether the photo is low-resolution (long edge under
+`LOW_RES_LONG_EDGE`, `config.py`) and returns a `low_res` advisory flag
+instead; the two are mutually exclusive by construction. Provider knowledge
+stays server-side (a stated invariant of the endpoint), so the UI only
+renders the flags it's handed, never computes them →
 `/api/intake/analyze` sends the image(s) to the configured backend
 (Anthropic, OpenAI-compatible, Ollama — one interface, three adapters) →
 tile results are merged and de-duplicated → the user edits → `/confirm`

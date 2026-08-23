@@ -540,6 +540,17 @@ python -m pytest tests/test_checkouts.py -k guard_reads_under_write_lock -q
   then byte-identical for real and `SW_VERSION` stayed `v5` (`698a0a8`,
   2026-08-21).
 
+- **`static/js/` is a `make css` trigger too, not just templates.**
+  `tailwind.config.js`'s `content` globs include `./static/js/**/*.js`, so
+  Tailwind scans JS for class names and a task that only adds or edits a
+  script can still change `app.css`. A plan that reasons "no template
+  touched, therefore no rebuild" has answered the wrong question — the
+  trigger is the *content glob*, not the file type, and the module itself
+  being absent from `PRECACHE` is irrelevant to it. Caught on paper by
+  `/plan-review` (issue-28 R1, 2026-08-22), where the capture-module task
+  declared G19 inapplicable and omitted the gate; the rebuild did turn out
+  byte-identical, so the bug was in the reasoning, not the output — which is
+  exactly the kind that survives to the run where it isn't.
 - **Verify:** the digest pinned for the current `SW_VERSION` must match the
   precached files on disk:
 
@@ -961,6 +972,23 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     Deleting the classification from the strong path left the whole suite
     green, because the only pin exercised the weak path's copy. When you
     copy a guard into a second code path, copy its pin too.
+  Two more, both found while mutation-checking `feat/issue-28-intake-camera-capture`
+  (2026-08-22):
+  - **Redundant guards absorb a single-layer mutation.** The "two rapid Take
+    photo clicks acquire at most one camera stream" pin passed with the page's
+    `if (this.viewfinder) return;` deleted *and* passed with the module's
+    `if (starting) return starting;` deleted — each layer alone is sufficient,
+    so each mutation alone is invisible. It only failed with **both** removed.
+    When a property is defended in depth, mutate every layer at once or the
+    pin looks toothless; and say so in the test, or the next reader will
+    "simplify" one layer away on the strength of a green suite.
+  - **A negative assertion can be satisfied by the not-yet-happened state.**
+    "After the retake, assert the advisory is gone (count 0)" passed even
+    though the second capture had not yet planned — entering the viewfinder
+    clears the advisory, so count 0 held *before* the action completed too.
+    Zero-count and absence assertions need a positive wait for the action
+    first (here: poll until the second `/plan` call is recorded), otherwise
+    they assert the starting state.
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1163,6 +1191,72 @@ grep -rn "setattr(.*_enrich_import_covers\|setattr(.*_lookup_metadata\|setattr(.
   (the second grep's hits must all name `app.routers.items`, never
   `app.routers.intake` / `app.routers.store`.)
 - **Status:** documented.
+
+## G38 — When a camera viewfinder has more than one way to leave or restart it
+
+- **Rule:** Funnel every exit through **one idempotent teardown** — Capture,
+  Cancel, choosing a different file, starting analysis, resetting the page.
+  While the viewfinder is open or starting, disable or hide every control
+  that acts on the *previous* input. Guard re-entry at both layers: the page
+  method early-returns when it is already open, and the capture module
+  serializes overlapping `start()`s behind a single in-flight promise rather
+  than overwriting its stream handle.
+- **Why:** a visible Cancel button is not the only exit. Replace and
+  read/analyze controls stay live around the viewfinder unless you disable
+  them, so the user can hand the old file to a minute-long analysis while the
+  camera LED is still on; and two starts can overwrite the singleton handle,
+  stranding a track nothing can stop. Nothing throws — the UI advances and the
+  camera simply stays lit.
+- **Evidence:** caught on paper by `/plan-review` (issue-28 R2/R5,
+  2026-08-22) before the code existed: the proposed state machine stopped the
+  stream on grab, Cancel and reset only, so low-res → **Take another photo** →
+  **Read Photo** analyzed the old file with the camera running. Landed as
+  `closeViewfinder()` plus `:disabled="viewfinder"` in `939484f` and the
+  module's `starting` handle in `767ba13`. R5 is the same class one layer
+  down: a `start()` that swallows a post-`getUserMedia` failure (`await
+  video.play().catch(() => {})`) reports success and leaves the acquired
+  tracks running behind a viewfinder the page then closes.
+- **Verify:** the three lifecycle pins must be green — and see G31 on
+  mutating **both** re-entry guards, not one:
+
+```bash
+python -m pytest tests/e2e/test_intake.py -m e2e -q \
+  -k 'read_photo_unavailable or repeated_take_photo or play_failure'
+```
+
+- **Status:** documented. Not a lint candidate — it is a state-machine rule,
+  not a grep.
+
+## G39 — When replaceable client input launches asynchronous work
+
+- **Rule:** Stamp each selection with a monotonic generation and pass it into
+  the async work. Every continuation must prove it still owns the current
+  generation **after each await** before writing shared state — including the
+  busy flag it would otherwise clear. Bump the generation on reset too.
+- **Why:** resetting state *before* each request does not serialize requests.
+  The user replaces a file while the first request is in flight, the older
+  response lands last, and it attaches its own dimensions, plan and crop
+  rectangles to the newer file — so the app crops and uploads the **wrong
+  pixels** under the right filename, silently. A stale continuation clearing
+  `planning`/`loading` is the same bug in miniature: it re-enables the action
+  button while the current request is still running.
+- **Evidence:** latent on `main` in `static/js/intake.js`'s `planPhoto()`,
+  which had two awaits and no identity check; found by `/plan-review`
+  (issue-28 R3, 2026-08-22) because that plan *added* explicit rapid-replace
+  affordances (Retake, Choose another) to the same path. Fixed with
+  `photoGeneration` in `939484f`; the pin fails correctly when the comparison
+  is removed.
+- **Verify:** the ordering pin must be green (it delays photo A's `/plan`
+  response in-page, chooses photo B, and asserts B's verdict and B's bytes
+  survive A's late reply):
+
+```bash
+python -m pytest tests/e2e/test_intake.py -m e2e -k latest_photo_plan_wins -q
+```
+
+- **Status:** documented. Lint candidate: a grep for `async` component methods
+  that write `this.` state after a second `await` without an identity check
+  would be noisy but not impossible.
 
 ## Graveyard
 

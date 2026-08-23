@@ -27,9 +27,15 @@ The **Photo Intake** nav tab appears once a provider is saved.
 
 ## Using it
 
-1. Open **Photo Intake**, choose a photo (on phones the camera opens
-   directly; see [#28](https://github.com/dgahagan/shelf/issues/28) for the
-   planned camera/library choice).
+1. Open **Photo Intake**. **Take photo** opens the camera — on a phone that's
+   the native camera app, handing back a full-resolution still; on a desktop
+   with a webcam it's an in-page viewfinder with **Capture** and **Cancel**
+   (this path needs the HTTPS certificate trusted — see
+   [HTTPS & reverse proxy](../https-and-reverse-proxy.md)). Where no camera
+   is available the button doesn't appear, or on a desktop with no camera
+   attached, clicking it says "No camera found. Use Choose photo instead."
+   **Choose photo** opens the phone's photo library or a file on disk. Both
+   paths feed the same pipeline below.
 2. If the photo is much larger than the model will ingest, Shelf shows a
    **"what the model will see"** preview and offers to split it into
    overlapping tiles, with a cost estimate for each choice. More tiles = more
@@ -58,6 +64,12 @@ Nothing is imported until you confirm, and the photo itself is never stored.
   a 12 MP phone photo of a 1.5 m shelf leaves each spine a few pixels wide
   after downscaling. That is exactly when the tiling offer appears — accept
   it.
+- **Low-resolution advisory.** When a photo is small rather than oversized —
+  a desktop webcam frame, or a library photo a messaging app re-compressed —
+  Shelf shows "This photo may be too small to read" with **Take another
+  photo** / **Choose another photo** buttons. It's advisory, not a gate:
+  Read Photo stays enabled and analysis still runs either way. A native
+  phone photo is the best input and essentially never trips this.
 - **One shelf per photo** beats one bookcase per photo.
 - **Face-up works, front cover showing.** Lay thin or barcode-less books —
   kids' picture books, vintage manuals — cover up. The model recognizes

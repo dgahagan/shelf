@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Request, UploadFile, File
 from pydantic import BaseModel, field_validator
 
 from app.auth import require_role
-from app.config import HTTP_TIMEOUT, MEDIA_TYPES, TILING_THRESHOLD
+from app.config import HTTP_TIMEOUT, LOW_RES_LONG_EDGE, MEDIA_TYPES, TILING_THRESHOLD
 from app.database import get_db, get_all_settings, get_setting
 from app.services import cover_queue, openlibrary, tiling, vision
 from app.services import isbn as isbn_svc
@@ -39,7 +39,9 @@ async def plan_photo(payload: PlanRequest):
 
     The client sends only the photo dimensions; the grid geometry and the
     per-provider ingest caps stay server-side so no provider logic leaks
-    into the UI. Cropping happens in the browser from these rects.
+    into the UI. Cropping happens in the browser from these rects. The
+    low-res judgement is computed here too, for the same reason -- the UI
+    renders the flag, it never computes it.
     """
     w, h = payload.width, payload.height
     if not (0 < w <= MAX_PHOTO_DIMENSION and 0 < h <= MAX_PHOTO_DIMENSION):
@@ -55,10 +57,14 @@ async def plan_photo(payload: PlanRequest):
     tiles = tiling.compute_grid(w, h, cap)
     books = tiling.expected_books(w, h)
     preview_w, preview_h = tiling.scaled_dims(w, h, cap)
+    needs_choice = factor >= TILING_THRESHOLD
+    low_res = (not needs_choice) and max(w, h) < LOW_RES_LONG_EDGE
     return {
         "ok": True,
         "factor": round(factor, 2),
-        "needs_choice": factor >= TILING_THRESHOLD,
+        "needs_choice": needs_choice,
+        "low_res": low_res,
+        "low_res_long_edge": LOW_RES_LONG_EDGE,
         "preview": {"w": preview_w, "h": preview_h},
         "tiles": [{"x": t.x, "y": t.y, "w": t.w, "h": t.h} for t in tiles],
         "grid": {"rows": max(t.row for t in tiles) + 1, "cols": max(t.col for t in tiles) + 1},

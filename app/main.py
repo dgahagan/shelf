@@ -61,8 +61,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "form-action 'self'; "
             "frame-ancestors 'none';"
         )
-        # Camera stays first-party for barcode scanning (html5-qrcode getUserMedia);
-        # everything else is denied outright.
+        # Camera stays first-party for barcode scanning (html5-qrcode / ZXing
+        # getUserMedia) and the photo-intake webcam viewfinder; everything else
+        # is denied outright.
         response.headers["Permissions-Policy"] = (
             "camera=(self), microphone=(), geolocation=(), payment=(), usb=()"
         )

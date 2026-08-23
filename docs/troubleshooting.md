@@ -14,14 +14,25 @@ isn't in it. Set `CERT_SAN` to include that IP/hostname, delete
 
 ## Camera won't start / no camera button
 
+Applies to both the barcode scanner and Photo Intake's **Take photo** button
+on desktop (its in-page viewfinder), which both use `getUserMedia`:
+
 - Must be HTTPS. `http://` or an untrusted origin on some browsers disables
-  `getUserMedia`.
+  `getUserMedia` — trust the certificate, see
+  [HTTPS & reverse proxy](https-and-reverse-proxy.md).
 - Permission was denied once — reset it in the browser's site settings for
   your Shelf URL.
 - iOS: Safari only (Chrome on iOS is Safari underneath and also works);
   in-app browsers (e.g. from a messaging app) often block the camera. Open
   in Safari proper.
 - Another app/tab holds the camera — close it.
+- Desktop with no camera attached: Photo Intake's **Take photo** button
+  shows "No camera found. Use Choose photo instead." — use **Choose photo**.
+
+Photo Intake's **Take photo** on a phone is different — it opens the native
+camera *app* via an HTML capture input, not `getUserMedia`, so it works even
+over plain `http://` and isn't affected by the in-app-browser restriction
+above.
 
 ## USB scanner types nothing
 

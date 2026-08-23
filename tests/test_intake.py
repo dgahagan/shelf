@@ -558,6 +558,7 @@ class TestPlanEndpoint:
         assert data["needs_choice"] is False
         assert data["factor"] == 1.0
         assert len(data["tiles"]) == 1
+        assert data["low_res"] is True
 
     def test_large_photo_offers_tiling_with_costs(self, admin_client, db):
         self._configure(db)
@@ -567,6 +568,42 @@ class TestPlanEndpoint:
         assert data["grid"]["rows"] >= 1 and data["grid"]["cols"] >= 2
         assert 0 < data["cost_as_is_usd"] < data["cost_tiled_usd"]
         assert data["preview"]["w"] < 6000
+        assert data["low_res"] is False
+
+    def test_low_res_flagged_for_small_photo_that_does_not_tile(self, admin_client, db):
+        self._configure(db, provider="anthropic")
+        data = admin_client.post("/api/intake/plan", json={"width": 1920, "height": 1080}).json()
+        assert data["ok"] is True
+        assert data["needs_choice"] is False
+        assert data["low_res"] is True
+        assert data["low_res_long_edge"] == 2400
+
+    def test_low_res_false_at_or_above_the_constant(self, admin_client, db):
+        self._configure(db, provider="anthropic")
+        # Boundary is strictly less-than: exactly at the constant is not low-res.
+        data = admin_client.post("/api/intake/plan", json={"width": 2400, "height": 1600}).json()
+        assert data["low_res"] is False
+
+        # Well above the constant, and it tiles too.
+        data = admin_client.post("/api/intake/plan", json={"width": 4032, "height": 3024}).json()
+        assert data["low_res"] is False
+
+    def test_low_res_suppressed_when_tiling_fires(self, admin_client, db):
+        # Ollama's default ingest cap is 1024, so this factor is ~1.95 --
+        # well above TILING_THRESHOLD -- even though the long edge (2000) is
+        # below LOW_RES_LONG_EDGE (2400). The tiling card already carries the
+        # signal, so low_res must be suppressed by the `not needs_choice` gate.
+        self._configure(db, provider="ollama")
+        data = admin_client.post("/api/intake/plan", json={"width": 2000, "height": 1500}).json()
+        assert data["needs_choice"] is True
+        assert data["low_res"] is False
+
+    @pytest.mark.parametrize("provider", ["anthropic", "openai", "ollama"])
+    def test_low_res_field_present_for_every_provider(self, admin_client, db, provider):
+        self._configure(db, provider=provider)
+        data = admin_client.post("/api/intake/plan", json={"width": 800, "height": 600}).json()
+        assert "low_res" in data
+        assert isinstance(data["low_res"], bool)
 
     def test_ollama_costs_are_null(self, admin_client, db):
         self._configure(db, provider="ollama")
@@ -1014,6 +1051,67 @@ class TestIntakePage:
         for key in MEDIA_TYPES:
             assert f'<option value="{key}">' in html
         assert 'data-testid="intake-no-metadata"' in html
+
+    def test_chooser_renders_two_inputs_and_two_buttons(self, admin_client, db):
+        db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', 'ollama')")
+        db.execute("COMMIT")
+        html = admin_client.get("/intake").text
+        # Exactly one input carries `capture`; both accept images.
+        assert html.count('type="file"') == 2
+        assert html.count('capture="environment"') == 1
+        assert html.count('accept="image/*"') == 2
+        assert 'data-testid="intake-choose-input"' in html
+        assert 'data-testid="intake-capture-input"' in html
+        assert 'data-testid="intake-take-photo"' in html
+        assert 'data-testid="intake-choose-photo"' in html
+        assert "Read Photo" in html
+        # The capture module must be defined before intakePage() consumes it.
+        assert html.index("/static/js/intake-capture.js") < html.index("/static/js/intake.js")
+        assert 'id="intake-video"' in html
+        assert 'data-testid="intake-viewfinder"' in html
+        assert 'data-testid="intake-low-res"' in html
+        assert 'data-testid="intake-retake"' in html
+
+    def test_exactly_one_read_photo_button(self, admin_client, db):
+        """The e2e click target is `button` has_text "Read Photo" — a second
+        such button would make it a strict-mode violation. The advisory
+        mentions Read Photo in a <p>, which this regex does not match."""
+        import re
+        db.execute("INSERT INTO settings (key, value) VALUES ('vision_provider', 'ollama')")
+        db.execute("COMMIT")
+        html = admin_client.get("/intake").text
+        buttons = re.findall(r"<button[^>]*>(?:(?!</button>).)*Read Photo", html, re.S)
+        assert len(buttons) == 1
+
+    def test_intake_js_reset_uses_empty_plan(self):
+        """G5: a null plan crashes every evaluation of the tiling card's guards."""
+        import re
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        block = re.search(r"async reset\(\) \{.*?\n        \},", js, re.S)
+        assert block, "reset() block not found in static/js/intake.js"
+        body = block.group(0)
+        assert "emptyPlan()" in body
+        assert "plan = null" not in body
+
+    def test_intake_js_has_no_el_or_root_magics(self):
+        """G2: $el/$root are per-evaluation magics and are not stable across an
+        await. Neither intake file needs one — the video is found by id."""
+        from pathlib import Path
+        static = Path(__file__).resolve().parent.parent.joinpath("static/js")
+        for name in ("intake.js", "intake-capture.js"):
+            js = static.joinpath(name).read_text()
+            assert "$el" not in js, name
+            assert "$root" not in js, name
+
+    def test_intake_js_guards_stale_plans_and_stream_teardown(self):
+        """The offline half of the stale-plan and camera-teardown contracts."""
+        from pathlib import Path
+        js = Path(__file__).resolve().parent.parent.joinpath("static/js/intake.js").read_text()
+        # setPhoto increments, planPhoto compares (twice), reset increments.
+        assert js.count("photoGeneration") >= 4
+        assert "gen !== this.photoGeneration" in js
+        assert "closeViewfinder" in js
 
     def test_intake_js_payload_has_no_source(self):
         """Static pin for the "source is client-side only" contract."""

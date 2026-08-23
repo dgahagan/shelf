@@ -18,7 +18,10 @@ TMDb (discs), ISBNdb (valuation), a vision provider (Photo Intake).
 **Why HTTPS with a self-signed certificate?**
 Phone cameras and offline mode both require a secure origin, so Shelf must
 be HTTPS; without a domain, self-signed is the only way to do that out of
-the box. You can trust the cert on your devices or front it with a real one —
+the box. (The one exception is Photo Intake's **Take photo** button on a
+phone, which opens the native camera app rather than using `getUserMedia`
+and works over plain `http://` — but trust the cert for everything else.)
+You can trust the cert on your devices or front it with a real one —
 see [HTTPS & reverse proxy](https-and-reverse-proxy.md).
 
 **Can I use a USB barcode scanner?**

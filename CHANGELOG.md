@@ -6,6 +6,54 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-08-22
+
+Photo Intake only ever offered a plain file picker. On a desktop that meant a
+webcam was unreachable — photograph the shelf on your phone, transfer the
+file, browse for it. On a phone it was worse in the other direction: the
+picker forced the camera open and hid the photo library, so a shelf photo you
+had already taken could not be chosen, and a fresh shot gave no hint whether
+the spines were legible until after the analysis had been paid for. This
+release gives intake an explicit capture step on both.
+
+### Added
+
+- **Take photo and Choose photo** replace the single picker on the Photo
+  Intake page. On a phone, **Take photo** opens the native camera app and
+  hands back a full-resolution still — deliberately not an in-page
+  viewfinder, because a live video frame is typically 1080p while the camera's
+  own still is 12 MP or more, and spine legibility (and whether the high-res
+  tiling offer appears at all) depends on those pixels. **Choose photo** opens
+  the phone's photo library or a file on disk, which the old picker hid on
+  most phones.
+
+- **A webcam viewfinder on desktop.** Where there is no camera app to hand off
+  to, **Take photo** opens an in-page viewfinder with **Capture** and
+  **Cancel**, so a laptop pointed at a shelf is now a usable path. It needs the
+  HTTPS certificate trusted (as the barcode scanner already does); on a desktop
+  with no camera the button says "No camera found. Use Choose photo instead."
+  and leaves you on the picker rather than dead-ending.
+
+- **A low-resolution advisory.** When a photo is small rather than oversized —
+  a webcam frame, or a library photo a messaging app re-compressed — the plan
+  step says "This photo may be too small to read" and offers **Take another
+  photo** / **Choose another photo**. It is advisory, not a gate: Read Photo
+  stays enabled and the analysis runs if you say so. A native phone photo
+  essentially never trips it. The advisory and the high-res tiling offer are
+  mutually exclusive by construction — one says the photo is too big to send
+  as-is, the other that it is too small to read well; you never see both.
+
+### Changed
+
+- **On phones, the picker no longer forces the camera.** The old single input
+  carried a hint most mobile browsers read as "camera only, no library"; that
+  hint is gone, so **Choose photo** now reaches the photo roll. Taking a shot
+  is one tap further — it has its own button.
+
+Nothing is stored server-side by either path: captured and chosen photos are
+analyzed in memory, exactly as uploads were before. Gathering several frames of
+a long shelf into one analysis is not part of this release.
+
 ## [0.15.0] - 2026-08-22
 
 Photo Intake could only read spines. That left out the books least likely to
@@ -1006,6 +1054,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.16.0]: https://github.com/dgahagan/shelf/releases/tag/v0.16.0
 [0.15.0]: https://github.com/dgahagan/shelf/releases/tag/v0.15.0
 [0.14.0]: https://github.com/dgahagan/shelf/releases/tag/v0.14.0
 [0.13.0]: https://github.com/dgahagan/shelf/releases/tag/v0.13.0
