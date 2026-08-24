@@ -1,6 +1,6 @@
 <a href="/item/{{ item.id }}" class="group relative" data-item-id="{{ item.id }}" @click.prevent="openOrToggle({{ item.id }}, '/item/{{ item.id }}', $event)">
     <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg"
-         :class="selectedIds && selectedIds.includes({{ item.id }}) ? 'ring-2 ring-shelf-accent' : ''">
+         :class="selectedIds.includes({{ item.id }}) ? 'ring-2 ring-shelf-accent' : ''">
         {% if not item.owned %}
         <div class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shadow">Wishlist</div>
         {% elif item.lent_to %}

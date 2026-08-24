@@ -7,7 +7,7 @@ strict" ones (a required asset gets blocked and the page silently degrades).
 """
 import pytest
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import assert_page_clean, attach_page_guard, insert_item
 
 pytestmark = pytest.mark.e2e
 
@@ -25,7 +25,7 @@ def test_no_csp_violations_on_key_pages(live_server, browser, setup_admin):
     item_id = insert_item(live_server["data_dir"], title="CSP Probe Book", isbn="9780000000301")
 
     ctx = browser.new_context()
-    page = ctx.new_page()
+    page = attach_page_guard(ctx.new_page())
     page.add_init_script(_VIOLATION_PROBE)
 
     violations = {}
@@ -45,6 +45,7 @@ def test_no_csp_violations_on_key_pages(live_server, browser, setup_admin):
         page.wait_for_load_state("networkidle")
         violations[path] = page.evaluate("window.__cspViolations")
 
+    assert_page_clean(page)
     ctx.close()
     flat = {k: v for k, v in violations.items() if v}
     assert not flat, f"CSP violations: {flat}"
@@ -53,7 +54,7 @@ def test_no_csp_violations_on_key_pages(live_server, browser, setup_admin):
 def test_js_stack_boots_under_csp(live_server, browser, setup_admin):
     """htmx, Alpine, and the app helpers must all be live — not silently blocked."""
     ctx = browser.new_context()
-    page = ctx.new_page()
+    page = attach_page_guard(ctx.new_page())
     page.goto(f"{live_server['url']}/login")
     page.fill("input[name=username]", setup_admin["username"])
     page.fill("input[name=password]", setup_admin["password"])
@@ -65,4 +66,5 @@ def test_js_stack_boots_under_csp(live_server, browser, setup_admin):
     assert page.evaluate("typeof window.csrfToken") == "function"
     assert page.evaluate("typeof window.showToast") == "function"
     assert page.evaluate("typeof window.browsePage") == "function"
+    assert_page_clean(page)
     ctx.close()

@@ -9,7 +9,12 @@ import sqlite3
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item, wait_for_video_ready
+from tests.e2e.conftest import (
+    assert_page_clean,
+    attach_page_guard,
+    insert_item,
+    wait_for_video_ready,
+)
 
 pytestmark = pytest.mark.e2e
 
@@ -19,7 +24,7 @@ UNKNOWN_ISBN = "9780901000032"
 
 
 def _login(live_server, ctx, setup_admin):
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     pg.goto(f"{live_server['url']}/login")
     pg.fill("input[name=username]", setup_admin["username"])
     pg.fill("input[name=password]", setup_admin["password"])
@@ -85,6 +90,7 @@ def test_offline_verdicts_and_queue_flush(live_server, browser, setup_admin):
 
         # Queue drained in the UI
         expect(pg.get_by_test_id("queue-count")).to_have_text("0", timeout=10_000)
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -112,6 +118,7 @@ def test_install_button_appears_on_beforeinstallprompt(live_server, browser, set
         pg.get_by_test_id("install-app").click()
         assert pg.evaluate("window.__installPrompted") is True
         expect(pg.get_by_test_id("install-app")).to_be_hidden()
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -130,6 +137,7 @@ def test_store_page_no_csp_violations(live_server, browser, setup_admin):
         pg.wait_for_load_state("networkidle")
         violations = pg.evaluate("window.__cspViolations")
         assert violations == [], violations
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -168,6 +176,7 @@ def test_store_camera_uses_zxing_on_ios(live_server, browser, setup_admin):
         # would pass even if ZXing threw on its first line.
         wait_for_video_ready(pg, "#store-zxing-video")
         expect(pg.locator("body")).not_to_contain_text("Camera unavailable")
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -184,5 +193,6 @@ def test_store_camera_uses_html5_qrcode_by_default(live_server, browser, setup_a
         # html5-qrcode injects its own <video> into #reader once live.
         wait_for_video_ready(pg, "#reader video")
         expect(pg.locator("body")).not_to_contain_text("Camera unavailable")
+        assert_page_clean(pg)
     finally:
         ctx.close()

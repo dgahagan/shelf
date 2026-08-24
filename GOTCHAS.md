@@ -157,27 +157,29 @@ grep -rhoE 'x-data="[A-Za-z_$][A-Za-z0-9_$]*[("]' app/templates/ \
   Initializing the state to `false` rather than `null` is necessary but **not
   sufficient**. API payload nulls passed as plain function arguments are
   unaffected.
-- **Why:** the CSP build parses `&&` as a `BinaryExpression` and evaluates
-  **both operands before applying the operator** (`case"&&":return f&&_` in
-  `static/vendor/alpinejs-csp-3.15.9.min.js`). For `x && x.prop` a `false` `x`
-  is harmless — `false.prop` is `undefined` and nothing dereferences it. For
-  `x && x.prop.length` the right operand still runs and `undefined.length`
-  **throws**, no matter what `x` was initialized to. The ternary is the fix
-  because the evaluator never evaluates the untaken branch.
-- **This entry said the opposite until 2026-08-23.** Its Rule line read
-  "handles `false` fine", which is true only of the unchained form. `intake.js`
-  had initialized `result` to `false` since `907e732` and `/intake` threw three
-  `pageerror`s on *every single load* for seven weeks — the entry was being
-  followed and the page was still broken. If a gotcha's rule is satisfied and
-  the trap fires anyway, suspect the rule, not the code.
-- **Evidence:** `907e732` (2026-07-05; `ALPINE_CSP.md` gotcha 2) for the
-  `false`-not-`null` half; `ebf7bbc` (2026-08-23, issue #33 T2) for the
-  ternary half and the correction, pinned by
-  `tests/e2e/test_intake.py::test_intake_page_loads_without_pageerror`.
+- **Why:** the CSP build's `&&` evaluates both operands before applying it,
+  throwing when the left side is `== null` and the right dereferences a
+  member. `x && x.prop` survives `false`; `x && x.prop.length` doesn't. A
+  ternary is safe — its untaken branch never runs.
+- **This entry said the opposite until 2026-08-23**: the Rule claimed
+  `false` was handled, true only unchained — `/intake` followed it and still
+  threw on every load for seven weeks. A satisfied rule doesn't prove the
+  trap is closed; suspect the rule, not the code.
+- **Evidence:** `907e732` (2026-07-05) for `false`-not-`null`; `ebf7bbc`
+  (2026-08-23, issue #33) for the ternary fix. Issue #34 then blamed three
+  *other* `/intake` expressions, byte-identical between a tree throwing all
+  three and one throwing none — not the cause; eager `&&` elsewhere was.
+  `ad76e3f` closed the last bare-identifier instance (`settings.html`);
+  `3dfb03b` and
+  `4cf94f2` added the lint and E2E guard that enforce it now.
 - **Verify:** the vendored evaluator still throws on null — zero matches
   means the build changed and this entry needs a re-check:
   `grep -c "Cannot read property of null or undefined" static/vendor/alpinejs-csp-*.min.js`
-- **Status:** documented.
+- **Status:** partly linted: `make check-alpine` catches the statically
+  visible forms — a bare-identifier guard root dereferenced two or more levels
+  deep, or called as a method. A member-expression root (`x.y && x.y.z`) and a
+  guard wrapped in parentheses both throw and both pass the lint, so the Rule
+  above is still the authority.
 
 ## G6 — When syncing state from htmx lifecycle events
 
@@ -1029,6 +1031,19 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     Zero-count and absence assertions need a positive wait for the action
     first (here: poll until the second `/plan` call is recorded), otherwise
     they assert the starting state.
+  One more, found while porting a lint rule on `feat/issue-34-alpine-guard-lint`
+  (2026-08-23):
+  - **A single-file fixture cannot see per-file state.** The new Alpine guard
+    rule's loop read `for root, reach, why in _guard_deref_hits(value)`,
+    rebinding `find_violations(root)`'s own parameter — the templates
+    *directory* — to a guard-identifier string, so every file processed after
+    the first violation died in the `display = path.relative_to(root)`
+    fallback. All five new tests and the whole suite stayed green, because
+    every synthetic fixture wrote a single `t.html` and on the real tree that
+    fallback branch never runs. Only a one-off check over a three-file
+    pre-fix tree caught it. If a scanner's fixture writes one file, it pins
+    nothing about per-file state — write two, and assert both filenames
+    appear in the output.
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1448,6 +1463,40 @@ grep -rn "basis-full" app/templates/
   intrinsic widths (a `<select>`'s widest option, a badge's text). Related to
   G41 (both are ways a responsive class list lies about the layout it produces)
   and to G42 (both were found only by measuring rendered geometry).
+
+## G44 — When adding a suite-wide listener to Playwright `Page` objects
+
+- **Rule:** Attach it at **every `new_page()` construction site**, not at the
+  shared `page`/`authed_page` fixtures. In this suite that means
+  `pg = attach_page_guard(ctx.new_page())` and an `assert_page_clean(pg)`
+  before the owning context closes (`tests/e2e/conftest.py`). Put the
+  assertion at the end of the test body, never inside a `finally:` — raised
+  from there it replaces and masks the test's own failure.
+- **Why:** the shared fixtures are not the suite boundary, and a guard wired
+  to them alone *looks* like one. Fourteen `Page` objects exist across the
+  suite; only two come from the fixtures. The other twelve build their own
+  context because they need a UA override, an offline toggle, an
+  unauthenticated view, or the setup wizard — camera, PWA, CSP, share and
+  login/setup pages, plus session bootstrap, 16 tests in all. A full run
+  passes and reports nothing, which is exactly the failure the guard was
+  added to end.
+- **Evidence:** issue #34 (`4cf94f2`, 2026-08-23). Caught on paper by the
+  Codex plan review before any code existed — the plan had recorded the twelve
+  as a deliberate "coverage boundary" while its own changelog line promised
+  suite-wide coverage — then mutation-checked after: an injected uncaught
+  error on `test_store_pwa`'s directly-built page is caught only with the
+  expanded wiring.
+- **Verify:** every construction site is guarded — any bare hit is a page the
+  suite cannot see:
+
+```bash
+grep -rn 'new_page(' tests/e2e/
+# every hit must be attach_page_guard(ctx.new_page()) or a helper that calls
+# it, and every owning context must assert_page_clean() before it closes
+```
+
+- **Status:** documented. Lint candidate: the grep above is one `make check-*`
+  target away.
 
 ## Graveyard
 

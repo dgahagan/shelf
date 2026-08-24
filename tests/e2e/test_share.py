@@ -2,7 +2,7 @@
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import assert_page_clean, attach_page_guard, insert_item
 
 pytestmark = pytest.mark.e2e
 
@@ -29,7 +29,7 @@ def test_share_link_full_lifecycle(live_server, browser, authed_page):
     # A completely unauthenticated browser context can view it
     ctx = browser.new_context()
     try:
-        page = ctx.new_page()
+        page = attach_page_guard(ctx.new_page())
         page.add_init_script(
             "window.__cspViolations = [];"
             "document.addEventListener('securitypolicyviolation', function(e) {"
@@ -48,5 +48,6 @@ def test_share_link_full_lifecycle(live_server, browser, authed_page):
         authed_page.wait_for_load_state("networkidle")
         resp = page.goto(share_url)
         assert resp.status == 404
+        assert_page_clean(page)
     finally:
         ctx.close()

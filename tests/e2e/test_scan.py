@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item, wait_for_video_ready
+from tests.e2e.conftest import (
+    assert_page_clean,
+    attach_page_guard,
+    insert_item,
+    wait_for_video_ready,
+)
 
 pytestmark = pytest.mark.e2e
 
@@ -208,7 +213,7 @@ CAMERA_ERRORS = ("Camera access denied", "Camera requires HTTPS")
 def _login_page(live_server, ctx, setup_admin):
     """Log in inside a caller-owned context (the shared authed_page fixture
     can't carry a per-test user_agent override)."""
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     pg.goto(f"{live_server['url']}/login")
     pg.fill("input[name=username]", setup_admin["username"])
     pg.fill("input[name=password]", setup_admin["password"])
@@ -243,6 +248,7 @@ def test_scan_camera_uses_zxing_on_ios(live_server, browser, setup_admin):
         # reachable through the real ZXingBrowser API.
         wait_for_video_ready(pg, "#zxing-video")
         _expect_no_camera_error(pg)
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -261,6 +267,7 @@ def test_scan_camera_uses_html5_qrcode_by_default(live_server, browser, setup_ad
         # stream is live.
         wait_for_video_ready(pg, "#camera-reader video")
         _expect_no_camera_error(pg)
+        assert_page_clean(pg)
     finally:
         ctx.close()
 

@@ -2,6 +2,8 @@
 import pytest
 from playwright.sync_api import expect
 
+from tests.e2e.conftest import assert_page_clean, attach_page_guard
+
 
 pytestmark = pytest.mark.e2e
 
@@ -16,7 +18,7 @@ def test_setup_wizard_redirects_when_no_users(live_server, browser):
     """
     # After setup_admin has run the /setup page should redirect to /login
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     try:
         pg.goto(f"{live_server['url']}/setup")
         # If users exist, should redirect to /login
@@ -25,6 +27,7 @@ def test_setup_wizard_redirects_when_no_users(live_server, browser):
             f"{live_server['url']}/setup",
             f"{live_server['url']}/login",
         )
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -32,7 +35,7 @@ def test_setup_wizard_redirects_when_no_users(live_server, browser):
 def test_login_success(live_server, browser, setup_admin):
     """Valid credentials redirect to /browse."""
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     try:
         pg.goto(f"{live_server['url']}/login")
         expect(pg).to_have_url(f"{live_server['url']}/login")
@@ -41,6 +44,7 @@ def test_login_success(live_server, browser, setup_admin):
         pg.click("button[type=submit]")
         pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
         expect(pg).to_have_url(f"{live_server['url']}/browse")
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -48,7 +52,7 @@ def test_login_success(live_server, browser, setup_admin):
 def test_login_invalid_credentials(live_server, browser, setup_admin):
     """Wrong password shows error, stays on /login."""
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     try:
         pg.goto(f"{live_server['url']}/login")
         pg.fill("input[name=username]", setup_admin["username"])
@@ -57,6 +61,7 @@ def test_login_invalid_credentials(live_server, browser, setup_admin):
         pg.wait_for_load_state("networkidle")
         expect(pg).to_have_url(f"{live_server['url']}/login")
         expect(pg.locator("body")).to_contain_text("Invalid")
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -64,11 +69,12 @@ def test_login_invalid_credentials(live_server, browser, setup_admin):
 def test_unauthenticated_redirect_to_login(live_server, browser, setup_admin):
     """Unauthenticated request to /browse redirects to /login."""
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     try:
         pg.goto(f"{live_server['url']}/browse")
         pg.wait_for_url(f"{live_server['url']}/login", timeout=5_000)
         expect(pg).to_have_url(f"{live_server['url']}/login")
+        assert_page_clean(pg)
     finally:
         ctx.close()
 
@@ -86,10 +92,11 @@ def test_logout(live_server, authed_page):
 def test_setup_page_unavailable_after_setup(live_server, browser, setup_admin):
     """/setup redirects to /login once an admin exists."""
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     try:
         pg.goto(f"{live_server['url']}/setup")
         pg.wait_for_url(f"{live_server['url']}/login", timeout=5_000)
         expect(pg).to_have_url(f"{live_server['url']}/login")
+        assert_page_clean(pg)
     finally:
         ctx.close()

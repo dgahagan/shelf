@@ -6,6 +6,33 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.3] - 2026-08-24
+
+Nothing on screen was broken, which is most of why this was worth fixing. Every
+load of the Settings page left an uncaught error behind in the browser's
+console — invisible unless you went looking for it, and there on every single
+load. A console that always has an error in it is a console nobody reads, so
+the next error, the one that actually means something, arrives already
+camouflaged. 0.16.2 cleared three of these off Photo Intake. This release
+clears the last one Shelf was producing, and adds two guards so the next one
+cannot sit there unnoticed for weeks.
+
+### Fixed
+
+- **The Settings page no longer throws on load.** Its archive-import summary
+  carried the same guard shape that made `/intake` throw before 0.16.2's fix:
+  Alpine's CSP build evaluates both sides of `&&` before applying it, so a
+  guard meant to check whether an import result existed dereferenced it
+  regardless, and threw when it didn't. This was the last such guard the new
+  lint can see. The class is now closed twice over — a lint rejects the unsafe
+  form before it can be committed, and the automated browser tests now fail
+  when a page leaves an uncaught error behind.
+
+  Nothing about what the page *shows* changes: the import report still lists
+  what was imported, updated and skipped, and still counts and names any errors
+  the archive produced. The error was thrown while rendering a summary that
+  rendered correctly anyway.
+
 ## [0.16.2] - 2026-08-23
 
 Photo Intake's review list is where you check what the vision model thought it
@@ -1167,6 +1194,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.16.3]: https://github.com/dgahagan/shelf/releases/tag/v0.16.3
 [0.16.2]: https://github.com/dgahagan/shelf/releases/tag/v0.16.2
 [0.16.1]: https://github.com/dgahagan/shelf/releases/tag/v0.16.1
 [0.16.0]: https://github.com/dgahagan/shelf/releases/tag/v0.16.0

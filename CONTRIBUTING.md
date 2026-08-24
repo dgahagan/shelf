@@ -47,7 +47,11 @@ Notes:
 - Any raw `fetch()` call in frontend JS must send the `X-CSRF-Token` header
   (`make check-csrf` enforces this).
 - Templates must stay compatible with the Alpine.js CSP build
-  (`make check-alpine`).
+  (`make check-alpine`) — in particular, guard a chain with a ternary
+  (`x ? x.prop.length : ''`), never `&&`, which the CSP build evaluates
+  eagerly and which therefore throws instead of guarding.
+- E2E tests fail if a page leaves an uncaught browser error behind, even when
+  the test's own assertions pass.
 - `MIGRATIONS` in `app/database.py` is append-only — never edit or reorder an
   existing entry.
 - No CDN references — all JS and CSS is vendored in `static/`.

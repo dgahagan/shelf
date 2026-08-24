@@ -47,3 +47,54 @@ def test_lint_catches_nested_xmodel(tmp_path):
     violations = check_alpine_csp.find_violations(tmp_path)
     assert len(violations) == 3, "\n" + "\n".join(violations)
     assert all("nested path" in v for v in violations)
+
+
+def test_lint_catches_guard_deref_forms(tmp_path):
+    """GOTCHAS G5: the CSP build parses &&/|| as a BinaryExpression and
+    evaluates both operands before applying the operator, and its
+    MemberExpression case throws when the object is == null. So `X &&
+    X.a.b` (2+ levels) or `X && X.m()` (method call) off a root that also
+    appears as a bare operand of the same &&/|| expression still throws even
+    though `X` looks like a guard. Each case here was measured to throw
+    against the real vendored build (see the task's measurement table)."""
+    # Split across two files on purpose: a violation in the first file must
+    # not disturb how the second file's name is resolved. The original port
+    # rebound find_violations()'s `root` parameter in this loop, which passed
+    # a single-file fixture and blew up on the second file of a real tree.
+    (tmp_path / "t.html").write_text(
+        '<span x-text="result && result.added.length"></span>\n'
+        '<span x-show="result && result.skipped.length > 0"></span>\n'
+        '<template x-if="importResult && importResult.errors && importResult.errors.length > 0"></template>\n'
+    )
+    (tmp_path / "u.html").write_text(
+        '<li :class="sel && sel.includes({{ item.id }}) ? \'a\' : \'\'"></li>\n'
+        '<span x-show="nulled && nulled.a.b.c"></span>\n'
+    )
+    violations = check_alpine_csp.find_violations(tmp_path)
+    assert len(violations) == 5, "\n" + "\n".join(violations)
+    assert any(v.startswith("t.html:") for v in violations), violations
+    assert any(v.startswith("u.html:") for v in violations), violations
+    assert all("G5" in v for v in violations)
+    assert all("ternary" in v for v in violations)
+    assert any("'result'" in v for v in violations)
+    assert any("'sel'" in v for v in violations)
+    assert any("'nulled'" in v for v in violations)
+    # the Jinja-bearing fragment (G32): the value must be analysed after
+    # Jinja is stripped to '' — sel.includes('') is still a method call.
+    assert any("sel" in v and "includes" in v for v in violations)
+
+
+def test_lint_allows_safe_guard_forms(tmp_path):
+    """Single-level derefs, negated single-level derefs, ternaries, and a
+    guard chain where the root never recurs as a bare operand are all
+    measured safe under the CSP build and must NOT be flagged."""
+    (tmp_path / "t.html").write_text(
+        '<span x-show="x && x.prop"></span>\n'
+        '<span x-show="x && !x.prop"></span>\n'
+        '<span x-text="result ? result.added.length : \'\'"></span>\n'
+        '<template x-if="importResult.errors ? importResult.errors.length > 0 : false"></template>\n'
+        '<template x-if="importResult && !importResult.error"></template>\n'
+        '<template x-if="importResult.errors && importResult.errors.length > 0"></template>\n'
+    )
+    violations = check_alpine_csp.find_violations(tmp_path)
+    assert not violations, "\n" + "\n".join(violations)

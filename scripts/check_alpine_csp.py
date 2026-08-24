@@ -63,6 +63,63 @@ _JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.S)
 _XMODEL_NESTED = re.compile(r"[.\[]")
 
 
+# GOTCHAS G5: the vendored Alpine CSP build parses `&&`/`||` as a plain
+# BinaryExpression -- it evaluates BOTH operands before applying the
+# operator, and its MemberExpression case throws whenever the object side is
+# `== null`. So `X && X.prop` is not a guard the way it would be under
+# `new Function`: `X.prop` still gets evaluated even when X is falsy. It is
+# measured safe for a single-level read (`X && X.prop`, `X && !X.prop`), but
+# throws for a 2+-level chain (`X && X.a.b`) or a method call (`X &&
+# X.m()`) off a root that also appears as a bare (optionally `!`-prefixed)
+# operand of the same &&/|| expression. This is the "narrow rule" from the
+# design's measured reference implementation
+# (.devdocs/plan-issue-34-alpine-guard-lint-probes/narrow_rule.py) — ported
+# here rather than a broader "no dot after &&" rule, because the broader
+# rule would flag the safe single-level forms too.
+#
+# x-for ("item in list") is an iteration binding, not a guard expression,
+# but this deliberately does NOT special-case it: the reference probe scans
+# it through the same _ATTR match with no x-for exclusion (and finds zero
+# hits there in this tree either way), so this follows the probe rather than
+# inventing a carve-out it didn't measure.
+_GUARD_IDENT = r"[A-Za-z_$][\w$]*"
+_GUARD_SPLIT = re.compile(r"&&|\|\|")
+_GUARD_BARE = re.compile(rf"^!?\s*{_GUARD_IDENT}$")
+
+
+def _guard_deref_hits(value: str) -> list[tuple[str, str, str]]:
+    """Return (root, reach, why) for each operand of a &&/|| expression that
+    dereferences 2+ levels off, or calls a method on, a root identifier that
+    also appears as a bare operand elsewhere in the same expression."""
+    if "&&" not in value and "||" not in value:
+        return []
+    parts = _GUARD_SPLIT.split(value)
+    guards = {
+        p.strip().lstrip("!").strip()
+        for p in parts
+        if _GUARD_BARE.fullmatch(p.strip())
+    }
+    if not guards:
+        return []
+    hits = []
+    for part in parts:
+        for root in guards:
+            deep = re.search(
+                rf"(?<![.\w$]){re.escape(root)}\s*(?:\.\s*{_GUARD_IDENT}|\[[^\]]*\])"
+                rf"\s*(?:\.\s*{_GUARD_IDENT}|\[[^\]]*\])",
+                part,
+            )
+            call = re.search(
+                rf"(?<![.\w$]){re.escape(root)}\s*\.\s*{_GUARD_IDENT}\s*\(", part
+            )
+            match = deep or call
+            if match:
+                why = "chains two or more levels" if deep else "calls a method"
+                hits.append((root, match.group(0).strip(), why))
+                break
+    return hits
+
+
 # htmx compiles these with new Function — also blocked without unsafe-eval.
 # Use delegated listeners in static/js/app.js keyed by data-* attributes instead.
 _HTMX_EVAL = [
@@ -115,6 +172,18 @@ def find_violations(root: Path = TEMPLATES) -> list[str]:
                         f"(static/js/components.js). [{snippet}]"
                     )
                     break
+            # NB: `guard_root`, not `root` — `root` is this function's
+            # templates-directory parameter, and rebinding it here corrupts
+            # the `display` fallback for every later file.
+            for guard_root, reach, why in _guard_deref_hits(value):
+                line = src.count("\n", 0, m.start()) + 1
+                violations.append(
+                    f"{display}:{line}: {attr} guard '{guard_root}' {why} through "
+                    f"'{reach}' in \"{value.strip()}\" — the CSP build evaluates "
+                    "both sides of && / ||, so this throws when "
+                    f"'{guard_root}' is null/false. Write the guard as a ternary "
+                    f"('{guard_root} ? {guard_root}.… : …') instead. (GOTCHAS G5)"
+                )
     return violations
 
 

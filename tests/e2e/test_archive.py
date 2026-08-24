@@ -18,7 +18,7 @@ import zipfile
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import assert_page_clean, insert_item
 
 pytestmark = pytest.mark.e2e
 
@@ -332,3 +332,54 @@ def test_archive_preview_deselect_reading_log(live_server, authed_page):
         "Reading log" in line and str(total_reading_log_rows) in line
         for line in deselected_lines
     ), deselected_lines
+
+
+def test_archive_import_failure_reports_without_throwing(live_server, authed_page):
+    """A network-level failure of /apply is the one state that reaches
+    archivePanel's catch, which sets `importResult = {error: 'Import failed'}`
+    — an object with **no** `errors` key — and then shows step 3.
+
+    Step 3's error-list guard dereferences `importResult.errors`, so under the
+    CSP build (which evaluates both sides of `&&` and throws on a null object)
+    a `&&`-shaped guard, or a ternary rooted at `importResult` itself, would
+    evaluate `undefined.length` right here and throw. This is the only path
+    that exercises that state, which is why it exists: the visible report is
+    half the assertion, and the page-error guard is the other half.
+    """
+    _seed_item_with_cover(
+        live_server,
+        title="Archive Failure Book",
+        media_type="book",
+        isbn="9780000777888",
+    )
+
+    _open_data_tab(authed_page, live_server)
+    zip_path = _download_archive(authed_page)
+
+    file_input = authed_page.locator("input[type=file][accept='.zip']")
+    expect(file_input).to_be_visible()
+    form = file_input.locator("xpath=ancestor::form")
+    preview_btn = form.locator("button[type=submit], input[type=submit]").first
+    apply_btn = authed_page.locator(_PANEL).get_by_role("button", name=re.compile(r"^Import \d"))
+
+    file_input.set_input_files(str(zip_path))
+    with authed_page.expect_response("**/api/import/archive/plan") as resp_info:
+        preview_btn.click()
+    assert resp_info.value.json().get("error") is None, resp_info.value.json()
+    expect(apply_btn).to_be_visible()
+
+    # Kill the apply request at the network level so the client-side catch
+    # runs — the server's own refusal payloads always carry `errors: []`, so
+    # this is the only way to reach the no-`errors`-key shape.
+    authed_page.route("**/api/import/archive/apply", lambda route: route.abort())
+    apply_btn.click()
+
+    # Anchored on the x-text binding, not the colour class: the panel's
+    # generic `errorMessage` paragraph carries text-shelf-error too.
+    report = authed_page.locator(f"{_PANEL} p[x-text='importResult.error']")
+    expect(report).to_contain_text("Import failed")
+    # No "Imported: ..." summary line — this is the failure branch, not a
+    # zero-count success.
+    expect(authed_page.locator(f"{_PANEL} p:has-text('Imported:')")).to_have_count(0)
+
+    assert_page_clean(authed_page)

@@ -57,12 +57,24 @@ dir; use the `client` / `admin_client` / `editor_client` / `viewer_client`
 fixtures (CSRF pre-seeded, rate limiting off) and `db` for direct SQL. See
 `tests/conftest.py`.
 
+E2E tests fail on a **dirty browser**: every Playwright page is watched for
+uncaught errors, and a test that leaves one behind fails at teardown even when
+its own assertions passed. The failure quotes Alpine's expression text, which
+usually names the culprit outright. There is no opt-out — a test that must
+provoke an error needs an explicit suppression contract designed first.
+
 ## Rules that bite
 
 - **Strict CSP.** No inline `<script>`, no `eval`, no CDNs. All JS/CSS lives
   vendored in `static/`.
 - **Alpine CSP build.** Expressions must be simple; nested or bracketed
-  `x-model` bindings silently drop input. `make check-alpine` enforces.
+  `x-model` bindings silently drop input. Guard a *chain* with a ternary, never
+  `&&` — the CSP build evaluates both operands before applying the operator, so
+  `x && x.prop.length` throws when `x` is `false` or `null` (`x ? x.prop.length
+  : ''` is safe, and optional chaining doesn't parse at all). `make
+  check-alpine` enforces both, though it only sees the statically obvious guard
+  shapes — a plain identifier dereferenced two levels deep or called as a
+  method.
 - **Raw `fetch()` must send `X-CSRF-Token`.** `make check-csrf` enforces;
   HTMX is configured globally in `base.html`.
 - **`MIGRATIONS` in `app/database.py` is append-only.** Never edit or

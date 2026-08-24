@@ -185,6 +185,82 @@ def browser(playwright_instance):
     b.close()
 
 
+# ---------------------------------------------------------------------------
+# Uncaught-page-error guard (issue #34)
+# ---------------------------------------------------------------------------
+#
+# Alpine's CSP build re-throws a failing template expression asynchronously
+# (setTimeout), so a broken guard surfaces as an uncaught page error and
+# nothing else: no assertion in any test sees it, and the suite stays green
+# over a permanently noisy browser. Measured before the fix: 33 such errors
+# across 16 tests, every one of them from a single template expression.
+#
+# Every Page in this suite is guarded. Call attach_page_guard() immediately
+# after each ctx.new_page() (before any navigation), and assert_page_clean()
+# before the owning context closes. `grep -rn 'new_page(' tests/e2e/` must
+# show no unguarded hit. assert_page_clean() settles for the re-throw itself,
+# so a call site needs no wait of its own even when the page has just
+# navigated.
+#
+# Alpine also console.warns the failing expression *by name* just before it
+# re-throws, so those warnings are collected too and printed with the failure —
+# a bare pageerror reports only "Cannot read property of null or undefined"
+# and a minified stack, which names nothing.
+#
+# No opt-out ships and no clearing mechanism is documented. If a future test
+# must expect an uncaught error, design an explicit scoped suppression
+# contract before adding that test.
+
+_PAGE_ERRORS_ATTR = "_shelf_page_errors"
+_ALPINE_WARNINGS_ATTR = "_shelf_alpine_warnings"
+
+
+def attach_page_guard(pg):
+    """Start recording uncaught errors on `pg`; returns `pg`.
+
+    Written to wrap the constructor at the call site:
+    `pg = attach_page_guard(ctx.new_page())`.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    def _on_console(msg):
+        text = msg.text
+        if "Alpine Expression Error" in text:
+            warnings.append(text)
+
+    pg.on("pageerror", lambda err: errors.append(str(err)))
+    pg.on("console", _on_console)
+    setattr(pg, _PAGE_ERRORS_ATTR, errors)
+    setattr(pg, _ALPINE_WARNINGS_ATTR, warnings)
+    return pg
+
+
+def assert_page_clean(pg):
+    """Fail if the page left any uncaught error behind. Safe to call twice."""
+    errors = getattr(pg, _PAGE_ERRORS_ATTR, None)
+    if errors is None:
+        raise AssertionError(
+            "assert_page_clean() on an unguarded page — call "
+            "attach_page_guard() immediately after ctx.new_page()."
+        )
+    # Alpine re-throws a failing expression through setTimeout, so a call that
+    # follows a bare goto()/wait_for_url() reads an empty list and passes over
+    # a page that is throwing. Settling here rather than at the call site is
+    # what makes the guard hold for a test whose last act is a navigation.
+    pg.wait_for_timeout(250)
+    if not errors:
+        return
+    warnings = getattr(pg, _ALPINE_WARNINGS_ATTR, [])
+    detail = "\n".join(f"  - {e}" for e in errors)
+    if warnings:
+        detail += "\n\nAlpine expression warnings (these name the failing expression):\n"
+        detail += "\n".join(f"  - {w}" for w in warnings)
+    raise AssertionError(
+        f"{len(errors)} uncaught page error(s) on {pg.url}:\n{detail}"
+    )
+
+
 @pytest.fixture(scope="session")
 def setup_admin(live_server, browser):
     """
@@ -192,7 +268,7 @@ def setup_admin(live_server, browser):
     Uses a dedicated browser context so cookies don't leak.
     """
     ctx = browser.new_context()
-    page = ctx.new_page()
+    page = attach_page_guard(ctx.new_page())
     page.goto(f"{live_server['url']}/setup")
     page.fill("input[name=username]", ADMIN_USERNAME)
     page.fill("input[name=display_name]", ADMIN_DISPLAY)
@@ -200,6 +276,7 @@ def setup_admin(live_server, browser):
     page.fill("input[name=password_confirm]", ADMIN_PASSWORD)
     page.click("button[type=submit]")
     page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    assert_page_clean(page)
     ctx.close()
     return {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD, "display_name": ADMIN_DISPLAY}
 
@@ -207,13 +284,14 @@ def setup_admin(live_server, browser):
 def _get_auth_cookies(live_server, browser, credentials: dict) -> dict:
     """Log in and return all cookie values as a dict."""
     ctx = browser.new_context()
-    page = ctx.new_page()
+    page = attach_page_guard(ctx.new_page())
     page.goto(f"{live_server['url']}/login")
     page.fill("input[name=username]", credentials["username"])
     page.fill("input[name=password]", credentials["password"])
     page.click("button[type=submit]")
     page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
     cookies = {c["name"]: c["value"] for c in ctx.cookies()}
+    assert_page_clean(page)
     ctx.close()
     return cookies
 
@@ -231,13 +309,14 @@ def authed_page(live_server, browser, setup_admin):
     etc.) automatically — no manual cookie-setting required.
     """
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     pg.goto(f"{live_server['url']}/login")
     pg.fill("input[name=username]", setup_admin["username"])
     pg.fill("input[name=password]", setup_admin["password"])
     pg.click("button[type=submit]")
     pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
     yield pg
+    assert_page_clean(pg)
     ctx.close()
 
 
@@ -245,8 +324,9 @@ def authed_page(live_server, browser, setup_admin):
 def page(live_server, browser, setup_admin):
     """New unauthenticated page (setup has already run so login page shows)."""
     ctx = browser.new_context()
-    pg = ctx.new_page()
+    pg = attach_page_guard(ctx.new_page())
     yield pg
+    assert_page_clean(pg)
     ctx.close()
 
 
