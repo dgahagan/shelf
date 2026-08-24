@@ -85,4 +85,6 @@ class TestDnbCoverSource:
 
     def test_portal_dnb_de_is_allowlisted(self):
         assert covers.is_allowed_cover_url("https://portal.dnb.de/opac/mvb/cover?isbn=9783608963762")
+        assert covers.is_allowed_cover_url("https://image.tmdb.org/t/p/w500/matrix.jpg")
+        assert not covers.is_allowed_cover_url("https://i5.walmartimages.com/x.jpg")
         assert not covers.is_allowed_cover_url("https://evil.example.com/x.jpg")

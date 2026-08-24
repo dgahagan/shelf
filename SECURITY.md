@@ -26,6 +26,8 @@ it weren't:
 - Role-based access control (admin / editor / viewer)
 - Third-party API credentials encrypted at rest (key kept outside the DB, so
   database backups contain ciphertext only) and write-only in the UI
+- Credential values redacted from request logs, so container logs can be shared
+  when reporting a bug
 - Optional passphrase-encrypted (AES) backup downloads
 - HTTPS by default (self-signed certs generated on first run)
 - Container runs as a non-root user

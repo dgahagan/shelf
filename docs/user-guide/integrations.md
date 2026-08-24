@@ -50,7 +50,11 @@ copy Client ID and generate a Client Secret → paste both.
 
 **Adds:** film metadata and posters from UPC scans, movie title search.
 
-**Setup:** TMDb account → Settings → API → request a key (v3 auth) → paste.
+**Setup:** TMDb account → Settings → API → request access → paste **either**
+credential the API page shows: the 32-character **API Key (v3 auth)** or the
+long **API Read Access Token (v4 auth)**. Shelf detects which one you pasted
+and authenticates accordingly. Use **Test key** to confirm before saving — it
+now probes TMDb exactly the way a real lookup does.
 
 ## ISBNdb (valuation)
 

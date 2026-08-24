@@ -31,7 +31,7 @@ priority** over the stored value and shows as "set by environment" in the UI:
 | `HARDCOVER_TOKEN` | Hardcover API token |
 | `ABS_URL`, `ABS_TOKEN` | Audiobookshelf server URL and API token |
 | `ISBNDB_API_KEY` | ISBNdb key (valuation) |
-| `TMDB_API_KEY` | TMDb key (DVD / Blu-ray) |
+| `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray) — either the 32-character v3 API Key or the v4 Read Access Token |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video games) |
 
 Useful with Docker secrets or a secrets manager. Vision-provider keys (Photo

@@ -26,6 +26,19 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.17.1
+
+DVDs and video games you scanned before this release were filed with a bare
+title and no synopsis, year or cover. **They are not rewritten in place** —
+rewriting a record you may since have edited by hand would be the wrong
+default — so delete and re-scan the ones you want filled in. New scans pick up
+the metadata on their own.
+
+This release also fixes a credential that was being written to the container
+log (your Twitch client secret on every IGDB token refresh, your TMDb key on
+every **Test key** click). If you have sent container logs off the host or
+attached them to a bug report, rotate both credentials.
+
 ### After upgrading to 0.17.0
 
 The first time you open **Store Mode** after this upgrade, it re-downloads its

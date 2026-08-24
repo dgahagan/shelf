@@ -29,7 +29,7 @@ from app.database import get_db, get_game_platforms, get_setting
 from app.services import covers, googlebooks, hardcover, national, openlibrary
 from app.services import cover_queue
 from app.services import authors as authors_svc
-from app.services import igdb, tmdb
+from app.services import igdb, tmdb, upcitemdb
 from app.services import upc as upc_svc
 from app.services import isbn as isbn_svc
 from app.services.item_write import insert_item
@@ -319,9 +319,29 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         tmdb_key = get_setting(db, "tmdb_api_key")
 
     metadata = None
+    queries: list[str] = []
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            metadata = await tmdb.lookup_upc(upc_norm, tmdb_key, client)
+            product = await upcitemdb.lookup(upc_norm, client)
+            # A 200 can still carry a missing, blank or format-only title
+            # ("[DVD]"), which normalises to no queries at all. That is a
+            # not_found, not an index error on queries[0].
+            queries = upcitemdb.search_queries((product or {}).get("title") or "")
+            if queries and tmdb_key:
+                try:
+                    hit = await _first_hit(
+                        queries, lambda q: tmdb.lookup_by_title(q, tmdb_key, client)
+                    )
+                except tmdb.TmdbAuthError:
+                    # The item is still filed — title-only, as before. Plan 2
+                    # renders the reason; this is what makes it knowable.
+                    logger.warning(
+                        "TMDb rejected the configured key for UPC %s — filing title only",
+                        upc_norm,
+                    )
+                    hit = None
+                if hit:
+                    metadata, _matched = hit
     except (httpx.TimeoutException, httpx.NetworkError) as exc:
         logger.warning("Network error looking up UPC %s: %s", upc_norm, type(exc).__name__)
         _log_scan(upc_norm, media_type, "error", mode=mode)
@@ -331,7 +351,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
              "message": "Metadata lookup failed — check connectivity", "preview_cover": None},
         )
 
-    if not metadata:
+    if not queries:
         _log_scan(upc_norm, media_type, "not_found", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
@@ -339,6 +359,15 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
              "message": "Not found — add manually below", "preview_cover": None,
              "locations": _manual_form_locations()},
         )
+
+    if metadata is None:
+        # No provider hit, or no key: file the *cleaned* title rather than the
+        # raw retail string. The item is still created when enrichment yields
+        # nothing — that has always been the contract.
+        metadata = {
+            "title": queries[0], "description": None,
+            "publish_year": None, "cover_url": None,
+        }
 
     loc_id = location_id if location_id and location_id > 0 else None
     with get_db() as db:
@@ -380,24 +409,29 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
     return resp
 
+async def _first_hit(queries, search):
+    """Try each query in turn; return (metadata, query) for the first that hits.
+
+    `search` must be a coroutine returning a metadata **dict** or None — the
+    ladder never carries a provider's result list. Both UPC paths climb the
+    same ladder through here, so the film and game paths cannot drift apart.
+    """
+    for query in queries:
+        result = await search(query)
+        if result:
+            return result, query
+    return None
+
+
 async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id: int | None, platform: str | None = None):
     """Handle UPC scan for video games: UPC Item DB → IGDB lookup."""
-    # Step 1: Get title from UPC
-    title = None
+    # Step 1: Get the retail title from the UPC, and normalise it into a
+    # search ladder. Same client, same ladder as the film path above.
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        try:
-            resp = await client.get(
-                "https://api.upcitemdb.com/prod/trial/lookup",
-                params={"upc": upc_norm}, timeout=10,
-            )
-            if resp.status_code == 200:
-                items = resp.json().get("items", [])
-                if items:
-                    title = items[0].get("title")
-        except Exception:
-            pass
+        product = await upcitemdb.lookup(upc_norm, client)
+    queries = upcitemdb.search_queries((product or {}).get("title") or "")
 
-    if not title:
+    if not queries:
         _log_scan(upc_norm, "video_game", "not_found")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
@@ -414,14 +448,23 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id
     metadata = None
     if igdb_id and igdb_secret:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            results = await igdb.search_games(title, igdb_id, igdb_secret, client, limit=1)
-            if results:
-                metadata = results[0]
+            # igdb.search_games returns a *list*; the ladder and everything
+            # below it deal in a single metadata dict, so unwrap here rather
+            # than letting a list reach the save tail.
+            async def search_one_game(query):
+                results = await igdb.search_games(
+                    query, igdb_id, igdb_secret, client, limit=1
+                )
+                return results[0] if results else None
 
-    # Save item — with IGDB metadata if found, otherwise just UPC title
+            hit = await _first_hit(queries, search_one_game)
+            if hit:
+                metadata, _matched = hit
+
+    # Save item — with IGDB metadata if found, otherwise the cleaned UPC title
     loc_id = location_id if location_id and location_id > 0 else None
     source = "igdb" if metadata else "upc"
-    game_title = metadata["title"] if metadata else title
+    game_title = metadata["title"] if metadata else queries[0]
 
     with get_db() as db:
         valid_platforms = get_game_platforms(db)

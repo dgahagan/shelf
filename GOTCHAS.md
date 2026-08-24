@@ -266,10 +266,14 @@ grep -n "htmx.process" static/js/browse.js                  # expect >= 1, in th
   pattern (cheap reads on every request), and the test-isolation hole it
   opens was fixed once already; each new cache re-opens it.
 - **Evidence:** `da40615` (2026-08-19, conftest sandboxing fix);
-  `cdf32ca` (2026-08-19, nav cache wired into the same resets).
+  `cdf32ca` (2026-08-19, nav cache wired into the same resets);
+  `03b93f0` (2026-08-24, issue #36 — `igdb._token_cache`, a cache that had
+  been leaking across tests on `main` since IGDB was added).
 - **Verify:** the isolation suite still passes and the known caches are
   reset: `python -m pytest tests/test_conftest_isolation.py -q` and
-  `grep -c "_cached" tests/conftest.py` (expect ≥ 3).
+  `grep -c "_cached\|_token_cache" tests/conftest.py` (expect ≥ 4). The
+  second alternative is not decoration — not every cache is named `_cached*`,
+  and a grep for that prefix alone silently under-counts.
 - **Status:** documented.
 
 ## G14 — When a test file needs the FastAPI `app` object
@@ -793,6 +797,17 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     pre-fix tree caught it. If a scanner's fixture writes one file, it pins
     nothing about per-file state — write two, and assert both filenames
     appear in the output.
+  One more, found while mutation-checking `feat/issue-36-scan-enrichment-repair`
+  (2026-08-24):
+  - **Reverting the implementation can break *collection*, not the test.** The
+    fix under check replaced two module globals with a keyed dict *and* added
+    the G13 reset for it to `tests/conftest.py`. Reverting only the module
+    leaves the autouse fixture doing `monkeypatch.setattr(mod, "_token_cache",
+    {})` against an attribute that no longer exists, so every test in the
+    session errors at setup and the run tells you nothing about your pin. Pass
+    `raising=False` for the duration of the check and restore it after — and
+    read the failure you get, because "everything errored" is not the same
+    evidence as "my pin failed".
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1194,6 +1209,44 @@ python -m pytest tests/e2e/test_responsive.py -m e2e -q
   `assert_page_clean()` before the owning context closes — at the end of the
   test body, never in a `finally:`, where it would mask the real failure.
 - **Status:** linted — `make check-tests`.
+
+## G45 — When one helper fans out over several metadata providers
+
+- **Rule:** Check each provider's **return shape** before routing them through
+  a shared helper. This repo's metadata clients are not uniform:
+  `tmdb.lookup_by_title`, `openlibrary`/`googlebooks`/`upcitemdb.lookup` return
+  a **dict or `None`**, while `igdb.search_games` and `tmdb.search_movies`
+  return a **list** (`[]` on failure). A helper written against "the first
+  truthy provider result" silently hands a list to code that indexes a dict.
+  Adapt at the call site (`results[0] if results else None`) and state the
+  helper's contract in its docstring.
+- **Why:** the failure is invisible on paper and total at runtime. Issue #36's
+  implementation plan specified one search ladder for the film and game paths
+  and asserted the save tail was unchanged — correct for TMDb, wrong for IGDB,
+  because the pre-existing game path unwrapped `results[0]` at a line the
+  rewrite deleted. Every successful game barcode scan would have returned
+  HTTP 500 (`AttributeError: 'list' object has no attribute 'get'`). A test
+  asserting only the *sequence of queries* the ladder sent still passes against
+  it; the pin has to assert the **stored fields**. Caught by cross-vendor plan
+  review before any code existed, and reproduced during the run: reverting the
+  adapter yields `TypeError` in the save tail.
+- **Evidence:** `995f377` (2026-08-24, issue #36 — `_first_hit` documents a
+  `tuple[dict, str] | None` contract and `_scan_upc_game` wraps IGDB in a local
+  `search_one_game` adapter);
+  `tests/test_scan_upc_enrichment.py::TestGameScanClimbsTheSameLadder::test_a_hit_stores_the_igdb_metadata_not_the_result_list`.
+- **Verify:** the shapes still disagree, so the trap is still live:
+
+```bash
+grep -rn -- "-> list\[dict\]\|-> dict | None" app/services/*.py
+```
+
+  (a multi-line signature puts the annotation on its own line, so do not anchor
+  this on `^async def` — `igdb.search_games` is exactly that shape and an
+  anchored grep misses the one client the entry is about. Expect **both** return
+  shapes in the output; only one shape means the clients were unified and this
+  entry retires.)
+- **Status:** documented. Not a lint candidate — deciding whether a given
+  helper fans out over providers needs judgement, not a grep.
 
 ## Graveyard
 

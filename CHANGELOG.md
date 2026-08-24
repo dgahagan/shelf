@@ -6,6 +6,78 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-08-24
+
+If you scanned a DVD or a video game, Shelf filed the barcode's title and
+nothing else — no synopsis, no year, no cover — and it did that even when you
+had entered valid TMDb and IGDB credentials. It looked like one bug. It was
+four, stacked on the same path, and each one on its own was enough to produce
+the same empty-looking result.
+
+The setup instructions told you to copy TMDb's "API Key (v3 auth)", which is the
+only credential Shelf never accepted; when TMDb rejected it, the code could not
+tell "wrong key" from "no such film", so it filed the bare title and said
+nothing. The barcode databases return retail shelf titles, not film titles —
+`Goodfellas [DVD]  Feature Thriller Drama  Action  Suspense …` — and that whole
+string was sent to TMDb as a search query, matching nothing. Any poster that
+did come back was blocked before it could download. And the **Test key** button
+confirmed all of this was fine.
+
+This release repairs all four, and closes a credential that was being written
+to your container log.
+
+### Fixed
+
+- **DVD and video-game scans file a synopsis, year and cover again.** Barcode
+  titles are now cleaned of format tags, platform suffixes and edition noise
+  before they reach TMDb or IGDB, and if the cleaned title finds nothing Shelf
+  tries progressively shorter versions of it until a provider answers — which is
+  what recovers a title buried under a retail category list. TMDb posters
+  download. Either kind of TMDb credential authenticates.
+
+  It will stop short rather than guess: Shelf will not shorten a title down to a
+  single short word, because a one-word search does not come back empty, it
+  comes back with a *different* film. When nothing matches, the item is still
+  added with its title so the scan is never lost — you can then use **Retry
+  ISBN** or **Search by Title** on the item.
+
+  **Items you already scanned are not rewritten.** Anything filed as a bare
+  title stays as it is; delete and re-scan it to pick up the metadata.
+  ([#36](https://github.com/dgahagan/shelf/issues/36))
+
+- **Changing your IGDB credentials takes effect immediately.** The cached Twitch
+  token was not tied to the credentials it was issued for, so after you pasted a
+  new Client ID or Secret in Settings, Shelf kept using the old token — and kept
+  failing — for up to an hour.
+
+### Changed
+
+- **TMDb accepts either credential type, and the setup docs now say so.** Paste
+  the 32-character **API Key (v3 auth)** or the long **API Read Access Token
+  (v4 auth)**; Shelf detects which one you gave it. Previously only the v4 token
+  worked, while the documentation asked for the v3 key.
+
+- **Settings → TMDb → Test key now fails for a key that cannot work.** It used
+  to authenticate differently from every real lookup, so it could report success
+  for a credential that returned nothing on an actual scan. It now makes exactly
+  the request a scan makes. If it starts failing for you after this upgrade, the
+  key was never working — that is the bug being reported, not a new one.
+
+### Security
+
+- **Credentials are no longer written to the container log.** Your Twitch client
+  secret was logged in full on every IGDB token refresh, and your TMDb key on
+  every **Test key** click, because both travelled as URL query parameters and
+  every outbound request URL is logged. The Twitch credentials now travel in the
+  request body, and a filter blanks the value of any credential-named query
+  parameter before the line is written — a second layer, because TMDb's v3
+  authentication requires its key in the query string and cannot avoid it.
+
+  Exploiting this needed access to your logs, so the exposure is limited to
+  wherever those logs went. If you have shipped container logs anywhere off the
+  host, or shared them when reporting a bug, **rotate your Twitch client secret
+  and your TMDb key.**
+
 ## [0.17.0] - 2026-08-24
 
 Some bugs are one mistake. Others are the same mistake, again, because the thing
@@ -1278,6 +1350,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.1]: https://github.com/dgahagan/shelf/releases/tag/v0.17.1
 [0.17.0]: https://github.com/dgahagan/shelf/releases/tag/v0.17.0
 [0.16.3]: https://github.com/dgahagan/shelf/releases/tag/v0.16.3
 [0.16.2]: https://github.com/dgahagan/shelf/releases/tag/v0.16.2

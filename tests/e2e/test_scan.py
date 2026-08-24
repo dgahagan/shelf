@@ -80,7 +80,7 @@ def test_manual_add_copy_from_picker(live_server, authed_page):
     calls Open Library/Google Books directly, and a real network failure
     there is caught as status="error" (not "not_found"), so it can't render
     the manual-add form without live network. The UPC/DVD path is
-    different — tmdb.lookup_upc wraps its UPC Item DB lookup in a bare
+    different — upcitemdb.lookup wraps its UPC Item DB request in a bare
     except and returns None on any failure — so an unresolvable UPC
     deterministically reaches not_found regardless of network reachability.
     That's the offline-safe way into this form; there's no existing e2e

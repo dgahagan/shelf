@@ -73,6 +73,11 @@ def _isolated_db(tmp_path, monkeypatch):
     import app.currency as currency_mod
     monkeypatch.setattr(currency_mod, "_cached_currency", None)
 
+    # Reset the IGDB token cache — otherwise one test's cached OAuth token
+    # leaks into the next test's credential pair.
+    import app.services.igdb as igdb_mod
+    monkeypatch.setattr(igdb_mod, "_token_cache", {})
+
     # Reset the per-host rate limiter registry. Its asyncio.Locks bind to the
     # loop they are first awaited on, and each test runs its own loop, so a
     # carried-over registry would hand a test a lock from a dead loop.

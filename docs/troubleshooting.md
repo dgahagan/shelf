@@ -51,7 +51,16 @@ has a barcode for this).
 
 Sources disagree. **Edit** the record; **Find cover** for another image;
 **Fetch synopsis** if the description is missing. For German books, make
-sure you're on 0.11+ (DNB source). Setting a preferred language
+sure you're on 0.11+ (DNB source).
+
+**DVDs and games that filed a bare title — no synopsis, no year, no cover —
+were a bug, not a missing key.** TMDb rejected the credential type the setup
+docs told you to paste, and retail barcode titles were sent to the provider
+verbatim. Both are fixed; the affected items are not rewritten in place, so
+delete them and re-scan. Check Settings → Integrations → TMDb → **Test key**
+first: it now fails for a key that cannot work, where it used to pass.
+
+Setting a preferred language
 (Settings → Library → Collection) ranks matching editions first in title
 search.
 

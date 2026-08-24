@@ -17,9 +17,8 @@ TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 IGDB_API_URL = "https://api.igdb.com/v4"
 IGDB_IMAGE_BASE = "https://images.igdb.com/igdb/image/upload/t_cover_big/"
 
-# Cached OAuth token
-_token: str | None = None
-_token_expires: float = 0
+# Cached OAuth tokens, keyed on (client_id, client_secret) -> (token, expires)
+_token_cache: dict[tuple[str, str], tuple[str, float]] = {}
 
 # Map our platform slugs to IGDB platform IDs
 # See: https://api-docs.igdb.com/#platform
@@ -58,16 +57,16 @@ PLATFORM_IDS = {
 
 async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClient) -> str | None:
     """Get or refresh the Twitch OAuth token for IGDB access."""
-    global _token, _token_expires
-
-    if _token and time.time() < _token_expires - 60:
-        return _token
+    key = (client_id, client_secret)
+    cached = _token_cache.get(key)
+    if cached and time.time() < cached[1] - 60:
+        return cached[0]
 
     try:
         resp = await outbound.fetch(
             client, "POST",
             TWITCH_TOKEN_URL,
-            params={
+            data={
                 "client_id": client_id,
                 "client_secret": client_secret,
                 "grant_type": "client_credentials",
@@ -78,9 +77,10 @@ async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClie
             logger.debug("IGDB token request failed: HTTP %d", resp.status_code)
             return None
         data = resp.json()
-        _token = data["access_token"]
-        _token_expires = time.time() + data.get("expires_in", 3600)
-        return _token
+        token = data["access_token"]
+        expires = time.time() + data.get("expires_in", 3600)
+        _token_cache[key] = (token, expires)
+        return token
     except Exception:
         logger.debug("IGDB token error", exc_info=True)
         return None

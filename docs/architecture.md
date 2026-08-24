@@ -54,12 +54,24 @@ Photo Intake's confirm step.
 Books by ISBN, in order until one answers: national bibliography (DNB for
 978-3) → Open Library (3-call chain: ISBN → work → author) → Hardcover →
 Google Books. Hardcover additionally enriches series and description when a
-token is present. UPCs go to UPC Item DB for a title, then TMDb (film) or
-IGDB (game).
+token is present.
+
+UPCs go to **UPC Item DB** (`services/upcitemdb.py`) for a retail product,
+then TMDb (film) or IGDB (game). A retail title is not a search query —
+`Goodfellas [DVD]  Feature Thriller Drama …` matches nothing — so the same
+module normalises it (format tags, platform suffixes, edition noise) and
+builds a short **ladder** of progressively shorter queries, tried in order
+until a provider answers. Both the film and game paths climb that one ladder.
+TMDb accepts either credential type: a 32-hex v3 API Key authenticates as a
+query parameter, anything else as a Bearer token, decided in one helper that
+the Settings key test shares. A credential rejection is distinguishable from
+an empty result set, and files the item title-only rather than silently.
 
 **Covers** (`services/covers.py`) cascade: Open Library → Hardcover → DNB →
 Amazon → Google Books → IGDB, with manual upload and a title-keyed search
-picker. Misses are retried by a background **cover queue**
+picker. Game and film artwork does not run the cascade — IGDB and TMDb each
+supply one URL with the metadata, downloaded directly through the same
+allow-list and post-redirect re-check. Misses are retried by a background **cover queue**
 (`services/cover_queue.py`).
 
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
@@ -156,4 +168,7 @@ one transaction.
 Non-root container, HTTPS from first boot, strict CSP, CSRF everywhere,
 bcrypt, short-lived sliding JWTs, per-IP rate limiting, encrypted secrets,
 write-only credential fields, allow-listed image hosts for cover downloads,
-`noindex` + unguessable tokens on share links. See [SECURITY.md](../SECURITY.md).
+`noindex` + unguessable tokens on share links. Outbound request URLs are logged
+at INFO, so a filter on the `httpx` logger blanks the value of any
+credential-named query parameter first — TMDb v3 authentication requires its key
+in the query string, so the transport alone cannot keep it out of the log. See [SECURITY.md](../SECURITY.md).

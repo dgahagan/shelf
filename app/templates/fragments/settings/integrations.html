@@ -562,12 +562,12 @@
         <!-- Help Modal -->
         <div x-show="showTmdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showTmdbHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-                <h3 class="text-lg font-bold mb-3">Getting a TMDb API Key</h3>
+                <h3 class="text-lg font-bold mb-3">Getting a TMDb credential</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
                     <li>Go to <span class="text-shelf-accent2">themoviedb.org</span> and create a free account</li>
                     <li>Go to <span class="text-shelf-text">Settings &rarr; API</span> in your profile</li>
-                    <li>Request an API key (select "Developer" — it's instant for personal use)</li>
-                    <li>Copy the <span class="text-shelf-text">API Key (v3 auth)</span> value and paste it below</li>
+                    <li>Request access (select "Developer" — it's instant for personal use)</li>
+                    <li>Copy <span class="text-shelf-text">either</span> credential shown and paste it below: the 32-character <span class="text-shelf-text">API Key (v3 auth)</span> or the long <span class="text-shelf-text">API Read Access Token (v4 auth)</span>. Shelf detects which one you pasted.</li>
                 </ol>
                 <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
                     <p class="font-medium text-shelf-text mb-1">About TMDb</p>
@@ -580,10 +580,10 @@
 
         <form action="/api/settings" method="post" class="space-y-3">
             <div>
-                <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">TMDb API Key</label>
+                <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">TMDb credential (API Key or Read Access Token)</label>
                 <div class="flex gap-2">
                     <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey" autocomplete="new-password"
-                           placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key{% endif %}"
+                           placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key or read access token{% endif %}"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
                             @click="testTmdb"

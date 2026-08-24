@@ -1,24 +1,72 @@
 """TMDb API client for movie/TV metadata lookup."""
 
+import re
+
 import httpx
 
 from app.services import outbound
 
 TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search/movie"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
-UPC_LOOKUP_URL = "https://api.upcitemdb.com/prod/trial/lookup"
+
+# A v3 "API Key" is 32 hex characters; a v4 "API Read Access Token" is a JWT.
+_V3_KEY = re.compile(r"[0-9a-fA-F]{32}")
+
+# What TMDb answers with when it will not accept the credential. Named once so
+# the Settings key test and the real lookup cannot disagree about what counts
+# as a rejection — they already share `_auth`, and this is the other half of
+# the same "one decision in one place" argument. 403 is a suspended key.
+_AUTH_STATUSES = (401, 403)
+
+
+class TmdbAuthError(Exception):
+    """TMDb rejected the credential (HTTP 401/403).
+
+    Distinct from "no such film", which is a `None` return. Without this the
+    two are indistinguishable, which is exactly how an auth failure came to be
+    filed as a bare title.
+    """
+
+
+def _auth(api_key: str) -> tuple[dict, dict]:
+    """Request kwargs for either TMDb credential type: (extra_params, headers).
+
+    v3 "API Key" (32 hex characters) authenticates as `?api_key=`; v4 "API Read
+    Access Token" authenticates as a Bearer header. Returned as a pair rather
+    than one merged dict so the auth parameter can never shadow `query`, and so
+    a test can assert each half independently.
+
+    Every TMDb request in this module builds itself through here — the auth bug
+    this replaces was a one-line difference between two call sites.
+    """
+    if api_key and _V3_KEY.fullmatch(api_key):
+        return {"api_key": api_key}, {}
+    return {}, {"Authorization": f"Bearer {api_key}"}
 
 
 async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -> dict | None:
-    """Search TMDb by title, return first result as metadata dict."""
+    """Search TMDb by title, return first result as metadata dict.
+
+    Raises `TmdbAuthError` when TMDb rejects the credential; returns `None` for
+    an empty result set or any other failure. Only the request and the parse sit
+    inside the swallow-all handler, so the auth signal cannot be eaten by it.
+    """
+    extra_params, headers = _auth(api_key)
     try:
         resp = await outbound.fetch(
             client, "GET",
             TMDB_SEARCH_URL,
-            params={"query": title},
-            headers={"Authorization": f"Bearer {api_key}"},
+            params={"query": title, **extra_params},
+            headers=headers,
             timeout=10,
         )
+    except Exception:
+        return None
+
+    if resp.status_code in _AUTH_STATUSES:
+        raise TmdbAuthError(f"TMDb rejected the credential (HTTP {resp.status_code})")
+
+    try:
         if resp.status_code != 200:
             return None
         results = resp.json().get("results", [])
@@ -37,41 +85,19 @@ async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -
         return None
 
 
-async def lookup_upc(upc: str, tmdb_api_key: str, client: httpx.AsyncClient) -> dict | None:
-    """Look up a UPC via UPC Item DB to get title, then search TMDb for metadata."""
-    # Step 1: get title from UPC
-    title = None
-    try:
-        resp = await outbound.fetch(client, "GET", UPC_LOOKUP_URL, params={"upc": upc}, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            items = data.get("items", [])
-            if items:
-                title = items[0].get("title")
-    except Exception:
-        pass
-
-    if not title:
-        return None
-
-    # Step 2: search TMDb
-    if tmdb_api_key:
-        metadata = await lookup_by_title(title, tmdb_api_key, client)
-        if metadata:
-            return metadata
-
-    # Fallback: return just the title from UPC lookup
-    return {"title": title, "description": None, "publish_year": None, "cover_url": None}
-
-
 async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
-    """Search TMDb by title, return multiple results."""
+    """Search TMDb by title, return multiple results.
+
+    Keeps its `[]`-on-any-failure contract: its caller renders a result list and
+    surfacing the auth/empty distinction there is a separate piece of work.
+    """
+    extra_params, headers = _auth(api_key)
     try:
         resp = await outbound.fetch(
             client, "GET",
             TMDB_SEARCH_URL,
-            params={"query": query},
-            headers={"Authorization": f"Bearer {api_key}"},
+            params={"query": query, **extra_params},
+            headers=headers,
             timeout=10,
         )
         if resp.status_code != 200:
@@ -94,3 +120,31 @@ async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, lim
         return movies
     except Exception:
         return []
+
+
+async def test_key(api_key: str, client: httpx.AsyncClient) -> dict:
+    """Probe TMDb with a credential and report whether it works.
+
+    Lives here, beside `_auth`, so the Settings "Test key" button and the real
+    lookup cannot authenticate differently — the old router-side copy reported
+    success for keys every lookup rejected. Returns the `{ok, message}` shape
+    `static/js/components-settings.js` reads.
+    """
+    extra_params, headers = _auth(api_key)
+    try:
+        resp = await outbound.fetch(
+            client, "GET",
+            TMDB_SEARCH_URL,
+            params={"query": "The Matrix", **extra_params},
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code == 200:
+            count = resp.json().get("total_results", 0)
+            return {"ok": True, "message": f"Key is valid ({count} results)"}
+        elif resp.status_code in _AUTH_STATUSES:
+            return {"ok": False, "message": "Invalid API key"}
+        else:
+            return {"ok": False, "message": f"Unexpected response: HTTP {resp.status_code}"}
+    except Exception:
+        return {"ok": False, "message": "Connection failed — check network"}

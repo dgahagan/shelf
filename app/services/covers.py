@@ -21,6 +21,7 @@ ALLOWED_COVER_DOMAINS = {
     "hardcover.app",
     "assets.hardcover.app",
     "images.igdb.com",
+    "image.tmdb.org",  # TMDb posters (tmdb.TMDB_IMAGE_BASE)
     "portal.dnb.de",  # DNB/MVB cover service for German (978-3) ISBNs
 }
 

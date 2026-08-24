@@ -16,8 +16,13 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+# httpx logs every outbound request URL at INFO. TMDb v3 authentication puts
+# the API key in the query string, so redact credential values before they
+# reach the container log or the in-app log viewer.
+from app.log_handler import RedactQueryFilter, SQLiteHandler
+logging.getLogger("httpx").addFilter(RedactQueryFilter())
+
 # Add SQLite handler so logs are viewable in the web UI
-from app.log_handler import SQLiteHandler
 _db_handler = SQLiteHandler()
 _db_handler.setLevel(logging.INFO)
 _db_handler.setFormatter(logging.Formatter("%(message)s"))

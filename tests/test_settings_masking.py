@@ -36,6 +36,17 @@ class TestNoEcho:
         # Saved state is still communicated
         assert "Saved — leave blank to keep" in html
 
+    def test_the_tmdb_help_offers_both_credential_types(self, admin_client):
+        """The screen where the credential is pasted must not say v3-only.
+
+        Shelf accepts either a 32-hex v3 API Key or a v4 Read Access Token; the
+        setup help said only the former, which is the reason a key that could
+        never authenticate was the expected input (issue #36).
+        """
+        html = admin_client.get("/settings").text
+        assert "API Key (v3 auth)" in html
+        assert "API Read Access Token (v4 auth)" in html
+
     def test_unsaved_fields_show_normal_placeholder(self, admin_client):
         html = admin_client.get("/settings").text
         assert "Saved — leave blank to keep" not in html

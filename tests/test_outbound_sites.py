@@ -138,13 +138,41 @@ class TestIgdb:
         assert token == "tok"
         call = fake_fetch.await_args
         assert call.args == (client, "POST", igdb.TWITCH_TOKEN_URL)
-        assert call.kwargs.get("params") == {
+        assert call.kwargs.get("data") == {
             "client_id": "cid",
             "client_secret": "secret",
             "grant_type": "client_credentials",
         }
+        assert call.kwargs.get("params") is None
         assert call.kwargs.get("timeout") == 10
         assert _no_retry_timeouts(call)
+
+    async def test_get_token_not_shared_across_credentials(self, fake_fetch):
+        """T3: different (client_id, client_secret) pairs must not share a cached token."""
+        fake_fetch.side_effect = [
+            StubResponse(200, json_data={"access_token": "tok1", "expires_in": 3600}),
+            StubResponse(200, json_data={"access_token": "tok2", "expires_in": 3600}),
+        ]
+        client = object()
+
+        token1 = await igdb._get_token("a", "s1", client)
+        token2 = await igdb._get_token("a", "s2", client)
+
+        assert token1 == "tok1"
+        assert token2 == "tok2"
+        assert fake_fetch.await_count == 2
+
+    async def test_get_token_cached_for_same_credentials(self, fake_fetch):
+        """T3: a repeat call with the same credential pair reuses the cached token."""
+        fake_fetch.return_value = StubResponse(200, json_data={"access_token": "tok", "expires_in": 3600})
+        client = object()
+
+        token1 = await igdb._get_token("a", "s1", client)
+        token2 = await igdb._get_token("a", "s1", client)
+
+        assert token1 == "tok"
+        assert token2 == "tok"
+        assert fake_fetch.await_count == 1
 
 
 class TestTmdb:
@@ -162,6 +190,20 @@ class TestTmdb:
         assert call.kwargs.get("params") == {"query": "Dune"}
         assert call.kwargs.get("headers") == {"Authorization": "Bearer api-key"}
         assert call.kwargs.get("timeout") == 10
+        assert _no_retry_timeouts(call)
+
+    async def test_lookup_by_title_sends_a_v3_key_as_a_query_parameter(self, fake_fetch):
+        """T4: a 32-hex key is a v3 API Key and must not travel as a Bearer token."""
+        fake_fetch.return_value = StubResponse(200, json_data={"results": []})
+        client = object()
+        v3 = "0123456789abcdef0123456789abcdef"
+
+        result = await tmdb.lookup_by_title("Dune", v3, client)
+
+        assert result is None
+        call = fake_fetch.await_args
+        assert call.kwargs.get("params") == {"query": "Dune", "api_key": v3}
+        assert not call.kwargs.get("headers")
         assert _no_retry_timeouts(call)
 
 

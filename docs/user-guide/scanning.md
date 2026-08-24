@@ -75,6 +75,16 @@ Books further divide into book, kids book, audiobook, eBook, comic / graphic
 novel — change the type on the item page or in bulk from Browse. CDs are
 manual-add.
 
+A UPC scan brings back a synopsis, a year and cover art when TMDb (discs) or
+IGDB (games) is configured. Barcode databases store retail shelf titles rather
+than film or game titles — `Goodfellas [DVD]  Feature Thriller Drama …` — so
+Shelf strips format tags, platform suffixes and edition wording, and if that
+still finds nothing it retries with progressively shorter versions of the
+title. It stops short of searching a single short word, because a one-word
+search comes back with a *different* film rather than nothing. When no provider
+matches, the item is still added under its own title — use **Retry ISBN** or
+**Search by Title** on the item page to fill it in.
+
 ## Tips
 
 - A barcode that looks up wrong? Open the item, hit **Edit**, fix it, and use
