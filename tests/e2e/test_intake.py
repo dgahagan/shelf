@@ -871,3 +871,373 @@ def test_replacing_the_photo_during_analysis_keeps_the_new_photos_rows(
         "() => Array.from(document.querySelectorAll("
         "'[data-testid=intake-row] input[placeholder=Title]')).map(i => i.value).join('|')")
     expect(page.locator("text=Reading your photo")).to_be_hidden()
+
+
+# ---------------------------------------------------------------------------
+# Issue #33 — the review row's declared layout, its width floors, and the
+# clean console. See .devdocs/plan-issue-33-intake-title-width.md.
+# ---------------------------------------------------------------------------
+
+# Long, real-shaped titles. The width floors below are only meaningful if the
+# title would overflow a cramped box: both of these are 36 characters, longer
+# than the 34-character title the issue reported showing 9 characters of.
+LONG_ANALYZE_RESPONSE = {
+    "ok": True,
+    "books": [
+        {"title": "The Hitchhiker's Guide to the Galaxy", "authors": "Douglas Adams",
+         "isbn": None, "source": "read"},
+        {"title": "A Short History of Nearly Everything", "authors": "Bill Bryson",
+         "isbn": None, "source": "recognized"},
+    ],
+}
+
+# What a successful POST /api/intake/confirm returns (app/routers/intake.py:339).
+# The round-trip tests *fulfill* rather than continue: `live_server` is
+# session-scoped, so letting two parametrized viewport cases write real rows
+# would have the second case's dupe check see the first case's inserts.
+CONFIRM_OK = {
+    "ok": True,
+    "added": [{"id": 424242, "title": "Edited Title 33", "matched": False}],
+    "skipped": [],
+}
+
+# Widest media-type label (app/config.py:15) — the option the mobile select
+# must render without clipping.
+WIDEST_MEDIA_LABEL = "Comic / Graphic Novel"
+
+
+def _analyze_long(live_server, page, width):
+    """Fill the review rows from the long-title payload at a fixed viewport.
+
+    Mirrors `_analyze` but sets the viewport before navigating and routes its
+    own payload, so the geometry assertions measure titles worth measuring.
+    """
+    page.set_viewport_size({"width": width, "height": 844 if width < 768 else 800})
+    page.route("**/api/intake/analyze",
+               lambda route: route.fulfill(json=LONG_ANALYZE_RESPONSE))
+    page.goto(f"{live_server['url']}/intake")
+    page.wait_for_load_state("networkidle")
+    page.locator("[data-testid=intake-choose-input]").set_input_files(str(FIXTURE_PHOTO))
+    expect(page.locator("[data-testid=intake-low-res]")).to_be_visible()
+    page.locator("button", has_text="Read Photo").click()
+    expect(page.locator("[data-testid=intake-row]")).to_have_count(2)
+    # Counting the rows is not enough to measure them: the review card is
+    # `x-show` + `x-cloak`, so the rows are attached (and counted) a tick
+    # before the card stops being `display: none` — and every
+    # getBoundingClientRect() in that window returns zeros. Wait for the
+    # painted state positively (G21: expect(), never page.wait_for_function).
+    expect(page.locator("[data-testid=intake-row]").first.locator(
+        "input[placeholder=Title]")).to_be_visible()
+    expect(page.locator("[data-testid=intake-recognized]:visible")).to_have_count(1)
+
+
+def _recognized_row(page):
+    """The recognized row, found from its visible badge and an *explicit* climb
+    to the row container.
+
+    Never the badge's immediate parent: issue #33 wraps checkbox+title+badge in
+    a new div, so the parent is that wrapper and holds no Author, ISBN or
+    select. Never a positional index either — nothing may couple to child order.
+    """
+    return page.locator("[data-testid=intake-recognized]:visible").locator(
+        "xpath=ancestor::*[@data-testid='intake-row']")
+
+
+def _plain_row(page):
+    """The remaining row: the one whose badge is hidden (`x-show` on
+    `book.source === 'recognized'`)."""
+    rows = page.locator("[data-testid=intake-row]")
+    hidden = [rows.nth(i) for i in range(rows.count())
+              if not rows.nth(i).locator("[data-testid=intake-recognized]").is_visible()]
+    assert len(hidden) == 1, f"expected exactly one badge-free row, found {len(hidden)}"
+    return hidden[0]
+
+
+def _row_metrics(page):
+    """Rendered geometry of every control in every review row, one round trip.
+
+    `badge` is present only when the badge is actually rendered — a hidden
+    `x-show` element has no client rects, and a hidden control must not
+    participate in the line arithmetic below.
+    """
+    return page.evaluate(
+        """() => {
+            const box = el => {
+                const r = el.getBoundingClientRect();
+                return {top: r.top, bottom: r.bottom, left: r.left,
+                        right: r.right, width: r.width};
+            };
+            return Array.from(
+                document.querySelectorAll('[data-testid=intake-row]')
+            ).map(row => {
+                const badge = row.querySelector('[data-testid=intake-recognized]');
+                const visible = !!badge && badge.getClientRects().length > 0;
+                const m = {
+                    badgeVisible: visible,
+                    checkbox: box(row.querySelector('input[type=checkbox]')),
+                    title: box(row.querySelector('input[placeholder=Title]')),
+                    author: box(row.querySelector('input[placeholder=Author]')),
+                    isbn: box(row.querySelector('[data-testid=intake-isbn]')),
+                    select: box(row.querySelector('[data-testid=intake-media-type]')),
+                    titleValue: row.querySelector('input[placeholder=Title]').value,
+                };
+                if (visible) m.badge = box(badge);
+                return m;
+            });
+        }"""
+    )
+
+
+def _lines(row, names, tol=4.0):
+    """Map each named control to its flex line index, top line first.
+
+    Two controls share a line iff their vertical centres are within `tol` px.
+    Counting the *bands* is the point: `author.top >= title.bottom` is equally
+    true of a four-line row, so it cannot tell a declared three-line layout
+    from an emergent one.
+    """
+    pairs = sorted(((n, (row[n]["top"] + row[n]["bottom"]) / 2) for n in names),
+                   key=lambda kv: kv[1])
+    out, idx, anchor = {}, 0, pairs[0][1]
+    for name, centre in pairs:
+        if centre - anchor > tol:
+            idx += 1
+            anchor = centre
+        out[name] = idx
+    return out
+
+
+def _shapes(page):
+    """(plain, recognized) metrics, identified by badge visibility."""
+    metrics = _row_metrics(page)
+    assert len(metrics) == 2, f"expected 2 review rows, measured {len(metrics)}"
+    plain = [m for m in metrics if not m["badgeVisible"]]
+    recognized = [m for m in metrics if m["badgeVisible"]]
+    assert len(plain) == 1 and len(recognized) == 1, \
+        "expected exactly one plain and one recognized row"
+    return plain[0], recognized[0]
+
+
+def test_review_row_mobile_layout_is_three_declared_lines(live_server, intake_page):
+    """Below `sm` the six controls land on three *declared* lines, identically
+    for both row shapes.
+
+    Issue #33's real defect was that the mobile layout was emergent: whether
+    the badge happened to be present decided which controls shared a line, so
+    narrowing Author to help plain rows collapsed recognized ones to 78px.
+    """
+    page = intake_page
+    _analyze_long(live_server, page, 390)
+    plain, recognized = _shapes(page)
+
+    assert "badge" not in plain, "the plain row's badge must stay hidden"
+    lines = _lines(plain, ["checkbox", "title", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 3, f"plain row is not three lines: {lines}"
+    assert lines["checkbox"] == lines["title"] == 0, lines
+    assert lines["author"] == lines["isbn"] == 1, lines
+    assert lines["select"] == 2, lines
+
+    lines = _lines(recognized,
+                   ["checkbox", "title", "badge", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 3, f"recognized row is not three lines: {lines}"
+    assert lines["checkbox"] == lines["title"] == lines["badge"] == 0, \
+        f"the recognized marker left its title's line: {lines}"
+    assert lines["author"] == lines["isbn"] == 1, lines
+    assert lines["select"] == 2, lines
+
+
+def test_review_row_mobile_title_width_floors(live_server, intake_page):
+    """Absolute floors, never a sibling comparison.
+
+    A recognized row necessarily spends ~73px of the same wrapper on the badge,
+    so "recognized >= plain" is unsatisfiable by construction. The dropped
+    `w-48 -> w-32` branch regressed recognized rows to 78px; these floors
+    (predicted ~284 / ~211) catch that by a wide margin. A measured value below
+    a floor is a real finding, not a floor to loosen.
+    """
+    _analyze_long(live_server, intake_page, 390)
+    plain, recognized = _shapes(intake_page)
+
+    assert plain["title"]["width"] >= 250, (
+        f"plain-row title is {plain['title']['width']:.0f}px at 390px, floor 250px")
+    assert recognized["title"]["width"] >= 200, (
+        f"recognized-row title is {recognized['title']['width']:.0f}px at 390px, "
+        "floor 200px")
+
+
+def test_review_row_mobile_select_fits_widest_option(live_server, intake_page):
+    """The media select owns its own mobile line, so its widest option renders
+    without clipping — the failure mode of the rejected two-line layout."""
+    page = intake_page
+    _analyze_long(live_server, page, 390)
+    _plain_row(page).locator("[data-testid=intake-media-type]").select_option("comic")
+
+    fit = page.evaluate(
+        """() => {
+            const rows = Array.from(
+                document.querySelectorAll('[data-testid=intake-row]'));
+            const plain = rows.find(r => {
+                const b = r.querySelector('[data-testid=intake-recognized]');
+                return !b || b.getClientRects().length === 0;
+            });
+            const s = plain.querySelector('[data-testid=intake-media-type]');
+            const cs = getComputedStyle(s);
+            const ctx = document.createElement('canvas').getContext('2d');
+            ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+            return {
+                label: s.options[s.selectedIndex].text,
+                textWidth: ctx.measureText(s.options[s.selectedIndex].text).width,
+                clientWidth: s.clientWidth,
+                boxWidth: s.getBoundingClientRect().width,
+            };
+        }"""
+    )
+
+    assert fit["label"] == WIDEST_MEDIA_LABEL, fit["label"]
+    # px-3 padding is 24px; the rest is the native arrow's allowance.
+    assert fit["clientWidth"] >= fit["textWidth"] + 28, (
+        f"{WIDEST_MEDIA_LABEL!r} needs {fit['textWidth']:.0f}px + 28px chrome "
+        f"but the select's content box is {fit['clientWidth']:.0f}px")
+    assert fit["boxWidth"] >= 250, (
+        f"the select should own its whole mobile line, measured "
+        f"{fit['boxWidth']:.0f}px")
+
+
+def test_review_row_desktop_stays_one_line(live_server, intake_page):
+    """At `sm` and up the row is still the single line that shipped before —
+    and the recognized title is wider than the 88px it used to get."""
+    _analyze_long(live_server, intake_page, 1280)
+    plain, recognized = _shapes(intake_page)
+
+    assert "badge" not in plain, "the plain row's badge must stay hidden"
+    lines = _lines(plain, ["checkbox", "title", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 1, f"plain row wrapped on desktop: {lines}"
+
+    lines = _lines(recognized,
+                   ["checkbox", "title", "badge", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 1, f"recognized row wrapped on desktop: {lines}"
+    assert recognized["title"]["width"] >= 120, (
+        f"recognized-row title is {recognized['title']['width']:.0f}px at 1280px, "
+        "floor 120px (it measured 88px on main)")
+
+
+def test_review_row_stays_three_lines_up_to_the_md_seam(live_server, intake_page):
+    """At 680px — inside the band the `sm` seam used to break — the row is
+    still three declared lines and both titles clear their floors.
+
+    The single-line layout needs Author 128 + ISBN 128 + select 192 + 24px of
+    gaps = 472px of fixed width. At a 640px viewport the row's content box is
+    only ~558px, leaving ~86px for checkbox+title+badge; the wrapper is
+    `min-w-0`, so it shrank rather than wrapped and the `recognized` title
+    collapsed to 26px — narrower than its own padding, rendering zero
+    characters, against 13-19 on `main`. Moving the seam to `md` (768px) is
+    what fixes it; this pins the widest still-stacked width.
+    """
+    _analyze_long(live_server, intake_page, 680)
+    plain, recognized = _shapes(intake_page)
+
+    lines = _lines(plain, ["checkbox", "title", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 3, f"plain row is not three lines at 680px: {lines}"
+    lines = _lines(recognized,
+                   ["checkbox", "title", "badge", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 3, \
+        f"recognized row is not three lines at 680px: {lines}"
+
+    # Both comfortably clear the 390px floors; the regression was 26px.
+    assert plain["title"]["width"] >= 250, (
+        f"plain-row title is {plain['title']['width']:.0f}px at 680px, floor 250px")
+    assert recognized["title"]["width"] >= 200, (
+        f"recognized-row title is {recognized['title']['width']:.0f}px at 680px, "
+        "floor 200px")
+
+
+def test_review_row_is_one_line_from_the_md_seam_up(live_server, intake_page):
+    """768px is the first single-line width, and the title is usable there.
+
+    `main` gave a 40px `recognized` title at 768px; the floor below is the
+    guard against re-introducing a seam that switches before the row fits.
+    """
+    _analyze_long(live_server, intake_page, 768)
+    plain, recognized = _shapes(intake_page)
+
+    lines = _lines(plain, ["checkbox", "title", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 1, f"plain row wrapped at 768px: {lines}"
+    lines = _lines(recognized,
+                   ["checkbox", "title", "badge", "author", "isbn", "select"])
+    assert max(lines.values()) + 1 == 1, f"recognized row wrapped at 768px: {lines}"
+    assert recognized["title"]["width"] >= 100, (
+        f"recognized-row title is {recognized['title']['width']:.0f}px at 768px "
+        "(main measured 40px here); floor 100px")
+
+
+@pytest.mark.parametrize("width", [390, 1280])
+def test_review_row_edits_round_trip_at_both_viewports(live_server, intake_page, width):
+    """Moving the checkbox into a wrapper broke no Alpine handler.
+
+    The handlers are index-based (`toggleInclude(i)`), so no DOM coupling
+    exists to break — this is the behavioural proof of that. `include` is
+    client-only state: `intake.js:401-404` filters by it and serializes only
+    title/authors/isbn/media_type, so an excluded row is *absent* from the
+    payload rather than sent with `include: false`.
+    """
+    page = intake_page
+    _analyze_long(live_server, page, width)
+
+    plain, recognized = _plain_row(page), _recognized_row(page)
+    plain.locator("input[placeholder=Title]").fill("Edited Title 33")
+    plain.locator("input[placeholder=Author]").fill("Edited Author")
+    plain.locator("[data-testid=intake-isbn]").fill("123")
+    plain.locator("[data-testid=intake-media-type]").select_option("comic")
+
+    recognized.locator("input[type=checkbox]").uncheck()
+    # Positive proof the toggle landed before the negative "absent" assertion
+    # below — a payload of one book is otherwise satisfied by a page that never
+    # registered the click (G31).
+    add = page.locator("button", has_text="Add 1 to Library")
+    expect(add).to_be_visible()
+
+    sent = {}
+
+    def confirm(route):
+        sent["payload"] = route.request.post_data_json
+        route.fulfill(json=CONFIRM_OK)
+
+    page.route("**/api/intake/confirm", confirm)
+    add.click()
+    expect(page.locator("[data-testid=intake-added-row]")).to_have_count(1)
+
+    # G34 n/a: this counts the browser's own request body, not a server-side
+    # list that could be capped or sampled.
+    books = sent["payload"]["books"]
+    assert len(books) == 1, books
+    assert set(books[0]) == {"title", "authors", "isbn", "media_type"}, books[0]
+    assert books[0]["title"] == "Edited Title 33"
+    assert books[0]["authors"] == "Edited Author"
+    assert books[0]["isbn"] == "123"
+    assert books[0]["media_type"] == "comic"
+    assert all(b["title"] != "A Short History of Nearly Everything" for b in books), \
+        "the deselected row reached the wire"
+
+
+def test_intake_page_loads_without_pageerror(live_server, intake_page):
+    """`/intake` throws nothing across load -> analyze -> review -> confirm.
+
+    The three `result && result.added.length` guards threw on *every* load: the
+    Alpine CSP build parses `&&` as a BinaryExpression and evaluates both
+    operands before applying the operator (`case"&&":return f&&_`,
+    alpinejs-csp-3.15.9.min.js:7), so `false.added` ran and `undefined.length`
+    threw. Three pageerrors per load, masking any real one.
+    """
+    page = intake_page
+    errors = []
+    # Attached before the navigation: the throws happen in the first render.
+    page.on("pageerror", lambda e: errors.append(str(e)))
+
+    _analyze_long(live_server, page, 1280)
+    assert errors == [], f"/intake threw on load: {errors}"
+
+    page.route("**/api/intake/confirm", lambda route: route.fulfill(json=CONFIRM_OK))
+    page.locator("button", has_text="Add 2 to Library").click()
+    expect(page.locator("[data-testid=intake-added-row]")).to_have_count(1)
+
+    assert errors == [], f"/intake threw during the confirm round trip: {errors}"

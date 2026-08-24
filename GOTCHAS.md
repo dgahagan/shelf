@@ -152,14 +152,28 @@ grep -rhoE 'x-data="[A-Za-z_$][A-Za-z0-9_$]*[("]' app/templates/ \
 
 ## G5 — When Alpine state is dereferenced in a template guard expression
 
-- **Rule:** Initialize/reset nullable guard state to `false`, never `null`.
-  The CSP evaluator throws "Cannot read property of null or undefined" on
-  `x && x.prop` when `x` is `null`, but handles `false` fine. API payload
-  nulls passed as plain function arguments are unaffected.
-- **Why:** Templates guard with `result && result.added.length` etc.; a
-  `null` init crashes every evaluation of that attribute. Convention set
-  during the CSP migration (e.g. `result: false` in `intake.js`).
-- **Evidence:** `907e732` (2026-07-05; `ALPINE_CSP.md` gotcha 2).
+- **Rule:** Write the guard as a **ternary**, not `&&`, whenever the guarded
+  side is a *chain* (`x ? x.prop.length : ''`, never `x && x.prop.length`).
+  Initializing the state to `false` rather than `null` is necessary but **not
+  sufficient**. API payload nulls passed as plain function arguments are
+  unaffected.
+- **Why:** the CSP build parses `&&` as a `BinaryExpression` and evaluates
+  **both operands before applying the operator** (`case"&&":return f&&_` in
+  `static/vendor/alpinejs-csp-3.15.9.min.js`). For `x && x.prop` a `false` `x`
+  is harmless — `false.prop` is `undefined` and nothing dereferences it. For
+  `x && x.prop.length` the right operand still runs and `undefined.length`
+  **throws**, no matter what `x` was initialized to. The ternary is the fix
+  because the evaluator never evaluates the untaken branch.
+- **This entry said the opposite until 2026-08-23.** Its Rule line read
+  "handles `false` fine", which is true only of the unchained form. `intake.js`
+  had initialized `result` to `false` since `907e732` and `/intake` threw three
+  `pageerror`s on *every single load* for seven weeks — the entry was being
+  followed and the page was still broken. If a gotcha's rule is satisfied and
+  the trap fires anyway, suspect the rule, not the code.
+- **Evidence:** `907e732` (2026-07-05; `ALPINE_CSP.md` gotcha 2) for the
+  `false`-not-`null` half; `ebf7bbc` (2026-08-23, issue #33 T2) for the
+  ternary half and the correction, pinned by
+  `tests/e2e/test_intake.py::test_intake_page_loads_without_pageerror`.
 - **Verify:** the vendored evaluator still throws on null — zero matches
   means the build changed and this entry needs a re-check:
   `grep -c "Cannot read property of null or undefined" static/vendor/alpinejs-csp-*.min.js`
@@ -685,6 +699,18 @@ grep -rn "in found.casefold()" app/ | grep -v services/authors.py
   before any cover exists. Enrichment is serial with up to three network
   round-trips per book, so eleven books can take a minute. A capture that
   cuts straight to Browse shows a wall of blank covers that looks like a bug.
+- **Two more ways a recapture ships something embarrassing** (both found
+  recapturing `screenshots/photo-intake.png`, `e21c54f`, 2026-08-23):
+  - **A banner added since the last shot lands in the frame.** The 0.16.1
+    low-res advisory fires for `tests/fixtures/intake/eleven_books.jpg`
+    (770×1022), so the reshoot put "This photo may be too small to read"
+    above the card the README is illustrating. Route `**/api/intake/plan`
+    with a clean plan rather than hunting for a fixture that dodges it —
+    and diff the new shot against the old before committing, because a
+    capture script that "worked" is not a shot that looks right.
+  - **`display_name` is baked into the JWT** (`app/auth.py:63`), so the nav
+    kept saying `E2E Admin` after a `UPDATE users SET display_name` — the
+    page reads the token, not the row. Clear cookies and log in again.
 - **Evidence:** `f618b11` (2026-08-20) — the previous demo GIF was recorded
   this way and shipped for six weeks showing four cover-less books.
 - **Verify:** the import path is still fire-and-forget:
@@ -1314,6 +1340,114 @@ grep -rn "post_data_buffer" tests/e2e/
 
 - **Status:** documented. Not a lint candidate — it is a judgement about what
   a given assertion actually proves.
+
+## G41 — When a responsive Tailwind class list combines `basis-*` with `flex-*`
+
+- **Rule:** Never put `sm:basis-auto` (or any `basis-*`) on the same element as
+  `sm:flex-1` and expect the `flex` shorthand to win. Tailwind emits
+  `.basis-*` **after** `.flex-*` inside each variant block, so the later
+  `flex-basis` declaration silently overrides the one the shorthand set.
+  `sm:flex-1` already means `flex: 1 1 0%` — adding `sm:basis-auto` next to it
+  reverts the basis to `auto` and changes how the element is *packed onto a
+  flex line*. Reset `basis-full` with a `sm:flex-*` utility alone, and keep
+  `sm:basis-auto` for elements that have no `sm:flex-*`.
+- **Why:** flex-wrap packs items by their **hypothetical main size**
+  (flex-basis, clamped by min-width) *before* distributing free space, so a
+  basis of `auto` versus `0%` decides whether a sibling wraps to the next line
+  — it is not merely a sizing nicety. The class list *reads* correct, both
+  utilities are present in `app.css`, and nothing in review shows the emitted
+  order. `make test`, `make check-alpine` and `make check-csrf` are all blind
+  to it; only rendered geometry sees it.
+- **Evidence:** `e509677` (2026-08-23, issue #33 T1, caught by T3). The intake
+  review row's wrapper was specified — by the design plan, the impl plan, and
+  the Codex review that passed all three — as
+  `basis-full sm:basis-auto sm:flex-1 min-w-0`. In `static/css/app.css` the
+  `sm` block emits `.sm\:flex-1{flex:1 1 0%}` and then
+  `.sm\:basis-auto{flex-basis:auto}`, so the wrapper was packed at its 446px
+  max-content width; 446 + 128 + 128 + 24px of gaps = 726px against a 718px
+  row box, and the media-type select dropped to a second desktop line.
+  Dropping `sm:basis-auto` from the wrapper alone fixed it and left `app.css`
+  byte-identical (the select still uses the class). When the seam later moved
+  to `md:` (`3967c28`, see G43) the rule applied unchanged — `.md\:basis-auto`
+  is emitted after `.md\:flex-1` too, and the wrapper still carries neither.
+- **Verify:** the emitted order is a Tailwind implementation detail — re-check
+  it after any Tailwind upgrade rather than trusting this entry:
+
+```bash
+grep -o '\.sm\\:flex-1{[^}]*}\|\.sm\\:basis-auto{[^}]*}' static/css/app.css
+# basis-auto printing second is what makes this entry live
+```
+
+- **Status:** documented. Lint candidate: a check for `basis-*` and `flex-*`
+  of the same variant on one `class` attribute would be mechanical, but it
+  would also fire on the legitimate `basis-full sm:flex-1` pairing (different
+  variants), so it needs care.
+
+## G42 — When an E2E test measures the geometry of Alpine-rendered content
+
+- **Rule:** `expect(locator).to_have_count(n)` is **not** enough to measure an
+  element. Alpine regions gated by `x-show` + `x-cloak` are *attached* — and
+  therefore counted — a tick before the container stops being `display: none`,
+  and every `getBoundingClientRect()` in that window returns **zeros**. Wait
+  for the painted state positively first: `expect(<a control inside
+  it>).to_be_visible()`, then measure.
+- **Why:** it fails as a plausible *measurement* rather than as a missing
+  element, so the assertion message blames the layout. Three geometry tests
+  failed with all-zero rects and read exactly like a broken flex row; the
+  markup was correct. Counting is an attachment check, visibility is a paint
+  check, and only the second one licenses a rect.
+- **Evidence:** `0bb2f6f` (2026-08-23, issue #33 T3). `intake.html`'s review
+  card is `x-show="books.length > 0" x-cloak`; `to_have_count(2)` on
+  `[data-testid=intake-row]` resolved while `[x-cloak]{display:none!important}`
+  still applied. `_analyze_long` in `tests/e2e/test_intake.py` now waits for
+  the first Title input to be visible before any `page.evaluate` of rects.
+- **Verify:** judgement. When reviewing a geometry assertion, ask what proved
+  the element was *painted*, not just present — and note that a rect of
+  exactly 0 is the signature, not a coincidence.
+- **Status:** documented. Not a lint candidate — related to G21 (both are
+  E2E waiting traps) but distinct: G21 is about *how* to wait, this is about
+  *whether you waited at all*.
+
+## G43 — When choosing the breakpoint at which a row stops stacking
+
+- **Rule:** Pick the seam from **the width at which the wide layout actually
+  fits**, not from the width at which the narrow one starts to look roomy. Add
+  up the wide layout's fixed widths plus its gaps, add the container's padding
+  and border, and only switch above that. Then measure a viewport a few pixels
+  above the seam — that is the layout's worst case, not the smallest phone.
+- **Why:** flex-wrap only wraps items that cannot fit **at their hypothetical
+  main size**. A flexible column with `min-w-0` has a hypothetical size of 0, so
+  it never triggers a wrap — it silently shrinks to nothing instead, and the
+  fixed-width siblings keep every pixel. Switching to the wide layout too early
+  therefore does not produce a slightly-cramped row; it produces a control with
+  no content box at all. Nothing catches it: the class list reads correctly, the
+  lints are blind to geometry, and E2E floors pinned at one narrow and one wide
+  viewport straddle the bad band without ever landing in it.
+- **Evidence:** `3967c28` (2026-08-23, issue #33, found by `/test-drive`). The
+  intake review row switched to its single-line layout at `sm:` (640 px), but
+  that line needs Author 128 + ISBN 128 + select 192 + 24 px of gaps = **472 px**
+  of fixed width, and at a 640 px viewport the row's content box is ~558 px —
+  ~86 px for checkbox + title + badge. A `recognized` title measured **26 px,
+  narrower than its own padding, rendering zero characters** across 640–755 px,
+  against 13–19 characters on `main`. The seam moved to `md:` (768 px). The
+  design plan, the impl plan and a full cross-vendor plan review all specified
+  `sm:` and none of them did the arithmetic; the E2E suite pinned 390 px and
+  1280 px and passed throughout.
+- **Verify:** judgement, plus one cheap measurement. For any row with a
+  stacking seam, drive a width sweep and look for a *local minimum just above*
+  the breakpoint:
+
+```bash
+grep -rn "basis-full" app/templates/
+# every hit is a stacking row: check that its sm:/md:/lg: seam is wider than
+# the sum of its own fixed-width children, and that an E2E test measures a
+# viewport within ~16px above that seam
+```
+
+- **Status:** documented. Not a lint candidate — the sum depends on runtime
+  intrinsic widths (a `<select>`'s widest option, a badge's text). Related to
+  G41 (both are ways a responsive class list lies about the layout it produces)
+  and to G42 (both were found only by measuring rendered geometry).
 
 ## Graveyard
 

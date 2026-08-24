@@ -38,6 +38,14 @@ PINNED = {
     # Tailwind's extractor scans static/js/**, so it now emits .shrink and
     # .resize. Two dead rules, but app.css is precached, so the bump is real.
     "v7": "7da4b1f46b6d2137a3bc6428933023478ab4b206c92a0ea84d17ed499ab6feec",
+    # v8: app.css rebuild — the intake review row declares its mobile layout
+    # (issue #33), so basis-full / md:basis-auto / md:flex-1 / md:flex-none /
+    # md:w-32 are emitted for the first time. app.css is precached, so a
+    # browser holding the v7 copy would never see the fix. Re-pinned once
+    # within v8 when the row's seam moved sm -> md (the test drive found the
+    # title crushed to 26px across 640-755px); same branch, nothing shipped
+    # under the earlier digest, so no second bump (G19).
+    "v8": "7ebd4cad8194d37ee9f0d0325b5c16eaa56c72deeb644b56b5f53dbdb127026e",
 }
 
 

@@ -6,6 +6,46 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-08-23
+
+Photo Intake's review list is where you check what the vision model thought it
+saw before any of it reaches your library — and the title, the one thing you
+most need to read, was the narrowest control in the row. It was narrowest of
+all on the rows carrying the **recognized** badge: the badge that means *this
+one was identified from the cover, not read, so double-check it*. On a phone a
+34-character title showed nine characters. Underneath, the row's mobile layout
+had never been declared at all, so which controls shared a line depended on
+whether the optional badge happened to be there, and any change that helped one
+row shape quietly hurt the other. This release declares that layout and gives
+the title the room it needed.
+
+### Fixed
+
+- **Photo Intake review rows give the title room to be read.** Below 768px the
+  row is now three declared lines — checkbox, title and badge; author and ISBN;
+  the media type — identical for both row shapes, and from 768px up it stays
+  the single line it always was. A plain row's title goes from 87px to 287px on
+  a phone and from 161px to 225px on the desktop row; a `recognized` row's goes
+  from 88px to 152px on desktop and holds its 214px on a phone, where it can no
+  longer collapse because a neighbouring width changed. Tablet-portrait and
+  narrow desktop windows gain the most: at 680px a `recognized` title went from
+  19 readable characters to 34 — the whole title.
+
+- **`/intake` no longer throws on every page load.** Three template guards
+  dereferenced the import result before it existed. Alpine's CSP build
+  evaluates both sides of `&&` before applying the operator, so the guard
+  itself threw — three console errors per load, any one of which could have
+  masked a real one.
+
+### Changed
+
+- **Long author names now truncate on desktop, where they did not before.**
+  The author field narrows from 192px to 128px at 768px and up — the cost of
+  the space the title gained. The field is still fully editable and scrollable,
+  and the author is not what the `recognized` badge asks you to verify. Below
+  768px the field is flexible and lands near 150px, wider than the fixed width
+  it would otherwise have had.
+
 ## [0.16.1] - 2026-08-23
 
 Photo Intake uploaded your photo at full resolution, and a modern phone camera
@@ -1127,6 +1167,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.16.2]: https://github.com/dgahagan/shelf/releases/tag/v0.16.2
 [0.16.1]: https://github.com/dgahagan/shelf/releases/tag/v0.16.1
 [0.16.0]: https://github.com/dgahagan/shelf/releases/tag/v0.16.0
 [0.15.0]: https://github.com/dgahagan/shelf/releases/tag/v0.15.0

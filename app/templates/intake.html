@@ -158,21 +158,38 @@
                     {# :checked/:value/@change + handler methods, not x-model="book.…"
                        (inputs AND the select): the Alpine CSP build cannot evaluate
                        nested-path assignments #}
-                    <input type="checkbox" :checked="book.include" @change="toggleInclude(i)"
-                           class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent shrink-0">
-                    <input type="text" :value="book.title" @input="setBookTitle(i, $event.target.value)" placeholder="Title"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
-                    <span x-show="book.source === 'recognized'" x-cloak data-testid="intake-recognized"
-                          title="Identified from the cover, not read — double-check"
-                          class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">recognized</span>
+                    {# Below md the row is three declared lines: checkbox+title+badge, then
+                       author+isbn, then the media select. The wrapper keeps the badge next
+                       to the title it qualifies and the checkbox off a line of its own.
+                       The seam is `md` (768px), NOT `sm` (640px): the single line needs
+                       Author 128 + ISBN 128 + select 192 + 24 gaps = 472px of fixed width,
+                       so at a 640px viewport only ~86px is left for checkbox+title+badge
+                       and the wrapper — min-w-0, so it shrinks rather than wraps — crushed
+                       the title to 26px, rendering zero characters. Measured across
+                       640-755px on both builds; see the issue-33 QA record, Observation 1.
+                       No `md:basis-auto` on the wrapper: Tailwind emits .basis-* AFTER
+                       .flex-* inside a variant block, so it would override md:flex-1's
+                       flex-basis:0% back to auto, the wrapper would be packed at its
+                       ~446px max-content width, and the select would drop to a second
+                       line on desktop (GOTCHAS G41). The select below does need it: it
+                       has no md:flex-* to reset basis-full. #}
+                    <div class="basis-full md:flex-1 min-w-0 flex items-center gap-2">
+                        <input type="checkbox" :checked="book.include" @change="toggleInclude(i)"
+                               class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent shrink-0">
+                        <input type="text" :value="book.title" @input="setBookTitle(i, $event.target.value)" placeholder="Title"
+                               class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                        <span x-show="book.source === 'recognized'" x-cloak data-testid="intake-recognized"
+                              title="Identified from the cover, not read — double-check"
+                              class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">recognized</span>
+                    </div>
                     <input type="text" :value="book.authors" @input="setBookAuthors(i, $event.target.value)" placeholder="Author"
-                           class="w-48 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 md:flex-none md:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                     <input type="text" :value="book.isbn" @input="setBookIsbn(i, $event.target.value)" placeholder="ISBN"
                            inputmode="numeric" data-testid="intake-isbn"
-                           class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 md:flex-none md:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                     <select :value="book.media_type" @change="setBookMediaType(i, $event.target.value)"
                             aria-label="Media type" data-testid="intake-media-type"
-                            class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                            class="basis-full md:basis-auto bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                         {% for key, label in media_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
                     </select>
                 </div>
@@ -201,9 +218,9 @@
     <div x-show="result" x-cloak class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-3">Done</h2>
         <p class="text-sm text-shelf-muted mb-3">
-            Added <span class="text-shelf-success font-medium" x-text="result && result.added.length"></span>
-            <span x-show="result && result.skipped.length > 0">
-                &middot; skipped <span x-text="result && result.skipped.length"></span>
+            Added <span class="text-shelf-success font-medium" x-text="result ? result.added.length : ''"></span>
+            <span x-show="result ? result.skipped.length > 0 : false">
+                &middot; skipped <span x-text="result ? result.skipped.length : ''"></span>
             </span>
             &mdash; covers are fetched in the background.
         </p>
