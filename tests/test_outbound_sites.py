@@ -17,7 +17,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.routers import items as items_router
+from app.routers import items_common
 from app.services import covers, googlebooks, igdb, tmdb
 
 
@@ -167,12 +167,12 @@ class TestTmdb:
 
 class TestFetchPreviewCover:
     async def test_routes_without_retry_timeouts(self, tmp_path, monkeypatch, fake_fetch):
-        monkeypatch.setattr(items_router.covers, "COVERS_DIR", tmp_path)
+        monkeypatch.setattr(items_common.covers, "COVERS_DIR", tmp_path)
         content = b"\xff\xd8\xff" + b"\x00" * 2000
         fake_fetch.return_value = StubResponse(200, content=content)
         client = object()
 
-        result = await items_router._fetch_preview_cover("9780441172719", client)
+        result = await items_common._fetch_preview_cover("9780441172719", client)
 
         assert result == "covers/preview_9780441172719.jpg"
         call = fake_fetch.await_args

@@ -12,6 +12,7 @@ from app.auth import require_role
 from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting, get_all_settings
 from app.services import hardcover, covers
+from app.services.item_write import insert_item
 
 logger = logging.getLogger(__name__)
 
@@ -105,26 +106,24 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
     isbn10 = isbn13_to_isbn10(isbn) if isbn else None
 
     with get_db() as db:
-        cursor = db.execute(
-            """INSERT INTO items (title, authors, isbn, isbn10, media_type, publisher,
-               publish_year, page_count, description, series_name, series_position,
-               reading_status, source, owned, hardcover_book_id)
-               VALUES (?, ?, ?, ?, 'book', ?, ?, ?, ?, ?, ?, 'want_to_read', 'hardcover', 0, ?)""",
-            (
-                title,
-                data.get("authors"),
-                isbn,
-                isbn10,
-                data.get("publisher"),
-                data.get("year"),
-                data.get("pages"),
-                data.get("description"),
-                data.get("series_name"),
-                data.get("series_position"),
-                hc_book_id,
-            ),
+        item_id = insert_item(
+            db,
+            title=title,
+            authors=data.get("authors"),
+            isbn=isbn,
+            isbn10=isbn10,
+            media_type="book",
+            publisher=data.get("publisher"),
+            publish_year=data.get("year"),
+            page_count=data.get("pages"),
+            description=data.get("description"),
+            series_name=data.get("series_name"),
+            series_position=data.get("series_position"),
+            reading_status="want_to_read",
+            source="hardcover",
+            owned=0,
+            hardcover_book_id=hc_book_id,
         )
-        item_id = cursor.lastrowid
 
     # Download cover
     if cover_url:
@@ -506,31 +505,26 @@ def _import_single_book_metadata(book: dict, overwrite: bool, title_index: dict)
 
         is_owned = 0 if book.get("reading_status") == "want_to_read" else 1
 
-        cursor = db.execute(
-            """INSERT INTO items (title, subtitle, authors, isbn, isbn10, media_type,
-               publisher, publish_year, page_count, description, series_name,
-               series_position, reading_status, source, owned,
-               hardcover_book_id, hardcover_edition_id, hardcover_user_book_id)
-               VALUES (?, ?, ?, ?, ?, 'book', ?, ?, ?, ?, ?, ?, ?, 'hardcover', ?, ?, ?, ?)""",
-            (
-                book["title"],
-                book.get("subtitle"),
-                book.get("authors"),
-                isbn,
-                isbn10,
-                book.get("publisher"),
-                book.get("publish_year"),
-                book.get("page_count"),
-                book.get("description"),
-                book.get("series_name"),
-                book.get("series_position"),
-                book.get("reading_status"),
-                is_owned,
-                book.get("hardcover_book_id"),
-                book.get("hardcover_edition_id"),
-                book.get("hardcover_user_book_id"),
-            ),
+        item_id = insert_item(
+            db,
+            title=book["title"],
+            subtitle=book.get("subtitle"),
+            authors=book.get("authors"),
+            isbn=isbn,
+            isbn10=isbn10,
+            media_type="book",
+            publisher=book.get("publisher"),
+            publish_year=book.get("publish_year"),
+            page_count=book.get("page_count"),
+            description=book.get("description"),
+            series_name=book.get("series_name"),
+            series_position=book.get("series_position"),
+            reading_status=book.get("reading_status"),
+            source="hardcover",
+            owned=is_owned,
+            hardcover_book_id=book.get("hardcover_book_id"),
+            hardcover_edition_id=book.get("hardcover_edition_id"),
+            hardcover_user_book_id=book.get("hardcover_user_book_id"),
         )
-        item_id = cursor.lastrowid
 
     return ("added", _cover_job(item_id, book))

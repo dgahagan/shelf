@@ -4,6 +4,7 @@ Covers flows that unit tests cannot see because the bugs lived in template JS:
 - Raw fetch() calls previously missing the X-CSRF-Token header (403 in prod)
 - Stored XSS via borrower name in the Loaned badge (Alpine x-text JS context)
 """
+import re
 import sqlite3
 
 import pytest
@@ -46,7 +47,19 @@ def test_bulk_delete_succeeds(live_server, authed_page):
     insert_item(live_server["data_dir"], title="Bulk Target", isbn="9780000000201")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
-    authed_page.on("dialog", lambda d: d.accept())
+
+    # Record the message and assert on it, never a bare accepting handler
+    # (G28): the confirm() lives in an Alpine method, and if that handler were
+    # dead — the exact shape `script-src 'self'` produces for an inline
+    # onclick — the delete would still fire, the response would still be 200,
+    # and an accept-and-assume test would pass over a missing confirmation.
+    messages = []
+
+    def _accept(dialog):
+        messages.append(dialog.message)
+        dialog.accept()
+
+    authed_page.once("dialog", _accept)
     authed_page.get_by_text("Select", exact=True).click()
     authed_page.get_by_text("Select All", exact=True).click()
     with authed_page.expect_response(
@@ -54,6 +67,13 @@ def test_bulk_delete_succeeds(live_server, authed_page):
     ) as resp_info:
         authed_page.click("button:has-text('Delete Selected')")
     assert resp_info.value.status == 200, f"bulk delete returned {resp_info.value.status}"
+
+    # The count is whatever Select All caught in this session's shared DB, so
+    # pin the shape and a non-zero count rather than a brittle exact number.
+    assert len(messages) == 1, f"expected exactly one confirm(), got {messages}"
+    m = re.fullmatch(r"Delete (\d+) items\?", messages[0])
+    assert m, f"unexpected confirm message: {messages[0]!r}"
+    assert int(m.group(1)) >= 1, f"confirm named {m.group(1)} items"
 
 
 def test_loaned_badge_borrower_name_is_not_executed(live_server, authed_page):

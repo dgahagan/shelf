@@ -1,5 +1,5 @@
 """Tests for the PWA store mode (routers/store.py)."""
-import hashlib
+import importlib.util
 import re
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
@@ -10,43 +10,14 @@ from tests.conftest import _insert_item
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SW_PATH = REPO_ROOT / "static" / "sw.js"
-STATIC_ROOT = REPO_ROOT / "static"
 
-# Pinned sha256 digest of the precached files' contents, keyed by SW_VERSION.
-# Recompute and update this after bumping SW_VERSION in static/sw.js (e.g.
-# following a `make css` rebuild of app.css).
-PINNED = {
-    # v2 shipped across more than one release with *different* app.css
-    # contents (this digest is only the last of them), so browsers that
-    # precached under v2 kept serving whichever app.css they saw first --
-    # cache-first, so neither Cache-Control nor a hard refresh dislodged it.
-    # v3 renames the cache, which makes activate() purge the stale one.
-    "v2": "b90ab85864792d4f2089bebd97af476e3e660990fc472f91af3604d267132957",
-    "v3": "b90ab85864792d4f2089bebd97af476e3e660990fc472f91af3604d267132957",
-    # v4 adds scanner-engine.js and the vendored zxing-browser blob to
-    # PRECACHE -- the store PWA now uses the shared scanner engine.
-    "v4": "9ce800c0bb4c3c1b6352582278a90be717ce651e02f7fb94d2c558ad3a139a6f",
-    # v5: app.css rebuild — the intake "working" spinner panels emit new
-    # utilities (border-shelf-accent/40, opacity-25/75 at top level).
-    "v5": "1d9ebffdde8b3970bd28ea41ae248efde0e41ccae5f6bbe95bdd7b44a318ec29",
-    # v6: the store.js provenance comment was repointed from docs/ to
-    # .devdocs/ (workflow-migration Phase 3). Comment-only — no behaviour
-    # change — but store.js is precached, so its bytes are pinned here.
-    "v6": "7ea788c2ffc51038262a04a0f440f1afc932ca02235349308fe2b32b792f120f",
-    # v7: app.css rebuild — intake.js's downscale helper (issue #32) uses the
-    # bare words `shrink` and `resize` in a variable name and its comments, and
-    # Tailwind's extractor scans static/js/**, so it now emits .shrink and
-    # .resize. Two dead rules, but app.css is precached, so the bump is real.
-    "v7": "7da4b1f46b6d2137a3bc6428933023478ab4b206c92a0ea84d17ed499ab6feec",
-    # v8: app.css rebuild — the intake review row declares its mobile layout
-    # (issue #33), so basis-full / md:basis-auto / md:flex-1 / md:flex-none /
-    # md:w-32 are emitted for the first time. app.css is precached, so a
-    # browser holding the v7 copy would never see the fix. Re-pinned once
-    # within v8 when the row's seam moved sm -> md (the test drive found the
-    # title crushed to 26px across 640-755px); same branch, nothing shipped
-    # under the earlier digest, so no second bump (G19).
-    "v8": "7ebd4cad8194d37ee9f0d0325b5c16eaa56c72deeb644b56b5f53dbdb127026e",
-}
+# The digest logic lives in the script that stamps SW_VERSION, so the test and
+# the generator cannot disagree about what the version should be. Loaded the
+# same way tests/test_alpine_csp_lint.py loads its lint.
+_SCRIPT = REPO_ROOT / "scripts" / "stamp_sw_version.py"
+_spec = importlib.util.spec_from_file_location("stamp_sw_version", _SCRIPT)
+stamp_sw_version = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(stamp_sw_version)
 
 
 class TestStorePage:
@@ -74,78 +45,73 @@ class TestStorePage:
 
 
 class TestSwPrecacheDigest:
-    def _parse_sw(self):
-        src = SW_PATH.read_text()
+    """SW_VERSION is derived, not typed — these are the gate that keeps it so.
 
-        version_match = re.search(r"SW_VERSION\s*=\s*['\"]([^'\"]+)['\"]", src)
-        assert version_match, (
-            f"Could not find SW_VERSION in {SW_PATH} — the parsing regex in "
-            "TestSwPrecacheDigest no longer matches the source. Update the "
-            "regex (or this tripwire is silently disarmed)."
-        )
-        version = version_match.group(1)
-
-        precache_match = re.search(r"PRECACHE\s*=\s*\[(.*?)\]", src, re.S)
-        assert precache_match, (
-            f"Could not find a PRECACHE = [...] list in {SW_PATH} — the "
-            "parsing regex in TestSwPrecacheDigest no longer matches the "
-            "source. Update the regex (or this tripwire is silently "
-            "disarmed)."
-        )
-        # Capture every quoted entry (not just /static/ ones) so a future
-        # out-of-tree entry fails the startswith assertion instead of being
-        # silently dropped from the digest.
-        entries = re.findall(r"['\"]([^'\"]+)['\"]", precache_match.group(1))
-        assert entries, (
-            f"PRECACHE in {SW_PATH} parsed as empty — the parsing regex in "
-            "TestSwPrecacheDigest no longer matches the source. Update the "
-            "regex (or this tripwire is silently disarmed)."
-        )
-
-        return version, entries
+    Before Lever 2 this class asserted that a human had performed a three-step
+    ritual (bump SW_VERSION, recompute the digest, re-pin it in a dict). It now
+    asserts the generator ran, which `make css` and `make checks-fast` both do.
+    """
 
     def test_precache_entries_resolve_to_static_files(self):
-        _version, entries = self._parse_sw()
+        _version, entries = stamp_sw_version.parse_sw()
 
         for url_path in entries:
-            assert url_path.startswith("/static/"), (
-                f"PRECACHE entry {url_path!r} in {SW_PATH} does not start "
-                "with /static/ — service worker precaching only covers "
-                "files under static/."
-            )
-            assert ".." not in Path(url_path).parts, (
-                f"PRECACHE entry {url_path!r} in {SW_PATH} contains a '..' "
-                "path component — refusing to resolve it to disk."
-            )
-            disk_path = STATIC_ROOT / url_path.removeprefix("/static/")
-            assert disk_path.is_file(), (
-                f"PRECACHE entry {url_path!r} in {SW_PATH} does not map to "
-                f"an existing file at {disk_path}."
-            )
+            # Raises SwParseError with the offending entry if it escapes
+            # static/, contains '..', or does not exist on disk.
+            stamp_sw_version.resolve_entry(url_path)
 
-    def test_precache_digest_matches_sw_version(self):
-        version, entries = self._parse_sw()
+    def test_sw_version_matches_precache_digest(self):
+        changed, current, expected = stamp_sw_version.stamp(check_only=True)
 
-        h = hashlib.sha256()
-        for url_path in sorted(entries):
-            disk_path = STATIC_ROOT / url_path.removeprefix("/static/")
-            h.update(url_path.encode("utf-8"))
-            h.update(disk_path.read_bytes())
-        digest = h.hexdigest()
-
-        assert version in PINNED, (
-            f"SW_VERSION {version!r} in {SW_PATH} has no pinned digest in "
-            "tests/test_store.py's PINNED dict. Record the new digest "
-            f"there: PINNED[{version!r}] = {digest!r}"
+        assert not changed, (
+            f"SW_VERSION in {SW_PATH} is {current!r} but the precache digest "
+            f"says {expected!r}. A precached file's contents changed (a "
+            "`make css` rebuild of static/css/app.css is the usual cause), or "
+            "SW_VERSION was hand-edited. Fix: run `make css`, then commit "
+            "static/sw.js."
         )
-        assert digest == PINNED[version], (
-            "A precached file's contents changed without bumping "
-            f"SW_VERSION (currently {version!r} in {SW_PATH}). This "
-            "includes `make css` rebuilds of static/css/app.css — that is "
-            "expected to trip this check. Fix: bump SW_VERSION in "
-            "static/sw.js, then re-pin the digest in this test's PINNED "
-            f"dict to {digest!r}."
+
+    def test_stamp_is_idempotent(self, tmp_path, monkeypatch):
+        """Stamping a stale sw.js twice converges — sw.js is not self-precached.
+
+        If sw.js were ever added to PRECACHE, stamping would change the bytes
+        the digest is computed from and never settle. This is the tripwire for
+        that; it fails the moment someone precaches the worker itself.
+        """
+        sw_copy = tmp_path / "sw.js"
+        sw_copy.write_text(SW_PATH.read_text().replace(
+            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
+            "SW_VERSION = 'vSTALE'",
+        ))
+        monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
+
+        first_changed, _current, first_expected = stamp_sw_version.stamp()
+        assert first_changed, "a hand-edited SW_VERSION must be detected as stale"
+
+        second_changed, second_current, _second_expected = stamp_sw_version.stamp()
+        assert not second_changed, (
+            "stamping did not converge — sw.js is probably listed in its own "
+            "PRECACHE, which makes SW_VERSION depend on itself."
         )
+        assert second_current == first_expected
+
+    def test_hand_edited_version_fails_the_gate(self, tmp_path, monkeypatch):
+        sw_copy = tmp_path / "sw.js"
+        sw_copy.write_text(SW_PATH.read_text().replace(
+            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
+            "SW_VERSION = 'v9'",
+        ))
+        monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
+
+        changed, current, expected = stamp_sw_version.stamp(check_only=True)
+        assert changed and current == "v9" and expected != "v9"
+        # --check must not rewrite the file it is checking.
+        assert "SW_VERSION = 'v9'" in sw_copy.read_text()
+
+    def test_parse_failure_is_loud(self, monkeypatch):
+        """A regex that stops matching must raise, not silently disarm."""
+        with pytest.raises(stamp_sw_version.SwParseError):
+            stamp_sw_version.parse_sw("// no SW_VERSION and no PRECACHE here")
 
 
 class TestStoreData:
@@ -193,7 +159,7 @@ class TestStoreQueue:
         return {"title": title, "authors": "An Author"}
 
     def test_wishlisted_with_metadata(self, admin_client, db):
-        with patch("app.routers.items._lookup_metadata",
+        with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(return_value=(self._meta(), "openlibrary", {}))), \
              patch("app.routers.store.covers.download_cover", new=AsyncMock(return_value=None)):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["9780441013593"]})
@@ -205,7 +171,7 @@ class TestStoreQueue:
         assert item["owned"] == 0
 
     def test_bare_add_when_lookup_fails(self, admin_client, db):
-        with patch("app.routers.items._lookup_metadata",
+        with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(side_effect=Exception("network down"))):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["9780553283686"]})
         results = resp.json()["results"]
@@ -217,7 +183,7 @@ class TestStoreQueue:
         assert "9780553283686" in item["title"]
 
     def test_bare_add_when_nothing_found(self, admin_client, db):
-        with patch("app.routers.items._lookup_metadata",
+        with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(return_value=(None, None, {}))):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
         assert resp.json()["results"][0]["status"] == "added_bare"
@@ -231,7 +197,7 @@ class TestStoreQueue:
         assert result["title"] == "Already Here"
 
     def test_isbn10_input_normalized(self, admin_client, db):
-        with patch("app.routers.items._lookup_metadata",
+        with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(return_value=(None, None, {}))):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["0441013597"]})
         assert resp.json()["results"][0]["isbn"] == "9780441013593"

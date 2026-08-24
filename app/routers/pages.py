@@ -9,7 +9,7 @@ from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
 from app.currency import get_currency
 from app.database import get_db, get_setting, get_game_platforms, get_reading_history
-from app.routers.items import SORT_OPTIONS
+from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
 
 router = APIRouter()

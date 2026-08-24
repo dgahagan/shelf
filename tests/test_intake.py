@@ -932,15 +932,15 @@ HC_IDS = {"hardcover_book_id": 42, "hardcover_edition_id": 99}
 
 
 def _patch_lookup(monkeypatch, result=None, raises=None, record=None):
-    """Patch items._lookup_metadata — confirm's lazy import resolves it there."""
+    """Patch items_common._lookup_metadata — confirm's lazy import resolves it there."""
     async def fake(isbn13, hc_token, client):
         if record is not None:
             record.append({"isbn13": isbn13, "hc_token": hc_token})
         if raises:
             raise raises
         return result
-    import app.routers.items as items_router
-    monkeypatch.setattr(items_router, "_lookup_metadata", fake)
+    from app.routers import items_common
+    monkeypatch.setattr(items_common, "_lookup_metadata", fake)
     return fake
 
 
@@ -1052,7 +1052,7 @@ class TestConfirmWithIsbn:
         book's cover in the background, after the user was told "added".
         """
         from unittest.mock import AsyncMock
-        import app.routers.items as items_router
+        from app.routers import items_common
 
         _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
@@ -1062,10 +1062,10 @@ class TestConfirmWithIsbn:
         item_id = db.execute("SELECT id FROM items WHERE title = 'Dune'").fetchone()["id"]
 
         download = AsyncMock(return_value=None)
-        monkeypatch.setattr(items_router.covers, "download_cover", download)
-        monkeypatch.setattr(items_router, "_search_isbn_for_item",
+        monkeypatch.setattr(items_common.covers, "download_cover", download)
+        monkeypatch.setattr(items_common, "_search_isbn_for_item",
                             AsyncMock(return_value=(None, None)))
-        await items_router.resolve_missing_cover(item_id, None)
+        await items_common.resolve_missing_cover(item_id, None)
 
         for call in download.await_args_list:
             assert ISBN13 not in [a for a in call.args if isinstance(a, str)]
@@ -1105,15 +1105,15 @@ class TestConfirmWithIsbn:
     def test_both_insert_paths_reach_cover_handoff(self, admin_client, db, monkeypatch):
         """Strong-path ids must reach the hand-off too — _save_item only inserts."""
         from unittest.mock import AsyncMock
-        import app.routers.items as items_router
+        from app.routers import items_common
 
         monkeypatch.delenv("SHELF_DISABLE_COVER_ENRICH", raising=False)
         enrich = AsyncMock(return_value=None)
-        monkeypatch.setattr(items_router, "_enrich_import_covers", enrich)
+        monkeypatch.setattr(items_common, "_enrich_import_covers", enrich)
 
         async def fake(isbn13, hc_token, client):
             return (FULL_META, "openlibrary", {}) if isbn13 == ISBN13 else (None, "manual", {})
-        monkeypatch.setattr(items_router, "_lookup_metadata", fake)
+        monkeypatch.setattr(items_common, "_lookup_metadata", fake)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
 
         admin_client.post("/api/intake/confirm", json={
@@ -1141,7 +1141,7 @@ class TestConfirmWithIsbn:
     @respx.mock
     def test_integrity_error_is_classified_on_strong_path(self, admin_client, db, monkeypatch):
         """The cascade await is the window a rival writer can commit in."""
-        import app.routers.items as items_router
+        from app.routers import items_common
         from tests.conftest import _insert_item as insert
 
         async def fake(isbn13, hc_token, client):
@@ -1149,7 +1149,7 @@ class TestConfirmWithIsbn:
             with get_db() as rival:
                 insert(rival, title="Dune (rival)", isbn=ISBN13, media_type="book")
             return FULL_META, "openlibrary", {}
-        monkeypatch.setattr(items_router, "_lookup_metadata", fake)
+        monkeypatch.setattr(items_common, "_lookup_metadata", fake)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
 
         resp = admin_client.post("/api/intake/confirm", json={

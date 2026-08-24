@@ -16,7 +16,8 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-all \
-        check-deps check-licenses check-secrets checks checks-fast \
+        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests \
+        checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
         install-playwright install-hooks \
@@ -43,8 +44,12 @@ setup:
 # static/js, or tailwind.config.js. Resolves tailwind from node_modules
 # (version pinned in package.json) rather than re-fetching it over the network
 # on every invocation — run `npm install` / `make setup` first.
+# app.css is precached by the service worker, so a rebuild must rename its
+# cache or browsers keep serving the stale copy. Stamping SW_VERSION from the
+# precache digest here is what makes that automatic (scripts/stamp_sw_version.py).
 css:
 	npx tailwindcss -c tailwind.config.js -i static/css/input.css -o static/css/app.css --minify
+	python scripts/stamp_sw_version.py
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -81,10 +86,23 @@ check-licenses:
 	@mkdir -p $(DOCS)
 	pip-licenses --format=markdown --with-urls --order=license 2>&1 | tee $(DOCS)/licenses-$(DATE).md
 
+# A real gate, not a print statement: `git grep` exits 0 when it *finds*
+# something, so the previous `git grep ... || echo` recipe passed whether or not
+# it matched -- and it did match twice. Both were false positives, which is why
+# the value pattern is narrow: a plausible literal secret has no spaces, braces
+# or parens, so `data-token="{{ sl.token }}"` (a Jinja placeholder) and
+# `indexOf('csrf_token=') === 0` (a quote boundary) no longer trip it, while an
+# actual pasted key still does. Case-insensitive: the original recipe was
+# not, so a literal in an API_TOKEN or SECRET constant walked straight past.
 check-secrets:
-	@echo "Scanning tracked files for potential secrets..."
-	@git grep -nE '(password|secret|token|api_key)\s*=\s*["'"'"'][^"'"'"']{8,}' \
-		-- ':!*.md' ':!tests/' ':!requirements*.txt' || echo "No hardcoded secrets found."
+	@echo "Scanning tracked files for hardcoded secrets..."
+	@if git grep -niE '(password|secret|token|api_key)\s*=\s*["'"'"'][A-Za-z0-9_./+-]{8,}["'"'"']' \
+		-- ':!*.md' ':!tests/' ':!requirements*.txt'; then \
+		echo "ERROR: hardcoded secret literal(s) above. Move them to .env or the encrypted settings table."; \
+		exit 1; \
+	else \
+		echo "No hardcoded secrets found."; \
+	fi
 
 check-csrf:
 	python scripts/check_csrf_fetch.py
@@ -92,8 +110,14 @@ check-csrf:
 check-alpine:
 	python scripts/check_alpine_csp.py
 
+check-sw-version:
+	python scripts/stamp_sw_version.py --check
+
+check-tests:
+	python scripts/check_test_conventions.py
+
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-alpine
+checks-fast: check-secrets check-csrf check-alpine check-sw-version check-tests
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.

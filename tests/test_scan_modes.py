@@ -256,10 +256,10 @@ class TestManualAddForm:
 
     def _scan_unknown(self, client):
         with patch(
-            "app.routers.items._lookup_metadata",
+            "app.routers.items_common._lookup_metadata",
             new=AsyncMock(return_value=(None, "", {})),
         ), patch(
-            "app.routers.items._fetch_preview_cover",
+            "app.routers.items_common._fetch_preview_cover",
             new=AsyncMock(return_value=None),
         ):
             return client.post("/api/scan", data={
@@ -326,7 +326,7 @@ class TestScanCoverQueue:
 
     def _scan(self, client, isbn, metadata, source="openlibrary", hc_ids=None, mode="add"):
         with patch(
-            "app.routers.items._lookup_metadata",
+            "app.routers.items_common._lookup_metadata",
             AsyncMock(return_value=(metadata, source, hc_ids or {})),
         ), patch(
             "app.services.covers.download_cover", AsyncMock(return_value="covers/x.jpg")

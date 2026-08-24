@@ -6,6 +6,90 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-08-24
+
+Some bugs are one mistake. Others are the same mistake, again, because the thing
+you had to remember was written down in four places and you only changed three.
+Shelf had three of those: the Browse filter set, the shape of an item as it gets
+saved, and the version stamp on the offline cache. Between them they account for
+most of the bugs reported since 0.7 — a filter that quietly stops narrowing, a
+new field that saves from one screen but not another, a stylesheet the browser
+refuses to let go of.
+
+This release makes each of those a single place, with a check that fails if a
+second copy appears. Most of it is invisible. The visible part is seven layout
+fixes, a filter you could not clear, and a CSV import that was quietly
+duplicating part of your library every time you used it.
+
+### Fixed
+
+- **The Settings page fits on a phone.** At a 390px-wide screen it was rendering
+  519px wide on General and 640px on Data, so every tab scrolled sideways. Seven
+  layout defects are fixed in total — the reported one plus six nobody had
+  reported yet, across Settings, Browse, the item editor, Store Mode and the tag
+  editor. Browser tests now measure every page at five widths (320, 390, 430,
+  640 and 768) and fail on anything that overflows or squeezes a text column
+  below 80 pixels, so this class of bug cannot ship again unnoticed.
+  ([#35](https://github.com/dgahagan/shelf/issues/35))
+
+- **Importing a CSV no longer duplicates items that have no ISBN.** The
+  duplicate check only ran for rows *with* an ISBN, so every video game, DVD and
+  ISBN-less book was re-added on every import — exporting your library and
+  importing it straight back added a second copy of every one of them. Rows
+  without an ISBN are now matched on title, author and media type, ignoring case
+  and surrounding spaces.
+
+  It deliberately only matches other rows that also lack an ISBN: a CSV row with
+  no ISBN will **not** be treated as a duplicate of an edition you own that does
+  have one, because those are genuinely different copies and silently merging
+  them would lose one.
+
+- **Filtering Browse by language alone now offers a way to clear it.** The
+  "clear filters" control checked eight of the nine filters, and language was
+  the one it missed — so a language-only filter left you with no way out but
+  editing the URL.
+
+- **Clearing filters no longer resets your grid/list choice.** Switching back
+  to your preferred view after every clear was not a preference change you asked
+  for.
+
+### Changed
+
+- **Browsers pick up a new stylesheet without being told twice.** Store Mode
+  caches the app shell for offline use, keyed by a version stamp that a human
+  had to remember to bump. Forgetting meant returning browsers kept serving an
+  old stylesheet indefinitely — a hard refresh would not shift it. The stamp is
+  now derived from the cached files themselves, so changing any of them changes
+  it automatically.
+
+  **On first launch after upgrading, Store Mode will re-download its offline
+  files once.** That is the fix working; it settles immediately after.
+
+- **The insurance valuation report and CSV export are unchanged**, and no
+  database migration ships with this release. Existing data is untouched.
+
+### Added
+
+- **A responsive-layout check, a service-worker version check, and test-suite
+  checks** now run on every change, alongside the existing security, CSRF and
+  Alpine checks. Continuous integration runs the full browser suite too, which
+  it previously skipped.
+
+### Internal
+
+Not user-visible, but it is what the release is mostly made of:
+
+- The Browse filter set is declared once and drives the search query, every
+  dropdown's cross-filter counts, the page templates and the browser code from
+  that one declaration. The initial page load still carries its own copy —
+  tracked in [#37](https://github.com/dgahagan/shelf/issues/37).
+- Every path that creates an item — scanning, manual entry, CSV import, photo
+  intake, Hardcover and Audiobookshelf sync, the offline queue, archive
+  restore — now goes through one function that reads the item's shape from the
+  database rather than carrying its own copy of it.
+- The largest source file was split from 2,481 lines into four by feature area,
+  and the Settings page from one 1,517-line template into one per tab.
+
 ## [0.16.3] - 2026-08-24
 
 Nothing on screen was broken, which is most of why this was worth fixing. Every
@@ -1194,6 +1278,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.0]: https://github.com/dgahagan/shelf/releases/tag/v0.17.0
 [0.16.3]: https://github.com/dgahagan/shelf/releases/tag/v0.16.3
 [0.16.2]: https://github.com/dgahagan/shelf/releases/tag/v0.16.2
 [0.16.1]: https://github.com/dgahagan/shelf/releases/tag/v0.16.1

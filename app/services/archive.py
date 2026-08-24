@@ -28,6 +28,7 @@ from pathlib import Path
 
 from app import config
 from app.services.covers import MAX_COVER_SIZE, MIN_COVER_SIZE, _looks_like_image
+from app.services.item_write import insert_item
 
 logger = logging.getLogger(__name__)
 
@@ -1092,22 +1093,15 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                 if not _present(updated_at):
                     updated_at = created_at
 
-                cols = list(_ITEM_COLUMNS) + ["location_id"]
-                values = []
-                for col in _ITEM_COLUMNS:
-                    if col == "created_at":
-                        values.append(created_at)
-                    elif col == "updated_at":
-                        values.append(updated_at)
-                    else:
-                        values.append(item_norm.get(col))
-                values.append(loc_id)
-                placeholders = ", ".join("?" for _ in cols)
-                cursor = db.execute(
-                    f"INSERT INTO items ({', '.join(cols)}) VALUES ({placeholders})",
-                    values,
-                )
-                real_id = cursor.lastrowid
+                fields = {col: item_norm.get(col) for col in _ITEM_COLUMNS}
+                fields["created_at"] = created_at
+                fields["updated_at"] = updated_at
+                fields["location_id"] = loc_id
+                # lastrowid is read inside the `with get_db()` block, on the
+                # connection that did the insert (G16) — insert_item() keeps
+                # that property, which a helper taking its own connection
+                # would not.
+                real_id = insert_item(db, fields)
                 if archive_id is not None:
                     id_map[int(archive_id)] = real_id
 

@@ -20,10 +20,19 @@ into subagent prompts).
   `linted: make check-x` | `retired`).
 - An entry that cannot state a Verify line is an opinion, not a gotcha —
   sharpen it or don't add it.
-- An entry that gains a lint tripwire shrinks to one line — the lint is now
-  the memory. An entry whose trap no longer exists gets retired, not deleted.
-- Soft cap ~40 active entries: past that, prune, promote to lints, or split
-  by domain.
+- An entry that gains a lint tripwire shrinks to the rule plus the gate — the
+  lint is now the memory. An entry whose trap no longer exists gets retired,
+  not deleted. An entry whose trap is real but whose lint would be noisy says
+  so explicitly (see G39); "Lint candidate" as a standing TODO is not a state
+  an entry may sit in.
+- Two entries that fire on the *same trigger* are one entry. The file is
+  trigger-keyed: splitting one decision across two ids means a reader who hits
+  the trigger sees half the answer (G41 → G43).
+- A fact that belongs to a procedure lives **in that procedure**, not in a
+  parallel copy here. A copy drifts, and the drift is invisible until the two
+  contradict each other (G20 → `../CLAUDE.md` §Releasing Shelf).
+- Soft cap ~40 active entries: past that, prune, promote to lints, merge by
+  trigger, or split by domain.
 - This file is **committed** (unlike `.devdocs/`): these are codebase facts that
   help any contributor, and the lint-graduation path needs them in history.
   No personal info, ever (repo is subtree-published).
@@ -32,63 +41,21 @@ into subagent prompts).
 
 ## G1 — When adding columns to a table defined in MIGRATION_TABLES
 
-- **Rule:** An append-only `ALTER TABLE` migration is necessary but not
-  sufficient. `MIGRATION_TABLES` `CREATE TABLE` statements execute *after*
-  the MIGRATIONS loop, so a fresh DB never sees the ALTERs — bake the new
-  columns into the table's `CREATE TABLE` as well.
-- **Why:** Legacy DBs upgrade via the ALTER; fresh DBs bootstrap via the
-  CREATE. Both paths must produce the same schema. (Tables in `SCHEMA`
-  behave differently — `items` gets its columns via ALTERs on fresh DBs.)
-- **Evidence:** `86b5ddd` (2026-08-18, migrations 16–19 on `series_meta`);
-  precedent `users.token_version`, migration 13.
-- **Verify:** a fresh bootstrap must expose every ALTER-migration column.
-  `MISSING` = the trap has been sprung — fix the CREATE. The entry itself is
-  stale only if `db.executescript(MIGRATION_TABLES)` no longer runs *after*
-  the MIGRATIONS loop in `_run_migrations`.
-
-```bash
-DATA_DIR=$(mktemp -d) python - <<'PY'
-import re
-from app.database import MIGRATIONS, get_db, init_db
-init_db()
-with get_db() as db:
-    missing = []
-    for _v, _desc, sql in MIGRATIONS:
-        m = re.match(r"ALTER TABLE (\w+) ADD COLUMN (\w+)", sql)
-        if m and m[2] not in {r[1] for r in db.execute(f"PRAGMA table_info({m[1]})")}:
-            missing.append(f"{m[1]}.{m[2]}")
-print(("MISSING ON FRESH DB:", missing) if missing else "OK")
-PY
-```
-
-- **Status:** documented. Lint candidate: diff columns reachable via
-  MIGRATIONS vs. columns in MIGRATION_TABLES CREATEs on a fresh DB.
+- **Rule:** Add the column in **both** places — the append-only `ALTER TABLE`
+  migration *and* the table's `CREATE TABLE`. `MIGRATION_TABLES` CREATEs run
+  after the MIGRATIONS loop, so a fresh DB never sees the ALTERs and an
+  upgraded one never sees a CREATE-only column.
+- **Status:** linted — `tests/test_schema_parity.py` bootstraps a fresh
+  database and fails on any column reachable only through MIGRATIONS.
 
 ## G2 — When an Alpine component method continues after an await/fetch
 
-- **Rule:** Never rely on `$el` or `$root` inside an async continuation.
-  They are per-evaluation magics resolving to the *clicked element* at call
-  time and are not stable across an async boundary. Capture the component
-  root in a closure variable in `init()` and use that.
-- **Why:** Caused two silent no-ops (`applyTemplate()`, `setFilter()`) and a
-  latent third (`seriesCard.check()`) — code ran, DOM updates landed on the
-  wrong element, no error thrown. Only e2e caught it.
-- **Evidence:** `c61be56` (2026-08-18, found by T10 e2e; fixed in the T6/T9
-  components).
-- **Verify:** the vendored CSP build must still register `$el`/`$root` as
-  magics (resolved per evaluation by construction — zero matches means the
-  build changed and this entry needs a re-check), and no component may use
-  them after an `await` (any awk hit = live violation):
-
-```bash
-grep -c '("el",' static/vendor/alpinejs-csp-*.min.js   # expect >= 1
-awk 'FNR==1{w=0} /await /{w=FNR} w && FNR>w && FNR<=w+10 &&
-     /\$(el|root)\b/{print FILENAME":"FNR": "$0; f=1} END{exit f}' static/js/*.js
-# expect no output, exit 0
-```
-
-- **Status:** documented. Lint candidate: grep for `$root`/`$el` after
-  `await` inside `Alpine.data` methods.
+- **Rule:** Never rely on `$el` or `$root` inside an async continuation — they
+  are bound at call time, and after the await the component may have
+  re-rendered, leaving the node stale or detached. Capture what you need
+  before the await.
+- **Status:** linted — `make check-alpine` flags `$el`/`$root` used after an
+  `await` in `static/js/`.
 
 ## G3 — When code inside a migration (or any write transaction) logs
 
@@ -128,27 +95,12 @@ PY
 
 ## G4 — When adding an Alpine component to a template
 
-- **Rule:** The CSP build has no global fallback: every name used in
-  `x-data` (bare or called) must be registered via
-  `Alpine.data('name', fn)` inside an `alpine:init` listener in a
-  `static/js/` file, or the component silently never initializes.
-- **Why:** The standard build falls back to `window`; the CSP build resolves
-  only registered components. Found live during the CSP migration
-  (setup.html), refound whenever a page ships JS without registration.
-- **Evidence:** `907e732` (2026-07-05, CSP-build migration; the old
-  `.devdocs/archive/completed/ALPINE_CSP.md` "gotchas discovered live" list, item 1).
-- **Verify:** every `x-data` name in templates resolves to a registration
-  (any `UNREGISTERED` line = trap sprung):
-
-```bash
-grep -rhoE 'x-data="[A-Za-z_$][A-Za-z0-9_$]*[("]' app/templates/ \
-  | sed 's/x-data="//;s/[("]$//' | sort -u | while read fn; do
-    grep -rq "Alpine.data(['\"]$fn['\"]" static/js/ || echo "UNREGISTERED $fn"
-  done
-```
-
-- **Status:** documented. Lint candidate: fold the Verify loop into
-  `scripts/check_alpine_csp.py`.
+- **Rule:** Every `x-data="name"` needs a matching `Alpine.data('name', …)`
+  registration. The CSP build has no global fallback, so an unregistered name
+  is not an error — the component simply never initialises and the panel sits
+  inert.
+- **Status:** linted — `make check-alpine` resolves every `x-data` name
+  against the registrations under `static/js/`.
 
 ## G5 — When Alpine state is dereferenced in a template guard expression
 
@@ -190,12 +142,26 @@ grep -rhoE 'x-data="[A-Za-z_$][A-Za-z0-9_$]*[("]' app/templates/ \
   `afterSettle`; navigating right after a filter change cancelled the timer,
   so filter-restore no-opped and made its e2e test flaky. `afterSwap` fires
   synchronously on the same elements.
+- **And htmx does not re-process what it swaps in via `hx-swap-oob`.** An
+  OOB-swapped control's `hx-trigger` listeners die with the node they
+  replaced, so the *second* sequential change to a swapped dropdown silently
+  does nothing — the first works, which is why this shipped in every release
+  up to 0.10.1 before a compose e2e caught it (`7d543cd`, 2026-08-20).
+  `browse.js`'s `afterSwap` listener re-processes any filter control htmx
+  doesn't know about, iterating the registry in `app/browse_filters.py`. A new
+  OOB-swapped interactive control must either be a declared filter or arrange
+  its own re-process. Inherited from G24, which retired around it.
 - **Evidence:** `8a4ce0b` (2026-08-16, found as a latent bug during the
   community-plan T8 work; documented in `static/js/browse.js`).
-- **Verify:** no listener on `afterSettle` remains, and the vendored htmx
-  still runs settle on a timer:
-  `grep -rn "addEventListener('htmx:afterSettle'" static/js/` (expect no
-  hits) and `grep -c settleDelay static/vendor/htmx-*.min.js` (expect ≥ 1).
+- **Verify:** no listener on `afterSettle` remains, the vendored htmx still
+  runs settle on a timer, and the OOB re-process loop still exists:
+
+```bash
+grep -rn "addEventListener('htmx:afterSettle'" static/js/   # expect no hits
+grep -c settleDelay static/vendor/htmx-*.min.js             # expect >= 1
+grep -n "htmx.process" static/js/browse.js                  # expect >= 1, in the afterSwap listener
+```
+
 - **Status:** documented.
 
 ## G7 — When an htmx fragment swaps table rows with `outerHTML`
@@ -308,30 +274,11 @@ grep -rhoE 'x-data="[A-Za-z_$][A-Za-z0-9_$]*[("]' app/templates/ \
 
 ## G14 — When a test file needs the FastAPI `app` object
 
-- **Rule:** Import it inside the test function or a fixture
-  (`from app.main import app`), never at module level. Module-level imports
-  in `tests/` run at *collection* time, before the autouse `_isolated_db`
-  fixture repoints `DATA_DIR` — so `app.main`'s import-time side effects
-  (e.g. `COVERS_DIR.mkdir`) hit the real configured path and collection
-  dies (`PermissionError: /data` in dev) or pollutes a live data dir.
-- **Why:** The conftest itself imports `app.main` only inside its client
-  fixture for exactly this reason, but nothing stops a new test file from
-  doing it at module scope — the failure is at collection, interrupts the
-  whole run, and looks like an environment problem, not a test bug. Sibling
-  of the `COVERS_DIR` import-freeze trap in `shelf/CLAUDE.md`, one layer
-  earlier.
-- **Evidence:** `2665aa6` (2026-08-19, hit while adding
-  `tests/test_static_caching.py` for issue #21; fixed before commit).
-- **Verify:** no test module imports `app.main` at module level (any hit =
-  trap sprung):
-
-```bash
-grep -n "^from app.main import\|^import app.main" tests/*.py tests/e2e/*.py
-# expect no output
-```
-
-- **Status:** documented. Lint candidate: the grep above is a one-liner
-  away from a `make check-*` target.
+- **Rule:** Import it **inside** the test function or a fixture, never at
+  module level. Module-level imports run at collection, before the autouse
+  fixture redirects `DATA_DIR`, so `app.main` captures the real paths and
+  every later test in the process inherits them.
+- **Status:** linted — `make check-tests`.
 
 ## G15 — When a helper written against `get_setting` is handed a `get_all_settings()` dict
 
@@ -494,179 +441,25 @@ python -m pytest tests/test_checkouts.py -k guard_reads_under_write_lock -q
 
 ## G19 — When changing a file listed in the service worker's PRECACHE
 
-- **Rule:** Bump `SW_VERSION` in `static/sw.js`. Re-pinning the digest in
-  `tests/test_store.py`'s `PINNED` dict *without* bumping turns the suite
-  green while every returning browser keeps the old file indefinitely — the
-  cache is named `shelf-store-${SW_VERSION}`, and only a rename makes
-  `activate()` purge the stale one. `static/css/app.css` is precached and is
-  regenerated by `make css` on most template changes, so this is a routine
-  hazard, not an exotic one.
-- **Why:** Precached paths are served **cache-first**
-  (`caches.match(path).then(hit => hit || fetch(...))`), so the request never
-  reaches the network. `Cache-Control: no-cache` (issue #21) cannot help, and
-  neither can Ctrl+Shift+R — Cache Storage is not the HTTP cache. Worse, the
-  whole class is **invisible to our verification**: unit tests, Playwright
-  E2E (fresh context, no persisted service worker), and `curl` all bypass
-  Cache Storage entirely. Prod can return a perfectly correct
-  `cache-control: no-cache` for an asset the user's browser will never
-  request.
-- **Evidence:** v0.8.1 live pass (2026-08-20). `SW_VERSION` stayed `v2` while
-  `app.css` changed across releases, so a browser that precached under v2 held
-  a pre-0.8.0 stylesheet containing **no `lg:` breakpoint rules**. Against
-  current markup (`hidden lg:flex` on the tab row, `lg:hidden` on the
-  hamburger) the nav rendered as a hamburger at *every* width — reproduced at
-  1440px and 1920px. It presented as a responsive-layout regression and was
-  entirely a cache. Fixed by bumping to `v3`.
-- **Mid-branch clarification:** the bump-before-re-pin rule protects
-  *shipped* versions. On a feature branch, bump `SW_VERSION` once in the
-  first commit whose rebuilt `app.css` actually differs, then freely re-pin
-  the digest under that new version in later commits of the same branch —
-  nothing has shipped under it. Never defer the bump to a branch-final
-  "verification" task: `test_precache_digest_matches_sw_version` runs inside
-  `make test`, so a per-task gate goes red at the *first* differing rebuild,
-  wedging an orchestrator between "never commit red" and the deferred bump.
-- **A template change does NOT imply an `app.css` change.** `make css` only
-  emits utilities the templates actually use, so markup built from classes
-  already present elsewhere rebuilds byte-identical and needs no bump at all.
-  Measured on the issue-26 currency branch (2026-08-20): four consecutive
-  template/JS tasks — a new settings form with a `<select>`, six value-render
-  filter swaps, an Alpine class-binding change plus a `w-16` → `w-24` widen,
-  and two conditional caveat lines — left `app.css` byte-identical every
-  time, and `SW_VERSION` correctly stayed `v3` for the whole branch. Confirmed
-  again on the issue-12 scanner branch (2026-08-20): two more template tasks —
-  a new `<script>` tag pair on `scan.html`, and a whole new video container
-  plus scripts on `store.html` — both rebuilt byte-identical, because every
-  class involved was already emitted elsewhere. Check
-  `git status --short static/css/app.css` after `make css` rather than
-  assuming; also check `static/sw.js:15-23` for what is actually precached —
-  the list has grown (among app CSS/JS it now holds `app.css`, `store.js`,
-  and `scanner-engine.js` plus vendored scanner libs), but most JS (e.g.
-  `browse.js`, `components-settings.js`) is not in PRECACHE, so editing it
-  is not a G19 trigger. Confirmed again on the intl-metadata branch
-  (2026-08-20): five template/JS tasks, every rebuild byte-identical,
-  `SW_VERSION` untouched. **Before writing "expected byte-identical" into a
-  plan, check each utility the new markup introduces** rather than eyeballing
-  it: `grep -c '\.<class>{' static/css/app.css`, escaping the way Tailwind
-  does (`mt-0\.5`, `bg-shelf-accent\/20`). A class that reads as generic
-  (`mt-6`, `pt-6`, `mt-8`) is not necessarily emitted — the issue-31 plan
-  asserted byte-identical while its own proposed markup carried `mt-6`, which
-  no template uses and `app.css` does not contain. Caught on paper by
-  `/plan-review` (R1) and fixed by placing the block inside the existing
-  `space-y-6` container instead of giving it a top margin; the rebuild was
-  then byte-identical for real and `SW_VERSION` stayed `v5` (`698a0a8`,
-  2026-08-21).
-
-- **`static/js/` is a `make css` trigger too, not just templates.**
-  `tailwind.config.js`'s `content` globs include `./static/js/**/*.js`, so
-  Tailwind scans JS for class names and a task that only adds or edits a
-  script can still change `app.css`. A plan that reasons "no template
-  touched, therefore no rebuild" has answered the wrong question — the
-  trigger is the *content glob*, not the file type, and the module itself
-  being absent from `PRECACHE` is irrelevant to it. Caught on paper by
-  `/plan-review` (issue-28 R1, 2026-08-22), where the capture-module task
-  declared G19 inapplicable and omitted the gate; the rebuild did turn out
-  byte-identical, so the bug was in the reasoning, not the output — which is
-  exactly the kind that survives to the run where it isn't.
-- **And it is not only *class strings* in JS — bare English words count.**
-  Tailwind's extractor pulls candidate tokens out of the whole scanned file,
-  identifiers and comment prose included, then keeps any that happen to name a
-  real utility. `var shrink = …` and a comment about a provider's `resize`
-  options emitted `.shrink{flex-shrink:1}` and `.resize{resize:both}` — two
-  dead rules from JS containing no class attribute at all. So "this JS has no
-  class strings, therefore no rebuild" is the same wrong question one level
-  down: `shrink`, `resize`, `grid`, `table`, `fixed`, `block`, `container`,
-  `visible`, `flex`, `order`, `filter`, `transform` and friends are all
-  ordinary programming words *and* Tailwind utilities. Evidence: `dc07a51`
-  (2026-08-23, issue-32 T2) — the plan's own G19 pre-check said "expected
-  byte-identical", reasoning only about markup; `SW_VERSION` went `v6` → `v7`
-  and `tests/test_store.py`'s `PINNED` gained a `v7` digest in the same
-  commit. Run `make css` and look; never reason your way past it.
-- **Verify:** the digest pinned for the current `SW_VERSION` must match the
-  precached files on disk:
-
-```bash
-python -m pytest tests/test_store.py -k precache_digest -q
-```
-
-  This catches *future* drift only. It cannot know what content a previous
-  release shipped under the same `SW_VERSION`, so when a precached file
-  changes, **bump the version — never just re-pin**. To check by hand, load
-  the app in a browser profile that has visited before (not a fresh
-  incognito window) and confirm DevTools → Application → Cache Storage holds
-  the expected `shelf-store-*` name.
-- **Status:** documented; partially linted by
-  `test_precache_digest_matches_sw_version`, which covers changed-content
-  detection but not shipped-history or the verification blind spot above.
+- **Status: retired** (2026-08-24) — `SW_VERSION` is now *derived* from the
+  precache digest, so the trap it described cannot occur. See the Graveyard.
+  The id is kept because ~250 plan and review documents cite it.
 
 ## G20 — When syncing `shelf/` to the public repo after a PR was merged upstream
 
-- **Rule:** Sync by **content**, not by replaying a diff. Wipe the clone's
-  tree and extract `git archive main shelf/` over it, then gate on the
-  `git ls-tree` parity check. Do **not** use the `git apply -p2` step: once
-  anything landed on the public repo that the monorepo also contains (a
-  merged community PR), that patch no longer applies.
-- **Why:** `git apply -p2` fails outright — safe, you notice. The tempting
-  fix, `git apply -3 -p2`, is the trap: `--check` reports success, the real
-  apply prints "Applied patch to 'x' **with conflicts**", and it writes
-  conflict markers into the file. `git add -A && commit` then swallows them
-  silently. The result is a public repo containing a file that does not even
-  parse, and the release tag builds a Docker image from it.
-  Also note the diff base is **not** the previous monorepo `main` commit —
-  find the commit whose `shelf/` tree actually matches the last public
-  release, since unreleased work may sit between them.
-- **Evidence:** v0.8.1 (2026-08-20). PR #25 was merged on GitHub first to
-  preserve @exactmike's authorship, so the release diff no longer applied.
-  `git apply -3 -p2` left `<<<<<<< ours` markers at lines 323/337/370 of
-  `app/database.py`; the file failed `ast.parse`. Caught in a throwaway clone
-  before any push. The correct baseline was `a0d6132`, not `main`'s tip —
-  issues #21 and #22 were merged but unreleased.
-- **Verify:** the parity diff must be empty before pushing, and no markers:
-
-```bash
-git ls-tree -r HEAD | sort > /tmp/gh.txt
-(cd ~/work/personal/library && git ls-tree -r main shelf/ | sed 's#\tshelf/#\t#' | sort) > /tmp/parent.txt
-diff /tmp/parent.txt /tmp/gh.txt && echo PARITY
-git grep -nI '<<<<<<<\|>>>>>>>' HEAD -- . && echo "MARKERS — do not push" || echo "clean"
-```
-
-- **Status:** documented. Lint candidate: the parity diff is already
-  mechanical and could be a `make check-parity` target.
+- **Status: retired** (2026-08-24) — folded into the canonical release
+  procedure (`../CLAUDE.md` §Releasing Shelf, step 5), which previously
+  contradicted this entry by recommending the very `git apply -p2` it warns
+  against. See the Graveyard.
 
 ## G21 — When an E2E test needs to wait on page state
 
-- **Rule:** Don't reach for `page.wait_for_function`. Playwright runs its
-  polling predicate through `eval()` **inside the page**, and the app's CSP
-  (`script-src 'self'`, no `'unsafe-eval'`) refuses it:
-  `EvalError: Refused to evaluate a string as JavaScript`. Both predicate
-  forms fail — an arrow function *and* a bare expression string. Use a
-  Python-side poll over `page.evaluate("<expression>")` instead; that goes
-  through CDP `Runtime.evaluate` and never calls `eval` in the page.
-  `tests/e2e/conftest.py::wait_for_video_ready` is the worked example.
-- **Why:** the failure is **page-specific and therefore invisible in review**.
-  The *identical* call passes on `/scan` and fails on `/store`, so a test
-  written against the scan page looks like a safe pattern to copy, and the
-  copy breaks only once it lands on the store page. It surfaces as a
-  Playwright `Error`, not an assertion failure, so it reads like a
-  Playwright/environment problem rather than a CSP one. Note that
-  `tests/e2e/test_store_pwa.py:42`'s long-standing `wait_for_function` on
-  `navigator.serviceWorker.ready` **does** pass — its presence is not
-  evidence that the API is safe here.
-- **Evidence:** `bcc81a6` (2026-08-20, issue #12 iOS scanner branch). Two new
-  store-page camera tests failed on `wait_for_function` while the two
-  equivalent scan-page tests passed; replaced with the shared
-  `wait_for_video_ready()` helper and all 74 e2e went green.
-- **Verify:** exactly one call site may exist — the service-worker wait. Any
-  second hit is a live risk:
-
-```bash
-grep -rn "wait_for_function(" tests/e2e/
-# expect exactly one line: tests/e2e/test_store_pwa.py's serviceWorker.ready wait
-```
-
-- **Status:** documented. Lint candidate: the grep above is a `make check-*`
-  target away.
-
----
+- **Rule:** Don't reach for `page.wait_for_function` — it needs `eval()`,
+  which this app's CSP refuses, so it times out somewhere unrelated instead of
+  failing where it is written. Poll from Python with `page.evaluate` in a
+  loop. Exactly one call site is exempt: the service-worker wait, which has to
+  run in the page.
+- **Status:** linted — `make check-tests`.
 
 ## G22 — When comparing an author name against a metadata source's author
 
@@ -684,12 +477,13 @@ grep -rn "wait_for_function(" tests/e2e/
   drifted into `routers/items.py`, `routers/intake.py` and
   `services/synopsis.py`; 3 of 11 books in the project's own demo GIF lost
   their covers to it.
-- **Verify:** no module has grown its own copy again:
+- **Verify:** no module has grown its own copy again (expect no output), and
+  the shared helper still handles the regressions:
 
+```bash
 grep -rn "in found.casefold()" app/ | grep -v services/authors.py
-
-  (expect no output), and the shared helper still handles the regressions:
-  `python -m pytest tests/test_authors.py -q`.
+python -m pytest tests/test_authors.py -q
+```
 - **Status:** documented.
 
 ## G23 — When capturing a demo or screenshot right after a photo-intake import
@@ -715,72 +509,25 @@ grep -rn "in found.casefold()" app/ | grep -v services/authors.py
     page reads the token, not the row. Clear cookies and log in again.
 - **Evidence:** `f618b11` (2026-08-20) — the previous demo GIF was recorded
   this way and shipped for six weeks showing four cover-less books.
-- **Verify:** the import path is still fire-and-forget:
+- **Verify:** the import path is still fire-and-forget (expect 1 hit; if it
+  becomes awaited, this entry retires):
 
-grep -n "create_task(_enrich_import_covers" app/routers/intake.py
-
-  (expect 1 hit; if it becomes awaited, this entry retires).
+```bash
+grep -n "create_task(items_common._enrich_import_covers" app/routers/intake.py
+```
 - **Status:** documented.
 
 ## G24 — When adding a filter parameter to Browse
 
-- **Rule:** A new Browse filter touches FOUR places or it silently drops:
-  (1) the `hx-include` lists in `browse.html` (9 of them), (2) the
-  `hx-include` lists on the OOB-swapped selects in
-  `fragments/filter_counts_oob.html` — after the first `/api/search`
-  response those replace the in-DOM selects, so an edit to browse.html
-  alone is undone by the first swap, (3) `search_items`' from-scratch
-  count rebuilds (`loc_conds`, and `rs_conds_clean` when reading_status is
-  active) in addition to `base_conds`, (4) `filterNames()` + the chip list
-  in `static/js/browse.js` and `qs_parts` for load-more. Related trap,
-  fixed `7d543cd`: htmx does NOT re-process the OOB-swapped selects — their
-  `hx-trigger` listeners die with the replaced node. browse.js's
-  `htmx:afterSwap` listener re-processes unprocessed filter controls; a new
-  OOB-swapped interactive control must be covered by `filterNames()` (or
-  its own re-process), or it goes dead after the first swap.
-- **Why:** The filter *appears* to work in isolation and in unit tests; the
-  include-drop only manifests when a second filter changes after a swap,
-  the count skew only when the new filter is active, and the dead-control
-  trap only on the *second* sequential dropdown change — all invisible at
-  unit level. The dead-control bug shipped in every release up to 0.10.1
-  before the intl-metadata branch's compose e2e caught it.
-- **Evidence:** R1/R3 caught on paper by the intl-metadata plan review
-  (2026-08-20) before code was written; the dead-OOB-selects bug found live
-  by T10's compose e2e and fixed in `7d543cd` (2026-08-20).
-- **Verify:** the two templates must agree on the includable filter names,
-  and the re-process loop must still exist:
-
-```bash
-grep -oh "\[name='[a-z_]*'\]" app/templates/browse.html app/templates/fragments/filter_counts_oob.html | sort -u
-# every name used in one file's hx-include lists must appear in the other's
-grep -n "htmx.process" static/js/browse.js   # expect >= 1, in the afterSwap listener
-python -m pytest tests/e2e/test_browse.py::test_browse_language_filter_narrows_and_composes -q -m e2e  # needs live env
-```
-
-- **Status:** documented.
+- **Status: retired** (2026-08-24) — the filter set is declared once in
+  `app/browse_filters.py` and everything else derives from it. See the
+  Graveyard. The id is kept because existing plan and review documents cite it.
 
 ## G25 — When adding a metadata column that should be captured at item creation
 
-- **Rule:** `_save_item` is NOT the single insert path. `INSERT INTO items`
-  exists at ~13 sites (grep it): `_save_item`, `manual_add`, photo-intake
-  confirm (`intake.py`), CSV import, Hardcover sync/discover
-  (`routers/hardcover.py` ×2), ABS sync, store bare-wishlist fallback,
-  game/DVD adds, archive import. Enumerate them and decide capture-or-gap
-  per site — never claim "everything funnels through `_save_item`".
-- **Why:** The intl-metadata impl plan asserted intake funnels through
-  `_save_item`; it does not — the headline photo-intake path would have
-  silently stored NULL for the new `language` column. Caught by the plan
-  review (R2); intake was wired explicitly in `a82b9c8`.
-- **Evidence:** caught on paper by the intl-metadata plan review
-  (2026-08-20).
-- **Verify:** the site count still makes "single funnel" claims false:
-
-```bash
-grep -rn "INSERT INTO items" app/ --include='*.py' | grep -cv test
-# expect > 5; if this ever drops to ~1-2, retire this entry
-```
-
-- **Status:** documented.
+- **Status: retired** (2026-08-24) — there is one insert path now,
+  `app.services.item_write.insert_item`. See the Graveyard. The id is kept
+  because existing plan and review documents cite it.
 
 ## G26 — When parsing MARC21 records from a national-bibliography source
 
@@ -875,12 +622,14 @@ assert messages == ["Delete location 'Shelf A'?"]
   v0.10.1 — fails 3 of 4. Two older call sites had the same blind spot;
   `tests/e2e/test_item_crud.py`'s delete test was tightened on 2026-08-22
   (`fab8e05`, item-detail-hidden-fields T5) and now records the message and
-  asserts `["Delete 'Book To Delete'?"]`. **One remains:**
-  `tests/e2e/test_csrf_and_xss_fixes.py:49` still installs a bare accepting
-  handler and never asserts it fired — tighten it whenever that file is next
-  touched. (The sibling at
-  `test_csrf_and_xss_fixes.py:66` does it right — it appends `d.message`
-  before dismissing.)
+  asserts `["Delete 'Book To Delete'?"]`. The last bare handler,
+  `tests/e2e/test_csrf_and_xss_fixes.py`'s bulk-delete test, was tightened in
+  the Lever 1 verification-gate branch (2026-08-24): it now records the message
+  and pins it to `Delete <n> items?` with `n >= 1` — the shared session DB makes
+  the exact count unstable, so the shape is pinned rather than the number.
+  Mutation-checked: commenting out the `confirm()` in `browse.js` fails it with
+  `expected exactly one confirm(), got []`. **Every dialog handler in the suite
+  now records its message**, so the Verify grep below should stay all-green.
 - **Verify:** every dialog handler in the e2e suite records its message —
   each hit below should sit next to an assertion on the recorded list:
 
@@ -1066,8 +815,8 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
   rather than rewriting one line of template.
 - **Evidence:** `bcdf799` (2026-08-21, issue #27 — `fragments/cover_thumb.html`
   computing its poll delay).
-- **Verify:** `make check-alpine` (already in `make checks`).
-- **Status:** documented.
+- **Verify:** `make check-alpine` (already in `make checks-fast`).
+- **Status:** linted — `make check-alpine`.
 
 ## G33 — When a background worker or lifespan task is the feature
 
@@ -1210,7 +959,23 @@ grep -rn 'step="' app/templates/ | grep -v 'step="any"' | grep -v 'min=' \
   name four times (heading, rename input, two action forms); count a
   structural marker (`data-testid="series-card"`) instead. Found the same day
   (`b2cdb12`).
-- **Status:** documented.
+- **Verify:** this one is a judgement call about a *specific* pin, so the
+  check is the G31 procedure rather than a grep — break the thing the test
+  claims to defend and confirm the test goes red. For the round-trip pins that
+  exist today:
+
+```bash
+# The field() macro's blanking bug, restored: a stored 0 renders as "".
+sed -i 's/value="{{ value or .. }}"/value="{{ value if value is not none else \x27\x27 }}"/' \
+    app/templates/fragments/field.html   # inspect first; path may have moved
+python -m pytest tests/test_items.py -k round_trip -q   # must FAIL; then revert
+```
+
+  A pin that still passes is posting a subset of the form. Count structural
+  markers, not names: `grep -c 'data-testid="series-card"'` beats counting a
+  series title.
+- **Status:** documented — judgement, not mechanisable, but the Verify above
+  makes it checkable.
 
 ## G37 — When patching a symbol the code imports *inside* a function
 
@@ -1311,9 +1076,12 @@ python -m pytest tests/e2e/test_intake.py -m e2e -q \
 python -m pytest tests/e2e/test_intake.py -m e2e -k latest_photo_plan_wins -q
 ```
 
-- **Status:** documented. Lint candidate: a grep for `async` component methods
-  that write `this.` state after a second `await` without an identity check
-  would be noisy but not impossible.
+- **Status:** documented — **deliberately not linted.** The mechanical form of
+  this check (flag `async` component methods that write `this.` state after a
+  second `await` without an identity guard) fires on every correct
+  fire-and-forget handler too. A lint with that false-positive rate gets
+  suppressed or ignored, which is worse than none: it converts a real trap
+  into noise people have learned to skip. Judgement stays judgement.
 
 ## G40 — When an E2E test asserts on the *bytes* a browser uploaded
 
@@ -1356,48 +1124,6 @@ grep -rn "post_data_buffer" tests/e2e/
 - **Status:** documented. Not a lint candidate — it is a judgement about what
   a given assertion actually proves.
 
-## G41 — When a responsive Tailwind class list combines `basis-*` with `flex-*`
-
-- **Rule:** Never put `sm:basis-auto` (or any `basis-*`) on the same element as
-  `sm:flex-1` and expect the `flex` shorthand to win. Tailwind emits
-  `.basis-*` **after** `.flex-*` inside each variant block, so the later
-  `flex-basis` declaration silently overrides the one the shorthand set.
-  `sm:flex-1` already means `flex: 1 1 0%` — adding `sm:basis-auto` next to it
-  reverts the basis to `auto` and changes how the element is *packed onto a
-  flex line*. Reset `basis-full` with a `sm:flex-*` utility alone, and keep
-  `sm:basis-auto` for elements that have no `sm:flex-*`.
-- **Why:** flex-wrap packs items by their **hypothetical main size**
-  (flex-basis, clamped by min-width) *before* distributing free space, so a
-  basis of `auto` versus `0%` decides whether a sibling wraps to the next line
-  — it is not merely a sizing nicety. The class list *reads* correct, both
-  utilities are present in `app.css`, and nothing in review shows the emitted
-  order. `make test`, `make check-alpine` and `make check-csrf` are all blind
-  to it; only rendered geometry sees it.
-- **Evidence:** `e509677` (2026-08-23, issue #33 T1, caught by T3). The intake
-  review row's wrapper was specified — by the design plan, the impl plan, and
-  the Codex review that passed all three — as
-  `basis-full sm:basis-auto sm:flex-1 min-w-0`. In `static/css/app.css` the
-  `sm` block emits `.sm\:flex-1{flex:1 1 0%}` and then
-  `.sm\:basis-auto{flex-basis:auto}`, so the wrapper was packed at its 446px
-  max-content width; 446 + 128 + 128 + 24px of gaps = 726px against a 718px
-  row box, and the media-type select dropped to a second desktop line.
-  Dropping `sm:basis-auto` from the wrapper alone fixed it and left `app.css`
-  byte-identical (the select still uses the class). When the seam later moved
-  to `md:` (`3967c28`, see G43) the rule applied unchanged — `.md\:basis-auto`
-  is emitted after `.md\:flex-1` too, and the wrapper still carries neither.
-- **Verify:** the emitted order is a Tailwind implementation detail — re-check
-  it after any Tailwind upgrade rather than trusting this entry:
-
-```bash
-grep -o '\.sm\\:flex-1{[^}]*}\|\.sm\\:basis-auto{[^}]*}' static/css/app.css
-# basis-auto printing second is what makes this entry live
-```
-
-- **Status:** documented. Lint candidate: a check for `basis-*` and `flex-*`
-  of the same variant on one `class` attribute would be mechanical, but it
-  would also fire on the legitimate `basis-full sm:flex-1` pairing (different
-  variants), so it needs care.
-
 ## G42 — When an E2E test measures the geometry of Alpine-rendered content
 
 - **Rule:** `expect(locator).to_have_count(n)` is **not** enough to measure an
@@ -1423,84 +1149,157 @@ grep -o '\.sm\\:flex-1{[^}]*}\|\.sm\\:basis-auto{[^}]*}' static/css/app.css
   E2E waiting traps) but distinct: G21 is about *how* to wait, this is about
   *whether you waited at all*.
 
-## G43 — When choosing the breakpoint at which a row stops stacking
+## G43 — When authoring a responsive row: choosing the seam, and ordering the classes
 
-- **Rule:** Pick the seam from **the width at which the wide layout actually
-  fits**, not from the width at which the narrow one starts to look roomy. Add
-  up the wide layout's fixed widths plus its gaps, add the container's padding
-  and border, and only switch above that. Then measure a viewport a few pixels
-  above the seam — that is the layout's worst case, not the smallest phone.
-- **Why:** flex-wrap only wraps items that cannot fit **at their hypothetical
-  main size**. A flexible column with `min-w-0` has a hypothetical size of 0, so
-  it never triggers a wrap — it silently shrinks to nothing instead, and the
-  fixed-width siblings keep every pixel. Switching to the wide layout too early
-  therefore does not produce a slightly-cramped row; it produces a control with
-  no content box at all. Nothing catches it: the class list reads correctly, the
-  lints are blind to geometry, and E2E floors pinned at one narrow and one wide
-  viewport straddle the bad band without ever landing in it.
-- **Evidence:** `3967c28` (2026-08-23, issue #33, found by `/test-drive`). The
-  intake review row switched to its single-line layout at `sm:` (640 px), but
-  that line needs Author 128 + ISBN 128 + select 192 + 24 px of gaps = **472 px**
-  of fixed width, and at a 640 px viewport the row's content box is ~558 px —
-  ~86 px for checkbox + title + badge. A `recognized` title measured **26 px,
-  narrower than its own padding, rendering zero characters** across 640–755 px,
-  against 13–19 characters on `main`. The seam moved to `md:` (768 px). The
-  design plan, the impl plan and a full cross-vendor plan review all specified
-  `sm:` and none of them did the arithmetic; the E2E suite pinned 390 px and
-  1280 px and passed throughout.
-- **Verify:** judgement, plus one cheap measurement. For any row with a
-  stacking seam, drive a width sweep and look for a *local minimum just above*
-  the breakpoint:
+*(absorbed G41, 2026-08-24 — same trigger, same gate.)*
+
+- **Rule (the seam):** Pick the breakpoint from **the width at which the wide
+  layout actually fits** — the sum of the row's fixed-width children plus gaps
+  — not from the breakpoint that reads nicest. A `min-w-0` column shrinks to
+  nothing rather than wrapping, so too low a seam crushes content instead of
+  overflowing, and nothing looks broken enough to notice.
+- **Rule (the classes):** Never put `basis-*` and `flex-*` of the **same
+  variant** on one element. Tailwind emits `.basis-*` *after* `.flex-*` within
+  each variant block, so `sm:flex-1` loses to `sm:basis-auto` regardless of the
+  order you write them in. Different variants are fine and idiomatic —
+  `basis-full sm:flex-1` is the intended pairing.
+- **Why:** both failures are silent at every gate that existed before. Unit
+  tests never lay anything out; a Playwright test at the default 1280px
+  viewport sees the wide layout and passes.
+- **Evidence:** issue #33 (intake review row, seam moved `sm` → `md` after a
+  test drive found the title crushed to 26px across 640–755px); issue #35
+  (settings measured 519px on General and 640px on Data at a 390px viewport);
+  0.8.0's nav bar; issue #14.
+- **Verify:** the responsive gate measures every top-level page at
+  320/390/430/640/768 for both overflow *and* text columns squeezed under
+  80px. A breakpoint's own width is the worst case for the layout it turns on,
+  which is why 640 is in the list.
 
 ```bash
-grep -rn "basis-full" app/templates/
-# every hit is a stacking row: check that its sm:/md:/lg: seam is wider than
-# the sum of its own fixed-width children, and that an E2E test measures a
-# viewport within ~16px above that seam
+python -m pytest tests/e2e/test_responsive.py -m e2e -q
 ```
 
-- **Status:** documented. Not a lint candidate — the sum depends on runtime
-  intrinsic widths (a `<select>`'s widest option, a badge's text). Related to
-  G41 (both are ways a responsive class list lies about the layout it produces)
-  and to G42 (both were found only by measuring rendered geometry).
+- **Status:** gated — `tests/e2e/test_responsive.py` (in `make test-e2e` and
+  in CI). The gate catches the *consequence*; the two rules above are how you
+  fix it once it fires, which is why this entry stays rather than shrinking to
+  a one-liner. Opt an element out with `data-narrow-ok`.
 
 ## G44 — When adding a suite-wide listener to Playwright `Page` objects
 
 - **Rule:** Attach it at **every `new_page()` construction site**, not at the
-  shared `page`/`authed_page` fixtures. In this suite that means
-  `pg = attach_page_guard(ctx.new_page())` and an `assert_page_clean(pg)`
-  before the owning context closes (`tests/e2e/conftest.py`). Put the
-  assertion at the end of the test body, never inside a `finally:` — raised
-  from there it replaces and masks the test's own failure.
-- **Why:** the shared fixtures are not the suite boundary, and a guard wired
-  to them alone *looks* like one. Fourteen `Page` objects exist across the
-  suite; only two come from the fixtures. The other twelve build their own
-  context because they need a UA override, an offline toggle, an
-  unauthenticated view, or the setup wizard — camera, PWA, CSP, share and
-  login/setup pages, plus session bootstrap, 16 tests in all. A full run
-  passes and reports nothing, which is exactly the failure the guard was
-  added to end.
-- **Evidence:** issue #34 (`4cf94f2`, 2026-08-23). Caught on paper by the
-  Codex plan review before any code existed — the plan had recorded the twelve
-  as a deliberate "coverage boundary" while its own changelog line promised
-  suite-wide coverage — then mutation-checked after: an injected uncaught
-  error on `test_store_pwa`'s directly-built page is caught only with the
-  expanded wiring.
-- **Verify:** every construction site is guarded — any bare hit is a page the
-  suite cannot see:
-
-```bash
-grep -rn 'new_page(' tests/e2e/
-# every hit must be attach_page_guard(ctx.new_page()) or a helper that calls
-# it, and every owning context must assert_page_clean() before it closes
-```
-
-- **Status:** documented. Lint candidate: the grep above is one `make check-*`
-  target away.
+  shared `page`/`authed_page` fixtures — most Page objects are built directly
+  (UA override, offline toggle, unauthenticated view, setup wizard), and a
+  guard wired only to the fixtures *looks* suite-wide while seeing two of
+  fourteen pages. `attach_page_guard(ctx.new_page())`, plus
+  `assert_page_clean()` before the owning context closes — at the end of the
+  test body, never in a `finally:`, where it would mask the real failure.
+- **Status:** linted — `make check-tests`.
 
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
 fully covers it, etc.) so future sessions don't re-learn stale rules.
 
-*(empty)*
+- **G19 — bump `SW_VERSION` when a precached file changes** (retired
+  2026-08-24). Refactored away: `SW_VERSION` is no longer typed by hand. It is
+  `v` + the first 8 hex chars of a sha256 over the `PRECACHE` paths and their
+  bytes, stamped by `make css` (`scripts/stamp_sw_version.py`) and verified by
+  `make check-sw-version` (in `checks-fast`) and
+  `tests/test_store.py::TestSwPrecacheDigest`. Changing a precached byte now
+  renames the cache on its own, so a stale precache cannot survive a release.
+  The `PINNED` digest dict is gone with it.
+
+  Three sub-rules died with the entry, and it is worth knowing *why* rather
+  than re-deriving them:
+
+  - "Bump, never just re-pin" — there is nothing left to pin, and no way to
+    bump without changing what the digest is over.
+  - "Will `make css` actually rebuild `app.css`?" — the answer used to gate a
+    manual step, which is why plans kept getting it wrong. (For the record it
+    was subtle: Tailwind's `content` globs include `static/js/**/*.js`, and its
+    extractor keeps bare English words that happen to name utilities, so
+    `var shrink` emitted `.shrink`.) Being wrong about it is now free.
+  - "Bump once per branch, not per commit" — the stamp is a pure function of
+    the tree, so any commit is self-consistent.
+
+  What did *not* retire: `sw.js` must never be added to its own `PRECACHE`,
+  or the stamp would change the bytes it hashes and never converge. That is
+  a lint now — `test_stamp_is_idempotent`.
+
+- **G24 — a new Browse filter touches FOUR places or it silently drops**
+  (retired 2026-08-24). Refactored away: `app/browse_filters.py` declares the
+  filter set once, and the four (really five) places now derive from it —
+  the `hx-include` lists in `browse.html` and `fragments/filter_counts_oob.html`
+  (14 of them, every one "all filters except my own", via the
+  `filter_includes()` Jinja global), the condition groups in `search_items`
+  (via `build_where(values, exclude=...)`, where a dropdown's cross-filter
+  count group is just the where-clause minus its own filter), the name and
+  chip lists in `static/js/browse.js` (via a `type="application/json"` block),
+  and `search_items`' own parameter list (via `values_from`). Adding a filter
+  is one `BrowseFilter(...)` line. `tests/test_browse_filters.py` fails if a
+  hand-written list reappears in either template or in the JS.
+
+  Two live drifts were found while doing it, which is the argument for the
+  lever in miniature: `filterNames()` in `browse.js` was missing `view`, and
+  `has_filters` in `search_items` was missing `language` — so filtering by
+  language alone offered no way to clear it.
+
+  What did *not* retire, and is still a separate trap: htmx does **not**
+  re-process OOB-swapped selects — their `hx-trigger` listeners die with the
+  replaced node, so every dropdown change after the first would silently do
+  nothing. `browse.js`'s `htmx:afterSwap` listener re-processes them, driven
+  by the same registry. That half moved to **G6**, which already owns the
+  htmx-lifecycle traps, rather than taking a new id.
+
+- **G20 — sync the public repo by content, and never `git apply -3 -p2`**
+  (retired 2026-08-24). Not refactored away — *relocated*. The knowledge now
+  sits in the release procedure it applies to (`../CLAUDE.md` §Releasing
+  Shelf, step 5), which had been quietly recommending the exact `git apply
+  -p2` this entry warns against. Keeping the correction in a second file that
+  the procedure never points at is the same one-fact-in-two-places failure
+  this program exists to remove, and the two had already drifted into
+  contradiction. Step 5 now replaces the tree with `git archive` rather than
+  replaying a diff, and gates on both the `ls-tree` parity diff and a
+  conflict-marker grep.
+
+- **G41 — `basis-*` and `flex-*` of the same variant collide** (retired
+  2026-08-24). Merged into **G43**, not deleted: both fire on the same trigger
+  (authoring a responsive row), both are caught by the same gate
+  (`tests/e2e/test_responsive.py`), and splitting one layout decision across
+  two entries meant a reader who hit the seam question never saw the class
+  question.
+
+- **G25 — `_save_item` is NOT the single insert path; there are ~13**
+  (retired 2026-08-24). Refactored away, satisfying the entry's own stated
+  retirement condition (*"if this ever drops to ~1-2, retire this entry"*).
+  `app/services/item_write.py::insert_item(db, fields)` is the only place that
+  writes a row to `items`; all 13 sites call it — `_save_item`, manual add,
+  scan, CSV import, photo-intake confirm, Hardcover sync and discover, ABS
+  sync, the store's bare-wishlist fallback, the game/DVD/book adds, and archive
+  import.
+
+  Two properties do the actual work, and both are load-bearing:
+
+  - **The column set is read from `PRAGMA table_info(items)`, not
+    transcribed.** A hardcoded list would have been a fourteenth declaration of
+    the item shape, drifting from `SCHEMA` the moment a migration landed.
+  - **An unknown field raises rather than being dropped.** The failure G25
+    described — a new column silently storing NULL on a path nobody audited —
+    is now impossible in the other direction: a typo or a column that does not
+    exist yet fails loudly, naming the field and pointing at G1.
+
+  Fields left unset simply do not appear in the statement, so the column
+  defaults in `SCHEMA` apply — the defaults live in one place too.
+
+  `insert_item` takes a connection and must be called **inside** an existing
+  `with get_db() as db:` block, never around one: several sites need the insert
+  and their follow-up writes to commit together, and `cursor.lastrowid` is only
+  meaningful on the connection that did the insert (G16, G18).
+  `tests/test_item_write.py` fails if a raw `INSERT INTO items` reappears
+  anywhere under `app/`.
+
+  What did **not** retire: **G1**. Fresh databases and upgrades still build the
+  schema by different routes, so every column still goes in both `SCHEMA` and
+  `MIGRATIONS`. `insert_item` makes a sprung G1 trap noisier — it would raise
+  on the path whose table lacks the column instead of failing silently — but it
+  cannot prevent it.

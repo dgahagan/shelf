@@ -6,6 +6,8 @@ on:
   pull_request:
 
 jobs:
+  # Unit/integration suite plus the offline lints. These are the cheap gates and
+  # they run together because they share one dependency install.
   test:
     runs-on: ubuntu-latest
     steps:
@@ -21,3 +23,68 @@ jobs:
 
       - name: Run unit and integration tests
         run: make test
+
+      # check-secrets uses `git grep` over tracked files, so it needs the
+      # checkout above and nothing else. check-csrf and check-alpine are the two
+      # lints that graduated out of GOTCHAS (G5, G32) — they were only ever run
+      # by hand before, which is how the class each one guards kept shipping.
+      - name: Offline lints (secrets, CSRF header, Alpine CSP)
+        run: make checks-fast
+
+  # The committed Tailwind build must match what the templates actually ask for.
+  # Nothing caught a forgotten `make css` before: the stale stylesheet is valid
+  # CSS, every unit test passes, and the missing rule only shows up as a broken
+  # layout in a browser.
+  css:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      # `make css` also stamps SW_VERSION (scripts/stamp_sw_version.py, stdlib
+      # only — no pip install needed).
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Tailwind
+        run: npm ci
+
+      - name: Rebuild the stylesheet and restamp the service worker
+        run: make css
+
+      - name: Committed build output must match the rebuild
+        run: |
+          git diff --exit-code --stat static/css/app.css static/sw.js || {
+            echo "::error::Committed build output is stale — run 'make css' and commit the result."
+            echo "static/css/app.css is the Tailwind build; static/sw.js carries the"
+            echo "SW_VERSION stamped from the precache digest. Both are generated."
+            exit 1
+          }
+
+  # Playwright suite, in its own job: it is the slowest gate and the only one
+  # that sees rendered geometry, so a failure here should be attributable at a
+  # glance rather than buried behind a unit-test run.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
+
+      # Spins up its own uvicorn per session — no dev server needed.
+      - name: Run E2E tests
+        run: make test-e2e

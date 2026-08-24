@@ -307,7 +307,7 @@ class TestSecurityHeaders:
 class TestScanLogRetention:
     def test_old_entries_are_pruned(self, db, monkeypatch):
         """Entries older than SCAN_LOG_RETENTION_DAYS must be deleted on next _log_scan call."""
-        from app.routers import items as items_mod
+        from app.routers import items_common
 
         # Insert an old scan_log entry (91 days ago)
         db.execute(
@@ -321,10 +321,10 @@ class TestScanLogRetention:
         assert old_count == 1
 
         # Force the prune to run immediately by resetting the last-prune timer
-        monkeypatch.setattr(items_mod, "_scan_log_last_prune", float("-inf"))
+        monkeypatch.setattr(items_common, "_scan_log_last_prune", float("-inf"))
 
         # Trigger _log_scan, which should prune in the same transaction
-        items_mod._log_scan("9780000000002", "book", "added", mode="add")
+        items_common._log_scan("9780000000002", "book", "added", mode="add")
 
         with get_db() as check_db:
             old_count_after = check_db.execute(
@@ -334,7 +334,7 @@ class TestScanLogRetention:
 
     def test_recent_entries_are_kept(self, db, monkeypatch):
         """Entries within the retention window must not be deleted."""
-        from app.routers import items as items_mod
+        from app.routers import items_common
 
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode, created_at) "
@@ -343,8 +343,8 @@ class TestScanLogRetention:
         )
         db.commit()
 
-        monkeypatch.setattr(items_mod, "_scan_log_last_prune", float("-inf"))
-        items_mod._log_scan("9780000000100", "book", "added", mode="add")
+        monkeypatch.setattr(items_common, "_scan_log_last_prune", float("-inf"))
+        items_common._log_scan("9780000000100", "book", "added", mode="add")
 
         with get_db() as check_db:
             recent = check_db.execute(
@@ -354,7 +354,7 @@ class TestScanLogRetention:
 
     def test_prune_interval_prevents_excessive_db_hits(self, db, monkeypatch):
         """Second _log_scan call within the interval must skip the DELETE."""
-        from app.routers import items as items_mod
+        from app.routers import items_common
 
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode, created_at) "
@@ -364,8 +364,8 @@ class TestScanLogRetention:
         db.commit()
 
         # First call: prune runs (last_prune = 0)
-        monkeypatch.setattr(items_mod, "_scan_log_last_prune", 0.0)
-        items_mod._log_scan("9780000000051", "book", "added", mode="add")
+        monkeypatch.setattr(items_common, "_scan_log_last_prune", 0.0)
+        items_common._log_scan("9780000000051", "book", "added", mode="add")
 
         # Re-insert the old row to simulate it coming back
         with get_db() as reinsert_db:
@@ -376,7 +376,7 @@ class TestScanLogRetention:
             )
 
         # Second call immediately after: prune should be skipped (interval not elapsed)
-        items_mod._log_scan("9780000000053", "book", "added", mode="add")
+        items_common._log_scan("9780000000053", "book", "added", mode="add")
 
         with get_db() as check_db:
             still_old = check_db.execute(

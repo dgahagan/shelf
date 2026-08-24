@@ -20,8 +20,16 @@ page_count, series_name, location, source, estimated_value, manual_value`
 
 Upload a CSV. Headers are matched case-insensitively (spaces → underscores),
 so Shelf's own export round-trips, and any file with at least a `title`
-column imports. `isbn` and `media_type` dedupe against existing items;
-rows that already exist are skipped and reported. Options:
+column imports. Rows that already exist are skipped and reported.
+
+A row is matched against your library by `isbn` + `media_type` when it has an
+ISBN, and by title + author + media type when it doesn't — so games, DVDs and
+ISBN-less books are recognised as duplicates too, and re-importing your own
+export adds nothing. A row without an ISBN is only ever matched against other
+items that also lack one: it will not be folded into an edition you own that
+*does* have an ISBN, because those are different copies.
+
+Options:
 
 - **Fetch covers and metadata** — after import, look each ISBN up in the
   background and fill in covers, publishers, descriptions. Only book-ish

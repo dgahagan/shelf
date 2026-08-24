@@ -1118,7 +1118,7 @@ class TestDnbRoutingAndLanguageCapture:
     DNB_META = {"title": "Deutsches Buch", "authors": "Erika Autorin", "language": "de"}
 
     async def test_9783_scan_consults_dnb_first(self):
-        from app.routers.items import _lookup_metadata
+        from app.routers.items_common import _lookup_metadata
 
         dnb_mock = AsyncMock(return_value=dict(self.DNB_META))
         ol_mock = AsyncMock()
@@ -1132,7 +1132,7 @@ class TestDnbRoutingAndLanguageCapture:
         ol_mock.assert_not_awaited()
 
     async def test_dnb_miss_falls_through_to_openlibrary(self):
-        from app.routers.items import _lookup_metadata
+        from app.routers.items_common import _lookup_metadata
 
         ol_meta = {"title": "OL Book"}
         with patch("app.services.dnb.lookup", new=AsyncMock(return_value=None)), \
@@ -1143,7 +1143,7 @@ class TestDnbRoutingAndLanguageCapture:
         assert metadata["title"] == "OL Book"
 
     async def test_non_german_isbn_never_touches_dnb(self):
-        from app.routers.items import _lookup_metadata
+        from app.routers.items_common import _lookup_metadata
 
         dnb_mock = AsyncMock()
         with patch("app.services.dnb.lookup", new=dnb_mock), \
@@ -1154,7 +1154,7 @@ class TestDnbRoutingAndLanguageCapture:
         dnb_mock.assert_not_awaited()
 
     async def test_dnb_raising_is_swallowed_and_cascade_proceeds(self):
-        from app.routers.items import _lookup_metadata
+        from app.routers.items_common import _lookup_metadata
 
         with patch("app.services.dnb.lookup", new=AsyncMock(side_effect=RuntimeError("boom"))), \
              patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "OL Book"})):
@@ -1164,7 +1164,7 @@ class TestDnbRoutingAndLanguageCapture:
         assert metadata["title"] == "OL Book"
 
     async def test_hardcover_enrich_fires_for_dnb_hit(self):
-        from app.routers.items import _lookup_metadata
+        from app.routers.items_common import _lookup_metadata
 
         hc_data = {
             "series_name": "Die Reihe", "series_position": 2,
@@ -1181,7 +1181,7 @@ class TestDnbRoutingAndLanguageCapture:
         assert hc_ids["hardcover_book_id"] == 5
 
     def test_save_item_persists_language(self, db):
-        from app.routers.items import _save_item
+        from app.routers.items_common import _save_item
 
         item_id = _save_item(dict(self.DNB_META), "9783608963762", "book", None, "dnb", {})
         with get_db() as check_db:
@@ -1192,7 +1192,7 @@ class TestDnbRoutingAndLanguageCapture:
         assert row["source"] == "dnb"
 
     def test_save_item_without_language_stores_null(self, db):
-        from app.routers.items import _save_item
+        from app.routers.items_common import _save_item
 
         item_id = _save_item({"title": "No Lang"}, "9780441172719", "book", None, "openlibrary", {})
         with get_db() as check_db:

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
+from app import browse_filters
 from app import nav
 from app.auth import require_role
 
@@ -16,7 +17,10 @@ from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
 from app.database import (get_db, get_setting, get_game_platforms, gc_orphaned_series_meta,
                           get_reading_history)
 from app.routers.series import MAX_SERIES_NAME
+from app.routers import items_common
+from app.routers.items_common import SORT_OPTIONS  # re-exported for pages.py
 from app.services import isbn as isbn_svc
+from app.services.item_write import insert_item
 from app.services import openlibrary, googlebooks, hardcover, covers, national
 from app.services import cover_queue
 from app.services import upc as upc_svc, tmdb, igdb
@@ -25,143 +29,16 @@ from app.services import authors as authors_svc
 
 router = APIRouter(prefix="/api")
 
-SORT_OPTIONS = {
-    "newest": ("Most Recent", "i.created_at DESC"),
-    "oldest": ("Oldest First", "i.created_at ASC"),
-    "title_asc": ("Title A\u2013Z", "i.title COLLATE NOCASE ASC"),
-    "title_desc": ("Title Z\u2013A", "i.title COLLATE NOCASE DESC"),
-    "author": ("Author", "i.authors COLLATE NOCASE ASC, i.title COLLATE NOCASE ASC"),
-    "year_desc": ("Year (Newest)", "(i.publish_year IS NULL), i.publish_year DESC, i.title COLLATE NOCASE ASC"),
-    "year_asc": ("Year (Oldest)", "(i.publish_year IS NULL), i.publish_year ASC, i.title COLLATE NOCASE ASC"),
-}
 
 
-def _toast_header(message: str, toast_type: str = "success") -> str:
-    return json.dumps({"showToast": {"message": message, "type": toast_type}})
 
 
-async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient) -> tuple[dict | None, str, dict]:
-    """Look up book metadata across sources. Returns (metadata, source, hc_ids)."""
-    metadata = None
-    source = "manual"
-
-    # National-bibliography routing: for registration groups with an
-    # authoritative national source (e.g. 978-3 -> DNB), consult it before
-    # the general cascade. A miss falls through unchanged.
-    provider = national.provider_for(isbn13)
-    if provider:
-        try:
-            metadata = await provider.lookup(isbn13, client)
-        except Exception:
-            logger.debug("National provider lookup failed for ISBN %s", isbn13, exc_info=True)
-            metadata = None
-        if metadata:
-            source = provider.__name__.rsplit(".", 1)[-1]
-
-    if not metadata:
-        metadata = await openlibrary.lookup(isbn13, client)
-        if metadata:
-            source = "openlibrary"
-
-    hc_ids = {}
-    if not metadata and hc_token:
-        metadata = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
-        if metadata:
-            source = "hardcover"
-            hc_ids = {
-                "hardcover_book_id": metadata.get("hardcover_book_id"),
-                "hardcover_edition_id": metadata.get("hardcover_edition_id"),
-            }
-
-    if not metadata:
-        metadata = await googlebooks.lookup(isbn13, client)
-        if metadata:
-            source = "google"
-
-    # Enrich with Hardcover data if primary source didn't have series/description
-    if metadata and hc_token and source != "hardcover":
-        if not metadata.get("series_name") or not metadata.get("description"):
-            hc_data = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
-            if hc_data:
-                if hc_data.get("series_name") and not metadata.get("series_name"):
-                    metadata["series_name"] = hc_data["series_name"]
-                    metadata["series_position"] = hc_data.get("series_position")
-                if hc_data.get("description") and not metadata.get("description"):
-                    metadata["description"] = hc_data["description"]
-                hc_ids = {
-                    "hardcover_book_id": hc_data.get("hardcover_book_id"),
-                    "hardcover_edition_id": hc_data.get("hardcover_edition_id"),
-                    "cover_url": hc_data.get("cover_url"),
-                }
-
-    return metadata, source, hc_ids
 
 
-def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | None,
-               source: str, hc_ids: dict) -> int:
-    """Insert a new item from scan metadata. Returns the new item ID."""
-    isbn10 = metadata.get("isbn10") or isbn_svc.isbn13_to_isbn10(isbn13)
-    loc_id = location_id if location_id and location_id > 0 else None
-
-    with get_db() as db:
-        cursor = db.execute(
-            """INSERT INTO items (title, subtitle, authors, isbn, isbn10, media_type,
-               publisher, publish_year, page_count, description, series_name,
-               series_position, location_id, source, language,
-               hardcover_book_id, hardcover_edition_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                metadata["title"],
-                metadata.get("subtitle"),
-                metadata.get("authors"),
-                isbn13,
-                isbn10,
-                media_type,
-                metadata.get("publisher"),
-                metadata.get("publish_year"),
-                metadata.get("page_count"),
-                metadata.get("description"),
-                metadata.get("series_name"),
-                metadata.get("series_position"),
-                loc_id,
-                source,
-                metadata.get("language"),
-                hc_ids.get("hardcover_book_id"),
-                hc_ids.get("hardcover_edition_id"),
-            ),
-        )
-        return cursor.lastrowid
 
 
-async def _fetch_preview_cover(isbn13: str, client: httpx.AsyncClient) -> str | None:
-    """Try to grab an Amazon cover preview for manual-add fallback."""
-    from app.services import outbound
-
-    isbn10 = isbn_svc.isbn13_to_isbn10(isbn13)
-    if not isbn10:
-        return None
-    preview_url = f"https://images-na.ssl-images-amazon.com/images/P/{isbn10}.01._SCLZZZZZZZ_SX500_.jpg"
-    try:
-        resp = await outbound.fetch(client, "GET", preview_url, follow_redirects=True)
-        if resp.status_code == 200 and len(resp.content) > 1000:
-            tmp_path = covers.COVERS_DIR / f"preview_{isbn13}.jpg"
-            covers.COVERS_DIR.mkdir(parents=True, exist_ok=True)
-            tmp_path.write_bytes(resp.content)
-            return f"covers/preview_{isbn13}.jpg"
-    except Exception:
-        pass
-    return None
 
 
-def _manual_form_locations():
-    """Shelf options for the manual-add form's location picker (#19).
-
-    Only the scan_result.html branches that render the manual entry form
-    (status == 'not_found') need this — every other render of that fragment
-    shows a status card with no form.
-    """
-    with get_db() as db:
-        return db.execute("SELECT id, name FROM locations ORDER BY sort_order, name").fetchall()
 
 
 def _find_duplicate_item(db, isbn13: str | None, upc_code: str | None, media_type: str) -> dict | None:
@@ -243,7 +120,7 @@ def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw
             "WHERE c.item_id = ? AND c.checked_in IS NULL", (item["id"],)
         ).fetchone()
         if active:
-            _log_scan(raw, item.get("media_type", ""), "already_checked_out", item["id"], "lend")
+            items_common._log_scan(raw, item.get("media_type", ""), "already_checked_out", item["id"], "lend")
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
                 {"status": "already_checked_out", "isbn": raw, "title": item["title"],
@@ -263,14 +140,14 @@ def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw
             (item["id"], borrower_id),
         )
 
-    _log_scan(raw, item.get("media_type", ""), "checked_out", item["id"], "lend")
+    items_common._log_scan(raw, item.get("media_type", ""), "checked_out", item["id"], "lend")
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "checked_out", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": f"Lent to {borrower['name']}"},
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Lent: {item['title'][:40]} → {borrower['name']}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Lent: {item['title'][:40]} → {borrower['name']}")
     return resp
 
 
@@ -282,7 +159,7 @@ def _scan_mode_return(request, templates, item: dict, raw: str):
             "WHERE c.item_id = ? AND c.checked_in IS NULL", (item["id"],)
         ).fetchone()
         if not active:
-            _log_scan(raw, item.get("media_type", ""), "not_checked_out", item["id"], "return")
+            items_common._log_scan(raw, item.get("media_type", ""), "not_checked_out", item["id"], "return")
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
                 {"status": "not_checked_out", "isbn": raw, "title": item["title"],
@@ -294,14 +171,14 @@ def _scan_mode_return(request, templates, item: dict, raw: str):
             "UPDATE checkouts SET checked_in = datetime('now') WHERE id = ?", (active["id"],)
         )
 
-    _log_scan(raw, item.get("media_type", ""), "returned", item["id"], "return")
+    items_common._log_scan(raw, item.get("media_type", ""), "returned", item["id"], "return")
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "returned", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": f"Returned from {active['name']}"},
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Returned: {item['title'][:50]}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Returned: {item['title'][:50]}")
     return resp
 
 
@@ -320,14 +197,14 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
         new_loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
 
     new_name = new_loc["name"] if new_loc else "Unknown"
-    _log_scan(raw, item.get("media_type", ""), "moved", item["id"], "move")
+    items_common._log_scan(raw, item.get("media_type", ""), "moved", item["id"], "move")
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "moved", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": f"{old_location} → {new_name}"},
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Moved: {item['title'][:40]} → {new_name}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Moved: {item['title'][:40]} → {new_name}")
     return resp
 
 
@@ -344,14 +221,14 @@ def _scan_mode_inventory(request, templates, item: dict | None, location_id: int
     loc_name = loc["name"] if loc else "Unknown"
 
     if not item:
-        _log_scan(raw, "", "not_owned", None, "inventory")
+        items_common._log_scan(raw, "", "not_owned", None, "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_owned", "isbn": raw, "message": "Not in collection"},
         )
 
     if item.get("location_id") == location_id:
-        _log_scan(raw, item.get("media_type", ""), "confirmed", item["id"], "inventory")
+        items_common._log_scan(raw, item.get("media_type", ""), "confirmed", item["id"], "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "confirmed", "isbn": raw, "title": item["title"],
@@ -363,7 +240,7 @@ def _scan_mode_inventory(request, templates, item: dict | None, location_id: int
         # Update location to where it actually is
         with get_db() as db:
             db.execute("UPDATE items SET location_id = ? WHERE id = ?", (location_id, item["id"]))
-        _log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
+        items_common._log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "relocated", "isbn": raw, "title": item["title"],
@@ -376,14 +253,14 @@ def _scan_mode_inventory(request, templates, item: dict | None, location_id: int
 def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
     """Handle lookup mode: check if item exists in collection."""
     if not item:
-        _log_scan(raw, "", "not_owned", None, "lookup")
+        items_common._log_scan(raw, "", "not_owned", None, "lookup")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_owned", "isbn": raw, "message": "Not in your collection"},
         )
 
     location_str = item.get("location_name") or "No location set"
-    _log_scan(raw, item.get("media_type", ""), "found", item["id"], "lookup")
+    items_common._log_scan(raw, item.get("media_type", ""), "found", item["id"], "lookup")
     return templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "found", "isbn": raw, "title": item["title"],
@@ -401,14 +278,14 @@ def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
             (date.today().isoformat(), item["id"]),
         )
 
-    _log_scan(raw, item.get("media_type", ""), "marked_read", item["id"], "quick_rate")
+    items_common._log_scan(raw, item.get("media_type", ""), "marked_read", item["id"], "quick_rate")
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "marked_read", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": "Marked as read"},
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Read: {item['title'][:50]}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Read: {item['title'][:50]}")
     return resp
 
 
@@ -434,7 +311,7 @@ async def scan_isbn(
         if mode == "inventory":
             return _scan_mode_inventory(request, templates, item, location_id, raw)
         if not item:
-            _log_scan(raw, "", "not_owned", None, mode)
+            items_common._log_scan(raw, "", "not_owned", None, mode)
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
                 {"status": "not_owned", "isbn": raw, "message": "Not in your collection"},
@@ -454,12 +331,12 @@ async def scan_isbn(
     # Detect barcode type — route UPC barcodes to DVD/product lookup
     barcode_type = upc_svc.detect_barcode_type(raw)
     if barcode_type == "upc":
-        return await _scan_upc(request, templates, raw, media_type, location_id, platform or None, mode=mode)
+        return await items_common._scan_upc(request, templates, raw, media_type, location_id, platform or None, mode=mode)
 
     # Normalize ISBN
     isbn13 = isbn_svc.to_isbn13(raw)
     if not isbn13:
-        _log_scan(isbn, media_type, "error", mode=mode)
+        items_common._log_scan(isbn, media_type, "error", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
@@ -472,7 +349,7 @@ async def scan_isbn(
             (isbn13, media_type),
         ).fetchone()
     if existing:
-        _log_scan(isbn13, media_type, "duplicate", existing["id"], mode)
+        items_common._log_scan(isbn13, media_type, "duplicate", existing["id"], mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
@@ -485,22 +362,22 @@ async def scan_isbn(
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            metadata, source, hc_ids = await _lookup_metadata(isbn13, hc_token, client)
+            metadata, source, hc_ids = await items_common._lookup_metadata(isbn13, hc_token, client)
 
             if not metadata:
-                preview_cover = await _fetch_preview_cover(isbn13, client)
-                _log_scan(isbn13, media_type, "not_found", mode=mode)
+                preview_cover = await items_common._fetch_preview_cover(isbn13, client)
+                items_common._log_scan(isbn13, media_type, "not_found", mode=mode)
                 return templates.TemplateResponse(
                     request, "fragments/scan_result.html",
                     {
                         "status": "not_found", "isbn": isbn13, "media_type": media_type,
                         "message": "Not found — add manually below",
                         "preview_cover": preview_cover,
-                        "locations": _manual_form_locations(),
+                        "locations": items_common._manual_form_locations(),
                     },
                 )
 
-            item_id = _save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
+            item_id = items_common._save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
 
             # Wishlist mode: set owned = 0
             if mode == "wishlist":
@@ -519,21 +396,21 @@ async def scan_isbn(
 
     except httpx.TimeoutException:
         logger.warning("Timeout looking up ISBN %s", isbn13)
-        _log_scan(isbn13, media_type, "error", mode=mode)
+        items_common._log_scan(isbn13, media_type, "error", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn13, "message": "Metadata lookup timed out — try again"},
         )
     except httpx.NetworkError:
         logger.warning("Network error looking up ISBN %s", isbn13)
-        _log_scan(isbn13, media_type, "error", mode=mode)
+        items_common._log_scan(isbn13, media_type, "error", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn13, "message": "Network error during lookup — check connectivity"},
         )
 
     status = "wishlisted" if mode == "wishlist" else "added"
-    _log_scan(isbn13, media_type, status, item_id, mode)
+    items_common._log_scan(isbn13, media_type, status, item_id, mode)
 
     toast_prefix = "Wishlisted" if mode == "wishlist" else "Added"
     resp = templates.TemplateResponse(
@@ -550,39 +427,12 @@ async def scan_isbn(
             "media_type_label": MEDIA_TYPES.get(media_type, media_type),
         },
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
     return resp
 
 
-MAX_COVER_POLLS = 2
 
 
-@router.get("/items/{item_id}/cover-status")
-async def cover_status(request: Request, item_id: int, attempt: int = 0, _=Depends(require_role("viewer"))):
-    """Fragment: the scan card's cover thumbnail, or the next poller.
-
-    Scan queues its cover download, so the result card renders before the
-    cover exists and this endpoint is what swaps it in. Read-only, so viewer
-    is the right role and GET keeps it CSRF-exempt.
-
-    An unknown item renders the settled placeholder with a 200 — an item
-    deleted mid-poll must not produce an htmx error swap.
-    """
-    templates = request.app.state.templates
-    attempt = max(0, min(attempt, MAX_COVER_POLLS))
-    with get_db() as db:
-        row = db.execute(
-            "SELECT cover_path FROM items WHERE id = ?", (item_id,)
-        ).fetchone()
-    if not row:
-        return templates.TemplateResponse(
-            request, "fragments/cover_thumb.html",
-            {"item_id": item_id, "cover_path": None, "attempt": MAX_COVER_POLLS},
-        )
-    return templates.TemplateResponse(
-        request, "fragments/cover_thumb.html",
-        {"item_id": item_id, "cover_path": row["cover_path"], "attempt": attempt},
-    )
 
 
 @router.post("/items/manual")
@@ -642,15 +492,22 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         existing = _find_duplicate_item(db, isbn13, upc_code, media_type)
         if existing is None:
             try:
-                cursor = db.execute(
-                    """INSERT INTO items (title, authors, isbn, isbn10, upc, media_type,
-                       publisher, publish_year, platform, series_name, location_id, language, source)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')""",
-                    (title, form.get("authors"), isbn13, isbn10, upc_code, media_type,
-                     form.get("publisher"), int(pub_year) if pub_year else None, platform,
-                     series_name, location_id, language),
+                item_id = insert_item(
+                    db,
+                    title=title,
+                    authors=form.get("authors"),
+                    isbn=isbn13,
+                    isbn10=isbn10,
+                    upc=upc_code,
+                    media_type=media_type,
+                    publisher=form.get("publisher"),
+                    publish_year=int(pub_year) if pub_year else None,
+                    platform=platform,
+                    series_name=series_name,
+                    location_id=location_id,
+                    language=language,
+                    source="manual",
                 )
-                item_id = cursor.lastrowid
             except sqlite3.IntegrityError:
                 # Lost a race with a concurrent add, or the barcode is on a row
                 # filed before the #20 re-file migration. Either way the user
@@ -661,7 +518,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
 
     if existing:
         code = isbn13 or upc_code or ""
-        _log_scan(code, media_type, "duplicate", existing["id"])
+        items_common._log_scan(code, media_type, "duplicate", existing["id"])
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "duplicate", "isbn": code, "title": existing["title"],
@@ -692,7 +549,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         with get_db() as db:
             db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
 
-    _log_scan(isbn13 or upc_code or "", media_type, "added", item_id)
+    items_common._log_scan(isbn13 or upc_code or "", media_type, "added", item_id)
 
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
@@ -707,7 +564,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
             "media_type_label": MEDIA_TYPES.get(media_type, media_type),
         },
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Added: {title[:50]}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {title[:50]}")
     return resp
 
 
@@ -760,70 +617,27 @@ async def copy_template(item_id: int, _=Depends(require_role("editor"))):
 @router.get("/search")
 async def search_items(
     request: Request,
-    q: str = "",
-    media_type: str = "",
-    media_type_filter: str = "",
-    location: str = "",
-    location_filter: str = "",
-    sort: str = "newest",
-    reading_status: str = "",
-    owned: str = "",
-    lent_out: str = "",
-    tag: str = "",
-    language: str = "",
-    view: str = "",
     page: int = 1,
     per_page: int = DEFAULT_PAGE_SIZE,
     _=Depends(require_role("viewer")),
 ):
-    """Search/filter items. Returns HTMX fragment of item cards."""
+    """Search/filter items. Returns HTMX fragment of item cards.
+
+    Filter values are read from the query string via the registry rather than
+    declared as parameters here — a filter added to `app/browse_filters.py`
+    then needs no change in this signature. Everything is a plain string; the
+    registry owns the per-filter parsing (`location_filter` casts to int, and
+    `owned` is tri-state).
+    """
     templates = request.app.state.templates
 
+    values = browse_filters.values_from(request.query_params)
     # Truncate search query to prevent slow LIKE scans
-    q = q[:200] if q else ""
+    values["q"] = values["q"][:200]
+    sort = values["sort"]
+    view = values["view"]
 
-    mt = media_type or media_type_filter
-    loc = location or location_filter
-
-    # Build conditions in groups so we can compute cross-filter counts
-    base_conds = []  # search + location + reading_status + lent_out + tag
-    base_params: list = []
-    if q:
-        base_conds.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
-        base_params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-    if loc:
-        base_conds.append("i.location_id = ?")
-        base_params.append(int(loc))
-    if reading_status:
-        base_conds.append("i.reading_status = ?")
-        base_params.append(reading_status)
-    if lent_out == "1":
-        base_conds.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
-    if tag:
-        base_conds.append(
-            "i.id IN (SELECT it.item_id FROM item_tags it "
-            "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
-        )
-        base_params.append(tag)
-    if language:
-        # In base_conds so the type/owned count groups inherit it via their
-        # list(base_conds) copies; the loc_conds and rs_conds_clean rebuilds
-        # below re-add it by hand.
-        base_conds.append("i.language = ?")
-        base_params.append(language)
-
-    # Full conditions = base + type + owned
-    conditions = list(base_conds)
-    params = list(base_params)
-    if mt:
-        conditions.append("i.media_type = ?")
-        params.append(mt)
-    if owned == "1":
-        conditions.append("i.owned = 1")
-    elif owned == "0":
-        conditions.append("i.owned = 0")
-
-    where = "WHERE " + " AND ".join(conditions) if conditions else ""
+    where, params = browse_filters.build_where(values)
     _, order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["newest"])
     offset = (max(page, 1) - 1) * per_page
 
@@ -844,17 +658,15 @@ async def search_items(
             [get_overdue_days(db)] + params + [per_page, offset],
         ).fetchall()
 
-        # Cross-filter counts for dropdowns (page 1 only)
+        # Cross-filter counts for dropdowns (page 1 only). Each group is the
+        # same where-clause with its own filter excluded, so the number beside
+        # an option says what selecting it would yield.
         filter_counts = None
         if page <= 1:
-            # Type counts: base + owned (no type filter)
-            type_conds = list(base_conds)
-            type_params = list(base_params)
-            if owned == "1":
-                type_conds.append("i.owned = 1")
-            elif owned == "0":
-                type_conds.append("i.owned = 0")
-            type_where = "WHERE " + " AND ".join(type_conds) if type_conds else ""
+            def _count_where(exclude):
+                return browse_filters.build_where(values, exclude=exclude)
+
+            type_where, type_params = _count_where("media_type_filter")
             type_counts = {
                 row["media_type"]: row["c"]
                 for row in db.execute(
@@ -864,113 +676,40 @@ async def search_items(
             }
             type_total = sum(type_counts.values())
 
-            # Owned/wishlist counts: base + type (no owned filter)
-            own_conds = list(base_conds)
-            own_params = list(base_params)
-            if mt:
-                own_conds.append("i.media_type = ?")
-                own_params.append(mt)
-            own_where = "WHERE " + " AND ".join(own_conds) if own_conds else ""
+            own_where, own_params = _count_where("owned")
+            _own_join = " AND" if own_where else " WHERE"
             owned_count = db.execute(
-                f"SELECT COUNT(*) as c FROM items i {own_where} AND i.owned = 1"
-                if own_where else "SELECT COUNT(*) as c FROM items i WHERE i.owned = 1",
+                f"SELECT COUNT(*) as c FROM items i {own_where}{_own_join} i.owned = 1",
                 own_params,
             ).fetchone()["c"]
             wishlist_count = db.execute(
-                f"SELECT COUNT(*) as c FROM items i {own_where} AND i.owned = 0"
-                if own_where else "SELECT COUNT(*) as c FROM items i WHERE i.owned = 0",
+                f"SELECT COUNT(*) as c FROM items i {own_where}{_own_join} i.owned = 0",
                 own_params,
             ).fetchone()["c"]
 
-            # Location counts: all filters EXCEPT location
-            loc_conds: list[str] = []
-            loc_params: list = []
-            if q:
-                loc_conds.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
-                loc_params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-            if reading_status:
-                loc_conds.append("i.reading_status = ?")
-                loc_params.append(reading_status)
-            if lent_out == "1":
-                loc_conds.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
-            if tag:
-                loc_conds.append(
-                    "i.id IN (SELECT it.item_id FROM item_tags it "
-                    "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
-                )
-                loc_params.append(tag)
-            if language:
-                loc_conds.append("i.language = ?")
-                loc_params.append(language)
-            if mt:
-                loc_conds.append("i.media_type = ?")
-                loc_params.append(mt)
-            if owned == "1":
-                loc_conds.append("i.owned = 1")
-            elif owned == "0":
-                loc_conds.append("i.owned = 0")
-            loc_where = "WHERE " + " AND ".join(loc_conds) if loc_conds else ""
+            loc_where, loc_params = _count_where("location_filter")
+            _loc_join = " AND" if loc_where else " WHERE"
             location_counts = {
                 row["location_id"]: row["c"]
                 for row in db.execute(
                     f"SELECT location_id, COUNT(*) as c FROM items i {loc_where}"
-                    + (" AND" if loc_where else " WHERE")
-                    + " location_id IS NOT NULL GROUP BY location_id",
+                    f"{_loc_join} location_id IS NOT NULL GROUP BY location_id",
                     loc_params,
                 ).fetchall()
             }
             no_location_count = db.execute(
-                f"SELECT COUNT(*) as c FROM items i {loc_where}"
-                + (" AND" if loc_where else " WHERE")
-                + " location_id IS NULL",
+                f"SELECT COUNT(*) as c FROM items i {loc_where}{_loc_join} location_id IS NULL",
                 loc_params,
             ).fetchone()["c"]
 
-            # Reading status counts: all filters EXCEPT reading_status
-            rs_conds: list[str] = list(conditions)
-            rs_params: list = list(params)
-            # Remove reading_status condition if present
-            if reading_status and "i.reading_status = ?" in rs_conds:
-                idx = rs_conds.index("i.reading_status = ?")
-                rs_conds.pop(idx)
-                # Find the corresponding param — it's at the same position
-                # in base_params, which maps to the same offset in full params
-                # since base_conds come first. Easier: rebuild without it.
-                rs_conds_clean: list[str] = []
-                rs_params_clean: list = []
-                if q:
-                    rs_conds_clean.append("(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)")
-                    rs_params_clean.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-                if loc:
-                    rs_conds_clean.append("i.location_id = ?")
-                    rs_params_clean.append(int(loc))
-                if lent_out == "1":
-                    rs_conds_clean.append("i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)")
-                if tag:
-                    rs_conds_clean.append(
-                        "i.id IN (SELECT it.item_id FROM item_tags it "
-                        "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
-                    )
-                    rs_params_clean.append(tag)
-                if language:
-                    rs_conds_clean.append("i.language = ?")
-                    rs_params_clean.append(language)
-                if mt:
-                    rs_conds_clean.append("i.media_type = ?")
-                    rs_params_clean.append(mt)
-                if owned == "1":
-                    rs_conds_clean.append("i.owned = 1")
-                elif owned == "0":
-                    rs_conds_clean.append("i.owned = 0")
-                rs_conds = rs_conds_clean
-                rs_params = rs_params_clean
-            rs_where = "WHERE " + " AND ".join(rs_conds) if rs_conds else ""
+            rs_where, rs_params = _count_where("reading_status")
+            _rs_join = " AND" if rs_where else " WHERE"
             reading_status_counts = {
                 row["reading_status"]: row["c"]
                 for row in db.execute(
                     f"SELECT reading_status, COUNT(*) as c FROM items i {rs_where}"
-                    + (" AND" if rs_where else " WHERE")
-                    + " reading_status IS NOT NULL AND reading_status != '' GROUP BY reading_status",
+                    f"{_rs_join} reading_status IS NOT NULL AND reading_status != '' "
+                    "GROUP BY reading_status",
                     rs_params,
                 ).fetchall()
             }
@@ -989,39 +728,17 @@ async def search_items(
                 "reading_status_counts": reading_status_counts,
                 "locations": locations,
                 "filtered_total": total,
-                "active_type": mt,
-                "active_owned": owned,
-                "active_location": loc,
-                "active_reading_status": reading_status,
+                "active_type": values["media_type_filter"],
+                "active_owned": values["owned"],
+                "active_location": values["location_filter"],
+                "active_reading_status": values["reading_status"],
             }
 
     has_more = (offset + per_page) < total
 
-    # Build query string for load-more button
-    qs_parts = []
-    if q:
-        qs_parts.append(f"q={q}")
-    if mt:
-        qs_parts.append(f"media_type_filter={mt}")
-    if loc:
-        qs_parts.append(f"location_filter={loc}")
-    if sort != "newest":
-        qs_parts.append(f"sort={sort}")
-    if reading_status:
-        qs_parts.append(f"reading_status={reading_status}")
-    if owned:
-        qs_parts.append(f"owned={owned}")
-    if lent_out:
-        qs_parts.append(f"lent_out={lent_out}")
-    if tag:
-        from urllib.parse import quote
-        qs_parts.append(f"tag={quote(tag)}")
-    if language:
-        qs_parts.append(f"language={language}")
-    if view:
-        qs_parts.append(f"view={view}")
-    qs_parts.append(f"page={page + 1}")
-    load_more_url = "/api/search?" + "&".join(qs_parts)
+    load_more_url = "/api/search?" + browse_filters.querystring(
+        values, extra=[f"page={page + 1}"]
+    )
 
     # Page 1: full grid wrapper. Page 2+: just cards/rows (appended via outerHTML swap on load-more).
     if page <= 1:
@@ -1032,7 +749,6 @@ async def search_items(
         template = "fragments/item_cards_page.html"
 
     from datetime import datetime, timedelta
-    has_filters = any([q, mt, loc, reading_status, owned, lent_out, tag])
     ctx = {
         "items": items,
         "media_types": MEDIA_TYPES,
@@ -1040,7 +756,7 @@ async def search_items(
         "load_more_url": load_more_url,
         "page": page,
         "total": total,
-        "has_filters": has_filters,
+        "has_filters": browse_filters.has_active_filters(values),
         "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
     }
     if filter_counts:
@@ -1261,7 +977,7 @@ async def set_reading_status(request: Request, item_id: int, status: str = Form(
         request, "fragments/reading_status.html",
         {"item": item, "reading_history": reading_history},
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Status: {label}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Status: {label}")
     return resp
 
 
@@ -1283,163 +999,16 @@ async def _push_status_to_hardcover(item_id: int, status: str):
         logger.warning("Failed to push status to Hardcover for item %d", item_id, exc_info=True)
 
 
-@router.post("/items/{item_id}/retry-cover")
-async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
-    """Re-attempt cover download for an item."""
-    with get_db() as db:
-        item = db.execute("SELECT isbn FROM items WHERE id = ?", (item_id,)).fetchone()
-    if not item or not item["isbn"]:
-        return {"ok": False, "message": "No ISBN"}
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        cover_path = await covers.download_cover(item_id, item["isbn"], None, None, client)
-
-    if cover_path:
-        with get_db() as db:
-            db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
-        return {"ok": True, "cover_path": cover_path}
-    return {"ok": False, "message": "No cover found"}
 
 
-@router.get("/items/{item_id}/cover-search")
-async def cover_search(request: Request, item_id: int, _=Depends(require_role("editor"))):
-    """Search for cover candidates by title/author. Returns HTMX fragment."""
-    templates = request.app.state.templates
-    with get_db() as db:
-        item = db.execute("SELECT title, authors FROM items WHERE id = ?", (item_id,)).fetchone()
-    if not item:
-        return HTMLResponse("Not found", status_code=404)
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        candidates = await covers.search_cover_by_title(item["title"], item["authors"], client)
-
-    return templates.TemplateResponse(
-        request, "fragments/cover_search.html",
-        {"candidates": candidates, "item_id": item_id},
-    )
 
 
-@router.post("/items/{item_id}/cover-select")
-async def cover_select(request: Request, item_id: int, url: str = Form(...), _=Depends(require_role("editor"))):
-    """Download a selected cover URL and save it for an item."""
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        cover_path = await covers._download_to_item(item_id, url, client)
-
-    if cover_path:
-        with get_db() as db:
-            db.execute("UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?", (cover_path, item_id))
-        resp = HTMLResponse("")
-        resp.headers["HX-Trigger"] = _toast_header("Cover updated")
-        resp.headers["HX-Redirect"] = f"/item/{item_id}"
-        return resp
-
-    resp = HTMLResponse("Failed to download cover")
-    resp.headers["HX-Trigger"] = _toast_header("Failed to download cover", "error")
-    return resp
 
 
-# Bulk cover retry is restricted to book media types for the same reason the
-# startup requeue is (GOTCHAS G29): resolve_missing_cover's fallback is a
-# book-catalogue title search that accepts the first Open Library hit when the
-# item has no authors, then writes that book's ISBN onto the row. Sweeping a
-# cover-less DVD or video game through it attaches a novel's cover and ISBN to
-# the disc. Non-book cover misses are re-fetched from the item page instead.
-_COVER_RETRY_PLACEHOLDERS = ", ".join(
-    "?" for _ in cover_queue.COVER_REQUEUE_MEDIA_TYPES
-)
 
 
-@router.post("/covers/bulk-retry")
-async def bulk_retry_covers(request: Request, _=Depends(require_role("admin"))):
-    """Retry downloading covers for all book items missing them."""
-    with get_db() as db:
-        items = db.execute(
-            f"SELECT id FROM items WHERE cover_path IS NULL "
-            f"AND media_type IN ({_COVER_RETRY_PLACEHOLDERS})",
-            cover_queue.COVER_REQUEUE_MEDIA_TYPES,
-        ).fetchall()
-
-    results = {"success": 0, "failed": 0, "total": len(items)}
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        for item in items:
-            try:
-                if await resolve_missing_cover(item["id"], client):
-                    results["success"] += 1
-                else:
-                    results["failed"] += 1
-            except Exception:
-                # One slow or broken item must not abort the sweep and throw
-                # away the covers already fetched in this run. Open Library's
-                # search endpoint is slow and is not routed through
-                # outbound.fetch, so a ReadTimeout here is routine.
-                logger.exception("Cover retry failed for item %d", item["id"])
-                results["failed"] += 1
-
-    return results
 
 
-@router.get("/covers/bulk-retry/stream")
-async def bulk_retry_covers_stream(request: Request, _=Depends(require_role("admin"))):
-    """SSE endpoint for bulk cover retry with progress updates."""
-    with get_db() as db:
-        items = db.execute(
-            f"SELECT id, isbn, title FROM items WHERE cover_path IS NULL "
-            f"AND media_type IN ({_COVER_RETRY_PLACEHOLDERS})",
-            cover_queue.COVER_REQUEUE_MEDIA_TYPES,
-        ).fetchall()
-
-    if not items:
-        async def empty_stream():
-            yield f"data: {json.dumps({'type': 'done', 'success': 0, 'failed': 0, 'total': 0})}\n\n"
-        return StreamingResponse(empty_stream(), media_type="text/event-stream")
-
-    queue: asyncio.Queue = asyncio.Queue()
-
-    async def run_retry():
-        results = {"success": 0, "failed": 0, "total": len(items)}
-        try:
-            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-                for i, item in enumerate(items, 1):
-                    try:
-                        if await resolve_missing_cover(item["id"], client):
-                            results["success"] += 1
-                            status = "found"
-                        else:
-                            results["failed"] += 1
-                            status = "not found"
-                    except Exception:
-                        # Per-item guard: without it one Open Library search
-                        # timeout ends the whole run at "error" and the user
-                        # loses the progress already made.
-                        logger.exception(
-                            "Cover retry failed for item %d", item["id"])
-                        results["failed"] += 1
-                        status = "not found"
-
-                    await queue.put({
-                        "type": "progress", "current": i, "total": len(items),
-                        "title": item["title"] or item["isbn"], "status": status,
-                    })
-
-            await queue.put({"type": "done", **results})
-        except Exception:
-            logger.exception("Bulk cover retry failed")
-            await queue.put({"type": "error", "message": "Cover retry failed — check server logs"})
-
-    async def event_stream():
-        task = asyncio.create_task(run_retry())
-        try:
-            while True:
-                msg = await queue.get()
-                yield f"data: {json.dumps(msg)}\n\n"
-                if msg["type"] in ("done", "error"):
-                    break
-        finally:
-            if not task.done():
-                task.cancel()
-
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
 @router.post("/items/{item_id}/fetch-synopsis")
@@ -1545,810 +1114,38 @@ async def delete_item(item_id: int, _=Depends(require_role("editor"))):
         db.execute("UPDATE scan_log SET item_id = NULL WHERE item_id = ?", (item_id,))
         db.execute("DELETE FROM items WHERE id = ?", (item_id,))
     resp = HTMLResponse('{"ok": true}', headers={"Content-Type": "application/json"})
-    resp.headers["HX-Trigger"] = _toast_header(f"Deleted: {title[:50]}")
+    resp.headers["HX-Trigger"] = items_common._toast_header(f"Deleted: {title[:50]}")
     return resp
 
 
-@router.get("/export/csv")
-async def export_csv(_=Depends(require_role("viewer"))):
-    import csv
-    import io
-    from fastapi.responses import StreamingResponse
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerow(["title", "authors", "isbn", "media_type", "platform", "publisher", "publish_year", "page_count", "series_name", "location", "source", "estimated_value", "manual_value"])
 
-    with get_db() as db:
-        rows = db.execute(
-            "SELECT i.*, l.name as location_name FROM items i "
-            "LEFT JOIN locations l ON i.location_id = l.id "
-            "ORDER BY i.title"
-        ).fetchall()
 
-    for row in rows:
-        writer.writerow([
-            row["title"], row["authors"], row["isbn"], row["media_type"],
-            row["platform"], row["publisher"], row["publish_year"], row["page_count"],
-            row["series_name"], row["location_name"], row["source"],
-            row["estimated_value"], row["manual_value"],
-        ])
 
-    output.seek(0)
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=shelf_export.csv"},
-    )
 
 
-@router.post("/import/csv")
-async def import_csv(request: Request, _=Depends(require_role("admin"))):
-    """Import items from a CSV file upload.
 
-    Accepts Shelf's own CSV format plus Goodreads and StoryGraph exports —
-    the source is auto-detected from the header row (see
-    services/reading_imports.py for the column mappings).
-    """
-    import csv
-    import io
-    import os
 
-    from app.services import reading_imports
 
-    form = await request.form()
-    mode = form.get("mode", "skip")  # skip or update
-    to_read_wishlist = form.get("to_read_wishlist") in ("1", "true", "on")
-    enrich_covers = form.get("enrich_covers") in ("1", "true", "on")
-    csv_file = form.get("file")
-    if not csv_file or not hasattr(csv_file, "read"):
-        return {"error": "No file uploaded", "imported": 0, "skipped": 0, "errors": []}
 
-    raw = await csv_file.read()
-    if len(raw) > 50 * 1024 * 1024:  # 50 MB cap
-        return {"error": "File too large (max 50 MB)", "imported": 0, "skipped": 0, "errors": []}
-    content = raw.decode("utf-8-sig")
-    reader = csv.DictReader(io.StringIO(content))
 
-    # Normalize headers (lowercase, strip)
-    if reader.fieldnames:
-        reader.fieldnames = [f.strip().lower().replace(" ", "_") for f in reader.fieldnames]
 
-    fmt = reading_imports.detect_format(reader.fieldnames)
-    normalize = reading_imports.NORMALIZERS[fmt]
-    source = "csv_import" if fmt == reading_imports.GENERIC else f"{fmt}_import"
 
-    imported = 0
-    skipped = 0
-    errors = []
-    new_item_ids: list[int] = []
-    seen_in_file: set[tuple[str, str]] = set()
 
-    _CSV_MAX_TEXT = 1000
 
-    with get_db() as db:
-        for i, row in enumerate(reader, start=2):
-            try:
-                norm = normalize(row)
 
-                title = norm["title"]
-                if not title:
-                    errors.append(f"Row {i}: missing title")
-                    continue
-                if len(title) > _CSV_MAX_TEXT:
-                    errors.append(f"Row {i}: title too long (max {_CSV_MAX_TEXT} chars)")
-                    continue
-                if norm["authors"] and len(norm["authors"]) > _CSV_MAX_TEXT:
-                    errors.append(f"Row {i}: authors too long (max {_CSV_MAX_TEXT} chars)")
-                    continue
-                if norm["publisher"] and len(norm["publisher"]) > _CSV_MAX_TEXT:
-                    errors.append(f"Row {i}: publisher too long (max {_CSV_MAX_TEXT} chars)")
-                    continue
-                if norm["series_name"] and len(norm["series_name"]) > _CSV_MAX_TEXT:
-                    errors.append(f"Row {i}: series_name too long (max {_CSV_MAX_TEXT} chars)")
-                    continue
 
-                isbn_val = norm["isbn"]
-                media = norm["media_type"]
 
-                owned = norm["owned"]
-                if to_read_wishlist and norm["reading_status"] == "want_to_read":
-                    owned = False
 
-                # Check duplicate (within this file, then against the DB)
-                if isbn_val:
-                    if (isbn_val, media) in seen_in_file:
-                        skipped += 1
-                        continue
-                    seen_in_file.add((isbn_val, media))
-                    existing = db.execute(
-                        "SELECT id FROM items WHERE isbn = ? AND media_type = ?", (isbn_val, media)
-                    ).fetchone()
-                    if existing:
-                        if mode == "skip":
-                            skipped += 1
-                            continue
-                        # mode == update: refresh metadata, and reading state
-                        # for reading-tracker imports
-                        _update_from_csv_row(db, existing["id"], norm)
-                        if fmt != reading_imports.GENERIC:
-                            db.execute(
-                                "UPDATE items SET reading_status = COALESCE(?, reading_status), "
-                                "date_finished = COALESCE(?, date_finished), owned = ?, "
-                                "updated_at = datetime('now') WHERE id = ?",
-                                (norm["reading_status"], norm["date_finished"], int(owned), existing["id"]),
-                            )
-                        imported += 1
-                        continue
 
-                pub_year = norm["publish_year"]
-                page_count = norm["page_count"]
 
-                cursor = db.execute(
-                    """INSERT INTO items (title, authors, isbn, media_type, publisher,
-                       publish_year, page_count, series_name, series_position,
-                       reading_status, date_finished, owned, source)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        title,
-                        norm["authors"],
-                        isbn_val,
-                        media,
-                        norm["publisher"],
-                        int(pub_year) if pub_year and str(pub_year).isdigit() else None,
-                        int(page_count) if page_count and str(page_count).isdigit() else None,
-                        norm["series_name"],
-                        norm.get("series_position"),
-                        norm["reading_status"],
-                        norm["date_finished"],
-                        int(owned),
-                        source,
-                    ),
-                )
-                if isbn_val:
-                    new_item_ids.append(cursor.lastrowid)
-                imported += 1
-            except Exception as e:
-                errors.append(f"Row {i}: {e}")
 
-    covers_queued = 0
-    if enrich_covers and new_item_ids and not os.environ.get("SHELF_DISABLE_COVER_ENRICH"):
-        eligible = cover_queue.filter_cover_eligible(new_item_ids)
-        covers_queued = len(eligible)
-        # The hand-off filters again — deliberate, keeps it idempotent and
-        # safe for any future producer (G29).
-        asyncio.create_task(_enrich_import_covers(eligible))
 
-    return {
-        "imported": imported,
-        "skipped": skipped,
-        "errors": errors[:20],
-        "format": fmt,
-        "covers_queued": covers_queued,
-    }
 
 
-async def _search_isbn_for_item(title: str, authors: str | None, client) -> tuple[str | None, str | None]:
-    """Find (isbn, cover_url) by field-scoped title/author search on Open
-    Library. Field search lets OL do the title matching itself, including
-    alternate titles ('1984' finds 'Nineteen Eighty-Four').
 
-    Goodreads exports omit ISBNs for many editions (Kindle especially);
-    this recovers one so the cover chain and future lookups can work.
-    """
-    with get_db() as db:
-        search_lang = get_setting(db, "metadata_search_lang") or "en"
 
-    first_author = (authors or "").split(",")[0].strip() or None
-    results = await openlibrary.search_by_title_author(title, first_author, client, lang=search_lang)
-    for res in results:
-        if authors_svc.matches(authors, res.get("authors")):
-            return res.get("isbn"), res.get("cover_url")
-    return None, None
 
-
-async def resolve_missing_cover(
-    item_id: int, client: httpx.AsyncClient, hints: dict | None = None
-) -> str | None:
-    """Find and store a cover for one item that has none.
-
-    An item with an ISBN tries the standard cover chain first (Open Library
-    covers -> Amazon -> Google Books). If that fails — or there is no ISBN —
-    a title/author search finds the work's best-known edition instead
-    (imported and print-on-demand edition ISBNs often have no cover
-    anywhere). A recovered ISBN is stored on ISBN-less items unless another
-    item already holds it.
-
-    `hints` carries a caller's own cover inputs (`cover_url`, `cover_id`,
-    `hardcover_cover_url`) — the scan path passes the ones it already looked
-    up, so queueing its download does not change which sources get tried.
-    With hints the first attempt runs even for an ISBN-less item, since a
-    hinted `cover_url` alone can resolve it.
-
-    Returns the stored cover path, or None if nothing was found. Items that
-    already have a cover are left alone.
-    """
-    with get_db() as db:
-        row = db.execute(
-            "SELECT title, authors, isbn, cover_path FROM items WHERE id = ?",
-            (item_id,),
-        ).fetchone()
-    if not row or row["cover_path"]:
-        return None
-
-    cover_path = None
-    if hints:
-        cover_path = await covers.download_cover(
-            item_id,
-            row["isbn"],
-            hints.get("cover_url"),
-            hints.get("cover_id"),
-            client,
-            hardcover_cover_url=hints.get("hardcover_cover_url"),
-        )
-    elif row["isbn"]:
-        cover_path = await covers.download_cover(
-            item_id, row["isbn"], None, None, client)
-
-    if not cover_path:
-        found_isbn, cover_url = await _search_isbn_for_item(
-            row["title"], row["authors"], client)
-        if found_isbn and not row["isbn"]:
-            isbn13 = isbn_svc.to_isbn13(found_isbn) or found_isbn
-            isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if len(isbn13) == 13 else None
-            with get_db() as db:
-                taken = db.execute(
-                    "SELECT id FROM items WHERE isbn = ? AND id != ?",
-                    (isbn13, item_id),
-                ).fetchone()
-                if not taken:
-                    db.execute(
-                        "UPDATE items SET isbn = ?, isbn10 = ?, "
-                        "updated_at = datetime('now') WHERE id = ?",
-                        (isbn13, isbn10, item_id),
-                    )
-        if cover_url:
-            cover_path = await covers.download_cover(
-                item_id, None, cover_url, None, client)
-        elif found_isbn and not row["isbn"]:
-            cover_path = await covers.download_cover(
-                item_id, found_isbn, None, None, client)
-
-    if cover_path:
-        with get_db() as db:
-            db.execute(
-                "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
-                (cover_path, item_id),
-            )
-    return cover_path
-
-
-async def _enrich_import_covers(item_ids: list[int]) -> None:
-    """Background task: hand off freshly imported items to the cover queue.
-
-    Kept as an async function behind `asyncio.create_task` at both call
-    sites even though it no longer awaits any network I/O itself — the
-    queue's own worker does the downloading. That preserves the
-    fire-and-forget shape both call sites already rely on.
-
-    Filters to book-ish media types before enqueueing (G29) — `enqueue_many`
-    applies no filter itself, and this is the shared hand-off both
-    producers (photo-intake confirm and CSV import) go through.
-    """
-    eligible = cover_queue.filter_cover_eligible(item_ids)
-    queued = cover_queue.enqueue_many(eligible)
-    if queued != len(item_ids):
-        logger.info(
-            "Queued %d of %d items for cover enrichment (non-book rows skipped)",
-            queued, len(item_ids),
-        )
-    else:
-        logger.info("Queued %d items for cover enrichment", queued)
-
-
-async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None, mode: str = "add"):
-    """Handle UPC barcode scan — look up via UPC Item DB + TMDb (or IGDB for games)."""
-    upc_norm = upc_svc.normalize_barcode(upc_code)
-    # upc_norm goes to UPC Item DB / TMDb as scanned; upc_key is the canonical
-    # EAN-13 form everything in the database is stored and matched on, so the
-    # same disc scanned as UPC-A and as EAN-13 dedupes to one row (#20).
-    upc_key = upc_svc.normalize_upc(upc_code)
-
-    # Check duplicate
-    with get_db() as db:
-        existing = db.execute(
-            "SELECT id, title FROM items WHERE upc = ? AND media_type = ?", (upc_key, media_type)
-        ).fetchone()
-    if existing:
-        _log_scan(upc_norm, media_type, "duplicate", existing["id"], mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "duplicate", "isbn": upc_norm, "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    # Video games: use UPC Item DB for title → IGDB for metadata
-    if media_type == "video_game":
-        return await _scan_upc_game(request, templates, upc_norm, location_id, platform)
-
-    # Get TMDb API key
-    with get_db() as db:
-        tmdb_key = get_setting(db, "tmdb_api_key")
-
-    metadata = None
-    try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            metadata = await tmdb.lookup_upc(upc_norm, tmdb_key, client)
-    except (httpx.TimeoutException, httpx.NetworkError) as exc:
-        logger.warning("Network error looking up UPC %s: %s", upc_norm, type(exc).__name__)
-        _log_scan(upc_norm, media_type, "error", mode=mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": upc_norm, "media_type": media_type,
-             "message": "Metadata lookup failed — check connectivity", "preview_cover": None},
-        )
-
-    if not metadata:
-        _log_scan(upc_norm, media_type, "not_found", mode=mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "not_found", "isbn": upc_norm, "media_type": media_type,
-             "message": "Not found — add manually below", "preview_cover": None,
-             "locations": _manual_form_locations()},
-        )
-
-    loc_id = location_id if location_id and location_id > 0 else None
-    with get_db() as db:
-        cursor = db.execute(
-            """INSERT INTO items (title, description, media_type, publish_year,
-               location_id, upc, source) VALUES (?, ?, ?, ?, ?, ?, 'tmdb')""",
-            (metadata["title"], metadata.get("description"), media_type,
-             metadata.get("publish_year"), loc_id, upc_key),
-        )
-        item_id = cursor.lastrowid
-
-    # Wishlist mode: set owned = 0
-    if mode == "wishlist":
-        with get_db() as db:
-            db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
-
-    # Download cover
-    cover_path = None
-    if metadata.get("cover_url"):
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            cover_path = await covers._download_to_item(item_id, metadata["cover_url"], client)
-        if cover_path:
-            with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
-
-    status = "wishlisted" if mode == "wishlist" else "added"
-    _log_scan(upc_norm, media_type, status, item_id, mode)
-
-    toast_prefix = "Wishlisted" if mode == "wishlist" else "Added"
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {
-            "status": status, "isbn": upc_norm, "title": metadata["title"],
-            "authors": None, "cover_path": cover_path, "item_id": item_id,
-            "source": "tmdb", "media_type_label": MEDIA_TYPES.get(media_type, media_type),
-        },
-    )
-    resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
-    return resp
-
-
-async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id: int | None, platform: str | None = None):
-    """Handle UPC scan for video games: UPC Item DB → IGDB lookup."""
-    # Step 1: Get title from UPC
-    title = None
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        try:
-            resp = await client.get(
-                "https://api.upcitemdb.com/prod/trial/lookup",
-                params={"upc": upc_norm}, timeout=10,
-            )
-            if resp.status_code == 200:
-                items = resp.json().get("items", [])
-                if items:
-                    title = items[0].get("title")
-        except Exception:
-            pass
-
-    if not title:
-        _log_scan(upc_norm, "video_game", "not_found")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "not_found", "isbn": upc_norm, "media_type": "video_game",
-             "message": "Not found — add manually below", "preview_cover": None,
-             "locations": _manual_form_locations()},
-        )
-
-    # Step 2: Search IGDB for metadata using that title
-    with get_db() as db:
-        igdb_id = get_setting(db, "igdb_client_id")
-        igdb_secret = get_setting(db, "igdb_client_secret")
-
-    metadata = None
-    if igdb_id and igdb_secret:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            results = await igdb.search_games(title, igdb_id, igdb_secret, client, limit=1)
-            if results:
-                metadata = results[0]
-
-    # Save item — with IGDB metadata if found, otherwise just UPC title
-    loc_id = location_id if location_id and location_id > 0 else None
-    source = "igdb" if metadata else "upc"
-    game_title = metadata["title"] if metadata else title
-
-    with get_db() as db:
-        valid_platforms = get_game_platforms(db)
-        platform_val = platform if platform and platform in valid_platforms else None
-        cursor = db.execute(
-            """INSERT INTO items (title, description, media_type, publisher, publish_year,
-               series_name, platform, location_id, upc, source)
-               VALUES (?, ?, 'video_game', ?, ?, ?, ?, ?, ?, ?)""",
-            (
-                game_title,
-                metadata.get("description") if metadata else None,
-                metadata.get("publisher") if metadata else None,
-                metadata.get("publish_year") if metadata else None,
-                metadata.get("series_name") if metadata else None,
-                platform_val,
-                loc_id,
-                upc_svc.normalize_upc(upc_norm),
-                source,
-            ),
-        )
-        item_id = cursor.lastrowid
-
-    # Download cover
-    cover_path = None
-    cover_url = metadata.get("cover_url") if metadata else None
-    if cover_url:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            cover_path = await covers._download_to_item(item_id, cover_url, client)
-        if cover_path:
-            with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
-
-    _log_scan(upc_norm, "video_game", "added", item_id)
-
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {
-            "status": "added", "isbn": upc_norm, "title": game_title,
-            "authors": metadata.get("developer") if metadata else None,
-            "cover_path": cover_path, "item_id": item_id,
-            "source": source, "media_type_label": "Video Game",
-        },
-    )
-    resp.headers["HX-Trigger"] = _toast_header(f"Added: {game_title[:50]}")
-    return resp
-
-
-@router.get("/games/search")
-async def search_games(
-    request: Request,
-    q: str = "",
-    platform: str = "",
-    _=Depends(require_role("editor")),
-):
-    """Search IGDB for video games by title + optional platform. Returns HTMX fragment."""
-    templates = request.app.state.templates
-    if not q.strip():
-        return HTMLResponse("")
-
-    with get_db() as db:
-        igdb_id = get_setting(db, "igdb_client_id")
-        igdb_secret = get_setting(db, "igdb_client_secret")
-
-    if not igdb_id or not igdb_secret:
-        return HTMLResponse(
-            '<p class="text-sm text-shelf-error">IGDB credentials not configured. '
-            'Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
-        )
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await igdb.search_games(
-            q.strip(), igdb_id, igdb_secret, client,
-            platform=platform or None, limit=10,
-        )
-
-    return templates.TemplateResponse(
-        request, "fragments/game_search_results.html",
-        {"results": results, "platform": platform},
-    )
-
-
-@router.post("/games/add")
-async def add_game_from_search(
-    request: Request,
-    igdb_id: int = Form(...),
-    platform: str = Form(""),
-    location_id: int | None = Form(None),
-    _=Depends(require_role("editor")),
-):
-    """Add a video game to the collection from an IGDB search result."""
-    templates = request.app.state.templates
-
-    with get_db() as db:
-        client_id = get_setting(db, "igdb_client_id")
-        client_secret = get_setting(db, "igdb_client_secret")
-
-    if not client_id or not client_secret:
-        return HTMLResponse('<p class="text-sm text-shelf-error">IGDB not configured.</p>')
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        metadata = await igdb.lookup_game(igdb_id, client_id, client_secret, client)
-
-    if not metadata:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": "", "message": "Failed to fetch game details from IGDB"},
-        )
-
-    loc_id = location_id if location_id and location_id > 0 else None
-
-    with get_db() as db:
-        valid_platforms = get_game_platforms(db)
-        platform_val = platform if platform in valid_platforms else None
-
-        # Check duplicate by title + platform
-        existing = db.execute(
-            "SELECT id, title FROM items WHERE title = ? AND media_type = 'video_game' AND platform = ?",
-            (metadata["title"], platform_val),
-        ).fetchone()
-    if existing:
-        _log_scan("", "video_game", "duplicate", existing["id"])
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    with get_db() as db:
-        cursor = db.execute(
-            """INSERT INTO items (title, description, media_type, publisher, publish_year,
-               series_name, platform, location_id, source)
-               VALUES (?, ?, 'video_game', ?, ?, ?, ?, ?, 'igdb')""",
-            (
-                metadata["title"],
-                metadata.get("description"),
-                metadata.get("publisher"),
-                metadata.get("publish_year"),
-                metadata.get("series_name"),
-                platform_val,
-                loc_id,
-            ),
-        )
-        item_id = cursor.lastrowid
-
-    # Download cover
-    cover_path = None
-    if metadata.get("cover_url"):
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            cover_path = await covers._download_to_item(item_id, metadata["cover_url"], client)
-        if cover_path:
-            with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
-
-    _log_scan("", "video_game", "added", item_id)
-
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {
-            "status": "added", "isbn": "", "title": metadata["title"],
-            "authors": metadata.get("developer"),
-            "cover_path": cover_path, "item_id": item_id,
-            "source": "igdb", "media_type_label": "Video Game",
-        },
-    )
-    resp.headers["HX-Trigger"] = _toast_header(f"Added: {metadata['title'][:50]}")
-    return resp
-
-
-BOOK_MEDIA_TYPES = {"book", "kids_book", "audiobook", "ebook", "comic"}
-
-
-@router.get("/title-search")
-async def title_search(
-    request: Request,
-    q: str = "",
-    media_type: str = "book",
-    platform: str = "",
-    _=Depends(require_role("editor")),
-):
-    """Unified title search — routes to the right backend based on media type."""
-    if not q.strip():
-        return HTMLResponse("")
-    if media_type == "video_game":
-        return await search_games(request, q=q, platform=platform, _=_)
-    if media_type == "dvd":
-        return await search_dvds(request, q=q, _=_)
-    return await search_books(request, q=q, media_type=media_type, _=_)
-
-
-@router.get("/books/search")
-async def search_books(
-    request: Request,
-    q: str = "",
-    media_type: str = "book",
-    _=Depends(require_role("editor")),
-):
-    """Search Open Library for books by title. Returns HTMX fragment."""
-    templates = request.app.state.templates
-    if not q.strip():
-        return HTMLResponse("")
-
-    with get_db() as db:
-        search_lang = get_setting(db, "metadata_search_lang") or "en"
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await openlibrary.search_books(q.strip(), client, limit=10, lang=search_lang)
-
-    return templates.TemplateResponse(
-        request, "fragments/book_search_results.html",
-        {"results": results, "media_type": media_type, "query": q.strip()},
-    )
-
-
-@router.post("/books/add")
-async def add_book_from_search(
-    request: Request,
-    isbn: str = Form(...),
-    media_type: str = Form("book"),
-    location_id: int | None = Form(None),
-    _=Depends(require_role("editor")),
-):
-    """Add a book to the collection from a title search result (by ISBN)."""
-    templates = request.app.state.templates
-    isbn13 = isbn_svc.to_isbn13(isbn.strip())
-    if not isbn13:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
-        )
-
-    # Check duplicate
-    with get_db() as db:
-        existing = db.execute(
-            "SELECT id, title FROM items WHERE isbn = ? AND media_type = ?",
-            (isbn13, media_type),
-        ).fetchone()
-    if existing:
-        _log_scan(isbn13, media_type, "duplicate", existing["id"])
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    with get_db() as db:
-        hc_token = get_setting(db, "hardcover_token") or None
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        metadata, source, hc_ids = await _lookup_metadata(isbn13, hc_token, client)
-
-        if not metadata:
-            _log_scan(isbn13, media_type, "not_found")
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "error", "isbn": isbn13, "message": "Could not fetch metadata for this ISBN"},
-            )
-
-        item_id = _save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
-
-        hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
-        cover_path = await covers.download_cover(
-            item_id, isbn13,
-            metadata.get("cover_url") if source != "hardcover" else None,
-            metadata.get("cover_id"), client,
-            hardcover_cover_url=hc_cover,
-        )
-        if cover_path:
-            with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
-
-    _log_scan(isbn13, media_type, "added", item_id)
-
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {
-            "status": "added", "isbn": isbn13, "title": metadata["title"],
-            "authors": metadata.get("authors"), "cover_path": cover_path,
-            "item_id": item_id, "source": source,
-            "media_type_label": MEDIA_TYPES.get(media_type, media_type),
-        },
-    )
-    resp.headers["HX-Trigger"] = _toast_header(f"Added: {metadata['title'][:50]}")
-    return resp
-
-
-@router.get("/dvds/search")
-async def search_dvds(
-    request: Request,
-    q: str = "",
-    _=Depends(require_role("editor")),
-):
-    """Search TMDb for movies by title. Returns HTMX fragment."""
-    templates = request.app.state.templates
-    if not q.strip():
-        return HTMLResponse("")
-
-    with get_db() as db:
-        tmdb_key = get_setting(db, "tmdb_api_key")
-
-    if not tmdb_key:
-        return HTMLResponse(
-            '<p class="text-sm text-shelf-error">TMDb API key not configured. '
-            'Add it in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
-        )
-
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await tmdb.search_movies(q.strip(), tmdb_key, client, limit=10)
-
-    return templates.TemplateResponse(
-        request, "fragments/dvd_search_results.html",
-        {"results": results, "query": q.strip()},
-    )
-
-
-@router.post("/dvds/add")
-async def add_dvd_from_search(
-    request: Request,
-    title: str = Form(...),
-    tmdb_id: int = Form(0),
-    description: str = Form(""),
-    publish_year: str = Form(""),
-    cover_url: str = Form(""),
-    location_id: int | None = Form(None),
-    _=Depends(require_role("editor")),
-):
-    """Add a DVD/Blu-ray to the collection from a TMDb search result."""
-    templates = request.app.state.templates
-    loc_id = location_id if location_id and location_id > 0 else None
-
-    # Check duplicate by title
-    with get_db() as db:
-        existing = db.execute(
-            "SELECT id, title FROM items WHERE title = ? AND media_type = 'dvd'",
-            (title,),
-        ).fetchone()
-    if existing:
-        _log_scan("", "dvd", "duplicate", existing["id"])
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    year = int(publish_year) if publish_year and publish_year.isdigit() else None
-
-    with get_db() as db:
-        cursor = db.execute(
-            """INSERT INTO items (title, description, media_type, publish_year, location_id, source)
-               VALUES (?, ?, 'dvd', ?, ?, 'tmdb')""",
-            (title, description or None, year, loc_id),
-        )
-        item_id = cursor.lastrowid
-
-    # Download cover
-    cover_path = None
-    if cover_url:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            cover_path = await covers._download_to_item(item_id, cover_url, client)
-        if cover_path:
-            with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
-
-    _log_scan("", "dvd", "added", item_id)
-
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {
-            "status": "added", "isbn": "", "title": title,
-            "cover_path": cover_path, "item_id": item_id,
-            "source": "tmdb", "media_type_label": "DVD / Blu-ray",
-        },
-    )
-    resp.headers["HX-Trigger"] = _toast_header(f"Added: {title[:50]}")
-    return resp
 
 
 @router.get("/recent-scans")
@@ -2434,48 +1231,7 @@ async def test_igdb_key(request: Request, _=Depends(require_role("admin"))):
         return await igdb.test_credentials(client_id, client_secret, client)
 
 
-def _update_from_csv_row(db, item_id: int, row: dict):
-    """Update an existing item from CSV row data (non-empty fields only)."""
-    field_map = {
-        "authors": "authors", "author": "authors",
-        "publisher": "publisher",
-        "publish_year": "publish_year", "year": "publish_year",
-        "page_count": "page_count", "pages": "page_count",
-        "series_name": "series_name", "series": "series_name",
-    }
-    updates = {}
-    for csv_key, db_key in field_map.items():
-        val = (row.get(csv_key) or "").strip()
-        if val and db_key not in updates:
-            if db_key in ("publish_year", "page_count"):
-                updates[db_key] = int(val) if val.isdigit() else None
-            else:
-                updates[db_key] = val
-    if updates:
-        set_clause = ", ".join(f"{k} = ?" for k in updates)
-        db.execute(
-            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-            list(updates.values()) + [item_id],
-        )
 
 
-_SCAN_LOG_RETENTION_DAYS = 90
-_SCAN_LOG_PRUNE_INTERVAL = 3600  # seconds between prune checks
-_scan_log_last_prune: float = float("-inf")  # -inf triggers prune on first call
 
 
-def _log_scan(isbn: str, media_type: str, result: str, item_id: int | None = None, mode: str = "add"):
-    import time
-    global _scan_log_last_prune
-    with get_db() as db:
-        db.execute(
-            "INSERT INTO scan_log (isbn, media_type, result, item_id, mode) VALUES (?, ?, ?, ?, ?)",
-            (isbn, media_type, result, item_id, mode),
-        )
-        now = time.monotonic()
-        if now - _scan_log_last_prune >= _SCAN_LOG_PRUNE_INTERVAL:
-            _scan_log_last_prune = now
-            db.execute(
-                "DELETE FROM scan_log WHERE created_at < datetime('now', ?)",
-                (f"-{_SCAN_LOG_RETENTION_DAYS} days",),
-            )

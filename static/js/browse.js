@@ -112,10 +112,29 @@ function browsePage() {
             }
         },
 
-        // Names of every filter control that participates in the querystring,
-        // in the order updateUrl() writes them.
+        // The filter set, read from the JSON block browse.html renders from
+        // app/browse_filters.py. It used to be a literal here, and had already
+        // drifted -- it was missing 'view', so the view mode was dropped from
+        // the URL and from restoreFilters(). Server and client now read the
+        // same declaration.
+        filterDefs() {
+            if (this._filterDefs) return this._filterDefs;
+            var el = document.getElementById('browse-filter-config');
+            this._filterDefs = el ? JSON.parse(el.textContent) : [];
+            return this._filterDefs;
+        },
+
+        // Every filter control, for the htmx re-process loop.
         filterNames() {
-            return ['q', 'media_type_filter', 'location_filter', 'sort', 'reading_status', 'owned', 'lent_out', 'tag', 'language'];
+            return this.filterDefs().map(function(def) { return def.name; });
+        },
+
+        // Only those mirrored into the address bar, in the order updateUrl()
+        // writes them. 'view' is excluded -- localStorage owns it.
+        urlFilterNames() {
+            return this.filterDefs()
+                .filter(function(def) { return def.inUrl; })
+                .map(function(def) { return def.name; });
         },
 
         // Write a value into every input sharing this name. Used instead of
@@ -165,7 +184,7 @@ function browsePage() {
             var applied = new URLSearchParams();
             var any = false;
             var self = this;
-            this.filterNames().forEach(function(name) {
+            this.urlFilterNames().forEach(function(name) {
                 var val = params.get(name);
                 if (val === null || val === '') return;
                 if (name === 'q') {
@@ -208,20 +227,10 @@ function browsePage() {
 
         syncFilters() {
             var pills = [];
-            var filterDefs = [
-                {name: 'q', prefix: 'Search'},
-                {name: 'media_type_filter', prefix: 'Type'},
-                {name: 'location_filter', prefix: 'Location'},
-                {name: 'owned', prefix: ''},
-                {name: 'lent_out', prefix: ''},
-                {name: 'reading_status', prefix: 'Status'},
-                {name: 'tag', prefix: 'Tag'},
-                {name: 'language', prefix: 'Language'},
-                {name: 'sort', prefix: 'Sort', skip: 'newest'},
-            ];
-            filterDefs.forEach(function(def) {
+            this.filterDefs().forEach(function(def) {
+                if (!def.chip) return;
                 var el = document.querySelector('[name="' + def.name + '"]');
-                if (!el || !el.value || el.value === (def.skip || '')) return;
+                if (!el || !el.value || el.value === (def.default || '')) return;
                 var label;
                 if (el.tagName === 'SELECT') {
                     var opt = el.options[el.selectedIndex];
@@ -237,7 +246,7 @@ function browsePage() {
 
         updateUrl() {
             var params = new URLSearchParams();
-            this.filterNames().forEach(function(name) {
+            this.urlFilterNames().forEach(function(name) {
                 var el = document.querySelector('[name="' + name + '"]');
                 if (!el) return;
                 if (name === 'sort' && el.value === 'newest') return;
@@ -254,9 +263,10 @@ function browsePage() {
 
         clearFilter(name) {
             if (name === 'q') this.searchQuery = '';
+            var def = this.filterDefs().find(function(d) { return d.name === name; });
             var el = document.querySelector('[name="' + name + '"]');
             if (el) {
-                this.setControlValue(name, name === 'sort' ? 'newest' : '');
+                this.setControlValue(name, def ? def.clearTo : '');
                 htmx.trigger(el, el.tagName === 'SELECT' ? 'change' : 'keyup');
             }
         },
@@ -264,10 +274,13 @@ function browsePage() {
         clearAllFilters() {
             var self = this;
             this.searchQuery = '';
-            this.filterNames().forEach(function(name) {
-                if (name !== 'sort') self.setControlValue(name, '');
+            // clearTo is null for controls clearing must not touch (the
+            // grid/list view), and 'newest' for sort -- which is why there is
+            // no longer a hand-written exception for sort here.
+            this.filterDefs().forEach(function(def) {
+                if (def.clearTo === null) return;
+                self.setControlValue(def.name, def.clearTo);
             });
-            this.setControlValue('sort', 'newest');
             sessionStorage.removeItem('shelf-browse-qs');
             var trigger = document.querySelector('[name="media_type_filter"]') || document.querySelector('[name="q"]');
             if (trigger) htmx.trigger(trigger, 'change');

@@ -5,6 +5,7 @@ import httpx
 
 from app.database import get_db
 from app.services import covers
+from app.services.item_write import insert_item
 
 logger = logging.getLogger(__name__)
 
@@ -136,16 +137,22 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         if on_progress:
                             await on_progress(current, total, title, "updated")
                     else:
-                        cursor = db.execute(
-                            """INSERT INTO items (title, authors, isbn, media_type, publisher,
-                               publish_year, description, series_name, narrator, duration_mins,
-                               abs_id, abs_library_id, source)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'audiobookshelf')""",
-                            (title, authors, isbn, media_type, publisher,
-                             pub_year, description, series_name, narrator, duration_mins,
-                             abs_id, lib_id),
+                        item_id = insert_item(
+                            db,
+                            title=title,
+                            authors=authors,
+                            isbn=isbn,
+                            media_type=media_type,
+                            publisher=publisher,
+                            publish_year=pub_year,
+                            description=description,
+                            series_name=series_name,
+                            narrator=narrator,
+                            duration_mins=duration_mins,
+                            abs_id=abs_id,
+                            abs_library_id=lib_id,
+                            source="audiobookshelf",
                         )
-                        item_id = cursor.lastrowid
                         stats["added"] += 1
                         if on_progress:
                             await on_progress(current, total, title, "added")

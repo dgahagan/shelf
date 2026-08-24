@@ -103,9 +103,53 @@ client state (scan modes, selection bars, settings cards) — expressions
 must be simple, which is why the lint exists. Tailwind compiled locally to
 `static/css/app.css` and committed. Camera scanning uses a shared engine
 (`static/js/scanner-engine.js`) choosing ZXing on iOS Safari and
-html5-qrcode elsewhere. Store Mode is a PWA: a service worker precaches the
+html5-qrcode elsewhere.
+
+**Browse's filter set is declared in `app/browse_filters.py`.** Each filter
+states its SQL condition, its querystring behaviour and how it presents in the
+UI; the rest derives. The templates' `hx-include` lists come from a
+`filter_includes()` Jinja global, `/api/search` and every dropdown's
+cross-filter counts come from `build_where(values, exclude=...)` — a dropdown's
+count group is just the where-clause with its own filter removed — that route
+reads its values with `values_from(request.query_params)`, and `browse.js`
+reads the same declaration out of a `type="application/json"` block.
+
+One declaration is still outstanding: the `/browse` page load in
+`app/routers/pages.py` carries its own copy of the filter parameters, WHERE
+builder and querystring builder rather than deriving from the registry. The two
+are equivalent today, and keeping them so is manual until that route is ported
+(issue #37).
+
+Store Mode is a PWA: a service worker precaches the
 store page and the library ISBN set lives in the browser; unknown scans
-queue locally and flush via `/api/store/queue`.
+queue locally and flush via `/api/store/queue`. Precaching is cache-first, so
+the cache name has to change whenever a precached file does — `SW_VERSION` is
+generated from a digest of the precache contents by `make css` rather than
+typed by hand (see `docs/development.md` § Service worker versioning).
+
+### Item routers
+
+The item routes are four modules sharing the `/api` prefix: `items.py` (scan,
+CRUD, search, bulk operations), `items_covers.py` (status polling, retry,
+manual search and selection, bulk sweeps), `items_csv.py` (export and import)
+and `items_catalog.py` (search-a-provider-then-add for video games, books and
+DVDs). Helpers more than one of them needs — metadata lookup, the save path,
+cover resolution, the scan log, UPC scanning — live in `items_common.py`,
+which other packages also import (`pages.py` for `SORT_OPTIONS`,
+`services/cover_queue.py` for `resolve_missing_cover`, `store.py` and
+`intake.py` for the save path). Callers import that module and call through
+it rather than from-importing its names.
+
+### Writing items
+
+Every path that creates an item — scan, manual add, CSV import, photo intake,
+Hardcover sync and discover, Audiobookshelf sync, the store's offline queue,
+the game/DVD/book adds, archive import — goes through
+`insert_item()` in `app/services/item_write.py`. It reads the column set from
+the live table rather than carrying its own copy, raises on an unknown field
+instead of dropping it, and leaves unset columns to their `SCHEMA` defaults.
+Callers pass their own connection so the insert and any follow-up writes share
+one transaction.
 
 ## Security posture
 

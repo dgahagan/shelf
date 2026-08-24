@@ -1,0 +1,67 @@
+{# Settings — Users tab. Split out of settings.html (Lever 5),
+   which was 1,517 lines: the largest template with the thinnest E2E
+   coverage. Included by settings.html inside its `settingsTabs` x-data,
+   so `tab` and `setTab()` resolve from the parent scope. #}
+    <!-- Users Tab -->
+    <div x-show="tab === 'users'" class="space-y-8">
+
+    <!-- User Management -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="usersPanel"
+         x-init="loadUsers()">
+        <h2 class="text-lg font-semibold mb-4">Users</h2>
+
+        <!-- User list -->
+        <div class="space-y-2 mb-6">
+            <template x-for="u in users" :key="u.id">
+                <div class="flex items-center justify-between gap-3 bg-shelf-bg rounded-lg px-4 py-3">
+                    <div class="flex-1 min-w-0">
+                        <span class="font-medium text-shelf-text" x-text="u.display_name || u.username"></span>
+                        <span class="text-shelf-muted text-sm ml-1" x-text="'@' + u.username"></span>
+                    </div>
+                    <select :value="u.role" @change="updateRole(u.id, $event.target.value)"
+                        class="bg-shelf-card border border-shelf-border rounded px-2 py-1 text-sm text-shelf-text">
+                        <option value="admin">Admin</option>
+                        <option value="editor">Editor</option>
+                        <option value="viewer">Viewer</option>
+                    </select>
+                    <button @click="resetPassword(u.id)" class="text-shelf-muted hover:text-shelf-text text-sm transition-colors" title="Reset password">
+                        Reset PW
+                    </button>
+                    <button @click="deleteUser(u.id, u.display_name || u.username)" class="text-shelf-error/60 hover:text-shelf-error text-sm transition-colors" title="Delete user">
+                        Delete
+                    </button>
+                </div>
+            </template>
+            <p x-show="users.length === 0" class="text-shelf-muted text-sm">No users found.</p>
+        </div>
+
+        <!-- Add user -->
+        <div class="border-t border-shelf-border pt-4">
+            <h3 class="text-sm font-semibold text-shelf-muted mb-3">Add User</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <input x-model="newUsername" type="text" placeholder="Username" required
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
+                <input x-model="newDisplayName" type="text" placeholder="Display Name (optional)"
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
+                <input x-model="newPassword" type="password" placeholder="Password (min 8 chars)" required
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
+                <select x-model="newRole"
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
+                    <option value="viewer">Viewer</option>
+                    <option value="editor">Editor</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div class="mt-3 flex items-center gap-3">
+                <button @click="addUser()" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                    Add User
+                </button>
+                <template x-if="addResult">
+                    <span :class="addResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="addResult.message"></span>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    </div><!-- /Users Tab -->

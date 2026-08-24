@@ -3,13 +3,18 @@
  * Strategy:
  *  - Precache the store-mode app shell at install.
  *  - Cache-first for precached static assets (they're version-stamped by
- *    CACHE name — bump SW_VERSION when any precached file changes).
+ *    CACHE name).
  *  - Network-first with cache fallback for /store navigations, so the page
  *    stays fresh online but still loads with no signal.
  *  - Everything else passes through untouched: the service worker must never
  *    interfere with the main app or its API calls.
  */
-const SW_VERSION = 'v8';
+// GENERATED — do not edit by hand. SW_VERSION is `v` + the first 8 hex chars
+// of a sha256 over the PRECACHE paths and their bytes, stamped by `make css`
+// (scripts/stamp_sw_version.py) and verified by `make checks-fast`. Changing a
+// precached file therefore renames the cache on its own, which is what makes
+// activate() purge the stale one.
+const SW_VERSION = 'v7fa2d020';
 const CACHE = `shelf-store-${SW_VERSION}`;
 
 const PRECACHE = [

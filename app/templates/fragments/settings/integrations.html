@@ -1,0 +1,797 @@
+{# Settings — Integrations tab. Split out of settings.html (Lever 5),
+   which was 1,517 lines: the largest template with the thinnest E2E
+   coverage. Included by settings.html inside its `settingsTabs` x-data,
+   so `tab` and `setTab()` resolve from the parent scope. #}
+    <!-- Integrations Tab -->
+    <div x-show="tab === 'integrations'" class="space-y-8">
+
+    <!-- Audiobookshelf Sync -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="absSync"
+         data-abs-url="{{ settings.get('abs_url', '') }}"
+         data-abs-saved="{{ '1' if secrets_saved['abs_token'] else '' }}">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Audiobookshelf Sync</h2>
+            <button @click="showAbsHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showAbsHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showAbsHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Connecting to Audiobookshelf</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Open your Audiobookshelf instance in a browser</li>
+                    <li>Go to <span class="text-shelf-text">Settings &rarr; Users</span> and select your user</li>
+                    <li>Scroll to <span class="text-shelf-text">API Token</span> — copy the token</li>
+                    <li>Enter your ABS server URL (e.g. <span class="text-shelf-accent2">http://localhost:13378</span>) and paste the token below</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">What does sync do?</p>
+                    <p>Sync imports your audiobooks and ebooks from Audiobookshelf into Shelf, including metadata and cover art. It also auto-links digital items to matching physical books in your collection.</p>
+                </div>
+                <button @click="showAbsHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3 mb-4">
+            <div>
+                <label for="abs_url" class="block text-sm font-medium text-shelf-muted mb-1">Audiobookshelf URL</label>
+                <input type="url" id="abs_url" name="abs_url" x-model="absUrl" value="{{ settings.get('abs_url', '') }}" placeholder="http://localhost:13378"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div>
+                <label for="abs_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
+                <div class="flex gap-2">
+                    <input type="password" id="abs_token" name="abs_token" x-model="absToken" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['abs_token'] %}Saved — leave blank to keep{% else %}Bearer token from ABS settings{% endif %}"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="testAbs"
+                            :disabled="absTesting || !absUrl || (!absToken && !absSaved)"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!absTesting">Test</span>
+                        <span x-show="absTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="absStatus && absStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="absStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="absStatus && !absStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="absStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            {% if secrets_saved['abs_token'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_abs_token" class="rounded border-shelf-border"> Remove saved token
+            </label>
+            {% endif %}
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+
+        <div class="border-t border-shelf-border pt-4">
+            <button @click="startSync()"
+                    :disabled="syncing || !absUrl || !absToken"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!syncing" x-text="(absUrl && absToken) ? 'Sync Now' : 'Enter URL and token to sync'"></span>
+                <span x-show="syncing">Syncing...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="syncing && syncTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="syncCurrent + ' / ' + syncTotal"></span>
+                    <span x-text="syncPct"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (syncTotal ? (syncCurrent/syncTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="syncLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="syncLastTitle"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="result" class="mt-3 text-sm">
+                <template x-if="result && result.error">
+                    <p class="text-shelf-error" x-text="result.error"></p>
+                </template>
+                <template x-if="result && !result.error">
+                    <p class="text-shelf-success">
+                        Added: <span x-text="result.added"></span>,
+                        Updated: <span x-text="result.updated"></span>,
+                        Skipped: <span x-text="result.skipped"></span>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="syncLog.length > 0" class="mt-2">
+                <button @click="showSyncLog = !showSyncLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showSyncLog ? 'Hide details' : 'Show details (' + syncLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showSyncLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in syncLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s === 'added' ? 'text-shelf-success' : entry.s === 'updated' ? 'text-shelf-accent2' : 'text-shelf-muted'"
+                                  x-text="entry.s" class="w-14 shrink-0"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <form action="/api/sync/audiobookshelf/schedule" method="post" class="mt-3 flex items-center gap-2">
+                <label class="text-sm text-shelf-muted">Auto-sync:</label>
+                <select name="interval" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                    <option value="off" {% if settings.get('abs_sync_interval', 'off') == 'off' %}selected{% endif %}>Off</option>
+                    <option value="daily" {% if settings.get('abs_sync_interval') == 'daily' %}selected{% endif %}>Daily</option>
+                    <option value="weekly" {% if settings.get('abs_sync_interval') == 'weekly' %}selected{% endif %}>Weekly</option>
+                </select>
+                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
+            </form>
+
+            <!-- Library selection -->
+            <div class="mt-4 pt-4 border-t border-shelf-border" x-data="absLibraries">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-shelf-text">Libraries to sync</p>
+                        <p class="text-xs text-shelf-muted">Uncheck libraries you don't want in Shelf (e.g. a dump of files you're not cataloging).</p>
+                    </div>
+                    <button @click="loadLibs()" x-show="!libs" :disabled="libsLoading"
+                            class="px-3 py-1.5 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors disabled:opacity-50 shrink-0">
+                        <span x-show="!libsLoading">Manage Libraries</span>
+                        <span x-show="libsLoading">Loading&hellip;</span>
+                    </button>
+                </div>
+                <p x-show="libsError" x-cloak class="text-xs text-shelf-error mt-2" x-text="libsError"></p>
+                <template x-if="libs">
+                    <div class="mt-3 space-y-2">
+                        <template x-for="lib in libs" :key="lib.id">
+                            <label class="flex items-center gap-2 text-sm cursor-pointer">
+                                <input type="checkbox" :checked="lib.included" @change="toggleLib(lib.id)"
+                                       class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                                <span class="text-shelf-text" x-text="lib.name"></span>
+                                <span class="text-xs text-shelf-muted" x-text="'(' + lib.media_type + ')'"></span>
+                            </label>
+                        </template>
+                        <div class="flex items-center gap-2 pt-2">
+                            <button @click="saveLibs()" :disabled="libsSaving"
+                                    class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
+                                <span x-show="!libsSaving">Save Selection</span>
+                                <span x-show="libsSaving">Saving&hellip;</span>
+                            </button>
+                            <button @click="cleanup()" :disabled="cleaning || excludedIds().length === 0"
+                                    class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors disabled:opacity-50">
+                                <span x-show="!cleaning">Remove Excluded Items from Shelf</span>
+                                <span x-show="cleaning">Removing&hellip;</span>
+                            </button>
+                        </div>
+                        <p class="text-xs text-shelf-muted">Remove saves the selection, then deletes items already synced from unchecked libraries.</p>
+                        <template x-if="cleanResult && cleanResult.ok">
+                            <p class="text-xs text-shelf-success">Removed <span x-text="cleanResult.deleted"></span> items.</p>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hardcover -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="hardcoverPanel"
+         data-hc-saved="{{ '1' if secrets_saved['hardcover_token'] else '' }}">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Hardcover</h2>
+            <button @click="showHcHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showHcHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showHcHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Connecting to Hardcover</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Create a free account at <span class="text-shelf-accent2">hardcover.app</span></li>
+                    <li>Go to <span class="text-shelf-text">Account Settings &rarr; Hardcover API</span></li>
+                    <li>Copy the API token shown at the top of the page</li>
+                    <li>Paste it into the field below and click <span class="text-shelf-text">Test</span></li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">What does Hardcover do?</p>
+                    <p>Hardcover is a modern book tracking platform (like Goodreads). With an API token, Shelf can use Hardcover as a metadata source for richer book data including series info, descriptions, and cover art. Future updates will add library import/export and reading status sync.</p>
+                    <p class="mt-1">The API is completely free. Tokens expire after one year.</p>
+                </div>
+                <button @click="showHcHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="hardcover_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
+                <div class="flex gap-2">
+                    <input type="password" id="hardcover_token" name="hardcover_token" x-model="hcToken" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['hardcover_token'] %}Saved — leave blank to keep{% else %}Your Hardcover API token{% endif %}"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="testHc"
+                            :disabled="hcTesting || (!hcToken && !hcSaved)"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!hcTesting">Test</span>
+                        <span x-show="hcTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="hcStatus && hcStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            Connected as <span x-text="hcStatus.username"></span>
+                        </p>
+                    </template>
+                    <template x-if="hcStatus && !hcStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="hcStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            {% if secrets_saved['hardcover_token'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_hardcover_token" class="rounded border-shelf-border"> Remove saved token
+            </label>
+            {% endif %}
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+
+        <!-- Import from Hardcover -->
+        <div class="border-t border-shelf-border pt-4 mt-4">
+            <h3 class="text-sm font-semibold mb-3">Import Library from Hardcover</h3>
+
+            <!-- Status filter checkboxes -->
+            <div class="flex flex-wrap gap-x-4 gap-y-1 mb-3">
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcFilter1" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Want to Read
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcFilter2" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Reading
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcFilter3" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Read
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcFilter4" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Paused
+                </label>
+                <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
+                    <input type="checkbox" x-model="hcFilter5" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    Did Not Finish
+                </label>
+            </div>
+
+            <!-- Overwrite toggle -->
+            <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
+                <input type="checkbox" x-model="importOverwrite" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                Overwrite existing items with Hardcover data
+            </label>
+
+            <button @click="startImport()"
+                    :disabled="importing || (!hcToken && !hcSaved)"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!importing" x-text="(hcToken || hcSaved) ? 'Import from Hardcover' : 'Enter token to import'"></span>
+                <span x-show="importing">Importing...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="importing && importTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="importCurrent + ' / ' + importTotal"></span>
+                    <span x-text="importPct"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (importTotal ? (importCurrent/importTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="importLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="importLastTitle"></p>
+            </div>
+
+            <!-- Fetching indicator (before total is known) -->
+            <div x-show="importing && importTotal === 0" class="mt-3">
+                <p class="text-xs text-shelf-muted animate-pulse" x-text="importLastTitle || 'Connecting to Hardcover...'"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="importResult" class="mt-3 text-sm">
+                <template x-if="importResult && importResult.error">
+                    <p class="text-shelf-error" x-text="importResult.error"></p>
+                </template>
+                <template x-if="importResult && !importResult.error">
+                    <p class="text-shelf-muted">
+                        Added: <span x-text="importResult.added" class="text-shelf-success"></span>,
+                        Updated: <span x-text="importResult.updated" class="text-shelf-accent2"></span>,
+                        Skipped: <span x-text="importResult.skipped"></span>
+                        <template x-if="importResult.errors > 0">
+                            <span class="text-shelf-error"> · Errors: <span x-text="importResult.errors"></span></span>
+                        </template>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="importLog.length > 0" class="mt-2">
+                <button @click="showImportLog = !showImportLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showImportLog ? 'Hide details' : 'Show details (' + importLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showImportLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in importLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s === 'added' ? 'text-shelf-success' : entry.s === 'updated' ? 'text-shelf-accent2' : entry.s === 'skipped' ? 'text-shelf-muted' : 'text-shelf-error'"
+                                  x-text="entry.s" class="w-16 shrink-0"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sync Schedule -->
+        <div class="border-t border-shelf-border pt-4 mt-4">
+            <h3 class="text-sm font-semibold mb-2">Reading Status Sync</h3>
+            <p class="text-xs text-shelf-muted mb-3">Pull reading status changes from Hardcover automatically. Status changes made in Shelf are pushed to Hardcover instantly.</p>
+            <form action="/api/hardcover/schedule" method="post" class="flex items-center gap-2">
+                <label class="text-sm text-shelf-muted">Auto-sync:</label>
+                <select name="interval" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
+                    <option value="off" {% if settings.get('hc_sync_interval', 'off') == 'off' %}selected{% endif %}>Off</option>
+                    <option value="daily" {% if settings.get('hc_sync_interval') == 'daily' %}selected{% endif %}>Daily</option>
+                    <option value="weekly" {% if settings.get('hc_sync_interval') == 'weekly' %}selected{% endif %}>Weekly</option>
+                </select>
+                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
+            </form>
+        </div>
+
+        <!-- Export to Hardcover -->
+        <div class="border-t border-shelf-border pt-4 mt-4">
+            <h3 class="text-sm font-semibold mb-3">Export to Hardcover</h3>
+            <p class="text-xs text-shelf-muted mb-3">Push your Shelf collection to your Hardcover library. Only items with an ISBN can be exported.</p>
+
+            <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
+                <input type="checkbox" x-model="exportOwnedOnly" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                Owned items only (exclude wishlist)
+            </label>
+
+            <button @click="startExport()"
+                    :disabled="exporting || (!hcToken && !hcSaved)"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!exporting" x-text="(hcToken || hcSaved) ? 'Export to Hardcover' : 'Enter token to export'"></span>
+                <span x-show="exporting">Exporting...</span>
+            </button>
+
+            <!-- Progress bar -->
+            <div x-show="exporting && exportTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="exportCurrent + ' / ' + exportTotal"></span>
+                    <span x-text="exportPct"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (exportTotal ? (exportCurrent/exportTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="exportLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="exportLastTitle"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="exportResult" class="mt-3 text-sm">
+                <template x-if="exportResult && exportResult.error">
+                    <p class="text-shelf-error" x-text="exportResult.error"></p>
+                </template>
+                <template x-if="exportResult && !exportResult.error">
+                    <p class="text-shelf-muted">
+                        Pushed: <span x-text="exportResult.pushed" class="text-shelf-success"></span>,
+                        Updated: <span x-text="exportResult.updated" class="text-shelf-accent2"></span>,
+                        Not found: <span x-text="exportResult.not_found"></span>
+                        <template x-if="exportResult.errors > 0">
+                            <span class="text-shelf-error"> · Errors: <span x-text="exportResult.errors"></span></span>
+                        </template>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="exportLog.length > 0" class="mt-2">
+                <button @click="showExportLog = !showExportLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showExportLog ? 'Hide details' : 'Show details (' + exportLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showExportLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in exportLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.s === 'added' ? 'text-shelf-success' : entry.s === 'updated' ? 'text-shelf-accent2' : entry.s === 'not found' ? 'text-shelf-muted' : 'text-shelf-error'"
+                                  x-text="entry.s" class="w-20 shrink-0"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Valuation -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="valuationPanel"
+         data-api-key-saved="{{ '1' if secrets_saved['isbndb_api_key'] else '' }}">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Collection Valuation</h2>
+            <button @click="showHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting an ISBNdb API Key</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Go to <span class="text-shelf-accent2">isbndb.com</span> and create an account</li>
+                    <li>Subscribe to a plan that includes API access (Basic or higher)</li>
+                    <li>Navigate to your account dashboard and find the <span class="text-shelf-text">API Keys</span> section</li>
+                    <li>Generate a new key, copy it, and paste it into the field below</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">About ISBNdb</p>
+                    <p>ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes.</p>
+                    <p class="mt-1">API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices.</p>
+                </div>
+                <button @click="showHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3 mb-4">
+            <div>
+                <label for="isbndb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">ISBNdb API Key</label>
+                <div class="flex gap-2">
+                    <input type="password" id="isbndb_api_key" name="isbndb_api_key"
+                           x-model="apiKey" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['isbndb_api_key'] %}Saved — leave blank to keep{% else %}Your ISBNdb API key{% endif %}"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="testKey"
+                            :disabled="testing || (!apiKey && !apiKeySaved)"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!testing">Test Key</span>
+                        <span x-show="testing">Testing...</span>
+                    </button>
+                </div>
+                <!-- Key status indicator -->
+                <div class="mt-1.5 h-5">
+                    <template x-if="keyStatus && keyStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="keyStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="keyStatus && !keyStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="keyStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            {% if secrets_saved['isbndb_api_key'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_isbndb_api_key" class="rounded border-shelf-border"> Remove saved key
+            </label>
+            {% endif %}
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+        <div class="border-t border-shelf-border pt-4 space-y-2">
+            <button @click="startValuation()"
+                    :disabled="valuating || (!apiKey && !apiKeySaved)"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
+                <span x-show="!valuating" x-text="(apiKey || apiKeySaved) ? 'Valuate Collection' : 'Enter API key to valuate'"></span>
+                <span x-show="valuating">Valuating...</span>
+            </button>
+
+            {% if currency().code != "USD" %}
+            <p class="text-xs text-shelf-muted">ISBNdb prices are USD list prices. Shelf applies no conversion — batch valuation will store USD amounts displayed with your configured currency symbol.</p>
+            {% endif %}
+
+            <!-- Progress bar -->
+            <div x-show="valuating && valTotal > 0" class="mt-3">
+                <div class="flex justify-between text-xs text-shelf-muted mb-1">
+                    <span x-text="valCurrent + ' / ' + valTotal"></span>
+                    <span x-text="valPct"></span>
+                </div>
+                <div class="w-full bg-shelf-bg rounded-full h-2">
+                    <div class="bg-shelf-accent rounded-full h-2 transition-all duration-200" :style="'width:' + (valTotal ? (valCurrent/valTotal*100) : 0) + '%'"></div>
+                </div>
+                <p x-show="valLastTitle" class="text-xs text-shelf-muted mt-1 truncate" x-text="valLastTitle"></p>
+            </div>
+
+            <!-- Result -->
+            <div x-show="valResult" class="text-sm">
+                <template x-if="valResult && valResult.message">
+                    <p class="text-shelf-error" x-text="valResult.message"></p>
+                </template>
+                <template x-if="valResult && valResult.priced !== undefined">
+                    <p class="text-shelf-muted">
+                        Priced: <span x-text="valResult.priced" class="text-shelf-success"></span> /
+                        <span x-text="valResult.total"></span>
+                        · Total: <span x-text="valResult.total_display" class="text-shelf-success"></span>
+                    </p>
+                </template>
+            </div>
+
+            <!-- Detail log toggle -->
+            <div x-show="valLog.length > 0">
+                <button @click="showValLog = !showValLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    <span x-text="showValLog ? 'Hide details' : 'Show details (' + valLog.length + ' items)'"></span>
+                </button>
+                <div x-show="showValLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
+                    <template x-for="entry in valLog" :key="entry.i">
+                        <div class="flex gap-2">
+                            <span :class="entry.p ? 'text-shelf-success' : 'text-shelf-muted'"
+                                  x-text="entry.s" class="w-24 shrink-0 text-right"></span>
+                            <span class="truncate text-shelf-text" x-text="entry.t"></span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <a href="/api/valuation/report" class="text-shelf-accent2 hover:text-shelf-accent text-sm inline-block">View Valuation Report</a>
+        </div>
+    </div>
+
+    <!-- Movie Database (TMDb) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="tmdbPanel"
+         data-tmdb-saved="{{ '1' if secrets_saved['tmdb_api_key'] else '' }}">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">Movie Database (TMDb)</h2>
+            <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showTmdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showTmdbHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting a TMDb API Key</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Go to <span class="text-shelf-accent2">themoviedb.org</span> and create a free account</li>
+                    <li>Go to <span class="text-shelf-text">Settings &rarr; API</span> in your profile</li>
+                    <li>Request an API key (select "Developer" — it's instant for personal use)</li>
+                    <li>Copy the <span class="text-shelf-text">API Key (v3 auth)</span> value and paste it below</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">About TMDb</p>
+                    <p>The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb.</p>
+                    <p class="mt-1">TMDb's API is free for personal use with generous rate limits.</p>
+                </div>
+                <button @click="showTmdbHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">TMDb API Key</label>
+                <div class="flex gap-2">
+                    <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key{% endif %}"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="testTmdb"
+                            :disabled="tmdbTesting || (!tmdbKey && !tmdbSaved)"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!tmdbTesting">Test Key</span>
+                        <span x-show="tmdbTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="tmdbStatus && tmdbStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="tmdbStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="tmdbStatus && !tmdbStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="tmdbStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            {% if secrets_saved['tmdb_api_key'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_tmdb_api_key" class="rounded border-shelf-border"> Remove saved key
+            </label>
+            {% endif %}
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+
+    <!-- Photo Intake (Vision) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="{ visionProvider: '{{ settings.get('vision_provider', '') }}' }">
+        <h2 class="text-lg font-semibold mb-1">Photo Intake (Vision)</h2>
+        <p class="text-sm text-shelf-muted mb-4">Bulk-add books by photographing a shelf, a stack, or covers face-up &mdash; a vision model reads spines and recognizes covers. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3).</p>
+        <form action="/api/settings/vision" method="post" class="space-y-3">
+            <div>
+                <label for="vision_provider" class="block text-sm font-medium text-shelf-muted mb-1">Provider</label>
+                <select id="vision_provider" name="vision_provider" x-model="visionProvider"
+                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">Disabled</option>
+                    <option value="anthropic">Anthropic API</option>
+                    <option value="openai">OpenAI-compatible</option>
+                    <option value="ollama">Ollama (local)</option>
+                </select>
+            </div>
+            <div x-show="visionProvider === 'anthropic'" class="space-y-3">
+                <div>
+                    <label for="anthropic_api_key" class="block text-sm font-medium text-shelf-muted mb-1">Anthropic API Key</label>
+                    <input type="password" id="anthropic_api_key" name="anthropic_api_key" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['anthropic_api_key'] %}Saved — leave blank to keep{% else %}sk-ant-...{% endif %}"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Get one at console.anthropic.com. Stored encrypted; only used server-side.</p>
+                    {% if secrets_saved['anthropic_api_key'] %}
+                    <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
+                        <input type="checkbox" name="clear_anthropic_api_key" class="rounded border-shelf-border"> Remove saved key
+                    </label>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="anthropic_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
+                    <input type="text" id="anthropic_vision_model" name="anthropic_vision_model"
+                           value="{{ settings.get('anthropic_vision_model', '') }}" placeholder="claude-opus-4-8 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                </div>
+            </div>
+            <div x-show="visionProvider === 'openai'" class="space-y-3">
+                <div>
+                    <label for="openai_base_url" class="block text-sm font-medium text-shelf-muted mb-1">Base URL</label>
+                    <input type="text" id="openai_base_url" name="openai_base_url"
+                           value="{{ settings.get('openai_base_url', '') }}" placeholder="https://api.openai.com/v1 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Any OpenAI-compatible <span class="font-mono text-xs">/chat/completions</span> endpoint &mdash; OpenAI, OpenRouter, or a local server (vLLM, LM Studio, LocalAI&hellip;).</p>
+                </div>
+                <div>
+                    <label for="openai_api_key" class="block text-sm font-medium text-shelf-muted mb-1">API Key</label>
+                    <input type="password" id="openai_api_key" name="openai_api_key" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['openai_api_key'] %}Saved — leave blank to keep{% else %}sk-...{% endif %}"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Stored encrypted; only used server-side. Local servers that need no key can leave this blank.</p>
+                    {% if secrets_saved['openai_api_key'] %}
+                    <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
+                        <input type="checkbox" name="clear_openai_api_key" class="rounded border-shelf-border"> Remove saved key
+                    </label>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="openai_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
+                    <input type="text" id="openai_vision_model" name="openai_vision_model"
+                           value="{{ settings.get('openai_vision_model', '') }}" placeholder="gpt-4o-mini (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model. Match this to whatever your endpoint serves.</p>
+                </div>
+                <div>
+                    <label for="openai_ingest_long_edge" class="block text-sm font-medium text-shelf-muted mb-1">Image size (long edge, px)</label>
+                    <input type="text" id="openai_ingest_long_edge" name="openai_ingest_long_edge" inputmode="numeric"
+                           value="{{ settings.get('openai_ingest_long_edge', '') }}" placeholder="2048 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling.</p>
+                </div>
+            </div>
+            <div x-show="visionProvider === 'ollama'" class="space-y-3">
+                <div>
+                    <label for="ollama_url" class="block text-sm font-medium text-shelf-muted mb-1">Ollama URL</label>
+                    <input type="text" id="ollama_url" name="ollama_url"
+                           value="{{ settings.get('ollama_url', '') }}" placeholder="http://localhost:11434 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                </div>
+                <div>
+                    <label for="ollama_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
+                    <input type="text" id="ollama_model" name="ollama_model"
+                           value="{{ settings.get('ollama_model', '') }}" placeholder="gemma3:12b (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;).</p>
+                </div>
+                <div>
+                    <label for="ollama_ingest_long_edge" class="block text-sm font-medium text-shelf-muted mb-1">Image size (long edge, px)</label>
+                    <input type="text" id="ollama_ingest_long_edge" name="ollama_ingest_long_edge" inputmode="numeric"
+                           value="{{ settings.get('ollama_ingest_long_edge', '') }}" placeholder="1024 (default)"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling.</p>
+                </div>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+
+    <!-- IGDB (Video Games) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="igdbPanel"
+         data-igdb-saved="{{ '1' if secrets_saved['igdb_client_id'] and secrets_saved['igdb_client_secret'] else '' }}">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold">IGDB (Video Games)</h2>
+            <button @click="showIgdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get credentials?</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showIgdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showIgdbHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting IGDB Credentials</h3>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Go to <span class="text-shelf-accent2">dev.twitch.tv/console</span> and log in with a Twitch account</li>
+                    <li>Click <span class="text-shelf-text">Register Your Application</span></li>
+                    <li>Set any name, use <span class="text-shelf-text font-mono text-xs">http://localhost</span> as the OAuth redirect, and category <span class="text-shelf-text">Application Integration</span></li>
+                    <li>Copy the <span class="text-shelf-text">Client ID</span> from the app listing</li>
+                    <li>Click <span class="text-shelf-text">New Secret</span> to generate a Client Secret</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">About IGDB</p>
+                    <p>IGDB (Internet Game Database) is the community standard game database, owned by Twitch. It provides game metadata, cover art, platform info, and more. Authentication is via Twitch developer credentials (free).</p>
+                </div>
+                <button @click="showIgdbHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="igdb_client_id" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client ID</label>
+                <input type="text" id="igdb_client_id" name="igdb_client_id" x-model="igdbId" autocomplete="off"
+                       placeholder="{% if secrets_saved['igdb_client_id'] %}Saved — leave blank to keep{% else %}Your Twitch Client ID{% endif %}"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            </div>
+            <div>
+                <label for="igdb_client_secret" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client Secret</label>
+                <div class="flex gap-2">
+                    <input type="password" id="igdb_client_secret" name="igdb_client_secret" x-model="igdbSecret" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['igdb_client_secret'] %}Saved — leave blank to keep{% else %}Your Twitch Client Secret{% endif %}"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="testIgdb"
+                            :disabled="igdbTesting || ((!igdbId || !igdbSecret) && !igdbSaved)"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!igdbTesting">Test</span>
+                        <span x-show="igdbTesting">Testing...</span>
+                    </button>
+                </div>
+                <div class="mt-1.5 h-5">
+                    <template x-if="igdbStatus && igdbStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="igdbStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="igdbStatus && !igdbStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="igdbStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            {% if secrets_saved['igdb_client_id'] or secrets_saved['igdb_client_secret'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_igdb_client_id" @change="$el.form.clear_igdb_client_secret.checked = $el.checked" class="rounded border-shelf-border">
+                <input type="checkbox" name="clear_igdb_client_secret" class="hidden"> Remove saved credentials
+            </label>
+            {% endif %}
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+
+    </div><!-- /Integrations Tab -->

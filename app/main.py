@@ -31,11 +31,12 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
+from app import browse_filters
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.currency import CURRENCIES, format_money, get_currency
 from app.services.national import SEARCH_LANGS
 from app.database import init_db, get_db
-from app.routers import pages, items, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive
+from app.routers import pages, items, items_covers, items_csv, items_catalog, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive
 from app.routers import auth_routes
 
 
@@ -402,6 +403,9 @@ templates.env.filters["money"] = format_money
 templates.env.globals["currency"] = get_currency
 templates.env.globals["currencies"] = CURRENCIES
 templates.env.globals["search_langs"] = SEARCH_LANGS
+# Browse's hx-include lists are derived, not written — see app/browse_filters.py.
+templates.env.globals["filter_includes"] = browse_filters.filter_includes
+templates.env.globals["browse_filter_config"] = browse_filters.client_config
 
 # Wrap TemplateResponse to auto-inject 'user' from request.state
 _original_template_response = templates.TemplateResponse
@@ -471,6 +475,10 @@ async def health():
 app.include_router(auth_routes.router)
 app.include_router(pages.router)
 app.include_router(items.router)
+# items.py was split by feature area (Lever 5); all four share the /api prefix.
+app.include_router(items_covers.router)
+app.include_router(items_csv.router)
+app.include_router(items_catalog.router)
 app.include_router(locations.router)
 app.include_router(platforms.router)
 app.include_router(settings.router)

@@ -38,19 +38,55 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 
 | Command | What |
 |---|---|
-| `make test` | Unit + integration, quiet and parallel (~900 tests, excludes `tests/e2e/`) |
+| `make test` | Unit + integration, quiet and parallel (~1300 tests, excludes `tests/e2e/`) |
 | `make test-fast` | Re-run only the last failures |
 | `make test-verbose` | Per-test output |
 | `make test-e2e` | Playwright E2E; starts its own server |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
-| `make checks-fast` | Offline lints: secrets, CSRF, Alpine CSP |
+| `make checks-fast` | Offline lints: secrets, CSRF, Alpine CSP, service-worker version, test conventions |
 | `make checks` | All checks incl. `pip-audit` and licenses (network) |
-| `make css` | Rebuild `static/css/app.css` — **required after any template/JS change**, and commit the result |
+| `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — **required after any template/JS change**, and commit both |
 
 Unit and E2E tests **cannot share one pytest invocation** — always use the
 targets above. `make verify` enforces a minimum test count, so deleting
 tests fails CI.
+
+**CI runs `make test`, `make checks-fast` and `make test-e2e`**, plus a job that
+runs `make css` and fails if the committed `static/css/app.css` or `static/sw.js`
+differs — so a template change without the `make css` that follows it is caught
+on the PR rather than in a browser. Run all four locally before pushing.
+
+### Service worker versioning
+
+`static/sw.js` precaches the store-mode shell **cache-first**, keyed by a cache
+name built from `SW_VERSION`. If a precached file's bytes change and the version
+does not, returning browsers keep serving the stale copy — neither
+`Cache-Control` nor a hard refresh dislodges it, and unit tests, Playwright and
+`curl` all bypass Cache Storage entirely.
+
+So `SW_VERSION` is **generated, not written**: it is `v` plus the first 8 hex
+chars of a sha256 over the sorted `PRECACHE` paths and their contents.
+`make css` stamps it (`scripts/stamp_sw_version.py`); `make check-sw-version`
+and `tests/test_store.py` fail if the committed value is stale or hand-edited.
+`static/css/app.css` is precached, so a Tailwind rebuild renames the cache by
+itself. Commit `static/sw.js` alongside `static/css/app.css`.
+
+One rule survives automation: **never add `sw.js` to its own `PRECACHE`** —
+stamping would change the bytes the stamp is derived from and never converge.
+`test_stamp_is_idempotent` guards it.
+
+### Responsive geometry
+
+`tests/e2e/test_responsive.py` measures every top-level page at
+320/390/430/640/768px and fails on two things a class-string lint cannot see: a
+page that scrolls sideways, and a text control squeezed below 80px of content
+box. 640 and 768 are the `sm:` and `md:` breakpoints — a breakpoint's own width
+is the worst case for the layout it turns on, since the wide row has just
+started rendering and has the least room it will ever have. **Add the
+breakpoint width here whenever you introduce a new stacking seam.** A control
+that is narrow by design opts out with `data-narrow-ok`, so exemptions stay
+greppable.
 
 Tests are isolated: an autouse fixture gives every test its own temp data
 dir; use the `client` / `admin_client` / `editor_client` / `viewer_client`
@@ -79,10 +115,22 @@ provoke an error needs an explicit suppression contract designed first.
   HTMX is configured globally in `base.html`.
 - **`MIGRATIONS` in `app/database.py` is append-only.** Never edit or
   reorder an existing entry; migrations must be replay-safe.
+- **Browse filters are declared once**, in `app/browse_filters.py`. Add a
+  `BrowseFilter(...)` there rather than editing `hx-include` lists, SQL
+  conditions or `browse.js` by hand — they all derive from it.
+- **Items are created through one function**, `insert_item()` in
+  `app/services/item_write.py`. Call it inside an existing `with get_db()`
+  block. Adding a column to `items` no longer means auditing a dozen insert
+  sites.
+- **Item routes live in four modules** — `items.py` (scan, CRUD, search,
+  bulk ops), `items_covers.py`, `items_csv.py` and `items_catalog.py` —
+  sharing helpers from `items_common.py`. Import that as a *module* and call
+  through it; a from-import binds a copy that tests cannot patch. Settings is
+  likewise one template per tab under `templates/fragments/settings/`.
 - **`from app.config import X` freezes the value at import time.** Read
   `app.config.X` at call time instead; tests override config.
 - **Tailwind output is committed.** Forgetting `make css` ships a page with
-  missing styles.
+  missing styles — and leaves `SW_VERSION` unstamped.
 - Before touching migrations, Alpine components, covers, the service worker
   or outbound rate limiting, read the matching entry in `GOTCHAS.md`.
 
@@ -92,6 +140,7 @@ provoke an error needs an explicit suppression contract designed first.
 app/
   main.py          FastAPI app, middleware (CSP, rate limit, auth, CSRF), lifespan tasks
   nav.py           nav tab registry (auto-hide for unconfigured integrations)
+  browse_filters.py  the Browse filter set — SQL, querystring and UI, declared once
   config.py        paths, media types, platforms, vision caps, per-host rate limits
   database.py      SCHEMA + append-only MIGRATIONS
   auth.py, crypto.py

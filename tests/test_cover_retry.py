@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.routers import items as items_router
+from app.routers import items_common
 from tests.conftest import _insert_item
 
 
@@ -18,7 +18,7 @@ def no_network():
     """Neutralise both outbound calls; individual tests re-patch what they need."""
     with patch("app.routers.items.covers.download_cover",
                new=AsyncMock(return_value=None)) as dl, \
-         patch("app.routers.items._search_isbn_for_item",
+         patch("app.routers.items_common._search_isbn_for_item",
                new=AsyncMock(return_value=(None, None))) as search:
         yield dl, search
 
@@ -31,7 +31,7 @@ class TestResolveMissingCover:
         item_id = _insert_item(db, title="Dune", isbn="9780441172719")
         db.commit()
 
-        assert await items_router.resolve_missing_cover(item_id, None) == "covers/7.jpg"
+        assert await items_common.resolve_missing_cover(item_id, None) == "covers/7.jpg"
         assert not search.called, "title search should not run when the ISBN chain works"
         row = db.execute("SELECT cover_path FROM items WHERE id = ?", (item_id,)).fetchone()
         assert row["cover_path"] == "covers/7.jpg"
@@ -46,7 +46,7 @@ class TestResolveMissingCover:
                                isbn="9780425033807")
         db.commit()
 
-        assert await items_router.resolve_missing_cover(item_id, None) == "covers/8.jpg"
+        assert await items_common.resolve_missing_cover(item_id, None) == "covers/8.jpg"
         assert search.called
 
     @pytest.mark.asyncio
@@ -57,7 +57,7 @@ class TestResolveMissingCover:
         item_id = _insert_item(db, title="Surely You're Joking", isbn=None)
         db.commit()
 
-        assert await items_router.resolve_missing_cover(item_id, None) == "covers/9.jpg"
+        assert await items_common.resolve_missing_cover(item_id, None) == "covers/9.jpg"
         row = db.execute("SELECT isbn, cover_path FROM items WHERE id = ?", (item_id,)).fetchone()
         assert row["isbn"] == "9780553256499", "recovered ISBN should be stored"
         assert row["cover_path"] == "covers/9.jpg"
@@ -71,7 +71,7 @@ class TestResolveMissingCover:
         orphan = _insert_item(db, title="Dune (reprint)", isbn=None)
         db.commit()
 
-        await items_router.resolve_missing_cover(orphan, None)
+        await items_common.resolve_missing_cover(orphan, None)
         row = db.execute("SELECT isbn FROM items WHERE id = ?", (orphan,)).fetchone()
         assert row["isbn"] is None, "ISBN already held by another item must not be copied over"
 
@@ -81,7 +81,7 @@ class TestResolveMissingCover:
         item_id = _insert_item(db, title="Dune", cover_path="covers/existing.jpg")
         db.commit()
 
-        assert await items_router.resolve_missing_cover(item_id, None) is None
+        assert await items_common.resolve_missing_cover(item_id, None) is None
         assert not dl.called
         row = db.execute("SELECT cover_path FROM items WHERE id = ?", (item_id,)).fetchone()
         assert row["cover_path"] == "covers/existing.jpg"
@@ -90,7 +90,7 @@ class TestResolveMissingCover:
     async def test_returns_none_when_nothing_is_found(self, db, no_network):
         item_id = _insert_item(db, title="Fisher Body Service Manual", isbn=None)
         db.commit()
-        assert await items_router.resolve_missing_cover(item_id, None) is None
+        assert await items_common.resolve_missing_cover(item_id, None) is None
 
 
 class TestBulkRetryEndpoint:
@@ -99,7 +99,7 @@ class TestBulkRetryEndpoint:
         _insert_item(db, title="No ISBN Here", isbn=None)
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(return_value="covers/1.jpg")) as resolve:
             resp = admin_client.post("/api/covers/bulk-retry")
 
@@ -111,7 +111,7 @@ class TestBulkRetryEndpoint:
         _insert_item(db, title="Has Cover", cover_path="covers/1.jpg")
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(return_value=None)) as resolve:
             resp = admin_client.post("/api/covers/bulk-retry")
 
@@ -123,7 +123,7 @@ class TestBulkRetryEndpoint:
         _insert_item(db, title="Not Found", isbn="9780000000002")
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(side_effect=["covers/1.jpg", None])):
             resp = admin_client.post("/api/covers/bulk-retry")
 
@@ -150,7 +150,7 @@ class TestBulkRetryEndpoint:
         _insert_item(db, title="Abbey Road", isbn=None, media_type="cd")
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(return_value="covers/1.jpg")) as resolve:
             resp = admin_client.post("/api/covers/bulk-retry")
 
@@ -167,7 +167,7 @@ class TestBulkRetryEndpoint:
         _insert_item(db, title="Third", isbn="9780000000006")
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(side_effect=[
                        "covers/1.jpg", httpx.ReadTimeout("slow"), "covers/3.jpg",
                    ])):
@@ -184,7 +184,7 @@ class TestBulkRetryStream:
         _insert_item(db, title="Dune", isbn=None, media_type="dvd")
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(return_value="covers/1.jpg")) as resolve:
             resp = admin_client.get("/api/covers/bulk-retry/stream")
             body = resp.text
@@ -200,7 +200,7 @@ class TestBulkRetryStream:
         _insert_item(db, title="Slow", isbn="9780000000009")
         db.commit()
 
-        with patch("app.routers.items.resolve_missing_cover",
+        with patch("app.routers.items_common.resolve_missing_cover",
                    new=AsyncMock(side_effect=["covers/1.jpg", httpx.ReadTimeout("slow")])):
             body = admin_client.get("/api/covers/bulk-retry/stream").text
 

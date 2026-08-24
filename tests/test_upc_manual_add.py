@@ -171,9 +171,9 @@ class TestIntegrityErrorGuard:
     def test_race_lost_to_a_concurrent_insert_reports_duplicate(
         self, editor_client, db, monkeypatch
     ):
-        import app.routers.items as items_mod
+        import app.routers.items as items_common
 
-        real = items_mod._find_duplicate_item
+        real = items_common._find_duplicate_item
         calls = {"n": 0}
 
         def _blind_first_call(conn, isbn13, upc_code, media_type):
@@ -186,7 +186,7 @@ class TestIntegrityErrorGuard:
 
         _insert_item(db, title="Raced Disc", isbn=None, media_type="dvd", upc=UPC_EAN)
         db.commit()
-        monkeypatch.setattr(items_mod, "_find_duplicate_item", _blind_first_call)
+        monkeypatch.setattr(items_common, "_find_duplicate_item", _blind_first_call)
 
         resp = editor_client.post(
             "/api/items/manual", data={"title": "Raced Disc", "isbn": UPC_A, "media_type": "dvd"}
@@ -199,10 +199,10 @@ class TestIntegrityErrorGuard:
 
     def test_unrelated_integrity_error_still_raises(self, editor_client, db, monkeypatch):
         """The guard must not swallow a constraint failure it cannot explain."""
-        import app.routers.items as items_mod
+        import app.routers.items as items_common
 
         monkeypatch.setattr(
-            items_mod, "_find_duplicate_item", lambda *a, **k: None
+            items_common, "_find_duplicate_item", lambda *a, **k: None
         )
         _insert_item(db, title="Blocker", isbn=None, media_type="dvd", upc=UPC_EAN)
         db.commit()

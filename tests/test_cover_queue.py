@@ -80,9 +80,9 @@ def test_in_flight_job_still_counts_as_queued(monkeypatch):
     async def scenario():
         nonlocal released
         released = asyncio.Event()
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", slow_resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", slow_resolve)
         cover_queue.enqueue(1)
         task = asyncio.create_task(cover_queue.process_one(None))
         await asyncio.sleep(0)  # let it pick the job up and block
@@ -115,9 +115,9 @@ def test_process_one_success(monkeypatch):
     resolve = AsyncMock(return_value="covers/1.jpg")
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         cover_queue.enqueue(1, hints={"cover_id": 42})
         got = await cover_queue.process_one("CLIENT")
         return got, cover_queue.stats()
@@ -133,9 +133,9 @@ def test_none_return_is_not_a_failure(monkeypatch):
     resolve = AsyncMock(return_value=None)
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         cover_queue.enqueue(1)
         got = await cover_queue.process_one(None)
         return got, cover_queue.stats()
@@ -150,9 +150,9 @@ def test_transient_failure_is_requeued_with_backoff(monkeypatch, fake_clock):
     resolve = AsyncMock(side_effect=httpx.ConnectError("down"))
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         cover_queue.enqueue(1)
         await cover_queue.process_one(None)
         job = cover_queue._get_queue().get_nowait()
@@ -169,9 +169,9 @@ def test_gives_up_after_max_attempts(monkeypatch, caplog, fake_clock):
     resolve = AsyncMock(side_effect=httpx.ConnectError("still down"))
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         cover_queue.enqueue(1)
         for _ in range(cover_queue.MAX_ATTEMPTS):
             await cover_queue.process_one(None)
@@ -196,9 +196,9 @@ def test_deferred_head_job_does_not_delay_a_ready_job(monkeypatch, fake_clock):
     resolve = AsyncMock(return_value="covers/2.jpg")
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         queue = cover_queue._get_queue()
         queue.put_nowait(
             cover_queue.Job(item_id=1, attempts=1, not_before=clock[0] + 20)
@@ -221,9 +221,9 @@ def test_all_deferred_sleeps_instead_of_spinning(monkeypatch, fake_clock):
     resolve = AsyncMock(return_value=None)
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         queue = cover_queue._get_queue()
         queue.put_nowait(cover_queue.Job(item_id=1, not_before=clock[0] + 20))
         queue.put_nowait(cover_queue.Job(item_id=2, not_before=clock[0] + 5))
@@ -240,9 +240,9 @@ def test_sole_deferred_job_is_waited_out(monkeypatch, fake_clock):
     resolve = AsyncMock(return_value=None)
 
     async def scenario():
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "resolve_missing_cover", resolve)
+        monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
         cover_queue._get_queue().put_nowait(
             cover_queue.Job(item_id=1, not_before=clock[0] + 5)
         )
@@ -294,9 +294,9 @@ def test_without_hints_the_call_shape_is_unchanged(db, monkeypatch):
         from app.services import covers
 
         monkeypatch.setattr(covers, "download_cover", download)
-        from app.routers import items
+        from app.routers import items_common
 
-        monkeypatch.setattr(items, "_search_isbn_for_item", AsyncMock(return_value=(None, None)))
+        monkeypatch.setattr(items_common, "_search_isbn_for_item", AsyncMock(return_value=(None, None)))
         cover_queue.enqueue(item_id)
         await cover_queue.process_one(None)
 

@@ -316,6 +316,8 @@ make install-playwright   # downloads headless Chromium
 | `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
 | `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |
 | `make check-alpine` | Verify templates stay compatible with the Alpine CSP build |
+| `make check-sw-version` | Verify the service worker's cache version matches what it caches |
+| `make check-tests` | Lint the test suite's own conventions |
 | `make checks` | All of the checks above |
 | `make report-review` | Code review report via Claude agent |
 | `make report-security` | Security audit report via Claude agent |

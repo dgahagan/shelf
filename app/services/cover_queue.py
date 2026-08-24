@@ -205,9 +205,9 @@ async def process_one(client: httpx.AsyncClient) -> bool:
     job = await _next_ready_job(queue)
     _current = job
     try:
-        from app.routers import items
+        from app.routers import items_common
 
-        cover_path = await items.resolve_missing_cover(
+        cover_path = await items_common.resolve_missing_cover(
             job.item_id, client, hints=job.hints
         )
         return cover_path is not None

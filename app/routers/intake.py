@@ -17,6 +17,7 @@ from app.services import isbn as isbn_svc
 from app.services import authors as authors_svc
 from app.services import national
 from app.services.title_match import titles_agree
+from app.services.item_write import insert_item
 
 logger = logging.getLogger(__name__)
 
@@ -177,12 +178,13 @@ async def _confirm_one(
         if _isbn_taken(printed_isbn13, media_type):
             return "skipped", {"title": title, "reason": "ISBN already in library"}, None
 
-        # Deferred import, the store.py precedent — items.py never imports intake.
-        from app.routers.items import _lookup_metadata, _save_item
+        # Deferred import, the store.py precedent — the item routers never
+        # import intake. Call through the module so tests can patch it.
+        from app.routers import items_common
 
         metadata, hc_ids = None, {}
         try:
-            metadata, _, hc_ids = await _lookup_metadata(printed_isbn13, hc_token, client)
+            metadata, _, hc_ids = await items_common._lookup_metadata(printed_isbn13, hc_token, client)
         except Exception:
             logger.warning("Intake: metadata lookup failed for ISBN %s", printed_isbn13)
             metadata, hc_ids = None, {}
@@ -190,7 +192,7 @@ async def _confirm_one(
         if metadata:
             if titles_agree(title, metadata.get("title")):
                 try:
-                    item_id = _save_item(metadata, printed_isbn13, media_type,
+                    item_id = items_common._save_item(metadata, printed_isbn13, media_type,
                                          location_id, "photo_intake", hc_ids)
                 except sqlite3.IntegrityError:
                     # A bad location_id raises the same exception (FK,
@@ -271,24 +273,20 @@ async def _confirm_one(
         # PRAGMA foreign_keys=ON) — classify before labelling it an ISBN
         # duplicate.
         try:
-            cursor = db.execute(
-                "INSERT INTO items (title, authors, isbn, isbn10, media_type, "
-                "publisher, publish_year, page_count, location_id, owned, source, "
-                "language) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'photo_intake', ?)",
-                (
-                    title,
-                    book.authors or meta.get("authors"),
-                    isbn13,
-                    isbn10,
-                    media_type,
-                    meta.get("publisher"),
-                    meta.get("publish_year"),
-                    meta.get("page_count"),
-                    location_id,
-                    int(owned),
-                    language,
-                ),
+            item_id = insert_item(
+                db,
+                title=title,
+                authors=book.authors or meta.get("authors"),
+                isbn=isbn13,
+                isbn10=isbn10,
+                media_type=media_type,
+                publisher=meta.get("publisher"),
+                publish_year=meta.get("publish_year"),
+                page_count=meta.get("page_count"),
+                location_id=location_id,
+                owned=int(owned),
+                source="photo_intake",
+                language=language,
             )
         except sqlite3.IntegrityError:
             if isbn13:
@@ -299,8 +297,7 @@ async def _confirm_one(
                 if hit:
                     return "skipped", {"title": title, "reason": "ISBN already in library"}, None
             raise
-        # 6. Read lastrowid inside the connection's scope.
-        item_id = cursor.lastrowid
+        # insert_item() reads lastrowid inside the connection's scope (G16).
 
     return "added", {"title": title, "id": item_id, "matched": bool(meta)}, item_id
 
@@ -333,7 +330,7 @@ async def confirm_books(payload: IntakeConfirm):
                 skipped.append(entry)
 
     if new_item_ids and not os.environ.get("SHELF_DISABLE_COVER_ENRICH"):
-        from app.routers.items import _enrich_import_covers
-        asyncio.create_task(_enrich_import_covers(new_item_ids))
+        from app.routers import items_common
+        asyncio.create_task(items_common._enrich_import_covers(new_item_ids))
 
     return {"ok": True, "added": added, "skipped": skipped}

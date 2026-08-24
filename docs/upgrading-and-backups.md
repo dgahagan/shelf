@@ -26,6 +26,14 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.17.0
+
+The first time you open **Store Mode** after this upgrade, it re-downloads its
+offline files once. That is expected: the offline cache is now versioned from
+the files it holds, so a new release replaces it automatically instead of
+waiting for someone to bump a version by hand. It settles immediately after,
+and nothing you have scanned or queued is affected.
+
 ## What to back up
 
 Everything is in the `data/` directory:

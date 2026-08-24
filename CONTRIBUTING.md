@@ -37,7 +37,7 @@ Full details — running, testing, project layout, the rules that bite — are i
 make test        # unit + integration tests
 make test-e2e    # Playwright E2E tests (starts its own server)
 make checks      # dependency audit, license check, secret scan, CSRF lint, Alpine CSP lint
-make css         # if you touched templates or Tailwind classes — commit the rebuilt CSS
+make css         # if you touched templates or Tailwind classes — commit the rebuilt CSS *and* static/sw.js
 ```
 
 Notes:
