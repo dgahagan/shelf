@@ -6,6 +6,43 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.2] - 2026-08-24
+
+Open a filtered Browse link — `/browse?owned=0`, a bookmark, a "DVDs on Shelf A"
+URL you shared with someone — and the numbers beside each filter option were the
+whole library's, not the filtered view's. Touch any filter and they all jumped to
+different values you had not asked for, and a media type that no longer had
+matches vanished from the list entirely. Nothing was wrong with the items you saw;
+the counts above them were simply answering a different question.
+
+They now answer the same question on the first paint that they have always
+answered afterwards: how many items you would get if you picked that option.
+
+### Fixed
+
+- **Browse filter counts no longer change the moment you touch a filter.** The
+  Collection page counted every option against your whole library when it first
+  loaded, then switched to counting against your current filters as soon as you
+  used one. On a filtered URL those are different numbers, so the dropdowns
+  rewrote themselves on the first interaction — locations losing their counts,
+  types disappearing, the total more than doubling. Both renders now come from
+  one shared calculation, so they cannot disagree.
+- **A filtered Collection page could contradict itself.** Because the total was
+  filtered while the per-option counts were not, `All Types (88)` could sit
+  directly above `Book (90)` in the same dropdown — an "All" claiming fewer items
+  than one of its own entries.
+- **A very long search term in a `/browse?q=` URL is now capped** at 200
+  characters, the same cap `/api/search` has always applied, so a pathological
+  link cannot drag the page down.
+
+### Changed
+
+- **Counts next to each filter option describe what selecting it would give
+  you**, which means an option can legitimately show more items than the grid
+  below it: with a type filter active, `All Types` counts what you would see
+  *without* that filter. This was already how the page behaved after any
+  interaction; it is now also how it looks when it first loads.
+
 ## [0.17.1] - 2026-08-24
 
 If you scanned a DVD or a video game, Shelf filed the barcode's title and
@@ -1350,6 +1387,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.2]: https://github.com/dgahagan/shelf/releases/tag/v0.17.2
 [0.17.1]: https://github.com/dgahagan/shelf/releases/tag/v0.17.1
 [0.17.0]: https://github.com/dgahagan/shelf/releases/tag/v0.17.0
 [0.16.3]: https://github.com/dgahagan/shelf/releases/tag/v0.16.3

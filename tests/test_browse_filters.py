@@ -148,16 +148,23 @@ class TestValuesFrom:
         assert values["q"] == "dune"
         assert "drop_table" not in values
 
-    def test_route_signature_declares_no_filter_params(self):
+    @pytest.mark.parametrize(
+        "route_path",
+        ["app.routers.items.search_items", "app.routers.pages.browse"],
+    )
+    def test_route_signature_declares_no_filter_params(self, route_path):
         """The filter set must not be re-declared as route parameters — that
         was the fifth copy. Only paging stays explicit."""
+        import importlib
         import inspect
 
-        from app.routers.items import search_items
+        module_path, func_name = route_path.rsplit(".", 1)
+        module = importlib.import_module(module_path)
+        route = getattr(module, func_name)
 
-        params = set(inspect.signature(search_items).parameters)
+        params = set(inspect.signature(route).parameters)
         assert not params & set(bf.FILTER_NAMES), (
-            "search_items re-declares filter names in its signature; read them "
+            f"{route_path} re-declares filter names in its signature; read them "
             "with browse_filters.values_from(request.query_params) instead."
         )
 
@@ -180,10 +187,25 @@ class TestHasActiveFilters:
 
 
 class TestQuerystring:
-    def test_skips_defaults_and_keeps_view(self):
-        qs = bf.querystring({"sort": "newest", "view": "list", "q": "dune"})
+    def test_skips_defaults(self):
+        qs = bf.querystring({"sort": "newest", "q": "dune"})
         assert "sort=" not in qs
-        assert "view=list" in qs and "q=dune" in qs
+        assert "q=dune" in qs
+
+    def test_omits_filters_the_url_does_not_own(self):
+        """`view` is client-owned, and this URL is built once on page 1.
+
+        The load-more sentinel carries `hx-include="[name='view']"`, which
+        reads the live hidden input on every request; a copy baked into the
+        URL here would be stale after a grid/list toggle and would put `view`
+        on the wire twice (G8 — last duplicate wins, which happened to be the
+        right one). Exactly the filters with `in_url=False` are omitted.
+        """
+        qs = bf.querystring({"view": "list", "q": "dune"})
+        assert "view=" not in qs
+        assert "q=dune" in qs
+        omitted = [f.name for f in bf.FILTERS if not f.in_url]
+        assert omitted == ["view"]
 
     def test_tag_is_percent_encoded(self):
         qs = bf.querystring({"tag": "science & fiction"})

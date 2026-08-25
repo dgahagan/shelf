@@ -1,4 +1,4 @@
-{% if filtered_total is defined %}
+{% if render_oob_counts %}
 <span id="collection-count" hx-swap-oob="true" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span>
 
 <select id="type-filter" name="media_type_filter" hx-swap-oob="true"

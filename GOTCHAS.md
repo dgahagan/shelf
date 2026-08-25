@@ -1248,6 +1248,96 @@ grep -rn -- "-> list\[dict\]\|-> dict | None" app/services/*.py
 - **Status:** documented. Not a lint candidate — deciding whether a given
   helper fans out over providers needs judgement, not a grep.
 
+## G46 — When a search falls back to a shorter query
+
+- **Rule:** Put a floor under how short a fallback query may get, and never let
+  the shortest rung overwrite a field the user will read as fact. A provider
+  search for one common word does not fail — it returns *a* confident match for
+  a different work, and the scan card then announces the wrong title as added.
+- **Why:** Retail titles need shortening (`Goodfellas [DVD]  Feature Thriller
+  Drama …` matches nothing intact), so a ladder is right. But the same ladder
+  turns `Tom & Jerry: Lost Dragon / Giant Adventure` into `Tom` and
+  `Super Mario: Odyssey` into `Super`, and `_first_hit` takes the first truthy
+  result with no agreement check. The pre-ladder behaviour — file the raw title,
+  no metadata — was thin but never wrong; an unfloored ladder trades that for
+  another film's synopsis, year and cover. The failure is invisible to a test
+  that asserts *which queries were sent*: the sequence is correct and the result
+  is someone else's film. Pin the **stored fields** against a rung that should
+  not exist.
+- **Evidence:** `a48f7bd` / `995f377` (2026-08-24, issue #36) introduced the
+  unfloored rung; `95b6031` added `MIN_SOLO_WORD`. Reproduced in diff review by
+  scanning a UPC whose first two rungs miss — the item filed as *Tom at the
+  Farm*. Confirmed fixed live in the test drive: the real barcode sent
+  `Tom & Jerry` and never `Tom`.
+- **Verify:** both halves — the floor, and that the floor did not eat the rung
+  the ladder exists for:
+
+```bash
+python -c "from app.services.upcitemdb import search_queries as q; \
+  assert 'Tom' not in q('Tom & Jerry: Lost Dragon [DVD]'), q('Tom & Jerry: Lost Dragon [DVD]'); \
+  assert q('Goodfellas [DVD]  Feature Thriller Drama')[-1] == 'Goodfellas'"
+```
+
+- **Status:** documented. Not a lint candidate — how short is too short is a
+  judgement about the provider, not a grep.
+
+## G47 — When a service client swallows every exception
+
+- **Rule:** A client whose `except Exception: return None` is deliberate must
+  say which callers depend on it, and its caller must not keep an unreachable
+  network-error branch above it. Decide once whether "offline" and "no such
+  record" are the same outcome — they are not, to the user.
+- **Why:** `upcitemdb.lookup` swallows `httpx.ConnectError` by design so an
+  unknown barcode reaches the manual-add form. That also makes `_scan_upc`'s
+  `except (httpx.TimeoutException, httpx.NetworkError)` handler — and its
+  "Metadata lookup failed — check connectivity" message — dead code that reads
+  as live. A self-hoster with broken DNS is told the disc was not found and the
+  scan is logged `not_found` rather than `error`, so the log the troubleshooting
+  docs point them at agrees with the wrong story. This is the same auth-vs-empty
+  distinction issue #36 fixed for TMDb, one client over.
+- **Evidence:** pre-existing on `main` via `tmdb.lookup_upc`; carried forward by
+  `a48f7bd` (2026-08-24). Probed in diff review by raising `httpx.ConnectError`
+  from `outbound.fetch`: the body contains "not found", never "connectivity".
+- **Verify:** judgement, not a grep — but the dead branch is greppable:
+
+```bash
+grep -n "check connectivity" app/routers/items_common.py
+```
+
+  A hit means someone still believes that message can render; confirm a client
+  on that path can actually raise before trusting it.
+- **Status:** documented.
+
+## G48 — When a test seeds through the `db` fixture and then makes a request
+
+- **Rule:** Commit before the request. `db.commit()` (or `db.execute("COMMIT")`,
+  which the older tests use) after the last `_insert_item` / `_insert_location`
+  and before the first `admin_client.get(...)`. Without it the request sees an
+  empty library.
+- **Why:** `get_db()` commits on context-manager *exit*, and the `db` fixture
+  yields from inside its own `with get_db()` block — so its commit does not fire
+  until fixture teardown, after the test body has finished. Every request opens
+  its own connection and cannot see the uncommitted rows. The failure mode is
+  what makes this worth an entry: the test does not error, it passes
+  **vacuously** — a parity assertion compares zero items to zero items, a filter
+  assertion finds nothing on both sides, and the suite reports green. Most
+  existing tests already commit (33 sites in `test_items.py` alone), so the
+  convention exists; nothing states it and nothing enforces it.
+- **Evidence:** hit while writing `tests/test_browse_parity.py` for issue #37
+  (`9c284c7`, 2026-08-24) — the first draft's dropdown-parity tests all passed
+  against an empty database. Fixed by committing in the `seeded_library`
+  fixture; the file now also asserts `b_cards > 0` so the comparison cannot go
+  vacuous again.
+- **Verify:** judgement — but a seeding test with no commit is greppable:
+
+```bash
+grep -Ln 'commit' $(grep -rl '_insert_item' tests/*.py)   # candidates to eyeball
+```
+
+- **Status:** documented — a lint candidate: "a test that calls both
+  `_insert_item` and a `*_client.get/post` must contain a commit between them"
+  is mechanically checkable in `scripts/check_test_conventions.py`.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
@@ -1280,22 +1370,39 @@ fully covers it, etc.) so future sessions don't re-learn stale rules.
   a lint now — `test_stamp_is_idempotent`.
 
 - **G24 — a new Browse filter touches FOUR places or it silently drops**
-  (retired 2026-08-24). Refactored away: `app/browse_filters.py` declares the
-  filter set once, and the four (really five) places now derive from it —
-  the `hx-include` lists in `browse.html` and `fragments/filter_counts_oob.html`
+  (retired 2026-08-24). This entry's claim was false when written. At retirement
+  time, `app/routers/pages.py`'s `GET /browse` route was a **fifth missed**
+  declaration site: it hand-declared nine filter query parameters, hand-rolled
+  its own WHERE builder, hand-built its load-more querystring, hand-wrote its
+  `any([...])` active-filter check, and never imported `app/browse_filters.py`
+  at all. Issue #37 and the `feat/issue-37-browse-filter-registry` branch fixed
+  this by making `/browse` derive everything from the registry, unifying both
+  routes so they share the same filter source. The concrete divergence they fixed
+  was dropdown *counts* — `/browse` computed them globally while `/api/search`
+  computed them cross-filtered, so filter selections changed the numbers on the
+  first interaction after loading a filtered URL.
+
+  With that fix, the claim is now true: `app/browse_filters.py` declares the
+  filter set once, and the five declaration sites now derive from it — the
+  `hx-include` lists in `browse.html` and `fragments/filter_counts_oob.html`
   (14 of them, every one "all filters except my own", via the
   `filter_includes()` Jinja global), the condition groups in `search_items`
   (via `build_where(values, exclude=...)`, where a dropdown's cross-filter
   count group is just the where-clause minus its own filter), the name and
   chip lists in `static/js/browse.js` (via a `type="application/json"` block),
-  and `search_items`' own parameter list (via `values_from`). Adding a filter
-  is one `BrowseFilter(...)` line. `tests/test_browse_filters.py` fails if a
-  hand-written list reappears in either template or in the JS.
+  `search_items`' own parameter list (via `values_from`), and `/browse`'s route
+  handler. Adding a filter is one `BrowseFilter(...)` line. `tests/test_browse_filters.py`
+  fails if a hand-written list reappears in either template or in the JS, and its
+  signature guard is now parametrised over **both** routes — the half that closes
+  the class, since a sixth site would have to reappear as a route parameter first.
+  `tests/test_browse_parity.py` pins that the two routes render the same dropdown
+  options for the same query string.
 
-  Two live drifts were found while doing it, which is the argument for the
-  lever in miniature: `filterNames()` in `browse.js` was missing `view`, and
-  `has_filters` in `search_items` was missing `language` — so filtering by
-  language alone offered no way to clear it.
+  Two live drifts were found during the original registry refactor, which is
+  the argument for the lever in miniature: `filterNames()` in `browse.js` was
+  missing `view`, and `has_filters` in `search_items` was missing `language` —
+  so filtering by language alone offered no way to clear it. `/browse` going
+  unnoticed for a further branch is the same argument at one remove.
 
   What did *not* retire, and is still a separate trap: htmx does **not**
   re-process OOB-swapped selects — their `hx-trigger` listeners die with the

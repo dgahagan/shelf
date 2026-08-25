@@ -25,9 +25,16 @@ Filter chips along the top, all combinable:
 | **Tag** | Any custom tag |
 | **Language** | Edition language (captured on lookup) |
 
-Counts next to each value update as you narrow down. Filters persist across
-tabs and page reloads, and the URL carries them, so a filtered view is
-bookmarkable.
+Counts next to each value update as you narrow down, and they tell you what
+you would get if you picked that value — counted against your other active
+filters, but not against the filter the count sits under. That last part is
+why "All Types" can show a bigger number than the grid below it: with a type
+filter applied, "All Types" is telling you how many items you would see if you
+cleared it. The same is true of every filter's "All" entry.
+
+Filters persist across tabs and page reloads, and the URL carries them, so a
+filtered view is bookmarkable — and a bookmarked filtered view shows the same
+counts it will show after you touch a filter.
 
 ## Sorting
 

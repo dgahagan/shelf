@@ -62,7 +62,7 @@
              fitted. Wrapping makes the row count-independent instead of
              fitting only until the library grows. -->
         <div class="flex flex-wrap items-center gap-3">
-            <h1 class="text-2xl font-bold whitespace-nowrap">Collection <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ total_count }})</span></h1>
+            <h1 class="text-2xl font-bold whitespace-nowrap">Collection <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span></h1>
             <!-- View toggle -->
             <div class="flex items-center shrink-0 bg-shelf-card border border-shelf-border rounded-lg overflow-hidden" data-testid="view-toggle">
                 <button @click="setView('grid')" :class="viewMode === 'grid' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
@@ -125,7 +125,7 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('media_type_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="" {{ 'selected' if not f.media_type_filter else '' }}>All Types ({{ total_count }})</option>
+                <option value="" {{ 'selected' if not f.media_type_filter else '' }}>All Types ({{ type_total }})</option>
                 {% for key, label in media_types.items() %}
                 {% set count = type_counts.get(key, 0) %}
                 {% if count > 0 %}
@@ -139,7 +139,7 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('location_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations ({{ total_count }})</option>
+                <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations ({{ filtered_total }})</option>
                 {% for loc in locations %}
                 {% set lcount = location_counts.get(loc.id, 0) %}
                 <option value="{{ loc.id }}" {{ 'selected' if f.location_filter == loc.id|string else '' }}>{{ loc.name }}{% if lcount %} ({{ lcount }}){% endif %}</option>
@@ -151,7 +151,7 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('owned') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="" {{ 'selected' if not f.owned else '' }}>All ({{ total_count }})</option>
+                <option value="" {{ 'selected' if not f.owned else '' }}>All ({{ owned_count + wishlist_count }})</option>
                 <option value="1" {{ 'selected' if f.owned == '1' else '' }}>Owned ({{ owned_count }})</option>
                 <option value="0" {{ 'selected' if f.owned == '0' else '' }}>Wishlist ({{ wishlist_count }})</option>
             </select>

@@ -120,17 +120,32 @@ html5-qrcode elsewhere.
 **Browse's filter set is declared in `app/browse_filters.py`.** Each filter
 states its SQL condition, its querystring behaviour and how it presents in the
 UI; the rest derives. The templates' `hx-include` lists come from a
-`filter_includes()` Jinja global, `/api/search` and every dropdown's
-cross-filter counts come from `build_where(values, exclude=...)` — a dropdown's
-count group is just the where-clause with its own filter removed — that route
-reads its values with `values_from(request.query_params)`, and `browse.js`
-reads the same declaration out of a `type="application/json"` block.
+`filter_includes()` Jinja global; **both** routes that render the filters —
+`/api/search` in `app/routers/items.py` and the `/browse` page load in
+`app/routers/pages.py` — read their values with
+`values_from(request.query_params)`, build their WHERE with `build_where`, and
+declare no filter parameters of their own; and `browse.js` reads the same
+declaration out of a `type="application/json"` block.
 
-One declaration is still outstanding: the `/browse` page load in
-`app/routers/pages.py` carries its own copy of the filter parameters, WHERE
-builder and querystring builder rather than deriving from the registry. The two
-are equivalent today, and keeping them so is manual until that route is ported
-(issue #37).
+Every dropdown's counts are **cross-filtered** — a dropdown's count group is
+the where-clause with its own filter removed, via
+`build_where(values, exclude=...)`, so the number beside an option says what
+selecting it would yield. Both routes get them from one helper,
+`items_common.filter_counts`, which is what stops the page load and the first
+HTMX swap disagreeing (issue #37: `/browse` used to count globally, so the
+numbers changed the moment any filter was touched). Only `/api/search` sets
+`render_oob_counts`, so only its fragment emits the out-of-band copies of the
+`<select>`s — the initial page render must not, or the ids would duplicate.
+
+One invariant is worth stating because it is easy to undo: a filter marked
+`in_url=False` is left out of the load-more querystring as well as the address
+bar. `view` is the only one, and it is client-owned — `localStorage` is its
+authoritative store. The load-more URL is built once, server-side, when page 1
+renders, so a copy of `view` in it would be stale the moment the reader toggles
+grid/list; the sentinel's `hx-include="[name='view']"` reads the live hidden
+input instead. Emitting both put the name on the wire twice and made the
+outcome depend on htmx appending included parameters last and Starlette
+returning the last duplicate.
 
 Store Mode is a PWA: a service worker precaches the
 store page and the library ISBN set lives in the browser; unknown scans

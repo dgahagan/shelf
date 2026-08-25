@@ -660,79 +660,9 @@ async def search_items(
 
         # Cross-filter counts for dropdowns (page 1 only). Each group is the
         # same where-clause with its own filter excluded, so the number beside
-        # an option says what selecting it would yield.
-        filter_counts = None
-        if page <= 1:
-            def _count_where(exclude):
-                return browse_filters.build_where(values, exclude=exclude)
-
-            type_where, type_params = _count_where("media_type_filter")
-            type_counts = {
-                row["media_type"]: row["c"]
-                for row in db.execute(
-                    f"SELECT media_type, COUNT(*) as c FROM items i {type_where} GROUP BY media_type",
-                    type_params,
-                ).fetchall()
-            }
-            type_total = sum(type_counts.values())
-
-            own_where, own_params = _count_where("owned")
-            _own_join = " AND" if own_where else " WHERE"
-            owned_count = db.execute(
-                f"SELECT COUNT(*) as c FROM items i {own_where}{_own_join} i.owned = 1",
-                own_params,
-            ).fetchone()["c"]
-            wishlist_count = db.execute(
-                f"SELECT COUNT(*) as c FROM items i {own_where}{_own_join} i.owned = 0",
-                own_params,
-            ).fetchone()["c"]
-
-            loc_where, loc_params = _count_where("location_filter")
-            _loc_join = " AND" if loc_where else " WHERE"
-            location_counts = {
-                row["location_id"]: row["c"]
-                for row in db.execute(
-                    f"SELECT location_id, COUNT(*) as c FROM items i {loc_where}"
-                    f"{_loc_join} location_id IS NOT NULL GROUP BY location_id",
-                    loc_params,
-                ).fetchall()
-            }
-            no_location_count = db.execute(
-                f"SELECT COUNT(*) as c FROM items i {loc_where}{_loc_join} location_id IS NULL",
-                loc_params,
-            ).fetchone()["c"]
-
-            rs_where, rs_params = _count_where("reading_status")
-            _rs_join = " AND" if rs_where else " WHERE"
-            reading_status_counts = {
-                row["reading_status"]: row["c"]
-                for row in db.execute(
-                    f"SELECT reading_status, COUNT(*) as c FROM items i {rs_where}"
-                    f"{_rs_join} reading_status IS NOT NULL AND reading_status != '' "
-                    "GROUP BY reading_status",
-                    rs_params,
-                ).fetchall()
-            }
-
-            locations = db.execute(
-                "SELECT * FROM locations ORDER BY sort_order, name"
-            ).fetchall()
-
-            filter_counts = {
-                "type_counts": type_counts,
-                "type_total": type_total,
-                "owned_count": owned_count,
-                "wishlist_count": wishlist_count,
-                "location_counts": location_counts,
-                "no_location_count": no_location_count,
-                "reading_status_counts": reading_status_counts,
-                "locations": locations,
-                "filtered_total": total,
-                "active_type": values["media_type_filter"],
-                "active_owned": values["owned"],
-                "active_location": values["location_filter"],
-                "active_reading_status": values["reading_status"],
-            }
+        # an option says what selecting it would yield. Shared with /browse so
+        # the two routes cannot disagree.
+        counts = items_common.filter_counts(db, values, total) if page <= 1 else None
 
     has_more = (offset + per_page) < total
 
@@ -759,8 +689,9 @@ async def search_items(
         "has_filters": browse_filters.has_active_filters(values),
         "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
     }
-    if filter_counts:
-        ctx.update(filter_counts)
+    if counts:
+        ctx.update(counts)
+        ctx["render_oob_counts"] = True
 
     return templates.TemplateResponse(request, template, ctx)
 

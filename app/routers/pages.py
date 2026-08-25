@@ -1,14 +1,14 @@
 from datetime import date, datetime, timedelta
-from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
 
-from app import nav
+from app import browse_filters, nav
 from app.auth import require_role
 from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
 from app.currency import get_currency
 from app.database import get_db, get_setting, get_game_platforms, get_reading_history
+from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
 
@@ -23,55 +23,23 @@ async def index():
 @router.get("/browse")
 async def browse(
     request: Request,
-    q: str = "",
-    media_type_filter: str = "",
-    location_filter: str = "",
-    sort: str = "newest",
-    reading_status: str = "",
-    owned: str = "",
-    lent_out: str = "",
-    tag: str = "",
-    language: str = "",
     _=Depends(require_role("viewer")),
 ):
-    with get_db() as db:
-        # Build filter conditions
-        conditions: list[str] = []
-        params: list = []
-        if q:
-            conditions.append(
-                "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)"
-            )
-            params.extend([f"%{q}%", f"%{q}%", f"%{q}%", f"%{q}%"])
-        if location_filter:
-            conditions.append("i.location_id = ?")
-            params.append(int(location_filter))
-        if tag:
-            conditions.append(
-                "i.id IN (SELECT it.item_id FROM item_tags it "
-                "JOIN tags t ON it.tag_id = t.id WHERE t.name = ?)"
-            )
-            params.append(tag)
-        if reading_status:
-            conditions.append("i.reading_status = ?")
-            params.append(reading_status)
-        if lent_out == "1":
-            conditions.append(
-                "i.id IN (SELECT item_id FROM checkouts WHERE checked_in IS NULL)"
-            )
-        if media_type_filter:
-            conditions.append("i.media_type = ?")
-            params.append(media_type_filter)
-        if language:
-            conditions.append("i.language = ?")
-            params.append(language)
-        if owned == "1":
-            conditions.append("i.owned = 1")
-        elif owned == "0":
-            conditions.append("i.owned = 0")
+    """The Collection page — first paint of the item grid and its filters.
 
-        where = "WHERE " + " AND ".join(conditions) if conditions else ""
-        _, order_clause = SORT_OPTIONS.get(sort, SORT_OPTIONS["newest"])
+    Filter values are read from the query string via the registry rather than
+    declared as parameters here, exactly as `/api/search` does: a filter added
+    to `app/browse_filters.py` needs no change in this signature. The dropdown
+    counts come from the same `items_common.filter_counts` helper `/api/search`
+    uses, so the first paint and the first OOB swap cannot disagree.
+    """
+    values = browse_filters.values_from(request.query_params)
+    # Truncate search query to prevent slow LIKE scans (parity with /api/search)
+    values["q"] = values["q"][:200]
+    where, params = browse_filters.build_where(values)
+
+    with get_db() as db:
+        _, order_clause = SORT_OPTIONS.get(values["sort"], SORT_OPTIONS["newest"])
 
         from app.routers.checkouts import OVERDUE_CONDITION, get_overdue_days
         items = db.execute(
@@ -89,9 +57,6 @@ async def browse(
             f"SELECT COUNT(*) as c FROM items i {where}", params
         ).fetchone()["c"]
 
-        locations = db.execute(
-            "SELECT * FROM locations ORDER BY sort_order, name"
-        ).fetchall()
         series_names = [
             row["series_name"]
             for row in db.execute(
@@ -100,35 +65,17 @@ async def browse(
                 "ORDER BY series_name COLLATE NOCASE"
             ).fetchall()
         ]
-        type_counts = {
-            row["media_type"]: row["c"]
-            for row in db.execute(
-                "SELECT media_type, COUNT(*) as c FROM items GROUP BY media_type"
-            ).fetchall()
-        }
-        total_count = sum(type_counts.values())
-        wishlist_count = db.execute(
-            "SELECT COUNT(*) as c FROM items WHERE owned = 0"
-        ).fetchone()["c"]
-        owned_count = total_count - wishlist_count
+
+        # Cross-filter dropdown counts — `locations`, `type_counts`,
+        # `location_counts`, `reading_status_counts`, `owned_count`,
+        # `wishlist_count` and `filtered_total` all come from here.
+        counts = items_common.filter_counts(db, values, total_filtered)
+
+        # Deliberately still global (design §5): none of these appears in
+        # `fragments/filter_counts_oob.html`, so none can diverge.
         lent_out_count = db.execute(
             "SELECT COUNT(DISTINCT item_id) as c FROM checkouts WHERE checked_in IS NULL"
         ).fetchone()["c"]
-        location_counts = {
-            row["location_id"]: row["c"]
-            for row in db.execute(
-                "SELECT location_id, COUNT(*) as c FROM items WHERE location_id IS NOT NULL GROUP BY location_id"
-            ).fetchall()
-        }
-        no_location_count = db.execute(
-            "SELECT COUNT(*) as c FROM items WHERE location_id IS NULL"
-        ).fetchone()["c"]
-        reading_status_counts = {
-            row["reading_status"]: row["c"]
-            for row in db.execute(
-                "SELECT reading_status, COUNT(*) as c FROM items WHERE reading_status IS NOT NULL AND reading_status != '' GROUP BY reading_status"
-            ).fetchall()
-        }
 
         from app.routers.tags import get_all_tags
         all_tags = get_all_tags(db)
@@ -145,63 +92,33 @@ async def browse(
 
         has_more = len(items) < total_filtered
 
-        # Build load-more URL preserving filters
-        qs_parts = []
-        if q:
-            qs_parts.append(f"q={q}")
-        if media_type_filter:
-            qs_parts.append(f"media_type_filter={media_type_filter}")
-        if location_filter:
-            qs_parts.append(f"location_filter={location_filter}")
-        if sort != "newest":
-            qs_parts.append(f"sort={sort}")
-        if reading_status:
-            qs_parts.append(f"reading_status={reading_status}")
-        if owned:
-            qs_parts.append(f"owned={owned}")
-        if lent_out:
-            qs_parts.append(f"lent_out={lent_out}")
-        if tag:
-            qs_parts.append(f"tag={quote(tag)}")
-        if language:
-            qs_parts.append(f"language={language}")
-        qs_parts.append("page=2")
-        load_more_url = "/api/search?" + "&".join(qs_parts)
+        load_more_url = "/api/search?" + browse_filters.querystring(
+            values, extra=["page=2"]
+        )
+
+    ctx = {
+        "items": items,
+        "media_types": MEDIA_TYPES,
+        "series_names": series_names,
+        "all_tags": all_tags,
+        "lent_out_count": lent_out_count,
+        "item_languages": item_languages,
+        "has_more": has_more,
+        "has_filters": browse_filters.has_active_filters(values),
+        "load_more_url": load_more_url,
+        "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
+        "initial_query": values["q"],
+        "initial_filters": {name: values[name] for name in browse_filters.FILTER_NAMES},
+    }
+    # `render_oob_counts` is deliberately NOT set: `browse.html` includes
+    # `fragments/filter_counts_oob.html` via the item grid, and setting it
+    # would emit a second copy of every filter `<select>` into this page.
+    ctx.update(counts)
 
     return request.app.state.templates.TemplateResponse(
         request,
         "browse.html",
-        {
-            "items": items,
-            "media_types": MEDIA_TYPES,
-            "locations": locations,
-            "series_names": series_names,
-            "type_counts": type_counts,
-            "all_tags": all_tags,
-            "total_count": total_filtered if any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag, language]) else total_count,
-            "owned_count": owned_count,
-            "wishlist_count": wishlist_count,
-            "lent_out_count": lent_out_count,
-            "location_counts": location_counts,
-            "no_location_count": no_location_count,
-            "reading_status_counts": reading_status_counts,
-            "item_languages": item_languages,
-            "has_more": has_more,
-            "has_filters": any([q, media_type_filter, location_filter, reading_status, owned, lent_out, tag, language]),
-            "load_more_url": load_more_url,
-            "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
-            "initial_query": q,
-            "initial_filters": {
-                "media_type_filter": media_type_filter,
-                "location_filter": location_filter,
-                "sort": sort,
-                "reading_status": reading_status,
-                "owned": owned,
-                "lent_out": lent_out,
-                "tag": tag,
-                "language": language,
-            },
-        },
+        ctx,
     )
 
 

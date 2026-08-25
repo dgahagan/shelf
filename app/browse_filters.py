@@ -234,11 +234,22 @@ def has_active_filters(values: Mapping[str, str]) -> bool:
 
 
 def querystring(values: Mapping[str, str], extra: Sequence[str] = ()) -> str:
-    """Querystring for the load-more URL, in FILTERS order."""
+    """Querystring for the load-more URL, in FILTERS order.
+
+    Filters with `in_url=False` are left out. Today that is `view` alone, and
+    the reason is that this URL is rendered once, server-side, when page 1 is
+    built — a copy of `view` baked into it goes stale the moment the user
+    toggles grid/list, while the load-more sentinel's
+    `hx-include="[name='view']"` reads the live hidden input on every request.
+    Emitting both put `view` on the wire twice and left which one won resting
+    on two unrelated behaviours: htmx appends included params last, and
+    Starlette's `QueryParams.get()` returns the last duplicate (G8). It
+    resolved correctly, by luck rather than by design. One live copy, no luck.
+    """
     parts = []
     for f in FILTERS:
         value = values.get(f.name, "")
-        if not f.is_active(value):
+        if not f.in_url or not f.is_active(value):
             continue
         parts.append(f"{f.name}={quote(str(value)) if f.quote_in_qs else value}")
     parts.extend(extra)
