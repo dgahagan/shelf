@@ -4,6 +4,7 @@ E2E test fixtures for Shelf.
 Uses raw Playwright (not pytest-playwright) so we can control the server
 lifecycle and auth state independently.
 """
+import contextlib
 import os
 import socket
 import sqlite3
@@ -90,17 +91,24 @@ def _wait_for_server(url: str, timeout: float = _SERVER_TIMEOUT, output: "_Outpu
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture(scope="session")
-def live_server():
-    """Start a uvicorn process with a temp DB; yield the base URL."""
+@contextlib.contextmanager
+def _boot_server(env_extra: "dict[str, str] | None" = None, *, clear_env=()):
+    """Start a uvicorn process against a fresh temp DB; yield its coordinates.
+
+    The body `live_server` used to inline, so there is one implementation
+    rather than two. Environment construction order is load-bearing: copy
+    `os.environ`, drop every name in `clear_env`, apply the fixed E2E values,
+    then apply `env_extra` last — so a caller can always opt back in to
+    something `clear_env` removed.
+    """
     tmpdir = tempfile.mkdtemp(prefix="shelf_e2e_")
     data_dir = Path(tmpdir) / "data"
     data_dir.mkdir()
     (data_dir / "covers").mkdir()
 
     port = _free_port()
-    env = {
-        **os.environ,
+    env = {k: v for k, v in os.environ.items() if k not in set(clear_env)}
+    env.update({
         "DATA_DIR": str(data_dir),
         "SHELF_DISABLE_RATE_LIMIT": "1",
         "SHELF_DEV_INSECURE_COOKIES": "1",
@@ -108,7 +116,8 @@ def live_server():
         # too, so E2E makes no outbound cover fetches. enqueue() still works —
         # jobs simply sit, which is what the cover-poll tests rely on.
         "SHELF_DISABLE_COVER_ENRICH": "1",
-    }
+    })
+    env.update(env_extra or {})
 
     proc = subprocess.Popen(
         [
@@ -136,6 +145,49 @@ def live_server():
             proc.kill()
         import shutil
         shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+@pytest.fixture(scope="session")
+def live_server():
+    """Start a uvicorn process with a temp DB; yield the base URL.
+
+    Passes no `clear_env`, which is what preserves the pre-extraction contract
+    byte for byte: the whole parent environment, then the fixed E2E values.
+    """
+    with _boot_server() as server:
+        yield server
+
+
+@pytest.fixture
+def server_factory():
+    """Boot throwaway servers with caller-supplied env, torn down per test.
+
+    Function-scoped, unlike `live_server`, so a test can drive several
+    configurations without imposing any of them on the other 126 E2E tests.
+    Call it more than once in a test if you need more than one server.
+
+    Every factory server starts with **no integration overrides**. Copying
+    `os.environ` is not an unconfigured baseline: `SECRET_ENV_VARS` values beat
+    the DB row, so on a host that exports ABS_URL/ABS_TOKEN a nominally plain
+    server renders Audiobookshelf as configured and a configuration-matrix test
+    fails for the host's state. A caller opts back in through `env_extra`.
+
+    Iterate `.values()` — SECRET_ENV_VARS is settings-key -> ENV_NAME, and
+    `for name in SECRET_ENV_VARS` would yield 'abs_url' and clear nothing, a
+    silent no-op. `tests/conftest.py` carries the same trap for the unit suite.
+
+    The import is function-local on purpose: this module drives the app as a
+    subprocess and imports nothing from `app` at module level (G14's neighbours
+    live here too).
+    """
+    from app.config import SECRET_ENV_VARS
+
+    with contextlib.ExitStack() as stack:
+        def factory(env_extra: "dict[str, str] | None" = None) -> dict:
+            return stack.enter_context(
+                _boot_server(env_extra, clear_env=SECRET_ENV_VARS.values())
+            )
+        yield factory
 
 
 def wait_for_video_ready(page, selector: str, timeout_ms: int = 15_000) -> None:
@@ -261,24 +313,38 @@ def assert_page_clean(pg):
     )
 
 
+def _run_setup_wizard(browser, base_url: str) -> dict:
+    """Run the setup wizard against `base_url`; return the credentials dict.
+
+    The body `setup_admin` used to inline, so a test driving a throwaway
+    `server_factory` server can reach it without a session fixture.
+
+    G44: `attach_page_guard(ctx.new_page())` on one line — the lint requires
+    both calls on the same line, and this is a Page construction site like any
+    other. `assert_page_clean` runs at the end of the body, never in a
+    `finally:`, where it would mask the real failure.
+    """
+    ctx = browser.new_context()
+    page = attach_page_guard(ctx.new_page())
+    page.goto(f"{base_url}/setup")
+    page.fill("input[name=username]", ADMIN_USERNAME)
+    page.fill("input[name=display_name]", ADMIN_DISPLAY)
+    page.fill("input[name=password]", ADMIN_PASSWORD)
+    page.fill("input[name=password_confirm]", ADMIN_PASSWORD)
+    page.click("button[type=submit]")
+    page.wait_for_url(f"{base_url}/browse", timeout=10_000)
+    assert_page_clean(page)
+    ctx.close()
+    return {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD, "display_name": ADMIN_DISPLAY}
+
+
 @pytest.fixture(scope="session")
 def setup_admin(live_server, browser):
     """
     Run the setup wizard once per session; return credentials dict.
     Uses a dedicated browser context so cookies don't leak.
     """
-    ctx = browser.new_context()
-    page = attach_page_guard(ctx.new_page())
-    page.goto(f"{live_server['url']}/setup")
-    page.fill("input[name=username]", ADMIN_USERNAME)
-    page.fill("input[name=display_name]", ADMIN_DISPLAY)
-    page.fill("input[name=password]", ADMIN_PASSWORD)
-    page.fill("input[name=password_confirm]", ADMIN_PASSWORD)
-    page.click("button[type=submit]")
-    page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
-    assert_page_clean(page)
-    ctx.close()
-    return {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD, "display_name": ADMIN_DISPLAY}
+    return _run_setup_wizard(browser, live_server["url"])
 
 
 def _get_auth_cookies(live_server, browser, credentials: dict) -> dict:

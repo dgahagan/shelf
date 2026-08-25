@@ -1376,33 +1376,141 @@ grep -Ln 'commit' $(grep -rl '_insert_item' tests/*.py)   # candidates to eyebal
   early return) move together or the button lies about itself.
 - **Why:** issue #39 made the Test-button gates read credential *presence*
   rather than "there is a row in `settings`". Audiobookshelf still did not work,
-  because its Test button also gates on the **URL**: `abs_url` is in
+  because its Test button also gated on the **URL**: `abs_url` is in
   `SECRET_ENV_VARS` but is not a `SENSITIVE_KEY`, so a `SENSITIVE_KEYS`-shaped
-  flag has no member for it and the card kept reading the URL out of the
+  flag had no member for it and the card kept reading the URL out of the
   row-only `get_all_settings()` dict (G15 again, third instance in one file).
   The plan shipped a token-only flag on paper and a cross-vendor plan review
   caught it before any code existed. Verifying that finding then turned up a
   *second* action on the same card — **Sync Now**, gated on `!absUrl ||
-  !absToken` where `absToken` is never initialised from the dataset — which is
-  broken even for a fully DB-saved config and is filed as **#41**. One flag,
-  three consumers, two defects.
+  !absToken` where `absToken` is never initialised from the dataset — broken
+  even for a fully DB-saved config and filed as **#41**. One flag, three
+  consumers, two defects: #39 fixed the Test button and its `absTestReady`
+  consumer; #41 fixed Sync Now's `:disabled` **and** `startSync()` itself,
+  which had no guard at all — the template attribute was the only layer
+  standing between a typed-but-unsaved credential and a live request to an
+  endpoint that reads only the stored row.
 - **Evidence:** `ba5a433` (2026-08-25, issue #39) — `abs_url_present` plus
   `data-abs-url-present`, with the guard moved in **both**
   `app/templates/fragments/settings/integrations.html` and
   `testAbs()` in `static/js/components-settings.js`;
   `tests/test_settings_masking.py::TestEnvOnlyCredentials::test_abs_url_and_token_both_env_only_enable_gate`
   pins it. Plan review R1, `.devdocs/archive/completed/plan-issue-39-env-only-credentials-review-codex.md`.
-- **Verify:** the standing instance is #41 — while it is open, the trap is live.
-  Mechanically, compare each endpoint's fallback keys with every operand of the
-  guards in front of it (prints the two lists to eyeball):
+  `047e1a5`, `59bb3c8`, `b5676f3` (2026-08-25, issue #41) — `absSyncReady` and
+  `syncLabel` getters plus a guarded `startSync()` in
+  `Alpine.data('absSync', ...)` (`static/js/components-settings.js`), the
+  matching `:disabled`/`x-text` attributes in `integrations.html`, and
+  `tests/e2e/test_settings_abs_sync_guard.py` pinning all four configurations
+  (DB-saved, env-only, unconfigured, typed-but-unsaved) in a real browser.
+  Sync Now gates on **availability** (`absUrlPresent && absSaved`), not
+  availability-or-typed like Test (`(absUrl || absUrlPresent) && (absToken ||
+  absSaved)`) — the two questions genuinely differ because the two endpoints
+  read credentials from different places: `/api/sync/audiobookshelf/test`
+  reads the POST body first and falls back to `get_setting`
+  (`app/routers/sync.py:50-51`), while `/api/sync/audiobookshelf/stream` reads
+  **only** the stored row and never looks at the request
+  (`app/routers/sync.py:204-205`). Collapsing the two guards into one shared
+  getter — the fix issue #41 itself suggested — lights Sync Now up for
+  typed-but-unsaved credentials, which the server then answers `URL and token
+  required`.
+- **Verify:** the recipe still works — compare each endpoint's fallback keys
+  with every operand of the guards in front of it (prints the two lists to
+  eyeball). Re-run 2026-08-25:
 
-```bash
-grep -n ':disabled=' app/templates/fragments/settings/integrations.html
-grep -n 'get_setting(db, "' app/routers/sync.py
+```
+$ grep -n ':disabled=' app/templates/fragments/settings/integrations.html
+51:  :disabled="absTesting || !absTestReady"
+84:  :disabled="syncing || !absSyncReady"
+...
+$ grep -n 'get_setting(db, "' app/routers/sync.py
+50: url = url or get_setting(db, "abs_url")       # /test — falls back
+51: token = token or get_setting(db, "abs_token")
+204: abs_url_val = get_setting(db, "abs_url")     # /stream — no fallback, no request read
+205: abs_token_val = get_setting(db, "abs_token")
 ```
 
-- **Status:** documented. Judgement, not a lint candidate — deciding which
-  operands a given action genuinely needs cannot be grepped.
+  Two disjoint operand sets is expected and correct here — `absTestReady` and
+  `absSyncReady` are deliberately different guards for deliberately different
+  endpoints (see Evidence). A single shared getter passing this same eyeball
+  check would be the bug, not the fix.
+- **Status:** documented, not linted — deciding which operands a given action
+  genuinely needs cannot be grepped. No open instance as of this branch: #41
+  shipped browser coverage (`tests/e2e/test_settings_abs_sync_guard.py`)
+  pinning the Test/Sync-Now asymmetry directly, so a future collapse of the
+  two getters fails a test rather than waiting to be noticed by hand.
+
+## G50 — When a test fixture boots a subprocess and calls it an unconfigured install
+
+- **Rule:** Copying `os.environ` is **not** an unconfigured baseline. Remove
+  every integration-override variable first, then apply the fixture's fixed
+  values, then the caller's `env_extra` **last** so a test can always opt back
+  in. A long-lived shared fixture may keep inheriting (its contract is what the
+  existing suite runs on) — but any factory that claims to control a
+  *configuration matrix* must isolate the variables it claims to control.
+- **Why:** `SECRET_ENV_VARS` beat the DB row (`app/config.py:153-162`), so on a
+  developer's or CI runner's host that exports `ABS_URL`/`ABS_TOKEN` a
+  nominally plain throwaway server renders Audiobookshelf as **configured** —
+  `data-abs-url-present="1"`, `data-abs-saved="1"`, Sync Now enabled. The
+  "unconfigured" and "typed-but-unsaved" cases then fail for the host's state,
+  or worse pass while asserting over the wrong configuration. `tests/conftest.py`
+  has done this clearing for the **unit** suite since issue #39; the E2E path
+  boots a subprocess and never got the equivalent.
+- **Iterate `.values()`, not the mapping.** `SECRET_ENV_VARS` is
+  `setting_key -> ENV_NAME`, so `for name in SECRET_ENV_VARS` yields `abs_url`
+  and clears nothing — a silent no-op, and precisely how this stayed invisible.
+  `app/routers/pages.py` iterates the *keys* (`is_env_override` takes a settings
+  key) while a fixture needs the *values*; the two collide in exactly the way
+  that makes it easy to get backwards.
+- **Evidence:** `59bb3c8` (2026-08-25, issue #41) — `_boot_server(env_extra,
+  *, clear_env=())` in `tests/e2e/conftest.py`, with `server_factory` passing
+  `clear_env=SECRET_ENV_VARS.values()` and `live_server` passing none, which is
+  what keeps the existing 126-test contract byte-for-byte. Raised as R1 of the
+  cross-vendor plan review before any code existed
+  (`.devdocs/archive/completed/plan-issue-41-abs-sync-guard-review-codex.md`);
+  verified by reading `/proc/<pid>/environ` of the booted child.
+- **Verify:** the configuration-matrix tests must stay green with the pytest
+  parent itself configured — if this goes red, the clearing is not reaching the
+  child:
+
+```bash
+ABS_URL=http://inherited.invalid ABS_TOKEN=inherited-token \
+  python -m pytest tests/e2e/test_settings_abs_sync_guard.py -m e2e -q \
+  -k 'unconfigured or typed_but_unsaved'
+```
+
+- **Status:** documented. Lint candidate — a rule that a `subprocess.Popen`
+  `env=` built from `**os.environ` inside `tests/` must name `clear_env` (or
+  clear `SECRET_ENV_VARS`) is mechanically checkable, and would belong in
+  `scripts/check_test_conventions.py` beside the G14/G21/G44 checks.
+
+## G51 — When an E2E assertion reads text from a pair of `x-show`-toggled spans
+
+- **Rule:** Don't read it with `inner_text()`. A one-shot read has no retry, and
+  a button whose label is two sibling spans (`x-show="!busy"` / `x-show="busy"`)
+  is briefly rendered with **neither hidden** right after a tab click or a page
+  load — so the read returns *both* labels concatenated. Assert through a
+  retrying matcher against the visible one:
+  `expect(btn.locator("span:visible")).to_have_text("Sync Now")`.
+- **Why:** the failure is a string mismatch, so the message blames the copy
+  (`'Sync NowSyncing...' != 'Sync Now'`) rather than the wait — and it is
+  timing-dependent, so it reproduces in the test that navigates least and not
+  in its sibling. Playwright's `expect(...).to_have_text()` auto-retries until
+  the assertion holds or times out; a bare `inner_text() ==` comparison does
+  not, and neither does asserting on the button's own text without narrowing
+  to `span:visible`.
+- **Evidence:** `b5676f3` (2026-08-25, issue #41) —
+  `tests/e2e/test_settings_abs_sync_guard.py`'s `_sync_label()` helper. The
+  first draft used `sync_btn.inner_text()` and caught both spans in the
+  env-only case (which lands on the card with less navigation ahead of it)
+  while passing in the DB-saved case, which had a form submit and redirect in
+  between.
+- **Verify:** judgement. When reviewing an E2E text assertion on Alpine-rendered
+  copy, ask whether the locator can match a hidden sibling and whether the
+  matcher retries.
+- **Status:** documented. Not a lint candidate. Same family as G42 (which is
+  the *geometry* symptom of the same unsettled `x-show` state — zero rects
+  rather than doubled text) and G21 (*how* to wait); distinct trigger, so it
+  gets its own entry rather than a line in either.
 
 ## Graveyard
 

@@ -81,9 +81,9 @@
 
         <div class="border-t border-shelf-border pt-4">
             <button @click="startSync()"
-                    :disabled="syncing || !absUrl || !absToken"
+                    :disabled="syncing || !absSyncReady"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!syncing" x-text="(absUrl && absToken) ? 'Sync Now' : 'Enter URL and token to sync'"></span>
+                <span x-show="!syncing" x-text="syncLabel"></span>
                 <span x-show="syncing">Syncing...</span>
             </button>
 

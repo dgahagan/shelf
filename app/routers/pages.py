@@ -537,14 +537,18 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
     # means "there is a row in `settings`" — the right question for the clear
     # checkbox (only a row can be deleted) and the "Saved" placeholder.
     secrets_saved = {k: bool(settings.get(k)) for k in SENSITIVE_KEYS}
-    # `secrets_present` means "a credential is available to test", which an env
-    # var supplies with no row at all (G15, issue #39). It gates the Test buttons
-    # and nothing else: making `secrets_saved` itself env-aware would offer a
-    # "Remove saved key" checkbox that cannot remove an env credential.
+    # `secrets_present` means "a credential is available", which an env var
+    # supplies with no row at all (G15, issue #39). It gates the Test buttons and
+    # — via `data-abs-saved` — Audiobookshelf's Sync Now (issue #41), which reads
+    # availability because /stream syncs from the stored credentials and never
+    # from the form. It deliberately does not feed the clear checkbox: making
+    # `secrets_saved` itself env-aware would offer a "Remove saved key" checkbox
+    # that cannot remove an env credential.
     secrets_present = {k: secrets_saved[k] or k in env_overrides for k in SENSITIVE_KEYS}
     # `abs_url` needs its own flag: it has a SECRET_ENV_VARS entry but is not a
     # SENSITIVE_KEY (it is not a credential), so `secrets_present` has no member
-    # for it — and the Audiobookshelf Test button gates on the URL as well.
+    # for it — and both Audiobookshelf actions gate on the URL: Test on typed-or-
+    # present, Sync Now on presence alone (issue #41).
     abs_url_present = bool(settings.get("abs_url")) or "abs_url" in env_overrides
     for k in SENSITIVE_KEYS:
         if k in settings:

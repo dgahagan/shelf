@@ -86,6 +86,19 @@ document.addEventListener('alpine:init', function () {
             get absTestReady() {
                 return Boolean((this.absUrl || this.absUrlPresent) && (this.absToken || this.absSaved));
             },
+            // Sync streams from the server's stored credentials and never reads
+            // the form (sync.py's /stream reads get_setting for both and ignores
+            // the request), so this asks whether a credential is *available*, not
+            // what is typed. absUrl is deliberately absent: it renders '' for an
+            // env-only install (G49; issue #41).
+            get absSyncReady() {
+                return Boolean(this.absUrlPresent && this.absSaved);
+            },
+            get syncLabel() {
+                if (this.absSyncReady) return 'Sync Now';
+                if (this.absUrl || this.absToken) return 'Save your settings to sync';
+                return 'Enter URL and token to sync';
+            },
             testAbs() {
                 if (!this.absTestReady) return;
                 this.absTesting = true; this.absStatus = false;
@@ -98,6 +111,7 @@ document.addEventListener('alpine:init', function () {
                   .catch(() => { this.absStatus = { ok: false, message: 'Connection failed' }; this.absTesting = false; });
             },
             startSync() {
+                if (!this.absSyncReady) return;
                 this.syncing = true; this.result = false; this.syncCurrent = 0; this.syncTotal = 0;
                 this.syncLastTitle = ''; this.syncLog = []; this.showSyncLog = false;
                 var self = this;

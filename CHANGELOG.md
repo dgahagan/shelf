@@ -6,6 +6,40 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.7] - 2026-08-25
+
+**Sync Now** on the Audiobookshelf card was greyed out on every page load, for
+every setup — including one where the URL and token had been saved for months
+and the scheduled sync was running perfectly. The button said *"Enter URL and
+token to sync"* at someone who had already done exactly that. The only way to
+revive it was to retype the token, which made it look like the saved credential
+was the problem when it never was.
+
+The button was asking the wrong question. It checked what was *typed into the
+form*, and the token box is deliberately always empty — Shelf never writes a
+saved credential back into the page. A manual sync reads the credentials the
+server has stored, so that is what the button now checks.
+
+### Fixed
+
+- **Sync Now works for a saved Audiobookshelf configuration.** The button is
+  live whenever the server has a URL and a token to sync with, whether they were
+  saved in Settings or supplied through `ABS_URL` / `ABS_TOKEN` in the
+  environment. Scheduled sync was never affected — this was only ever the manual
+  button.
+- **The button says which of the two things is missing.** Three states instead
+  of one: *"Sync Now"* when it will work, *"Save your settings to sync"* when
+  credentials are typed but not yet saved, and *"Enter URL and token to sync"*
+  when there is nothing to sync with. The middle one is new — the old label
+  could not describe it, and it is the state you are in the moment before you
+  press Save.
+
+Note that Sync Now deliberately stays disabled for credentials you have typed
+but not saved, even though **Test** beside it lights up for them. That is not an
+inconsistency: Test sends what is in the boxes, so it can check a credential
+before you commit to it, while a sync reads what the server has stored and would
+fail on values it has never seen.
+
 ## [0.17.6] - 2026-08-25
 
 An integration credential does not have to be typed into Settings — it can come
@@ -1518,6 +1552,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.7]: https://github.com/dgahagan/shelf/releases/tag/v0.17.7
 [0.17.6]: https://github.com/dgahagan/shelf/releases/tag/v0.17.6
 [0.17.5]: https://github.com/dgahagan/shelf/releases/tag/v0.17.5
 [0.17.4]: https://github.com/dgahagan/shelf/releases/tag/v0.17.4
