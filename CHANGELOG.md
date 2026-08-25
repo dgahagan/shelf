@@ -6,6 +6,45 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.6] - 2026-08-25
+
+An integration credential does not have to be typed into Settings — it can come
+from an environment variable instead, which is how you would wire Shelf to
+Docker secrets or a secrets manager. But the Settings page decided whether an
+integration was configured by asking whether it had *saved* the credential
+itself, and an environment variable leaves nothing to save. So the **Test**
+button sat greyed out in front of an integration that was working perfectly,
+and the only way to check a key was to paste a second copy into the form.
+
+The page now asks a different question — *is a credential available?* — which an
+environment variable answers just as well as a stored one.
+
+### Fixed
+
+- **Test buttons work for credentials supplied by environment variable.** All
+  five — Audiobookshelf, Hardcover, ISBNdb, TMDb and IGDB — are live when the
+  credential is in the environment, and they check it where it actually lives
+  rather than reporting it missing. IGDB still waits for both halves of its
+  pair: one of the two is not a credential.
+- **Valuate Collection and both Hardcover transfers use it too.** Collection
+  valuation, Import from Hardcover and Export to Hardcover read the same
+  environment credential the rest of Shelf already read. Previously they either
+  refused to start or started and immediately announced that the key was
+  missing.
+- **The documentation describes what the page actually does.** Configuration
+  used to promise that an env-supplied credential "shows as *set by
+  environment*" in the interface. It never has, in any version. That claim is
+  replaced by what is true: the field stays blank because Shelf never echoes a
+  secret back, the environment value takes priority over anything stored, Test
+  key works against it, and removing it means changing your environment —
+  Settings cannot reach it.
+
+Deliberately still absent: a credential that comes only from the environment
+shows **no** "Remove saved key" checkbox and **no** "Saved — leave blank to
+keep" label. Both would be lying. There is no stored row to remove, and no
+checkbox can reach into your environment, so Shelf stays quiet about where a
+working credential came from rather than offering a control that cannot work.
+
 ## [0.17.5] - 2026-08-25
 
 A filtered Browse view is meant to be bookmarkable — that is the point of
@@ -1479,6 +1518,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.6]: https://github.com/dgahagan/shelf/releases/tag/v0.17.6
 [0.17.5]: https://github.com/dgahagan/shelf/releases/tag/v0.17.5
 [0.17.4]: https://github.com/dgahagan/shelf/releases/tag/v0.17.4
 [0.17.3]: https://github.com/dgahagan/shelf/releases/tag/v0.17.3

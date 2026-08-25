@@ -9,7 +9,8 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="absSync"
          data-abs-url="{{ settings.get('abs_url', '') }}"
-         data-abs-saved="{{ '1' if secrets_saved['abs_token'] else '' }}">
+         data-abs-url-present="{{ '1' if abs_url_present else '' }}"
+         data-abs-saved="{{ '1' if secrets_present['abs_token'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Audiobookshelf Sync</h2>
             <button @click="showAbsHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
@@ -47,7 +48,7 @@
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                     <button type="button"
                             @click="testAbs"
-                            :disabled="absTesting || !absUrl || (!absToken && !absSaved)"
+                            :disabled="absTesting || !absTestReady"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
                         <span x-show="!absTesting">Test</span>
                         <span x-show="absTesting">Testing...</span>
@@ -187,7 +188,7 @@
     <!-- Hardcover -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="hardcoverPanel"
-         data-hc-saved="{{ '1' if secrets_saved['hardcover_token'] else '' }}">
+         data-hc-saved="{{ '1' if secrets_present['hardcover_token'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Hardcover</h2>
             <button @click="showHcHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
@@ -426,7 +427,7 @@
     <!-- Valuation -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="valuationPanel"
-         data-api-key-saved="{{ '1' if secrets_saved['isbndb_api_key'] else '' }}">
+         data-api-key-saved="{{ '1' if secrets_present['isbndb_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Collection Valuation</h2>
             <button @click="showHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
@@ -553,7 +554,7 @@
     <!-- Movie Database (TMDb) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="tmdbPanel"
-         data-tmdb-saved="{{ '1' if secrets_saved['tmdb_api_key'] else '' }}">
+         data-tmdb-saved="{{ '1' if secrets_present['tmdb_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Movie Database (TMDb)</h2>
             <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
@@ -721,7 +722,7 @@
     <!-- IGDB (Video Games) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="igdbPanel"
-         data-igdb-saved="{{ '1' if secrets_saved['igdb_client_id'] and secrets_saved['igdb_client_secret'] else '' }}">
+         data-igdb-saved="{{ '1' if secrets_present['igdb_client_id'] and secrets_present['igdb_client_secret'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">IGDB (Video Games)</h2>
             <button @click="showIgdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get credentials?</button>

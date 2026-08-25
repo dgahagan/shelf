@@ -323,6 +323,17 @@ print("DIVERGES" if (a == "tok" and b is None) else "SAME")
 PY
 ```
 
+- **Also:** two neighbouring facts that cost time on issue #39.
+  (1) `SENSITIVE_KEYS` and `SECRET_ENV_VARS` are **not** the same set —
+  `abs_url` has an env var but is not a credential, and `notify_url` /
+  `anthropic_api_key` / `openai_api_key` are credentials with no env var. State
+  keyed on one will not cover the other; see **G49**.
+  (2) `SECRET_ENV_VARS` maps **settings-key → ENV_NAME**, so
+  `'TMDB_API_KEY' in SECRET_ENV_VARS` is `False`. Iterate the **keys** when
+  calling `is_env_override(key)` or building setting-keyed state
+  (`app/routers/pages.py`); iterate **`.values()`** when reading or clearing the
+  actual process environment (`tests/conftest.py`'s `_isolated_db`). Both loops
+  read as "iterate the env vars" and only one is right in each place.
 - **Status:** documented. Not a lint candidate as stated — deciding whether a
   given call site cares about env-only keys needs judgement, not a grep.
 
@@ -1353,6 +1364,45 @@ grep -Ln 'commit' $(grep -rl '_insert_item' tests/*.py)   # candidates to eyebal
 - **Status:** documented — a lint candidate: "a test that calls both
   `_insert_item` and a `*_client.get/post` must contain a commit between them"
   is mechanically checkable in `scripts/check_test_conventions.py`.
+
+## G49 — When a UI action is gated on a credential that has more than one field
+
+- **Rule:** Enumerate **every operand** in the client-side guard independently,
+  and check each one against what the endpoint actually falls back to. A
+  presence flag for one member of a compound credential does not satisfy the
+  others, and a second action on the same card has usually copied its own guard
+  rather than consuming the flag — so it needs its own edit and its own pin.
+  Both copies of a duplicated guard (a template's `:disabled` and the method's
+  early return) move together or the button lies about itself.
+- **Why:** issue #39 made the Test-button gates read credential *presence*
+  rather than "there is a row in `settings`". Audiobookshelf still did not work,
+  because its Test button also gates on the **URL**: `abs_url` is in
+  `SECRET_ENV_VARS` but is not a `SENSITIVE_KEY`, so a `SENSITIVE_KEYS`-shaped
+  flag has no member for it and the card kept reading the URL out of the
+  row-only `get_all_settings()` dict (G15 again, third instance in one file).
+  The plan shipped a token-only flag on paper and a cross-vendor plan review
+  caught it before any code existed. Verifying that finding then turned up a
+  *second* action on the same card — **Sync Now**, gated on `!absUrl ||
+  !absToken` where `absToken` is never initialised from the dataset — which is
+  broken even for a fully DB-saved config and is filed as **#41**. One flag,
+  three consumers, two defects.
+- **Evidence:** `ba5a433` (2026-08-25, issue #39) — `abs_url_present` plus
+  `data-abs-url-present`, with the guard moved in **both**
+  `app/templates/fragments/settings/integrations.html` and
+  `testAbs()` in `static/js/components-settings.js`;
+  `tests/test_settings_masking.py::TestEnvOnlyCredentials::test_abs_url_and_token_both_env_only_enable_gate`
+  pins it. Plan review R1, `.devdocs/archive/completed/plan-issue-39-env-only-credentials-review-codex.md`.
+- **Verify:** the standing instance is #41 — while it is open, the trap is live.
+  Mechanically, compare each endpoint's fallback keys with every operand of the
+  guards in front of it (prints the two lists to eyeball):
+
+```bash
+grep -n ':disabled=' app/templates/fragments/settings/integrations.html
+grep -n 'get_setting(db, "' app/routers/sync.py
+```
+
+- **Status:** documented. Judgement, not a lint candidate — deciding which
+  operands a given action genuinely needs cannot be grepped.
 
 ## Graveyard
 

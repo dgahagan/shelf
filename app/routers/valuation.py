@@ -10,7 +10,7 @@ from starlette.responses import StreamingResponse
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES
 from app.currency import format_money
-from app.database import get_db, get_all_settings, get_setting
+from app.database import get_db, get_setting
 from app.services import isbndb, tmdb
 
 logger = logging.getLogger(__name__)
@@ -30,8 +30,7 @@ async def test_isbndb_key(request: Request, _=Depends(require_role("admin"))):
 
     if not api_key:
         with get_db() as db:
-            settings = get_all_settings(db)
-        api_key = settings.get("isbndb_api_key", "")
+            api_key = get_setting(db, "isbndb_api_key") or ""
 
     if not api_key:
         return {"ok": False, "message": "No key configured"}
@@ -69,7 +68,9 @@ async def test_tmdb_key(request: Request, _=Depends(require_role("admin"))):
         # get_setting, not get_all_settings: the latter returns only keys that
         # have a settings row, so an install configured purely by TMDB_API_KEY
         # would report "No key configured" while real scans authenticate fine
-        # (G15). The file's other get_all_settings call sites are unrelated.
+        # (G15). Every credential read in this file now uses get_setting for
+        # the same reason — the ISBNdb ones were reachable env-only from #39
+        # onward, once the UI stopped gating them on a stored row.
         with get_db() as db:
             api_key = get_setting(db, "tmdb_api_key") or ""
 
@@ -85,12 +86,11 @@ async def valuate_item(item_id: int, _=Depends(require_role("admin"))):
     """Look up price for a single item."""
     with get_db() as db:
         item = db.execute("SELECT isbn FROM items WHERE id = ?", (item_id,)).fetchone()
-        settings = get_all_settings(db)
+        api_key = get_setting(db, "isbndb_api_key")
 
     if not item or not item["isbn"]:
         return {"ok": False, "message": "No ISBN"}
 
-    api_key = settings.get("isbndb_api_key")
     if not api_key:
         return {"ok": False, "message": "ISBNdb API key not configured"}
 
@@ -133,9 +133,8 @@ async def valuate_all(_=Depends(require_role("admin"))):
         items = db.execute(
             "SELECT id, isbn FROM items WHERE isbn IS NOT NULL"
         ).fetchall()
-        settings = get_all_settings(db)
+        api_key = get_setting(db, "isbndb_api_key")
 
-    api_key = settings.get("isbndb_api_key")
     if not api_key:
         return {"ok": False, "message": "ISBNdb API key not configured"}
 
@@ -173,9 +172,8 @@ async def valuate_all_stream(request: Request, _=Depends(require_role("admin")))
         items = db.execute(
             "SELECT id, isbn, title FROM items WHERE isbn IS NOT NULL"
         ).fetchall()
-        settings = get_all_settings(db)
+        api_key = get_setting(db, "isbndb_api_key")
 
-    api_key = settings.get("isbndb_api_key")
     if not api_key:
         async def error_stream():
             yield f"data: {json.dumps({'type': 'error', 'message': 'ISBNdb API key not configured'})}\n\n"

@@ -86,5 +86,7 @@ provider are paced to its published rate limit.
 
 Every key except the vision providers can come from an environment variable
 (`HARDCOVER_TOKEN`, `ABS_URL`/`ABS_TOKEN`, `ISBNDB_API_KEY`, `TMDB_API_KEY`,
-`IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET`), which overrides whatever is stored.
-See [Configuration](../configuration.md#credential-overrides).
+`IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET`), which overrides whatever is stored. The
+secret field stays blank in Settings — Shelf never echoes a secret back — but
+**Test key** still works against it, so you can confirm the key without pasting
+a second copy in. See [Configuration](../configuration.md#credential-overrides).

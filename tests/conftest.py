@@ -55,6 +55,18 @@ def _isolated_db(tmp_path, monkeypatch):
     # copies too.
     _redirect_stale_path_constants(monkeypatch, data_dir, db_path, covers_dir)
 
+    # Clear every secret-credential env var so a developer's or CI runner's
+    # shell can't leak a real credential into a settings-render test. Iterate
+    # .values() — SECRET_ENV_VARS is settings-key -> ENV_NAME, and the two
+    # collide in exactly the way that makes this easy to get backwards:
+    # app/routers/pages.py iterates the *keys* (is_env_override takes a
+    # settings key), this fixture needs the *values* (actual shell variable
+    # names). `for env_name in SECRET_ENV_VARS` would yield 'tmdb_api_key'
+    # etc. and clear nothing — a silent no-op.
+    from app.config import SECRET_ENV_VARS
+    for env_name in SECRET_ENV_VARS.values():
+        monkeypatch.delenv(env_name, raising=False)
+
     # Reset cached secret key so each test gets a fresh one
     import app.auth as auth_mod
     monkeypatch.setattr(auth_mod, "_cached_secret_key", None)

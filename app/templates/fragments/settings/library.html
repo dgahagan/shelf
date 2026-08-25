@@ -179,7 +179,7 @@
 
     <!-- Lending -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="lendingPanel"
-         data-notify-saved="{{ '1' if secrets_saved['notify_url'] else '' }}">
+         data-notify-saved="{{ '1' if secrets_present['notify_url'] else '' }}">
         <h2 class="text-lg font-semibold mb-1">Lending</h2>
         <p class="text-sm text-shelf-muted mb-4">Loans past their due date — or, when no due date was set, out longer than the window below — show an <span class="text-shelf-error">Overdue</span> badge. Configure a notification URL to get a daily digest of overdue loans.</p>
         <form method="POST" action="/api/settings/lending" class="space-y-4">

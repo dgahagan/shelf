@@ -24,7 +24,7 @@ Set these in your `.env` file next to `docker-compose.yml`, or with `-e` on
 
 Integration credentials are normally entered in Settings and stored encrypted.
 Each can instead be supplied as an environment variable, which **takes
-priority** over the stored value and shows as "set by environment" in the UI:
+priority** over anything stored:
 
 | Variable | Setting |
 |---|---|
@@ -36,6 +36,24 @@ priority** over the stored value and shows as "set by environment" in the UI:
 
 Useful with Docker secrets or a secrets manager. Vision-provider keys (Photo
 Intake) are Settings-only.
+
+A credential supplied this way behaves like a saved one everywhere it matters,
+with two differences worth knowing:
+
+- **The Settings field stays blank.** Shelf never echoes a *secret* back into the
+  page, whether it came from the database or the environment. Blank does not mean
+  unset — leave it blank and the environment value keeps working. (`ABS_URL` is
+  the exception: a server URL is not a secret, so the Audiobookshelf URL field
+  shows the value in use.)
+- **Shelf cannot remove it.** The "Remove saved key" checkbox only deletes the
+  stored row, and the environment variable still takes priority afterwards. To
+  change or remove an env-supplied credential, change it in your environment and
+  restart the container. The checkbox is hidden when the credential comes *only*
+  from the environment; if you also saved one through the form earlier you will
+  still see it, and clearing that row changes nothing while the variable is set.
+
+**Test key** works against an env-supplied credential — you do not need to paste
+a second copy into the form to check it.
 
 ## The Settings page
 

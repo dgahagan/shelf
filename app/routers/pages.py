@@ -483,7 +483,7 @@ BORROWER_ERROR_MESSAGES = {
 
 @router.get("/settings")
 async def settings(request: Request, _=Depends(require_role("admin"))):
-    from app.config import is_env_override
+    from app.config import SECRET_ENV_VARS, is_env_override
     from app.database import get_all_settings
     from app.nav import hideable_tab_states
     from app.services import cover_queue
@@ -517,7 +517,11 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         share_links = db.execute(
             "SELECT * FROM share_links ORDER BY created_at DESC"
         ).fetchall()
-    env_overrides = {k for k in settings if is_env_override(k)}
+    # Iterate the env map, not `settings`: `get_all_settings` carries only keys
+    # with a row, so an env-only credential is absent from it (G15) and a
+    # comprehension over it can never see one. Keys here — `is_env_override`
+    # takes a settings key, not a shell variable name.
+    env_overrides = {k for k in SECRET_ENV_VARS if is_env_override(k)}
     # Both inputs to each hideable tab's visibility, for the Navigation card.
     # Deliberately called with no argument: `settings` above comes from
     # `get_all_settings`, which only carries keys that have a row in the
@@ -529,7 +533,19 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
     # Never hand decrypted credentials to the template — it only needs to know
     # whether one is saved. Fields are write-only; blank submit keeps the value.
     from app.crypto import SENSITIVE_KEYS
+    # Two flags, because for an env-only credential these differ. `secrets_saved`
+    # means "there is a row in `settings`" — the right question for the clear
+    # checkbox (only a row can be deleted) and the "Saved" placeholder.
     secrets_saved = {k: bool(settings.get(k)) for k in SENSITIVE_KEYS}
+    # `secrets_present` means "a credential is available to test", which an env
+    # var supplies with no row at all (G15, issue #39). It gates the Test buttons
+    # and nothing else: making `secrets_saved` itself env-aware would offer a
+    # "Remove saved key" checkbox that cannot remove an env credential.
+    secrets_present = {k: secrets_saved[k] or k in env_overrides for k in SENSITIVE_KEYS}
+    # `abs_url` needs its own flag: it has a SECRET_ENV_VARS entry but is not a
+    # SENSITIVE_KEY (it is not a credential), so `secrets_present` has no member
+    # for it — and the Audiobookshelf Test button gates on the URL as well.
+    abs_url_present = bool(settings.get("abs_url")) or "abs_url" in env_overrides
     for k in SENSITIVE_KEYS:
         if k in settings:
             settings[k] = ""
@@ -537,7 +553,8 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         request,
         "settings.html",
         {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
-         "borrowers": borrowers, "env_overrides": env_overrides, "secrets_saved": secrets_saved,
+         "borrowers": borrowers, "secrets_saved": secrets_saved,
+         "secrets_present": secrets_present, "abs_url_present": abs_url_present,
          "game_platforms_list": game_platforms_list,
          "hideable_nav_tab_states": hideable_nav_tab_states,
          "borrower_error_message": borrower_error_message,

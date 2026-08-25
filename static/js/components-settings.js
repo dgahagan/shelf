@@ -69,15 +69,25 @@ document.addEventListener('alpine:init', function () {
     Alpine.data('absSync', function () {
         return {
             syncing: false, result: false, absStatus: false, absTesting: false, showAbsHelp: false,
-            absUrl: '', absToken: '', absSaved: false,
+            absUrl: '', absToken: '', absSaved: false, absUrlPresent: false,
             syncCurrent: 0, syncTotal: 0, syncLastTitle: '', syncLog: [], showSyncLog: false,
             init() {
                 this.absUrl = this.$el.dataset.absUrl || '';
+                this.absUrlPresent = this.$el.dataset.absUrlPresent === '1';
                 this.absSaved = this.$el.dataset.absSaved === '1';
             },
             get syncPct() { return Math.round(this.syncCurrent / this.syncTotal * 100) + '%'; },
+            // One source for "Test has something to send". The template's
+            // :disabled and testAbs()'s early return both read this getter —
+            // when the same decision lived in two places, reverting only the
+            // JS copy left the button enabled and silently returning before
+            // fetch(), with the render test and the Alpine lint both green
+            // (G49; issue #39 diff review).
+            get absTestReady() {
+                return Boolean((this.absUrl || this.absUrlPresent) && (this.absToken || this.absSaved));
+            },
             testAbs() {
-                if (!this.absUrl || (!this.absToken && !this.absSaved)) return;
+                if (!this.absTestReady) return;
                 this.absTesting = true; this.absStatus = false;
                 fetch('/api/sync/audiobookshelf/test', {
                     method: 'POST',

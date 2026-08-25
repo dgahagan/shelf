@@ -10,7 +10,7 @@ from starlette.responses import StreamingResponse
 
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT
-from app.database import get_db, get_setting, get_all_settings
+from app.database import get_db, get_setting
 from app.services import hardcover, covers
 from app.services.item_write import insert_item
 
@@ -154,10 +154,9 @@ async def set_hardcover_schedule(interval: str = Form("off"), _=Depends(require_
 async def push_to_hardcover(item_id: int, _=Depends(require_role("editor"))):
     """Push a single item to Hardcover. Returns JSON result."""
     with get_db() as db:
-        settings = get_all_settings(db)
+        token = get_setting(db, "hardcover_token")
         item = db.execute("SELECT * FROM items WHERE id = ?", (item_id,)).fetchone()
 
-    token = settings.get("hardcover_token", "")
     if not token:
         return {"ok": False, "message": "Hardcover API token required"}
     if not item:
@@ -181,9 +180,8 @@ async def push_to_hardcover(item_id: int, _=Depends(require_role("editor"))):
 async def export_hardcover_stream(request: Request, _=Depends(require_role("editor"))):
     """SSE endpoint for bulk exporting items to Hardcover."""
     with get_db() as db:
-        settings = get_all_settings(db)
+        token = get_setting(db, "hardcover_token")
 
-    token = settings.get("hardcover_token", "")
     if not token:
         async def error_stream():
             yield f"data: {json.dumps({'type': 'error', 'message': 'Hardcover API token required'})}\n\n"
@@ -267,9 +265,8 @@ async def import_hardcover_stream(request: Request, _=Depends(require_role("edit
     """SSE endpoint for importing books from Hardcover with progress updates."""
     # Read settings
     with get_db() as db:
-        settings = get_all_settings(db)
+        token = get_setting(db, "hardcover_token")
 
-    token = settings.get("hardcover_token", "")
     if not token:
         async def error_stream():
             yield f"data: {json.dumps({'type': 'error', 'message': 'Hardcover API token required'})}\n\n"
