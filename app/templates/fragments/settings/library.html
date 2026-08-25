@@ -89,7 +89,7 @@
         {% if locations %}
         <div class="space-y-2 mb-4">
             {% for loc in locations %}
-            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-2">
                 <span>{{ loc.name }}</span>
                 <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline"
                       data-confirm="Delete location '{{ loc.name }}'?">
@@ -125,7 +125,7 @@
         {% if borrowers %}
         <div class="space-y-2 mb-4">
             {% for b in borrowers %}
-            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-2">
                 <span>{{ b.name }}</span>
                 <form action="/api/borrowers/{{ b.id }}/delete" method="post" class="inline"
                       {% if b.returned_loan_count %}data-confirm="Remove borrower '{{ b.name }}'? This also permanently deletes their {{ b.returned_loan_count }} past loan record(s)."{% else %}data-confirm="Remove borrower '{{ b.name }}'?"{% endif %}>
@@ -155,7 +155,7 @@
         {% if game_platforms_list %}
         <div class="space-y-2 mb-4 max-h-64 overflow-y-auto">
             {% for p in game_platforms_list %}
-            <div class="flex items-center justify-between bg-shelf-bg rounded-lg px-4 py-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-2">
                 <span>{{ p.name }} <span class="text-shelf-muted text-xs">({{ p.slug }})</span></span>
                 <form action="/api/platforms/{{ p.id }}/delete" method="post" class="inline"
                       data-confirm="Delete platform '{{ p.name }}'? Items using it will have their platform cleared.">

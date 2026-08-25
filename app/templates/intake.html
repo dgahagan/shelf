@@ -158,22 +158,26 @@
                     {# :checked/:value/@change + handler methods, not x-model="book.…"
                        (inputs AND the select): the Alpine CSP build cannot evaluate
                        nested-path assignments #}
-                    {# Below md the row is three declared lines: checkbox+title+badge, then
+                    {# Below lg the row is three declared lines: checkbox+title+badge, then
                        author+isbn, then the media select. The wrapper keeps the badge next
                        to the title it qualifies and the checkbox off a line of its own.
-                       The seam is `md` (768px), NOT `sm` (640px): the single line needs
-                       Author 128 + ISBN 128 + select 192 + 24 gaps = 472px of fixed width,
-                       so at a 640px viewport only ~86px is left for checkbox+title+badge
-                       and the wrapper — min-w-0, so it shrinks rather than wraps — crushed
-                       the title to 26px, rendering zero characters. Measured across
-                       640-755px on both builds; see the issue-33 QA record, Observation 1.
-                       No `md:basis-auto` on the wrapper: Tailwind emits .basis-* AFTER
-                       .flex-* inside a variant block, so it would override md:flex-1's
+                       The seam is `lg` (1024px). It was `md` (768px) until the CI runner
+                       disagreed with the dev machine about it: everything except the title
+                       is either a fixed width or *content*-derived — checkbox 13 + badge 65
+                       + Author 128 + ISBN 128 + select 192 + five 8px gaps = 566px of a
+                       670px content box at 768px, leaving the title 104px here and 92px on
+                       a runner whose default sans-serif is wider. Two of those three
+                       numbers move with the font, so 768px never had a title floor it could
+                       hold on every machine — it fit on one. At `lg` the title gets ~360px
+                       and the font stops mattering. Do not lower this seam without redoing
+                       that arithmetic against the *widest* plausible font, not the local one.
+                       No `lg:basis-auto` on the wrapper: Tailwind emits .basis-* AFTER
+                       .flex-* inside a variant block, so it would override lg:flex-1's
                        flex-basis:0% back to auto, the wrapper would be packed at its
                        ~446px max-content width, and the select would drop to a second
-                       line on desktop (GOTCHAS G41). The select below does need it: it
-                       has no md:flex-* to reset basis-full. #}
-                    <div class="basis-full md:flex-1 min-w-0 flex items-center gap-2">
+                       line on desktop (GOTCHAS G43). The select below does need it: it
+                       has no lg:flex-* to reset basis-full. #}
+                    <div class="basis-full lg:flex-1 min-w-0 flex items-center gap-2">
                         <input type="checkbox" :checked="book.include" @change="toggleInclude(i)"
                                class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent shrink-0">
                         <input type="text" :value="book.title" @input="setBookTitle(i, $event.target.value)" placeholder="Title"
@@ -183,13 +187,13 @@
                               class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">recognized</span>
                     </div>
                     <input type="text" :value="book.authors" @input="setBookAuthors(i, $event.target.value)" placeholder="Author"
-                           class="flex-1 min-w-0 md:flex-none md:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 lg:flex-none lg:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                     <input type="text" :value="book.isbn" @input="setBookIsbn(i, $event.target.value)" placeholder="ISBN"
                            inputmode="numeric" data-testid="intake-isbn"
-                           class="flex-1 min-w-0 md:flex-none md:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 lg:flex-none lg:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                     <select :value="book.media_type" @change="setBookMediaType(i, $event.target.value)"
                             aria-label="Media type" data-testid="intake-media-type"
-                            class="basis-full md:basis-auto bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                            class="basis-full lg:basis-auto bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                         {% for key, label in media_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
                     </select>
                 </div>

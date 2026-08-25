@@ -6,6 +6,40 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.4] - 2026-08-25
+
+Three screens were laid out against a width nobody had declared. A file picker,
+a badge and a dropdown are each as wide as the font renders them, and Shelf's
+layout had been budgeting those as if they were fixed sizes — so a row that fit
+on the machine it was measured on ran off the edge of the screen on a machine
+with a slightly wider system font. On a 320px phone the Settings page scrolled
+sideways; on a tablet the photo-intake review row squeezed the book title down
+to something too narrow to read.
+
+The fix is to declare the widths that were being guessed, and to give the rows
+somewhere to wrap when they still do not fit. Nothing about what Shelf does
+changes — but if you use Settings on a small phone, or review a shelf photo on
+a tablet, the page you get is the one that was intended.
+
+### Fixed
+
+- **Settings no longer scrolls sideways on a narrow phone.** The Data tab's
+  three file pickers and the Library tab's location, borrower and platform rows
+  had no declared width, so they were as wide as the system font made them —
+  fine on some machines, 25px past the edge of a 320px screen on others. The
+  file pickers now take the full width of their row, and the location, borrower
+  and platform rows wrap their Remove button onto a second line rather than
+  pushing it off the screen.
+
+### Changed
+
+- **The photo-intake review row now becomes a single line at 1024px instead of
+  768px.** Between those widths it keeps the stacked three-line layout. The
+  single-line version was fitting only because of how wide one particular
+  system font happened to be; on other machines the title box was squeezed to
+  92px, which is too narrow to read a book title in. Below 1024px the title now
+  gets the full width of the row. On a desktop-width window nothing moves.
+
 ## [0.17.3] - 2026-08-25
 
 Nothing in this release changes what Shelf does. It moves the test suite onto
@@ -1413,6 +1447,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.4]: https://github.com/dgahagan/shelf/releases/tag/v0.17.4
 [0.17.3]: https://github.com/dgahagan/shelf/releases/tag/v0.17.3
 [0.17.2]: https://github.com/dgahagan/shelf/releases/tag/v0.17.2
 [0.17.1]: https://github.com/dgahagan/shelf/releases/tag/v0.17.1

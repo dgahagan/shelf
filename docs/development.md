@@ -79,11 +79,11 @@ stamping would change the bytes the stamp is derived from and never converge.
 ### Responsive geometry
 
 `tests/e2e/test_responsive.py` measures every top-level page at
-320/390/430/640/768px and fails on two things a class-string lint cannot see: a
-page that scrolls sideways, and a text control squeezed below 80px of content
-box. 640 and 768 are the `sm:` and `md:` breakpoints — a breakpoint's own width
-is the worst case for the layout it turns on, since the wide row has just
-started rendering and has the least room it will ever have. **Add the
+320/390/430/640/768/1024px and fails on two things a class-string lint cannot
+see: a page that scrolls sideways, and a text control squeezed below 80px of
+content box. 640, 768 and 1024 are the `sm:`, `md:` and `lg:` breakpoints — a
+breakpoint's own width is the worst case for the layout it turns on, since the
+wide row has just started rendering and has the least room it will ever have. **Add the
 breakpoint width here whenever you introduce a new stacking seam.** A control
 that is narrow by design opts out with `data-narrow-ok`, so exemptions stay
 greppable.

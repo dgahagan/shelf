@@ -1121,53 +1121,69 @@ def test_review_row_desktop_stays_one_line(live_server, intake_page):
         "floor 120px (it measured 88px on main)")
 
 
-def test_review_row_stays_three_lines_up_to_the_md_seam(live_server, intake_page):
-    """At 680px — inside the band the `sm` seam used to break — the row is
-    still three declared lines and both titles clear their floors.
+@pytest.mark.parametrize("width", [680, 768])
+def test_review_row_stays_three_lines_up_to_the_lg_seam(live_server, intake_page, width):
+    """Below the `lg` seam the row is three declared lines and both titles
+    clear their floors.
 
-    The single-line layout needs Author 128 + ISBN 128 + select 192 + 24px of
-    gaps = 472px of fixed width. At a 640px viewport the row's content box is
-    only ~558px, leaving ~86px for checkbox+title+badge; the wrapper is
-    `min-w-0`, so it shrank rather than wrapped and the `recognized` title
-    collapsed to 26px — narrower than its own padding, rendering zero
-    characters, against 13-19 on `main`. Moving the seam to `md` (768px) is
-    what fixes it; this pins the widest still-stacked width.
+    680px is inside the band the old `sm` seam used to break; 768px is the old
+    `md` seam itself, which is now stacked. The single-line layout needs
+    Author 128 + ISBN 128 + select 192 + 24px of gaps = 472px of fixed width.
+    At a 640px viewport the row's content box is only ~558px, leaving ~86px for
+    checkbox+title+badge; the wrapper is `min-w-0`, so it shrank rather than
+    wrapped and the `recognized` title collapsed to 26px — narrower than its own
+    padding, rendering zero characters, against 13-19 on `main`.
+
+    768px is here because that seam did not hold across machines: the badge and
+    the select are content-derived, so the single-line title measured 104px on
+    the dev box and 92px on CI against a 100px floor. Stacked, the title has the
+    full row width at both.
     """
-    _analyze_long(live_server, intake_page, 680)
+    _analyze_long(live_server, intake_page, width)
     plain, recognized = _shapes(intake_page)
 
     lines = _lines(plain, ["checkbox", "title", "author", "isbn", "select"])
-    assert max(lines.values()) + 1 == 3, f"plain row is not three lines at 680px: {lines}"
+    assert max(lines.values()) + 1 == 3, \
+        f"plain row is not three lines at {width}px: {lines}"
     lines = _lines(recognized,
                    ["checkbox", "title", "badge", "author", "isbn", "select"])
     assert max(lines.values()) + 1 == 3, \
-        f"recognized row is not three lines at 680px: {lines}"
+        f"recognized row is not three lines at {width}px: {lines}"
 
     # Both comfortably clear the 390px floors; the regression was 26px.
     assert plain["title"]["width"] >= 250, (
-        f"plain-row title is {plain['title']['width']:.0f}px at 680px, floor 250px")
+        f"plain-row title is {plain['title']['width']:.0f}px at {width}px, floor 250px")
     assert recognized["title"]["width"] >= 200, (
-        f"recognized-row title is {recognized['title']['width']:.0f}px at 680px, "
+        f"recognized-row title is {recognized['title']['width']:.0f}px at {width}px, "
         "floor 200px")
 
 
-def test_review_row_is_one_line_from_the_md_seam_up(live_server, intake_page):
-    """768px is the first single-line width, and the title is usable there.
+def test_review_row_is_one_line_from_the_lg_seam_up(live_server, intake_page):
+    """1024px is the first single-line width, and the title is usable there.
 
-    `main` gave a 40px `recognized` title at 768px; the floor below is the
-    guard against re-introducing a seam that switches before the row fits.
+    The floor is set for *margin*, not to just clear the local measurement. The
+    badge and the select are sized by their content, so the non-title side of
+    this row widens under a wider default sans-serif: the old `md` seam measured
+    104px here and 92px on the CI runner against a 100px floor, i.e. it fit on
+    one machine by 4px and failed on the other by 8px. At `lg` the title
+    measures 152px locally, so a 120px floor leaves 32px — about 2.7x the worst
+    machine-to-machine drift observed across three environments (dev box,
+    playwright:noble container, GitHub runner).
+
+    Note the seam buys less than it looks: the page container caps its width, so
+    1024px yields 152px rather than the ~360px a full-bleed row would give.
     """
-    _analyze_long(live_server, intake_page, 768)
+    _analyze_long(live_server, intake_page, 1024)
     plain, recognized = _shapes(intake_page)
 
     lines = _lines(plain, ["checkbox", "title", "author", "isbn", "select"])
-    assert max(lines.values()) + 1 == 1, f"plain row wrapped at 768px: {lines}"
+    assert max(lines.values()) + 1 == 1, f"plain row wrapped at 1024px: {lines}"
     lines = _lines(recognized,
                    ["checkbox", "title", "badge", "author", "isbn", "select"])
-    assert max(lines.values()) + 1 == 1, f"recognized row wrapped at 768px: {lines}"
-    assert recognized["title"]["width"] >= 100, (
-        f"recognized-row title is {recognized['title']['width']:.0f}px at 768px "
-        "(main measured 40px here); floor 100px")
+    assert max(lines.values()) + 1 == 1, f"recognized row wrapped at 1024px: {lines}"
+    assert recognized["title"]["width"] >= 120, (
+        f"recognized-row title is {recognized['title']['width']:.0f}px at 1024px; "
+        "floor 120px")
 
 
 @pytest.mark.parametrize("width", [390, 1280])

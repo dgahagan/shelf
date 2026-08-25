@@ -139,7 +139,7 @@
                 <p class="text-sm text-shelf-muted mb-2"><strong class="text-shelf-text">Goodreads</strong> and <strong class="text-shelf-text">StoryGraph</strong> library exports are detected automatically — reading status, dates, and owned/wishlist flags are mapped for you.</p>
                 <form @submit.prevent="doImport">
                     <div class="flex flex-wrap gap-2 items-end">
-                        <input type="file" name="file" accept=".csv" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <input type="file" name="file" accept=".csv" required class="block w-full text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
                             <option value="skip">Skip duplicates</option>
                             <option value="update">Update duplicates</option>
@@ -246,7 +246,7 @@
             <div class="border-t border-shelf-border pt-4">
                 <form @submit.prevent="doRestore">
                     <div class="flex flex-wrap gap-2 items-end">
-                        <input type="file" name="file" accept=".db,.enc" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <input type="file" name="file" accept=".db,.enc" required class="block w-full text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <input type="password" name="passphrase" autocomplete="off"
                                placeholder="Passphrase (if encrypted)"
                                class="basis-full sm:basis-auto bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
@@ -286,7 +286,7 @@
                 <!-- Step 1 — choose a file and a mode -->
                 <form @submit.prevent="doPlan" x-show="step === 1">
                     <div class="flex flex-wrap gap-2 items-end">
-                        <input type="file" name="file" accept=".zip" required class="text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+                        <input type="file" name="file" accept=".zip" required class="block w-full text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                         <select name="mode" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
                             <option value="skip">Skip duplicates</option>
                             <option value="update">Update duplicates</option>

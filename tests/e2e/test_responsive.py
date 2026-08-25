@@ -39,11 +39,15 @@ pytestmark = pytest.mark.e2e
 # column silently shrinks to nothing rather than wrapping (its hypothetical
 # main size is 0, so it never triggers a wrap) while its fixed-width siblings
 # keep every pixel. `grep -rn basis-full app/templates/` lists the rows this
-# covers: settings.html's three at `sm:`, intake.html's two at `md:`.
+# covers: settings.html's three at `sm:`, intake.html's two at `lg:`.
 #
 # Add the breakpoint width here whenever a new stacking seam is introduced, or
 # the gate straddles it exactly as the old 390/1280 floors did.
-VIEWPORTS = (320, 390, 430, 640, 768)
+#
+# 1024 joined the list when intake's review row moved its seam `md` -> `lg`:
+# a seam's own width is the worst case for the layout it turns on, and the
+# `md` seam had been passing locally by 4px while failing on CI by 8px.
+VIEWPORTS = (320, 390, 430, 640, 768, 1024)
 
 # (label, path template, data-testid to click after load or None)
 #

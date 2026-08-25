@@ -1178,17 +1178,33 @@ grep -rn "post_data_buffer" tests/e2e/
   each variant block, so `sm:flex-1` loses to `sm:basis-auto` regardless of the
   order you write them in. Different variants are fine and idiomatic —
   `basis-full sm:flex-1` is the intended pairing.
+- **Rule (the budget):** When you do the seam arithmetic, count a
+  **content-derived** width — a `<select>` sized by its longest `<option>`, a
+  badge, a bare `<input type="file">`, any un-widthed text — as a *variable*,
+  not as a constant. Those measure differently under a different default
+  sans-serif, so a budget containing them is only true on the machine that
+  measured it. Either declare the width (`w-48`, `w-full`) so the budget is
+  real, or leave the element enough slack that the drift cannot reach the
+  floor. **A geometry floor that clears locally by single-digit pixels is not
+  passing — it is untested.**
 - **Why:** both failures are silent at every gate that existed before. Unit
   tests never lay anything out; a Playwright test at the default 1280px
   viewport sees the wide layout and passes.
 - **Evidence:** issue #33 (intake review row, seam moved `sm` → `md` after a
   test drive found the title crushed to 26px across 640–755px); issue #35
   (settings measured 519px on General and 640px on Data at a 390px viewport);
-  0.8.0's nav bar; issue #14.
+  0.8.0's nav bar; issue #14. **The CI-only failure, 2026-08-25:** that same
+  `md` seam left the title 104px against a 100px floor locally and 92px on the
+  GitHub runner, because the badge and the select in its budget are both
+  content-derived; three environments (dev box, `playwright:noble`, runner)
+  produced three widths. The three settings file inputs overflowed 320px the
+  same way — no declared width, so their intrinsic size followed the font.
+  Fixed by moving the seam to `lg`, declaring `block w-full` on the inputs, and
+  giving the locations/borrowers/platforms rows a `flex-wrap` seam.
 - **Verify:** the responsive gate measures every top-level page at
-  320/390/430/640/768 for both overflow *and* text columns squeezed under
+  320/390/430/640/768/1024 for both overflow *and* text columns squeezed under
   80px. A breakpoint's own width is the worst case for the layout it turns on,
-  which is why 640 is in the list.
+  which is why 640 and 1024 are in the list. Add the width of any new seam.
 
 ```bash
 python -m pytest tests/e2e/test_responsive.py -m e2e -q
