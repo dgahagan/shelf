@@ -6,9 +6,49 @@ visits.
 ## Views
 
 - **Grid** — cover tiles, best on phones and for "what do I have?"
-- **List** — a table with title, author, type, location, status, value.
-  Columns are fixed today; a column picker is
-  [planned](https://github.com/dgahagan/shelf/issues/30).
+- **List** — a table with a **Columns** picker (see below).
+
+### Choosing columns (List view)
+
+List view's toolbar has a **Columns** button. It opens a checklist of columns
+plus a **Reset to defaults** button.
+
+The selection checkbox, cover thumbnail, and **Title** are always shown and
+aren't offered in the picker — Title is the row's link to the item, so a row
+without it would go nowhere.
+
+| Column | Default |
+|---|---|
+| Author | On |
+| Type | On |
+| Location | On |
+| Status | On |
+| Value | Off |
+| Series | Off |
+| Publisher | Off |
+| Year | Off |
+| Pages | Off |
+| Language | Off |
+| Added | Off |
+| Platform | Off |
+| ISBN/UPC | Off |
+
+**Value** shows your [manual value](stats-and-valuation.md) where you've set
+one, otherwise the ISBNdb estimate, in your display currency.
+
+Your choice is **remembered per browser, not per account** — a phone and a
+desktop often want different columns, so a new browser or device starts back
+at the defaults above. Turn on more columns than fit and the table scrolls
+sideways within itself rather than widening the page. **Reset to defaults**
+puts it back to Author, Type, Location, Status.
+
+Your selection applies at **every screen width**. Earlier releases hid some
+columns automatically on narrow screens — Author, Type, Location and Status
+each vanished below a width of their own — which is why the list looks busier
+on a phone than it used to. A column that hid itself could not also be one you
+switched on, so the picker replaces that behaviour rather than working around
+it. On a phone, untick what you do not need there; because the choice is
+per-browser, it will not follow you back to the desktop.
 
 ## Filters
 

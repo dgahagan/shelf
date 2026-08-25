@@ -1,10 +1,11 @@
 """E2E tests: browse page — empty state, grid/list, search, filters."""
+import json
 import re
 
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import assert_page_clean, attach_page_guard, insert_item
 
 pytestmark = pytest.mark.e2e
 
@@ -212,6 +213,272 @@ def test_infinite_scroll_appends_cards_in_grid_view(live_server, authed_page):
     before = cards.count()
     _scroll_to_bottom(authed_page)
     assert cards.count() > before, "grid view did not append more cards"
+
+
+def _login_with_seeded_storage(browser, live_server, setup_admin, storage):
+    """Log in through a fresh context with localStorage seeded before first
+    paint. `authed_page` builds its context inside the fixture, so it cannot
+    be used here: an `add_init_script` has to run before the very first
+    navigation, and the page must still go through the real login flow or
+    `/browse` just redirects to `/login`. Mirrors `authed_page`'s five-line
+    login sequence. Returns (ctx, page) — the caller owns closing the
+    context, after an `assert_page_clean(page)` at the end of the test body.
+    """
+    ctx = browser.new_context()
+    script = "\n".join(
+        f"localStorage.setItem({json.dumps(k)}, {json.dumps(v)});"
+        for k, v in storage.items()
+    )
+    ctx.add_init_script(script)
+    pg = attach_page_guard(ctx.new_page())
+    pg.goto(f"{live_server['url']}/login")
+    pg.fill("input[name=username]", setup_admin["username"])
+    pg.fill("input[name=password]", setup_admin["password"])
+    pg.click("button[type=submit]")
+    pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    return ctx, pg
+
+
+def test_column_picker_only_in_list_view(live_server, authed_page):
+    """The column picker is a list-view-only control."""
+    insert_item(live_server["data_dir"], title="Picker Visibility Probe",
+                media_type="book", isbn="9780000999101")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+
+    picker = authed_page.locator("[data-testid='column-picker']")
+    expect(picker).to_be_hidden()
+
+    authed_page.locator("[data-testid='view-list']").click()
+    expect(picker).to_be_visible()
+
+
+def test_hiding_a_column_persists_across_reload(live_server, authed_page):
+    """Unticking a column in the picker hides it live and across a reload,
+    and is recorded in the shelf-columns localStorage blob."""
+    insert_item(live_server["data_dir"], title="Column Hide Probe",
+                media_type="book", isbn="9780000999102", authors="Jane Doe")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("[data-testid='view-list']").click()
+    # G42: the list view lives inside <template x-if> — wait for a positive
+    # painted state (a locked, always-on column) before asserting hidden.
+    expect(authed_page.locator("td[data-col=title]").first).to_be_visible()
+
+    authed_page.locator("[data-testid='column-picker']").click()
+    expect(authed_page.locator("[data-testid='column-menu']")).to_be_visible()
+    authed_page.locator("input[type=checkbox][data-col=author]").uncheck()
+
+    expect(authed_page.locator("th[data-col=author]")).to_be_hidden()
+    author_cells = authed_page.locator("td[data-col=author]")
+    # to_be_hidden() passes on a locator that matches NOTHING, so a typo'd
+    # selector would read as "hidden" and this pin would defend nothing (G31).
+    assert author_cells.count() > 0
+    for i in range(author_cells.count()):
+        expect(author_cells.nth(i)).to_be_hidden()
+
+    stored = authed_page.evaluate("JSON.parse(localStorage.getItem('shelf-columns'))")
+    assert stored is not None and isinstance(stored, dict)
+    assert stored.get("author") is False
+
+    authed_page.reload()
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("td[data-col=title]").first).to_be_visible()
+    expect(authed_page.locator("th[data-col=author]")).to_be_hidden()
+    author_cells = authed_page.locator("td[data-col=author]")
+    assert author_cells.count() > 0
+    for i in range(author_cells.count()):
+        expect(author_cells.nth(i)).to_be_hidden()
+
+
+def test_reset_restores_defaults(live_server, authed_page):
+    """Reset restores the registry's default-on set and drops the stored blob."""
+    insert_item(live_server["data_dir"], title="Reset Defaults Probe",
+                media_type="book", isbn="9780000999103")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("[data-testid='view-list']").click()
+    expect(authed_page.locator("td[data-col=title]").first).to_be_visible()
+
+    authed_page.locator("[data-testid='column-picker']").click()
+    expect(authed_page.locator("[data-testid='column-menu']")).to_be_visible()
+    # Hide two default-on columns, enable a default-off one.
+    authed_page.locator("input[type=checkbox][data-col=author]").uncheck()
+    authed_page.locator("input[type=checkbox][data-col=location]").uncheck()
+    authed_page.locator("input[type=checkbox][data-col=value]").check()
+
+    expect(authed_page.locator("th[data-col=author]")).to_be_hidden()
+    expect(authed_page.locator("th[data-col=location]")).to_be_hidden()
+    expect(authed_page.locator("th[data-col=value]")).to_be_visible()
+
+    authed_page.locator("[data-testid='columns-reset']").click()
+
+    expect(authed_page.locator("th[data-col=author]")).to_be_visible()
+    expect(authed_page.locator("th[data-col=location]")).to_be_visible()
+    expect(authed_page.locator("th[data-col=value]")).to_be_hidden()
+
+    stored = authed_page.evaluate("localStorage.getItem('shelf-columns')")
+    assert stored is None
+
+
+def test_stale_storage_is_ignored(live_server, browser, setup_admin):
+    """A hand-edited/stale shelf-columns blob (unknown name, locked column
+    turned off, a name missing entirely) must not break the page or win over
+    a locked column — and a missing name falls back to its registry default."""
+    insert_item(live_server["data_dir"], title="Stale Storage Probe",
+                media_type="book", isbn="9780000999104")
+    storage = {
+        "shelf-columns": json.dumps({"bogus": True, "title": False, "author": False}),
+        "shelf-view": "list",
+    }
+    ctx, pg = _login_with_seeded_storage(browser, live_server, setup_admin, storage)
+    pg.wait_for_load_state("networkidle")
+
+    # Locked column wins over the hand-edited blob.
+    expect(pg.locator("td[data-col=title]").first).to_be_visible()
+    # Explicitly turned off in the blob.
+    expect(pg.locator("td[data-col=author]").first).to_be_hidden()
+    # Not mentioned in the blob at all — falls back to its registry default (on).
+    expect(pg.locator("td[data-col=media_type]").first).to_be_visible()
+
+    assert_page_clean(pg)
+    ctx.close()
+
+
+def test_two_tabs_do_not_overwrite_each_others_columns(live_server, browser, setup_admin):
+    """Two open Browse tabs are concurrent writers of one `shelf-columns` key.
+
+    Both mount holding a complete snapshot. Tab A hides Author; tab B, whose
+    in-memory copy predates that, enables Value. If B serialises its stale
+    snapshot wholesale, Author comes back and A's choice is silently lost —
+    the user only finds out on reload. Both changes must survive.
+    """
+    insert_item(live_server["data_dir"], title="Two Tab Probe",
+                media_type="book", isbn="9780000999107", authors="Jane Doe")
+    ctx, page_a = _login_with_seeded_storage(
+        browser, live_server, setup_admin, {"shelf-view": "list"}
+    )
+    page_a.wait_for_load_state("networkidle")
+    expect(page_a.locator("td[data-col=title]").first).to_be_visible()
+
+    # Tab B mounts from the same defaults, BEFORE A changes anything — this is
+    # what makes its snapshot stale a moment later.
+    page_b = attach_page_guard(ctx.new_page())
+    page_b.goto(f"{live_server['url']}/browse")
+    page_b.wait_for_load_state("networkidle")
+    expect(page_b.locator("td[data-col=title]").first).to_be_visible()
+
+    # A hides a default-on column.
+    page_a.locator("[data-testid='column-picker']").click()
+    expect(page_a.locator("[data-testid='column-menu']")).to_be_visible()
+    page_a.locator("input[type=checkbox][data-col=author]").uncheck()
+    expect(page_a.locator("th[data-col=author]")).to_be_hidden()
+
+    # B enables a default-off column, still holding its pre-A snapshot.
+    page_b.locator("[data-testid='column-picker']").click()
+    expect(page_b.locator("[data-testid='column-menu']")).to_be_visible()
+    page_b.locator("input[type=checkbox][data-col=value]").check()
+    expect(page_b.locator("th[data-col=value]")).to_be_visible()
+
+    stored = page_b.evaluate("JSON.parse(localStorage.getItem('shelf-columns'))")
+    assert stored.get("author") is False, \
+        "tab B's write resurrected the column tab A hid (lost update)"
+    assert stored.get("value") is True, "tab B's own change was not persisted"
+
+    # The reload is the point: it is where a user would discover the loss.
+    page_a.reload()
+    page_a.wait_for_load_state("networkidle")
+    expect(page_a.locator("td[data-col=title]").first).to_be_visible()
+    author_cells = page_a.locator("td[data-col=author]")
+    # to_be_hidden() passes on a locator matching nothing (G31).
+    assert author_cells.count() > 0
+    for i in range(author_cells.count()):
+        expect(author_cells.nth(i)).to_be_hidden()
+    expect(page_a.locator("th[data-col=value]")).to_be_visible()
+
+    assert_page_clean(page_a)
+    assert_page_clean(page_b)
+    ctx.close()
+
+
+def test_locked_columns_are_not_in_the_picker(live_server, authed_page):
+    """select, cover and title are always-on and never offered in the menu."""
+    insert_item(live_server["data_dir"], title="Locked Columns Probe",
+                media_type="book", isbn="9780000999105")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("[data-testid='view-list']").click()
+    expect(authed_page.locator("td[data-col=title]").first).to_be_visible()
+
+    authed_page.locator("[data-testid='column-picker']").click()
+    menu = authed_page.locator("[data-testid='column-menu']")
+    expect(menu).to_be_visible()
+
+    for name in ("select", "cover", "title"):
+        expect(menu.locator(f"input[type=checkbox][data-col={name}]")).to_have_count(0)
+
+
+def test_infinite_scroll_appends_rows_with_custom_columns(live_server, browser, setup_admin):
+    """Same regression as test_infinite_scroll_appends_rows_in_list_view, but
+    with a non-default column set (value on, author off) seeded into storage
+    before load — the one thing the unit suite cannot see: the MutationObserver
+    -> htmx.process() path plus Alpine re-evaluating x-show on rows swapped in
+    after mount."""
+    _seed_two_pages(live_server, "CustomColScroll", 9780773000000)
+    storage = {
+        "shelf-columns": json.dumps({"value": True, "author": False}),
+        "shelf-view": "list",
+    }
+    ctx, pg = _login_with_seeded_storage(browser, live_server, setup_admin, storage)
+    pg.wait_for_load_state("networkidle")
+    expect(pg.locator("td[data-col=title]").first).to_be_visible()
+    pg.wait_for_timeout(800)
+
+    rows = pg.locator("table tbody tr[data-item-id]")
+    before = rows.count()
+    _scroll_to_bottom(pg)
+
+    assert rows.count() > before, "list view did not append more rows"
+    assert pg.locator("a[data-item-id] .cover-card").count() == 0, \
+        "list view appended cover cards instead of rows (#7)"
+    assert pg.evaluate("document.querySelectorAll('tr tr').length") == 0, \
+        "rows were swapped inside a <tr> — wrong sentinel swap target"
+
+    # The custom column set must apply to rows appended after mount too.
+    author_cells = pg.locator("td[data-col=author]")
+    after_count = author_cells.count()
+    assert after_count > 0
+    for i in range(after_count):
+        expect(author_cells.nth(i)).to_be_hidden()
+
+    assert_page_clean(pg)
+    ctx.close()
+
+
+def test_browse_has_no_pageerrors_in_either_view(live_server, authed_page):
+    """Grid view, then list view with every pickable column switched on —
+    zero uncaught page errors in either state."""
+    insert_item(live_server["data_dir"], title="No Page Errors Probe",
+                media_type="book", isbn="9780000999106")
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator("a[data-item-id]").first).to_be_visible()
+
+    authed_page.locator("[data-testid='view-list']").click()
+    expect(authed_page.locator("td[data-col=title]").first).to_be_visible()
+
+    authed_page.locator("[data-testid='column-picker']").click()
+    menu = authed_page.locator("[data-testid='column-menu']")
+    expect(menu).to_be_visible()
+    checkboxes = menu.locator("input[type=checkbox][data-col]")
+    col_names = [checkboxes.nth(i).get_attribute("data-col") for i in range(checkboxes.count())]
+    for i in range(len(col_names)):
+        cb = checkboxes.nth(i)
+        if not cb.is_checked():
+            cb.check()
+
+    for name in col_names:
+        expect(authed_page.locator(f"td[data-col={name}]").first).to_be_visible()
 
 
 def test_browse_url_state_preserved(live_server, authed_page):

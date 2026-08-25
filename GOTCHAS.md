@@ -819,6 +819,21 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     `raising=False` for the duration of the check and restore it after — and
     read the failure you get, because "everything errored" is not the same
     evidence as "my pin failed".
+  One more, found while orchestrating `feat/issue-30-browse-columns`
+  (2026-08-25):
+  - **A passing mutation check does not prove the pin is non-vacuous.** A
+    Playwright pin asserted a hidden column with `expect(cell).to_be_hidden()`
+    over `for i in range(cells.count())`. Mutating the *behaviour* (deleting
+    the cell's `x-show`) turned it red, so the pin looked proven — but
+    `to_be_hidden()` and `to_have_count(0)` both **pass on a locator that
+    matches nothing**, and the loop body never runs at a count of zero. A
+    later typo in the `data-col` selector would have made the whole thing
+    green forever, and the mutation check had said nothing about that,
+    because it changed what the selector *found*, not whether it found
+    anything. Mutate the **selector** as well as the behaviour, or just
+    assert `count() > 0` before the loop; the two mutations answer different
+    questions.
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1355,6 +1370,14 @@ grep -n "check connectivity" app/routers/items_common.py
   against an empty database. Fixed by committing in the `seeded_library`
   fixture; the file now also asserts `b_cards > 0` so the comparison cannot go
   vacuous again.
+- **And seed enough rows for the thing you are asserting.** The same test
+  file's load-more pins need the *sentinel* to exist, and `DEFAULT_PAGE_SIZE`
+  is 60 with `has_more = (offset + per_page) < total` (`app/routers/items.py`)
+  — so page 1 carries a sentinel only above 60 rows and **page 2 only above
+  120**. A plan that said "61+" would have put no sentinel on page 2 at all.
+  This half fails loudly rather than vacuously, but it is the same question
+  asked twice: what does the request actually see? (`16adb7d`, 2026-08-25,
+  issue #30 — `tests/test_browse_columns.py` seeds 121 and asserts both.)
 - **Verify:** judgement — but a seeding test with no commit is greppable:
 
 ```bash
@@ -1511,6 +1534,68 @@ ABS_URL=http://inherited.invalid ABS_TOKEN=inherited-token \
   the *geometry* symptom of the same unsettled `x-show` state — zero rects
   rather than doubled text) and G21 (*how* to wait); distinct trigger, so it
   gets its own entry rather than a line in either.
+
+## G52 — When an E2E test seeds localStorage before the first navigation
+
+- **Rule:** It needs its own `BrowserContext` **and its own login.**
+  `add_init_script` must run before the first `goto`, and the shared
+  `authed_page` fixture builds its context *inside* the fixture, so it cannot
+  take one. A fresh context has no session cookie — `/browse` then redirects
+  to `/login`, and the test dies at whatever it waited for next, which is
+  never the line that is actually wrong. Reuse `authed_page`'s five-line form
+  login (`tests/e2e/conftest.py`), and take `browser`, `setup_admin` and
+  `live_server` as fixtures.
+- **Why:** the symptom points away from the cause. The failure surfaces as a
+  30s timeout on `expect(td[data-col=title]).to_be_visible()` — a selector
+  that is correct, on a page that was never reached — so the instinct is to
+  suspect the wait, the Alpine mount, or the selector. Nothing in the traceback
+  mentions authentication. It is worth an entry because localStorage-seeding is
+  the *only* way to test a client-owned preference at first paint, so any
+  feature storing state in `localStorage` meets this on its first E2E test.
+- **Evidence:** raised as a plan-review finding against
+  `plan-issue-30-browse-columns-impl.md` T7 before it was written
+  (2026-08-25), then hit the same way in T6. Both tasks now carry a helper
+  that does the login: `_login_with_seeded_storage` in
+  `tests/e2e/test_browse.py` and `_browse_list_at` in
+  `tests/e2e/test_responsive.py` (`77f861e`, `6d9c8a7`).
+- **Verify:** every self-built context that navigates to an authenticated page
+  logs in first — each hit below should sit near a `input[name=password]` fill:
+
+```bash
+grep -rn 'add_init_script' tests/e2e/
+```
+
+- **Status:** documented — a lint candidate: "a test that calls
+  `browser.new_context()` and later navigates anywhere but `/login` must fill
+  `input[name=password]` in between" is mechanically checkable in
+  `scripts/check_test_conventions.py`.
+
+## G53 — When a guard greps raw source for a construct
+
+- **Rule:** Do not write that construct in a **comment** in a file the guard
+  scans. A text-scanning guard cannot tell code from prose about code, so an
+  explanatory comment quoting the very thing it forbids becomes a false
+  positive — and the tempting fix is to weaken the guard.
+- **Why:** the comment that trips it is usually the *good* comment, written by
+  someone documenting the rule for the next reader, so the failure arrives
+  attached to prose that is manifestly correct. That is exactly the pressure
+  that gets a guard loosened. Two options are legitimate: reword the comment,
+  or make the guard strip comments before scanning — pick by whether the
+  construct is meaningful in prose. Never relax what the guard asserts.
+- **Evidence:** `feat/issue-30-browse-columns` produced both halves within one
+  task (2026-08-25). `item_grid.html`'s and `item_row.html`'s new comments
+  explained that the cells carry no `hidden md:table-cell` class — tripping the
+  planned "no `table-cell` in the list fragments" pin, fixed by rewording to
+  "responsive hide-at-a-breakpoint" (`d941260`). The same comment said "one
+  `<th>` in this file, looped", inflating the "exactly one `<th`" count to two;
+  there the test was right to strip `{# … #}` first, because `<th>` in prose is
+  genuinely not markup (`16adb7d`). Same family as **G32**, where
+  `check_alpine_csp.py` scans raw template text and flags a server-side Jinja
+  subscript as an htmx event filter — same cause, different trigger.
+- **Verify:** judgement. When a text-scanning guard fires, read the hit before
+  the rule: if it is inside a comment, the guard is not wrong about the file.
+- **Status:** documented. Not a lint candidate — a lint for this would need
+  the same comment-awareness the guards themselves lack.
 
 ## Graveyard
 

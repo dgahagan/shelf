@@ -36,7 +36,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
-from app import browse_filters
+from app import browse_columns, browse_filters
 from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.currency import CURRENCIES, format_money, get_currency
 from app.services.national import SEARCH_LANGS
@@ -411,6 +411,9 @@ templates.env.globals["search_langs"] = SEARCH_LANGS
 # Browse's hx-include lists are derived, not written — see app/browse_filters.py.
 templates.env.globals["filter_includes"] = browse_filters.filter_includes
 templates.env.globals["browse_filter_config"] = browse_filters.client_config
+# Browse's list-view column set is derived, not written — see app/browse_columns.py.
+templates.env.globals["browse_columns"] = browse_columns.COLUMNS
+templates.env.globals["browse_column_config"] = browse_columns.client_config
 
 # Wrap TemplateResponse to auto-inject 'user' from request.state
 _original_template_response = templates.TemplateResponse

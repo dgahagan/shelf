@@ -26,6 +26,19 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.18.0
+
+Browse's list view no longer hides columns on its own at narrow widths. Author
+used to disappear below 768px, Type and Location below 1024px, and Status below
+640px; now the columns you have chosen are the columns you get at every width,
+and the table scrolls sideways inside its own frame if they do not fit. So the
+list view on a phone will look busier than it did before the upgrade — that is
+the change, not a fault.
+
+The fix is the new **Columns** button in the list-view toolbar: untick what you
+do not want on that device. The choice is stored per browser, so trimming the
+columns on your phone leaves the desktop alone.
+
 ### After upgrading to 0.17.1
 
 DVDs and video games you scanned before this release were filed with a bare

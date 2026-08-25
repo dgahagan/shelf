@@ -1,14 +1,38 @@
+{# One Browse list-view row. Cells derive from app/browse_columns.py, in the
+   same loop order as item_grid.html's <thead>, so a column cannot exist in one
+   file and not the other -- the drift this registry was created to end.
+
+   Picker-managed cells carry x-show="visibleCols.<name>" and no responsive
+   hide-at-a-breakpoint class: a Tailwind class rule and x-show's inline style
+   cannot both own a cell's visibility, so the user's selection is
+   authoritative at every width (design plan §5). The guard is a single-level
+   member read on an object browsePage initialises for every registered name
+   before Alpine mounts -- never `cols.includes(...)`, never an `&&` chain,
+   both of which throw under the CSP build (G5).
+
+   This file is included once per row, so keep it cheap. #}
+{% set col_class = {
+    'author': 'text-shelf-muted text-sm truncate max-w-[200px]',
+    'status': '',
+    'value': 'text-shelf-success text-sm',
+    'series': 'text-shelf-muted text-xs truncate max-w-[200px]',
+    'publisher': 'text-shelf-muted text-xs truncate max-w-[200px]',
+    'identifier': 'text-shelf-muted text-xs font-mono',
+} %}
 <tr class="border-b border-shelf-border hover:bg-shelf-hover/50 transition-colors cursor-pointer"
     data-item-id="{{ item.id }}"
     @click="openOrToggle({{ item.id }}, '/item/{{ item.id }}', $event)"
     :class="selectedIds.includes({{ item.id }}) ? 'bg-shelf-accent/10' : ''">
-    <td x-show="selectMode" class="px-3 py-2 w-8">
+    {% for col in browse_columns %}
+    {%- if col.name == 'select' %}
+    <td x-show="selectMode" data-col="select" class="px-3 py-2 w-8">
         <div class="w-5 h-5 rounded border-2 flex items-center justify-center text-xs"
              :class="selectedIds.includes({{ item.id }}) ? 'bg-shelf-accent border-shelf-accent text-white' : 'border-shelf-border'">
             <span x-show="selectedIds.includes({{ item.id }})">&#10003;</span>
         </div>
     </td>
-    <td class="px-3 py-2 w-10">
+    {%- elif col.name == 'cover' %}
+    <td data-col="cover" class="px-3 py-2 w-10">
         {% if item.cover_path %}
         <img src="/{{ item.cover_path }}" alt="" class="w-8 h-12 object-cover rounded" loading="lazy">
         {% else %}
@@ -17,7 +41,8 @@
         </div>
         {% endif %}
     </td>
-    <td class="px-3 py-2">
+    {%- elif col.name == 'title' %}
+    <td data-col="title" class="px-3 py-2">
         <div class="flex items-center gap-2">
             <a href="/item/{{ item.id }}" @click.prevent
                class="text-shelf-text text-sm font-medium truncate max-w-xs hover:underline">{{ item.title }}</a>
@@ -36,10 +61,13 @@
             {% endif %}
         </div>
     </td>
-    <td class="px-3 py-2 text-shelf-muted text-sm truncate max-w-[200px] hidden md:table-cell">{{ item.authors or '—' }}</td>
-    <td class="px-3 py-2 text-shelf-muted text-xs hidden lg:table-cell">{{ media_types.get(item.media_type, item.media_type or '—') }}</td>
-    <td class="px-3 py-2 text-shelf-muted text-xs hidden lg:table-cell">{{ item.location_name or '—' }}</td>
-    <td class="px-3 py-2 hidden sm:table-cell">
+    {%- else %}
+    <td x-show="visibleCols.{{ col.name }}" data-col="{{ col.name }}"
+        class="px-3 py-2 {{ col_class.get(col.name, 'text-shelf-muted text-xs') }}">
+        {%- if col.name == 'author' %}{{ item.authors or '—' }}
+        {%- elif col.name == 'media_type' %}{{ media_types.get(item.media_type, item.media_type or '—') }}
+        {%- elif col.name == 'location' %}{{ item.location_name or '—' }}
+        {%- elif col.name == 'status' %}
         {% if item.lent_to %}
         <span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" title="Loaned to {{ item.lent_to }}"></span>
         {% elif item.reading_status == 'read' %}
@@ -49,5 +77,23 @@
         {% elif item.reading_status == 'want_to_read' %}
         <span class="w-2.5 h-2.5 rounded-full bg-shelf-warning inline-block"></span>
         {% endif %}
+        {%- elif col.name == 'value' %}
+        {#- A manual valuation always wins over the estimate, matching
+            item_detail.html and valuation.py's COALESCE. -#}
+        {%- set value = item.manual_value if item.manual_value is not none else item.estimated_value %}
+        {{- value|money if value is not none else '—' }}
+        {%- elif col.name == 'series' %}
+        {%- if item.series_name %}{{ item.series_name }}{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}
+        {%- else %}—{% endif %}
+        {%- elif col.name == 'publisher' %}{{ item.publisher or '—' }}
+        {%- elif col.name == 'year' %}{{ item.publish_year or '—' }}
+        {%- elif col.name == 'pages' %}{{ item.page_count or '—' }}
+        {%- elif col.name == 'language' %}{{ item.language or '—' }}
+        {%- elif col.name == 'added' %}{{ item.created_at[:10] if item.created_at else '—' }}
+        {%- elif col.name == 'platform' %}{{ item.platform or '—' }}
+        {%- elif col.name == 'identifier' %}{{ item.isbn or item.upc or '—' }}
+        {%- endif %}
     </td>
+    {%- endif %}
+    {% endfor %}
 </tr>

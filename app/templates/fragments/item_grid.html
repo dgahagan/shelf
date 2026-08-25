@@ -15,15 +15,19 @@
 <template x-if="viewMode === 'list'">
 <div class="overflow-x-auto">
     <table class="w-full text-left">
+        {# Headers derive from app/browse_columns.py -- one <th> in this file,
+           looped, so a column can never exist here and not in item_row.html.
+           The picker-managed columns carry no responsive hide-at-a-breakpoint
+           classes: a Tailwind class rule and x-show's inline style cannot both
+           own a cell's visibility, so the user's selection is authoritative at
+           every width and a wide selection scrolls inside .overflow-x-auto. #}
         <thead>
             <tr class="border-b border-shelf-border text-shelf-muted text-xs uppercase tracking-wider">
-                <th x-show="selectMode" class="px-3 py-2 w-8"></th>
-                <th class="px-3 py-2 w-10"></th>
-                <th class="px-3 py-2">Title</th>
-                <th class="px-3 py-2 hidden md:table-cell">Author</th>
-                <th class="px-3 py-2 hidden lg:table-cell">Type</th>
-                <th class="px-3 py-2 hidden lg:table-cell">Location</th>
-                <th class="px-3 py-2 hidden sm:table-cell">Status</th>
+                {% for col in browse_columns %}
+                <th {% if col.name == 'select' %}x-show="selectMode"{% elif not col.locked %}x-show="visibleCols.{{ col.name }}"{% endif %}
+                    data-col="{{ col.name }}"
+                    class="px-3 py-2{% if col.name == 'select' %} w-8{% elif col.name == 'cover' %} w-10{% endif %}">{{ col.label }}</th>
+                {% endfor %}
             </tr>
         </thead>
         <tbody>
@@ -33,7 +37,7 @@
             {% if has_more is defined and has_more %}
             <tr id="load-more"
                 hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="[name='view']">
-                <td colspan="7" class="text-center py-4">
+                <td colspan="{{ browse_columns|length }}" class="text-center py-4">
                     <div class="inline-block w-6 h-6 border-2 border-shelf-border border-t-shelf-accent rounded-full animate-spin"></div>
                 </td>
             </tr>

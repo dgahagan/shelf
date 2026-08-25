@@ -158,6 +158,35 @@ range-checked as well as exception-guarded, an id too large for SQLite's signed
 64-bit INTEGER is caught here rather than surfacing from the driver two layers
 out, where a Python int's arbitrary precision means the cast itself succeeds.
 
+**Browse's list-view columns are declared the same way, in
+`app/browse_columns.py`.** It is the filter registry's sibling and exists for
+the same reason: the `<thead>` in `fragments/item_grid.html`, the `<td>` cells
+in `fragments/item_row.html` and two hard-coded sentinel `colspan`s each spelled
+the column set out independently, so a column added to one and not the others
+broke silently. Now one `BrowseColumn` tuple drives all four — `column_count()`
+is the sentinel colspan, and `client_config()` ships the set to `browse.js`
+through a `type="application/json"` block, the same CSP-safe hand-off the filters
+use.
+
+Three columns are `locked` (the select checkbox, the cover, and Title, which is
+the row's only link to the item) and are always rendered. The rest are toggled
+**client-side only**: the server renders every `<td>` on every row regardless,
+and the picker flips `x-show="visibleCols.<name>"`. That keeps column choice out
+of the querystring — it is a per-browser display preference in `localStorage`,
+not part of a shareable Browse URL — at the cost of a few hidden cells per row.
+The bindings are a single-level member access on purpose; a `cols.includes(...)`
+call is the shape the Alpine CSP build cannot parse.
+
+Since 0.18.0 these columns carry **no responsive breakpoint classes**. Tailwind's
+`hidden md:table-cell` is a class rule and `x-show` toggles an inline style, so
+the two cannot coexist — a column the reader switched on would stay hidden at
+narrow widths with no explanation. The user's selection is therefore
+authoritative at every width, and a wide selection scrolls horizontally inside
+the table's own `overflow-x-auto` container rather than the page. That
+distinction is what keeps the responsive gate in `tests/e2e/test_responsive.py`
+meaningful: it compares document `scrollWidth` against `clientWidth`, which an
+inner scroll container does not affect.
+
 Store Mode is a PWA: a service worker precaches the
 store page and the library ISBN set lives in the browser; unknown scans
 queue locally and flush via `/api/store/queue`. Precaching is cache-first, so

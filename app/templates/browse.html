@@ -95,6 +95,36 @@
                     <button @click="deselectAll()" x-show="selectedIds.length > 0" class="px-2 py-1 rounded text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Deselect All</button>
                 </div>
             </template>
+            <!-- Column picker (list view only) -->
+            <div class="relative shrink-0" x-show="viewMode === 'list'">
+                <button @click="columnsOpen = !columnsOpen"
+                        :aria-expanded="columnsOpen"
+                        :class="columnsOpen ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
+                        class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors"
+                        data-testid="column-picker">
+                    Columns
+                </button>
+                <!-- Column visibility panel -->
+                <div x-show="columnsOpen" x-transition
+                     @click.outside="columnsOpen = false"
+                     class="absolute top-full left-0 mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg p-2 shadow-xl z-50 max-h-[28rem] overflow-y-auto"
+                     data-testid="column-menu">
+                    {% for col in browse_columns if not col.locked %}
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded text-xs text-shelf-text hover:bg-shelf-hover cursor-pointer">
+                        <input type="checkbox" :checked="visibleCols.{{ col.name }}" @change="toggleCol('{{ col.name }}')"
+                               data-col="{{ col.name }}"
+                               class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                        <span>{{ col.label }}</span>
+                    </label>
+                    {% endfor %}
+                    <div class="border-t border-shelf-border my-1"></div>
+                    <button @click="resetColumns()"
+                            class="w-full text-left px-2 py-1.5 rounded text-xs text-shelf-muted hover:text-shelf-accent2 hover:bg-shelf-hover transition-colors"
+                            data-testid="columns-reset">
+                        Reset to defaults
+                    </button>
+                </div>
+            </div>
         </div>
         <!-- Filters: shown inline on large screens, collapsible on small -->
         <div class="flex items-center gap-2 sm:hidden">
@@ -244,5 +274,7 @@
    (script-src 'self' forbids inline executable script), so this is how the
    server hands the client a list without an inline literal. #}
 <script type="application/json" id="browse-filter-config">{{ browse_filter_config() | tojson }}</script>
+{# The list-view column set, declared once in app/browse_columns.py. #}
+<script type="application/json" id="browse-column-config">{{ browse_column_config() | tojson }}</script>
 <script src="/static/js/browse.js"></script>
 {% endblock %}

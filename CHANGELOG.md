@@ -6,6 +6,58 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-25
+
+Browse's list view showed five columns — Title, Author, Type, Location, Status —
+and there was no way to change them. Everything else Shelf knows about an item,
+its series, publisher, year, page count, language, ISBN, the value it is carrying,
+was a click away on the detail page, one item at a time. So the list was fine for
+finding a book and useless for the questions a table is actually good at: which of
+these have no publisher, what did I add last month, which of these are in German.
+
+The list view now has a **Columns** picker: thirteen columns to show or hide in
+whatever combination you want, remembered for next time.
+
+### Added
+
+- **A column picker in Browse's list view.** The toolbar's new **Columns** button
+  opens a checklist of thirteen columns — Author, Type, Location, Status, Value,
+  Series, Publisher, Year, Pages, Language, Added, Platform and ISBN/UPC. The
+  first four are on to start with, which is what the list showed before; the
+  other nine are new and start off. **Value** is the one the original request
+  asked for: your manual value where you have set one, otherwise the ISBNdb
+  estimate, in your display currency.
+- **Your choice is remembered, per browser.** Turn on Series and Year, close the
+  tab, come back next week and they are still on. It is stored in the browser
+  rather than against your account, so a phone and a desktop keep their own
+  column sets — usually what you want, since they have very different amounts of
+  room. A new browser, a new device, or a cleared cache starts back at the
+  defaults.
+- **Reset to defaults**, at the bottom of the picker, puts the list back to
+  Author, Type, Location and Status in one click.
+
+The selection checkbox, the cover thumbnail and **Title** are always shown and
+are deliberately not offered in the picker. Title is the row's link to the item,
+so a row without it would be a row you cannot click.
+
+Turning on more columns than fit does not widen the page — the table scrolls
+sideways inside its own frame and the rest of the page stays put. Columns with
+nothing to show read as empty rather than broken: an item with no publisher gets
+an em-dash, the same as everywhere else in Shelf.
+
+### Changed
+
+- **Columns no longer disappear on their own at narrow widths.** Author used to
+  vanish below 768px, Type and Location below 1024px, and Status below 640px,
+  whatever you wanted. Now your selection is what you get at every width, so a
+  phone shows all four default columns and the table scrolls sideways to fit
+  them. This is the deliberate trade for a picker that works: a column that
+  hid itself at a breakpoint could not also be one you switched on, and being
+  able to tick Author on a phone and have nothing happen is worse than a table
+  you drag. If you prefer the narrower phone view, untick the columns you do not
+  want on that device — the choice is per-browser, so it will not follow you back
+  to the desktop.
+
 ## [0.17.7] - 2026-08-25
 
 **Sync Now** on the Audiobookshelf card was greyed out on every page load, for
@@ -1552,6 +1604,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.18.0]: https://github.com/dgahagan/shelf/releases/tag/v0.18.0
 [0.17.7]: https://github.com/dgahagan/shelf/releases/tag/v0.17.7
 [0.17.6]: https://github.com/dgahagan/shelf/releases/tag/v0.17.6
 [0.17.5]: https://github.com/dgahagan/shelf/releases/tag/v0.17.5

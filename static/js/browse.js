@@ -9,6 +9,12 @@ function browsePage() {
         bulkSeriesVal: '',
         filterPills: [],
         viewMode: localStorage.getItem('shelf-view') || 'grid',
+        // viewMode is the only thing that decides whether the list view
+        // exists at all; visibleCols only decides which cells of an existing
+        // list are shown. Keep that distinction straight -- it is easy to
+        // gate the wrong behaviour on the wrong flag.
+        visibleCols: {},
+        columnsOpen: false,
         filtersOpen: false,
         // Bound (x-model) to BOTH the mobile and desktop search inputs, which
         // share name="q". Keeping them in lockstep is what stops hx-include
@@ -17,6 +23,15 @@ function browsePage() {
         searchQuery: '',
 
         init() {
+            // Must run before anything else touches the DOM. visibleCols needs
+            // a key for EVERY registered column before Alpine's first render:
+            // a missing key makes visibleCols.foo evaluate undefined (renders
+            // the column hidden -- wrong, but silent), while a missing object
+            // throws on every row, because the Alpine CSP build's evaluator
+            // dereferences a member on something that is == null.
+            // loadColumns() always returns a complete object, so it must run
+            // first rather than being populated lazily.
+            this.visibleCols = this.loadColumns();
             this.searchQuery = this.$el.dataset.initialQuery || '';
             // Returning to a bare /browse re-applies the last filter set.
             // Falls through to the sort-only restore when there's nothing stored
@@ -127,6 +142,90 @@ function browsePage() {
         // Every filter control, for the htmx re-process loop.
         filterNames() {
             return this.filterDefs().map(function(def) { return def.name; });
+        },
+
+        // The Browse list-view column set, read from the JSON block
+        // browse.html renders from app/browse_columns.py. Same shape, same
+        // cache-on-this, same reason as filterDefs() above -- one shared
+        // declaration instead of a second hand-maintained list that drifts.
+        columnDefs() {
+            if (this._columnDefs) return this._columnDefs;
+            var el = document.getElementById('browse-column-config');
+            this._columnDefs = el ? JSON.parse(el.textContent) : [];
+            return this._columnDefs;
+        },
+
+        // {name: bool} covering every registered column. Locked columns are
+        // always true. A stored value only wins when the blob parses to a
+        // plain object AND holds an actual boolean for that name -- anything
+        // else (missing key, wrong type, unknown name) falls back to the
+        // column's defaultOn. Unknown names in the stored blob are simply
+        // never looked at.
+        loadColumns() {
+            var stored = null;
+            try {
+                var raw = localStorage.getItem('shelf-columns');
+                var parsed = raw ? JSON.parse(raw) : null;
+                // A blob that fails to parse, or parses to something other
+                // than a plain object (null, an array, a string), is exactly
+                // the failure class this is guarding against -- treat it the
+                // same as "nothing stored" rather than letting it throw.
+                if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) stored = parsed;
+            } catch (e) { /* corrupt blob -- fall through to defaults */ }
+            var cols = {};
+            this.columnDefs().forEach(function(def) {
+                if (def.locked) { cols[def.name] = true; return; }
+                var val = stored ? stored[def.name] : undefined;
+                cols[def.name] = typeof val === 'boolean' ? val : def.defaultOn;
+            });
+            return cols;
+        },
+
+        // Only the non-locked names are worth persisting -- locked columns
+        // are always true and are cheaper to reconstruct than to store.
+        //
+        // Persists the object it is HANDED, not this.visibleCols, because a
+        // second Browse tab is a concurrent writer of the same key: writing a
+        // snapshot this tab loaded minutes ago would silently undo whatever
+        // the other tab has changed since. toggleCol() passes a state built on
+        // the latest stored value; resetColumns() deliberately replaces the
+        // whole key and does not come through here at all.
+        saveColumns(cols) {
+            var out = {};
+            this.columnDefs().forEach(function(def) {
+                if (!def.locked) out[def.name] = cols[def.name];
+            });
+            localStorage.setItem('shelf-columns', JSON.stringify(out));
+        },
+
+        toggleCol(name) {
+            var def = this.columnDefs().find(function(d) { return d.name === name; });
+            if (!def || def.locked) return;
+            // Flip against the LATEST stored state, not this tab's in-memory
+            // copy -- two open Browse tabs each hold a complete object, so
+            // toggling from a stale snapshot resurrects a column the other tab
+            // hid. loadColumns() re-reads localStorage and already falls back
+            // to defaults for anything missing or corrupt.
+            var latest = this.loadColumns();
+            var next = Object.assign({}, latest, {[name]: !latest[name]});
+            // Reassign the whole object rather than mutate a key in place --
+            // Alpine's reactivity only picks up a change when the object
+            // identity itself changes.
+            this.visibleCols = next;
+            this.saveColumns(next);
+        },
+
+        resetColumns() {
+            var cols = {};
+            this.columnDefs().forEach(function(def) {
+                cols[def.name] = def.locked ? true : def.defaultOn;
+            });
+            this.visibleCols = cols;
+            // What was just built is definitionally the all-default set, so
+            // there is nothing here worth persisting -- an absent key already
+            // means "use defaults" in loadColumns(), and writing the defaults
+            // out explicitly would just be a slower way of saying that.
+            localStorage.removeItem('shelf-columns');
         },
 
         // Only those mirrored into the address bar, in the order updateUrl()

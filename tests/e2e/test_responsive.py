@@ -20,9 +20,11 @@ failure modes, and a row can only ever hit one of them, so both are gated:
 Both report the *innermost* offender and its geometry, because "the page is
 640px wide" is not actionable and "passphrase input right edge 550px" is.
 """
+import json
 from contextlib import contextmanager
 
 import pytest
+from playwright.sync_api import expect
 
 from tests.e2e.conftest import assert_page_clean, attach_page_guard, insert_item
 
@@ -392,3 +394,123 @@ def test_no_collapsed_text_controls(live_server, browser, setup_admin, wide_item
             "and never add `sm:basis-auto` beside it (G41).",
         ]
     )
+
+
+# ---------------------------------------------------------------------------
+# Browse list view — the table this gate could not previously see
+# ---------------------------------------------------------------------------
+#
+# `PAGES` walks /browse in its DEFAULT view, which is grid (`browse.js`'s
+# `shelf-view` fallback), so the list-view table was unmeasured at every
+# viewport in this file. Issue #30 dropped the per-cell `hidden md:table-cell`
+# classes — the user's column selection is authoritative at every width now —
+# which widens the default phone table and makes measuring it the point.
+#
+# It cannot join `PAGES`: that fixture's page walk shares one context and one
+# login across every entry, so it has nowhere to seed per-entry localStorage,
+# and the view mode plus the column selection both live there.
+#
+# The contract being asserted is deliberately the *document*'s, not the
+# table's: a wide selection is expected to scroll sideways INSIDE the table's
+# own `.overflow-x-auto` wrapper (design plan §5). That is what keeps the page
+# itself from scrolling, and it is why an all-columns-on selection is a passing
+# case rather than a failing one.
+
+_LIST_SELECTIONS = ("default", "all_on")
+
+#: Rendered width of the Title cell's link. Title is locked — it is the row's
+#: only link to the item — so it is the one column that must stay readable at
+#: every width and under every selection. Same floor as the text-control gate:
+#: G43's evidence is a title crushed to 26px, which nothing flagged.
+_TITLE_MEASURE = r"""
+(function () {
+    window.scrollTo(0, 0);
+    var a = document.querySelector('td[data-col="title"] a');
+    if (!a) return null;
+    var r = a.getBoundingClientRect();
+    return {width: Math.round(r.width), text: (a.textContent || '').trim().slice(0, 40)};
+})()
+"""
+
+
+@contextmanager
+def _browse_list_at(live_server, browser, setup_admin, width, selection):
+    """A logged-in /browse in LIST view at `width`, with `selection` applied.
+
+    The login is not optional and is the whole reason this is a helper: an
+    `add_init_script` has to run before the first navigation, so the context
+    must be built here rather than taken from `authed_page` — and a fresh
+    context has no session, so `/browse` would just redirect to `/login` and
+    the first wait below would time out on a page that never rendered a table.
+    """
+    from app import browse_columns
+
+    if selection == "all_on":
+        cols = {c.name: True for c in browse_columns.COLUMNS if not c.locked}
+    else:
+        cols = None
+
+    seed = "localStorage.setItem('shelf-view', 'list');"
+    if cols is not None:
+        seed += f"localStorage.setItem('shelf-columns', {json.dumps(json.dumps(cols))});"
+
+    ctx = browser.new_context(viewport={"width": width, "height": 800})
+    ctx.add_init_script(seed)
+    page = attach_page_guard(ctx.new_page())
+    try:
+        page.goto(f"{live_server['url']}/login")
+        page.fill("input[name=username]", setup_admin["username"])
+        page.fill("input[name=password]", setup_admin["password"])
+        page.click("button[type=submit]")
+        page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+        page.goto(f"{live_server['url']}/browse")
+        # G42: the list view lives inside <template x-if="viewMode === 'list'">,
+        # so its cells are ATTACHED a tick before they are painted and every
+        # rect in that window reads zero. Wait for a positive painted state on
+        # a locked, always-on column before measuring anything.
+        expect(page.locator('td[data-col="title"]').first).to_be_visible()
+        _settle(page)
+        yield page
+        assert_page_clean(page)
+    finally:
+        ctx.close()
+
+
+@pytest.mark.parametrize("selection", _LIST_SELECTIONS)
+@pytest.mark.parametrize("width", VIEWPORTS)
+def test_browse_list_view_has_no_horizontal_overflow(
+    live_server, browser, setup_admin, wide_item, width, selection
+):
+    """The list-view table must not make the PAGE scroll sideways.
+
+    It is allowed — expected — to scroll inside its own `.overflow-x-auto`
+    wrapper with a wide selection. That containment is the design decision
+    that let the responsive breakpoints be dropped from the cells.
+    """
+    with _browse_list_at(live_server, browser, setup_admin, width, selection) as page:
+        m = page.evaluate(_MEASURE)
+        assert m["scrollWidth"] <= m["clientWidth"] + 1, _format(
+            width, [{"label": f"browse list ({selection})", "path": "/browse", **m}]
+        )
+
+
+@pytest.mark.parametrize("selection", _LIST_SELECTIONS)
+@pytest.mark.parametrize("width", VIEWPORTS)
+def test_browse_list_title_stays_readable(
+    live_server, browser, setup_admin, wide_item, width, selection
+):
+    """Title is the row's link to the item — crushing it makes the row dead.
+
+    This is G43's other half: the overflow gate above cannot see a column
+    squeezed to nothing, because a squeezed column makes the page *narrower*,
+    not wider.
+    """
+    with _browse_list_at(live_server, browser, setup_admin, width, selection) as page:
+        t = page.evaluate(_TITLE_MEASURE)
+        assert t is not None, "no title cell rendered — the list view did not paint"
+        assert t["width"] >= _MIN_CONTENT_PX, (
+            f"Title link is {t['width']}px at a {width}px viewport with the "
+            f"{selection!r} column selection (floor {_MIN_CONTENT_PX}px): "
+            f"{t['text']!r}.\nFix the cell, not the test — `min-w-[8rem]` on the "
+            "title cell is the expected remedy (G43)."
+        )
