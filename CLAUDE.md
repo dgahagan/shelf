@@ -51,8 +51,9 @@ far more often than by a human. Keep it that way:
 - **Prefer the `gh` CLI over the `github` MCP tools here.** The release procedure in
   `../CLAUDE.md` already uses `gh` end to end, and `gh ... --jq` lets you bound the output size,
   which the MCP tools do not.
-- If you add a dependency that spams warnings, silence it **by message** in `pytest.ini`'s
-  `filterwarnings`, never by blanket category — a muted category hides real deprecations.
+- If you add a dependency that spams warnings, silence it **by message** in a
+  `filterwarnings` stanza in `pytest.ini` (add the key if absent), never by blanket
+  category — a muted category hides real deprecations.
 
 ## Architecture
 

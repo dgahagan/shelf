@@ -38,7 +38,7 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 
 | Command | What |
 |---|---|
-| `make test` | Unit + integration, quiet and parallel (~1300 tests, excludes `tests/e2e/`) |
+| `make test` | Unit + integration, quiet and parallel (~1500 tests, excludes `tests/e2e/`) |
 | `make test-fast` | Re-run only the last failures |
 | `make test-verbose` | Per-test output |
 | `make test-e2e` | Playwright E2E; starts its own server |

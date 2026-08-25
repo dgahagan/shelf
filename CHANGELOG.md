@@ -6,6 +6,32 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-08-25
+
+Nothing in this release changes what Shelf does. It moves the test suite onto
+pytest 9, which the previous set of pinned versions could not accept, and clears
+out a warning filter that no longer had anything to suppress. It is written down
+here because the version exists, not because you will notice it.
+
+Runtime dependencies are untouched, and the published image never installs
+development dependencies — so there is nothing in this upgrade for a running
+instance to gain beyond staying current.
+
+### Internal
+
+- **The test stack moves to pytest 9.** pytest goes from 8.3.5 to 9.0.3 and
+  pytest-asyncio from 0.25.3 to 1.4.0. The two had to move together:
+  pytest-asyncio 0.25.3 declares `pytest<9`, so raising pytest on its own left
+  the development requirements unsolvable and continuous integration failed
+  before a single test ran.
+- **A dead warning filter is gone.** `pytest.ini` carried a suppression for a
+  deprecation warning that only the old pytest-asyncio emitted. Under 1.4.0 it
+  emits none, and a filter that matches nothing cannot do anything except hide
+  a future warning that matters.
+
+Both suites pass unchanged on the new stack — 1,521 unit and integration tests
+and 123 browser tests — on Python 3.12 and Python 3.14.
+
 ## [0.17.2] - 2026-08-24
 
 Open a filtered Browse link — `/browse?owned=0`, a bookmark, a "DVDs on Shelf A"
@@ -1387,6 +1413,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.3]: https://github.com/dgahagan/shelf/releases/tag/v0.17.3
 [0.17.2]: https://github.com/dgahagan/shelf/releases/tag/v0.17.2
 [0.17.1]: https://github.com/dgahagan/shelf/releases/tag/v0.17.1
 [0.17.0]: https://github.com/dgahagan/shelf/releases/tag/v0.17.0
