@@ -122,6 +122,19 @@ class TestBuildWhere:
         _where, params = bf.build_where({"location_filter": "7"})
         assert params == [7]
 
+    @pytest.mark.parametrize("value", ["abc", "1.5", "7,8", "-", "9" * 22])
+    def test_an_uncastable_location_matches_nothing(self, value):
+        # Same answer a valid-but-unused id gives, rather than a 500: a filtered
+        # Browse URL is shareable, so a hand-edited one must not crash. The
+        # over-large id casts fine and would only fail at sqlite bind time.
+        #
+        # It must narrow to nothing, not fall back to no filter at all — an
+        # empty WHERE here would render the whole collection under an active
+        # Location chip.
+        where, params = bf.build_where({"location_filter": value})
+        assert where == "WHERE 1 = 0"
+        assert params == []
+
     def test_owned_is_tri_state(self):
         assert "i.owned = 1" in bf.build_where({"owned": "1"})[0]
         assert "i.owned = 0" in bf.build_where({"owned": "0"})[0]

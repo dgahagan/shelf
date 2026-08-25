@@ -6,6 +6,38 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.17.5] - 2026-08-25
+
+A filtered Browse view is meant to be bookmarkable — that is the point of
+putting the filters in the address bar. But if the address ever arrived
+damaged, from a link a chat app had truncated or a hand-edited URL with a typo
+in it, Shelf answered with a server error page instead of a library. A
+bookmark that rots into an error is worse than one that rots into an empty
+shelf, because the error gives you nothing to correct.
+
+Now a filter value that cannot name anything simply matches nothing, which is
+already what a bookmark pointing at a location you have since deleted does.
+
+### Added
+
+- **The README shows how many tests each suite carries.** Two badges beside the
+  CI one — unit and end-to-end, counted separately, because the two suites
+  cannot run in a single invocation and a combined number would hide that. The
+  counts are generated from what pytest collects, not typed in, and a lint in
+  the standard check set fails if they drift, so the badge cannot quietly go out
+  of date the way a hand-written one does.
+
+### Fixed
+
+- **A damaged Browse link no longer shows an error page.** A filter value that
+  cannot name a location — from a truncated link, a typo, or an edited address
+  bar — used to fail the whole page with a server error, on both Browse and the
+  search behind it. It now does what a link to a location you have since
+  deleted already did: shows no items, with the filter still listed so you can
+  clear it. Deliberately *no* items rather than all of them: the filter chip
+  stays on screen, and a chip that says the view is narrowed while the grid
+  shows the whole collection would be lying to you.
+
 ## [0.17.4] - 2026-08-25
 
 Three screens were laid out against a width nobody had declared. A file picker,
@@ -1447,6 +1479,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.17.5]: https://github.com/dgahagan/shelf/releases/tag/v0.17.5
 [0.17.4]: https://github.com/dgahagan/shelf/releases/tag/v0.17.4
 [0.17.3]: https://github.com/dgahagan/shelf/releases/tag/v0.17.3
 [0.17.2]: https://github.com/dgahagan/shelf/releases/tag/v0.17.2

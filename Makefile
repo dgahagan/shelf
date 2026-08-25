@@ -17,6 +17,7 @@ PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests \
+        badges check-badges \
         checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
@@ -116,8 +117,16 @@ check-sw-version:
 check-tests:
 	python scripts/check_test_conventions.py
 
+# README's two test-count badges are generated from `pytest --co`, never
+# hand-edited — the same rule as sw.js's SW_VERSION. Add a test, run this.
+badges:
+	python scripts/stamp_test_badges.py
+
+check-badges:
+	python scripts/stamp_test_badges.py --check
+
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-alpine check-sw-version check-tests
+checks-fast: check-secrets check-csrf check-alpine check-sw-version check-tests check-badges
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.

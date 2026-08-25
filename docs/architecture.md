@@ -147,6 +147,17 @@ input instead. Emitting both put the name on the wire twice and made the
 outcome depend on htmx appending included parameters last and Starlette
 returning the last duplicate.
 
+A second invariant, for the same reason: a filter value that will not cast to
+the type its column needs contributes a condition that matches **no** row, not
+*no condition at all*. Returning nothing from a condition builder is how the
+tri-state and presentation-only filters say "I do not narrow anything", so
+reusing it for an unusable value would render the whole collection under a
+filter chip claiming the view was narrowed. Because both routes build their
+WHERE clause here, the guard covers both at once — and because the cast is
+range-checked as well as exception-guarded, an id too large for SQLite's signed
+64-bit INTEGER is caught here rather than surfacing from the driver two layers
+out, where a Python int's arbitrary precision means the cast itself succeeds.
+
 Store Mode is a PWA: a service worker precaches the
 store page and the library ISBN set lives in the browser; unknown scans
 queue locally and flush via `/api/store/queue`. Precaching is cache-first, so

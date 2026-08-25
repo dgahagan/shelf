@@ -230,3 +230,27 @@ def test_new_filter_needs_no_route_edit(admin_client, seeded_library, monkeypatc
     for route in (search_items, browse_route):
         params = set(inspect.signature(route).parameters)
         assert not params & set(bf.FILTER_NAMES)
+
+
+@pytest.mark.parametrize("path", ["/browse", "/api/search"])
+@pytest.mark.parametrize("value", ["abc", "1.5", "9" * 22])
+def test_an_uncastable_location_filter_does_not_500(
+    admin_client, seeded_library, path, value
+):
+    """Issue #40 — a hand-edited filter URL must not crash either route.
+
+    Both fail the same way because both build one WHERE clause, which is #37
+    working as intended; both are fixed the same way for the same reason. A
+    valid-but-unused id already rendered an empty result, and an uncastable
+    one now gives that same answer instead of a 500.
+    """
+    # Pin what "the same answer" means: an unused id renders no items, and the
+    # unfiltered route does render them — so the assertion below is not vacuous.
+    assert "Book Read" in admin_client.get(path).text
+    unused = admin_client.get(f"{path}?location_filter=999999")
+    assert unused.status_code == 200
+    assert "Book Read" not in unused.text
+
+    r = admin_client.get(f"{path}?location_filter={value}")
+    assert r.status_code == 200
+    assert "Book Read" not in r.text

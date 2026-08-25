@@ -44,7 +44,8 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `make test-e2e` | Playwright E2E; starts its own server |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
-| `make checks-fast` | Offline lints: secrets, CSRF, Alpine CSP, service-worker version, test conventions |
+| `make checks-fast` | Offline lints: secrets, CSRF, Alpine CSP, service-worker version, test conventions, README test-count badges |
+| `make badges` | Restamp README's two test-count badges from `pytest --co` — **required after adding or deleting tests** |
 | `make checks` | All checks incl. `pip-audit` and licenses (network) |
 | `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — **required after any template/JS change**, and commit both |
 
@@ -75,6 +76,24 @@ itself. Commit `static/sw.js` alongside `static/css/app.css`.
 One rule survives automation: **never add `sw.js` to its own `PRECACHE`** —
 stamping would change the bytes the stamp is derived from and never converge.
 `test_stamp_is_idempotent` guards it.
+
+### README test-count badges
+
+README's **unit tests** and **e2e tests** badges quote how many tests each
+suite carries. Both are **generated, not written**: `scripts/stamp_test_badges.py`
+takes the numbers from `pytest --co` — collection only, so it is offline and
+runs in under two seconds — and rewrites the shields.io URLs in place.
+`make badges` stamps them, `make check-badges` (inside `make checks-fast`, so
+CI runs it) fails if the committed numbers no longer match what collects.
+
+The counts come from collection rather than from a run on purpose. Collection
+cannot pass or fail, so the badge asserts only *"this suite contains N tests"*,
+which is a fact about the tree; whether they pass is what the **CI** badge
+beside them already says. A badge that re-stated the pass/fail state would be a
+second copy of it, free to disagree.
+
+Add a test and forget to restamp and the gate fails with the two numbers side
+by side — the same bargain as `SW_VERSION`.
 
 ### Responsive geometry
 

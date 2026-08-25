@@ -39,10 +39,43 @@ _NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 ConditionBuilder = Callable[[str], "tuple[str, list] | None"]
 
 
+#: SQLite's INTEGER is a signed 64-bit value, and `sqlite3` raises
+#: OverflowError at bind time for anything outside it — after the cast has
+#: already succeeded, because Python ints are arbitrary precision.
+_SQLITE_INT_MIN, _SQLITE_INT_MAX = -(2 ** 63), 2 ** 63 - 1
+
+#: A condition that matches no row, for a filter value that cannot address one.
+_NEVER: "tuple[str, list]" = ("1 = 0", [])
+
+
 def _column(column: str, cast: Callable[[str], object] = str) -> ConditionBuilder:
-    """Equality against one column."""
+    """Equality against one column.
+
+    A value that will not cast matches nothing, which is the answer a valid
+    but unused id already gives: `?location_filter=abc` and
+    `?location_filter=999` both render an empty grid rather than an error.
+    Query strings are shareable and bookmarkable, so a hand-edited one must
+    not 500 — and both `/browse` and `/api/search` build their WHERE clause
+    here, so guarding the cast covers both routes and every future `cast=`
+    filter at once.
+
+    Note it must be `_NEVER`, not `None`. Returning `None` means "contributes
+    nothing" and drops the condition, which matches *everything* — the filter
+    chip would say the view is narrowed to a location while the grid showed
+    the whole collection.
+    """
     def build(value):
-        return f"{column} = ?", [cast(value)]
+        try:
+            cast_value = cast(value)
+        except (TypeError, ValueError):
+            return _NEVER
+        # Range-checked separately: the cast succeeds for an over-large id and
+        # then blows up in the driver, two layers further out.
+        if isinstance(cast_value, int) and not (
+            _SQLITE_INT_MIN <= cast_value <= _SQLITE_INT_MAX
+        ):
+            return _NEVER
+        return f"{column} = ?", [cast_value]
     return build
 
 

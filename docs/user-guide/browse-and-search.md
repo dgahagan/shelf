@@ -36,6 +36,10 @@ Filters persist across tabs and page reloads, and the URL carries them, so a
 filtered view is bookmarkable — and a bookmarked filtered view shows the same
 counts it will show after you touch a filter.
 
+If a bookmark stops naming anything real — a location you have since deleted,
+or a link that arrived truncated or hand-edited — Browse shows no items rather
+than an error, and leaves the filter listed so you can clear it.
+
 ## Sorting
 
 Title, author, date added, publish year, value — ascending or descending.
