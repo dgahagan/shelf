@@ -68,11 +68,25 @@ the Settings key test shares. A credential rejection is distinguishable from
 an empty result set, and files the item title-only rather than silently.
 
 **Covers** (`services/covers.py`) cascade: Open Library → Hardcover → DNB →
-Amazon → Google Books → IGDB, with manual upload and a title-keyed search
-picker. Game and film artwork does not run the cascade — IGDB and TMDb each
-supply one URL with the metadata, downloaded directly through the same
-allow-list and post-redirect re-check. Misses are retried by a background **cover queue**
+Amazon → Google Books → IGDB, with manual upload and a search picker. Game
+and film artwork does not run the cascade — IGDB and TMDb each supply one URL
+with the metadata, downloaded directly through the same allow-list and
+post-redirect re-check. Misses are retried by a background **cover queue**
 (`services/cover_queue.py`).
+
+The **picker is a separate, human-driven path** and dispatches on the item's
+media type (`covers.search_covers`): `dvd` → TMDb's poster set for the film,
+`video_game` → IGDB cover art and artwork, and everything else — including an
+unrecognised `media_type`, which the schema does not constrain — → the
+unchanged book search over Google Books and Open Library. Here TMDb and IGDB
+supply *galleries* rather than the single URL the unattended cascade takes,
+and the two must not be conflated: the cascade is untouched by the picker's
+dispatch. `MEDIA_TYPE_PROVIDERS` and `CREDENTIAL_KEYS` in `covers.py` are the
+one declaration of which media type reaches which service and what credential
+it needs; the routes derive their "provider not configured" message from
+`required_credentials()` rather than keeping a second list. Every provider
+returns URL strings only — nothing fetches an image — so each candidate still
+reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
 external host has a minimum interval matching its published rate limit,

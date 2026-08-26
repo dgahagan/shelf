@@ -71,6 +71,29 @@ batch. Then Settings → Data → Maintenance → **Retry missing covers**. Item
 with no ISBN (manual adds, discs, games without IGDB) need a manual cover
 or **Find cover**.
 
+## Find cover finds nothing for a DVD or a game
+
+**Find cover** asks TMDb for a disc and IGDB for a game, so an empty result
+usually means one of three things:
+
+- **No credential.** The picker says so outright — *"DVD cover search needs a
+  TMDb API key"*, or the equivalent for IGDB's Client ID and Secret. Add it in
+  Settings → Integrations.
+- **A credential that is present but rejected.** This one is quieter: the
+  picker falls back to *"No covers found for this title."*, which is
+  misleading. Confirm with Settings → Integrations → **Test key**. IGDB needs
+  *both* the Client ID and the Client Secret, and a Twitch secret that has
+  been rotated fails the token exchange without any other symptom.
+- **The game's platform is narrowing the search.** A game searches IGDB with
+  the platform recorded on the item, so a title IGDB does not list for that
+  platform returns nothing — and typing a different query does not lift the
+  filter, because the platform comes from the item, not the search box. Clear
+  or correct the platform with **Edit** if the search should be wider.
+
+For a book the picker is unchanged: it always combines the item's stored
+author with your query, so a wrong author on the record finds nothing whatever
+you type.
+
 ## Photo Intake finds nothing / garbage
 
 - Is a provider configured and does its **Test** pass?

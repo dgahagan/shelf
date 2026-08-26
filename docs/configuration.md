@@ -31,8 +31,8 @@ priority** over anything stored:
 | `HARDCOVER_TOKEN` | Hardcover API token |
 | `ABS_URL`, `ABS_TOKEN` | Audiobookshelf server URL and API token |
 | `ISBNDB_API_KEY` | ISBNdb key (valuation) |
-| `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray) — either the 32-character v3 API Key or the v4 Read Access Token |
-| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video games) |
+| `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray metadata **and** DVD cover search) — either the 32-character v3 API Key or the v4 Read Access Token |
+| `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video game metadata **and** game cover search — both fields are required) |
 
 Useful with Docker secrets or a secrets manager. Vision-provider keys (Photo
 Intake) are Settings-only.
@@ -78,9 +78,9 @@ lives:
 | **Audiobookshelf Sync** | Server URL + API token, **Test**, per-library include/exclude, sync interval, manual sync |
 | **Hardcover** | API token, import your Hardcover library, reading-status sync direction and schedule, export to Hardcover |
 | **Collection Valuation** | ISBNdb API key, valuate all / test key |
-| **Movie Database (TMDb)** | API key for DVD / Blu-ray lookups |
+| **Movie Database (TMDb)** | API key for DVD / Blu-ray lookups, and for **Find cover** on a DVD |
 | **Photo Intake (Vision)** | Provider: Anthropic (API key + model), OpenAI-compatible (base URL, optional key, model, ingest long-edge), or Ollama (URL, model, ingest long-edge) |
-| **IGDB (Video Games)** | Twitch client ID + secret |
+| **IGDB (Video Games)** | Twitch client ID + secret, for game lookups and for **Find cover** on a video game |
 
 Each card has a short inline setup guide for obtaining its credential. Keys
 are **write-only** — once saved you see a masked placeholder and a "clear"

@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-1606%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-1707%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![E2E tests](https://img.shields.io/badge/e2e%20tests-164%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
@@ -107,7 +107,7 @@ data/
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books, with German (978-3) ISBNs routed through the Deutsche Nationalbibliothek (DNB) first
 - **Edition language** — captured on lookup, editable on items, filterable in Browse; a settings dropdown picks the preferred language for title searches
-- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/remove, on any item
+- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/remove, on any item. Cover search is media-type aware: books search Google Books and Open Library, DVDs the film's TMDb poster set, video games IGDB cover art and artwork
 - **UPC support** — scan DVDs and Blu-rays with TMDb lookup
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges. Platform tracking with a customizable platform list (30+ platforms from Atari 2600 to PS5)
 

@@ -455,3 +455,357 @@ class TestPickerReachability:
         )
         assert len(input_tags) == 1
         assert 'value="Custom Retry Query"' in input_tags[0]
+
+
+class TestTheRouteKnowsWhatTheItemIs:
+    """T4 — the picker routes hand `search_covers` the item and its provider
+    credentials. Both call sites: `cover_search`, and `cover_select`'s failure
+    re-render, which is the one the design flags as easy to miss.
+
+    Every test here commits before the request (G48) — `get_db()` commits on
+    context-manager exit and the `db` fixture holds its block open until
+    teardown, so an uncommitted seed makes the assertion pass vacuously.
+    """
+
+    def test_a_dvd_search_passes_the_items_media_type(self, editor_client, db, monkeypatch):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="The Matrix", isbn="9780900007001", media_type="dvd")
+        db.commit()
+
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        item = search.await_args.args[0]
+        assert item["media_type"] == "dvd"
+
+    def test_a_game_search_passes_platform_and_publish_year_through(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(
+            db, title="Super Metroid", isbn="9780900007002",
+            media_type="video_game", platform="snes", publish_year=1994,
+        )
+        db.commit()
+
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        item = search.await_args.args[0]
+        assert item["platform"] == "snes"
+        assert item["publish_year"] == 1994
+
+    def test_a_failed_select_on_a_dvd_re_renders_through_the_dvd_path(
+        self, editor_client, db, monkeypatch
+    ):
+        """The second call site. Widening one SELECT and not the other would
+        leave this path blind to media type and silently show book results."""
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Alien", isbn="9780900007003", media_type="dvd")
+        db.commit()
+
+        monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        resp = editor_client.post(
+            f"/api/items/{item_id}/cover-select",
+            data={"url": "https://example.test/bad.jpg"},
+        )
+
+        assert resp.status_code == 200
+        item = search.await_args.args[0]
+        assert item["media_type"] == "dvd"
+
+    def test_a_dvd_gets_the_tmdb_key_in_creds(self, editor_client, db, monkeypatch):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Heat", isbn="9780900007004", media_type="dvd")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
+        db.commit()
+
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert search.await_args.kwargs["creds"] == {"tmdb_api_key": "a-key"}
+
+    def test_a_video_game_gets_both_igdb_keys_in_creds(self, editor_client, db, monkeypatch):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Doom", isbn="9780900007005", media_type="video_game")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
+        db.commit()
+
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert search.await_args.kwargs["creds"] == {
+            "igdb_client_id": "cid", "igdb_client_secret": "secret",
+        }
+
+    def test_a_book_gets_no_credentials_at_all(self, editor_client, db, monkeypatch):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Dune", isbn="9780900007006")
+        db.commit()
+
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert search.await_args.kwargs["creds"] == {}
+
+
+class TestTheUnconfiguredProviderNote:
+    """T4 — "not configured" is not "not found". The note is `None` unless a
+    required credential is actually missing."""
+
+    def test_a_dvd_with_no_tmdb_key_is_told_which_credential_is_missing(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Tron", isbn="9780900008001", media_type="dvd")
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert resp.context["search_note"] is not None
+        assert "TMDb API key" in resp.context["search_note"]
+
+    def test_an_env_only_tmdb_key_is_not_reported_as_unconfigured(
+        self, editor_client, db, monkeypatch
+    ):
+        """G15: `TMDB_API_KEY` is in SECRET_ENV_VARS and the bulk settings
+        accessor returns only keys that have a row, so an env-only install
+        would otherwise be told to add a key it has already set."""
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Tron", isbn="9780900008002", media_type="dvd")
+        db.commit()
+        monkeypatch.setenv("TMDB_API_KEY", "from-the-environment")
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.context["search_note"] is None
+        assert "TMDb API key" not in resp.text
+
+    def test_only_the_igdb_client_id_is_still_unconfigured(
+        self, editor_client, db, monkeypatch
+    ):
+        """G49, operand one. A presence flag for one member of a compound
+        credential does not satisfy the other."""
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Doom", isbn="9780900008003", media_type="video_game")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        note = resp.context["search_note"]
+        assert note is not None
+        assert "Client ID" in note and "Client Secret" in note
+
+    def test_only_the_igdb_client_secret_is_still_unconfigured(
+        self, editor_client, db, monkeypatch
+    ):
+        """G49, operand two — the half a one-sided gate silently passes."""
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Doom", isbn="9780900008004", media_type="video_game")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        note = resp.context["search_note"]
+        assert note is not None
+        assert "Client ID" in note and "Client Secret" in note
+
+    def test_both_igdb_fields_set_leaves_no_note(self, editor_client, db, monkeypatch):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Doom", isbn="9780900008005", media_type="video_game")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.context["search_note"] is None
+
+    def test_a_whitespace_only_credential_counts_as_missing(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Tron", isbn="9780900008006", media_type="dvd")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "   "))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.context["search_note"] is not None
+
+    def test_a_configured_provider_that_found_nothing_gets_no_note(
+        self, editor_client, db, monkeypatch
+    ):
+        """Then the generic "No covers found for this title." line still
+        applies — this is the distinction the whole note exists to draw."""
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Tron", isbn="9780900008007", media_type="dvd")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.context["search_note"] is None
+
+    def test_a_book_never_gets_a_note(self, editor_client, db, monkeypatch):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Dune", isbn="9780900008008")
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.context["search_note"] is None
+
+    def test_the_failure_re_render_also_carries_the_note(
+        self, editor_client, db, monkeypatch
+    ):
+        """Both call sites compute it, not just the search one."""
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Tron", isbn="9780900008009", media_type="dvd")
+        db.commit()
+        monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.post(
+            f"/api/items/{item_id}/cover-select",
+            data={"url": "https://example.test/bad.jpg"},
+        )
+
+        assert resp.status_code == 200
+        assert "TMDb API key" in resp.context["search_note"]
+
+
+class TestTheSearchNoteRendersInTheFragment:
+    """T5 — the template renders `search_note` in place of the generic empty
+    line when the route supplied one, and widens the tile caption so the
+    longer provider labels wrap instead of overflowing. Asserts on `resp.text`
+    (the rendered markup), which is the half T5 adds — T4's tests above only
+    ever checked `resp.context["search_note"]`.
+
+    Every test here commits before the request (G48).
+    """
+
+    def test_a_dvd_with_no_tmdb_key_renders_the_tmdb_message_and_not_the_generic_one(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Tron", isbn="9780900009001", media_type="dvd")
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert "TMDb API key" in resp.text
+        assert "No covers found for this title." not in resp.text
+
+    def test_a_video_game_missing_one_igdb_field_renders_a_message_naming_both_fields(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(
+            db, title="Doom", isbn="9780900009002", media_type="video_game"
+        )
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert "Client ID" in resp.text
+        assert "Client Secret" in resp.text
+
+    def test_a_configured_dvd_with_no_candidates_renders_the_generic_line_not_the_tmdb_message(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Heat", isbn="9780900009003", media_type="dvd")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert "No covers found for this title." in resp.text
+        assert "TMDb API key" not in resp.text
+
+    def test_a_book_renders_the_generic_line_exactly_as_today(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Dune", isbn="9780900009004")
+        db.commit()
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert "No covers found for this title." in resp.text
+
+    def test_the_caption_still_renders_the_candidate_source_text(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Alien", isbn="9780900009005", media_type="dvd")
+        db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
+        db.commit()
+        candidate = {
+            "url": "https://example.test/cover.jpg",
+            "thumbnail": "https://example.test/cover-thumb.jpg",
+            "source": "TMDb · EN",
+        }
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[candidate]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert "TMDb · EN" in resp.text

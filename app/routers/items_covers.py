@@ -16,7 +16,7 @@ from starlette.responses import StreamingResponse
 
 from app.auth import require_role
 from app.config import COVERS_DIR, HTTP_TIMEOUT
-from app.database import get_db
+from app.database import get_db, get_setting
 from app.routers import items_common
 from app.services import covers, cover_queue, openlibrary
 from app.services import isbn as isbn_svc
@@ -71,21 +71,67 @@ async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
         return {"ok": True, "cover_path": cover_path}
     return {"ok": False, "message": "No cover found"}
 
+# The picker's empty state must not report "nothing found" when the provider
+# was never configured. Keyed by provider, and the key list the gate checks is
+# derived from `covers.required_credentials(...)` rather than restated here, so
+# the gate and the dispatch cannot disagree about what "configured" means.
+#
+# G49: every operand of a compound credential is checked independently. IGDB
+# needs a Client ID *and* a Client Secret; a presence flag for one does not
+# satisfy the other, which is the defect that entry exists for.
+_SEARCH_NOTES = {
+    "tmdb": "DVD cover search needs a TMDb API key — add one in Settings → Integrations.",
+    "igdb": (
+        "Video game cover search needs a Twitch Client ID and Client Secret — "
+        "add both in Settings → Integrations."
+    ),
+}
+
+
+def _search_note(media_type: str | None, creds: dict) -> str | None:
+    """The "provider not configured" line, or `None` when there is nothing to say.
+
+    `None` for the book path (no credential needed) and for a fully configured
+    provider that simply found nothing — that case keeps the generic
+    "No covers found for this title." line.
+
+    Known false negative: `tmdb.search_movies` returns `[]` for a *rejected*
+    key by deliberate contract, so a bad TMDb key still reads as "no covers
+    found" rather than this note. Accepted (G47) — fixing it would change a
+    contract `items_catalog.py` also consumes.
+    """
+    keys = covers.required_credentials(media_type)
+    if not keys:
+        return None
+    if all((creds.get(key) or "").strip() for key in keys):
+        return None
+    return _SEARCH_NOTES.get(covers.MEDIA_TYPE_PROVIDERS.get(media_type or ""))
+
+
 @router.get("/items/{item_id}/cover-search")
 async def cover_search(request: Request, item_id: int, query: str | None = None, _=Depends(require_role("editor"))):
     """Search for cover candidates by title/author. Returns HTMX fragment."""
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, cover_path FROM items WHERE id = ?", (item_id,)
+            "SELECT title, authors, cover_path, media_type, publish_year, platform "
+            "FROM items WHERE id = ?", (item_id,)
         ).fetchone()
+        # Key-by-key through get_setting, never the bulk settings accessor:
+        # all three provider keys are in SECRET_ENV_VARS, and the bulk one
+        # returns only keys that have a row, so an env-only install would be
+        # told its provider is unconfigured (G15).
+        creds = {} if not item else {
+            key: get_setting(db, key)
+            for key in covers.required_credentials(item["media_type"])
+        }
     if not item:
         return HTMLResponse("Not found", status_code=404)
 
     search_query = (query or "").strip() or item["title"]
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        candidates = await covers.search_cover_by_title(search_query, item["authors"], client)
+        candidates = await covers.search_covers(item, search_query, client, creds=creds)
 
     return templates.TemplateResponse(
         request, "fragments/cover_search.html",
@@ -94,6 +140,7 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
             "item_id": item_id,
             "cover_path": item["cover_path"],
             "query": search_query,
+            "search_note": _search_note(item["media_type"], creds),
         },
     )
 
@@ -120,15 +167,23 @@ async def cover_select(
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, cover_path FROM items WHERE id = ?", (item_id,)
+            "SELECT title, authors, cover_path, media_type, publish_year, platform "
+            "FROM items WHERE id = ?", (item_id,)
         ).fetchone()
+        # Same key-by-key build as cover_search — this failure path re-renders
+        # the grid, and a DVD whose pick failed must not fall back to book
+        # results (G15 again, for the same env-only reason).
+        creds = {} if not item else {
+            key: get_setting(db, key)
+            for key in covers.required_credentials(item["media_type"])
+        }
     if not item:
         return HTMLResponse("Not found", status_code=404)
 
     search_query = (query or "").strip() or item["title"]
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        candidates = await covers.search_cover_by_title(search_query, item["authors"], client)
+        candidates = await covers.search_covers(item, search_query, client, creds=creds)
 
     resp = templates.TemplateResponse(
         request, "fragments/cover_search.html",
@@ -137,6 +192,7 @@ async def cover_select(
             "item_id": item_id,
             "cover_path": item["cover_path"],
             "query": search_query,
+            "search_note": _search_note(item["media_type"], creds),
             "failed_url": url,
         },
     )

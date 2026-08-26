@@ -11,9 +11,29 @@ its home.
   cover**. These work on an item that already has a cover, not just a
   cover-less one; **Retry cover** (re-running the automatic chain) only
   shows up when a cover is missing, since it would have nothing to do
-  otherwise. The item's stored author is always combined with whatever you
-  type, so if the author on the record is wrong no query will find the
-  cover — fix the author with **Edit**, or use **Upload**.
+  otherwise.
+
+  **Find cover searches a different source depending on what the item is:**
+
+  | Media type | What it searches | Tiles are labelled |
+  |---|---|---|
+  | Books, ebooks, audiobooks, kids' books, comics | Google Books and Open Library | by source |
+  | DVDs and Blu-rays | the film's poster set on TMDb | by language (`TMDb · EN`) — the same film's posters differ mostly by language |
+  | Video games | IGDB cover art **and** key artwork, as separate tiles | by game and kind (`IGDB · Portal · cover`) |
+
+  For **books and comics**, the item's stored author is combined with
+  whatever you type, so if the author on the record is wrong no query will
+  find the cover — fix the author with **Edit**, or use **Upload**. The
+  other media types search on the title (or your typed query) alone; a
+  game's stored platform narrows the search when it is set, and a DVD's
+  year is used to pick the right film when several share a title.
+
+  **DVD and video game search need credentials.** TMDb needs an API key and
+  IGDB needs a Twitch Client ID *and* Client Secret — see
+  [Configuration](../configuration.md). Without them the picker says which
+  credential is missing rather than reporting "No covers found for this
+  title.", which would be untrue: the artwork exists, Shelf just cannot ask
+  for it.
 - **Metadata** — title, authors, publisher, year, pages, ISBN, language,
   series and position, platform (games), synopsis. **Fetch synopsis** pulls
   a description from Open Library, Google Books or Hardcover if one wasn't

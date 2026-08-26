@@ -7,7 +7,11 @@ import httpx
 from app.services import outbound
 
 TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search/movie"
-TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
+TMDB_IMAGE_ROOT = "https://image.tmdb.org/t/p"
+# Kept as its own constant — app/services/covers.py's cover-allowlist comment
+# names it by this name, and callers that only ever wanted the default poster
+# size still read more plainly as TMDB_IMAGE_BASE than as image_url(..., "w500").
+TMDB_IMAGE_BASE = f"{TMDB_IMAGE_ROOT}/w500"
 
 # A v3 "API Key" is 32 hex characters; a v4 "API Read Access Token" is a JWT.
 _V3_KEY = re.compile(r"[0-9a-fA-F]{32}")
@@ -44,6 +48,13 @@ def _auth(api_key: str) -> tuple[dict, dict]:
     return {}, {"Authorization": f"Bearer {api_key}"}
 
 
+def image_url(file_path: str, size: str = "w500") -> str:
+    """Build a full TMDb image URL from a `file_path` (e.g. `/abc.jpg`) and a
+    size token (e.g. `w500`, `original`). `file_path` carries TMDb's leading
+    slash, so this is a plain join of root, size, and path."""
+    return f"{TMDB_IMAGE_ROOT}/{size}{file_path}"
+
+
 async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -> dict | None:
     """Search TMDb by title, return first result as metadata dict.
 
@@ -73,7 +84,7 @@ async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -
         if not results:
             return None
         movie = results[0]
-        cover_url = f"{TMDB_IMAGE_BASE}{movie['poster_path']}" if movie.get("poster_path") else None
+        cover_url = image_url(movie["poster_path"]) if movie.get("poster_path") else None
         year = movie.get("release_date", "")[:4]
         return {
             "title": movie.get("title", ""),
@@ -108,7 +119,7 @@ async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, lim
             title = movie.get("title")
             if not title:
                 continue
-            cover_url = f"{TMDB_IMAGE_BASE}{movie['poster_path']}" if movie.get("poster_path") else None
+            cover_url = image_url(movie["poster_path"]) if movie.get("poster_path") else None
             year = movie.get("release_date", "")[:4]
             movies.append({
                 "tmdb_id": movie.get("id"),
@@ -118,6 +129,52 @@ async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, lim
                 "cover_url": cover_url,
             })
         return movies
+    except Exception:
+        return []
+
+
+async def search_posters(tmdb_id: int, api_key: str, client: httpx.AsyncClient, limit: int = 12) -> list[dict]:
+    """List a movie's available posters from TMDb's `/movie/{id}/images` endpoint.
+
+    Returns a `list[dict]`, each entry `{"file_path", "iso_639_1", "width",
+    "height"}` straight from TMDb's `posters` array — read with `.get()`
+    throughout, since the shape here is documented rather than freshly
+    re-verified against a live key. Entries with no `file_path` are skipped,
+    and the list is capped at `limit`. Building a display-ready candidate
+    (`url`/`thumbnail`/`source`) is the caller's job, not this client's.
+
+    `[]` on anything that goes wrong: non-200 (401/403 included), a malformed
+    JSON body, or a transport exception. This never raises `TmdbAuthError` —
+    unlike `lookup_by_title`, a rejected credential is indistinguishable here
+    from a movie with no posters, matching `search_movies`' existing contract.
+    That is a deliberate, narrower scope for this task, not an oversight.
+    """
+    extra_params, headers = _auth(api_key)
+    try:
+        resp = await outbound.fetch(
+            client, "GET",
+            f"https://api.themoviedb.org/3/movie/{tmdb_id}/images",
+            params=extra_params,
+            headers=headers,
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            return []
+        posters = resp.json().get("posters", [])
+        results = []
+        for poster in posters:
+            file_path = poster.get("file_path")
+            if not file_path:
+                continue
+            results.append({
+                "file_path": file_path,
+                "iso_639_1": poster.get("iso_639_1"),
+                "width": poster.get("width"),
+                "height": poster.get("height"),
+            })
+            if len(results) >= limit:
+                break
+        return results
     except Exception:
         return []
 

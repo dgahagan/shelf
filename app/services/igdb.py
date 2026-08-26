@@ -15,7 +15,11 @@ logger = logging.getLogger(__name__)
 
 TWITCH_TOKEN_URL = "https://id.twitch.tv/oauth2/token"
 IGDB_API_URL = "https://api.igdb.com/v4"
-IGDB_IMAGE_BASE = "https://images.igdb.com/igdb/image/upload/t_cover_big/"
+IGDB_IMAGE_ROOT = "https://images.igdb.com/igdb/image/upload"
+# Kept as its own constant — app/services/covers.py's cover-allowlist comment
+# names it by this name, and callers that only ever wanted the default cover
+# size still read more plainly as IGDB_IMAGE_BASE than as image_url(..., "t_cover_big").
+IGDB_IMAGE_BASE = f"{IGDB_IMAGE_ROOT}/t_cover_big/"
 
 # Cached OAuth tokens, keyed on (client_id, client_secret) -> (token, expires)
 _token_cache: dict[tuple[str, str], tuple[str, float]] = {}
@@ -53,6 +57,12 @@ PLATFORM_IDS = {
     "xboxsx": 169,
     "pc": 6,
 }
+
+
+def image_url(image_id: str, size: str = "t_cover_big") -> str:
+    """Build a full IGDB image URL from an `image_id` and a size token (e.g.
+    `t_cover_big`, `t_1080p`). Plain join of root, size, and id."""
+    return f"{IGDB_IMAGE_ROOT}/{size}/{image_id}.jpg"
 
 
 async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClient) -> str | None:
@@ -137,6 +147,77 @@ async def search_games(
         return results
     except Exception:
         logger.debug("IGDB search error", exc_info=True)
+        return []
+
+
+async def search_game_art(
+    title: str,
+    client_id: str,
+    client_secret: str,
+    client: httpx.AsyncClient,
+    *,
+    platform: str | None = None,
+    limit: int = 5,
+) -> list[dict]:
+    """Search IGDB for a game's cover and artwork image ids, for the cover
+    picker gallery.
+
+    Returns a **list**, one dict per game — like `search_games` and unlike
+    `lookup_game` (dict-or-`None`). Each entry is
+    `{"title", "cover_image_id", "artwork_image_ids"}`, where `cover_image_id`
+    is `None` when the game has no cover and `artwork_image_ids` is capped at
+    3. These are IGDB image ids, not URLs — turning them into display
+    candidates (`url`/`thumbnail`/`source`) is the caller's job in
+    `covers.py`, not this client's.
+
+    `[]` on anything that goes wrong: no token, non-200, a malformed JSON
+    body, or a transport exception. This never raises.
+    """
+    token = await _get_token(client_id, client_secret, client)
+    if not token:
+        return []
+
+    headers = {
+        "Client-ID": client_id,
+        "Authorization": f"Bearer {token}",
+    }
+
+    # Build the IGDB API query
+    parts = [
+        f'search "{_escape(title)}"',
+        "fields name, cover.image_id, artworks.image_id",
+    ]
+    if platform and platform in PLATFORM_IDS:
+        parts.append(f"where platforms = ({PLATFORM_IDS[platform]})")
+    parts.append(f"limit {limit}")
+    query = "; ".join(parts) + ";"
+
+    try:
+        resp = await outbound.fetch(
+            client, "POST",
+            f"{IGDB_API_URL}/games",
+            headers=headers,
+            content=query,
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            logger.debug("IGDB art search failed: HTTP %d — %s", resp.status_code, resp.text[:200])
+            return []
+
+        results = []
+        for game in resp.json():
+            cover = game.get("cover") or {}
+            artworks = game.get("artworks") or []
+            results.append({
+                "title": game.get("name", ""),
+                "cover_image_id": cover.get("image_id"),
+                "artwork_image_ids": [
+                    a["image_id"] for a in artworks if a.get("image_id")
+                ][:3],
+            })
+        return results
+    except Exception:
+        logger.debug("IGDB art search error", exc_info=True)
         return []
 
 
@@ -231,7 +312,7 @@ def _parse_game(game: dict) -> dict:
     cover_url = None
     cover = game.get("cover")
     if cover and cover.get("image_id"):
-        cover_url = f"{IGDB_IMAGE_BASE}{cover['image_id']}.jpg"
+        cover_url = image_url(cover["image_id"])
 
     # Platform names
     platform_names = [p.get("name", "") for p in game.get("platforms", []) if p.get("name")]

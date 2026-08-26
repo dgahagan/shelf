@@ -4,6 +4,56 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.20.0] - 2026-08-26
+
+**Find cover** searched for a book no matter what the item was. On a DVD it
+asked Google Books and Open Library for a film poster, and on a video game it
+asked them for box art — so the picker that 0.19.0 made reachable everywhere
+was useful on roughly one media type. It now asks the source that actually
+holds the artwork: TMDb for discs, IGDB for games.
+
+### Added
+
+- **DVDs and Blu-rays search TMDb's poster set for the film.** A film usually
+  has one poster in many languages rather than many different posters, so each
+  tile is labelled by language — `TMDb · EN`, `TMDb · FR`. The item's year
+  picks the right film when several share a title: *Dune* (1984) and *Dune*
+  (2021) return completely different posters.
+- **Video games search IGDB, and get both kinds of art.** Cover art and key
+  artwork come back as separate tiles, each labelled with the game it belongs
+  to and which kind it is — `IGDB · Portal · cover`, `IGDB · Portal · art` —
+  so a search spanning a series is not ambiguous. The item's stored platform
+  narrows the search when it is set.
+- **The picker says which credential is missing.** A DVD with no TMDb key
+  reads *"DVD cover search needs a TMDb API key — add one in Settings →
+  Integrations."* instead of "No covers found for this title." — the artwork
+  exists; Shelf just could not ask for it. A configured provider that
+  genuinely found nothing still says "No covers found."
+
+### Changed
+
+- **Which source Find cover asks depends on the item's media type.** Books,
+  ebooks, audiobooks, kids' books and comics are unchanged — still Google
+  Books and Open Library, still combining the item's stored author with your
+  query. DVDs and games no longer do; they search on the title (or what you
+  type) alone. An item whose media type Shelf does not recognise takes the
+  book path rather than failing.
+- **The automatic cover chain is untouched.** The cascade that runs when an
+  item is added (Open Library → Hardcover → DNB → Amazon → Google Books →
+  IGDB) and the background retry queue behave exactly as before. Only the
+  human-driven picker dispatches on media type.
+
+### Notes
+
+- IGDB key artwork is landscape (16:9) where cover art is portrait. The item
+  page letterboxes it, but the Browse grid crops it to a portrait card, which
+  can leave a wide artwork looking like a vertical slice. Pick cover art if
+  you want the Browse thumbnail to read well.
+- A game whose recorded platform genuinely never had that title returns no
+  results, because the platform filter is doing its job. Typing a different
+  query does not lift it — the platform comes from the item. Clear or correct
+  the platform on the item if the search should be wider.
+
 ## [0.19.0] - 2026-08-26
 
 The cover picker's gallery already existed, but it was almost entirely
@@ -1647,6 +1697,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.20.0]: https://github.com/dgahagan/shelf/releases/tag/v0.20.0
 [0.19.0]: https://github.com/dgahagan/shelf/releases/tag/v0.19.0
 [0.18.0]: https://github.com/dgahagan/shelf/releases/tag/v0.18.0
 [0.17.7]: https://github.com/dgahagan/shelf/releases/tag/v0.17.7

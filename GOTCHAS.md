@@ -828,6 +828,23 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     pre-fix tree caught it. If a scanner's fixture writes one file, it pins
     nothing about per-file state — write two, and assert both filenames
     appear in the output.
+
+  One more, found **twice in one run** on `feat/cover-sources-media`
+  (2026-08-26) — this one is about how a *plan* specifies the check:
+  - **A mutation instruction must name which pin it is expected to break, and
+    the pairing has to be checked.** The plan told T2 to mutate `image_url`'s
+    default size and "confirm **both** regressions fail". Only one can:
+    `IGDB_IMAGE_BASE` is a standalone literal, not derived through the helper,
+    so the constant-equality pin is a separate anchor that mutation cannot
+    reach. It told T4 to mutate the IGDB gate "to check `igdb_client_id` only
+    and confirm the **secret set alone** test fails" — inverted; checking only
+    the id is what makes the *id-alone* test fail. Both builders reported the
+    discrepancy instead of weakening a test, which is the good outcome, but a
+    plan that names the wrong pin invites the bad one: the quickest way to
+    make the stated sentence true is to loosen the assertion. Write the
+    instruction as "mutate X → expect test Y to fail", one pair per line, and
+    for a **compound** guard run one mutation per operand rather than one
+    mutation and a claim about both.
   One more, found while mutation-checking `feat/issue-36-scan-enrichment-repair`
   (2026-08-24):
   - **Reverting the implementation can break *collection*, not the test.** The
@@ -1732,6 +1749,46 @@ grep -rn 'await [a-z_]*\.read()' app/routers/ | grep -vc 'read([^)]'
 - **Status:** documented — a lint candidate: "a bare `.read()` on a form file
   object" is greppable, though telling an upload apart from a small
   known-bounded read needs judgement.
+
+## G56 — When a test stubs a whole service module with `AsyncMock()`
+
+- **Rule:** Re-assign every **sync** helper on that stub as a `MagicMock`.
+  `AsyncMock()` makes *every* attribute an async child, so a plain function
+  reached through it returns an un-awaited coroutine instead of its value —
+  and the calling code stores that coroutine happily. Setting `.side_effect`
+  does not fix it; the lambda runs, the result is still wrapped.
+- **Why:** the failure is silent in exactly the assertions people write for a
+  fan-out. This repo's service modules deliberately mix the two — `tmdb`
+  has async `search_movies`/`search_posters` beside sync `_auth`/`image_url`,
+  `igdb` has async `search_game_art` beside sync `image_url`/`_escape`/
+  `_parse_game` — so `monkeypatch.setattr(covers, "tmdb", AsyncMock())` is the
+  natural stub and it silently poisons the sync half. On `feat/cover-sources-media`
+  two cover-gallery cap tests (`len(result) == 12`) passed **vacuously**: every
+  candidate's `url` was a coroutine object, which has a length-1 list around it
+  just like a string does. Only the two tests that compared a URL to its
+  expected *string* caught it. A `RuntimeWarning: coroutine ... was never
+  awaited` is emitted, but pytest buries it in the warnings summary of a green
+  run.
+- **Evidence:** `798e742` (2026-08-26, plan cover-sources-media T3) —
+  `tests/test_cover_dispatch.py`'s `no_providers` fixture assigns
+  `tmdb.image_url = MagicMock(side_effect=...)` and `igdb.image_url =
+  MagicMock(side_effect=...)` explicitly, with a docstring saying why.
+- **Verify:** the mixed shape is still there, so the trap is still live
+  (expect hits in both lists):
+
+```bash
+grep -n "^async def\|^def " app/services/tmdb.py app/services/igdb.py
+```
+
+  Both files must show `def` and `async def` at module level. Only `async def`
+  would mean the clients were made uniformly async and this entry retires.
+- **Also:** the cheap general form — **assert on a value, not on a count.**
+  `len(result) == 12` cannot tell a list of URLs from a list of coroutines;
+  `result[0]["url"] == "https://…"` can. Where a test must count, pair it with
+  one assertion that reads a field.
+- **Status:** documented — a lint candidate: "a `MagicMock`/`AsyncMock`
+  assigned over a module attribute whose target is a sync `def`" is
+  mechanically checkable, though it needs to resolve the patched symbol.
 
 ## Graveyard
 

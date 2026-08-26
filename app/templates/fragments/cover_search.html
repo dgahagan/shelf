@@ -32,7 +32,7 @@
             {% if failed_url and failed_url == c.url %}
             <div class="absolute top-0 inset-x-0 bg-shelf-error/90 text-[10px] text-white px-1 py-0.5 text-center">Failed</div>
             {% endif %}
-            <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center">{{ c.source }}</div>
+            <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center leading-tight break-words">{{ c.source }}</div>
         </button>
         {% endfor %}
     </div>
@@ -40,8 +40,10 @@
     {% if not candidates %}
     {# Said whenever the search came back empty — including when the current-cover
        tile above is the only thing in the grid, or the user is stranded with no
-       explanation for why nothing appeared. #}
-    <p class="text-sm text-shelf-muted">No covers found for this title.</p>
+       explanation for why nothing appeared. When the route supplied search_note
+       (the media type's provider is unconfigured), that note replaces the
+       generic text below so the user knows why nothing appeared. #}
+    <p class="text-sm text-shelf-muted">{{ search_note or "No covers found for this title." }}</p>
     {% endif %}
 
     <div class="mt-3 space-y-2">

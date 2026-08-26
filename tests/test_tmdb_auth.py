@@ -9,6 +9,7 @@ failure is a distinct signal.
 
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import pytest
 
 from app.services import tmdb
@@ -191,6 +192,105 @@ class TestTestKeyMessages:
         fake_fetch.return_value = StubResponse(200, json_data={"total_results": 1})
         await tmdb.test_key(V3_KEY, object())
         assert fake_fetch.await_count == 1
+
+
+class TestSearchPosters:
+    """search_posters lists a movie's poster set for the gallery picker (T1).
+
+    Reuses `fake_fetch`/`StubResponse`/`V3_KEY`/`V4_TOKEN` from the top of this
+    module — no new fixture file, per this repo's inline-stub convention.
+    """
+
+    async def test_a_v3_key_authenticates_as_a_query_parameter(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": []})
+        await tmdb.search_posters(603, V3_KEY, object())
+        call = fake_fetch.await_args
+        assert call.kwargs["params"]["api_key"] == V3_KEY
+        assert not call.kwargs.get("headers")
+
+    async def test_a_v4_token_authenticates_as_a_bearer_header(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": []})
+        await tmdb.search_posters(603, V4_TOKEN, object())
+        call = fake_fetch.await_args
+        assert call.kwargs["headers"] == {"Authorization": f"Bearer {V4_TOKEN}"}
+        assert "api_key" not in call.kwargs["params"]
+
+    async def test_the_url_requested_targets_the_movie_images_endpoint(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": []})
+        await tmdb.search_posters(603, V4_TOKEN, object())
+        call = fake_fetch.await_args
+        assert "/movie/603/images" in call.args[2]
+
+    async def test_one_dict_per_poster_carries_file_path_and_language(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": [
+            {"file_path": "/a.jpg", "iso_639_1": "en", "width": 2000, "height": 3000},
+            {"file_path": "/b.jpg", "iso_639_1": None, "width": 1500, "height": 2250},
+        ]})
+        result = await tmdb.search_posters(603, V4_TOKEN, object())
+        assert result == [
+            {"file_path": "/a.jpg", "iso_639_1": "en", "width": 2000, "height": 3000},
+            {"file_path": "/b.jpg", "iso_639_1": None, "width": 1500, "height": 2250},
+        ]
+
+    async def test_a_poster_with_no_file_path_is_skipped(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": [
+            {"iso_639_1": "en", "width": 2000, "height": 3000},
+            {"file_path": "/b.jpg", "iso_639_1": "en", "width": 1500, "height": 2250},
+        ]})
+        result = await tmdb.search_posters(603, V4_TOKEN, object())
+        assert [p["file_path"] for p in result] == ["/b.jpg"]
+
+    async def test_the_limit_truncates_the_result_list(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": [
+            {"file_path": f"/{i}.jpg"} for i in range(20)
+        ]})
+        result = await tmdb.search_posters(603, V4_TOKEN, object(), limit=3)
+        assert len(result) == 3
+
+    async def test_a_500_yields_an_empty_list(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(500)
+        assert await tmdb.search_posters(603, V4_TOKEN, object()) == []
+
+    async def test_a_401_yields_an_empty_list_rather_than_raising(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(401)
+        assert await tmdb.search_posters(603, V4_TOKEN, object()) == []
+
+    async def test_a_transport_error_yields_an_empty_list(self, fake_fetch):
+        fake_fetch.side_effect = httpx.ConnectError("boom")
+        assert await tmdb.search_posters(603, V4_TOKEN, object()) == []
+
+    async def test_no_posters_in_the_response_yields_an_empty_list(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"posters": []})
+        assert await tmdb.search_posters(603, V4_TOKEN, object()) == []
+
+
+class TestImageUrlRegression:
+    """The constant split must not change a single byte of the two existing
+    cover-URL call sites — that is the regression that matters for T1."""
+
+    async def test_search_movies_still_builds_the_same_poster_url(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"results": [{
+            "id": 603,
+            "title": "The Matrix",
+            "overview": "A hacker learns the truth.",
+            "release_date": "1999-03-30",
+            "poster_path": "/abc.jpg",
+        }]})
+        result = await tmdb.search_movies("The Matrix", V3_KEY, object())
+        assert result[0]["cover_url"] == "https://image.tmdb.org/t/p/w500/abc.jpg"
+
+    async def test_lookup_by_title_still_builds_the_same_poster_url(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"results": [{
+            "title": "The Matrix",
+            "overview": "A hacker learns the truth.",
+            "release_date": "1999-03-30",
+            "poster_path": "/abc.jpg",
+        }]})
+        result = await tmdb.lookup_by_title("The Matrix", V3_KEY, object())
+        assert result["cover_url"] == "https://image.tmdb.org/t/p/w500/abc.jpg"
+
+    def test_tmdb_image_base_is_unchanged(self):
+        assert tmdb.TMDB_IMAGE_BASE == "https://image.tmdb.org/t/p/w500"
 
 
 class TestTestKeyEndpoint:
