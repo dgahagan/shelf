@@ -82,8 +82,8 @@ Shelf strips format tags, platform suffixes and edition wording, and if that
 still finds nothing it retries with progressively shorter versions of the
 title. It stops short of searching a single short word, because a one-word
 search comes back with a *different* film rather than nothing. When no provider
-matches, the item is still added under its own title — use **Retry ISBN** or
-**Search by Title** on the item page to fill it in.
+matches, the item is still added under its own title — use **Retry cover** or
+**Find cover** on the item page to fill it in.
 
 ## Tips
 

@@ -5,9 +5,15 @@ its home.
 
 ## What's on the page
 
-- **Cover**, with **Find cover** (search Open Library / Google Books and pick
-  one), **Upload** your own image, or **Retry cover** to re-run the automatic
-  chain.
+- **Cover**, with **Find cover** (search by title, or type your own query,
+  and pick a candidate — your current cover is shown first, marked
+  *Current*, for comparison), **Upload** your own image, or **Remove
+  cover**. These work on an item that already has a cover, not just a
+  cover-less one; **Retry cover** (re-running the automatic chain) only
+  shows up when a cover is missing, since it would have nothing to do
+  otherwise. The item's stored author is always combined with whatever you
+  type, so if the author on the record is wrong no query will find the
+  cover — fix the author with **Edit**, or use **Upload**.
 - **Metadata** — title, authors, publisher, year, pages, ISBN, language,
   series and position, platform (games), synopsis. **Fetch synopsis** pulls
   a description from Open Library, Google Books or Hardcover if one wasn't
@@ -35,8 +41,11 @@ ISBNs) → Amazon → Google Books → IGDB (games). A miss is retried in the
 background, and Settings → Data → Maintenance → **Retry missing covers** sweeps
 every cover-less item with an ISBN.
 
-Covers are stored locally in `data/covers/`; nothing hot-links to the
-source. Upload accepts JPEG / PNG / WebP.
+Covers you keep are stored locally in `data/covers/`; nothing hot-links to
+the source. While the picker is open, though, the candidate tiles *are*
+remote thumbnails fetched live from the source you're searching — only the
+one you select gets downloaded and saved locally. Upload accepts JPEG /
+PNG / GIF / WebP.
 
 ## Reading status vs. Hardcover
 

@@ -9,6 +9,9 @@ logins, three roles.
 | **Editor** | Add / edit / delete items, all scan modes, covers, lend and return, tags, import / export CSV and archives |
 | **Viewer** | Browse, search, Series, Stats, Store Mode, set reading status on items, export CSV |
 
+Cover controls — **Find cover**, **Upload**, **Remove cover**, **Retry
+cover** — are editor+; a viewer doesn't see them on the item page at all.
+
 The first account created in the setup wizard is an admin. There must always
 be at least one admin.
 

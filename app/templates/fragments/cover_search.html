@@ -1,16 +1,67 @@
 <div class="mt-3">
+    <input type="text" id="cover-query-{{ item_id }}" name="query" value="{{ query or '' }}"
+           placeholder="Search covers…"
+           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1.5 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 mb-2"
+           hx-get="/api/items/{{ item_id }}/cover-search"
+           hx-target="#cover-candidates" hx-swap="innerHTML"
+           hx-trigger="keyup changed delay:400ms"
+           hx-include="#cover-query-{{ item_id }}">
+
     {% if candidates %}
     <p class="text-sm text-shelf-muted mb-2">Select a cover:</p>
-    <div class="grid grid-cols-3 sm:grid-cols-5 gap-3">
+    {% endif %}
+    {% if candidates or cover_path %}
+    {# Two columns, not five: this grid lives inside item_detail.html's fixed
+       192 px cover column, so `sm:grid-cols-5` rendered 29 x 42 px tiles on
+       desktop — too small to tell candidates apart, which is the one thing
+       the picker exists for. Two columns give ~90 px. #}
+    <div class="grid grid-cols-2 gap-3">
+        {% if cover_path %}
+        <div data-testid="current-cover"
+             class="relative rounded-lg overflow-hidden border border-shelf-accent bg-shelf-card">
+            <img src="/{{ cover_path }}" alt="Current cover" class="w-full aspect-[2/3] object-cover">
+            <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center">Current</div>
+        </div>
+        {% endif %}
         {% for c in candidates %}
         <button hx-post="/api/items/{{ item_id }}/cover-select" hx-vals='{"url":"{{ c.url }}"}'
-                class="group relative rounded-lg overflow-hidden border border-shelf-border hover:border-shelf-accent/50 transition-colors cursor-pointer bg-shelf-card">
+                hx-target="#cover-candidates" hx-swap="innerHTML"
+                hx-include="#cover-query-{{ item_id }}"
+                class="group relative rounded-lg overflow-hidden border {% if failed_url and failed_url == c.url %}border-shelf-error{% else %}border-shelf-border hover:border-shelf-accent/50{% endif %} transition-colors cursor-pointer bg-shelf-card">
             <img src="{{ c.thumbnail }}" alt="Cover candidate" class="w-full aspect-[2/3] object-cover" loading="lazy">
+            {% if failed_url and failed_url == c.url %}
+            <div class="absolute top-0 inset-x-0 bg-shelf-error/90 text-[10px] text-white px-1 py-0.5 text-center">Failed</div>
+            {% endif %}
             <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center">{{ c.source }}</div>
         </button>
         {% endfor %}
     </div>
-    {% else %}
+    {% endif %}
+    {% if not candidates %}
+    {# Said whenever the search came back empty — including when the current-cover
+       tile above is the only thing in the grid, or the user is stranded with no
+       explanation for why nothing appeared. #}
     <p class="text-sm text-shelf-muted">No covers found for this title.</p>
     {% endif %}
+
+    <div class="mt-3 space-y-2">
+        <form hx-post="/api/items/{{ item_id }}/cover-upload" hx-swap="none" enctype="multipart/form-data"
+              data-testid="cover-upload"
+              hx-disabled-elt="find input[type=file], find button"
+              class="flex flex-wrap items-center gap-2">
+            <input type="file" name="cover" accept="image/*"
+                   class="block w-full min-w-0 text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
+            <button type="submit"
+                    class="px-3 py-1.5 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors whitespace-nowrap">
+                Upload
+            </button>
+        </form>
+        {% if cover_path %}
+        <button hx-post="/api/items/{{ item_id }}/cover-remove" hx-swap="none" hx-confirm="Remove this cover?"
+                data-testid="cover-remove"
+                class="px-3 py-1.5 bg-shelf-hover text-shelf-error rounded-lg text-sm hover:bg-shelf-border transition-colors">
+            Remove cover
+        </button>
+        {% endif %}
+    </div>
 </div>

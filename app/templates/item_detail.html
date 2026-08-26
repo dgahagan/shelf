@@ -8,27 +8,34 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <div class="flex flex-col sm:flex-row gap-6">
             <!-- Cover -->
-            <div class="shrink-0">
+            {# The width is declared here rather than left to the image, so the
+               picker's controls below have a real budget to lay out inside. #}
+            <div class="w-48 shrink-0">
                 {% if item.cover_path %}
                 <img src="/{{ item.cover_path }}" alt="{{ item.title }}" class="w-48 rounded-lg shadow-lg">
                 {% else %}
-                <div class="w-48">
-                    <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
-                        <span>No Cover</span>
-                        <div class="flex flex-col gap-1">
-                            <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
-                                    data-after-request="reload"
-                                    class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
-                                Retry ISBN
-                            </button>
-                            <button hx-get="/api/items/{{ item.id }}/cover-search" hx-target="#cover-candidates" hx-swap="innerHTML"
-                                    class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
-                                Search by Title
-                            </button>
-                        </div>
-                    </div>
-                    <div id="cover-candidates"></div>
+                <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
+                    <span>No Cover</span>
+                    {% if user and user.role in ('admin', 'editor') %}
+                    {# Retry ISBN re-runs the automatic download chain, so it means
+                       nothing once a cover exists — it alone stays missing-only. #}
+                    <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
+                            data-after-request="reload"
+                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
+                        Retry ISBN
+                    </button>
+                    {% endif %}
                 </div>
+                {% endif %}
+
+                {% if user and user.role in ('admin', 'editor') %}
+                <div class="flex flex-col gap-1 mt-2" data-testid="cover-controls">
+                    <button hx-get="/api/items/{{ item.id }}/cover-search" hx-target="#cover-candidates" hx-swap="innerHTML"
+                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
+                        Find cover
+                    </button>
+                </div>
+                <div id="cover-candidates"></div>
                 {% endif %}
             </div>
 

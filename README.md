@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-1581%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-162%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-1606%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-164%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -107,7 +107,7 @@ data/
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books, with German (978-3) ISBNs routed through the Deutsche Nationalbibliothek (DNB) first
 - **Edition language** — captured on lookup, editable on items, filterable in Browse; a settings dropdown picks the preferred language for title searches
-- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual upload/search
+- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/remove, on any item
 - **UPC support** — scan DVDs and Blu-rays with TMDb lookup
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges. Platform tracking with a customizable platform list (30+ platforms from Atari 2600 to PS5)
 
@@ -247,7 +247,7 @@ marked `noindex`, and revocable at any time.
 | Role | Can do |
 |------|--------|
 | **Admin** | Everything: settings, users, locations, sync, bulk ops, logs |
-| **Editor** | Add/edit/delete items, scan (all modes), manage covers, checkout/checkin, import/export |
+| **Editor** | Add/edit/delete items, scan (all modes), covers (find/upload/remove), checkout/checkin, import/export |
 | **Viewer** | Browse, search, reading status, export CSV, view stats |
 
 ## Metadata Sources

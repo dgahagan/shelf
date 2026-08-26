@@ -61,7 +61,14 @@ covers.
 
 **Why did a book get the wrong cover / edition?**
 Metadata sources key on ISBN but sometimes collapse editions. On the item
-page use **Find cover** to pick another, or **Edit** to fix the record.
+page use **Find cover** to pick another — it works even when the item
+already has a cover, not just a blank one — or **Edit** to fix the record.
+
+**I removed a cover by mistake — can I get it back?**
+Only indirectly, and only for a book added in the last 48 hours: a
+container restart re-queues cover-less recent books for automatic lookup,
+which would refetch one. Older items, or a cover you don't want refetched,
+need **Find cover** or **Upload** to set a new one by hand.
 
 **Is the valuation a resale value?**
 No — ISBNdb list price, i.e. replacement cost. Right for insurance, not for

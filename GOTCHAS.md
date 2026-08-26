@@ -697,9 +697,17 @@ grep -rn 'on("dialog"\|once("dialog"' tests/e2e/
 
 ```bash
 python -c "from app.services.authors import matches; assert matches(None, 'Anyone')"
-grep -n "cover_path IS NULL" app/routers/*.py app/services/*.py
-# each hit must be book-filtered or admin-invoked
+grep -n "cover_path IS NULL" app/routers/*.py app/services/*.py | grep -E 'SELECT|UPDATE'
+# 4 hits as of 2026-08-25; each must be book-filtered or admin-invoked
 ```
+
+  **The bare grep matches prose, not only SQL** (G53's shape, in a Verify line
+  rather than a guard). `feat/cover-picker` added a docstring at the new
+  `cover-remove` route explaining that removal re-arms this very requeue — a
+  correct comment, and a hit that is neither book-filtered nor admin-invoked
+  because it is not a query at all. Filtering on `SELECT|UPDATE` is what drops
+  it; filtering on `#` does **not**, because the offending line is inside a
+  docstring. Read any surviving hit before filing it as a violation.
 
 - **Status:** documented.
 
@@ -795,6 +803,18 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     Zero-count and absence assertions need a positive wait for the action
     first (here: poll until the second `/plan` call is recorded), otherwise
     they assert the starting state.
+  One more, found while reviewing an E2E stub on `feat/cover-picker` (2026-08-25):
+  - **A hand-written stub asserts against itself.** An E2E test stubbed the
+    picker's `cover-search` endpoint with `page.route(...).fulfill()` — correct
+    for keeping the leg off the network — but hand-wrote the fragment body. Its
+    "assert the *Current* tile renders" then checked markup **the test itself
+    authored**, so deleting `data-testid="current-cover"` from the real template
+    would not have failed it. Fixed by rendering the real template through a
+    plain Jinja `Environment` with fake *data*: stub the data, never the markup.
+    Mutation-checked both ways — red after the rewrite, green before it. The
+    general question is this entry's, one layer out: not "which branch does my
+    pin land in" but **"whose markup am I asserting on?"**
+
   One more, found while porting a lint rule on `feat/issue-34-alpine-guard-lint`
   (2026-08-23):
   - **A single-file fixture cannot see per-file state.** The new Alpine guard
@@ -1236,10 +1256,22 @@ grep -rn "post_data_buffer" tests/e2e/
 python -m pytest tests/e2e/test_responsive.py -m e2e -q
 ```
 
+- **The gate only sees each page in its DEFAULT state.** It navigates and
+  measures; it does not click. Anything that renders only *after* an
+  interaction — a picker that opens, a panel that expands, a fragment htmx
+  swaps in — is outside it, and no failure will ever tell you so. On
+  `feat/cover-picker` (2026-08-25) the whole hazard was a bare
+  `<input type="file">` inside the cover picker, and `test_responsive.py:67`
+  walks `/item/{item_id}` with that picker **closed**. Declaring the width
+  (`w-48 shrink-0` on the column, `block w-full min-w-0` on the input) was the
+  entire defence; the numbers were then measured by hand at 320 px and 390 px
+  rather than assumed. **When your element only exists after a click, the gate
+  is not your gate — measure it yourself and put the numbers in the commit.**
 - **Status:** gated — `tests/e2e/test_responsive.py` (in `make test-e2e` and
-  in CI). The gate catches the *consequence*; the two rules above are how you
-  fix it once it fires, which is why this entry stays rather than shrinking to
-  a one-liner. Opt an element out with `data-narrow-ok`.
+  in CI), *for content in a page's default state only* (see above). The gate
+  catches the *consequence*; the two rules above are how you fix it once it
+  fires, which is why this entry stays rather than shrinking to a one-liner.
+  Opt an element out with `data-narrow-ok`.
 
 ## G44 — When adding a suite-wide listener to Playwright `Page` objects
 
@@ -1596,6 +1628,110 @@ grep -rn 'add_init_script' tests/e2e/
   the rule: if it is inside a comment, the guard is not wrong about the file.
 - **Status:** documented. Not a lint candidate — a lint for this would need
   the same comment-awareness the guards themselves lack.
+
+## G54 — When an htmx control's response has to land somewhere specific
+
+- **Rule:** Every control that triggers a swap needs its swap destination
+  decided **on the control itself**. htmx falls back to the **triggering
+  element** when nothing in the control's own ancestor chain carries an
+  `hx-target` — and a target on the button that *loaded* a fragment is not
+  inherited by controls *inside* that fragment, because the loader is a
+  sibling of the container, not an ancestor of its contents. Two shapes, one
+  rule:
+  - **A control that replaces a container** carries the explicit
+    `hx-target="#that-container" hx-swap="innerHTML"`.
+  - **A control whose route returns an empty body** carries
+    `hx-swap="none"` and **no** `hx-target` at all. Otherwise htmx's default
+    (`innerHTML` into the trigger) blanks the control's own label, or the
+    surrounding UI, on the way past. `HX-Redirect` still navigates on success
+    regardless of swap, so `none` costs nothing.
+- **Why:** both failures are invisible to every test that reads status codes
+  and DB state, and neither looks like a targeting bug when it fires — the
+  request succeeds, the server is right, and the page quietly eats itself.
+  The first shape renders an entire picker inside one grid cell; the second
+  wipes the surrounding controls the instant an upload is *rejected*, which
+  is exactly when the user needs them.
+- **Evidence:** `feat/cover-picker` (2026-08-25). The Codex plan review
+  caught both on paper before any code existed, which is the only reason they
+  are cheap. `fragments/cover_search.html`'s candidate tiles carried only
+  `hx-post`/`hx-vals`; the sole `hx-target="#cover-candidates"` sat on the
+  loader button in `item_detail.html`, a **sibling** of
+  `<div id="cover-candidates">`. Making the failure path re-render the whole
+  gallery would therefore have swapped the gallery into the clicked tile
+  (`c9c58b4`). Separately, `cover-upload` and `cover-remove` both return an
+  empty body by design, so both controls are `hx-swap="none"` with no target
+  (`a73a297`, `830575a`). Pinned in `tests/test_covers.py`'s
+  `test_fragment_wiring_targets_and_swap_modes` — which extracts each
+  element's **own opening tag** by regex, because a page-level
+  `assert "hx-target" not in html` is trivially satisfiable and defends
+  nothing when sibling elements legitimately carry one.
+- **Verify:** every request-issuing element in a swapped-in fragment settles
+  its own destination — an `hx-target`, or `hx-swap="none"` (empty body), or
+  `hx-swap="outerHTML"` (it replaces itself, e.g. a load-more sentinel). Must
+  print the OK line. **A plain `grep` does not work here** — these attributes
+  wrap across lines, so a line-based check reports every multi-line tag as a
+  violation and gets ignored within a day:
+
+```bash
+python3 -c "
+import re, pathlib
+bad = []
+for p in sorted(pathlib.Path('app/templates/fragments').glob('**/*.html')):
+    src = p.read_text()
+    for m in re.finditer(r'<[a-z]+\b[^>]*hx-(?:post|get|put|delete)=[^>]*>', src, re.S):
+        if re.search(r'hx-target|hx-swap=\"(none|outerHTML)\"', m.group(0)): continue
+        bad.append(f'{p}:{src.count(chr(10),0,m.start())+1}')
+print('\n'.join(bad) or 'OK: every swap destination is explicit')
+"
+```
+
+- **Status:** documented — a lint candidate, and the check above is already
+  most of one. What stops it graduating is the *pairing*: whether a control
+  should have a target or `none` depends on what its route returns, which the
+  template cannot know. The check proves a decision was made, not that it was
+  the right one.
+
+## G55 — When a size ceiling is enforced after the whole body is in memory
+
+- **Rule:** Bound the read, then validate. `await upload.read()` with no
+  argument allocates the entire upload before any ceiling is consulted, so a
+  `len(content) > MAX` check downstream rejects the request without ever
+  having bounded the memory it cost. Read `MAX + 1` instead — the extra byte
+  is what lets the existing `> MAX` branch still fire — and leave the
+  validation exactly where it is.
+- **Why:** the check reads as if it protects the process, and it does not. It
+  protects the *stored file*. Nothing fails, no test goes red, and the gap is
+  invisible until someone posts something large. This is hardening rather
+  than wrong behaviour wherever the route is authenticated, which is why it
+  is worth one argument and not worth a redesign.
+- **Evidence:** raised as R5 by the Codex review of `feat/cover-picker`
+  (2026-08-25) and applied in `a73a297`:
+  `content = await cover_file.read(covers.MAX_COVER_SIZE + 1)`, with
+  `save_uploaded_cover`'s existing `> MAX_COVER_SIZE` branch unchanged
+  (`app/services/covers.py:100`).
+- **Seven call sites still carry the unbounded shape, and this entry was
+  written knowing it** — the cover uploads at `app/routers/items.py:532` and
+  `:811`, the **photo-intake upload at `intake.py:91`** (the largest payload of
+  the set, and the one a first pass at this entry missed), the archive imports
+  at `archive.py:102` and `:140`, the DB restore at `settings.py:254`, and the
+  CSV import at `items_csv.py:82`. All were out of
+  `feat/cover-picker`'s scope. **This is G29's lesson repeating in advance:
+  documenting a rule is not the same as enforcing it**, and G29 shipped with
+  two live violations of its own rule still in the tree. If you are editing
+  any of those six paths for another reason, bound the read while you are
+  there; do not leave this entry describing a tree that mostly violates it.
+  (Note the ceiling differs per path — a CSV or archive import has no
+  `MAX_COVER_SIZE` to reuse and needs one chosen deliberately.)
+- **Verify:** the count of unbounded reads must go **down**, never up. Seven
+  as of 2026-08-25:
+
+```bash
+grep -rn 'await [a-z_]*\.read()' app/routers/ | grep -vc 'read([^)]'
+```
+
+- **Status:** documented — a lint candidate: "a bare `.read()` on a form file
+  object" is greppable, though telling an upload apart from a small
+  known-bounded read needs judgement.
 
 ## Graveyard
 

@@ -4,7 +4,50 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.19.0] - 2026-08-26
+
+The cover picker's gallery already existed, but it was almost entirely
+unreachable: the "Find cover" controls only rendered inside the "no cover"
+branch of the item page, so the moment any cover landed — including a wrong
+one — the only way to change it was tracking down a JPEG yourself and using
+the upload field on the edit page. Fixing an obviously wrong cover, the
+common case, was harder than fixing a missing one.
+
+### Added
+
+- **The cover picker is reachable on every item**, not just cover-less ones.
+  **Find cover** now opens the same candidate gallery whether or not the
+  item already has a cover.
+- **A query box in the picker.** Search any term instead of being stuck with
+  the item's stored title. The item's stored author still narrows the search
+  either way, so an item whose author is wrong may return nothing whatever
+  you type — upload an image in that case.
+- **The current cover renders as the first tile, marked *Current***, so you
+  compare candidates against what's on the item rather than against memory.
+- **Upload** now sits beside the gallery on the item page (previously only
+  on the edit page and on manual add). Accepts JPEG / PNG / GIF / WebP,
+  100 bytes to 10 MB; anything else is refused and the existing cover is
+  untouched.
+- **Remove cover.** Clears the cover; the image file is left on disk.
+  Removing the cover of a book added in the last 48 hours can be undone by
+  the automatic background retry after a container restart — an accepted,
+  narrow-window limitation; a durable "removed on purpose" flag is deferred.
+
+### Changed
+
+- The picker button is now labelled **Find cover** (was "Search by Title").
+- **Cover controls are editor+.** A viewer no longer sees them at all
+  (previously they rendered for viewers on cover-less items and 403'd on
+  click).
+- **Retry cover** ("Retry ISBN") now appears only when a cover is missing —
+  it re-runs the automatic download chain, which has nothing to do once a
+  cover already exists.
+
+### Fixed
+
+- **A failed cover pick no longer destroys the gallery.** The grid
+  re-renders with the failing tile marked, instead of replacing every
+  candidate with one line of error text.
 
 ## [0.18.0] - 2026-08-25
 
@@ -1604,6 +1647,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.19.0]: https://github.com/dgahagan/shelf/releases/tag/v0.19.0
 [0.18.0]: https://github.com/dgahagan/shelf/releases/tag/v0.18.0
 [0.17.7]: https://github.com/dgahagan/shelf/releases/tag/v0.17.7
 [0.17.6]: https://github.com/dgahagan/shelf/releases/tag/v0.17.6
