@@ -31,7 +31,7 @@ from app.database import get_db, get_game_platforms, get_setting
 from app.services import covers, detect, googlebooks, hardcover, national, openlibrary
 from app.services import cover_queue
 from app.services import authors as authors_svc
-from app.services import igdb, tmdb, upcitemdb
+from app.services import igdb, scan_outcome, tmdb, upcitemdb
 from app.services import upc as upc_svc
 from app.services import isbn as isbn_svc
 from app.services.item_write import insert_item
@@ -132,10 +132,27 @@ def filter_counts(db, values: dict, total: int) -> dict:
 def _toast_header(message: str, toast_type: str = "success") -> str:
     return json.dumps({"showToast": {"message": message, "type": toast_type}})
 
-async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient) -> tuple[dict | None, str, dict]:
-    """Look up book metadata across sources. Returns (metadata, source, hc_ids)."""
+async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient) -> tuple[dict | None, str, dict, bool]:
+    """Look up book metadata across sources.
+
+    Returns `(metadata, source, hc_ids, rate_limited)`. `rate_limited` is true
+    if **any** of the four sources answered 429 on this lookup — including one
+    the cascade short-circuited past on a hit. The caller that renders a scan
+    card uses it to say the miss may not be a genuine one; the callers with no
+    card ignore it.
+
+    The flag is part of what the cascade *found*, which is why it rides the
+    return rather than a callback threaded down from `scan_isbn` — a callback
+    would put three layers of plumbing between the caller and the fact. The
+    cost is four one-word caller edits.
+    """
     metadata = None
     source = "manual"
+    rate_limited = False
+
+    def _saw_rate_limit():
+        nonlocal rate_limited
+        rate_limited = True
 
     # National-bibliography routing: for registration groups with an
     # authoritative national source (e.g. 978-3 -> DNB), consult it before
@@ -143,7 +160,7 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
     provider = national.provider_for(isbn13)
     if provider:
         try:
-            metadata = await provider.lookup(isbn13, client)
+            metadata = await provider.lookup(isbn13, client, on_rate_limit=_saw_rate_limit)
         except Exception:
             logger.debug("National provider lookup failed for ISBN %s", isbn13, exc_info=True)
             metadata = None
@@ -151,13 +168,15 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
             source = provider.__name__.rsplit(".", 1)[-1]
 
     if not metadata:
-        metadata = await openlibrary.lookup(isbn13, client)
+        metadata = await openlibrary.lookup(isbn13, client, on_rate_limit=_saw_rate_limit)
         if metadata:
             source = "openlibrary"
 
     hc_ids = {}
     if not metadata and hc_token:
-        metadata = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
+        metadata = await hardcover.lookup_by_isbn(
+            isbn13, client, token=hc_token, on_rate_limit=_saw_rate_limit
+        )
         if metadata:
             source = "hardcover"
             hc_ids = {
@@ -166,14 +185,16 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
             }
 
     if not metadata:
-        metadata = await googlebooks.lookup(isbn13, client)
+        metadata = await googlebooks.lookup(isbn13, client, on_rate_limit=_saw_rate_limit)
         if metadata:
             source = "google"
 
     # Enrich with Hardcover data if primary source didn't have series/description
     if metadata and hc_token and source != "hardcover":
         if not metadata.get("series_name") or not metadata.get("description"):
-            hc_data = await hardcover.lookup_by_isbn(isbn13, client, token=hc_token)
+            hc_data = await hardcover.lookup_by_isbn(
+                isbn13, client, token=hc_token, on_rate_limit=_saw_rate_limit
+            )
             if hc_data:
                 if hc_data.get("series_name") and not metadata.get("series_name"):
                     metadata["series_name"] = hc_data["series_name"]
@@ -186,7 +207,7 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
                     "cover_url": hc_data.get("cover_url"),
                 }
 
-    return metadata, source, hc_ids
+    return metadata, source, hc_ids, rate_limited
 
 def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | None,
                source: str, hc_ids: dict) -> int:
@@ -395,6 +416,17 @@ def is_valid_media_type(value: str | None) -> bool:
     return value in MEDIA_TYPES
 
 
+# Which provider the UPC scan path asks for *metadata*, by resolved media type.
+# Deliberately not covers.MEDIA_TYPE_PROVIDERS: that map's fall-through sends
+# an unrecognised type to the book cover search, which is a working fallback
+# for covers and a lie for metadata. Written so a future MEDIA_TYPES member
+# gets the honest "no provider" answer by default rather than a film search.
+UPC_METADATA_PROVIDERS: dict[str, str] = {
+    "dvd": "tmdb",
+    "video_game": "igdb",
+}
+
+
 def _find_upc_row(db, upc_key: str, media_type: str):
     """The media_type-keyed duplicate row, as one patchable call.
 
@@ -414,16 +446,20 @@ def _find_upc_row(db, upc_key: str, media_type: str):
 
 
 def _upc_lookup_error(request, templates, upc_norm: str, media_type: str, mode: str, exc):
-    """The "check connectivity" card, shared by both outbound phases.
+    """The "check connectivity" card for the UPC Item DB product lookup.
 
-    `G47` note, so the next reader is not misled: this branch is very nearly
-    dead. `upcitemdb.lookup` catches every exception itself and returns None,
-    so the *lookup* phase above practically cannot reach here — a broken DNS
-    surfaces as "not found" instead, which is the wrong story to tell. The
-    TMDb phase can genuinely raise, which is the case this card still serves.
-    Giving `upcitemdb.lookup` a transport-vs-absent distinction is deferred
-    (see the plan's deferred table); it is a change to that client's contract,
-    not to this route.
+    Reached from that phase only. `upcitemdb.lookup` re-raises
+    `httpx.TimeoutException` and `httpx.NetworkError` and swallows everything
+    else to `None`, so an *unresolvable* barcode still reaches the manual-add
+    form while an *unreachable network* reaches this card. The TMDb phase
+    cannot: `tmdb.lookup_by_title` raises only `TmdbAuthError`, so a handler
+    there would be dead code that reads as live — GOTCHAS G47, hence none.
+
+    The scan is logged `error` rather than `not_found` on purpose: the log the
+    troubleshooting docs point a self-hoster at has to agree with the card, or
+    they go looking for a missing disc instead of a broken resolver.
+    Pinned by `tests/test_scan_upc_enrichment.py`'s
+    `TestATransportFailureIsNotAnAbsentBarcode`.
     """
     logger.warning("Network error looking up UPC %s: %s", upc_norm, type(exc).__name__)
     _log_scan(upc_norm, media_type, "error", mode=mode)
@@ -476,9 +512,20 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # below a fork chosen from the dropdown hint alone. Detection reads the
     # product's raw title and category, so the record has to be in hand before
     # anything decides which provider to ask.
+    # T6 — one flag threaded through both outbound phases below (UPC Item DB
+    # here, TMDb further down): the card does not say which phase saw the
+    # 429, so both close over the same closure rather than each getting its
+    # own. The game branch is a separate function with its own
+    # `igdb_rate_limited` (T3) — this flag never crosses that boundary.
+    lookup_rate_limited = False
+
+    def _saw_rate_limit():
+        nonlocal lookup_rate_limited
+        lookup_rate_limited = True
+
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            product = await upcitemdb.lookup(upc_norm, client)
+            product = await upcitemdb.lookup(upc_norm, client, on_rate_limit=_saw_rate_limit)
     except (httpx.TimeoutException, httpx.NetworkError) as exc:
         return _upc_lookup_error(request, templates, upc_norm, media_type, mode, exc)
 
@@ -504,7 +551,14 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         return await _scan_upc_game(
             request, templates, upc_norm, product, location_id, platform, mode,
             detect_reason=detect_reason, detect_overrode=detect_overrode,
+            rate_limited=lookup_rate_limited,
         )
+
+    # A resolved media type with no metadata provider is filed under its
+    # cleaned title with no outbound request at all. Before this, a CD was
+    # searched on The Movie Database — a real request to a film provider for a
+    # music disc — and the card then named TMDb, which is #44.
+    no_metadata_provider = media_type not in UPC_METADATA_PROVIDERS
 
     # Get TMDb API key
     with get_db() as db:
@@ -516,54 +570,62 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # which normalises to no queries at all. That is a not_found, not an index
     # error on queries[0].
     queries: list[str] = upcitemdb.search_queries((product or {}).get("title") or "")
-    if queries and tmdb_key:
-        try:
-            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-                try:
-                    hit = await _first_hit(
-                        queries, lambda q: tmdb.lookup_by_title(q, tmdb_key, client)
-                    )
-                except tmdb.TmdbAuthError:
-                    # The item is still filed — title-only, as before. Plan 2
-                    # renders the reason; this is what makes it knowable.
-                    logger.warning(
-                        "TMDb rejected the configured key for UPC %s — filing title only",
-                        upc_norm,
-                    )
-                    hit = None
-                    tmdb_auth_error = True
-                if hit:
-                    metadata, _matched = hit
-        except (httpx.TimeoutException, httpx.NetworkError) as exc:
-            return _upc_lookup_error(request, templates, upc_norm, media_type, mode, exc)
+    if queries and tmdb_key and not no_metadata_provider:
+        # No transport handler here, deliberately: `tmdb.lookup_by_title`
+        # swallows every request failure to `None` and lets only `TmdbAuthError`
+        # out, so one would be dead code that reads as live (`G47`). A TMDb
+        # outage reads as "no TMDb match"; the error card is the product lookup's.
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            try:
+                hit = await _first_hit(
+                    queries,
+                    lambda q: tmdb.lookup_by_title(
+                        q, tmdb_key, client, on_rate_limit=_saw_rate_limit
+                    ),
+                )
+            except tmdb.TmdbAuthError:
+                # The item is still filed — title-only, as before. Plan 2
+                # renders the reason; this is what makes it knowable.
+                logger.warning(
+                    "TMDb rejected the configured key for UPC %s — filing title only",
+                    upc_norm,
+                )
+                hit = None
+                tmdb_auth_error = True
+            if hit:
+                metadata, _matched = hit
 
     if not queries:
+        # A 429 on the *product* lookup lands here, not on the ladder below:
+        # `upcitemdb.lookup` returns None for any non-200, so there is no title
+        # to build a query from and this branch returns before `enrich_status`
+        # is ever computed. Without the state below, a rate-limited barcode is
+        # rendered as an unknown one — the same dishonesty as #44, one phase
+        # earlier. The `not_found` card renders it beside the message.
         _log_scan(upc_norm, media_type, "not_found", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": media_type,
              "message": "Not found — add manually below", "preview_cover": None,
+             "enrich_status": "quota" if lookup_rate_limited else None,
              "locations": _manual_form_locations()},
         )
 
-    # T5 — the thin-metadata notice, as a *state*, not as markup.
-    #
-    # The copy and the Settings anchor live in the template. The router says
-    # only which of three things happened, so nothing here is ever rendered
-    # with `|safe` — a notice string built in Python and marked safe is one
-    # future "…no match for {title}" away from being stored XSS, and this
-    # fragment renders a title that came off a scanned barcode.
-    #
-    # Computed before the title-only fallback below overwrites `metadata`, so
-    # "found" here means an actual TMDb hit.
-    enrich_status = None
-    if metadata is None:
-        if not tmdb_key:
-            enrich_status = "no_credential"
-        elif tmdb_auth_error:
-            enrich_status = "rejected"
-        else:
-            enrich_status = "no_match"
+    # The thin-metadata notice, as a *state*, not as markup — the copy lives
+    # in the template (G58). Computed before the title-only fallback below
+    # overwrites `metadata`, so "found" here means an actual TMDb hit.
+    enrich_status = scan_outcome.enrich_status(
+        found=metadata is not None,
+        has_credential=bool(tmdb_key),
+        auth_rejected=tmdb_auth_error,
+        rate_limited=lookup_rate_limited,
+        has_provider=not no_metadata_provider,
+    )
+    # `None` so no arm can interpolate a provider name that does not exist.
+    # The template's `no_provider` arm names none, and this router cannot
+    # reach an arm that does — both, because either alone is one edit away
+    # from the other breaking.
+    enrich_provider = None if no_metadata_provider else "TMDb"
 
     # Provenance, decided before the placeholder below overwrites `metadata`.
     # `tmdb` is a claim that TMDb answered — it must not be stamped on a row
@@ -649,7 +711,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             "source": source, "media_type_label": MEDIA_TYPES.get(media_type, media_type),
             # T5 renders these; T4 only has to carry them.
             "detect_reason": detect_reason, "detect_overrode": detect_overrode,
-            "enrich_status": enrich_status, "enrich_provider": "TMDb",
+            "enrich_status": enrich_status, "enrich_provider": enrich_provider,
         },
     )
     resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
@@ -669,7 +731,7 @@ async def _first_hit(queries, search):
     return None
 
 
-async def _scan_upc_game(request: Request, templates, upc_norm: str, product: dict | None, location_id: int | None, platform: str | None = None, mode: str = "add", detect_reason: str = "", detect_overrode: bool = False):
+async def _scan_upc_game(request: Request, templates, upc_norm: str, product: dict | None, location_id: int | None, platform: str | None = None, mode: str = "add", detect_reason: str = "", detect_overrode: bool = False, rate_limited: bool = False):
     """Handle UPC scan for video games: the caller's product record → IGDB.
 
     `product` is the UPC Item DB record `_scan_upc` already fetched. This
@@ -677,17 +739,24 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     call per game scan and — more importantly — put the fetch *below* the
     game/film fork, so nothing could read the product to decide which branch
     to take. It is a parameter now precisely so detection can run above it.
+
+    `rate_limited` is the caller's product-lookup 429, set above the fork — and
+    a flag set above a fork has to reach *both* branches or one barcode gets two
+    stories.
     """
     # Step 1: normalise the retail title into a search ladder. Same ladder as
     # the film path, from the same record.
     queries = upcitemdb.search_queries((product or {}).get("title") or "")
 
     if not queries:
+        # The film branch's twin: a product-lookup 429 leaves no title, so this
+        # returns above the `enrich_status` ladder and needs the state itself.
         _log_scan(upc_norm, "video_game", "not_found", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": "video_game",
              "message": "Not found — add manually below", "preview_cover": None,
+             "enrich_status": "quota" if rate_limited else None,
              "locations": _manual_form_locations()},
         )
 
@@ -697,36 +766,52 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
         igdb_secret = get_setting(db, "igdb_client_secret")
 
     metadata = None
+    igdb_auth_error = False
+    # Seeded from the caller: a product-lookup 429 is a quota signal for this
+    # scan even if IGDB answers cleanly.
+    igdb_rate_limited = rate_limited
     if igdb_id and igdb_secret:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            def _saw_rate_limit():
+                nonlocal igdb_rate_limited
+                igdb_rate_limited = True
+
             # igdb.search_games returns a *list*; the ladder and everything
             # below it deal in a single metadata dict, so unwrap here rather
             # than letting a list reach the save tail.
             async def search_one_game(query):
                 results = await igdb.search_games(
-                    query, igdb_id, igdb_secret, client, limit=1
+                    query, igdb_id, igdb_secret, client, limit=1,
+                    on_rate_limit=_saw_rate_limit,
                 )
                 return results[0] if results else None
 
-            hit = await _first_hit(queries, search_one_game)
+            # Caught once, at the branch that renders the card — the same shape
+            # the film branch uses for `tmdb.TmdbAuthError` above.
+            try:
+                hit = await _first_hit(queries, search_one_game)
+            except igdb.IgdbAuthError:
+                logger.warning(
+                    "IGDB rejected the configured credentials for UPC %s — filing title only",
+                    upc_norm,
+                )
+                hit = None
+                igdb_auth_error = True
             if hit:
                 metadata, _matched = hit
 
-    # T5 — the thin-metadata notice.
-    #
-    # Unlike TMDb, `igdb.search_games` (app/services/igdb.py:86-87, 147-149)
-    # collapses a rejected Twitch token, a transport failure, and a genuine
-    # empty result into the same `[]` — so a missing hit here cannot be told
-    # apart from a rejected credential the way the film branch can. Rendering
-    # "no match" for both is the honest best available without widening
-    # `igdb.py` (deliberately out of scope for this task); see T5's file list.
-    enrich_status = None
-    if metadata is None:
-        if not (igdb_id and igdb_secret):
-            enrich_status = "no_credential"
-        else:
-            # Not "rejected", even when that is what happened — see above.
-            enrich_status = "no_match"
+    # The same decision the film branch makes, from the same function.
+    # `igdb.search_games` used to collapse a rejected Twitch token, a transport
+    # failure and a genuine empty result into one `[]`; it raises
+    # `igdb.IgdbAuthError` for the first of those now (issue #42), and the
+    # *search* call reports a 429 through `on_rate_limit`. A token-endpoint 429
+    # and a transport failure are still `[]` and still read as a miss.
+    enrich_status = scan_outcome.enrich_status(
+        found=metadata is not None,
+        has_credential=bool(igdb_id and igdb_secret),
+        auth_rejected=igdb_auth_error,
+        rate_limited=igdb_rate_limited,
+    )
 
     # Save item — with IGDB metadata if found, otherwise the cleaned UPC title
     loc_id = location_id if location_id and location_id > 0 else None

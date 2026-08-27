@@ -413,6 +413,67 @@ def test_fetch_acquires_the_url_host_once_per_attempt(monkeypatch, recorded_slee
 
 
 # --------------------------------------------------------------------------
+# is_rate_limited — "should the user be told to come back?"
+# --------------------------------------------------------------------------
+
+
+class TestIsRateLimited:
+    """The predicate every metadata client consumes to report a spent quota.
+
+    None of these need `recorded_sleeps`: the predicate makes no request and
+    never sleeps. It reads a response the caller already holds.
+    """
+
+    def test_a_bare_429_is_rate_limited(self):
+        """429 with no Retry-After at all — the shape that motivates this.
+
+        Measured (design plan Probe 1): Google Books 429s this workstation
+        with no `Retry-After` and no `X-RateLimit-*` header, 3/3. A
+        header-keyed predicate would answer False for the one provider
+        actually rate-limiting us.
+        """
+        assert outbound.is_rate_limited(StubResponse(429)) is True
+
+    def test_a_429_with_a_huge_retry_after_is_still_rate_limited(self):
+        """The header is not consulted in either direction."""
+        resp = StubResponse(429, headers={"Retry-After": "9999"})
+        assert outbound.is_rate_limited(resp) is True
+
+    def test_a_200_is_not_rate_limited(self):
+        assert outbound.is_rate_limited(StubResponse(200)) is False
+
+    @pytest.mark.parametrize("status", [200, 403, 500, 502, 503, 504])
+    def test_non_429_statuses_are_not_rate_limited(self, status):
+        """503 is False on purpose — do not "fix" this to match RETRY_STATUSES.
+
+        `RETRY_STATUSES` answers "is another attempt worth making?" and
+        includes 502/503/504, which are gateway and outage failures. This
+        predicate answers "should the user be told to come back later?", and
+        telling a user their scan was rate-limited when the provider is simply
+        down sends them to do the wrong thing. 403 stays out because Open
+        Library returns it both for a spent covers quota and for a plain
+        authorization failure.
+        """
+        assert outbound.is_rate_limited(StubResponse(status)) is False
+
+    def test_rate_limited_statuses_are_a_strict_subset_of_retryable(self):
+        """Structural pin: every rate-limited response is also retryable.
+
+        A transport failure is not a response, so it can never reach this
+        predicate — the only inputs are responses `fetch` (or a bare
+        `client.get`) already returned. What must hold is that nothing can be
+        called rate-limited without also being worth retrying, and that the
+        two sets stay distinct.
+        """
+        assert outbound.RATE_LIMIT_STATUSES < outbound.RETRY_STATUSES
+
+        import inspect
+
+        params = list(inspect.signature(outbound.is_rate_limited).parameters)
+        assert params == ["resp"]
+
+
+# --------------------------------------------------------------------------
 # Posture tripwire
 # --------------------------------------------------------------------------
 

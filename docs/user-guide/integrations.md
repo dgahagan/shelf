@@ -33,11 +33,12 @@ URL and token, **Test**, then choose which libraries to include. Set an
 interval for automatic sync or run it by hand. Items removed from ABS can be
 cleaned up from the same card.
 
-A scan that comes back thin now tells you **on the card** whether the cause
-was a missing credential, a rejected one, or a provider with no match — see
-[Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title). (On IGDB
-a rejected credential is indistinguishable from a genuine miss, so that one
-reads as "no match"; **Test key** is how to tell.)
+A scan that comes back thin tells you **on the card** which of five things
+happened: no credential configured, a credential the provider rejected, a
+provider that is rate-limiting you right now, a format Shelf has no metadata
+source for, or a provider with no match. IGDB makes the same distinctions as
+TMDb — a rejected Twitch credential says so rather than reading as a miss.
+See [Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title).
 
 ## IGDB (video games)
 
@@ -90,9 +91,11 @@ provider are paced to its published rate limit.
 
 Some of these meter you per day rather than per second — UPC Item DB's free
 tier allows 100 lookups a day, and keyless Google Books has a per-day project
-quota. Once one is spent it rejects every request until it resets, which
-reaches you as a scan that finds nothing. Shelf does not wait a daily limit
-out; it gives up at once and names the provider in the log. See
+quota. Once one is spent it rejects every request until it resets. Shelf does
+not wait a daily limit out; it gives up at once, says on the scan card that a
+source is rate-limiting you, and names the provider in the log — the card
+names no provider, because a book lookup consults up to four and any subset
+can be starved at once. See
 [Troubleshooting](../troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
 
 ## Supplying keys by environment instead

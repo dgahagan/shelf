@@ -184,7 +184,9 @@ async def _confirm_one(
 
         metadata, hc_ids = None, {}
         try:
-            metadata, _, hc_ids = await items_common._lookup_metadata(printed_isbn13, hc_token, client)
+            # Trailing `_` = the rate-limited flag. Photo Intake's confirm step
+            # has no scan card to render it on — deliberate, not an oversight.
+            metadata, _, hc_ids, _ = await items_common._lookup_metadata(printed_isbn13, hc_token, client)
         except Exception:
             logger.warning("Intake: metadata lookup failed for ISBN %s", printed_isbn13)
             metadata, hc_ids = None, {}

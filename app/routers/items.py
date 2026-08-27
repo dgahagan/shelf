@@ -377,7 +377,9 @@ async def scan_isbn(
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            metadata, source, hc_ids = await items_common._lookup_metadata(isbn13, hc_token, client)
+            metadata, source, hc_ids, lookup_rate_limited = await items_common._lookup_metadata(
+                isbn13, hc_token, client
+            )
 
             if not metadata:
                 preview_cover = await items_common._fetch_preview_cover(isbn13, client)
@@ -388,6 +390,12 @@ async def scan_isbn(
                         "status": "not_found", "isbn": isbn13, "media_type": media_type,
                         "message": "Not found — add manually below",
                         "preview_cover": preview_cover,
+                        # The same vocabulary the added-card notice uses, and no
+                        # provider name: four sources feed this cascade and any
+                        # subset can be starved, so naming one would be a guess.
+                        # Nothing else about this branch changes — the user's
+                        # options are the same, only the explanation is new.
+                        "enrich_status": "quota" if lookup_rate_limited else None,
                         "locations": items_common._manual_form_locations(),
                     },
                 )

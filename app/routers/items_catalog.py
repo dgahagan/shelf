@@ -51,10 +51,20 @@ async def search_games(
         )
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await igdb.search_games(
-            q.strip(), igdb_id, igdb_secret, client,
-            platform=platform or None, limit=10,
-        )
+        try:
+            results = await igdb.search_games(
+                q.strip(), igdb_id, igdb_secret, client,
+                platform=platform or None, limit=10,
+            )
+        except igdb.IgdbAuthError:
+            # `search_games` now propagates a rejected credential, and this
+            # route has no other handler — without this it would be a 500.
+            # Same shape as the missing-credential block above it.
+            return HTMLResponse(
+                '<p class="text-sm text-shelf-error">IGDB rejected the configured '
+                'credentials. Check them in <a href="/settings" '
+                'class="text-shelf-accent2 underline">Settings</a>.</p>'
+            )
 
     return templates.TemplateResponse(
         request, "fragments/game_search_results.html",
@@ -234,7 +244,9 @@ async def add_book_from_search(
         hc_token = get_setting(db, "hardcover_token") or None
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        metadata, source, hc_ids = await items_common._lookup_metadata(isbn13, hc_token, client)
+        # `_` = the rate-limited flag. *Add by ISBN* has no scan card to
+        # render it on — deliberate, not an oversight.
+        metadata, source, hc_ids, _ = await items_common._lookup_metadata(isbn13, hc_token, client)
 
         if not metadata:
             items_common._log_scan(isbn13, media_type, "not_found")

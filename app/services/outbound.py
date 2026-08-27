@@ -203,3 +203,29 @@ async def fetch(
         return resp
 
     raise AssertionError("unreachable")  # pragma: no cover
+
+
+# Statuses that mean "we asked too often", as distinct from RETRY_STATUSES,
+# which means "another attempt is worth making". The two questions are not the
+# same question and the sets are deliberately different: 502/504 are gateway
+# failures, not quotas, and a card saying "rate-limited — try again shortly"
+# for a provider outage tells the user to do the wrong thing. 503 is out for
+# the same reason. 403 is out because Open Library returns it both for a spent
+# covers quota and for a plain authorization failure (see the comment above
+# RETRY_STATUSES) — revisit trigger is in the design plan's `### 1`.
+RATE_LIMIT_STATUSES = frozenset({429})
+
+
+def is_rate_limited(resp: httpx.Response) -> bool:
+    """True when the provider refused this request for rate/quota reasons.
+
+    Keyed on the **status**, never on `Retry-After`. Measured: Google Books
+    429s this workstation with no `Retry-After` and no `X-RateLimit-*` header,
+    3/3 (the design plan's Probe 1), so a header-keyed predicate would answer
+    False for the one provider actually rate-limiting us.
+
+    Deliberately *not* the same test `fetch` applies at RETRY_AFTER_MAX. That
+    one asks "is another attempt worth making?" and for a headerless 429 the
+    answer is still yes. This one asks "should the user be told to come back?"
+    """
+    return resp.status_code in RATE_LIMIT_STATUSES

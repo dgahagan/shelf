@@ -79,12 +79,19 @@ def test_manual_add_copy_from_picker(live_server, authed_page):
     Reaching the not_found branch offline: the ISBN path (_lookup_metadata)
     calls Open Library/Google Books directly, and a real network failure
     there is caught as status="error" (not "not_found"), so it can't render
-    the manual-add form without live network. The UPC/DVD path is
-    different — upcitemdb.lookup wraps its UPC Item DB request in a bare
-    except and returns None on any failure — so an unresolvable UPC
-    deterministically reaches not_found regardless of network reachability.
-    That's the offline-safe way into this form; there's no existing e2e
-    pattern for the ISBN not-found branch to follow instead.
+    the manual-add form without live network. The UPC/DVD path used to be
+    simpler than it is now: `upcitemdb.lookup` wrapped its UPC Item DB
+    request in a bare except and returned None on any failure, so an
+    unresolvable UPC reached not_found regardless of network reachability.
+    T5 removed that bare except — `upcitemdb.lookup` now lets
+    `httpx.TimeoutException` and `httpx.NetworkError` propagate, and those
+    render a "Metadata lookup failed — check connectivity" card instead of
+    not_found. This test still reaches not_found deterministically, but for
+    a narrower reason: "999999999999" fails UPC Item DB's own format
+    validation and draws a real HTTP 400 — a non-200, which `lookup` still
+    normalises to None — so this is the non-200-independent route into the
+    form, not a network-independent one. There's no existing e2e pattern for
+    the ISBN not-found branch to follow instead.
     """
     data_dir = live_server["data_dir"]
 
@@ -151,7 +158,7 @@ def test_rescanning_a_manually_added_upc_reports_duplicate(live_server, authed_p
 
     "888888888888" has a bad UPC-A check digit, so UPC Item DB rejects it on
     format (HTTP 400) rather than as a catalog miss — the same deterministic,
-    network-independent route to not_found that
+    non-200-independent route to not_found that
     test_manual_add_copy_from_picker documents. It must differ from that
     test's code: live_server is session-scoped, so both tests share one
     database.
@@ -399,6 +406,8 @@ def test_scan_cover_poll_settles_after_two_attempts(live_server, authed_page):
 def _render_card(**overrides):
     from jinja2 import Environment, FileSystemLoader
 
+    from app.services.national import SEARCH_LANGS
+
     ctx = {
         "status": "added",
         "isbn": "085391163121",
@@ -413,6 +422,12 @@ def _render_card(**overrides):
         "detect_overrode": False,
         "detect_reason": "",
         "message": "",
+        # The not_found arm's language <select> reads this as a Jinja
+        # *global* in the real app (app/main.py sets it on templates.env);
+        # this standalone Environment has no such global, so a not_found
+        # render needs it supplied explicitly or `search_langs.items()`
+        # raises on an Undefined.
+        "search_langs": SEARCH_LANGS,
     }
     ctx.update(overrides)
     env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
@@ -903,4 +918,154 @@ def test_an_overlay_result_with_a_cover_still_requests_it(live_server, authed_pa
     )
     cover = authed_page.locator("img[alt=''][src='/covers/7.jpg']")
     expect(cover).to_have_count(1, timeout=5_000)
+    assert_page_clean(authed_page)
+
+
+# --- Issues #42/#44: scan-outcome honesty, the browser leg ------------------
+#
+# The unit suite already pins every enrich_status branch's *decision*
+# (app/services/scan_outcome.py, tests/test_scan_upc_enrichment.py,
+# tests/test_scan_isbn.py). What it cannot see is the rendered card in a real,
+# CSP-strict browser — whether the new notices render at all without tripping
+# the CSP, and, for no_provider specifically, whether the real /api/scan
+# route reaches that state end to end rather than a hand-built context. G59
+# is not in play here: neither new arm below is `x-show` + `:src` — both are
+# plain <p> elements with no Alpine bindings.
+
+def _watch_csp_violations(pg):
+    """Console error messages naming a CSP violation, collected from `pg`.
+
+    Call before whatever the test wants to check. Chromium reports a CSP
+    violation as a `console` "error" whose text names the refused directive —
+    not as a `pageerror` (what `attach_page_guard`/`assert_page_clean`
+    already watch) and not as a DOM `securitypolicyviolation` event this
+    suite has any existing listener for, so it gets its own collector rather
+    than reusing one.
+    """
+    violations: list[str] = []
+    pg.on(
+        "console",
+        lambda msg: violations.append(msg.text)
+        if msg.type == "error" and "Content Security Policy" in msg.text
+        else None,
+    )
+    return violations
+
+
+def test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice(
+    live_server, authed_page
+):
+    """#44, driven for real through `/api/scan` — not a rendered fixture.
+
+    G31 rules out `_render_card(enrich_status="no_provider", ...)` here: the
+    thing this test has to catch is `items_common.py` *deciding* the state,
+    and a hand-built context can't fail when that decision changes. This
+    report's G31 mutation check proves it the other way: reverting T4's
+    `no_metadata_provider` short-circuit (items_common.py:560, "Stop
+    searching a CD on a film database") turns this test red.
+
+    Reaching `no_provider` needs a real *title* to file under — an empty UPC
+    Item DB product record short-circuits to not_found before enrich_status
+    is ever computed (items_common.py:596-610: `search_queries("")` is `[]`,
+    and `if not queries` returns first). So unlike the not_found tests above,
+    which deliberately pick a barcode UPC Item DB rejects on format, this one
+    needs UPC Item DB to actually resolve the barcode. "000000000000" does:
+    the trial API serves a stable placeholder listing for it — confirmed with
+    a direct `curl` against api.upcitemdb.com before writing this test:
+    title "ORGANIC BLUE CORN TORTILLA CHIPS", category Food/Snacks. (This is
+    the exact quirk `test_manual_add_copy_from_picker`'s docstring warns
+    other tests off of — "the trial API has real placeholder listings under
+    some of them" — used here on purpose instead of avoided.) That title
+    carries no video-game/DVD marker, so `detect_media_type`'s tier 4 keeps
+    the scanned "cd" hint exactly as sent (app/services/detect.py) — a CD has
+    no barcode-side detection signal of its own; the dropdown is the only
+    evidence it will ever have.
+
+    Still the deterministic half of the state machine: the *second* outbound
+    call the film branch would otherwise make — to TMDb — never happens.
+    items_common.py:557's "no outbound request at all" is about that second
+    call, not the UPC Item DB product lookup this test does depend on.
+
+    **If this test goes red, suspect the network before the code.** It rests
+    on a third party continuing to serve a placeholder listing for
+    "000000000000". Two failure modes read as an assertion error rather than
+    as what they are: the trial API dropping or changing that listing, and
+    the trial API rate-limiting the run (a 429 is a non-200, so `lookup`
+    normalises it to None and this falls to the not_found card). Check
+    `curl "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000"`
+    before assuming `no_provider` broke.
+    """
+    csp_violations = _watch_csp_violations(authed_page)
+
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    authed_page.select_option("#media-type", "cd")
+    authed_page.fill("#isbn-input", "000000000000")
+    authed_page.press("#isbn-input", "Enter")
+
+    scan_result = authed_page.locator(".scan-result").first
+    expect(scan_result).to_contain_text(
+        "Shelf has no metadata source for this format yet", timeout=20_000
+    )
+    expect(scan_result).to_contain_text("added")
+    expect(scan_result).to_contain_text("CD")
+
+    assert csp_violations == [], csp_violations
+    assert_page_clean(authed_page)
+
+
+def test_the_quota_line_on_an_isbn_not_found_card_leaves_the_manual_form_intact(
+    live_server, authed_page
+):
+    """#42's ISBN not_found quota line, and the contract behind it: "the
+    user's options do not change, only the explanation does" — checked by
+    asserting the manual-add form is still fully there, not just the
+    sentence.
+
+    Driving a genuine 429 out of Open Library/Google Books here is not
+    deterministic: nothing in this suite controls when either provider
+    actually rate-limits a request, and retrying until one does would trade
+    a reliable test for a slow, flaky one. So this test stubs the scenario
+    instead of the live call: it renders the *real* template (`_render_card`,
+    G31 — never hand-written markup) with exactly the context
+    `app/routers/items.py:398` sends for this branch — `status="not_found"`,
+    `enrich_status="quota"` — and injects it as `/api/scan`'s real response
+    would land in the DOM. `lookup_rate_limited` itself, the flag that
+    produces that context, is the unit suite's job
+    (`tests/test_scan_isbn.py`); what only a browser can prove is that the
+    rendered page shows the rate-limit sentence *and* the same manual-add
+    form, with the same fields and submit button, as every other not_found
+    card — nothing about the user's options shrinks because the explanation
+    changed.
+    """
+    csp_violations = _watch_csp_violations(authed_page)
+
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_card(
+        status="not_found", isbn="9780000009999", media_type="book",
+        message="Not found — add manually below", enrich_status="quota",
+        preview_cover=None, locations=[],
+    )
+    assert "rate-limiting us" in card, "fixture card is missing its own data"
+    authed_page.evaluate(_INJECT, card)
+
+    scan_result = authed_page.locator("#scan-results .scan-result").first
+    expect(scan_result).to_contain_text(
+        "A metadata source is rate-limiting us right now"
+    )
+    expect(scan_result).to_contain_text("not found")
+
+    # Same form, same fields, same submit button — only the notice above it
+    # changed.
+    form = scan_result.locator("form")
+    expect(form).to_have_count(1)
+    expect(form.locator("input[name=title]")).to_be_visible()
+    expect(
+        form.locator("button[type=submit]", has_text="Add to Collection")
+    ).to_be_visible()
+
+    assert csp_violations == [], csp_violations
     assert_page_clean(authed_page)

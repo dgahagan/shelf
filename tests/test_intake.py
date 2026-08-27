@@ -949,7 +949,7 @@ class TestConfirmWithIsbn:
 
     @respx.mock
     def test_valid_isbn_uses_cascade_and_saves_full_record(self, admin_client, db, monkeypatch):
-        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", HC_IDS))
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", HC_IDS, False))
         route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         resp = admin_client.post("/api/intake/confirm", json={
             "books": [{"title": "DUNE", "authors": "F. Herbert",
@@ -974,7 +974,7 @@ class TestConfirmWithIsbn:
         # G15: an env-only token is invisible to get_all_settings.
         monkeypatch.setenv("HARDCOVER_TOKEN", "env-tok")
         calls = []
-        _patch_lookup(monkeypatch, result=(None, "manual", {}), record=calls)
+        _patch_lookup(monkeypatch, result=(None, "manual", {}, False), record=calls)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         admin_client.post("/api/intake/confirm", json={
             "books": [{"title": "Dune", "isbn": ISBN13}],
@@ -984,7 +984,7 @@ class TestConfirmWithIsbn:
     @respx.mock
     def test_client_isbn_is_revalidated(self, admin_client, db, monkeypatch):
         calls = []
-        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}), record=calls)
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}, False), record=calls)
         route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         admin_client.post("/api/intake/confirm", json={
             "books": [{"title": "Dune", "isbn": "044117271912"}],   # 12 digits, never UPC-A
@@ -996,7 +996,7 @@ class TestConfirmWithIsbn:
     @respx.mock
     def test_cascade_miss_seeds_printed_isbn(self, admin_client, db, monkeypatch):
         # 6a: nothing contradicted the digits, so they stay on the row.
-        _patch_lookup(monkeypatch, result=(None, "manual", {}))
+        _patch_lookup(monkeypatch, result=(None, "manual", {}, False))
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         resp = admin_client.post("/api/intake/confirm", json={
             "books": [{"title": "Dune", "isbn": ISBN13}],
@@ -1019,7 +1019,7 @@ class TestConfirmWithIsbn:
     @respx.mock
     def test_guard_rejection_clears_isbn(self, admin_client, db, monkeypatch, caplog):
         # 6b: the cascade resolved it and it names a different book.
-        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
+        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}, False))
         route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         with caplog.at_level("WARNING"):
             admin_client.post("/api/intake/confirm", json={
@@ -1032,7 +1032,7 @@ class TestConfirmWithIsbn:
 
     @respx.mock
     def test_guard_rejected_non_book_row_makes_no_ol_call(self, admin_client, db, monkeypatch):
-        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
+        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}, False))
         route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         admin_client.post("/api/intake/confirm", json={
             "books": [{"title": "Dune", "isbn": ISBN13, "media_type": "dvd"}],
@@ -1054,7 +1054,7 @@ class TestConfirmWithIsbn:
         from unittest.mock import AsyncMock
         from app.routers import items_common
 
-        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}))
+        _patch_lookup(monkeypatch, result=({"title": "The Martian"}, "openlibrary", {}, False))
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         admin_client.post("/api/intake/confirm", json={
             "books": [{"title": "Dune", "isbn": ISBN13}],
@@ -1072,7 +1072,7 @@ class TestConfirmWithIsbn:
 
     @respx.mock
     def test_printed_isbn_wins_over_weak_path_isbn(self, admin_client, db, monkeypatch):
-        _patch_lookup(monkeypatch, result=(None, "manual", {}))   # 6a
+        _patch_lookup(monkeypatch, result=(None, "manual", {}, False))   # 6a
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
             "title": "Dune", "author_name": ["Frank Herbert"], "isbn": ["9780425038918"],
         }]}))
@@ -1087,7 +1087,7 @@ class TestConfirmWithIsbn:
         _insert_item(db, title="Dune (1965 ed)", isbn=ISBN13, media_type="book")
         db.execute("COMMIT")
         calls = []
-        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}), record=calls)
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}, False), record=calls)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
 
         resp = admin_client.post("/api/intake/confirm", json={
@@ -1112,7 +1112,7 @@ class TestConfirmWithIsbn:
         monkeypatch.setattr(items_common, "_enrich_import_covers", enrich)
 
         async def fake(isbn13, hc_token, client):
-            return (FULL_META, "openlibrary", {}) if isbn13 == ISBN13 else (None, "manual", {})
+            return (FULL_META, "openlibrary", {}, False) if isbn13 == ISBN13 else (None, "manual", {}, False)
         monkeypatch.setattr(items_common, "_lookup_metadata", fake)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
 
@@ -1130,7 +1130,7 @@ class TestConfirmWithIsbn:
             self, admin_client, monkeypatch):
         # The strong path has its own IntegrityError handler; a FK failure
         # there must re-raise, not be labelled an ISBN duplicate either.
-        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}))
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}, False))
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
         with pytest.raises(sqlite3.IntegrityError):
             admin_client.post("/api/intake/confirm", json={
@@ -1148,7 +1148,7 @@ class TestConfirmWithIsbn:
             from app.database import get_db
             with get_db() as rival:
                 insert(rival, title="Dune (rival)", isbn=ISBN13, media_type="book")
-            return FULL_META, "openlibrary", {}
+            return FULL_META, "openlibrary", {}, False
         monkeypatch.setattr(items_common, "_lookup_metadata", fake)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
 

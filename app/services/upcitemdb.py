@@ -23,6 +23,7 @@ film path (TMDb) and the game path (IGDB) climb this same ladder.
 
 import logging
 import re
+from collections.abc import Callable
 
 import httpx
 
@@ -137,18 +138,34 @@ def search_queries(raw: str) -> list[str]:
     return ladder
 
 
-async def lookup(upc: str, client: httpx.AsyncClient) -> dict | None:
+async def lookup(
+    upc: str, client: httpx.AsyncClient,
+    *, on_rate_limit: Callable[[], None] | None = None,
+) -> dict | None:
     """Look up a barcode, returning the first matching retail product.
 
     Returns `{"title", "category", "brand", "images"}` — the whole useful part
-    of the response, not just the title. `None` for any failure, including a
-    network error: an unresolvable UPC must reach the scan page's "not found"
-    manual-add form rather than an error, and that has to hold offline too.
+    of the response, not just the title.
+
+    `None` for every failure that means "no such record": a non-200, a
+    malformed body, an empty `items` list. That is the contract the bare catch
+    existed for — an unresolvable UPC must reach the scan page's "not found"
+    manual-add form rather than an error.
+
+    **A transport failure is not one of those** and propagates:
+    `httpx.TimeoutException` and `httpx.NetworkError` reach `_scan_upc`'s
+    handler, which renders the connectivity card and logs the scan as `error`.
+    Offline is not "no such record" (GOTCHAS G47).
+
+    `on_rate_limit`, when given, is called once if the provider answered 429 —
+    a rate-limited product lookup is not "unknown barcode" either.
     """
     try:
         resp = await outbound.fetch(
             client, "GET", UPC_LOOKUP_URL, params={"upc": upc}, timeout=10,
         )
+        if on_rate_limit is not None and outbound.is_rate_limited(resp):
+            on_rate_limit()
         if resp.status_code != 200:
             logger.debug("UPC Item DB lookup failed: HTTP %d", resp.status_code)
             return None
@@ -162,6 +179,13 @@ async def lookup(upc: str, client: httpx.AsyncClient) -> dict | None:
             "brand": item.get("brand"),
             "images": item.get("images") or [],
         }
+    except (httpx.TimeoutException, httpx.NetworkError):
+        # Offline is not "no such record". `_scan_upc`'s handler renders the
+        # connectivity card and logs the scan as `error`; telling a self-hoster
+        # with broken DNS that the disc was not found sends them looking for
+        # the wrong thing, and makes the scan log agree with the wrong story.
+        # GOTCHAS G47.
+        raise
     except Exception:
         logger.debug("UPC Item DB lookup error", exc_info=True)
         return None

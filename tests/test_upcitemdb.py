@@ -198,10 +198,47 @@ class TestLookup:
         fake_fetch.return_value = StubResponse(200, json_data={"items": []})
         assert await upcitemdb.lookup("1", object()) is None
 
-    async def test_a_network_error_is_none_not_an_exception(self, fake_fetch):
-        # tests/e2e/test_scan.py's not-found path runs offline and depends on
-        # this: an unresolvable UPC must reach the manual-add form.
-        fake_fetch.side_effect = httpx.ConnectError("offline")
+    @pytest.mark.parametrize(
+        "exc",
+        [httpx.ConnectError("offline"), httpx.ReadTimeout("slow")],
+        ids=["connect-error", "read-timeout"],
+    )
+    async def test_a_transport_failure_propagates(self, exc, fake_fetch):
+        """Offline is not "no such record" (GOTCHAS G47).
+
+        This pinned the opposite until this branch: the bare `except
+        Exception` swallowed a broken resolver into `None`, so a self-hoster
+        with no DNS was told the disc was not found and the scan was logged
+        `not_found`. `_scan_upc`'s connectivity handler was dead code that
+        read as live. `httpx.NetworkError` covers ConnectError/ReadError/
+        WriteError/CloseError; TimeoutException is a separate branch of the
+        hierarchy and needs naming.
+        """
+        fake_fetch.side_effect = exc
+        with pytest.raises((httpx.TimeoutException, httpx.NetworkError)):
+            await upcitemdb.lookup("1", object())
+
+    async def test_a_429_calls_on_rate_limit_and_returns_none(self, fake_fetch):
+        """T6: a rate-limited product lookup is not 'unknown barcode' either."""
+        fake_fetch.return_value = StubResponse(429)
+        calls = []
+        result = await upcitemdb.lookup(
+            "1", object(), on_rate_limit=lambda: calls.append(1)
+        )
+        assert result is None
+        assert calls == [1]
+
+    async def test_a_malformed_body_is_still_none(self, fake_fetch):
+        """The contract the bare catch existed for — assert it explicitly,
+        not by omission: these three are what keep an unresolvable barcode
+        reaching the manual-add form."""
+        class _Bad:
+            status_code = 200
+
+            def json(self):
+                raise ValueError("not json")
+
+        fake_fetch.return_value = _Bad()
         assert await upcitemdb.lookup("1", object()) is None
 
 

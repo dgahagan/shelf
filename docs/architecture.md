@@ -62,6 +62,14 @@ then TMDb (film) or IGDB (game). **Which of the two is decided by
 is fetched once, above the fork, precisely so detection can read it. The
 dropdown is an input to that decision, not an oracle over it.
 
+A resolved media type with **no** metadata provider — a CD, today — is filed
+under its cleaned retail title with no metadata request at all. The map is
+`UPC_METADATA_PROVIDERS` in `routers/items_common.py`, deliberately *not*
+`covers.MEDIA_TYPE_PROVIDERS`: that one falls unrecognised types through to
+the book cover search, which is a working fallback for covers and a false
+claim for metadata. A new `MEDIA_TYPES` member therefore gets the honest
+"no provider" answer by default rather than a film search.
+
 `detect_media_type(barcode_type, hint, title, category)` is pure and offline,
 and runs four tiers in confidence order: an ISBN prefix decides the
 book family outright (the dropdown only picks *among* book / kids book /
@@ -118,6 +126,59 @@ it needs; the routes derive their "provider not configured" message from
 returns URL strings only — nothing fetches an image — so each candidate still
 reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 
+### Scan outcomes
+
+When enrichment does not happen, the card names *which* dead end it hit rather
+than collapsing every case into "no match". `services/scan_outcome.py` makes
+that decision — one keyword-only function returning a bare state name — and
+`fragments/scan_result.html` holds the copy. The split is deliberate: that
+card also renders a title that came off a scanned barcode, so a notice
+assembled in Python and marked `|safe` would be one interpolation away from
+stored XSS. Both UPC branches previously carried their own near-identical
+copy of this ladder, which is how the film branch came to make four
+distinctions while the game branch made two.
+
+The states, in precedence order:
+
+| state | meaning |
+|---|---|
+| `no_provider` | Shelf has no metadata source for this format. Outranks everything, because it is the only one true *before* any request is made |
+| `no_credential` | nothing was asked, because nothing could be |
+| `rejected` | the provider refused the configured credential — outranks `quota`, being the one the user can act on |
+| `quota` | the provider answered 429; this may not be a genuine miss |
+| `no_match` | the provider was asked and had nothing |
+
+A state with no arm in the template renders nothing rather than raising, so
+`ENRICH_STATES` and the template's arms are pinned against each other by a
+test. The same `quota` vocabulary appears on the `not_found` card, for an ISBN
+whose cascade was starved and for a UPC whose *product* lookup was.
+
+Telling a rejected credential from a miss needs the client to say so, which is
+why `tmdb.lookup_by_title` raises `TmdbAuthError` and `igdb.search_games`
+raises `IgdbAuthError`. Only those two entry points propagate: IGDB's other
+three each absorb it, because their callers have no handler and their return
+shapes differ. Likewise `upcitemdb.lookup` lets `httpx.TimeoutException` and
+`httpx.NetworkError` out while still swallowing every "no such record" failure
+to `None` — offline and "unknown barcode" are not the same answer, and the
+scan log records the first as `error` rather than `not_found`.
+
+Three of the four ISBN sources never enter `outbound.fetch` at all: they call
+`outbound.acquire` and issue `client.get` themselves. So the rate-limit signal
+is exported as a **predicate over a response** (`outbound.is_rate_limited`)
+that each client applies to the response it already holds, rather than as a
+marker set inside `fetch` — which would have been structurally unreachable for
+three quarters of the cascade. Each source reports the hit through an optional
+`on_rate_limit` callback, defaulted to `None` so every pre-existing caller is
+unchanged.
+
+That signal is the *only* thing a cascade source raises about: all four now
+match `dnb.lookup`'s never-raises contract, `googlebooks.lookup` included.
+`_lookup_metadata` and the *Add by ISBN* path both call them without a
+handler, so a source that threw would abandon the remaining sources and
+surface as the connectivity card even while the others were reachable. A
+genuinely offline box still reaches that card — `openlibrary.lookup`, first in
+the cascade, still propagates transport failures.
+
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
 external host has a minimum interval matching its published rate limit,
 with retry on transient failures. This is what lets a 200-book session not
@@ -126,6 +187,14 @@ get throttled. Retries honour a server's `Retry-After` up to a fixed ceiling
 returns the response at once, on the reasoning that a server asking for an
 hour is reporting a spent quota rather than a blip — a 403 from Open Library
 is treated the same way.
+
+`RETRY_AFTER_MAX` and `outbound.is_rate_limited` answer two different
+questions and are deliberately not the same test. The ceiling asks "is another
+attempt worth making?"; the predicate asks "should the user be told to come
+back later?" `RATE_LIMIT_STATUSES` is therefore a strict subset of
+`RETRY_STATUSES` — 502/503/504 are gateway and outage failures, and a card
+saying "rate-limited, try again shortly" for a provider outage sends the user
+to do the wrong thing.
 
 ## Photo Intake
 

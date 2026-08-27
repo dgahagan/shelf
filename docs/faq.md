@@ -16,7 +16,12 @@ keyless. Keys unlock extras: Hardcover (sync, series checks), IGDB (games),
 TMDb (discs), ISBNdb (valuation), a vision provider (Photo Intake). The
 keyless tiers are metered per day, though — a heavy cataloguing session can
 exhaust one, after which scans come back empty until it resets. A key raises
-or removes that limit. See
+or removes that limit.
+
+The scan card tells you which of these happened rather than making you guess:
+no key configured, a key the provider rejected, a provider that is
+rate-limiting you right now, a format Shelf has no metadata source for (CDs,
+today), or a genuine miss. See
 [Troubleshooting](troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
 
 **Why HTTPS with a self-signed certificate?**

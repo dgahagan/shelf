@@ -143,6 +143,66 @@ class TestLookupByTitleAuthSignal:
         assert await tmdb.search_movies("Dune", V4_TOKEN, object()) == []
 
 
+class TestLookupByTitleRateLimit:
+    """T6 — `lookup_by_title` reports a 429 through `on_rate_limit`."""
+
+    async def test_a_429_calls_on_rate_limit_once_and_still_returns_none(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(429)
+        calls = []
+        result = await tmdb.lookup_by_title(
+            "Dune", V4_TOKEN, object(), on_rate_limit=lambda: calls.append(1)
+        )
+        assert result is None
+        assert calls == [1]
+
+    async def test_a_401_raises_and_does_not_call_on_rate_limit(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(401)
+        calls = []
+        with pytest.raises(tmdb.TmdbAuthError):
+            await tmdb.lookup_by_title(
+                "Dune", V4_TOKEN, object(), on_rate_limit=lambda: calls.append(1)
+            )
+        assert calls == []
+
+    async def test_a_200_hit_never_calls_on_rate_limit(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"results": [{
+            "title": "The Matrix",
+            "overview": "A hacker learns the truth.",
+            "release_date": "1999-03-30",
+            "poster_path": "/matrix.jpg",
+        }]})
+        calls = []
+        await tmdb.lookup_by_title(
+            "The Matrix", V3_KEY, object(), on_rate_limit=lambda: calls.append(1)
+        )
+        assert calls == []
+
+
+class TestSearchMoviesAndPostersStayOutOfScope:
+    """The pin that keeps a later plan's surface out of this one (T6).
+
+    `search_movies` and `search_posters` keep their `[]`-on-any-failure
+    contract and take no `on_rate_limit` callback — only `lookup_by_title`
+    got one in this task.
+    """
+
+    def test_search_movies_has_no_on_rate_limit_keyword(self):
+        import inspect
+        assert "on_rate_limit" not in inspect.signature(tmdb.search_movies).parameters
+
+    def test_search_posters_has_no_on_rate_limit_keyword(self):
+        import inspect
+        assert "on_rate_limit" not in inspect.signature(tmdb.search_posters).parameters
+
+    async def test_search_movies_still_returns_empty_list_on_429(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(429)
+        assert await tmdb.search_movies("Dune", V4_TOKEN, object()) == []
+
+    async def test_search_posters_still_returns_empty_list_on_429(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(429)
+        assert await tmdb.search_posters(603, V4_TOKEN, object()) == []
+
+
 class TestTestKeyMessages:
     async def test_200_reports_the_result_count(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"total_results": 7})

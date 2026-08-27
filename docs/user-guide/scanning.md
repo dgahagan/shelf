@@ -111,16 +111,27 @@ search comes back with a *different* film rather than nothing. When no provider
 matches, the item is still added under its own title — use **Retry cover** or
 **Find cover** on the item page to fill it in.
 
-**And the card now says why it was thin**, because the three reasons need
-three different responses: no key configured (add one), a key that was
-rejected (fix it), or a provider that simply had no match (nothing to fix).
-See [Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title).
+**And the card says why it was thin**, because the five reasons need five
+different responses:
 
-There is a fourth cause the card cannot yet tell apart from "no match": the
-provider's daily allowance is spent. The scan still returns quickly — Shelf
-no longer waits out a rate limit that says "come back in an hour" — but it
-comes back empty. The log names the provider; see
-[Troubleshooting](../troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
+- **no key configured** — add one in Settings → Integrations.
+- **the key was rejected** — fix it. The provider answered, and said no.
+- **a provider is rate-limiting us** — wait and re-scan. This may not be a
+  genuine miss, so it is worth trying again before adding anything by hand.
+- **Shelf has no metadata source for this format yet** — nothing to fix. CDs
+  are the case today: there is no music provider wired up, so a scanned CD is
+  filed under its barcode title and no lookup is attempted at all.
+- **the provider had no match** — nothing to fix either. It was asked, and it
+  genuinely does not have this edition.
+
+The card never names *which* provider is rate-limiting, because a book lookup
+consults up to four and any subset of them can be starved at once. Naming one
+would be a guess. See
+[Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title).
+
+A **Not found** card can carry the rate-limit line too. That one matters: it
+means the barcode may well be catalogued, and typing the book in by hand is
+probably wasted effort. Try again later first.
 
 ## Tips
 

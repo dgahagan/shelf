@@ -1,5 +1,7 @@
 """Tests for title search services — openlibrary.search_books and tmdb.search_movies."""
 
+from unittest.mock import AsyncMock
+
 import httpx
 import pytest
 import respx
@@ -252,10 +254,30 @@ class TestAutoNeverReachesTheDatabase:
 
     @pytest.mark.parametrize("junk", ["auto", "bluray", "vinyl", "", "book; DROP TABLE items"])
     def test_no_guarded_boundary_stores_a_value_outside_media_types(
-        self, editor_client, db, junk
+        self, editor_client, db, junk, monkeypatch
     ):
         """The guard is written against MEDIA_TYPES membership, not against
-        the string "auto" — so a typo or a tampered form is caught too."""
+        the string "auto" — so a typo or a tampered form is caught too.
+
+        The lookup is stubbed because one case genuinely reaches it: an
+        *empty* form value is not an invalid one. FastAPI treats `media_type=`
+        as "not supplied" and substitutes `Form("book")`'s default, so `""`
+        arrives at the route already valid and the add proceeds normally. That
+        is why it cannot store a bad value either, and why the assertion below
+        still holds for it. Without the stub this case issued a live
+        openlibrary.org request and the test passed or failed on whether that
+        host was up — unit tests here stay offline.
+        """
+        from app.routers import items_common
+
+        async def _no_metadata(*a, **kw):
+            return None, "manual", {}, False
+
+        monkeypatch.setattr(items_common, "_lookup_metadata", _no_metadata)
+        monkeypatch.setattr(
+            items_common, "_fetch_preview_cover", AsyncMock(return_value=None)
+        )
+
         editor_client.post(
             "/api/items/manual",
             data={"title": f"Junk {junk}", "isbn": "", "media_type": junk},

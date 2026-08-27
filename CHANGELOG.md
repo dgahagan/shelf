@@ -6,6 +6,68 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-08-27
+
+A scan that came back thin had one way of saying so: *no match*. But there are
+several different reasons a lookup gets you nothing, and they need completely
+different responses from you. A rejected API key needs fixing. A provider
+that is rate-limiting you needs waiting out. A format Shelf has no metadata
+source for needs neither — there is nothing to fix and nothing to configure.
+"No match" sent you looking for a problem in the wrong place every time it
+was not the truth. The card now names which dead end it actually hit.
+
+### Added
+
+- **A rejected IGDB key says so, instead of claiming the game does not
+  exist.** A stale or rotated Twitch secret fails the token exchange, and
+  every game scan afterwards read "no IGDB match for this barcode" — advice
+  to give up, when the correct advice was to fix the key. The card now says
+  **"IGDB rejected the configured key."** and the server log carries a WARNING
+  naming the HTTP status at the default log level, where before the refusal
+  was only visible at DEBUG. When a game now reads "no IGDB match", it means
+  it. ([#42](https://github.com/dgahagan/shelf/issues/42))
+- **A rate-limited lookup says "rate-limiting", not "not found".** A provider
+  that has answered HTTP 429 has not told you the barcode is unknown — it has
+  told you to come back later. Both cards carry the distinction now: a thin
+  record says "a metadata provider is rate-limiting us right now. Re-scan
+  later to fill it in.", and a **Not found** card says "A metadata source is
+  rate-limiting us right now — this may not be a genuine miss." That second
+  one is the one that saves work: it means the record may well exist, and
+  typing the book in by hand is probably wasted effort.
+- **An unreachable provider is told apart from an unknown barcode.** A UPC
+  scan that could not reach the lookup service at all — no DNS, no route, a
+  timeout — now shows **"Metadata lookup failed — check connectivity"** and is
+  written to the scan log as `error` rather than `not_found`. Previously a
+  disconnected container reported every barcode as genuinely missing, which is
+  the same screen you get for a real miss and sends you hunting for the
+  wrong thing.
+
+### Changed
+
+- **A CD is no longer searched on a film database.** Scanning a music CD filed
+  it correctly as a CD and then asked you to sign up for a TMDb API key,
+  because everything that was not a game went down the film branch. A CD now
+  says **"Added with title only — Shelf has no metadata source for this format
+  yet."** and, more to the point, no film request is made at all. This goes
+  further than suppressing the wrong sentence: any future media type with no
+  provider behind it gets the honest answer by default rather than a film
+  search. CDs still get no metadata — that waits on a music provider — but
+  they no longer send you to fix something that was never broken.
+  ([#44](https://github.com/dgahagan/shelf/issues/44))
+- **A Google Books failure mid-lookup now reads as "not found" rather than a
+  network error.** When Google Books was the source that fell over, the whole
+  ISBN lookup used to abandon itself and show the connectivity card even
+  though other sources were still reachable. It is now treated the way the
+  other fallback sources already were, so the cascade finishes. A box that is
+  genuinely offline still gets the connectivity card, from the first source.
+
+**The card deliberately does not name which provider is rate-limiting you.** A
+book lookup consults up to four sources and any subset of them can be starved
+at once, so naming one would be a guess. The server log names the exact host;
+the card says only that it happened. For the same reason the **Find cover**
+picker is unchanged — a rejected key there still reports "No covers found",
+and giving that surface the same honesty is its own piece of work.
+
 ## [0.21.1] - 2026-08-27
 
 Scanning a barcode could sit there for a minute and then tell you nothing was
@@ -1807,6 +1869,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.22.0]: https://github.com/dgahagan/shelf/releases/tag/v0.22.0
 [0.21.1]: https://github.com/dgahagan/shelf/releases/tag/v0.21.1
 [0.21.0]: https://github.com/dgahagan/shelf/releases/tag/v0.21.0
 [0.20.0]: https://github.com/dgahagan/shelf/releases/tag/v0.20.0

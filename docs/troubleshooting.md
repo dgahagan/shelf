@@ -46,6 +46,11 @@ has a barcode for this).
   the ISBN; type the ISBN-10.
 - Store-price-sticker barcodes aren't ISBNs. Peel.
 - Genuinely obscure editions: use **Title search** or **Add manually**.
+- **"Metadata lookup failed — check connectivity"** is a different card and a
+  different problem: the lookup could not reach the provider at all (DNS,
+  no route, a timeout). It is not a missing record, and the scan is logged as
+  `error` rather than `not_found`. Check the container's network before
+  hunting for the barcode.
 - If several barcodes in a row come back empty, the provider's daily quota
   may be spent rather than the records missing — see [A scan comes back empty
   and the log says a provider asked for a long
@@ -86,17 +91,24 @@ time:
 - **"TMDb rejected the configured key."** — a credential is set and the
   provider refused it. Settings → Integrations → **Test key**. Pasting the
   wrong one of TMDb's two credential types is the usual cause.
+- **"a metadata provider is rate-limiting us right now. Re-scan later to fill
+  it in."** — nothing is broken. The provider answered with HTTP 429. Wait and
+  re-scan; the item is already filed. No provider is named because a book
+  lookup consults up to four and any subset can be starved at once.
+- **"Shelf has no metadata source for this format yet."** — nothing to fix,
+  and nothing to configure. The format has no provider wired up, so no lookup
+  was attempted. CDs are the case today (see the roadmap's MusicBrainz item);
+  the disc is filed under its barcode title.
 - **"no TMDb match for this barcode."** — nothing to fix. The provider
   genuinely has no record for that title; **Find cover** or **Edit** it by
   hand.
 
-**On a game, only the first and third of those can appear.** IGDB's search
-returns an empty list for a rejected Twitch credential exactly as it does for
-a genuine miss, so Shelf cannot honestly tell you which happened and says
-"no IGDB match" for both. If a game comes back thin and you expected a hit,
-check Settings → Integrations → **Test key** before assuming IGDB has no
-record — a rotated Twitch secret fails the token exchange with no other
-symptom.
+**Games make the same distinctions.** A rejected Twitch credential used to be
+indistinguishable from a genuine miss — IGDB's search returned an empty list
+for both — so the card said "no IGDB match" either way. It now says **"IGDB
+rejected the configured key"** when the token exchange is refused, and the
+server log carries a WARNING naming the HTTP status. If a game still comes
+back thin, "no IGDB match" now means what it says.
 
 ## Find cover finds nothing for a DVD or a game
 
@@ -207,9 +219,11 @@ Wait for the daily reset, then **Retry Missing Covers** (Settings) or
 re-scan the barcode. For a provider with a paid tier, add a key in Settings
 to raise or remove the limit.
 
-Until a later release, the scan card still says "Not found" in this case —
-the log line is currently the only way to tell "the provider is out of
-quota" from "this barcode isn't in the database".
+The scan card says so too now: a **Not found** card whose lookup was
+rate-limited carries "A metadata source is rate-limiting us right now — this
+may not be a genuine miss." The log line still names *which* host, which the
+card deliberately does not — a book lookup consults up to four sources and any
+subset can be starved at once.
 
 ## Rate-limited (HTTP 429) in the UI
 

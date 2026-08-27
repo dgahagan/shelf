@@ -127,7 +127,10 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
 
             metadata, source, hc_ids = None, None, {}
             try:
-                metadata, source, hc_ids = await items_common._lookup_metadata(isbn13, hc_token, client)
+                # `_` = the rate-limited flag. Store Mode's queue flush has no
+                # scan card to render it on; inventing a surface for it is a
+                # later plan's scope, not an oversight.
+                metadata, source, hc_ids, _ = await items_common._lookup_metadata(isbn13, hc_token, client)
             except Exception:
                 logger.warning("Store queue: metadata lookup failed for %s", isbn13)
 

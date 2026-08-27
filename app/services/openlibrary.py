@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 import httpx
 
@@ -17,14 +18,25 @@ async def _rate_limit():
     await outbound.acquire("openlibrary.org")
 
 
-async def lookup(isbn: str, client: httpx.AsyncClient) -> dict | None:
-    """Look up a book by ISBN via Open Library. Returns metadata dict or None."""
+async def lookup(
+    isbn: str, client: httpx.AsyncClient,
+    *, on_rate_limit: Callable[[], None] | None = None,
+) -> dict | None:
+    """Look up a book by ISBN via Open Library. Returns metadata dict or None.
+
+    `on_rate_limit`, when given, is called once if the provider answered 429.
+    Defaulting to `None` keeps every existing caller byte-identical. This
+    function still has no try/except of its own — `_lookup_metadata`'s
+    callers handle whatever it raises.
+    """
     await _rate_limit()
     resp = await client.get(
         f"https://openlibrary.org/isbn/{isbn}.json",
         headers={"User-Agent": USER_AGENT},
         follow_redirects=True,
     )
+    if on_rate_limit is not None and outbound.is_rate_limited(resp):
+        on_rate_limit()
     if resp.status_code != 200:
         logger.debug("Open Library lookup failed for ISBN %s: HTTP %d", isbn, resp.status_code)
         return None

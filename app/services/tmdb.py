@@ -1,6 +1,7 @@
 """TMDb API client for movie/TV metadata lookup."""
 
 import re
+from collections.abc import Callable
 
 import httpx
 
@@ -55,12 +56,19 @@ def image_url(file_path: str, size: str = "w500") -> str:
     return f"{TMDB_IMAGE_ROOT}/{size}{file_path}"
 
 
-async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -> dict | None:
+async def lookup_by_title(
+    title: str, api_key: str, client: httpx.AsyncClient,
+    *, on_rate_limit: Callable[[], None] | None = None,
+) -> dict | None:
     """Search TMDb by title, return first result as metadata dict.
 
     Raises `TmdbAuthError` when TMDb rejects the credential; returns `None` for
     an empty result set or any other failure. Only the request and the parse sit
     inside the swallow-all handler, so the auth signal cannot be eaten by it.
+
+    `on_rate_limit`, when given, is called once if the provider answered 429 —
+    after the auth-status raise, so a rejected key still wins over a quota
+    signal on the same response.
     """
     extra_params, headers = _auth(api_key)
     try:
@@ -76,6 +84,9 @@ async def lookup_by_title(title: str, api_key: str, client: httpx.AsyncClient) -
 
     if resp.status_code in _AUTH_STATUSES:
         raise TmdbAuthError(f"TMDb rejected the credential (HTTP {resp.status_code})")
+
+    if on_rate_limit is not None and outbound.is_rate_limited(resp):
+        on_rate_limit()
 
     try:
         if resp.status_code != 200:

@@ -10,6 +10,12 @@
         <div class="flex-1 min-w-0">
             <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
             <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} (cover found on Amazon){% endif %}</p>
+            {# G58: a state name from the router, the copy here. No provider is
+               named — the ISBN cascade has four sources and any subset can be
+               starved, and a rate-limited UPC product lookup lands here too. #}
+            {% if enrich_status == 'quota' %}
+            <p class="text-xs text-shelf-warning mt-1">A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below.</p>
+            {% endif %}
         </div>
         <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
               data-scan-badge>not found</span>
@@ -197,6 +203,10 @@
         <p class="text-xs text-shelf-warning mt-1">Added with title only. Add {{ 'an' if enrich_provider == 'IGDB' else 'a' }} {{ enrich_provider }} API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.</p>
         {% elif enrich_status == 'rejected' %}
         <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; {{ enrich_provider }} rejected the configured key.</p>
+        {% elif enrich_status == 'quota' %}
+        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; a metadata provider is rate-limiting us right now. Re-scan later to fill it in.</p>
+        {% elif enrich_status == 'no_provider' %}
+        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; Shelf has no metadata source for this format yet.</p>
         {% elif enrich_status == 'no_match' %}
         <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; no {{ enrich_provider }} match for this barcode.</p>
         {% endif %}

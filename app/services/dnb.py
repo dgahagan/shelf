@@ -18,6 +18,7 @@ import logging
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
+from collections.abc import Callable
 
 import httpx
 
@@ -161,11 +162,17 @@ def _parse_record(record: ET.Element) -> dict | None:
     return result
 
 
-async def lookup(isbn13: str, client: httpx.AsyncClient) -> dict | None:
+async def lookup(
+    isbn13: str, client: httpx.AsyncClient,
+    *, on_rate_limit: Callable[[], None] | None = None,
+) -> dict | None:
     """Look up a book by ISBN-13 via the DNB SRU catalog. Returns metadata dict or None.
 
     Never raises — any HTTP error, non-200 response, or XML parse error is
     logged at debug level and treated as a miss.
+
+    `on_rate_limit`, when given, is called once if the provider answered 429.
+    Defaulting to `None` keeps every existing caller byte-identical.
     """
     await _rate_limit()
     try:
@@ -182,6 +189,9 @@ async def lookup(isbn13: str, client: httpx.AsyncClient) -> dict | None:
     except httpx.HTTPError as exc:
         logger.debug("DNB SRU lookup failed for ISBN %s: %s", isbn13, exc)
         return None
+
+    if on_rate_limit is not None and outbound.is_rate_limited(resp):
+        on_rate_limit()
 
     if resp.status_code != 200:
         logger.debug("DNB SRU lookup failed for ISBN %s: HTTP %d", isbn13, resp.status_code)

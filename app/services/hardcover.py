@@ -1,6 +1,7 @@
 """Hardcover.app GraphQL API client for book metadata and library sync."""
 
 import logging
+from collections.abc import Callable
 
 import httpx
 
@@ -20,8 +21,15 @@ async def _graphql(
     variables: dict | None = None,
     token: str | None = None,
     client: httpx.AsyncClient | None = None,
+    *,
+    on_rate_limit: Callable[[], None] | None = None,
 ) -> dict | None:
-    """Execute a GraphQL query against Hardcover. Returns data dict or None on error."""
+    """Execute a GraphQL query against Hardcover. Returns data dict or None on error.
+
+    `on_rate_limit`, when given, is called once if the provider answered 429.
+    Defaulting to `None` keeps every existing caller byte-identical. Only
+    `lookup_by_isbn` forwards this — every other caller here passes nothing.
+    """
     await _rate_limit()
     headers = {"Content-Type": "application/json"}
     if token:
@@ -40,6 +48,8 @@ async def _graphql(
         client = httpx.AsyncClient(timeout=30)
     try:
         resp = await client.post(API_URL, json=payload, headers=headers)
+        if on_rate_limit is not None and outbound.is_rate_limited(resp):
+            on_rate_limit()
         if resp.status_code != 200:
             logger.debug("Hardcover API returned HTTP %d", resp.status_code)
             return None
@@ -70,8 +80,15 @@ async def test_connection(token: str) -> dict:
     return {"ok": False, "message": "Invalid token or connection failed"}
 
 
-async def lookup_by_isbn(isbn: str, client: httpx.AsyncClient, token: str | None = None) -> dict | None:
-    """Look up a book by ISBN via Hardcover editions table. Returns metadata dict or None."""
+async def lookup_by_isbn(
+    isbn: str, client: httpx.AsyncClient, token: str | None = None,
+    *, on_rate_limit: Callable[[], None] | None = None,
+) -> dict | None:
+    """Look up a book by ISBN via Hardcover editions table. Returns metadata dict or None.
+
+    `on_rate_limit`, when given, is forwarded to both `_graphql` calls below —
+    the ISBN-13 attempt and the ISBN-10 retry — and so may fire from either.
+    """
     # Try ISBN-13 first, then ISBN-10
     query = """
     query ($isbn: String!) {
@@ -97,11 +114,13 @@ async def lookup_by_isbn(isbn: str, client: httpx.AsyncClient, token: str | None
     }
     """
 
-    data = await _graphql(query, {"isbn": isbn}, token=token, client=client)
+    data = await _graphql(query, {"isbn": isbn}, token=token, client=client, on_rate_limit=on_rate_limit)
     if not data or not data.get("editions"):
         # Try as ISBN-10
         query_10 = query.replace("isbn_13", "isbn_10")
-        data = await _graphql(query_10, {"isbn": isbn}, token=token, client=client)
+        data = await _graphql(
+            query_10, {"isbn": isbn}, token=token, client=client, on_rate_limit=on_rate_limit
+        )
         if not data or not data.get("editions"):
             return None
 

@@ -160,7 +160,7 @@ class TestStoreQueue:
 
     def test_wishlisted_with_metadata(self, admin_client, db):
         with patch("app.routers.items_common._lookup_metadata",
-                   new=AsyncMock(return_value=(self._meta(), "openlibrary", {}))), \
+                   new=AsyncMock(return_value=(self._meta(), "openlibrary", {}, False))), \
              patch("app.routers.store.covers.download_cover", new=AsyncMock(return_value=None)):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["9780441013593"]})
         results = resp.json()["results"]
@@ -184,7 +184,7 @@ class TestStoreQueue:
 
     def test_bare_add_when_nothing_found(self, admin_client, db):
         with patch("app.routers.items_common._lookup_metadata",
-                   new=AsyncMock(return_value=(None, None, {}))):
+                   new=AsyncMock(return_value=(None, None, {}, False))):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
         assert resp.json()["results"][0]["status"] == "added_bare"
 
@@ -198,7 +198,7 @@ class TestStoreQueue:
 
     def test_isbn10_input_normalized(self, admin_client, db):
         with patch("app.routers.items_common._lookup_metadata",
-                   new=AsyncMock(return_value=(None, None, {}))):
+                   new=AsyncMock(return_value=(None, None, {}, False))):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["0441013597"]})
         assert resp.json()["results"][0]["isbn"] == "9780441013593"
 

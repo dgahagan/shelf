@@ -62,12 +62,9 @@ async def fetch_description(isbn: str | None, title: str | None, authors: str | 
     is per-IP and exhausts under bulk backfills, and Open Library work
     records are frequently description-less even when the search matches."""
     if isbn:
-        try:
-            meta = await googlebooks.lookup(isbn, client)
-            if meta and meta.get("description"):
-                return meta["description"]
-        except httpx.HTTPError:
-            logger.debug("Google Books ISBN lookup failed for %s", isbn)
+        meta = await googlebooks.lookup(isbn, client)
+        if meta and meta.get("description"):
+            return meta["description"]
 
     if not title:
         return None

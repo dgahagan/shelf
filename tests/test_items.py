@@ -1124,7 +1124,7 @@ class TestDnbRoutingAndLanguageCapture:
         ol_mock = AsyncMock()
         with patch("app.services.dnb.lookup", new=dnb_mock), \
              patch("app.services.openlibrary.lookup", new=ol_mock):
-            metadata, source, hc_ids = await _lookup_metadata("9783608963762", None, None)
+            metadata, source, hc_ids, _ = await _lookup_metadata("9783608963762", None, None)
 
         assert source == "dnb"
         assert metadata["language"] == "de"
@@ -1137,7 +1137,7 @@ class TestDnbRoutingAndLanguageCapture:
         ol_meta = {"title": "OL Book"}
         with patch("app.services.dnb.lookup", new=AsyncMock(return_value=None)), \
              patch("app.services.openlibrary.lookup", new=AsyncMock(return_value=dict(ol_meta))):
-            metadata, source, _ = await _lookup_metadata("9783608963762", None, None)
+            metadata, source, _, _rl = await _lookup_metadata("9783608963762", None, None)
 
         assert source == "openlibrary"
         assert metadata["title"] == "OL Book"
@@ -1148,7 +1148,7 @@ class TestDnbRoutingAndLanguageCapture:
         dnb_mock = AsyncMock()
         with patch("app.services.dnb.lookup", new=dnb_mock), \
              patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "US Book"})):
-            metadata, source, _ = await _lookup_metadata("9780441172719", None, None)
+            metadata, source, _, _rl = await _lookup_metadata("9780441172719", None, None)
 
         assert source == "openlibrary"
         dnb_mock.assert_not_awaited()
@@ -1158,7 +1158,7 @@ class TestDnbRoutingAndLanguageCapture:
 
         with patch("app.services.dnb.lookup", new=AsyncMock(side_effect=RuntimeError("boom"))), \
              patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "OL Book"})):
-            metadata, source, _ = await _lookup_metadata("9783608963762", None, None)
+            metadata, source, _, _rl = await _lookup_metadata("9783608963762", None, None)
 
         assert source == "openlibrary"
         assert metadata["title"] == "OL Book"
@@ -1173,7 +1173,7 @@ class TestDnbRoutingAndLanguageCapture:
         }
         with patch("app.services.dnb.lookup", new=AsyncMock(return_value=dict(self.DNB_META))), \
              patch("app.services.hardcover.lookup_by_isbn", new=AsyncMock(return_value=hc_data)):
-            metadata, source, hc_ids = await _lookup_metadata("9783608963762", "tok", None)
+            metadata, source, hc_ids, _ = await _lookup_metadata("9783608963762", "tok", None)
 
         assert source == "dnb"
         assert metadata["series_name"] == "Die Reihe"

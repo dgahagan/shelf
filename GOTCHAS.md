@@ -815,6 +815,30 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     general question is this entry's, one layer out: not "which branch does my
     pin land in" but **"whose markup am I asserting on?"**
 
+  Two more, both found on `feat/issues-42-44-scan-outcome-honesty` (2026-08-27),
+  and both about a pin landing one layer away from the change:
+  - **A pin that stubs the client cannot see inside the client.** T5 narrowed
+    `upcitemdb.lookup`'s `except Exception` so transport failures propagate.
+    The two pins the plan specified — the connectivity card renders, the scan
+    logs `error` — stubbed `upcitemdb.lookup` itself with a raising function,
+    so they exercised the *router's* handler and stayed **green** with the bare
+    catch restored. The fix was one pin a layer lower, raising from
+    `outbound.fetch` so the real client runs
+    (`test_the_card_reaches_it_through_the_real_client`). Both layers are worth
+    having: the router pin says the branch renders, only the lower one says the
+    branch is reachable. Ask which layer your mutation is *at*, and put one pin
+    below it.
+  - **A stub can describe a response the real client cannot produce.** A pin
+    for "a 429 on the UPC product lookup renders the quota copy" stubbed
+    `upcitemdb.lookup` to fire `on_rate_limit()` **and** return a product. No
+    real response does both: a 429 is a non-200, so `lookup` returns `None`,
+    `search_queries("")` is `[]`, and the router returns on the `not_found`
+    branch *above* the state it was supposedly pinning. The test passed, the
+    state was unreachable in production, and the plan had specified it. Before
+    trusting a stub, ask whether the client could ever return that
+    combination — and if the state turns out to be unreachable, that is a bug
+    in the code, not a licence to keep the stub.
+
   One more, found while porting a lint rule on `feat/issue-34-alpine-guard-lint`
   (2026-08-23):
   - **A single-file fixture cannot see per-file state.** The new Alpine guard
@@ -1429,15 +1453,30 @@ python -c "from app.services.upcitemdb import search_queries as q; \
 - **Evidence:** pre-existing on `main` via `tmdb.lookup_upc`; carried forward by
   `a48f7bd` (2026-08-24). Probed in diff review by raising `httpx.ConnectError`
   from `outbound.fetch`: the body contains "not found", never "connectivity".
-- **Verify:** judgement, not a grep — but the dead branch is greppable:
+- **Closed on `feat/issues-42-44-scan-outcome-honesty`** (2026-08-27). Two
+  tasks, one per face of it: **T2** (`758004b`) gave IGDB an `IgdbAuthError` so
+  a rejected Twitch credential stops looking like an empty result, and **T5**
+  (`1b22096`) closed the stated core — `upcitemdb.lookup` now re-raises
+  `httpx.TimeoutException` and `httpx.NetworkError` while still swallowing
+  every "no such record" failure to `None`, so an unresolvable barcode still
+  reaches the manual-add form and a broken resolver reaches the connectivity
+  card. The scan is logged `error` rather than `not_found`, so the log agrees
+  with the card.
+- **Verify:** the grep below **still returns hits, and they now mean the
+  opposite** — the branch is live, not dead:
 
 ```bash
 grep -n "check connectivity" app/routers/items_common.py
 ```
 
-  A hit means someone still believes that message can render; confirm a client
-  on that path can actually raise before trusting it.
-- **Status:** documented.
+  What proves it is a test, not a reading:
+  `tests/test_scan_upc_enrichment.py::TestATransportFailureIsNotAnAbsentBarcode`
+  — four pins, one of which (`test_the_card_reaches_it_through_the_real_client`)
+  raises from `outbound.fetch` rather than stubbing `upcitemdb.lookup`, because
+  the pins that stub the client are blind to the client's own behaviour and
+  stayed green under the mutation. That last part is the durable lesson; it is
+  written up as **G31**'s "which branch does your pin land in".
+- **Status:** closed.
 
 ## G48 — When a test seeds through the `db` fixture and then makes a request
 
@@ -1956,6 +1995,73 @@ grep -rn 'x-show="[^"]*" *:\(src\|href\)=' app/templates/
   form: it catches the co-located case and misses a guard that lives on an
   ancestor. A real rule wants to ask whether the bound expression can produce
   a URL from a falsy value at all.
+
+## G60 — When a signal has to reach callers that do not share a helper
+
+- **Rule:** Export the judgment as a **predicate over the value every caller
+  already holds**, not as a marker set inside a shared helper's return. A
+  marker only reaches the callers that go through that helper, and "all our
+  clients use the shared layer" is usually false in the one direction that
+  matters.
+- **Why:** the rate-limit signal for the ISBN cascade looked like it belonged
+  inside `outbound.fetch` — set a flag on the way past, read it at the top.
+  Three of the four sources would never have seen it: `openlibrary.lookup`,
+  `dnb.lookup` and `hardcover._graphql` call `outbound.acquire` for the pacing
+  and then issue `client.get`/`client.post` **themselves**, so they never enter
+  `fetch` at all. A marker there would have been structurally unreachable for
+  three quarters of the cascade, and the bug would have read as "rate limiting
+  is flaky" rather than as "this design cannot work".
+  `outbound.is_rate_limited(resp)` instead takes the response each client
+  already has, and each one applies it where it holds that response.
+- **The corollary that bit twice on the same branch:** the predicate and the
+  retry set answer **different questions** and must not be unified.
+  `RETRY_STATUSES` asks "is another attempt worth making?" and includes
+  502/503/504; `RATE_LIMIT_STATUSES` asks "should the user be told to come back
+  later?" and is `{429}` alone. Telling a user their scan was rate-limited when
+  the provider is simply down sends them to do the wrong thing. The structural
+  pin is `RATE_LIMIT_STATUSES < RETRY_STATUSES`.
+- **Evidence:** `40bba94` (2026-08-27, T1 — the predicate and its five pins);
+  `3a1593c` (T7 — all four ISBN sources applying it, including the Hardcover
+  case where `lookup_by_isbn` never sees a `Response` at all and the callback
+  has to be forwarded through `_graphql` on **both** the ISBN-13 attempt and
+  the ISBN-10 retry).
+- **Verify:** both call shapes must still exist, or the clients were unified
+  and this entry retires:
+
+```bash
+grep -n "outbound.acquire\|outbound.fetch" app/services/*.py
+```
+
+- **Status:** documented.
+
+## G61 — When adding a keyword-only argument to a service client
+
+- **Rule:** A new keyword-only parameter with a default is byte-identical for
+  real **callers** and a `TypeError` for **test stubs** that pin the signature
+  positionally. Grep for hand-written `async def` stubs of the function before
+  running the suite, so the resulting red is expected rather than diagnosed.
+  Update signatures only — never an assertion body.
+- **Why:** the cost is invisible when you reason about the production call
+  sites, which is where the plan's "defaulting to `None` keeps every existing
+  caller byte-identical" comes from. That sentence is true and it is not the
+  question. Adding `on_rate_limit` to three clients on one branch cost **11**
+  stub signatures in `tests/test_scan_upc_enrichment.py` for
+  `igdb.search_games`, then **29** in the same file for `tmdb.lookup_by_title`
+  and `upcitemdb.lookup`. The distribution is lumpy and worth checking rather
+  than assuming: the same change across the four ISBN clients cost **zero**,
+  because those are all stubbed with `AsyncMock(return_value=...)`, which is
+  signature-agnostic.
+- **Evidence:** `e93a06a`, `5e4e8df` (2026-08-27) — 40 stub signatures between
+  them; `3a1593c` the same day — none.
+- **Verify:** hand-written stubs are greppable; `AsyncMock` ones need no edit:
+
+```bash
+grep -rn "async def _[a-z_]*(.*client" tests/ | head -40
+```
+
+- **Status:** documented — not a lint candidate; the suite failing loudly *is*
+  the check. This entry exists to make the red expected and to stop anyone
+  "fixing" it by widening the production signature to positional.
 
 ## Graveyard
 

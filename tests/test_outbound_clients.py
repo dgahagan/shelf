@@ -9,13 +9,14 @@ HTTP request goes out, then asserts acquire happens first.
 
 import time
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import httpx
+import pytest
 import respx
 
 import app.config
-from app.services import dnb, hardcover, isbndb, openlibrary
+from app.services import dnb, googlebooks, hardcover, isbndb, openlibrary
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -155,3 +156,237 @@ class TestIsbndbUsesSharedLimiter:
 
         assert result == {"title": "Cached"}
         acquire_mock.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# T7 — the four ISBN-cascade sources report a rate limit through
+# `on_rate_limit`, and `googlebooks.lookup` never raises.
+#
+# G31: these tests pin a bug this same task fixes (googlebooks.lookup raising
+# instead of returning None), so they were run against the broken
+# implementation before being trusted -- see the mutation check reported in
+# the task writeup, not repeated here as a test.
+# ---------------------------------------------------------------------------
+
+
+class StubResponse:
+    """Minimal httpx.Response stand-in, matching this repo's convention in
+    test_tmdb_auth.py / test_outbound_sites.py."""
+
+    def __init__(self, status_code=200, json_data=None, json_error=False):
+        self.status_code = status_code
+        self._json = {} if json_data is None else json_data
+        self._json_error = json_error
+
+    def json(self):
+        if self._json_error:
+            raise ValueError("malformed JSON body")
+        return self._json
+
+
+@pytest.fixture
+def fake_fetch():
+    # G37: patch on the module that *defines* fetch, which is what
+    # googlebooks.py resolves through `from app.services import outbound`.
+    with patch("app.services.outbound.fetch", new=AsyncMock()) as m:
+        yield m
+
+
+class TestGooglebooksRateLimit:
+    async def test_a_429_calls_on_rate_limit_once(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(429)
+        calls = []
+        result = await googlebooks.lookup(
+            "9780000000000", object(), on_rate_limit=lambda: calls.append(1)
+        )
+        assert result is None
+        assert calls == [1]
+
+    async def test_a_200_hit_never_calls_on_rate_limit(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"items": []})
+        calls = []
+        await googlebooks.lookup(
+            "9780000000000", object(), on_rate_limit=lambda: calls.append(1)
+        )
+        assert calls == []
+
+    async def test_a_404_never_calls_on_rate_limit(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(404)
+        calls = []
+        await googlebooks.lookup(
+            "9780000000000", object(), on_rate_limit=lambda: calls.append(1)
+        )
+        assert calls == []
+
+
+class TestGooglebooksNeverRaises:
+    """Before T7 this module had no try/except anywhere: outbound.fetch(),
+    resp.json(), and the `ident["type"]` indexing all propagated -- an
+    httpx.ReadError became a 500 on the busiest route in the app, and on
+    items_catalog.py's *Add by ISBN* (no handler at all) a 500 there too."""
+
+    async def test_a_transport_exception_from_fetch_returns_none(self, fake_fetch):
+        fake_fetch.side_effect = httpx.ReadError("boom")
+        assert await googlebooks.lookup("9780441172719", object()) is None
+
+    async def test_a_malformed_json_body_returns_none(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_error=True)
+        assert await googlebooks.lookup("9780441172719", object()) is None
+
+    async def test_an_identifier_with_no_type_key_returns_none_not_a_keyerror(self, fake_fetch):
+        """`ident["type"]` on an industryIdentifiers entry lacking "type" is a
+        real KeyError today -- this drives the request through outbound.fetch
+        (not a stub of lookup itself, per G31) so the code under test
+        actually runs the indexing line."""
+        fake_fetch.return_value = StubResponse(200, json_data={"items": [{
+            "volumeInfo": {
+                "title": "Some Book",
+                "industryIdentifiers": [{"identifier": "0000000000"}],
+            },
+        }]})
+        assert await googlebooks.lookup("9780441172719", object()) is None
+
+
+class TestOpenLibraryRateLimit:
+    @respx.mock
+    async def test_a_429_calls_on_rate_limit_once(self):
+        respx.get("https://openlibrary.org/isbn/9780000000001.json").mock(
+            return_value=httpx.Response(429)
+        )
+        calls = []
+        async with httpx.AsyncClient() as client:
+            result = await openlibrary.lookup(
+                "9780000000001", client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert result is None
+        assert calls == [1]
+
+    @respx.mock
+    async def test_a_200_hit_never_calls_on_rate_limit(self):
+        respx.get("https://openlibrary.org/isbn/9780000000002.json").mock(
+            return_value=httpx.Response(200, json={"title": "Some Book"})
+        )
+        calls = []
+        async with httpx.AsyncClient() as client:
+            await openlibrary.lookup(
+                "9780000000002", client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert calls == []
+
+    @respx.mock
+    async def test_a_404_never_calls_on_rate_limit(self):
+        respx.get("https://openlibrary.org/isbn/9780000000003.json").mock(
+            return_value=httpx.Response(404)
+        )
+        calls = []
+        async with httpx.AsyncClient() as client:
+            await openlibrary.lookup(
+                "9780000000003", client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert calls == []
+
+
+class TestDnbRateLimit:
+    @respx.mock
+    async def test_a_429_calls_on_rate_limit_once(self):
+        respx.get("https://services.dnb.de/sru/dnb").mock(return_value=httpx.Response(429))
+        calls = []
+        async with httpx.AsyncClient() as client:
+            result = await dnb.lookup(
+                "9783000000000", client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert result is None
+        assert calls == [1]
+
+    @respx.mock
+    async def test_a_200_hit_never_calls_on_rate_limit(self):
+        respx.get("https://services.dnb.de/sru/dnb").mock(
+            return_value=httpx.Response(200, text=_fixture("dnb_sru_nohit.xml"))
+        )
+        calls = []
+        async with httpx.AsyncClient() as client:
+            await dnb.lookup("9783000000000", client, on_rate_limit=lambda: calls.append(1))
+        assert calls == []
+
+    @respx.mock
+    async def test_a_404_never_calls_on_rate_limit(self):
+        respx.get("https://services.dnb.de/sru/dnb").mock(return_value=httpx.Response(404))
+        calls = []
+        async with httpx.AsyncClient() as client:
+            await dnb.lookup("9783000000000", client, on_rate_limit=lambda: calls.append(1))
+        assert calls == []
+
+
+class TestHardcoverGraphqlRateLimit:
+    @respx.mock
+    async def test_a_429_calls_on_rate_limit_once(self):
+        respx.post("https://api.hardcover.app/v1/graphql").mock(return_value=httpx.Response(429))
+        calls = []
+        async with httpx.AsyncClient() as client:
+            result = await hardcover._graphql(
+                "query { me { id } }", client=client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert result is None
+        assert calls == [1]
+
+    @respx.mock
+    async def test_a_200_hit_never_calls_on_rate_limit(self):
+        respx.post("https://api.hardcover.app/v1/graphql").mock(
+            return_value=httpx.Response(200, json={"data": {"me": {"id": 1}}})
+        )
+        calls = []
+        async with httpx.AsyncClient() as client:
+            await hardcover._graphql(
+                "query { me { id } }", client=client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert calls == []
+
+    @respx.mock
+    async def test_a_404_never_calls_on_rate_limit(self):
+        respx.post("https://api.hardcover.app/v1/graphql").mock(return_value=httpx.Response(404))
+        calls = []
+        async with httpx.AsyncClient() as client:
+            await hardcover._graphql(
+                "query { me { id } }", client=client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert calls == []
+
+
+class TestHardcoverLookupByIsbnRateLimit:
+    """The callback must fire from either attempt -- the ISBN-13 lookup, or
+    the ISBN-10 retry that runs when the first misses. `lookup_by_isbn`
+    forwards `on_rate_limit` to both `_graphql` calls it makes."""
+
+    @respx.mock
+    async def test_the_isbn13_attempt_can_fire_the_callback(self):
+        def responder(request):
+            body = request.content.decode()
+            if "isbn_13" in body:
+                return httpx.Response(429)
+            return httpx.Response(200, json={"data": {"editions": []}})
+
+        respx.post("https://api.hardcover.app/v1/graphql").mock(side_effect=responder)
+        calls = []
+        async with httpx.AsyncClient() as client:
+            result = await hardcover.lookup_by_isbn(
+                "9780000000000", client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert result is None
+        assert calls == [1]
+
+    @respx.mock
+    async def test_the_isbn10_retry_can_fire_the_callback(self):
+        def responder(request):
+            body = request.content.decode()
+            if "isbn_13" in body:
+                return httpx.Response(200, json={"data": {"editions": []}})
+            return httpx.Response(429)
+
+        respx.post("https://api.hardcover.app/v1/graphql").mock(side_effect=responder)
+        calls = []
+        async with httpx.AsyncClient() as client:
+            result = await hardcover.lookup_by_isbn(
+                "9780000000000", client, on_rate_limit=lambda: calls.append(1)
+            )
+        assert result is None
+        assert calls == [1]
