@@ -176,7 +176,12 @@
         {% elif status == 'duplicate' %}
         <p class="text-sm text-shelf-muted">Already in collection</p>
         {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'already_checked_out', 'not_checked_out') %}
-        <p class="text-xs text-shelf-muted">{{ message }}</p>
+        {# data-scan-detail: app.js's scanCardOutcome reads this into the toast,
+           so a lend names its borrower and a move names its destination the way
+           the server's retired HX-Trigger string did. Deliberately not on the
+           error/not_owned arms below — the handler surfaces those through
+           .text-shelf-error instead. #}
+        <p class="text-xs text-shelf-muted" data-scan-detail>{{ message }}</p>
         {% elif status == 'found' %}
         <p class="text-xs text-shelf-muted">{{ message }}</p>
         {% elif status == 'marked_read' %}

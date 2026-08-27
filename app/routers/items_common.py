@@ -702,7 +702,6 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     status = "wishlisted" if mode == "wishlist" else "added"
     _log_scan(upc_norm, media_type, status, item_id, mode)
 
-    toast_prefix = "Wishlisted" if mode == "wishlist" else "Added"
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {
@@ -714,7 +713,6 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             "enrich_status": enrich_status, "enrich_provider": enrich_provider,
         },
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
     return resp
 
 async def _first_hit(queries, search):
@@ -872,7 +870,6 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     status = "wishlisted" if mode == "wishlist" else "added"
     _log_scan(upc_norm, "video_game", status, item_id, mode)
 
-    toast_prefix = "Wishlisted" if mode == "wishlist" else "Added"
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {
@@ -885,7 +882,6 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
             "enrich_status": enrich_status, "enrich_provider": "IGDB",
         },
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {game_title[:50]}")
     return resp
 
 

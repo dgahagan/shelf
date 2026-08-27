@@ -87,6 +87,7 @@ class TestDvdScanClimbsTheLadder:
         assert row["title"] == "Goodfellas"
         assert row["description"] == "Henry Hill rises through the mob."
         assert row["publish_year"] == 1990
+        assert "HX-Trigger" not in resp.headers
 
     def test_the_raw_retail_title_is_never_sent(
         self, editor_client, db, monkeypatch, stub_upc
@@ -294,7 +295,7 @@ class TestGameScanHonoursWishlistMode:
         ).fetchone()
         assert log_row["result"] == "wishlisted"
         assert "wishlisted" in resp.text.lower()
-        assert "Wishlisted:" in resp.headers["HX-Trigger"]
+        assert "HX-Trigger" not in resp.headers
 
     def test_add_mode_is_unchanged(
         self, editor_client, db, monkeypatch, stub_upc

@@ -6,6 +6,39 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-08-27
+
+Type a barcode into the scan box and Shelf told you about it twice. One pop-up
+message came from the server and one from the browser, for the same scan — and
+they did not always agree. The browser's version knew when an outcome was a
+problem and coloured it as a warning; the server's called everything a success,
+including "already lent" and "not currently checked out". Scanning with the
+camera, meanwhile, only ever showed one. A scan now reports itself once, from
+one place, in every mode.
+
+### Fixed
+
+- **A typed scan raises one pop-up message, not two.** Seven scan outcomes
+  were double-reporting: adding or wishlisting a book by ISBN, a film by UPC
+  and a game by UPC, plus lending, returning, moving and marking read. Each
+  now surfaces exactly once. The camera path is unchanged — it always showed
+  one, and still does. ([#45](https://github.com/dgahagan/shelf/issues/45))
+
+### Changed
+
+- **The surviving message is the browser's, so its wording changes slightly.**
+  It is now built from the result card you can see, rather than composed
+  separately on the server, which is what makes the two impossible to
+  disagree. A lend reads **"Lent: <title> — Lent to <borrower>"** where it used
+  to read "Lent: <title> → <borrower>", and titles are no longer cut off at 40
+  or 50 characters.
+- **A move now names where the item came from, not just where it went.** The
+  message reads **"Moved: <title> — Living Room → Office"**; the retired
+  version named the destination only.
+- **An outcome that is not a success is coloured as a warning.** "Already lent"
+  and "not currently checked out" used to arrive as a green success message
+  alongside the correct amber one. Only the amber one is left.
+
 ## [0.22.0] - 2026-08-27
 
 A scan that came back thin had one way of saying so: *no match*. But there are
@@ -1869,6 +1902,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.22.1]: https://github.com/dgahagan/shelf/releases/tag/v0.22.1
 [0.22.0]: https://github.com/dgahagan/shelf/releases/tag/v0.22.0
 [0.21.1]: https://github.com/dgahagan/shelf/releases/tag/v0.21.1
 [0.21.0]: https://github.com/dgahagan/shelf/releases/tag/v0.21.0

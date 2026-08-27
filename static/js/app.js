@@ -29,6 +29,7 @@ function scanCardOutcome(root) {
     var authorsEl = root.querySelector('[data-scan-authors]');
     var coverEl = root.querySelector('[data-scan-cover]');
     var badgeEl = root.querySelector('[data-scan-badge]');
+    var detailEl = root.querySelector('[data-scan-detail]');
     return {
         status: status,
         ok: SCAN_OK_STATUSES.indexOf(status) !== -1,
@@ -36,6 +37,7 @@ function scanCardOutcome(root) {
         label: badgeEl ? badgeEl.textContent.trim() : '',
         title: titleEl ? titleEl.textContent.trim() : null,
         authors: authorsEl ? authorsEl.textContent.trim() : null,
+        detail: detailEl ? detailEl.textContent.trim() : null,
         cover: coverEl ? coverEl.getAttribute('src') : null
     };
 }
@@ -112,20 +114,32 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
     if (action === 'clear-scan-input') {
         var input = el.querySelector('#isbn-input');
         if (input) { input.value = ''; input.focus(); }
-        // Typed/Enter entry has no camera overlay, and the result card lands
-        // in #scan-results below the fold — toast the outcome so the user
-        // sees something happen without scrolling. (The camera path POSTs
-        // via fetch, not htmx, so this never double-fires.)
+        // This handler is the SOLE owner of the typed-scan toast: /api/scan
+        // sets no HX-Trigger on any branch, so nothing else toasts here.
+        // Typed/Enter entry has no camera overlay and the result card lands in
+        // #scan-results below the fold, so without this the submit looks like
+        // a silent no-op. The card is the only input — see GOTCHAS "When
+        // adding a response branch to /api/scan".
         var card = ok && document.querySelector('#scan-results > :first-child');
         if (card) {
             var outcome = scanCardOutcome(card);
             var errMsg = card.querySelector('.text-shelf-error:not(span)');
             var label = outcome.label || 'Done';
+            // The badge reads lower-case ('added', 'lent'); the toast is a
+            // sentence, so it opens capitalised the way the server string did.
+            label = label.charAt(0).toUpperCase() + label.slice(1);
             // A card is a failure when its own status says so — not when some
             // element inside it happens to be styled with a warning colour.
             var isErr = !outcome.ok;
-            var text = errMsg ? errMsg.textContent.trim()
-                              : label + (outcome.title ? ': ' + outcome.title : '');
+            var text;
+            if (errMsg) {
+                text = errMsg.textContent.trim();
+            } else {
+                text = label + (outcome.title ? ': ' + outcome.title : '');
+                // The detail line carries the second party the title cannot:
+                // the borrower on a lend, the destination on a move.
+                if (outcome.detail) text += ' — ' + outcome.detail;
+            }
             showToast(text, isErr ? 'warning' : 'success');
         }
     } else if (action === 'clear-title-search' && ok) {

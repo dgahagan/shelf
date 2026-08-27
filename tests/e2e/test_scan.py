@@ -29,6 +29,19 @@ def _insert_location(data_dir: Path, name: str) -> int:
         conn.close()
 
 
+def _insert_borrower(data_dir: Path, name: str) -> int:
+    """Insert a borrower row directly into the E2E SQLite DB; return its id
+    (mirrors _insert_location above — there's no shared borrowers helper)."""
+    db_path = data_dir / "shelf.db"
+    conn = sqlite3.connect(str(db_path))
+    try:
+        cur = conn.execute("INSERT INTO borrowers (name) VALUES (?)", (name,))
+        conn.commit()
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
 def test_scan_page_loads(live_server, authed_page):
     """The scan page renders for an authenticated editor/admin."""
     authed_page.goto(f"{live_server['url']}/scan")
@@ -544,7 +557,7 @@ def test_typed_entry_with_a_warning_styled_notice_toasts_as_success(
 
     toast = authed_page.locator("#toast-container > div").first
     expect(toast).to_be_visible(timeout=5_000)
-    expect(toast).to_contain_text("added: Goodfellas")
+    expect(toast).to_contain_text("Added: Goodfellas")
     assert "bg-shelf-success" in (toast.get_attribute("class") or "")
     assert_page_clean(authed_page)
 
@@ -1068,4 +1081,132 @@ def test_the_quota_line_on_an_isbn_not_found_card_leaves_the_manual_form_intact(
     ).to_be_visible()
 
     assert csp_violations == [], csp_violations
+    assert_page_clean(authed_page)
+
+
+# --- T3: one toast per typed scan (issue #45) ------------------------------
+#
+# These three drive a REAL htmx POST through the live server. That is the
+# whole point: the #45 double only exists when htmx processes a genuine
+# `HX-Trigger` off the response, so an injected card plus a dispatched
+# `htmx:afterRequest` (the technique `test_typed_entry_with_a_warning_styled
+# _notice_toasts_as_success` uses, correctly, for what it pins) could never
+# have seen it. All three stay offline: lend and move resolve an existing row
+# through `_find_item_by_barcode`, and the add-mode duplicate check at
+# `items.py:360` runs *before* `_lookup_metadata`, so no branch here reaches
+# the network.
+
+
+def _assert_exactly_one_toast(pg, polls: int = 5, gap_ms: int = 100) -> None:
+    """`G21` — poll the toast count from Python, and poll it more than once.
+
+    `page.wait_for_function` needs `eval()`, which this app's CSP refuses, so
+    it would time out somewhere unrelated instead of failing here. And a
+    single immediate count is the assertion that would have missed #45
+    entirely: the server's `HX-Trigger` toast and the client's
+    `htmx:afterRequest` toast land on different ticks, so whichever arrives
+    first satisfies a count taken the moment it appears. Toasts start fading
+    at 2700ms and are removed at 3000ms (`app.js` `showToast`), so a ~500ms
+    window is comfortably inside the lifetime of a legitimate single toast.
+    """
+    for i in range(polls):
+        n = pg.evaluate(
+            "() => document.querySelectorAll('#toast-container > div').length"
+        )
+        assert n == 1, f"expected exactly one toast, saw {n} on poll {i + 1}/{polls}"
+        pg.wait_for_timeout(gap_ms)
+
+
+def _open_scan_in_mode(pg, live_server, mode_label: str):
+    """Load /scan and switch to a mode, waiting out the switch's own fetch.
+
+    `setMode()` calls `loadRecentScans()`, which replaces `#scan-results`
+    innerHTML from `/api/recent-scans`. The scan form swaps into that same
+    container with `hx-swap="afterbegin"`, so a scan submitted before that
+    fetch resolves has its result card wiped out from under the assertion.
+    """
+    pg.goto(f"{live_server['url']}/scan")
+    pg.wait_for_load_state("networkidle")
+    button = pg.get_by_role("button", name=mode_label, exact=True)
+    expect(button).to_be_visible(timeout=5_000)
+    button.click()
+    pg.wait_for_load_state("networkidle")
+
+
+def test_a_typed_move_scan_raises_exactly_one_toast_naming_the_destination(
+    live_server, authed_page
+):
+    """#45: move used to double-toast, and its server string named the
+    destination the card title cannot. One toast now, destination intact."""
+    data_dir = live_server["data_dir"]
+    dest_id = _insert_location(data_dir, "Toast Destination Shelf")
+    insert_item(
+        data_dir, title="Toast Move Subject", media_type="book",
+        isbn="9780000045001",
+    )
+
+    _open_scan_in_mode(authed_page, live_server, "Move")
+    authed_page.select_option("#location", str(dest_id))
+    authed_page.fill("#isbn-input", "9780000045001")
+    authed_page.press("#isbn-input", "Enter")
+
+    toast = authed_page.locator("#toast-container > div").first
+    expect(toast).to_be_visible(timeout=10_000)
+    expect(toast).to_contain_text("Moved:")
+    expect(toast).to_contain_text("Toast Move Subject")
+    expect(toast).to_contain_text("Toast Destination Shelf")
+    _assert_exactly_one_toast(authed_page)
+    assert_page_clean(authed_page)
+
+
+def test_a_typed_lend_scan_raises_exactly_one_toast_naming_the_borrower(
+    live_server, authed_page
+):
+    """#45: lend used to double-toast, and its server string named the
+    borrower the card title cannot. One toast now, borrower intact."""
+    data_dir = live_server["data_dir"]
+    _insert_borrower(data_dir, "Toast Borrower Bea")
+    insert_item(
+        data_dir, title="Toast Lend Subject", media_type="book",
+        isbn="9780000045002",
+    )
+
+    _open_scan_in_mode(authed_page, live_server, "Lend")
+    authed_page.select_option(
+        "select[name=borrower_id]", label="Toast Borrower Bea"
+    )
+    authed_page.fill("#isbn-input", "9780000045002")
+    authed_page.press("#isbn-input", "Enter")
+
+    toast = authed_page.locator("#toast-container > div").first
+    expect(toast).to_be_visible(timeout=10_000)
+    expect(toast).to_contain_text("Lent:")
+    expect(toast).to_contain_text("Toast Lend Subject")
+    expect(toast).to_contain_text("Toast Borrower Bea")
+    _assert_exactly_one_toast(authed_page)
+    assert_page_clean(authed_page)
+
+
+def test_a_typed_duplicate_scan_raises_exactly_one_warning_toast(
+    live_server, authed_page
+):
+    """#45's other half: `duplicate` never had a server toast, so the client
+    handler is its only one — and it is the side that types it as a warning.
+    Offline by construction: `items.py`'s duplicate check runs above
+    `_lookup_metadata`, so this branch never reaches a metadata provider."""
+    data_dir = live_server["data_dir"]
+    insert_item(
+        data_dir, title="Toast Duplicate Subject", media_type="book",
+        isbn="9780000045003",
+    )
+
+    _open_scan_in_mode(authed_page, live_server, "Add")
+    authed_page.fill("#isbn-input", "9780000045003")
+    authed_page.press("#isbn-input", "Enter")
+
+    toast = authed_page.locator("#toast-container > div").first
+    expect(toast).to_be_visible(timeout=10_000)
+    expect(toast).to_contain_text("Toast Duplicate Subject")
+    assert "bg-shelf-warning" in (toast.get_attribute("class") or "")
+    _assert_exactly_one_toast(authed_page)
     assert_page_clean(authed_page)

@@ -52,6 +52,7 @@ class TestLendMode:
         })
         assert resp.status_code == 200
         assert b"checked_out" in resp.content or b"Lent to" in resp.content
+        assert "HX-Trigger" not in resp.headers
 
     def test_lend_no_borrower(self, admin_client, db):
         _insert_item(db, title="Book", isbn="9780000000011")
@@ -98,6 +99,7 @@ class TestReturnMode:
         })
         assert resp.status_code == 200
         assert b"returned" in resp.content or b"Returned" in resp.content
+        assert "HX-Trigger" not in resp.headers
 
     def test_return_not_checked_out(self, admin_client, db):
         _insert_item(db, title="Home Book", isbn="9780000000021")
@@ -126,6 +128,7 @@ class TestMoveMode:
         })
         assert resp.status_code == 200
         assert b"moved" in resp.content
+        assert "HX-Trigger" not in resp.headers
 
         # Verify location was updated
         with get_db() as check_db:
@@ -236,6 +239,7 @@ class TestQuickRateMode:
         })
         assert resp.status_code == 200
         assert b"Marked as read" in resp.content
+        assert "HX-Trigger" not in resp.headers
 
         with get_db() as check_db:
             row = check_db.execute("SELECT reading_status, date_finished FROM items WHERE id = ?", (item_id,)).fetchone()
@@ -345,6 +349,7 @@ class TestScanCoverQueue:
 
         assert resp.status_code == 200
         download.assert_not_awaited()
+        assert "HX-Trigger" not in resp.headers
 
         stats = cover_queue.stats()
         assert stats["queued"] == 1

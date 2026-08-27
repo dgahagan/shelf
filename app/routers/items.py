@@ -148,7 +148,6 @@ def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": f"Lent to {borrower['name']}"},
     )
-    resp.headers["HX-Trigger"] = items_common._toast_header(f"Lent: {item['title'][:40]} → {borrower['name']}")
     return resp
 
 
@@ -179,7 +178,6 @@ def _scan_mode_return(request, templates, item: dict, raw: str):
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": f"Returned from {active['name']}"},
     )
-    resp.headers["HX-Trigger"] = items_common._toast_header(f"Returned: {item['title'][:50]}")
     return resp
 
 
@@ -205,7 +203,6 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": f"{old_location} → {new_name}"},
     )
-    resp.headers["HX-Trigger"] = items_common._toast_header(f"Moved: {item['title'][:40]} → {new_name}")
     return resp
 
 
@@ -286,7 +283,6 @@ def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "authors": item.get("authors"), "message": "Marked as read"},
     )
-    resp.headers["HX-Trigger"] = items_common._toast_header(f"Read: {item['title'][:50]}")
     return resp
 
 
@@ -435,7 +431,6 @@ async def scan_isbn(
     status = "wishlisted" if mode == "wishlist" else "added"
     items_common._log_scan(isbn13, media_type, status, item_id, mode)
 
-    toast_prefix = "Wishlisted" if mode == "wishlist" else "Added"
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {
@@ -453,7 +448,6 @@ async def scan_isbn(
             "detect_overrode": detect_overrode,
         },
     )
-    resp.headers["HX-Trigger"] = items_common._toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
     return resp
 
 

@@ -2063,6 +2063,30 @@ grep -rn "async def _[a-z_]*(.*client" tests/ | head -40
   the check. This entry exists to make the red expected and to stop anyone
   "fixing" it by widening the production signature to positional.
 
+## G62 — When adding a response branch to `/api/scan`
+
+- **Rule:** Do not set `HX-Trigger` on the response. The card's
+  `data-scan-*` attributes are the toast's only input; add `data-scan-detail`
+  to the branch's detail line if the toast needs to say something the title
+  does not.
+- **Why:** the client handler already toasts all 15 outcomes and is the only
+  side that classifies them; a server trigger double-fires on the typed (htmx)
+  path and is invisible on the camera (`fetch`) path. Issue #45.
+- **Evidence:** the seven sites removed on this branch — commit `cc01264`,
+  2026-08-27.
+- **Verify:** `_toast_header` is called only from the three non-scan routes:
+
+```bash
+grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
+# expect only: items_common.py (the def), and items.py's manual-add,
+# reading-status and delete routes — nothing inside scan_isbn,
+# _scan_mode_*, _scan_upc or _scan_upc_game.
+```
+
+- **Status:** active — a lint candidate (`HX-Trigger` assignment inside a
+  `/api/scan` code path is mechanically checkable as a `make check-*`
+  tripwire).
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
