@@ -121,7 +121,11 @@ reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
 external host has a minimum interval matching its published rate limit,
 with retry on transient failures. This is what lets a 200-book session not
-get throttled.
+get throttled. Retries honour a server's `Retry-After` up to a fixed ceiling
+(`RETRY_AFTER_MAX`, 30s); a stated wait beyond that ends the attempt and
+returns the response at once, on the reasoning that a server asking for an
+hour is reporting a spent quota rather than a blip — a 403 from Open Library
+is treated the same way.
 
 ## Photo Intake
 

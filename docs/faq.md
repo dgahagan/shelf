@@ -13,7 +13,11 @@ for fully local. Share links are served by *your* server.
 **Do I need any API keys?**
 No. Books, covers, DVD titles (via UPC Item DB) and everything else core work
 keyless. Keys unlock extras: Hardcover (sync, series checks), IGDB (games),
-TMDb (discs), ISBNdb (valuation), a vision provider (Photo Intake).
+TMDb (discs), ISBNdb (valuation), a vision provider (Photo Intake). The
+keyless tiers are metered per day, though — a heavy cataloguing session can
+exhaust one, after which scans come back empty until it resets. A key raises
+or removes that limit. See
+[Troubleshooting](troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
 
 **Why HTTPS with a self-signed certificate?**
 Phone cameras and offline mode both require a secure origin, so Shelf must

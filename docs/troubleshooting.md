@@ -46,6 +46,10 @@ has a barcode for this).
   the ISBN; type the ISBN-10.
 - Store-price-sticker barcodes aren't ISBNs. Peel.
 - Genuinely obscure editions: use **Title search** or **Add manually**.
+- If several barcodes in a row come back empty, the provider's daily quota
+  may be spent rather than the records missing — see [A scan comes back empty
+  and the log says a provider asked for a long
+  wait](#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
 
 ## Metadata came back wrong or sparse
 
@@ -182,11 +186,37 @@ Passwords are bcrypt hashes. Generate one —
 - Env-var overrides (`HARDCOVER_TOKEN`, `ABS_TOKEN`) beat what's stored —
   if you changed the key in Settings and nothing changed, check your `.env`.
 
+## A scan comes back empty and the log says a provider asked for a long wait
+
+A barcode scan returns quickly with no metadata ("Not found"), or a cover
+search finds nothing, even for an item the provider clearly has.
+
+Check **Logs** (Settings → Logs, or the container log) for a line like:
+
+```
+outbound: api.upcitemdb.com returned HTTP 429 asking for a 4275s wait, beyond the 30s ceiling — not retrying
+```
+
+The host in that line names the provider whose quota is spent. Trial tiers
+are metered per day — UPC Item DB's is 100 lookups/day, Google Books has a
+per-day project quota — and once one is spent, the provider answers every
+request with the same 429 until it resets. Shelf does not wait one out: it
+gives up at once so a scan isn't held for about a minute per lookup.
+
+Wait for the daily reset, then **Retry Missing Covers** (Settings) or
+re-scan the barcode. For a provider with a paid tier, add a key in Settings
+to raise or remove the limit.
+
+Until a later release, the scan card still says "Not found" in this case —
+the log line is currently the only way to tell "the provider is out of
+quota" from "this barcode isn't in the database".
+
 ## Rate-limited (HTTP 429) in the UI
 
-Per-IP limits protect `/api/`, `/share/`, `/login` and `/setup`. Behind a
-reverse proxy without `SHELF_TRUST_PROXY=1`, every client looks like the
-proxy's IP and shares one bucket — set the variable.
+This one is Shelf's own inbound limit, not a provider's. Per-IP limits
+protect `/api/`, `/share/`, `/login` and `/setup`. Behind a reverse proxy
+without `SHELF_TRUST_PROXY=1`, every client looks like the proxy's IP and
+shares one bucket — set the variable.
 
 ## Still stuck
 

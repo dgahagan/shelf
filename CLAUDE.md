@@ -47,7 +47,11 @@ far more often than by a human. Keep it that way:
 - **Run the slow things in the background** — `make test-e2e`, `docker compose build`, and
   `make release` all take minutes. Launch them with Bash `run_in_background: true` and do other
   work; the harness re-invokes on exit. Never launch in the background and then `sleep`-poll —
-  the completion notification *is* the signal.
+  the completion notification *is* the signal. **But "other work" cannot mean editing the tree
+  those targets are reading.** `make test-e2e` serves the working copy through its own uvicorn,
+  so a source edit landing mid-run makes the result unattributable — you can no longer tell a
+  pre-existing failure from one you just caused, which is exactly what a baseline run exists to
+  establish. Stash or wait; docs and other files nothing under test imports are fair game.
 - **`make checks-fast` in the loop, `make checks` before a release.** The full target runs
   `pip-audit` over the network and writes dated reports into `reports/`.
 - **Prefer the `gh` CLI over the `github` MCP tools here.** The release procedure in

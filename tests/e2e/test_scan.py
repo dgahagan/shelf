@@ -857,3 +857,50 @@ def test_camera_overlay_reads_the_right_fields_through_a_real_scan_with_a_notice
         assert_page_clean(pg)
     finally:
         ctx.close()
+
+
+def test_a_cover_less_overlay_result_requests_no_cover(live_server, authed_page):
+    """`x-show` hides the element; it does not stop `:src` from evaluating.
+
+    `scan.js:242` assigns `cover: null` whenever the card carries no cover, so
+    the unguarded binding `'/' + scanResult.cover` produced the string
+    `/null` and the browser fetched it — a 404 on every camera scan of a
+    cover-less result. Alpine removes an attribute bound to `null`, so the
+    guarded binding emits no `src` at all.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    requested = []
+    authed_page.on("request", lambda r: requested.append(r.url))
+
+    authed_page.evaluate(
+        "() => { const root = document.querySelector('[x-data=\"scanPage\"]');"
+        " Alpine.$data(root).scanResult = {ok: true, warn: false, label: 'added',"
+        "     title: 'Goodfellas', authors: null, cover: null, isbn: '085391163121'}; }"
+    )
+    authed_page.wait_for_timeout(250)
+
+    assert not [u for u in requested if u.rstrip("/").endswith("/null")], requested
+    assert_page_clean(authed_page)
+
+
+def test_an_overlay_result_with_a_cover_still_requests_it(live_server, authed_page):
+    """The other half of the guard: a present cover binds exactly as before.
+
+    Without this the fix above is equally satisfied by a binding that never
+    renders a cover at all.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    authed_page.evaluate(
+        "() => { const root = document.querySelector('[x-data=\"scanPage\"]');"
+        " Alpine.$data(root).cameraActive = true;"
+        " Alpine.$data(root).scanResult = {ok: true, warn: false, label: 'added',"
+        "     title: 'Goodfellas', authors: null, cover: 'covers/7.jpg',"
+        "     isbn: '085391163121'}; }"
+    )
+    cover = authed_page.locator("img[alt=''][src='/covers/7.jpg']")
+    expect(cover).to_have_count(1, timeout=5_000)
+    assert_page_clean(authed_page)

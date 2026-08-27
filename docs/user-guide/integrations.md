@@ -88,6 +88,13 @@ the Deutsche Nationalbibliothek for German ISBNs. Lookups send only the ISBN
 or UPC — never your account, collection or personal data. Requests to every
 provider are paced to its published rate limit.
 
+Some of these meter you per day rather than per second — UPC Item DB's free
+tier allows 100 lookups a day, and keyless Google Books has a per-day project
+quota. Once one is spent it rejects every request until it resets, which
+reaches you as a scan that finds nothing. Shelf does not wait a daily limit
+out; it gives up at once and names the provider in the log. See
+[Troubleshooting](../troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
+
 ## Supplying keys by environment instead
 
 Every key except the vision providers can come from an environment variable

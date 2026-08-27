@@ -7,6 +7,7 @@ slept. `app.config.HOST_RATE_LIMITS` is overridden per-host with
 """
 
 import asyncio
+import logging
 
 import httpx
 import pytest
@@ -231,12 +232,78 @@ def test_fetch_honours_numeric_retry_after_without_jitter(recorded_sleeps):
     assert recorded_sleeps == [2.0]
 
 
-def test_fetch_caps_retry_after(recorded_sleeps):
+@pytest.mark.parametrize("status", [429, 503])
+def test_fetch_does_not_retry_a_retry_after_beyond_the_ceiling(status, recorded_sleeps):
+    """Issue #47: a stated wait past the ceiling is a spent quota, not a blip.
+
+    Capping it did not shorten the wait, it discarded the one piece of
+    information saying a retry is pointless — `api.upcitemdb.com` sent
+    `Retry-After: 4274.5` and one lookup cost 60.4s, a four-rung scan 240.25s.
+    The response now comes back on the first answer.
+    """
     client = RecordingClient(
-        [StubResponse(503, headers={"Retry-After": "9999"}), StubResponse(200)]
+        [StubResponse(status, headers={"Retry-After": "9999"}), StubResponse(200)]
     )
-    asyncio.run(outbound.fetch(client, "GET", "https://example.test/x"))
+    resp = asyncio.run(outbound.fetch(client, "GET", "https://example.test/x"))
+    assert resp.status_code == status
+    assert len(client.calls) == 1
+    assert recorded_sleeps == []
+
+
+def test_fetch_serves_a_retry_after_at_the_ceiling(recorded_sleeps):
+    """Exactly RETRY_AFTER_MAX is still a wait we are willing to serve."""
+    client = RecordingClient(
+        [StubResponse(429, headers={"Retry-After": "30"}), StubResponse(200)]
+    )
+    resp = asyncio.run(outbound.fetch(client, "GET", "https://example.test/x"))
+    assert resp.status_code == 200
     assert recorded_sleeps == [outbound.RETRY_AFTER_MAX]
+    assert len(client.calls) == 2
+
+
+def test_fetch_stops_on_a_beyond_ceiling_retry_after_on_the_final_attempt(
+    caplog, recorded_sleeps
+):
+    """The header is read before the `not last` test, so the last attempt sees it too."""
+    client = RecordingClient(
+        [StubResponse(503), StubResponse(503, headers={"Retry-After": "9999"})]
+    )
+    with caplog.at_level(logging.WARNING, logger="app.services.outbound"):
+        resp = asyncio.run(
+            outbound.fetch(client, "GET", "https://example.test/x", retries=1)
+        )
+    assert resp.status_code == 503
+    assert len(client.calls) == 2
+    assert len(recorded_sleeps) == 1  # the headerless first response backed off
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "not retrying" in warnings[0].getMessage()
+
+
+def test_fetch_warns_once_naming_the_host_when_a_quota_is_spent(caplog, recorded_sleeps):
+    """A self-hoster must be able to tell from the default log level."""
+    client = RecordingClient(
+        [StubResponse(429, headers={"Retry-After": "4274.5"}), StubResponse(200)]
+    )
+    with caplog.at_level(logging.WARNING, logger="app.services.outbound"):
+        asyncio.run(outbound.fetch(client, "GET", "https://example.test/x"))
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "example.test" in message
+    assert "not retrying" in message
+    assert "https://example.test/x" not in message  # the host, not the query string
+
+
+@pytest.mark.parametrize(
+    "headers", [{"Retry-After": "2"}, {}], ids=["within-ceiling", "headerless"]
+)
+def test_fetch_stays_at_debug_for_a_servable_wait(headers, caplog, recorded_sleeps):
+    client = RecordingClient([StubResponse(429, headers=headers), StubResponse(200)])
+    with caplog.at_level(logging.WARNING, logger="app.services.outbound"):
+        asyncio.run(outbound.fetch(client, "GET", "https://example.test/x"))
+    assert [r for r in caplog.records if r.levelno == logging.WARNING] == []
+    assert len(recorded_sleeps) == 1
 
 
 def test_fetch_ignores_http_date_retry_after(recorded_sleeps):

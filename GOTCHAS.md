@@ -897,6 +897,20 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     template, is the argument for the rule — **the question is never "is my
     fixture realistic", it is "who wrote the markup I am asserting on".**
 
+  One more, found while orchestrating `feat/issue-47-quota-429-stall`
+  (2026-08-26) — this one is about the *restore*, not the mutation:
+  - **`git checkout <file>` is the wrong way back when the fix is not committed
+    yet.** The plan spelled the recipe out as "mutate, run, then `git checkout
+    app/services/outbound.py`" — correct only against a *committed* fix. Run
+    while the fix is still an uncommitted working-tree change, that command
+    restores the file from `HEAD`, which is the branch point, so it silently
+    deletes the very work the pins were written for. Nothing fails: the suite
+    goes green again, because the tests were reverted or not, and the next
+    thing you notice is a `grep` for your own change coming back empty. Either
+    commit the fix first and let `git checkout` mean what the recipe assumes,
+    or `cp` the fixed file aside before the first mutation and restore from
+    that copy. A plan that writes the recipe should say which.
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1902,6 +1916,46 @@ grep -rn "|safe" app/templates/
 - **Status:** documented — a lint candidate: "`|safe` applied to a bare
   context variable in `app/templates/`" is mechanically checkable, and would
   have caught this one.
+
+## G59 — When `x-show` hides an element that also builds a URL
+
+- **Rule:** `x-show` is not a guard for the element's other bindings. It sets
+  `display: none` and nothing else — every `:src` / `:href` / `:style` on the
+  same tag still evaluates on every state change, and a `:src` that evaluates
+  is a request the browser makes whether or not anyone can see the element.
+  Guard the binding itself, and bind the empty case to **`null`**, not `''`:
+  Alpine removes an attribute bound to `null`/`undefined`/`false`
+  (`[null,void 0,!1].includes(r)&&xi(e)?t.removeAttribute(e)` in the vendored
+  CSP build), while `src=""` resolves against the current document and fetches
+  the *page* again.
+- **Why:** the symptom lands in a channel nothing was reading. A 404 on a
+  subresource is not an uncaught error, so the `pageerror` guard every E2E
+  `new_page()` got in v0.16.3 passes straight over it, and the element is
+  invisible by construction so no visual pass catches it either. It surfaced
+  only because a test drive read the browser network log by hand.
+- **Evidence:** issue #46 (2026-08-26) — `scan.html:63` was
+  `x-show="scanResult.cover" :src="'/' + scanResult.cover"`, and `scan.js:242`
+  assigns `cover: null` for a card with no cover, so **every camera scan of a
+  cover-less result fetched `/null`**. Shipped as
+  `:src="scanResult.cover ? '/' + scanResult.cover : null"`, mutation-checked:
+  the new E2E pin fails on the pre-fix template with
+  `AssertionError: ['http://127.0.0.1:43919/null']`.
+- **The second instance is already in the tree.** `item_edit.html:139` is the
+  same shape (`x-show="preview" :src="preview"`) and is safe **only** because
+  `preview` happens to hold `null` rather than `''` — an accident of the
+  component, not a decision. Anything that changes that initial value turns it
+  into this bug.
+- **Verify:** a `:src`/`:href` on a tag whose `x-show` gates the same value
+  must not build a string from it unguarded:
+
+```bash
+grep -rn 'x-show="[^"]*" *:\(src\|href\)=' app/templates/
+```
+
+- **Status:** documented — a lint candidate, but the grep above is the naive
+  form: it catches the co-located case and misses a guard that lives on an
+  ancestor. A real rule wants to ask whether the bound expression can produce
+  a URL from a falsy value at all.
 
 ## Graveyard
 

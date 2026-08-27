@@ -116,6 +116,12 @@ three different responses: no key configured (add one), a key that was
 rejected (fix it), or a provider that simply had no match (nothing to fix).
 See [Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title).
 
+There is a fourth cause the card cannot yet tell apart from "no match": the
+provider's daily allowance is spent. The scan still returns quickly — Shelf
+no longer waits out a rate limit that says "come back in an hour" — but it
+comes back empty. The log names the provider; see
+[Troubleshooting](../troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
+
 ## Tips
 
 - A barcode that looks up wrong? Open the item, hit **Edit**, fix it, and use

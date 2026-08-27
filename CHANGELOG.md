@@ -4,6 +4,51 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.21.1] - 2026-08-27
+
+Scanning a barcode could sit there for a minute and then tell you nothing was
+found. Metadata providers on free or trial tiers meter you per day, and once
+that day's allowance is spent they answer every request with "rate limited,
+come back in an hour" — sometimes in several hours. Shelf treated that the
+same way it treats a momentary blip: it waited, asked again, waited, asked
+again. The provider had already said the answer would not change. This
+release takes it at its word.
+
+### Changed
+
+- **A provider that asks you to wait longer than 30 seconds is no longer
+  retried.** A server naming a wait of an hour is reporting a spent quota,
+  not a hiccup, so Shelf returns the failure immediately instead of sleeping
+  the maximum and asking again on every attempt. In practice a UPC scan that
+  hung for about a minute now finishes in a fraction of a second, and the
+  worst case — every retry stage burning the full cap — drops from roughly
+  four minutes to the same fraction. Short waits are unaffected: a provider
+  asking for 20 seconds still gets exactly 20 seconds, and a rate-limit
+  response with no stated wait still falls back to the usual escalating
+  backoff. ([#47](https://github.com/dgahagan/shelf/issues/47))
+- **The log now names the provider that ran out.** At the default log level,
+  Settings → Logs shows a line like `outbound: api.upcitemdb.com returned
+  HTTP 429 asking for a 4275s wait, beyond the 30s ceiling — not retrying`.
+  Until now an exhausted quota and a genuinely unknown barcode were
+  indistinguishable from the outside.
+
+  This release deliberately stops short of changing what you see on screen:
+  the scan card and the title-search results still report a plain miss when
+  a provider is out of quota. Making those say *why* touches the wording on
+  several surfaces and is its own piece of work — the log line is the way to
+  tell the two apart today, and
+  [troubleshooting](docs/troubleshooting.md) now explains how.
+
+### Fixed
+
+- **A camera scan of an item with no cover no longer requests a missing
+  image.** The overlay's cover slot was hidden for a cover-less result but
+  still asked the browser for it, so every such scan left a stray failed
+  request behind. Nothing on screen changes; the noise in the browser's
+  network log does. ([#46](https://github.com/dgahagan/shelf/issues/46))
+
 ## [0.21.0] - 2026-08-26
 
 The media-type dropdown on the scan tab was an oracle: whatever it said is
@@ -1762,6 +1807,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.21.1]: https://github.com/dgahagan/shelf/releases/tag/v0.21.1
 [0.21.0]: https://github.com/dgahagan/shelf/releases/tag/v0.21.0
 [0.20.0]: https://github.com/dgahagan/shelf/releases/tag/v0.20.0
 [0.19.0]: https://github.com/dgahagan/shelf/releases/tag/v0.19.0

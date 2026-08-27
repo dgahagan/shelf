@@ -36,7 +36,9 @@ RETRY_STATUSES = frozenset({429, 502, 503, 504})
 
 BACKOFF_BASE = 0.5  # seconds; attempt n waits BACKOFF_BASE * 2**n
 BACKOFF_MAX = 8.0  # cap on our own computed backoff
-RETRY_AFTER_MAX = 30.0  # cap on a server-supplied Retry-After
+# The longest server-stated wait we will serve; a Retry-After beyond it ends
+# the attempt (the server is reporting a spent quota, not a blip).
+RETRY_AFTER_MAX = 30.0
 JITTER = 0.25  # +/- fraction applied to computed backoff, not to Retry-After
 
 # host -> (lock, last-request monotonic timestamp). Created lazily: an
@@ -89,7 +91,10 @@ async def acquire(host: str) -> None:
 
 
 def _retry_after_seconds(resp: httpx.Response) -> float | None:
-    """Numeric `Retry-After` in seconds, capped; None if absent or a date."""
+    """Numeric `Retry-After` in seconds, uncapped; None if absent, negative or a date.
+
+    The caller decides whether the number is worth waiting for.
+    """
     raw = resp.headers.get("Retry-After")
     if not raw:
         return None
@@ -99,7 +104,7 @@ def _retry_after_seconds(resp: httpx.Response) -> float | None:
         return None  # HTTP-date form — fall back to our own backoff
     if seconds < 0:
         return None
-    return min(seconds, RETRY_AFTER_MAX)
+    return seconds
 
 
 def _backoff(attempt: int) -> float:
@@ -128,6 +133,11 @@ async def fetch(
     issue #27 is about. `covers._download` — the queue worker's path, off
     the request path — opts in; request-path lookups do not. `ConnectError`
     fails fast and is retried everywhere.
+
+    A response in `RETRY_STATUSES` carrying a numeric `Retry-After` within
+    `RETRY_AFTER_MAX` sleeps exactly that long; one **beyond** the ceiling is
+    not transient at all — the server is reporting a spent quota, so the
+    response is returned at once (logged at WARNING) rather than retried.
 
     On the final transient failure the original exception is re-raised
     unchanged, or the last transient response returned — callers already
@@ -161,19 +171,34 @@ async def fetch(
             await _sleep(delay)
             continue
 
-        if resp.status_code in RETRY_STATUSES and not last:
-            delay = _retry_after_seconds(resp)
-            if delay is None:
-                delay = _backoff(attempt)
-            logger.debug(
-                "outbound: %s %s returned %d, retrying in %.2fs",
-                method,
-                url,
-                resp.status_code,
-                delay,
-            )
-            await _sleep(delay)
-            continue
+        if resp.status_code in RETRY_STATUSES:
+            retry_after = _retry_after_seconds(resp)
+            if retry_after is not None and retry_after > RETRY_AFTER_MAX:
+                # The server has said how long the wait is, and it is longer
+                # than we are willing to serve. That is a statement that a
+                # retry is pointless (a spent daily quota), not a transient —
+                # return the response now instead of sleeping the cap and
+                # asking again. Same reasoning as 403's absence above.
+                logger.warning(
+                    "outbound: %s returned HTTP %d asking for a %.0fs wait, "
+                    "beyond the %.0fs ceiling — not retrying",
+                    host,
+                    resp.status_code,
+                    retry_after,
+                    RETRY_AFTER_MAX,
+                )
+                return resp
+            if not last:
+                delay = retry_after if retry_after is not None else _backoff(attempt)
+                logger.debug(
+                    "outbound: %s %s returned %d, retrying in %.2fs",
+                    method,
+                    url,
+                    resp.status_code,
+                    delay,
+                )
+                await _sleep(delay)
+                continue
 
         return resp
 

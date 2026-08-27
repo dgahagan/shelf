@@ -60,7 +60,7 @@
                 </div>
                 <template x-if="scanResult">
                     <div>
-                        <img x-show="scanResult.cover" :src="'/' + scanResult.cover" class="w-16 h-22 object-cover rounded mx-auto mb-3" alt="">
+                        <img x-show="scanResult.cover" :src="scanResult.cover ? '/' + scanResult.cover : null" class="w-16 h-22 object-cover rounded mx-auto mb-3" alt="">
                         <p class="text-white font-medium text-lg mb-1" x-text="scanResult.title || scanResult.isbn"></p>
                         <p x-show="scanResult.authors" class="text-shelf-muted text-sm mb-2" x-text="scanResult.authors"></p>
                         <span class="text-xs px-3 py-1 rounded-full inline-block mb-4"
