@@ -29,11 +29,11 @@ one place, in every mode.
 - **The surviving message is the browser's, so its wording changes slightly.**
   It is now built from the result card you can see, rather than composed
   separately on the server, which is what makes the two impossible to
-  disagree. A lend reads **"Lent: <title> — Lent to <borrower>"** where it used
-  to read "Lent: <title> → <borrower>", and titles are no longer cut off at 40
-  or 50 characters.
+  disagree. A lend reads **`Lent: <title> — Lent to <borrower>`** where it
+  used to read **`Lent: <title> → <borrower>`**, and titles are no longer cut
+  off at 40 or 50 characters.
 - **A move now names where the item came from, not just where it went.** The
-  message reads **"Moved: <title> — Living Room → Office"**; the retired
+  message reads **`Moved: <title> — Living Room → Office`**; the retired
   version named the destination only.
 - **An outcome that is not a success is coloured as a warning.** "Already lent"
   and "not currently checked out" used to arrive as a green success message
