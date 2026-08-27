@@ -4,6 +4,71 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.21.0] - 2026-08-26
+
+The media-type dropdown on the scan tab was an oracle: whatever it said is
+what the item became. Scan a novel with it still set to "DVD" from last week
+and you filed a novel as a DVD — and because the setting is sticky, the people
+most affected were the ones who had used Shelf longest. The barcode knew
+better the whole time.
+
+### Changed
+
+- **The barcode outranks the dropdown when it is certain.** A 978/979 prefix
+  is an ISBN, so a book scanned under any non-book setting is filed as a book
+  and the card says it overrode you. A non-ISBN barcode is certainly not a
+  book, so a disc scanned under "Book" is no longer filed as one. Because this
+  keys off the barcode rather than a new default, it reaches existing users
+  without them changing a setting — a saved choice is never silently
+  reinterpreted.
+- **A UPC's media type is detected from the product record**, not from the
+  dropdown: platform and format wording in the raw retail title
+  (`Nintendo Switch`, `[DVD]`, `4K UHD`) first, then the product category, and
+  only ever for games. A category alone never decides "disc", and a category
+  naming a console never decides "game" — that is the shelf the product sits
+  on, not what the product is, and it is what stops a PlayStation 5 being
+  catalogued as a video game. Where nothing contradicts your pick, your pick
+  stands; CDs in particular have no detection at all, so the dropdown remains
+  the only thing that can say "CD".
+- **A game scanned in Wishlist mode is filed as wishlisted.** It was filed as
+  owned — the game path never read the scan mode.
+- **A re-scan of something you already own is recognised from the barcode
+  alone**, before any provider call. It costs no network round-trip, and a
+  rate-limited or offline lookup can no longer report an item already on your
+  shelf as "Not found".
+
+### Added
+
+- **The scan card says why a record came back thin.** Three distinct notices,
+  because the response differs: no provider key configured, a key the provider
+  rejected, or a provider with no match for that barcode. Previously all three
+  looked identical to a successful scan. (On IGDB a rejected credential is
+  indistinguishable from a genuine miss, so it reads as "no match" — Settings
+  → Integrations → **Test key** is how to tell.)
+- **Auto in the media-type picker**, and the default for a new install. The
+  platform field stays available under Auto, since a game can still be
+  detected under it.
+
+### Fixed
+
+- **The scan result card is read by its own data attributes.** The camera
+  overlay and the typed-entry toast each re-derived the outcome by
+  substring-matching CSS class names out of the returned HTML, so any element
+  styled with a warning colour inside a successful card could flip the whole
+  card to a failure, and any muted paragraph above the authors line became the
+  author. Both now read one shared reader.
+- **An unrecognised media type is rejected at the route boundary.** Nothing
+  validated the value before — the column has no constraint and the save layer
+  checks field names, not values — so a malformed or tampered form could store
+  anything.
+- **A disc is no longer stamped "via tmdb" when TMDb never answered.** The
+  film branch hard-coded the source on both the stored row and the result
+  card, so an item filed from the UPC title alone still claimed TMDb as its
+  provenance — and with the new notice beside it, the card argued with itself:
+  *"DVD / Blu-ray via tmdb"* two lines above *"Add a TMDb API key"*. It now
+  says `upc`, the way the game branch always has. Rows already stored with the
+  wrong source are left alone; nothing rewrites your data.
+
 ## [0.20.0] - 2026-08-26
 
 **Find cover** searched for a book no matter what the item was. On a DVD it
@@ -1697,6 +1762,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.21.0]: https://github.com/dgahagan/shelf/releases/tag/v0.21.0
 [0.20.0]: https://github.com/dgahagan/shelf/releases/tag/v0.20.0
 [0.19.0]: https://github.com/dgahagan/shelf/releases/tag/v0.19.0
 [0.18.0]: https://github.com/dgahagan/shelf/releases/tag/v0.18.0

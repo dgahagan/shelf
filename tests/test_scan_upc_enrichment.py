@@ -13,6 +13,10 @@ its call actually sees.
 import pytest
 
 from app.services import igdb, tmdb, upcitemdb
+from app.services import upc as upc_svc
+from app.database import get_db
+from app.routers import items_common
+from tests.conftest import _insert_item
 
 
 DVD_UPC = "085391163121"
@@ -237,6 +241,61 @@ class TestGameScanClimbsTheSameLadder:
         assert row["source"] == "upc"
 
 
+class TestGameScanHonoursWishlistMode:
+    """`_scan_upc_game` used to hardcode owned/added regardless of `mode`
+
+    (issue #36 T3) — a game scanned in wishlist mode was filed as owned. The
+    film path (`_scan_upc`) already threads `mode` through the same four
+    places; this pins the game path doing the same.
+    """
+
+    def _stub_no_igdb_hit(self, monkeypatch):
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return []
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_igdb_creds(monkeypatch)
+
+    def test_wishlist_mode_stores_unowned_and_logs_wishlisted(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(MARIO)
+        self._stub_no_igdb_hit(monkeypatch)
+
+        resp = editor_client.post(
+            "/api/scan",
+            data={"isbn": GAME_UPC, "media_type": "video_game", "mode": "wishlist"},
+        )
+
+        assert resp.status_code == 200
+        row = db.execute("SELECT * FROM items WHERE media_type = 'video_game'").fetchone()
+        assert row["owned"] == 0
+        log_row = db.execute(
+            "SELECT result FROM scan_log WHERE item_id = ?", (row["id"],)
+        ).fetchone()
+        assert log_row["result"] == "wishlisted"
+        assert "wishlisted" in resp.text.lower()
+        assert "Wishlisted:" in resp.headers["HX-Trigger"]
+
+    def test_add_mode_is_unchanged(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(MARIO)
+        self._stub_no_igdb_hit(monkeypatch)
+
+        resp = editor_client.post(
+            "/api/scan",
+            data={"isbn": GAME_UPC, "media_type": "video_game", "mode": "add"},
+        )
+
+        assert resp.status_code == 200
+        row = db.execute("SELECT * FROM items WHERE media_type = 'video_game'").fetchone()
+        assert row["owned"] == 1
+        log_row = db.execute(
+            "SELECT result FROM scan_log WHERE item_id = ?", (row["id"],)
+        ).fetchone()
+        assert log_row["result"] == "added"
+
+
 class TestUnresolvableAndTitlelessProducts:
     def test_an_unresolvable_upc_renders_not_found(
         self, editor_client, db, monkeypatch, stub_upc
@@ -279,6 +338,609 @@ class TestUnresolvableAndTitlelessProducts:
         assert "not found" in resp.text.lower()
         assert called == []
         assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0
+
+
+class TestTheProductIsFetchedOnce:
+    """The hoist: one UPC Item DB call per scan, on either branch.
+
+    Both branches used to fetch the same record independently, below a fork
+    chosen from the dropdown hint alone. Counting the calls is the observable
+    proof the fetch moved above the fork.
+    """
+
+    @pytest.mark.parametrize("media_type, upc, title", [
+        ("dvd", DVD_UPC, GOODFELLAS),
+        ("video_game", GAME_UPC, MARIO),
+    ])
+    def test_upcitemdb_is_called_once_not_twice(
+        self, editor_client, db, monkeypatch, media_type, upc, title
+    ):
+        calls = []
+
+        async def _lookup(code, client):
+            calls.append(code)
+            return _product(title)
+
+        async def _lookup_by_title(query, key, client):
+            return None
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return []
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_tmdb_key(monkeypatch)
+        _set_igdb_creds(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": upc, "media_type": media_type})
+
+        assert resp.status_code == 200
+        assert len(calls) == 1, calls
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 1
+
+
+class TestARescanCostsNoOutboundCall:
+    """The barcode-alone pre-check stayed above the lookup.
+
+    Moving the whole duplicate check below `upcitemdb.lookup` would make every
+    re-scan of an owned disc pay for a network round-trip, and — because that
+    client returns None on any non-200 and swallows every exception (G47) — a
+    429, an exhausted quota or a broken DNS would render "Not found — add
+    manually below" for an item already on the shelf.
+    """
+
+    def _own_the_disc(self, db):
+        _insert_item(
+            db, title="Already Owned", isbn=None, media_type="dvd",
+            upc=upc_svc.normalize_upc(DVD_UPC),
+        )
+        db.commit()
+
+    def test_a_rescan_reports_duplicate_without_calling_upcitemdb(
+        self, editor_client, db, monkeypatch
+    ):
+        self._own_the_disc(db)
+        calls = []
+
+        async def _lookup(code, client):
+            calls.append(code)
+            return _product(GOODFELLAS)
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "duplicate" in resp.text.lower()
+        assert "Already Owned" in resp.text
+        assert calls == []
+
+    def test_a_rescan_still_reports_duplicate_when_the_lookup_returns_nothing(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """The quota-exhausted case, stated as its own contract.
+
+        `stub_upc(None)` is exactly what a 429 or an offline box produces.
+        Below the pre-check this renders not_found; above it, duplicate.
+        """
+        self._own_the_disc(db)
+        stub_upc(None)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "duplicate" in resp.text.lower()
+        assert "not found" not in resp.text.lower()
+
+    def test_a_rescan_dedupes_across_the_hint(self, editor_client, db, monkeypatch):
+        """One barcode is one product, whatever the dropdown says.
+
+        The pre-check drops the `media_type` term on purpose: after detection
+        the stored type may differ from the hint the scan was made under, and
+        a hint-keyed check would miss the row it should have found. The
+        "same UPC under two types" contract that *is* pinned lives on
+        `/api/items/manual`, a different route, and is untouched.
+        """
+        self._own_the_disc(db)
+        stub_calls = []
+
+        async def _lookup(code, client):
+            stub_calls.append(code)
+            return _product(MARIO)
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": DVD_UPC, "media_type": "video_game"}
+        )
+
+        assert "duplicate" in resp.text.lower()
+        assert stub_calls == []
+
+
+class TestScanIntegrityErrorGuard:
+    """`G18` — a row committed during the lookup window is not a 500.
+
+    The barcode-alone pre-check runs *before* the outbound call, so the whole
+    lookup is a window in which a rival scan of the same barcode can commit.
+    Seeding the row from inside the stubbed lookup reproduces exactly that
+    interleaving.
+
+    Two layers defend the property and they need one pin each (`G31`): the
+    media_type-keyed guard under `BEGIN IMMEDIATE`, and the
+    `sqlite3.IntegrityError` catch below it. With the guard live the catch
+    never runs, so the second test blinds the guard — otherwise deleting the
+    catch outright would leave the whole suite green.
+    """
+
+    PARAMS = [("dvd", DVD_UPC, GOODFELLAS), ("video_game", GAME_UPC, MARIO)]
+
+    def _race_during_lookup(self, monkeypatch, media_type, title):
+        async def _lookup_then_race(code, client):
+            # A *separate* connection, in this thread — the `db` fixture's
+            # belongs to the test thread and the route runs in another. This
+            # is the rival writer, committing inside the lookup window.
+            with get_db() as rival:
+                _insert_item(
+                    rival, title="Raced In", isbn=None, media_type=media_type,
+                    upc=upc_svc.normalize_upc(code),
+                )
+            return _product(title)
+
+        async def _lookup_by_title(query, key, client):
+            return None
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return []
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup_then_race)
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_tmdb_key(monkeypatch)
+        _set_igdb_creds(monkeypatch)
+
+    def _one_row(self, db, upc):
+        return db.execute(
+            "SELECT COUNT(*) c FROM items WHERE upc = ?",
+            (upc_svc.normalize_upc(upc),),
+        ).fetchone()["c"]
+
+    @pytest.mark.parametrize("media_type, upc, title", PARAMS)
+    def test_the_guard_catches_a_row_committed_during_the_lookup(
+        self, editor_client, db, monkeypatch, media_type, upc, title
+    ):
+        """Layer 1: the media_type-keyed guard under the write lock."""
+        self._race_during_lookup(monkeypatch, media_type, title)
+
+        resp = editor_client.post("/api/scan", data={"isbn": upc, "media_type": media_type})
+
+        assert resp.status_code == 200
+        assert "duplicate" in resp.text.lower()
+        assert self._one_row(db, upc) == 1
+
+    @pytest.mark.parametrize("media_type, upc, title", PARAMS)
+    def test_a_blinded_guard_still_reports_duplicate_not_500(
+        self, editor_client, db, monkeypatch, media_type, upc, title
+    ):
+        """Layer 2: the IntegrityError catch, with layer 1 disabled.
+
+        `_find_upc_row` returns None the first time — the guard missing the
+        row, which is what a race tighter than the write lock would look like.
+        The insert then trips `UNIQUE(upc, media_type)` and only the catch can
+        turn that into the duplicate card instead of a 500.
+        """
+        self._race_during_lookup(monkeypatch, media_type, title)
+
+        real = items_common._find_upc_row
+        calls = {"n": 0}
+
+        def _blind_first_call(conn, upc_key, mt):
+            calls["n"] += 1
+            return None if calls["n"] == 1 else real(conn, upc_key, mt)
+
+        monkeypatch.setattr(items_common, "_find_upc_row", _blind_first_call)
+
+        resp = editor_client.post("/api/scan", data={"isbn": upc, "media_type": media_type})
+
+        assert resp.status_code == 200
+        assert "duplicate" in resp.text.lower()
+        assert calls["n"] == 2  # guard missed, the catch re-looked
+        assert self._one_row(db, upc) == 1
+
+
+class TestTheProductRecordOutranksTheDropdown:
+    """T4 — the fork reads the product record, not the dropdown hint.
+
+    Every assertion is on the **stored row** and on **which provider was
+    asked**, because that pair is the whole behaviour change. The hint is
+    deliberately wrong in each case.
+    """
+
+    @pytest.fixture
+    def providers(self, monkeypatch):
+        """Record which provider each scan reached, and hit neither."""
+        seen = {"tmdb": [], "igdb": []}
+
+        async def _lookup_by_title(query, key, client):
+            seen["tmdb"].append(query)
+            return None
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            seen["igdb"].append(query)
+            return []
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_tmdb_key(monkeypatch)
+        _set_igdb_creds(monkeypatch)
+        return seen
+
+    def _scan(self, monkeypatch, editor_client, title, category, hint):
+        async def _lookup(code, client):
+            return {"title": title, "category": category, "brand": None, "images": []}
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+        return editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": hint}
+        )
+
+    def _stored(self, db):
+        return db.execute("SELECT media_type, title FROM items").fetchone()
+
+    def test_a_video_game_software_category_routes_to_igdb_whatever_the_hint_said(
+        self, editor_client, db, monkeypatch, providers
+    ):
+        self._scan(monkeypatch, editor_client, MARIO, "Software > Video Game Software", "dvd")
+        assert providers["igdb"], "IGDB was never asked"
+        assert providers["tmdb"] == []
+        assert self._stored(db)["media_type"] == "video_game"
+
+    def test_a_console_category_with_a_platform_marker_routes_to_igdb(
+        self, editor_client, db, monkeypatch, providers
+    ):
+        """The Zelda row — tier 2 decides, tier 3 could not have."""
+        self._scan(
+            monkeypatch, editor_client,
+            "The Legend of Zelda: Breath of the Wild - Nintendo Switch",
+            "Electronics > Video Game Consoles", "dvd",
+        )
+        assert providers["igdb"]
+        assert providers["tmdb"] == []
+        assert self._stored(db)["media_type"] == "video_game"
+
+    def test_a_console_category_without_a_platform_marker_does_not_route_to_igdb(
+        self, editor_client, db, monkeypatch, providers
+    ):
+        """The PlayStation 5 row — a console must not be filed as a game.
+
+        This is the contract a future maintainer widening the category table
+        will break, and the reason `Electronics > Video Game Consoles` is
+        deliberately absent from tier 3.
+        """
+        self._scan(
+            monkeypatch, editor_client, "PlayStation 5 Console",
+            "Electronics > Video Game Consoles", "dvd",
+        )
+        assert providers["igdb"] == [], "a console reached IGDB as if it were a game"
+        assert self._stored(db)["media_type"] != "video_game"
+
+    def test_a_dvd_format_tag_routes_to_tmdb_even_under_a_game_hint(
+        self, editor_client, db, monkeypatch, providers
+    ):
+        self._scan(
+            monkeypatch, editor_client, TOM,
+            "Electronics > Video > Televisions", "video_game",
+        )
+        assert providers["tmdb"], "TMDb was never asked"
+        assert providers["igdb"] == []
+        assert self._stored(db)["media_type"] == "dvd"
+
+    def test_a_platform_marker_beats_a_format_tag_in_the_same_title(
+        self, editor_client, db, monkeypatch, providers
+    ):
+        """`Alice Madness Returns (PC DVD)` is a game whose title says DVD."""
+        self._scan(
+            monkeypatch, editor_client, "Alice Madness Returns (PC DVD)",
+            "Software > Video Game Software", "dvd",
+        )
+        assert providers["igdb"]
+        assert self._stored(db)["media_type"] == "video_game"
+
+    def test_a_deliberate_cd_choice_survives_a_product_record_with_no_markers(
+        self, editor_client, db, monkeypatch, providers
+    ):
+        """Shelf has no CD detection, so the dropdown is a CD's only evidence.
+
+        Detection must not quietly refile an album as a DVD — the tier-4 rule
+        is that a *book-family* hint is wrong on a UPC, not that every hint is.
+        """
+        self._scan(
+            monkeypatch, editor_client, "Abbey Road (Remastered)",
+            "Music > Rock", "cd",
+        )
+        assert self._stored(db)["media_type"] == "cd"
+
+
+class TestEnrichmentNoticeSlot:
+    """Issue #36 T5 — the notice slot on the scan result card.
+
+    Four cases: no credential configured, a rejected credential, a genuine
+    empty result, and an overridden media type. The first three are the
+    film branch's `enrich_notice`; the fourth is `detect_reason`, already
+    computed by T4 and rendered here for the first time. All four still
+    create the item — thin metadata is never a reason to lose the scan.
+    """
+
+    def test_no_credential_configured_still_files_the_item_and_shows_the_notice(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+        called = []
+
+        async def _lookup_by_title(query, key, client):
+            called.append(query)
+            return None
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        monkeypatch.delenv("TMDB_API_KEY", raising=False)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert called == []  # never reached without a key
+        row = db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+        assert row is not None
+        assert "Add a TMDb API key" in resp.text
+        assert 'href="/settings"' in resp.text
+
+    def test_a_rejected_credential_renders_a_different_notice(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            raise tmdb.TmdbAuthError("HTTP 401")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "TMDb rejected the configured key" in resp.text
+        assert "Add a TMDb API key" not in resp.text
+        row = db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+        assert row is not None
+
+    def test_an_empty_result_set_renders_a_third_notice(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            return None
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "no TMDb match for this barcode" in resp.text
+        row = db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+        assert row is not None
+
+    def test_an_overridden_media_type_renders_the_detect_reason(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """Scanned under 'video_game' but the title's own '[DVD]' tag wins."""
+        stub_upc(TOM)
+
+        async def _lookup_by_title(query, key, client):
+            return None
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": DVD_UPC, "media_type": "video_game"}
+        )
+
+        assert resp.status_code == 200
+        assert "filed as DVD / Blu-ray" in resp.text
+        row = db.execute("SELECT * FROM items WHERE media_type = 'dvd'").fetchone()
+        assert row is not None
+
+    def test_metadata_found_shows_no_notice_at_all(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            return {
+                "title": "Goodfellas", "description": "Henry Hill rises through the mob.",
+                "publish_year": 1990, "cover_url": None,
+            }
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "Added with title only" not in resp.text
+
+
+class TestFilmBranchProvenance:
+    """The film branch may only claim `tmdb` when TMDb actually answered.
+
+    Found at `/test-drive` (`qa-issue-36-scan-media-detection.md`,
+    Observation 1): with no key stored, the card read "DVD / Blu-ray **via
+    tmdb**" two lines above "Add a TMDb API key", and the stored row carried
+    `source='tmdb'` for a title that came off the UPC record. The game branch
+    has always got this right (`source = "igdb" if metadata else "upc"`); the
+    T5 notice is what turned the film branch's hard-coded `"tmdb"` into a
+    visible contradiction.
+    """
+
+    def test_no_credential_files_the_row_as_upc_not_tmdb(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            raise AssertionError("must not be called without a key")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        monkeypatch.delenv("TMDB_API_KEY", raising=False)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert db.execute("SELECT source FROM items WHERE upc IS NOT NULL").fetchone()[0] == "upc"
+        assert "via upc" in resp.text
+        assert "via tmdb" not in resp.text
+
+    def test_a_rejected_credential_files_the_row_as_upc_not_tmdb(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            raise tmdb.TmdbAuthError("HTTP 401")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert db.execute("SELECT source FROM items WHERE upc IS NOT NULL").fetchone()[0] == "upc"
+        assert "via tmdb" not in resp.text
+
+    def test_an_empty_result_files_the_row_as_upc_not_tmdb(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            return None
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert db.execute("SELECT source FROM items WHERE upc IS NOT NULL").fetchone()[0] == "upc"
+        assert "via tmdb" not in resp.text
+
+    def test_a_real_tmdb_hit_still_claims_tmdb(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """The other half — the fix must not blank out honest provenance."""
+        stub_upc(GOODFELLAS)
+
+        async def _lookup_by_title(query, key, client):
+            return {
+                "title": "Goodfellas", "description": "Henry Hill rises through the mob.",
+                "publish_year": 1990, "cover_url": None,
+            }
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert db.execute("SELECT source FROM items WHERE upc IS NOT NULL").fetchone()[0] == "tmdb"
+        assert "via tmdb" in resp.text
+
+
+class TestGameBranchEnrichmentNotice:
+    """Game branch: only two cases are distinguishable (see items_common.py).
+
+    `igdb.search_games` collapses a rejected Twitch token, a transport
+    failure, and a genuine empty result into the same `[]`
+    (app/services/igdb.py:86-87, 147-149) — unlike TMDb, which raises its
+    own `TmdbAuthError`. So "no match" is rendered for both a real miss and
+    a rejected credential; only "not configured" (no client id/secret at
+    all) is its own distinct case.
+    """
+
+    def test_an_empty_igdb_result_renders_the_no_match_copy(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(MARIO)
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return []
+
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_igdb_creds(monkeypatch)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": "video_game"}
+        )
+
+        assert resp.status_code == 200
+        assert "no IGDB match for this barcode" in resp.text
+        row = db.execute("SELECT * FROM items WHERE media_type = 'video_game'").fetchone()
+        assert row is not None
+
+    def test_a_rejected_credential_is_indistinguishable_from_no_match(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """Pins the honest-best-available limitation, not a desired behaviour.
+
+        `search_games` returning `[]` here is deliberately identical to the
+        genuine-no-match stub above — that is exactly what a rejected Twitch
+        token looks like too, since `igdb.py` has no equivalent of
+        `tmdb.TmdbAuthError`. Widening `igdb.py` (`search_game_art`,
+        `lookup_game`, `test_credentials` all reach the same client) to tell
+        the two apart is out of scope for this task and deliberately
+        deferred — see `app/routers/items_common.py`'s T5 comment in
+        `_scan_upc_game`. Until then, the card's "no match" copy is honest:
+        it says enrichment did not happen, not why.
+        """
+        stub_upc(MARIO)
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return []  # a rejected token looks exactly like this
+
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_igdb_creds(monkeypatch)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": "video_game"}
+        )
+
+        assert resp.status_code == 200
+        assert "no IGDB match for this barcode" in resp.text
+
+    def test_no_credentials_configured_shows_the_configure_notice(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(MARIO)
+        called = []
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            called.append(query)
+            return []
+
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        monkeypatch.delenv("IGDB_CLIENT_ID", raising=False)
+        monkeypatch.delenv("IGDB_CLIENT_SECRET", raising=False)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": "video_game"}
+        )
+
+        assert resp.status_code == 200
+        assert called == []
+        assert "Add an IGDB API key" in resp.text
+        assert 'href="/settings"' in resp.text
 
 
 def _set_tmdb_key(monkeypatch, key="0123456789abcdef0123456789abcdef"):

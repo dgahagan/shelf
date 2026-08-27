@@ -160,6 +160,13 @@ async def title_search(
         return await search_games(request, q=q, platform=platform, _=_)
     if media_type == "dvd":
         return await search_dvds(request, q=q, _=_)
+    # Guard 1 of 3. `scan.html`'s hx-include carries #media-type here, so once
+    # Auto is in that picker this route receives `auto` — and there is no
+    # barcode on this path, so `auto` has nothing to mean. Resolve it (and any
+    # other out-of-set value) to a concrete type *before* dispatching, so the
+    # fragment's hidden field carries something the add route will accept.
+    if not items_common.is_valid_media_type(media_type):
+        media_type = "book"
     return await search_books(request, q=q, media_type=media_type, _=_)
 
 @router.get("/books/search")
@@ -195,6 +202,14 @@ async def add_book_from_search(
 ):
     """Add a book to the collection from a title search result (by ISBN)."""
     templates = request.app.state.templates
+    # Guard 2 of 3 — the route boundary, where the value guard belongs. The
+    # save layer cannot do it, so nothing below here would.
+    if not items_common.is_valid_media_type(media_type):
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn.strip(),
+             "message": "Unrecognised media type — pick one and try again"},
+        )
     isbn13 = isbn_svc.to_isbn13(isbn.strip())
     if not isbn13:
         return templates.TemplateResponse(

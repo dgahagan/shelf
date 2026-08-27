@@ -71,6 +71,29 @@ batch. Then Settings → Data → Maintenance → **Retry missing covers**. Item
 with no ISBN (manual adds, discs, games without IGDB) need a manual cover
 or **Find cover**.
 
+## A scan added only a title
+
+The card tells you which of these it was, because the fix is different each
+time:
+
+- **"Add a TMDb API key in Settings → Integrations…"** — no credential is
+  configured. Add one; the item is already filed and will fill in on a
+  **Retry cover** / **Fetch synopsis**, or delete and re-scan.
+- **"TMDb rejected the configured key."** — a credential is set and the
+  provider refused it. Settings → Integrations → **Test key**. Pasting the
+  wrong one of TMDb's two credential types is the usual cause.
+- **"no TMDb match for this barcode."** — nothing to fix. The provider
+  genuinely has no record for that title; **Find cover** or **Edit** it by
+  hand.
+
+**On a game, only the first and third of those can appear.** IGDB's search
+returns an empty list for a rejected Twitch credential exactly as it does for
+a genuine miss, so Shelf cannot honestly tell you which happened and says
+"no IGDB match" for both. If a game comes back thin and you expected a hit,
+check Settings → Integrations → **Test key** before assuming IGDB has no
+record — a rotated Twitch secret fails the token exchange with no other
+symptom.
+
 ## Find cover finds nothing for a DVD or a game
 
 **Find cover** asks TMDb for a disc and IGDB for a game, so an empty result

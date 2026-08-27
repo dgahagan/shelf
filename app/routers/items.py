@@ -22,6 +22,7 @@ from app.routers.items_common import SORT_OPTIONS  # re-exported for pages.py
 from app.services import isbn as isbn_svc
 from app.services.item_write import insert_item
 from app.services import openlibrary, googlebooks, hardcover, covers, national
+from app.services import detect
 from app.services import cover_queue
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
@@ -342,6 +343,20 @@ async def scan_isbn(
             {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
         )
 
+    # §1 — the barcode outranks the dropdown when it is certain. A 978/979
+    # prefix is certain, so a stale "DVD" or "Video Game" in the picker is
+    # overridden to Book here rather than filing a novel as a disc; the
+    # book-family distinctions the barcode genuinely cannot make
+    # (kids_book / audiobook / ebook / comic) are left to the user.
+    #
+    # There is no product record on this branch — an ISBN never reaches UPC
+    # Item DB — so tiers 2 and 3 have nothing to read and tier 1 decides
+    # alone. Everything below this line uses the *resolved* type: the
+    # duplicate check keys on it, and so does the row that gets saved.
+    hint = media_type
+    media_type, detect_reason = detect.detect_media_type(barcode_type, hint, None, None)
+    detect_overrode = media_type != hint
+
     # Check duplicate
     with get_db() as db:
         existing = db.execute(
@@ -425,6 +440,9 @@ async def scan_isbn(
             "item_id": item_id,
             "source": source,
             "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            # T5 renders these; T4 only has to carry them.
+            "detect_reason": detect_reason,
+            "detect_overrode": detect_overrode,
         },
     )
     resp.headers["HX-Trigger"] = items_common._toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
@@ -450,6 +468,18 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
 
     isbn = form.get("isbn", "").strip()
     media_type = form.get("media_type", "book")
+
+    # Guard 3 of 3. The scan not-found card re-emits its media type into a
+    # hidden field (`fragments/scan_result.html`), so whatever that card can
+    # carry arrives here and goes straight to `insert_item` with nothing in
+    # between. Same helper as the other two boundaries — see its comment in
+    # items_common for why there is exactly one.
+    if not items_common.is_valid_media_type(media_type):
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn,
+             "message": "Unrecognised media type — pick one and try again"},
+        )
 
     # A UPC belongs in items.upc, never in items.isbn (#20). to_isbn13()
     # will happily zero-pad a 12-digit UPC-A into something ISBN-shaped, so

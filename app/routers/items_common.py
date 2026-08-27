@@ -19,6 +19,7 @@ attribute, and a from-import binds a copy that patching cannot reach.
 import asyncio
 import json
 import logging
+import sqlite3
 
 import httpx
 
@@ -27,7 +28,7 @@ from fastapi import Request
 from app import browse_filters
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES
 from app.database import get_db, get_game_platforms, get_setting
-from app.services import covers, googlebooks, hardcover, national, openlibrary
+from app.services import covers, detect, googlebooks, hardcover, national, openlibrary
 from app.services import cover_queue
 from app.services import authors as authors_svc
 from app.services import igdb, tmdb, upcitemdb
@@ -372,6 +373,67 @@ def _log_scan(isbn: str, media_type: str, result: str, item_id: int | None = Non
             )
 
 
+# The one media-type value guard, shared by every route that can be handed a
+# `media_type` from outside. There is deliberately only one: `insert_item`
+# validates field *names* and not values (`item_write.py`), and the column is
+# a bare `media_type TEXT NOT NULL DEFAULT 'book'` with no `CHECK`
+# (`database.py`), so nothing below the routes will catch a junk value. Two
+# copies of a check like this is how the third boundary gets missed.
+#
+# `auto` is the value this exists for — it is a scan-form option, never a
+# stored type — but the guard is written against `MEDIA_TYPES` membership
+# rather than against the string "auto", so a typo or a tampered form is
+# caught by the same line.
+#
+# Scope, stated so a later reader does not over-trust it: this guards the four
+# boundaries `auto` can actually reach — /api/scan, /api/title-search,
+# /api/books/add and /api/items/manual. CSV import (`items_csv.py`) and
+# archive import (`archive.py`) also hand `insert_item` an unvalidated
+# media_type; that is real, pre-existing, and out of scope here because no
+# `auto` value can arrive through either.
+def is_valid_media_type(value: str | None) -> bool:
+    return value in MEDIA_TYPES
+
+
+def _find_upc_row(db, upc_key: str, media_type: str):
+    """The media_type-keyed duplicate row, as one patchable call.
+
+    A module-level function rather than inline SQL so a test can make this
+    guard *miss* and prove the `sqlite3.IntegrityError` catch below it is
+    real. The two are layers over one property, and `G31`'s rule is that a
+    redundant guard absorbs a single-layer mutation: with the guard live, a
+    rival row committed during the lookup window is always found here, so the
+    catch never runs and a pin that only seeds a rival row proves nothing
+    about it. Mirrors `items._find_duplicate_item`, which
+    `TestIntegrityErrorGuard` patches for exactly this reason.
+    """
+    return db.execute(
+        "SELECT id, title FROM items WHERE upc = ? AND media_type = ?",
+        (upc_key, media_type),
+    ).fetchone()
+
+
+def _upc_lookup_error(request, templates, upc_norm: str, media_type: str, mode: str, exc):
+    """The "check connectivity" card, shared by both outbound phases.
+
+    `G47` note, so the next reader is not misled: this branch is very nearly
+    dead. `upcitemdb.lookup` catches every exception itself and returns None,
+    so the *lookup* phase above practically cannot reach here — a broken DNS
+    surfaces as "not found" instead, which is the wrong story to tell. The
+    TMDb phase can genuinely raise, which is the case this card still serves.
+    Giving `upcitemdb.lookup` a transport-vs-absent distinction is deferred
+    (see the plan's deferred table); it is a change to that client's contract,
+    not to this route.
+    """
+    logger.warning("Network error looking up UPC %s: %s", upc_norm, type(exc).__name__)
+    _log_scan(upc_norm, media_type, "error", mode=mode)
+    return templates.TemplateResponse(
+        request, "fragments/scan_result.html",
+        {"status": "error", "isbn": upc_norm, "media_type": media_type,
+         "message": "Metadata lookup failed — check connectivity", "preview_cover": None},
+    )
+
+
 async def _scan_upc(request: Request, templates, upc_code: str, media_type: str, location_id: int | None, platform: str | None = None, mode: str = "add"):
     """Handle UPC barcode scan — look up via UPC Item DB + TMDb (or IGDB for games)."""
     upc_norm = upc_svc.normalize_barcode(upc_code)
@@ -380,36 +442,83 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # same disc scanned as UPC-A and as EAN-13 dedupes to one row (#20).
     upc_key = upc_svc.normalize_upc(upc_code)
 
-    # Check duplicate
+    # --- Duplicate check, part 1 of 2: the barcode alone, above the network.
+    #
+    # Keyed on `upc` with **no media_type term**, deliberately. One physical
+    # barcode is one product, so a barcode already on the shelf under any type
+    # short-circuits here and a re-scan costs no outbound call at all. That is
+    # also what stops a quota-exhausted or offline lookup from telling the user
+    # a disc they own is "Not found — add manually below": `upcitemdb.lookup`
+    # returns None on any non-200 and swallows every exception (G47), and a
+    # None product normalises to no queries, which is the not_found branch.
+    #
+    # Part 2 — the media_type-keyed check the insert needs — runs at the save,
+    # once the effective type is known. Deduping on the hint up here and then
+    # saving under a detected type would match the wrong row.
+    #
+    # `/api/items/manual` keeps its own media_type-keyed `_find_duplicate_item`
+    # and is unaffected: "the same UPC under two types" is a manual-add
+    # contract (tests/test_upc_manual_add.py), not a scan one.
     with get_db() as db:
         existing = db.execute(
-            "SELECT id, title FROM items WHERE upc = ? AND media_type = ?", (upc_key, media_type)
+            "SELECT id, title, media_type FROM items WHERE upc = ?", (upc_key,)
         ).fetchone()
     if existing:
-        _log_scan(upc_norm, media_type, "duplicate", existing["id"], mode)
+        _log_scan(upc_norm, existing["media_type"], "duplicate", existing["id"], mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "duplicate", "isbn": upc_norm, "title": existing["title"], "item_id": existing["id"]},
         )
 
-    # Video games: use UPC Item DB for title → IGDB for metadata
+    # --- One UPC Item DB lookup, above the game/film fork.
+    #
+    # Both branches read this same record; each used to fetch it separately,
+    # below a fork chosen from the dropdown hint alone. Detection reads the
+    # product's raw title and category, so the record has to be in hand before
+    # anything decides which provider to ask.
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            product = await upcitemdb.lookup(upc_norm, client)
+    except (httpx.TimeoutException, httpx.NetworkError) as exc:
+        return _upc_lookup_error(request, templates, upc_norm, media_type, mode, exc)
+
+    # --- Detection, now that the product record is in hand.
+    #
+    # This is the fork that used to read the dropdown hint alone. It reads the
+    # raw product title and category instead (`G46` — the raw title, never a
+    # `search_queries` rung: the ladder strips exactly the markers tier 2
+    # matches on). The hint is still an input, but it is now one signal among
+    # several rather than an oracle.
+    hint = media_type
+    barcode_type = upc_svc.detect_barcode_type(upc_norm)
+    media_type, detect_reason = detect.detect_media_type(
+        barcode_type,
+        hint,
+        (product or {}).get("title"),
+        (product or {}).get("category"),
+    )
+    detect_overrode = media_type != hint
+
+    # Video games: the record above, then IGDB for metadata.
     if media_type == "video_game":
-        return await _scan_upc_game(request, templates, upc_norm, location_id, platform)
+        return await _scan_upc_game(
+            request, templates, upc_norm, product, location_id, platform, mode,
+            detect_reason=detect_reason, detect_overrode=detect_overrode,
+        )
 
     # Get TMDb API key
     with get_db() as db:
         tmdb_key = get_setting(db, "tmdb_api_key")
 
     metadata = None
-    queries: list[str] = []
-    try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            product = await upcitemdb.lookup(upc_norm, client)
-            # A 200 can still carry a missing, blank or format-only title
-            # ("[DVD]"), which normalises to no queries at all. That is a
-            # not_found, not an index error on queries[0].
-            queries = upcitemdb.search_queries((product or {}).get("title") or "")
-            if queries and tmdb_key:
+    tmdb_auth_error = False
+    # A 200 can still carry a missing, blank or format-only title ("[DVD]"),
+    # which normalises to no queries at all. That is a not_found, not an index
+    # error on queries[0].
+    queries: list[str] = upcitemdb.search_queries((product or {}).get("title") or "")
+    if queries and tmdb_key:
+        try:
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 try:
                     hit = await _first_hit(
                         queries, lambda q: tmdb.lookup_by_title(q, tmdb_key, client)
@@ -422,16 +531,11 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
                         upc_norm,
                     )
                     hit = None
+                    tmdb_auth_error = True
                 if hit:
                     metadata, _matched = hit
-    except (httpx.TimeoutException, httpx.NetworkError) as exc:
-        logger.warning("Network error looking up UPC %s: %s", upc_norm, type(exc).__name__)
-        _log_scan(upc_norm, media_type, "error", mode=mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": upc_norm, "media_type": media_type,
-             "message": "Metadata lookup failed — check connectivity", "preview_cover": None},
-        )
+        except (httpx.TimeoutException, httpx.NetworkError) as exc:
+            return _upc_lookup_error(request, templates, upc_norm, media_type, mode, exc)
 
     if not queries:
         _log_scan(upc_norm, media_type, "not_found", mode=mode)
@@ -441,6 +545,34 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
              "message": "Not found — add manually below", "preview_cover": None,
              "locations": _manual_form_locations()},
         )
+
+    # T5 — the thin-metadata notice, as a *state*, not as markup.
+    #
+    # The copy and the Settings anchor live in the template. The router says
+    # only which of three things happened, so nothing here is ever rendered
+    # with `|safe` — a notice string built in Python and marked safe is one
+    # future "…no match for {title}" away from being stored XSS, and this
+    # fragment renders a title that came off a scanned barcode.
+    #
+    # Computed before the title-only fallback below overwrites `metadata`, so
+    # "found" here means an actual TMDb hit.
+    enrich_status = None
+    if metadata is None:
+        if not tmdb_key:
+            enrich_status = "no_credential"
+        elif tmdb_auth_error:
+            enrich_status = "rejected"
+        else:
+            enrich_status = "no_match"
+
+    # Provenance, decided before the placeholder below overwrites `metadata`.
+    # `tmdb` is a claim that TMDb answered — it must not be stamped on a row
+    # filed from the UPC title because there was no key, the key was rejected,
+    # or TMDb had nothing. The game branch has always done this (`source =
+    # "igdb" if metadata else "upc"` below); the film branch hard-coded
+    # `"tmdb"`, which the T5 notice turned into a card that argues with itself:
+    # "DVD / Blu-ray via tmdb" directly above "Add a TMDb API key".
+    source = "tmdb" if metadata else "upc"
 
     if metadata is None:
         # No provider hit, or no key: file the *cleaned* title rather than the
@@ -452,19 +584,48 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         }
 
     loc_id = location_id if location_id and location_id > 0 else None
+    # --- Duplicate check, part 2 of 2: media_type-keyed, under the write lock.
+    #
+    # `G18` — this is a guard-then-write route. The barcode-alone pre-check at
+    # the top ran *before* the whole lookup window, so a rival scan of the same
+    # barcode has had every one of those milliseconds to commit. BEGIN
+    # IMMEDIATE takes the write lock before the guard query, so the check and
+    # the insert see one consistent state, and the IntegrityError catch turns
+    # a lost race into the duplicate card rather than a 500 — matching
+    # `add_manual_item` (`items.py`, `TestIntegrityErrorGuard`).
+    existing = None
+    item_id = None
     with get_db() as db:
-        item_id = insert_item(
-            db,
-            title=metadata["title"],
-            description=metadata.get("description"),
-            media_type=media_type,
-            publish_year=metadata.get("publish_year"),
-            location_id=loc_id,
-            upc=upc_key,
-            source="tmdb",
-            # Was a follow-up UPDATE in a second transaction; owned is an
-            # item-creation field, so it belongs in the insert.
-            owned=0 if mode == "wishlist" else 1,
+        db.execute("BEGIN IMMEDIATE")
+        existing = _find_upc_row(db, upc_key, media_type)
+        if existing is None:
+            try:
+                item_id = insert_item(
+                    db,
+                    title=metadata["title"],
+                    description=metadata.get("description"),
+                    media_type=media_type,
+                    publish_year=metadata.get("publish_year"),
+                    location_id=loc_id,
+                    upc=upc_key,
+                    source=source,
+                    # Was a follow-up UPDATE in a second transaction; owned is
+                    # an item-creation field, so it belongs in the insert.
+                    owned=0 if mode == "wishlist" else 1,
+                )
+            except sqlite3.IntegrityError:
+                existing = _find_upc_row(db, upc_key, media_type)
+                if existing is None:
+                    raise
+
+    # _log_scan opens its own connection, so it must run outside the write
+    # transaction above or it blocks on the lock that block still holds.
+    if existing:
+        _log_scan(upc_norm, media_type, "duplicate", existing["id"], mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "duplicate", "isbn": upc_norm, "title": existing["title"],
+             "item_id": existing["id"]},
         )
 
     # Download cover
@@ -485,7 +646,10 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         {
             "status": status, "isbn": upc_norm, "title": metadata["title"],
             "authors": None, "cover_path": cover_path, "item_id": item_id,
-            "source": "tmdb", "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            "source": source, "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            # T5 renders these; T4 only has to carry them.
+            "detect_reason": detect_reason, "detect_overrode": detect_overrode,
+            "enrich_status": enrich_status, "enrich_provider": "TMDb",
         },
     )
     resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {metadata['title'][:50]}")
@@ -505,16 +669,21 @@ async def _first_hit(queries, search):
     return None
 
 
-async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id: int | None, platform: str | None = None):
-    """Handle UPC scan for video games: UPC Item DB → IGDB lookup."""
-    # Step 1: Get the retail title from the UPC, and normalise it into a
-    # search ladder. Same client, same ladder as the film path above.
-    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        product = await upcitemdb.lookup(upc_norm, client)
+async def _scan_upc_game(request: Request, templates, upc_norm: str, product: dict | None, location_id: int | None, platform: str | None = None, mode: str = "add", detect_reason: str = "", detect_overrode: bool = False):
+    """Handle UPC scan for video games: the caller's product record → IGDB.
+
+    `product` is the UPC Item DB record `_scan_upc` already fetched. This
+    function used to look it up again itself, which cost a second outbound
+    call per game scan and — more importantly — put the fetch *below* the
+    game/film fork, so nothing could read the product to decide which branch
+    to take. It is a parameter now precisely so detection can run above it.
+    """
+    # Step 1: normalise the retail title into a search ladder. Same ladder as
+    # the film path, from the same record.
     queries = upcitemdb.search_queries((product or {}).get("title") or "")
 
     if not queries:
-        _log_scan(upc_norm, "video_game", "not_found")
+        _log_scan(upc_norm, "video_game", "not_found", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": "video_game",
@@ -543,26 +712,66 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id
             if hit:
                 metadata, _matched = hit
 
+    # T5 — the thin-metadata notice.
+    #
+    # Unlike TMDb, `igdb.search_games` (app/services/igdb.py:86-87, 147-149)
+    # collapses a rejected Twitch token, a transport failure, and a genuine
+    # empty result into the same `[]` — so a missing hit here cannot be told
+    # apart from a rejected credential the way the film branch can. Rendering
+    # "no match" for both is the honest best available without widening
+    # `igdb.py` (deliberately out of scope for this task); see T5's file list.
+    enrich_status = None
+    if metadata is None:
+        if not (igdb_id and igdb_secret):
+            enrich_status = "no_credential"
+        else:
+            # Not "rejected", even when that is what happened — see above.
+            enrich_status = "no_match"
+
     # Save item — with IGDB metadata if found, otherwise the cleaned UPC title
     loc_id = location_id if location_id and location_id > 0 else None
     source = "igdb" if metadata else "upc"
     game_title = metadata["title"] if metadata else queries[0]
 
+    # `G18` — guard-then-write, exactly as on the film branch above: take the
+    # write lock before the duplicate query so the check and the insert see one
+    # state, and turn a lost race into the duplicate card rather than a 500.
+    upc_key = upc_svc.normalize_upc(upc_norm)
+    existing = None
+    item_id = None
     with get_db() as db:
-        valid_platforms = get_game_platforms(db)
-        platform_val = platform if platform and platform in valid_platforms else None
-        item_id = insert_item(
-            db,
-            title=game_title,
-            description=metadata.get("description") if metadata else None,
-            media_type="video_game",
-            publisher=metadata.get("publisher") if metadata else None,
-            publish_year=metadata.get("publish_year") if metadata else None,
-            series_name=metadata.get("series_name") if metadata else None,
-            platform=platform_val,
-            location_id=loc_id,
-            upc=upc_svc.normalize_upc(upc_norm),
-            source=source,
+        db.execute("BEGIN IMMEDIATE")
+        existing = _find_upc_row(db, upc_key, "video_game")
+        if existing is None:
+            valid_platforms = get_game_platforms(db)
+            platform_val = platform if platform and platform in valid_platforms else None
+            try:
+                item_id = insert_item(
+                    db,
+                    title=game_title,
+                    description=metadata.get("description") if metadata else None,
+                    media_type="video_game",
+                    publisher=metadata.get("publisher") if metadata else None,
+                    publish_year=metadata.get("publish_year") if metadata else None,
+                    series_name=metadata.get("series_name") if metadata else None,
+                    platform=platform_val,
+                    location_id=loc_id,
+                    upc=upc_key,
+                    source=source,
+                    owned=0 if mode == "wishlist" else 1,
+                )
+            except sqlite3.IntegrityError:
+                existing = _find_upc_row(db, upc_key, "video_game")
+                if existing is None:
+                    raise
+
+    # Outside the write transaction — _log_scan opens its own connection.
+    if existing:
+        _log_scan(upc_norm, "video_game", "duplicate", existing["id"], mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "duplicate", "isbn": upc_norm, "title": existing["title"],
+             "item_id": existing["id"]},
         )
 
     # Download cover
@@ -575,18 +784,23 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, location_id
             with get_db() as db:
                 db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
 
-    _log_scan(upc_norm, "video_game", "added", item_id)
+    status = "wishlisted" if mode == "wishlist" else "added"
+    _log_scan(upc_norm, "video_game", status, item_id, mode)
 
+    toast_prefix = "Wishlisted" if mode == "wishlist" else "Added"
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {
-            "status": "added", "isbn": upc_norm, "title": game_title,
+            "status": status, "isbn": upc_norm, "title": game_title,
             "authors": metadata.get("developer") if metadata else None,
             "cover_path": cover_path, "item_id": item_id,
             "source": source, "media_type_label": "Video Game",
+            # T5 renders these; T4 only has to carry them.
+            "detect_reason": detect_reason, "detect_overrode": detect_overrode,
+            "enrich_status": enrich_status, "enrich_provider": "IGDB",
         },
     )
-    resp.headers["HX-Trigger"] = _toast_header(f"Added: {game_title[:50]}")
+    resp.headers["HX-Trigger"] = _toast_header(f"{toast_prefix}: {game_title[:50]}")
     return resp
 
 

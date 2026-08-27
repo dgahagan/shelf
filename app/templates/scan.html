@@ -92,6 +92,10 @@
                     <select id="media-type" name="media_type"
                             x-model="mediaType" @change="persistMediaType()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        {# Auto is a scan-form option, never a stored type —
+                           it is deliberately NOT in config.MEDIA_TYPES, and
+                           the routes normalise it away before any save. #}
+                        <option value="auto">Auto &mdash; detect from the barcode</option>
                         {% for key, label in media_types.items() %}
                         <option value="{{ key }}">{{ label }}</option>
                         {% endfor %}
@@ -113,7 +117,12 @@
                 </div>
 
                 <!-- Platform (video games in add/wishlist only) -->
-                <div x-show="(mode === 'add' || mode === 'wishlist') && mediaType === 'video_game'" x-transition style="display:none">
+                {# Shown under Auto too: a game can still be *detected* under
+                   Auto, and `platform` is read from this field. x-show only
+                   hides it — scan.js rebuilds FormData from the live form, so
+                   a hidden picker still submits whatever it last held. Leaving
+                   it hidden meant filing a wrong platform invisibly. #}
+                <div x-show="(mode === 'add' || mode === 'wishlist') && (mediaType === 'video_game' || mediaType === 'auto')" x-transition style="display:none">
                     <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
                     <select id="platform" name="platform"
                             x-model="platform" @change="persistPlatform()"
@@ -145,7 +154,7 @@
                     <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1"
                            x-text="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Barcode' : 'ISBN / UPC'"></label>
                     <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off"
-                           :placeholder="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Scan barcode...' : mediaType === 'video_game' ? 'Scan UPC barcode...' : 'Scan or type ISBN...'"
+                           :placeholder="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Scan barcode...' : mediaType === 'auto' ? 'Scan any barcode...' : mediaType === 'video_game' ? 'Scan UPC barcode...' : 'Scan or type ISBN...'"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
                 </div>
             </div>
@@ -163,10 +172,13 @@
             <h2 class="text-lg font-semibold mb-3">Search by Title</h2>
             <p x-show="mediaType === 'video_game'" class="text-xs text-shelf-muted mb-4" style="display:none">For cartridges or games without a barcode — search IGDB by name and platform.</p>
             <p x-show="mediaType === 'dvd'" class="text-xs text-shelf-muted mb-4" style="display:none">Search TMDb for movies by title.</p>
-            <p x-show="mediaType !== 'video_game' && mediaType !== 'dvd'" class="text-xs text-shelf-muted mb-4">Search Open Library for books by title, author, or keyword.</p>
+            {# Was true under Auto, which asserted a book search under a
+               setting that means "I don't know". Auto gets its own arm. #}
+            <p x-show="mediaType !== 'video_game' && mediaType !== 'dvd' && mediaType !== 'auto'" class="text-xs text-shelf-muted mb-4">Search Open Library for books by title, author, or keyword.</p>
+            <p x-show="mediaType === 'auto'" class="text-xs text-shelf-muted mb-4" style="display:none">Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead.</p>
             <div class="flex gap-3">
                 <input type="text" id="title-search-input"
-                       :placeholder="mediaType === 'video_game' ? 'Game title...' : mediaType === 'dvd' ? 'Movie title...' : 'Book title or author...'"
+                       :placeholder="mediaType === 'auto' ? 'Title or author...' : mediaType === 'video_game' ? 'Game title...' : mediaType === 'dvd' ? 'Movie title...' : 'Book title or author...'"
                        class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50"
                        hx-get="/api/title-search" hx-trigger="keyup changed delay:400ms"
                        hx-target="#title-search-results" hx-swap="innerHTML"

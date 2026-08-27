@@ -111,4 +111,6 @@ the account menu — not from Settings.
   Google Books) is fixed; see [Architecture](architecture.md).
 - Outbound API pacing per host is fixed to each provider's published limit.
 - Media types are a fixed list: book, kids book, audiobook, eBook, DVD /
-  Blu-ray, CD, comic / graphic novel, video game.
+  Blu-ray, CD, comic / graphic novel, video game. The scan tab's **Auto** is a
+  choice about how to scan, not a ninth type — it is never stored on an item;
+  see [Scanning → Media types](user-guide/scanning.md#media-types).

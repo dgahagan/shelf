@@ -1,3 +1,45 @@
+// --- Scan result card: the one reader of a scan fragment ---
+//
+// Both consumers of `fragments/scan_result.html` — the typed/Enter path's
+// toast below, and the camera overlay in scan.js — used to re-derive the
+// outcome by substring-matching Tailwind class names out of the raw HTML
+// (`html.indexOf('bg-shelf-warning')`) and to pull fields by first-match-in-
+// DOM-order (`.font-medium` -> title, `.text-sm.text-shelf-muted` -> authors).
+//
+// Two copies of the same guess, and both are one class token away from being
+// wrong: any element inside a *successful* card that happens to carry a
+// `bg-shelf-warning` background flips the whole card to a failure, and any
+// muted small-text paragraph added above the authors line becomes the author.
+// The card now states its outcome outright in `data-scan-status`, and names
+// each field it wants read. This function is the only place that knows how.
+//
+// Keep the status lists below in step with the badge's class ternary at the
+// foot of fragments/scan_result.html — that template and this table are the
+// two halves of one contract.
+var SCAN_OK_STATUSES = [
+    'added', 'wishlisted', 'returned', 'confirmed', 'marked_read',
+    'checked_out', 'moved', 'found', 'relocated'
+];
+var SCAN_WARN_STATUSES = ['duplicate', 'already_checked_out', 'not_checked_out'];
+
+function scanCardOutcome(root) {
+    if (!root) return null;
+    var status = root.getAttribute('data-scan-status') || '';
+    var titleEl = root.querySelector('[data-scan-title]');
+    var authorsEl = root.querySelector('[data-scan-authors]');
+    var coverEl = root.querySelector('[data-scan-cover]');
+    var badgeEl = root.querySelector('[data-scan-badge]');
+    return {
+        status: status,
+        ok: SCAN_OK_STATUSES.indexOf(status) !== -1,
+        warn: SCAN_WARN_STATUSES.indexOf(status) !== -1,
+        label: badgeEl ? badgeEl.textContent.trim() : '',
+        title: titleEl ? titleEl.textContent.trim() : null,
+        authors: authorsEl ? authorsEl.textContent.trim() : null,
+        cover: coverEl ? coverEl.getAttribute('src') : null
+    };
+}
+
 // --- Toast notifications ---
 function showToast(message, type) {
     var container = document.getElementById('toast-container');
@@ -76,14 +118,14 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
         // via fetch, not htmx, so this never double-fires.)
         var card = ok && document.querySelector('#scan-results > :first-child');
         if (card) {
-            var title = card.querySelector('.font-medium');
-            var badge = card.querySelector('span[class*="rounded-full"]');
+            var outcome = scanCardOutcome(card);
             var errMsg = card.querySelector('.text-shelf-error:not(span)');
-            var label = badge ? badge.textContent.trim() : 'Done';
-            var isErr = card.innerHTML.indexOf('bg-shelf-error') !== -1 ||
-                        card.innerHTML.indexOf('bg-shelf-warning') !== -1;
+            var label = outcome.label || 'Done';
+            // A card is a failure when its own status says so — not when some
+            // element inside it happens to be styled with a warning colour.
+            var isErr = !outcome.ok;
             var text = errMsg ? errMsg.textContent.trim()
-                              : label + (title ? ': ' + title.textContent.trim() : '');
+                              : label + (outcome.title ? ': ' + outcome.title : '');
             showToast(text, isErr ? 'warning' : 'success');
         }
     } else if (action === 'clear-title-search' && ok) {

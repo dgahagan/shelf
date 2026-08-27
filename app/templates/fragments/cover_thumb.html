@@ -21,7 +21,7 @@
 {% set max_polls = 2 %}
 {% set delay_ms = 1500 if attempt == 0 else 3000 %}
 {% if cover_path %}
-<img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="">
+<img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover>
 {% elif attempt < max_polls %}
 <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs"
      data-cover-pending

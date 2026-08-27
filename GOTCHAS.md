@@ -871,6 +871,32 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     assert `count() > 0` before the loop; the two mutations answer different
     questions.
 
+  Two more, both found while orchestrating `feat/issue-36-scan-media-detection`
+  (2026-08-26) — and the first is the actionable half of the "redundant guards"
+  bullet above:
+  - **If two layers defend one property, one of them must be *disableable* or
+    the inner layer has no pin at all.** `_scan_upc` guards a duplicate insert
+    twice: a `media_type`-keyed `SELECT` under `BEGIN IMMEDIATE`, and a
+    `sqlite3.IntegrityError` catch below it. A test that commits a rival row
+    during the lookup window is *always* caught by the outer guard, so the
+    catch never runs — deleting the catch outright left the whole suite green.
+    Mutating "every layer at once" does not help here either: with both gone
+    the route 500s, which is a different assertion. The fix was to extract the
+    guard query as a module-level `_find_upc_row()` so a test can make its
+    first call miss, exactly as `items._find_duplicate_item` is patched by
+    `TestIntegrityErrorGuard`. **Inline SQL inside the guarded block is what
+    made the inner layer untestable** — if you write a guard you also intend to
+    back up with a catch, give the guard a name.
+  - **The hand-written-stub trap again, in an E2E test this time.** New
+    Playwright tests asserted that a scan card exposes `data-scan-authors` —
+    against a card the test itself had written as a module constant. Removing
+    the attribute from the real `fragments/scan_result.html` left all 14 green.
+    Fixed the same way as the `feat/cover-picker` instance: render the real
+    template through a plain Jinja `Environment` with fake *data*. That it
+    recurred four months later, in a different harness, against a different
+    template, is the argument for the rule — **the question is never "is my
+    fixture realistic", it is "who wrote the markup I am asserting on".**
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -1789,6 +1815,93 @@ grep -n "^async def\|^def " app/services/tmdb.py app/services/igdb.py
 - **Status:** documented — a lint candidate: "a `MagicMock`/`AsyncMock`
   assigned over a module attribute whose target is a sync `def`" is
   mechanically checkable, though it needs to resolve the patched symbol.
+
+## G57 — When adding automatic detection over a field the user can also set by hand
+
+- **Rule:** Detection may **override** a user's value only where it has a
+  signal that contradicts it. Where it has no signal, the user's value stands.
+  A fallback that discards every hand-set value silently rewrites the one kind
+  of record detection was never able to produce.
+- **Why:** the damage is invisible and it lands on exactly the data the feature
+  cannot help with. Issue #36 added media-type detection over the scan form's
+  dropdown. Its tier-4 fallback — "no signal, so return a safe default" —
+  resolved a UPC with no usable title or category to `dvd`. But `cd` is a real
+  `MEDIA_TYPES` member and **Shelf has no CD detection anywhere**: no code path
+  reads or writes a CD from a barcode, and the dropdown is the only evidence a
+  CD will ever have. Shipping that fallback would have refiled every scanned
+  album as a DVD, with no test failing and nothing on screen disagreeing —
+  found only by asking "which media types can detection *not* see?" while
+  wiring the dispatch. The design plan had the right rule all along ("a
+  *book-family* hint is wrong on a UPC… otherwise the hint stands"); the
+  implementation was stricter than the design, which is the direction nobody
+  reviews for.
+- **The question to ask**, before writing any such fallback: *list the values
+  this detector can never produce.* Each one is a value only the user can
+  supply, so each one must survive a no-signal outcome. Here that list was
+  exactly `cd`, and it was one line of code away from being data loss.
+- **Evidence:** `1df2409` (2026-08-26, issue #36 T4) — `detect.py`'s tier 4
+  honours a non-book hint and falls back only on a book-family or absent one;
+  pinned by `tests/test_detect.py::TestADeliberateNonBookHintSurvivesTier4`
+  and `test_a_deliberate_cd_choice_survives_a_product_record_with_no_markers`.
+  Mutation-checked: removing the honour-the-hint branch fails four tests.
+- **Verify:** the set of undetectable types is still covered — every
+  `MEDIA_TYPES` key that no tier can return must survive tier 4:
+
+```bash
+python -c "
+from app.config import MEDIA_TYPES
+from app.services.detect import detect_media_type as d
+for k in MEDIA_TYPES:
+    got, _ = d('upc', k, None, None)
+    assert got == k or k in {'book','kids_book','audiobook','ebook','comic'}, (k, got)
+print('every non-book hint survives tier 4')"
+```
+
+- **Status:** documented. Not a lint candidate — "can this detector produce
+  this value" is a question about the detector's logic, not a grep.
+
+## G58 — When a router builds a user-facing string that a template will mark `|safe`
+
+- **Rule:** Don't. Send the router's **state** and put the copy — and any
+  anchor — in the template, where Jinja escapes it. A notice assembled in
+  Python and rendered `{{ notice|safe }}` is safe only for as long as every
+  branch stays a literal, and that is a property no test asserts and no lint
+  checks.
+- **Why:** it fails open, silently, one edit later. Issue #36's scan notice was
+  built in `_scan_upc` with the Settings anchor inline and rendered `|safe`.
+  Every branch *was* a literal, so it was not exploitable as written — but the
+  same fragment renders a `title` that came straight off a scanned barcode via
+  UPC Item DB, so the first `f"…no match for {title}"` anyone adds turns a
+  provider-controlled string into stored XSS on a page the owner loads for
+  every scan. The gate cannot see the difference: the tests assert on rendered
+  body text and pass identically either way. Restructuring cost nothing —
+  `enrich_status` plus `enrich_provider`, three `{% elif %}` arms — and all 42
+  tests passed unchanged through the refactor, which is the tell that the
+  router was never the right place for the copy.
+- **The general form:** `|safe` is a claim about *every future value* of an
+  expression, made at the point of rendering, by someone who cannot see them.
+- **When it *is* defensible, and the repo's own example.** `stats.html` marks
+  four chart strings `|safe`, correctly: `services/charts.py` is a dedicated
+  SVG builder that runs **every** interpolated label through
+  `markupsafe.escape`, and its module docstring says so in its first
+  paragraph — "All label text passes through markupsafe.escape — author names
+  and other user data reach SVG text nodes." That is the bar. The difference
+  is not "router-built vs not"; it is whether escaping is a **property of the
+  builder**, stated where the next reader will see it, or an accident of the
+  current branch set. A one-off notice assembled inline in a route handler is
+  the second kind, always.
+- **Evidence:** `1976713` (2026-08-26, issue #36 T5) — caught in orchestrator
+  review of the task diff, before the commit.
+- **Verify:** every `|safe` in a template still renders something built in the
+  template, not handed in by a router:
+
+```bash
+grep -rn "|safe" app/templates/
+```
+
+- **Status:** documented — a lint candidate: "`|safe` applied to a bare
+  context variable in `app/templates/`" is mechanically checkable, and would
+  have caught this one.
 
 ## Graveyard
 

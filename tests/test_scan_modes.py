@@ -451,3 +451,88 @@ class TestCoverStatusEndpoint:
             f"/api/items/{item_id}/cover-status", follow_redirects=False
         )
         assert resp.status_code == 303
+
+
+class TestTheBarcodeOutranksTheDropdown:
+    """§1 — a 978/979 prefix is certain, so a stale dropdown value loses.
+
+    This is what makes the fix reach existing users: it keys off the barcode,
+    not off a new default, so the person with `"book"` (or `"dvd"`) written
+    into localStorage six months ago is corrected without touching a setting.
+
+    Every assertion here is on the **stored row**, not on which cascade ran.
+    "Did not reach the book cascade" was already true before this change —
+    `items.py` routes every `upc` barcode to `_scan_upc` regardless of the
+    hint — so it could never be seen red and pinned nothing.
+    """
+
+    ISBN = "9780306406157"
+
+    @pytest.fixture
+    def stub_book_lookup(self, monkeypatch):
+        from app.routers import items_common
+
+        async def _lookup(isbn13, hc_token, client):
+            return ({"title": "A Real Novel", "authors": "Someone"}, "openlibrary", {})
+
+        monkeypatch.setattr(items_common, "_lookup_metadata", _lookup)
+
+    @pytest.mark.parametrize("hint", ["dvd", "video_game", "cd"])
+    def test_an_isbn_with_a_non_book_hint_is_stored_as_a_book(
+        self, admin_client, db, stub_book_lookup, hint
+    ):
+        resp = admin_client.post("/api/scan", data={
+            "isbn": self.ISBN, "media_type": hint, "mode": "add",
+        })
+        assert resp.status_code == 200
+        row = db.execute(
+            "SELECT media_type FROM items WHERE isbn = ?", (self.ISBN,)
+        ).fetchone()
+        assert row is not None, "the item must still be created"
+        assert row["media_type"] == "book"
+
+    @pytest.mark.parametrize("hint", ["kids_book", "audiobook", "ebook", "comic"])
+    def test_an_isbn_keeps_a_book_family_hint_the_barcode_cannot_contradict(
+        self, admin_client, db, stub_book_lookup, hint
+    ):
+        """Tier 1 honours these — no barcode signal can tell them apart."""
+        admin_client.post("/api/scan", data={
+            "isbn": self.ISBN, "media_type": hint, "mode": "add",
+        })
+        row = db.execute(
+            "SELECT media_type FROM items WHERE isbn = ?", (self.ISBN,)
+        ).fetchone()
+        assert row["media_type"] == hint
+
+    @pytest.mark.parametrize("hint", ["auto", "", "nonsense"])
+    def test_an_isbn_with_no_usable_hint_is_stored_as_a_book_never_the_hint(
+        self, admin_client, db, stub_book_lookup, hint
+    ):
+        """`auto` must never reach the database — the whole point of tier 4."""
+        admin_client.post("/api/scan", data={
+            "isbn": self.ISBN, "media_type": hint, "mode": "add",
+        })
+        row = db.execute(
+            "SELECT media_type FROM items WHERE isbn = ?", (self.ISBN,)
+        ).fetchone()
+        assert row["media_type"] == "book"
+
+    def test_the_duplicate_check_keys_on_the_resolved_type_not_the_hint(
+        self, admin_client, db, stub_book_lookup
+    ):
+        """A book already on the shelf dedupes against a stale "dvd" scan.
+
+        Before detection the check ran on the hint, so this scan missed the
+        existing row and tried to file a second one.
+        """
+        _insert_item(db, title="Already A Book", isbn=self.ISBN, media_type="book")
+        db.commit()
+
+        resp = admin_client.post("/api/scan", data={
+            "isbn": self.ISBN, "media_type": "dvd", "mode": "add",
+        })
+        assert b"duplicate" in resp.content
+        count = db.execute(
+            "SELECT COUNT(*) c FROM items WHERE isbn = ?", (self.ISBN,)
+        ).fetchone()["c"]
+        assert count == 1

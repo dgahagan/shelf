@@ -57,7 +57,37 @@ Google Books. Hardcover additionally enriches series and description when a
 token is present.
 
 UPCs go to **UPC Item DB** (`services/upcitemdb.py`) for a retail product,
-then TMDb (film) or IGDB (game). A retail title is not a search query —
+then TMDb (film) or IGDB (game). **Which of the two is decided by
+`services/detect.py`, not by the scan form's dropdown** — the product record
+is fetched once, above the fork, precisely so detection can read it. The
+dropdown is an input to that decision, not an oracle over it.
+
+`detect_media_type(barcode_type, hint, title, category)` is pure and offline,
+and runs four tiers in confidence order: an ISBN prefix decides the
+book family outright (the dropdown only picks *among* book / kids book /
+audiobook / eBook / comic, which no barcode can distinguish); then platform
+and format markers in the **raw** retail title, platform beating format so
+`Alice Madness Returns (PC DVD)` is a game; then `Software > Video Game
+Software` as a category, which may decide only `video_game`; then a fallback.
+Two prohibitions are load-bearing and written into the module beside the
+marker table: **no category ever decides `dvd`** (discs categorise as
+`Electronics > Video > Televisions`), and **no category naming a platform
+ever decides `video_game`** (`Electronics > Video Game Consoles` carried both
+a cartridge and a console in the same sample). The tier-4 fallback returns a
+`MEDIA_TYPES` member unconditionally — a deliberate non-book choice stands,
+anything else lands on `dvd` — so `auto` never reaches a row. It reads the
+raw title, never a `search_queries` rung: the ladder strips exactly the
+markers tier 2 matches on.
+
+`media_type` is validated at the route boundary rather than at the save
+layer, because `insert_item` validates field *names* and not values and the
+column carries no `CHECK`. `items_common.is_valid_media_type()` is the single
+guard, called from `/api/items/manual`, `/api/books/add` and
+`/api/title-search`; `/api/intake/confirm` validates through its Pydantic
+model. CSV and archive import do **not** validate, which is a known gap
+rather than an oversight — no `auto` value can arrive through either.
+
+A retail title is not a search query —
 `Goodfellas [DVD]  Feature Thriller Drama …` matches nothing — so the same
 module normalises it (format tags, platform suffixes, edition noise) and
 builds a short **ladder** of progressively shorter queries, tried in order

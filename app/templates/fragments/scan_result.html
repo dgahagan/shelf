@@ -1,16 +1,18 @@
 {% if status == 'not_found' %}
-<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4" x-data="manualAddForm">
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4"
+     data-scan-status="{{ status }}" x-data="manualAddForm">
     <div class="flex items-center gap-4 mb-3">
         {% if preview_cover %}
-        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="">
+        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover>
         {% else %}
         <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-lg">?</div>
         {% endif %}
         <div class="flex-1 min-w-0">
-            <p class="font-medium font-mono">{{ isbn }}</p>
+            <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
             <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} (cover found on Amazon){% endif %}</p>
         </div>
-        <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning">not found</span>
+        <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
+              data-scan-badge>not found</span>
     </div>
 
     <!-- Manual entry form -->
@@ -132,14 +134,15 @@
 </div>
 
 {% else %}
-<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4">
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4"
+     data-scan-status="{{ status }}">
     {# Cover image or placeholder #}
     {% if cover_pending %}
     {# Scan queues its cover, so the card renders first and this polls it in. #}
     {% set attempt = 0 %}
     {% include "fragments/cover_thumb.html" %}
     {% elif cover_path %}
-    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="">
+    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover>
     {% else %}
     <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">
         {% if status == 'added' or status == 'wishlisted' %}+
@@ -152,11 +155,11 @@
     <div class="flex-1 min-w-0">
         {# Statuses with a title link #}
         {% if status in ('added', 'wishlisted', 'duplicate', 'checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read', 'already_checked_out', 'not_checked_out') %}
-        <p class="font-medium truncate">
+        <p class="font-medium truncate" data-scan-title>
             {% if item_id %}<a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a>
             {% else %}{{ title }}{% endif %}
         </p>
-        {% if authors %}<p class="text-sm text-shelf-muted truncate">{{ authors }}</p>{% endif %}
+        {% if authors %}<p class="text-sm text-shelf-muted truncate" data-scan-authors>{{ authors }}</p>{% endif %}
         {% endif %}
 
         {# Status-specific detail line #}
@@ -179,9 +182,30 @@
         <p class="font-medium font-mono">{{ isbn }}</p>
         <p class="text-sm text-shelf-error">{{ message }}</p>
         {% endif %}
+
+        {# Enrichment notice slot (issue #36 T5) — thin metadata and/or a
+           media-type override, below the authors line so scan.js's
+           first-match `.text-sm.text-shelf-muted` extraction never reads
+           this as the author.
+
+           The copy lives here rather than in the router so that nothing on
+           this line is ever rendered `|safe`: the card also renders a title
+           that came off a scanned barcode, and a notice assembled in Python
+           would be one interpolation away from stored XSS. The router sends
+           a state and a provider name; Jinja escapes both. #}
+        {% if enrich_status == 'no_credential' %}
+        <p class="text-xs text-shelf-warning mt-1">Added with title only. Add {{ 'an' if enrich_provider == 'IGDB' else 'a' }} {{ enrich_provider }} API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.</p>
+        {% elif enrich_status == 'rejected' %}
+        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; {{ enrich_provider }} rejected the configured key.</p>
+        {% elif enrich_status == 'no_match' %}
+        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; no {{ enrich_provider }} match for this barcode.</p>
+        {% endif %}
+        {% if detect_overrode and detect_reason %}
+        <p class="text-xs text-shelf-warning mt-1">{{ detect_reason }}</p>
+        {% endif %}
     </div>
 
-    <span class="text-xs px-2 py-1 rounded-full shrink-0
+    <span data-scan-badge class="text-xs px-2 py-1 rounded-full shrink-0
         {% if status in ('added', 'returned', 'confirmed', 'marked_read') %}bg-shelf-success/20 text-shelf-success
         {% elif status == 'wishlisted' %}bg-purple-500/20 text-purple-400
         {% elif status in ('duplicate', 'already_checked_out', 'not_checked_out') %}bg-shelf-warning/20 text-shelf-warning

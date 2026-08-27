@@ -23,7 +23,7 @@ The mode is sticky — set it once and scan a pile.
 
 | Mode | What happens on each scan |
 |---|---|
-| **Add** | Look up metadata, download the cover, add the item as owned. Scanning an ISBN you already own shows the existing item instead of duplicating it |
+| **Add** | Look up metadata, download the cover, add the item as owned. Scanning a barcode you already own shows the existing item instead of duplicating it — whatever the media-type dropdown says. A dropdown pick the barcode contradicts is corrected rather than obeyed (see [Media types](#media-types)) |
 | **Wishlist** | Same lookup, but the item is added as *not owned* — your wish list |
 | **Lend** | Pick a borrower first; each scan checks that item out to them. Optional due date |
 | **Return** | Each scan checks the item back in, whoever had it |
@@ -69,11 +69,37 @@ doesn't get you throttled.
 
 ## Media types
 
-Shelf tells books, DVDs / Blu-rays and video games apart by barcode: ISBNs
-(978/979) are books; other UPCs are looked up via UPC Item DB and TMDb / IGDB.
+**The barcode decides when it can; the dropdown is a hint, not an order.**
+
+A 978/979 prefix is an ISBN, and that is certain — so a book scanned while the
+dropdown still says "DVD" is filed as a book anyway, and the card tells you it
+overrode you. The reverse holds too: a non-ISBN barcode is certainly not a
+book, so a disc scanned under "Book" is not filed as one.
+
+For a UPC there is no certain prefix, so Shelf reads the product record it
+already fetched — the platform or format wording in the retail title
+(`Nintendo Switch`, `[DVD]`, `4K UHD`) first, then the product category, and
+only ever for games. A category is never enough on its own to call something a
+disc, and a category naming a *console* is never enough to call something a
+game — that is the shelf the product sits on, not what the product is.
+
+**Auto** is the default for a new install: it means "read the barcode and
+decide", and it is the one to leave it on. If you have used Shelf before,
+your saved choice is left alone — nothing is silently reinterpreted — and the
+barcode rule above corrects a stale one anyway.
+
+When nothing in the barcode or the product record disagrees with you, your
+choice stands. That matters for CDs in particular: Shelf has no CD detection,
+so the dropdown is the only thing that can say "this is a CD".
+
 Books further divide into book, kids book, audiobook, eBook, comic / graphic
-novel — change the type on the item page or in bulk from Browse. CDs are
-manual-add.
+novel — the barcode cannot tell those apart, so they stay yours to pick.
+Change the type on the item page or in bulk from Browse.
+
+Whatever it decides, the card says so: *"Title names the Nintendo Switch
+platform — filed as Video Game."* or *"ISBN barcodes are books — overriding
+the 'DVD / Blu-ray' hint to Book."* If it could not tell, it says that too
+rather than claiming a detection it did not make.
 
 A UPC scan brings back a synopsis, a year and cover art when TMDb (discs) or
 IGDB (games) is configured. Barcode databases store retail shelf titles rather
@@ -84,6 +110,11 @@ title. It stops short of searching a single short word, because a one-word
 search comes back with a *different* film rather than nothing. When no provider
 matches, the item is still added under its own title — use **Retry cover** or
 **Find cover** on the item page to fill it in.
+
+**And the card now says why it was thin**, because the three reasons need
+three different responses: no key configured (add one), a key that was
+rejected (fix it), or a provider that simply had no match (nothing to fix).
+See [Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title).
 
 ## Tips
 

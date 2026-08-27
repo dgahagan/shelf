@@ -22,7 +22,7 @@ New here? Start with **[Installation](installation.md)**, then
 | Doc | What it covers |
 |---|---|
 | [Getting started](user-guide/getting-started.md) | Setup wizard, your first scan, the main screens |
-| [Scanning](user-guide/scanning.md) | Camera and USB/Bluetooth scanners, the 8 scan modes, title search, manual add |
+| [Scanning](user-guide/scanning.md) | Camera and USB/Bluetooth scanners, the 8 scan modes, media-type detection and Auto, title search, manual add |
 | [Photo Intake](user-guide/photo-intake.md) | Bulk-add from a shelf photo: vision backends, tiling, cost, reviewing results |
 | [Browse & search](user-guide/browse-and-search.md) | Filters, views, sorting, tags, bulk editing |
 | [Items](user-guide/items.md) | The item page, editing, covers, synopses, reading status, locations, merging |
@@ -40,7 +40,7 @@ New here? Start with **[Installation](installation.md)**, then
 | Doc | What it covers |
 |---|---|
 | [FAQ](faq.md) | Short answers to the common questions |
-| [Troubleshooting](troubleshooting.md) | Certificate warnings, camera not starting, metadata misses, upgrade problems |
+| [Troubleshooting](troubleshooting.md) | Certificate warnings, camera not starting, metadata misses, thin scan records, upgrade problems |
 
 ## Project
 

@@ -33,6 +33,12 @@ URL and token, **Test**, then choose which libraries to include. Set an
 interval for automatic sync or run it by hand. Items removed from ABS can be
 cleaned up from the same card.
 
+A scan that comes back thin now tells you **on the card** whether the cause
+was a missing credential, a rejected one, or a provider with no match — see
+[Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title). (On IGDB
+a rejected credential is indistinguishable from a genuine miss, so that one
+reads as "no match"; **Test key** is how to tell.)
+
 ## IGDB (video games)
 
 [IGDB](https://www.igdb.com) via Twitch developer credentials — free.

@@ -1,8 +1,10 @@
 """Tests for title search services — openlibrary.search_books and tmdb.search_movies."""
 
-import pytest
 import httpx
+import pytest
 import respx
+
+from app.config import MEDIA_TYPES
 
 from app.services.openlibrary import search_books
 from app.services.tmdb import search_movies, lookup_by_title
@@ -196,3 +198,74 @@ class TestTmdbLookupByTitle:
         async with httpx.AsyncClient() as client:
             result = await lookup_by_title("nonexistent", "key", client)
         assert result is None
+
+
+class TestAutoNeverReachesTheDatabase:
+    """The four Auto-reachable boundaries, each asserted on the stored row.
+
+    Scoped deliberately: `/api/scan` (detect resolves before dispatch),
+    `/api/title-search`, `/api/books/add` and `/api/items/manual`. CSV import
+    and archive import also hand `insert_item` an unvalidated media_type —
+    real, pre-existing, and out of scope, because no `auto` value can arrive
+    through either. A repo-wide claim here would be false.
+    """
+
+    def test_title_search_resolves_auto_before_rendering_the_fragment(
+        self, editor_client, monkeypatch
+    ):
+        """`scan.html`'s hx-include carries #media-type, so `auto` arrives here."""
+        from app.services import openlibrary
+
+        async def _search(q, client, limit=10, lang="en"):
+            return [{"title": "A Book", "authors": "Someone", "isbn": "9780306406157"}]
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+
+        resp = editor_client.get("/api/title-search", params={"q": "dune", "media_type": "auto"})
+
+        assert resp.status_code == 200
+        assert 'name="media_type" value="auto"' not in resp.text
+        assert 'name="media_type" value="book"' in resp.text
+
+    def test_books_add_rejects_auto_and_stores_no_row(self, editor_client, db):
+        resp = editor_client.post(
+            "/api/books/add",
+            data={"isbn": "9780306406157", "media_type": "auto"},
+        )
+        assert resp.status_code == 200
+        assert "Unrecognised media type" in resp.text
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE media_type = 'auto'"
+        ).fetchone()["c"] == 0
+
+    def test_manual_add_rejects_auto_and_stores_no_row(self, editor_client, db):
+        """The not-found scan card re-emits media_type into a hidden field."""
+        resp = editor_client.post(
+            "/api/items/manual",
+            data={"title": "Smuggled In", "isbn": "9780306406157", "media_type": "auto"},
+        )
+        assert resp.status_code == 200
+        assert "Unrecognised media type" in resp.text
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Smuggled In'"
+        ).fetchone()["c"] == 0
+
+    @pytest.mark.parametrize("junk", ["auto", "bluray", "vinyl", "", "book; DROP TABLE items"])
+    def test_no_guarded_boundary_stores_a_value_outside_media_types(
+        self, editor_client, db, junk
+    ):
+        """The guard is written against MEDIA_TYPES membership, not against
+        the string "auto" — so a typo or a tampered form is caught too."""
+        editor_client.post(
+            "/api/items/manual",
+            data={"title": f"Junk {junk}", "isbn": "", "media_type": junk},
+        )
+        editor_client.post(
+            "/api/books/add", data={"isbn": "9780306406157", "media_type": junk}
+        )
+        rows = db.execute("SELECT DISTINCT media_type FROM items").fetchall()
+        for r in rows:
+            assert r["media_type"] in MEDIA_TYPES, r["media_type"]
+
+    def test_auto_is_not_a_media_type(self):
+        assert "auto" not in MEDIA_TYPES

@@ -61,9 +61,15 @@ class TestManualAddFilesUpcCorrectly:
         assert row["isbn10"] is None
 
     def test_ean13_upc_lands_in_upc_column(self, editor_client, db):
+        # `media_type` is incidental to this test — it is about which *column*
+        # an EAN-13 lands in. It said "bluray" until 2026-08-26, which is not a
+        # MEDIA_TYPES key at all ("dvd" is, labelled "DVD / Blu-ray"): the row
+        # was being filed with a junk type and nothing objected, because
+        # nothing validated the value. The boundary guard now does, so this
+        # uses the real key.
         resp = editor_client.post(
             "/api/items/manual",
-            data={"title": "EAN Disc", "isbn": UPC_EAN, "media_type": "bluray"},
+            data={"title": "EAN Disc", "isbn": UPC_EAN, "media_type": "dvd"},
         )
         assert resp.status_code == 200
         row = db.execute("SELECT isbn, upc FROM items WHERE title = ?", ("EAN Disc",)).fetchone()

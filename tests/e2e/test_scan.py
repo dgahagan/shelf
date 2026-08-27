@@ -380,3 +380,480 @@ def test_scan_cover_poll_settles_after_two_attempts(live_server, authed_page):
         authed_page.locator("#scan-results [data-cover-settled]").get_attribute("hx-get")
         is None
     )
+
+
+# --- T6: the scan card states its own outcome ------------------------------
+#
+# Both readers of fragments/scan_result.html used to guess: the camera overlay
+# in scan.js and the typed/Enter toast in app.js each re-derived the result by
+# substring-matching Tailwind class names out of the raw HTML, and pulled the
+# title and authors by first-match-in-DOM-order. These pin the replacement —
+# `scanCardOutcome()` reading `data-scan-*` — and they need a browser, because
+# the thing under test is JavaScript parsing rendered markup.
+
+# The card HTML under test is rendered from the **real** template with fake
+# *data* — never hand-written here. `G31`: a stub that authors its own markup
+# asserts against itself, so deleting `data-scan-authors` from
+# fragments/scan_result.html would not fail a test that wrote the attribute
+# itself. Mutation-checked both ways.
+def _render_card(**overrides):
+    from jinja2 import Environment, FileSystemLoader
+
+    ctx = {
+        "status": "added",
+        "isbn": "085391163121",
+        "title": "Goodfellas",
+        "authors": "Martin Scorsese",
+        "cover_path": "covers/7.jpg",
+        "item_id": 7,
+        "source": "tmdb",
+        "media_type_label": "DVD / Blu-ray",
+        "enrich_status": "no_match",
+        "enrich_provider": "TMDb",
+        "detect_overrode": False,
+        "detect_reason": "",
+        "message": "",
+    }
+    ctx.update(overrides)
+    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
+    return env.get_template("fragments/scan_result.html").render(**ctx)
+
+
+_OUTCOME = "(html) => { const d = document.createElement('div'); d.innerHTML = html; " \
+           "return scanCardOutcome(d.querySelector('.scan-result')); }"
+
+
+def test_scan_card_outcome_reads_fields_past_a_notice(live_server, authed_page):
+    """The §3 contract: a notice in the card must not become the author.
+
+    The old extractor took the first `.text-sm.text-shelf-muted` in DOM order
+    as the authors line, so any muted paragraph above it won the slot. This
+    card carries two extra paragraphs *below* the authors line, including the
+    thin-metadata notice, and every field must still resolve to its own value.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_card()
+    assert "Added with title only" in card, "the notice must be in the card under test"
+    outcome = authed_page.evaluate(_OUTCOME, card)
+
+    assert outcome["title"] == "Goodfellas"
+    assert outcome["authors"] == "Martin Scorsese"
+    assert outcome["cover"] == "/covers/7.jpg"
+    assert outcome["label"] == "added"
+    assert_page_clean(authed_page)
+
+
+def test_a_success_card_containing_a_notice_still_classifies_ok(live_server, authed_page):
+    """A notice inside an *added* card must not flip it to a failure.
+
+    This is the case the old ternary got right only by accident of ordering:
+    `ok` matched `bg-shelf-success` and was checked first, so a warning-styled
+    element inside a success card was masked rather than handled. Classifying
+    on `data-scan-status` makes it structural instead of lucky.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    outcome = authed_page.evaluate(_OUTCOME, _render_card())
+
+    assert outcome["ok"] is True
+    assert outcome["warn"] is False
+    assert outcome["status"] == "added"
+
+    # ...and the same card styled with a *background* warning token, which is
+    # what would have broken the substring parser outright.
+    louder = _render_card().replace(
+        'class="text-xs text-shelf-warning mt-1"',
+        'class="text-xs bg-shelf-warning/20 text-shelf-warning mt-1"',
+    )
+    assert "bg-shelf-warning" in louder
+    still = authed_page.evaluate(_OUTCOME, louder)
+    assert still["ok"] is True, "a bg-shelf-warning notice flipped a success card"
+    assert still["warn"] is False
+    assert_page_clean(authed_page)
+
+
+def test_a_duplicate_card_classifies_warn(live_server, authed_page):
+    """The warn statuses still classify as warn — the table is not all-ok."""
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    outcome = authed_page.evaluate(_OUTCOME, _render_card(status="duplicate"))
+
+    assert outcome["ok"] is False
+    assert outcome["warn"] is True
+    assert_page_clean(authed_page)
+
+
+def test_typed_entry_with_a_warning_styled_notice_toasts_as_success(
+    live_server, authed_page
+):
+    """app.js's copy of the parser, retired in the same task.
+
+    The typed/Enter path has no camera overlay, so it toasts the outcome. Its
+    old classifier read `bg-shelf-error` OR `bg-shelf-warning` out of the raw
+    card HTML, which meant any warning-styled element inside a successful card
+    turned the toast into a failure. Inject a success card carrying exactly
+    that and assert the toast is a success.
+
+    The first version of this test called `scanCardOutcome` and rebuilt the
+    toast itself, which asserted on the assertion and left `app.js:106-130`
+    untested — `G31`'s vacuous pin, caught by the diff review. It now fires
+    the real `htmx:afterRequest` on the real form so the handler under test is
+    the one that computes the toast.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    louder = _render_card().replace(
+        'class="text-xs text-shelf-warning mt-1"',
+        'class="text-xs bg-shelf-warning/20 text-shelf-warning mt-1"',
+    )
+    assert "bg-shelf-warning" in louder
+    authed_page.evaluate(_INJECT, louder)
+
+    card = authed_page.locator("#scan-results > .scan-result").first
+    expect(card).to_be_visible()
+
+    # Drive app.js's handler the way an htmx settle does: the real event, on
+    # the real form, so `isErr = !outcome.ok` is what decides the toast.
+    authed_page.evaluate(
+        "() => { const form = document.querySelector("
+        "    'form[data-after-request=\"clear-scan-input\"]');"
+        " if (!form) throw new Error('scan form not found');"
+        " document.body.dispatchEvent(new CustomEvent('htmx:afterRequest',"
+        "     {detail: {elt: form, successful: true}})); }"
+    )
+
+    toast = authed_page.locator("#toast-container > div").first
+    expect(toast).to_be_visible(timeout=5_000)
+    expect(toast).to_contain_text("added: Goodfellas")
+    assert "bg-shelf-success" in (toast.get_attribute("class") or "")
+    assert_page_clean(authed_page)
+
+
+# --- T7: Auto in the media-type picker -------------------------------------
+
+def _scan_with_seeded_storage(browser, live_server, setup_admin, storage):
+    """Log in through a fresh context with localStorage seeded before paint.
+
+    `G52` — `authed_page` builds its context inside the fixture, so it cannot
+    take an `add_init_script`, and a fresh context has no session cookie:
+    without the login below, `/scan` redirects to `/login` and the test dies at
+    whatever it waited for next, which is never the line that is wrong.
+    Mirrors `_login_with_seeded_storage` in tests/e2e/test_browse.py.
+    Returns (ctx, page); the caller closes the context.
+    """
+    import json as _json
+
+    ctx = browser.new_context()
+    if storage:
+        ctx.add_init_script("\n".join(
+            f"localStorage.setItem({_json.dumps(k)}, {_json.dumps(v)});"
+            for k, v in storage.items()
+        ))
+    pg = attach_page_guard(ctx.new_page())
+    pg.goto(f"{live_server['url']}/login")
+    pg.fill("input[name=username]", setup_admin["username"])
+    pg.fill("input[name=password]", setup_admin["password"])
+    pg.click("button[type=submit]")
+    pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    return ctx, pg
+
+
+def test_a_fresh_browser_lands_on_auto(live_server, browser, setup_admin):
+    """Auto is the default for a *new* user — nothing in localStorage."""
+    ctx, pg = _scan_with_seeded_storage(browser, live_server, setup_admin, {})
+    try:
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        expect(pg.locator("#media-type")).to_have_value("auto")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_a_stored_choice_is_never_migrated_to_auto(live_server, browser, setup_admin):
+    """`"book"` is also what someone who scans books deliberately chose.
+
+    Reinterpreting a stored value as "no choice" is guessing at intent; §1's
+    barcode rule is what reaches those users instead. This pins that the
+    migration was *not* done.
+    """
+    ctx, pg = _scan_with_seeded_storage(
+        browser, live_server, setup_admin, {"shelf_media_type": "book"}
+    )
+    try:
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        expect(pg.locator("#media-type")).to_have_value("book")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_the_platform_picker_is_visible_under_auto(live_server, browser, setup_admin):
+    """A game can still be *detected* under Auto, and platform comes from here.
+
+    `x-show` only hides the field — scan.js rebuilds FormData from the live
+    form, so a hidden picker still submits whatever it last held. Hidden under
+    Auto meant filing a wrong platform invisibly, which is worse than a
+    missing one because nothing on screen disagrees with it.
+    """
+    ctx, pg = _scan_with_seeded_storage(browser, live_server, setup_admin, {})
+    try:
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        expect(pg.locator("#media-type")).to_have_value("auto")
+        expect(pg.locator("#platform")).to_be_visible()
+
+        # ...and still hidden for a media type that has no platform.
+        pg.select_option("#media-type", "dvd")
+        expect(pg.locator("#platform")).to_be_hidden()
+
+        pg.select_option("#media-type", "video_game")
+        expect(pg.locator("#platform")).to_be_visible()
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_auto_does_not_claim_a_book_title_search(live_server, browser, setup_admin):
+    """The Open Library helper line asserted a book search under Auto.
+
+    Its guard was `mediaType !== 'video_game' && mediaType !== 'dvd'`, which is
+    **true** under `auto` — so a setting meaning "I don't know" announced a
+    book search. Auto now has its own arm saying why.
+    """
+    ctx, pg = _scan_with_seeded_storage(browser, live_server, setup_admin, {})
+    try:
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+
+        ol = pg.locator("text=Search Open Library for books by title")
+        expect(ol).to_be_hidden()
+        expect(pg.locator("text=Title search has no barcode to detect from")).to_be_visible()
+
+        pg.select_option("#media-type", "book")
+        expect(ol).to_be_visible()
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_auto_survives_the_camera_formdata_round_trip(live_server, browser, setup_admin):
+    """`G8` — media_type must appear exactly once, carrying `auto`.
+
+    The camera path rebuilds FormData from the live form and then `.set()`s
+    over individual keys. Starlette's `.get()` returns the *last* duplicate, so
+    a second `media_type` entry would silently win.
+    """
+    ctx, pg = _scan_with_seeded_storage(browser, live_server, setup_admin, {})
+    try:
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        values = pg.evaluate(
+            "() => { const f = document.querySelector('form[hx-post=\"/api/scan\"]');"
+            " return new FormData(f).getAll('media_type'); }"
+        )
+        assert values == ["auto"], values
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+# --- T9: the stale-hint user, the camera overlay, and the detect notice ----
+#
+# §1's whole reason to exist: a user whose `shelf_media_type` has said "book"
+# in localStorage for months scans a video game UPC, and the item must be
+# filed as a game anyway — the product record outranks the dropdown (T1-T4).
+# A real e2e scan of a UPC would need a live UPC Item DB call (see the
+# `test_manual_add_copy_from_picker` docstring above for why no test in this
+# file drives one), so `test_a_stale_book_hint_is_submitted_verbatim_and_the_detector_overrides_it`
+# below covers only the browser-reachable half and says so in its own
+# docstring; `tests/test_scan_upc_enrichment.py::TestTheProductRecordOutranksTheDropdown`
+# covers the half that needs the product record.
+
+def _detected_game_override_reason():
+    """The real `detect.py` verdict (and its exact wording) for the T9 §1
+    scenario: dropdown hint 'book', but the scanned UPC's product record is
+    a video game. Calls the real, pure `detect_media_type` rather than
+    hand-writing its reason string, so the fixture card below can't drift
+    from production wording.
+    """
+    from app.services import detect
+
+    media_type, reason = detect.detect_media_type(
+        "upc", "book", "Super Mario Odyssey", "Software > Video Game Software",
+    )
+    assert media_type == "video_game", "fixture scenario stopped detecting as a game"
+    return reason
+
+
+def test_a_stale_book_hint_is_submitted_verbatim_and_the_detector_overrides_it(
+    live_server, browser, setup_admin
+):
+    """§1: the exact person who reported the bug — a stored dropdown value
+    from six months ago must not become an oracle.
+
+    **This test does not observe the item being filed.** It observes the two
+    halves a browser can reach, and the name says so; the stored row is the
+    unit suite's job, named below. Do not read a green run here as proof that
+    a game was catalogued.
+
+    Browser half (this test, offline):
+      - seeds `shelf_media_type='book'` before first paint (G52) and confirms
+        the scan form still submits that stale hint **verbatim** — nothing
+        client-side ever reinterprets or corrects it, so the fix has to live
+        server-side, which is exactly what T1-T4 did;
+      - then, using the real `fragments/scan_result.html` template rendered
+        with the values `/api/scan` would actually send back for this
+        scenario (hint=book, product=a game, detection overrides the hint),
+        confirms the page displays the item filed under **Video Game** — not
+        Book — even though the media-type select and localStorage still read
+        "book".
+    Unit half (needs the product record, can't run in a browser without a
+    live network call):
+      `tests/test_scan_upc_enrichment.py::TestTheProductRecordOutranksTheDropdown::
+      test_a_video_game_software_category_routes_to_igdb_whatever_the_hint_said`
+      drives the real `/api/scan` route against a mocked UPC Item DB record
+      with a wrong hint, and asserts the **stored DB row**'s `media_type` and
+      that **IGDB, not TMDb, was queried**.
+    """
+    reason = _detected_game_override_reason()
+
+    ctx, pg = _scan_with_seeded_storage(
+        browser, live_server, setup_admin, {"shelf_media_type": "book"}
+    )
+    try:
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        expect(pg.locator("#media-type")).to_have_value("book")
+
+        # The stale hint goes out as-is — the browser never corrects it.
+        values = pg.evaluate(
+            "() => { const f = document.querySelector('form[hx-post=\"/api/scan\"]');"
+            " return new FormData(f).getAll('media_type'); }"
+        )
+        assert values == ["book"], values
+
+        # What /api/scan actually returns for this scenario.
+        card = _render_card(
+            title="Super Mario Odyssey", authors="Nintendo EPD",
+            media_type_label="Video Game", source="igdb",
+            enrich_status=None, enrich_provider=None,
+            detect_overrode=True, detect_reason=reason,
+        )
+        # Substring checks here, not `reason in card`: the raw HTML has the
+        # reason's apostrophe/angle-bracket HTML-entity-escaped (Jinja
+        # autoescape), so only the browser-decoded `to_contain_text` below can
+        # match it verbatim.
+        assert "Video Game" in card, "fixture card is missing its own data"
+        assert "video game software" in card, "fixture card is missing its own data"
+        pg.evaluate(_INJECT, card)
+
+        result = pg.locator("#scan-results .scan-result").first
+        expect(result).to_contain_text("Video Game via igdb")
+        expect(result).to_contain_text(reason)
+
+        # The dropdown itself is untouched by any of this — it is still the
+        # stale value the user left behind, exactly as the bug report found it.
+        expect(pg.locator("#media-type")).to_have_value("book")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_an_overridden_media_type_shows_a_detected_notice_on_the_card(
+    live_server, authed_page
+):
+    """§3: an overridden media type must say so on the card, and the line
+    must not be mistaken for the authors line by `scanCardOutcome` — the same
+    misreading T6 fixed for the enrichment notice, now for the detection
+    notice that sits directly below it.
+    """
+    reason = _detected_game_override_reason()
+
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_card(
+        title="Super Mario Odyssey", authors=None,
+        media_type_label="Video Game", source="igdb",
+        enrich_status=None, enrich_provider=None,
+        detect_overrode=True, detect_reason=reason,
+    )
+    # Substring, not `reason in card`: Jinja autoescape HTML-entity-escapes
+    # the reason's apostrophe/angle-bracket, so only the browser-decoded
+    # `to_contain_text` below can match the full string verbatim.
+    assert "video game software" in card, "the detect-reason line must be in the card under test"
+
+    authed_page.evaluate(_INJECT, card)
+    result = authed_page.locator("#scan-results .scan-result").first
+    expect(result).to_contain_text(reason)
+
+    outcome = authed_page.evaluate(_OUTCOME, card)
+    assert outcome["title"] == "Super Mario Odyssey"
+    assert outcome["authors"] is None, "the detect-reason line got read as the authors line"
+    assert_page_clean(authed_page)
+
+
+def test_camera_overlay_reads_the_right_fields_through_a_real_scan_with_a_notice(
+    live_server, browser, setup_admin
+):
+    """§2: re-assert `scanCardOutcome` end to end, through the real camera
+    path — T6 pinned it by calling it directly on synthetic markup; this
+    drives the same notice-bearing card through a real `onScan()` call, a
+    real `fetch('/api/scan')`, and the real overlay template, so a
+    regression in *how the overlay reads its own inputs* (not just in the
+    parser function) would be caught here too.
+
+    `/api/scan` is routed to a canned response built from the real
+    `fragments/scan_result.html` template (never hand-written — G31), since
+    a live UPC Item DB record isn't available offline (see this file's
+    `_INJECT` comment).
+
+    `onScan()` itself is invoked via `Alpine.$data()` rather than a real
+    barcode decode: there is no existing pattern in this suite for feeding a
+    synthetic barcode through the fake camera's video stream, and
+    `Alpine.$data(el)` is documented, stable, public Alpine 3 API for
+    reaching a component's data from outside a component — not a private
+    internal, and not a production testing hook (out of scope for this
+    task's file list).
+    """
+    ctx = browser.new_context()
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+
+        card = _render_card()  # default: added, Goodfellas, no_match notice
+        assert "Added with title only" in card, "the notice must be in the card under test"
+        pg.route(
+            "**/api/scan",
+            lambda route: route.fulfill(body=card, content_type="text/html"),
+        )
+
+        _start_scan_camera(pg, live_server)
+        wait_for_video_ready(pg, "#camera-reader video")
+
+        pg.evaluate(
+            "async (code) => {"
+            " const el = document.querySelector('[x-data=\"scanPage\"]');"
+            " await Alpine.$data(el).onScan(code);"
+            " }",
+            "999999999999",
+        )
+
+        overlay = pg.locator('[x-show="scanPaused"]')
+        expect(overlay).to_be_visible()
+        expect(overlay.locator("p.text-white")).to_have_text("Goodfellas")
+        expect(overlay.locator("p.text-shelf-muted.text-sm.mb-2")).to_have_text(
+            "Martin Scorsese"
+        )
+        expect(overlay.locator("span.rounded-full")).to_have_text("added")
+
+        _expect_no_camera_error(pg)
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
