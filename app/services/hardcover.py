@@ -6,6 +6,7 @@ from collections.abc import Callable
 import httpx
 
 from app.services import outbound
+from app.services.isbn import isbn13_to_isbn10
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,10 @@ async def lookup_by_isbn(
     data = await _graphql(query, {"isbn": isbn}, token=token, client=client, on_rate_limit=on_rate_limit)
     if not data or not data.get("editions"):
         # Try as ISBN-10
+        isbn10 = isbn13_to_isbn10(isbn) or isbn
         query_10 = query.replace("isbn_13", "isbn_10")
         data = await _graphql(
-            query_10, {"isbn": isbn}, token=token, client=client, on_rate_limit=on_rate_limit
+            query_10, {"isbn": isbn10}, token=token, client=client, on_rate_limit=on_rate_limit
         )
         if not data or not data.get("editions"):
             return None
