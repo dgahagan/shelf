@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import COVERS_DIR
-from app.services import igdb, outbound, tmdb
+from app.services import googlebooks, igdb, outbound, tmdb
 
 logger = logging.getLogger(__name__)
 
@@ -105,33 +105,21 @@ def save_uploaded_cover(item_id: int, content: bytes) -> str | None:
     return f"covers/{item_id}.jpg"
 
 
-async def search_cover_by_title(title: str, author: str | None, client: httpx.AsyncClient) -> list[dict]:
+async def search_cover_by_title(
+    title: str,
+    author: str | None,
+    client: httpx.AsyncClient,
+    *,
+    google_api_key: str | None = None,
+) -> list[dict]:
     """Search for cover candidates by title/author. Returns list of {url, source, thumbnail}."""
     candidates = []
 
     # Google Books search
     try:
-        q = title
-        if author:
-            q += f"+inauthor:{author.split(',')[0].split('&')[0].strip()}"
-        resp = await outbound.fetch(
-            client, "GET",
-            "https://www.googleapis.com/books/v1/volumes",
-            params={"q": q, "maxResults": "5"},
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            for item in data.get("items", []):
-                images = item.get("volumeInfo", {}).get("imageLinks", {})
-                thumb = images.get("thumbnail") or images.get("smallThumbnail")
-                large = images.get("large") or images.get("medium") or thumb
-                if thumb:
-                    candidates.append({
-                        "url": large.replace("http://", "https://"),
-                        "thumbnail": thumb.replace("http://", "https://"),
-                        "source": "Google Books",
-                    })
+        candidates.extend(await googlebooks.search_covers(
+            title, author, client, api_key=google_api_key
+        ))
     except Exception:
         pass
 
@@ -250,7 +238,12 @@ async def search_covers(item, query: str, client: httpx.AsyncClient, *, creds: d
     # Called as the bare module global on purpose: eight tests in
     # tests/test_covers.py patch `covers.search_cover_by_title` by attribute,
     # and a local alias or a from-import would detach every one of them.
-    return await search_cover_by_title(query, _col(item, "authors"), client)
+    return await search_cover_by_title(
+        query,
+        _col(item, "authors"),
+        client,
+        google_api_key=creds.get("google_books_api_key"),
+    )
 
 
 async def _tmdb_candidates(item, query: str, client: httpx.AsyncClient, creds: dict) -> list[dict]:

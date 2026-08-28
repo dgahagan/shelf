@@ -570,6 +570,23 @@ class TestTheRouteKnowsWhatTheItemIs:
 
         assert search.await_args.kwargs["creds"] == {}
 
+    def test_book_cover_search_receives_env_google_key(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Dune", isbn="9780900007007")
+        db.commit()
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "env-google-key")
+        search = AsyncMock(return_value=[])
+        monkeypatch.setattr(covers, "search_covers", search)
+
+        editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert search.await_args.kwargs["creds"] == {
+            "google_books_api_key": "env-google-key"
+        }
+
 
 class TestTheUnconfiguredProviderNote:
     """T4 — "not configured" is not "not found". The note is `None` unless a

@@ -1180,6 +1180,21 @@ class TestDnbRoutingAndLanguageCapture:
         assert metadata["description"] == "Klappentext"
         assert hc_ids["hardcover_book_id"] == 5
 
+    async def test_google_fallback_receives_optional_api_key(self):
+        from app.routers.items_common import _lookup_metadata
+
+        google = AsyncMock(return_value={"title": "Google Book"})
+        with patch("app.services.openlibrary.lookup", new=AsyncMock(return_value=None)), \
+             patch("app.services.googlebooks.lookup", new=google):
+            metadata, source, _, _ = await _lookup_metadata(
+                "9780441172719", None, None, google_api_key="google-key"
+            )
+
+        assert metadata["title"] == "Google Book"
+        assert source == "google"
+        assert google.await_args.kwargs["api_key"] == "google-key"
+        assert callable(google.await_args.kwargs["on_rate_limit"])
+
     def test_save_item_persists_language(self, db):
         from app.routers.items_common import _save_item
 

@@ -933,9 +933,10 @@ HC_IDS = {"hardcover_book_id": 42, "hardcover_edition_id": 99}
 
 def _patch_lookup(monkeypatch, result=None, raises=None, record=None):
     """Patch items_common._lookup_metadata — confirm's lazy import resolves it there."""
-    async def fake(isbn13, hc_token, client):
+    async def fake(isbn13, hc_token, client, *, google_api_key=None):
         if record is not None:
-            record.append({"isbn13": isbn13, "hc_token": hc_token})
+            record.append({"isbn13": isbn13, "hc_token": hc_token,
+                           "google_api_key": google_api_key})
         if raises:
             raise raises
         return result
@@ -968,6 +969,23 @@ class TestConfirmWithIsbn:
         assert row["owned"] == 0
         assert row["hardcover_book_id"] == 42
         assert route.called is False                  # no weak-path search
+
+    @respx.mock
+    def test_google_key_reaches_photo_intake_cascade(self, admin_client, monkeypatch):
+        calls = []
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "intake-google-key")
+        _patch_lookup(
+            monkeypatch,
+            result=(FULL_META, "openlibrary", HC_IDS, False),
+            record=calls,
+        )
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+
+        admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}],
+        })
+
+        assert calls[0]["google_api_key"] == "intake-google-key"
 
     @respx.mock
     def test_hardcover_token_loaded_via_get_setting(self, admin_client, monkeypatch):
@@ -1111,7 +1129,7 @@ class TestConfirmWithIsbn:
         enrich = AsyncMock(return_value=None)
         monkeypatch.setattr(items_common, "_enrich_import_covers", enrich)
 
-        async def fake(isbn13, hc_token, client):
+        async def fake(isbn13, hc_token, client, *, google_api_key=None):
             return (FULL_META, "openlibrary", {}, False) if isbn13 == ISBN13 else (None, "manual", {}, False)
         monkeypatch.setattr(items_common, "_lookup_metadata", fake)
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
@@ -1144,7 +1162,7 @@ class TestConfirmWithIsbn:
         from app.routers import items_common
         from tests.conftest import _insert_item as insert
 
-        async def fake(isbn13, hc_token, client):
+        async def fake(isbn13, hc_token, client, *, google_api_key=None):
             from app.database import get_db
             with get_db() as rival:
                 insert(rival, title="Dune (rival)", isbn=ISBN13, media_type="book")

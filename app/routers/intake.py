@@ -149,6 +149,7 @@ def _isbn_taken(isbn13: str, media_type: str) -> bool:
 async def _confirm_one(
     book: IntakeBook, client: httpx.AsyncClient, search_lang: str, preferred_marc: str,
     location_id: int | None, owned: bool, hc_token: str | None,
+    google_api_key: str | None,
 ) -> tuple[str, dict, int | None]:
     """Resolve one confirmed row to an ``added``/``skipped`` entry.
 
@@ -186,7 +187,9 @@ async def _confirm_one(
         try:
             # Trailing `_` = the rate-limited flag. Photo Intake's confirm step
             # has no scan card to render it on — deliberate, not an oversight.
-            metadata, _, hc_ids, _ = await items_common._lookup_metadata(printed_isbn13, hc_token, client)
+            metadata, _, hc_ids, _ = await items_common._lookup_metadata(
+                printed_isbn13, hc_token, client, google_api_key=google_api_key
+            )
         except Exception:
             logger.warning("Intake: metadata lookup failed for ISBN %s", printed_isbn13)
             metadata, hc_ids = None, {}
@@ -314,6 +317,7 @@ async def confirm_books(payload: IntakeConfirm):
         search_lang = get_setting(db, "metadata_search_lang") or "en"
         # get_setting, never get_all_settings — the latter drops env-only keys (G15).
         hc_token = get_setting(db, "hardcover_token") or None
+        google_api_key = get_setting(db, "google_books_api_key") or None
     preferred_marc = national.iso_to_marc(search_lang)
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -324,7 +328,7 @@ async def confirm_books(payload: IntakeConfirm):
 
             status, entry, item_id = await _confirm_one(
                 book, client, search_lang, preferred_marc, payload.location_id,
-                payload.owned, hc_token)
+                payload.owned, hc_token, google_api_key)
             if status == "added":
                 added.append(entry)
                 new_item_ids.append(item_id)

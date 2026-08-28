@@ -3,14 +3,23 @@ from collections.abc import Callable
 
 import httpx
 
+from app.config import HTTP_TIMEOUT
 from app.services import outbound
 
 logger = logging.getLogger(__name__)
+VOLUMES_URL = "https://www.googleapis.com/books/v1/volumes"
+
+
+def _api_headers(api_key: str | None) -> dict[str, str]:
+    """Return credential headers without ever putting the key in a URL."""
+    key = (api_key or "").strip()
+    return {"X-Goog-Api-Key": key} if key else {}
 
 
 async def lookup(
     isbn: str, client: httpx.AsyncClient,
-    *, on_rate_limit: Callable[[], None] | None = None,
+    *, api_key: str | None = None,
+    on_rate_limit: Callable[[], None] | None = None,
 ) -> dict | None:
     """Look up a book by ISBN via Google Books API. Returns metadata dict or None.
 
@@ -25,8 +34,9 @@ async def lookup(
     try:
         resp = await outbound.fetch(
             client, "GET",
-            "https://www.googleapis.com/books/v1/volumes",
+            VOLUMES_URL,
             params={"q": f"isbn:{isbn}"},
+            headers=_api_headers(api_key),
         )
     except Exception:
         logger.debug("Google Books lookup failed for ISBN %s", isbn, exc_info=True)
@@ -106,16 +116,23 @@ async def lookup(
         return None
 
 
-async def search_by_title_author(title: str, author: str | None, client: httpx.AsyncClient,
-                                 limit: int = 5) -> list[dict]:
+async def search_by_title_author(
+    title: str,
+    author: str | None,
+    client: httpx.AsyncClient,
+    limit: int = 5,
+    *,
+    api_key: str | None = None,
+) -> list[dict]:
     """Field-scoped volume search. Returns summaries including description."""
     query = f'intitle:"{title}"'
     if author:
         query += f' inauthor:"{author}"'
     resp = await outbound.fetch(
         client, "GET",
-        "https://www.googleapis.com/books/v1/volumes",
+        VOLUMES_URL,
         params={"q": query, "maxResults": str(limit)},
+        headers=_api_headers(api_key),
     )
     if resp.status_code != 200:
         logger.debug("Google Books search failed for %r: HTTP %d", query, resp.status_code)
@@ -132,3 +149,66 @@ async def search_by_title_author(title: str, author: str | None, client: httpx.A
             "description": info.get("description"),
         })
     return results
+
+
+async def search_covers(
+    title: str,
+    author: str | None,
+    client: httpx.AsyncClient,
+    limit: int = 5,
+    *,
+    api_key: str | None = None,
+) -> list[dict]:
+    """Search Google Books for cover candidates."""
+    query = title
+    if author:
+        query += f"+inauthor:{author.split(',')[0].split('&')[0].strip()}"
+    resp = await outbound.fetch(
+        client,
+        "GET",
+        VOLUMES_URL,
+        params={"q": query, "maxResults": str(limit)},
+        headers=_api_headers(api_key),
+        timeout=10,
+    )
+    if resp.status_code != 200:
+        logger.debug("Google Books cover search failed for %r: HTTP %d", query, resp.status_code)
+        return []
+
+    results = []
+    for item in resp.json().get("items", []):
+        images = item.get("volumeInfo", {}).get("imageLinks", {})
+        thumb = images.get("thumbnail") or images.get("smallThumbnail")
+        large = images.get("large") or images.get("medium") or thumb
+        if thumb:
+            results.append({
+                "url": large.replace("http://", "https://"),
+                "thumbnail": thumb.replace("http://", "https://"),
+                "source": "Google Books",
+            })
+    return results
+
+
+async def test_connection(api_key: str) -> dict:
+    """Validate a key without returning provider response bodies or secrets."""
+    if not _api_headers(api_key):
+        return {"ok": False, "message": "No API key configured"}
+    try:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            resp = await outbound.fetch(
+                client,
+                "GET",
+                VOLUMES_URL,
+                params={"q": "isbn:9780140328721", "maxResults": "1"},
+                headers=_api_headers(api_key),
+            )
+    except Exception:
+        return {"ok": False, "message": "Connection failed — check network"}
+
+    if resp.status_code == 200:
+        return {"ok": True, "message": "Connected to Google Books"}
+    if resp.status_code in (401, 403):
+        return {"ok": False, "message": "Google Books rejected the API key"}
+    if resp.status_code == 429:
+        return {"ok": False, "message": "Google Books quota exceeded"}
+    return {"ok": False, "message": f"Google Books returned HTTP {resp.status_code}"}

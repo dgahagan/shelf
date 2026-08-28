@@ -28,13 +28,15 @@ class TestNoEcho:
         token = _save_abs(admin_client)
         admin_client.post(
             "/api/settings",
-            data={"hardcover_token": "hc-secret-xyz", "isbndb_api_key": "isbndb-secret-xyz"},
+            data={"hardcover_token": "hc-secret-xyz", "isbndb_api_key": "isbndb-secret-xyz",
+                  "google_books_api_key": "google-secret-xyz"},
             follow_redirects=False,
         )
         html = admin_client.get("/settings").text
         assert token not in html
         assert "hc-secret-xyz" not in html
         assert "isbndb-secret-xyz" not in html
+        assert "google-secret-xyz" not in html
         # Saved state is still communicated
         assert "Saved — leave blank to keep" in html
 
@@ -110,6 +112,28 @@ class TestWriteOnlySemantics:
         with get_db() as db:
             assert get_setting(db, "abs_url") == ""
             assert get_setting(db, "abs_token") == "super-secret-abs-token"
+
+    def test_google_key_is_encrypted_write_only_and_clearable(self, admin_client, db):
+        sentinel = "google-stored-secret"
+        admin_client.post(
+            "/api/settings",
+            data={"google_books_api_key": sentinel},
+            follow_redirects=False,
+        )
+        raw = db.execute(
+            "SELECT value FROM settings WHERE key = 'google_books_api_key'"
+        ).fetchone()["value"]
+        assert raw != sentinel
+        assert raw.startswith("gAAAAA")
+        assert get_setting(db, "google_books_api_key") == sentinel
+        assert sentinel not in admin_client.get("/settings").text
+
+        admin_client.post(
+            "/api/settings",
+            data={"google_books_api_key": "", "clear_google_books_api_key": "on"},
+            follow_redirects=False,
+        )
+        assert get_setting(db, "google_books_api_key") == ""
 
     def test_vision_key_keep_and_clear(self, admin_client):
         admin_client.post(
@@ -209,6 +233,7 @@ class TestEnvOnlyCredentials:
         ("data-abs-saved", ["ABS_TOKEN"]),
         ("data-abs-url-present", ["ABS_URL"]),
         ("data-hc-saved", ["HARDCOVER_TOKEN"]),
+        ("data-google-books-saved", ["GOOGLE_BOOKS_API_KEY"]),
         ("data-api-key-saved", ["ISBNDB_API_KEY"]),
         ("data-tmdb-saved", ["TMDB_API_KEY"]),
         ("data-igdb-saved", ["IGDB_CLIENT_ID", "IGDB_CLIENT_SECRET"]),
@@ -349,3 +374,34 @@ class TestStoredCredentialFallback:
                                      json={"url": "", "format": "ntfy"})
         assert resp.json()["ok"] is True
         assert send.await_args.args[0] == "https://ntfy.example/stored"
+
+    def test_google_books_test_uses_stored_key(self, admin_client):
+        admin_client.post(
+            "/api/settings",
+            data={"google_books_api_key": "google-stored"},
+            follow_redirects=False,
+        )
+        with patch(
+            "app.services.googlebooks.test_connection",
+            new=AsyncMock(return_value={"ok": True, "message": "ok"}),
+        ) as test_connection:
+            resp = admin_client.post(
+                "/api/settings/google-books/test", json={"api_key": ""}
+            )
+        assert resp.json() == {"ok": True, "message": "ok"}
+        test_connection.assert_awaited_once_with("google-stored")
+
+    def test_google_books_test_uses_env_override(self, admin_client, monkeypatch):
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "google-env")
+        with patch(
+            "app.services.googlebooks.test_connection",
+            new=AsyncMock(return_value={"ok": True, "message": "ok"}),
+        ) as test_connection:
+            admin_client.post("/api/settings/google-books/test", json={"api_key": ""})
+        test_connection.assert_awaited_once_with("google-env")
+
+    def test_google_books_test_requires_admin(self, editor_client):
+        resp = editor_client.post(
+            "/api/settings/google-books/test", json={"api_key": "fake"}
+        )
+        assert resp.status_code == 403

@@ -40,6 +40,7 @@ SENSITIVE_KEYS: frozenset[str] = frozenset(
         "anthropic_api_key",
         "openai_api_key",
         "hardcover_token",
+        "google_books_api_key",
         "isbndb_api_key",
         "tmdb_api_key",
         "igdb_client_id",

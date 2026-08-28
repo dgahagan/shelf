@@ -1,5 +1,6 @@
 """Tests for synopsis lookup and backfill (services/synopsis.py + endpoints)."""
 import json
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -19,6 +20,21 @@ def _gb_volume(title="Dune", authors=("Frank Herbert",), description="A desert p
 
 
 class TestFetchDescription:
+    @pytest.mark.asyncio
+    async def test_google_key_reaches_isbn_and_title_searches(self):
+        isbn_lookup = AsyncMock(return_value=None)
+        title_search = AsyncMock(return_value=[])
+        with patch("app.services.googlebooks.lookup", new=isbn_lookup), \
+             patch("app.services.openlibrary.search_by_title_author", new=AsyncMock(return_value=[])), \
+             patch("app.services.googlebooks.search_by_title_author", new=title_search):
+            await synopsis.fetch_description(
+                "9780441013593", "Dune", "Frank Herbert", object(),
+                google_api_key="google-key",
+            )
+
+        assert isbn_lookup.await_args.kwargs["api_key"] == "google-key"
+        assert title_search.await_args.kwargs["api_key"] == "google-key"
+
     @respx.mock
     @pytest.mark.asyncio
     async def test_google_books_isbn_first(self):

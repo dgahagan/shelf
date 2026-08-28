@@ -108,6 +108,17 @@ def _search_note(media_type: str | None, creds: dict) -> str | None:
     return _SEARCH_NOTES.get(covers.MEDIA_TYPE_PROVIDERS.get(media_type or ""))
 
 
+def _cover_search_credentials(db, media_type: str | None) -> dict[str, str]:
+    """Load required provider credentials plus the optional Google book key."""
+    keys = covers.required_credentials(media_type)
+    creds = {key: get_setting(db, key) for key in keys}
+    if not keys:
+        google_key = get_setting(db, "google_books_api_key")
+        if google_key:
+            creds["google_books_api_key"] = google_key
+    return creds
+
+
 @router.get("/items/{item_id}/cover-search")
 async def cover_search(request: Request, item_id: int, query: str | None = None, _=Depends(require_role("editor"))):
     """Search for cover candidates by title/author. Returns HTMX fragment."""
@@ -118,13 +129,10 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
             "FROM items WHERE id = ?", (item_id,)
         ).fetchone()
         # Key-by-key through get_setting, never the bulk settings accessor:
-        # all three provider keys are in SECRET_ENV_VARS, and the bulk one
+        # Provider credentials are in SECRET_ENV_VARS, and the bulk one
         # returns only keys that have a row, so an env-only install would be
         # told its provider is unconfigured (G15).
-        creds = {} if not item else {
-            key: get_setting(db, key)
-            for key in covers.required_credentials(item["media_type"])
-        }
+        creds = {} if not item else _cover_search_credentials(db, item["media_type"])
     if not item:
         return HTMLResponse("Not found", status_code=404)
 
@@ -173,10 +181,7 @@ async def cover_select(
         # Same key-by-key build as cover_search — this failure path re-renders
         # the grid, and a DVD whose pick failed must not fall back to book
         # results (G15 again, for the same env-only reason).
-        creds = {} if not item else {
-            key: get_setting(db, key)
-            for key in covers.required_credentials(item["media_type"])
-        }
+        creds = {} if not item else _cover_search_credentials(db, item["media_type"])
     if not item:
         return HTMLResponse("Not found", status_code=404)
 

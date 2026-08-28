@@ -170,6 +170,14 @@ class TestStoreQueue:
         item = db.execute("SELECT * FROM items WHERE isbn = '9780441013593'").fetchone()
         assert item["owned"] == 0
 
+    def test_google_key_reaches_store_metadata_lookup(self, admin_client, monkeypatch):
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "store-google-key")
+        lookup = AsyncMock(return_value=(None, None, {}, False))
+        with patch("app.routers.items_common._lookup_metadata", new=lookup):
+            admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
+
+        assert lookup.await_args.kwargs["google_api_key"] == "store-google-key"
+
     def test_bare_add_when_lookup_fails(self, admin_client, db):
         with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(side_effect=Exception("network down"))):

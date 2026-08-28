@@ -254,6 +254,29 @@ class TestQuickRateMode:
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
 
 
+class TestGoogleBooksCredentialPropagation:
+    def test_env_key_reaches_scan_lookup(self, admin_client, monkeypatch):
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "scan-google-key")
+        lookup = AsyncMock(return_value=(None, "manual", {}, False))
+        with patch("app.routers.items_common._lookup_metadata", new=lookup), \
+             patch("app.routers.items_common._fetch_preview_cover", new=AsyncMock(return_value=None)):
+            admin_client.post("/api/scan", data={
+                "isbn": "9780000099986", "media_type": "book", "mode": "add",
+            })
+
+        assert lookup.await_args.kwargs["google_api_key"] == "scan-google-key"
+
+    def test_env_key_reaches_add_by_isbn_lookup(self, editor_client, monkeypatch):
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "add-google-key")
+        lookup = AsyncMock(return_value=(None, "manual", {}, False))
+        with patch("app.routers.items_common._lookup_metadata", new=lookup):
+            editor_client.post("/api/books/add", data={
+                "isbn": "9780000099979", "media_type": "book",
+            })
+
+        assert lookup.await_args.kwargs["google_api_key"] == "add-google-key"
+
+
 class TestManualAddForm:
     """The not_found branch of scan_result.html renders the manual entry form,
     including the #19 copy-from picker and the series/location fields."""
@@ -477,7 +500,7 @@ class TestTheBarcodeOutranksTheDropdown:
     def stub_book_lookup(self, monkeypatch):
         from app.routers import items_common
 
-        async def _lookup(isbn13, hc_token, client):
+        async def _lookup(isbn13, hc_token, client, *, google_api_key=None):
             return ({"title": "A Real Novel", "authors": "Someone"}, "openlibrary", {}, False)
 
         monkeypatch.setattr(items_common, "_lookup_metadata", _lookup)

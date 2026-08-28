@@ -106,6 +106,19 @@ class TestTheBookPathIsUnchanged:
         assert tmdb.mock_calls == []
         assert igdb.mock_calls == []
 
+    async def test_optional_google_key_reaches_book_cover_search(
+        self, book_search, no_providers
+    ):
+        tmdb, igdb = no_providers
+        await covers.search_covers(
+            _item(media_type="book"), "Dune", object(),
+            creds={"google_books_api_key": "google-key"},
+        )
+
+        assert book_search.await_args.kwargs["google_api_key"] == "google-key"
+        assert tmdb.mock_calls == []
+        assert igdb.mock_calls == []
+
     @pytest.mark.parametrize("media_type", ["vinyl_lp", None, ""])
     async def test_an_unknown_media_type_takes_the_book_branch(
         self, media_type, book_search, no_providers

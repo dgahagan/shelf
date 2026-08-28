@@ -71,6 +71,13 @@ now probes TMDb exactly the way a real lookup does.
 numbers, value-over-time stats. See
 [Stats & valuation](stats-and-valuation.md).
 
+## Google Books (optional API key)
+
+Google Books remains available anonymously. An optional API key can be saved
+in Settings to authenticate ISBN, synopsis, and cover searches. Shelf sends it
+only in the `X-Goog-Api-Key` request header; it is stored encrypted and never
+placed in request URLs.
+
 ## Vision providers (Photo Intake)
 
 Anthropic, any OpenAI-compatible endpoint, or Ollama. See
@@ -84,10 +91,11 @@ same idea: an ntfy topic or JSON webhook URL for the overdue-loan digest. See
 
 ## Always-on sources (no key)
 
-Open Library, Google Books (keyless), Amazon cover images, UPC Item DB, and
-the Deutsche Nationalbibliothek for German ISBNs. Lookups send only the ISBN
-or UPC — never your account, collection or personal data. Requests to every
-provider are paced to its published rate limit. UPC Item DB's free tier is
+Open Library, Google Books (anonymous by default), Amazon cover images, UPC Item DB, and
+the Deutsche Nationalbibliothek for German ISBNs. Apart from credentials you
+explicitly configure, lookups send only the ISBN or UPC — never your account,
+collection or personal data. Requests to every provider are paced to its
+published rate limit. UPC Item DB's free tier is
 the tightest of them at six lookups a minute, so Shelf leaves ten seconds
 between consecutive barcode lookups: scanning a stack of discs or games is
 deliberately unhurried. One scan on its own never waits, and ISBNs are not
@@ -105,7 +113,7 @@ can be starved at once. See
 ## Supplying keys by environment instead
 
 Every key except the vision providers can come from an environment variable
-(`HARDCOVER_TOKEN`, `ABS_URL`/`ABS_TOKEN`, `ISBNDB_API_KEY`, `TMDB_API_KEY`,
+(`HARDCOVER_TOKEN`, `GOOGLE_BOOKS_API_KEY`, `ABS_URL`/`ABS_TOKEN`, `ISBNDB_API_KEY`, `TMDB_API_KEY`,
 `IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET`), which overrides whatever is stored. The
 secret field stays blank in Settings — Shelf never echoes a secret back — but
 **Test key** still works against it, so you can confirm the key without pasting

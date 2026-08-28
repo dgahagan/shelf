@@ -104,6 +104,7 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
 
     with get_db() as db:
         hc_token = get_setting(db, "hardcover_token") or None
+        google_api_key = get_setting(db, "google_books_api_key") or None
 
     results = []
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -130,7 +131,9 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
                 # `_` = the rate-limited flag. Store Mode's queue flush has no
                 # scan card to render it on; inventing a surface for it is a
                 # later plan's scope, not an oversight.
-                metadata, source, hc_ids, _ = await items_common._lookup_metadata(isbn13, hc_token, client)
+                metadata, source, hc_ids, _ = await items_common._lookup_metadata(
+                    isbn13, hc_token, client, google_api_key=google_api_key
+                )
             except Exception:
                 logger.warning("Store queue: metadata lookup failed for %s", isbn13)
 

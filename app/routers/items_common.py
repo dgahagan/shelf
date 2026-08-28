@@ -132,7 +132,8 @@ def filter_counts(db, values: dict, total: int) -> dict:
 def _toast_header(message: str, toast_type: str = "success") -> str:
     return json.dumps({"showToast": {"message": message, "type": toast_type}})
 
-async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient) -> tuple[dict | None, str, dict, bool]:
+async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.AsyncClient,
+                           *, google_api_key: str | None = None) -> tuple[dict | None, str, dict, bool]:
     """Look up book metadata across sources.
 
     Returns `(metadata, source, hc_ids, rate_limited)`. `rate_limited` is true
@@ -185,7 +186,8 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
             }
 
     if not metadata:
-        metadata = await googlebooks.lookup(isbn13, client, on_rate_limit=_saw_rate_limit)
+        metadata = await googlebooks.lookup(
+            isbn13, client, api_key=google_api_key, on_rate_limit=_saw_rate_limit)
         if metadata:
             source = "google"
 

@@ -551,6 +551,60 @@
         </div>
     </div>
 
+    <!-- Google Books -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
+         x-data="googleBooksPanel"
+         data-google-books-saved="{{ '1' if secrets_present['google_books_api_key'] else '' }}">
+        <h2 class="text-lg font-semibold mb-1">Google Books</h2>
+        <p class="text-sm text-shelf-muted mb-4">
+            Optional. Google Books continues to work anonymously without a key.
+            When configured, the key is used only for Google Books API requests.
+        </p>
+        <form action="/api/settings" method="post" class="space-y-3">
+            <div>
+                <label for="google_books_api_key" class="block text-sm font-medium text-shelf-muted mb-1">API Key</label>
+                <div class="flex gap-2">
+                    <input type="password" id="google_books_api_key" name="google_books_api_key"
+                           x-model="googleBooksKey" autocomplete="new-password"
+                           placeholder="{% if secrets_saved['google_books_api_key'] %}Saved — leave blank to keep{% else %}Optional Google Books API key{% endif %}"
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <button type="button"
+                            @click="testGoogleBooks"
+                            :disabled="googleBooksTesting || (!googleBooksKey && !googleBooksSaved)"
+                            class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
+                        <span x-show="!googleBooksTesting">Test Key</span>
+                        <span x-show="googleBooksTesting">Testing...</span>
+                    </button>
+                </div>
+                <p class="text-xs text-shelf-muted mt-1">
+                    Stored encrypted and sent only in the <span class="font-mono">X-Goog-Api-Key</span> request header.
+                </p>
+                <div class="mt-1.5 h-5">
+                    <template x-if="googleBooksStatus && googleBooksStatus.ok">
+                        <p class="text-xs text-shelf-success flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
+                            <span x-text="googleBooksStatus.message"></span>
+                        </p>
+                    </template>
+                    <template x-if="googleBooksStatus && !googleBooksStatus.ok">
+                        <p class="text-xs text-shelf-error flex items-center gap-1">
+                            <span class="inline-block w-2 h-2 rounded-full bg-shelf-error"></span>
+                            <span x-text="googleBooksStatus.message"></span>
+                        </p>
+                    </template>
+                </div>
+            </div>
+            {% if secrets_saved['google_books_api_key'] %}
+            <label class="flex items-center gap-2 text-xs text-shelf-muted">
+                <input type="checkbox" name="clear_google_books_api_key" class="rounded border-shelf-border"> Remove saved key
+            </label>
+            {% endif %}
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+
     <!-- Movie Database (TMDb) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="tmdbPanel"
