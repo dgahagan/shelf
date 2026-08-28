@@ -6,6 +6,31 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.22.3] - 2026-08-28
+
+Scan a barcode that no metadata source recognises and Shelf raised a pop-up
+with nothing written in it — an amber pill, correctly coloured, saying
+nothing at all, while the card underneath it named the barcode and said "not
+found". Two quieter versions of the same fault were in there too, both in
+Lookup mode, where the pop-up said less than the card beside it. All three
+are fixed, and every one of the fifteen scan outcomes is now held to saying
+what its card says.
+
+### Fixed
+
+- **A barcode nothing recognises now names itself in the pop-up.** Scanning
+  an ISBN or UPC that no provider resolves raised a blank pill; it now reads
+  **`Not found: <barcode>`**, the same thing the card underneath already said.
+  ([#50](https://github.com/dgahagan/shelf/issues/50))
+- **A Lookup scan of a barcode you do not own names the barcode.** The pop-up
+  read **`Not found`** and nothing else, so two unowned scans in a row were
+  indistinguishable; it now names which barcode it was.
+- **A Lookup scan of an item you do own names where it is.** The pop-up gave
+  the title alone; it now ends with **`— Location: <place>`**, which is the
+  answer Lookup mode exists to give.
+- **No pop-up in Shelf can be empty, whatever raises it.** A message that
+  arrives blank now reads **`Done`** instead of showing an empty pill.
+
 ## [0.22.2] - 2026-08-28
 
 Shelf talks to other people's servers, and those servers push back — with a
@@ -1934,6 +1959,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.22.3]: https://github.com/dgahagan/shelf/releases/tag/v0.22.3
 [0.22.2]: https://github.com/dgahagan/shelf/releases/tag/v0.22.2
 [0.22.1]: https://github.com/dgahagan/shelf/releases/tag/v0.22.1
 [0.22.0]: https://github.com/dgahagan/shelf/releases/tag/v0.22.0

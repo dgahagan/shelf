@@ -130,19 +130,31 @@ reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 
 The scan-result card is the single source of a scan's outcome, and the
 **client** is the sole owner of the toast that reports it:
-`static/js/app.js`'s `clear-scan-input` handler reads the card through
-`scanCardOutcome` and raises exactly one toast, so no `/api/scan` branch
-sets an `HX-Trigger`. Two things decide that ownership. The client covers
-all 15 statuses and is the only side that classifies severity
-(`isErr = !outcome.ok`), where the server side only ever covered six and
-typed every one of them `success`. And the camera path posts by raw
+`static/js/app.js`'s `clear-scan-input` handler builds the toast through
+`scanCardToast` — which classifies the card through `scanCardOutcome` and
+assembles the string — and raises exactly one toast, so no `/api/scan`
+branch sets an `HX-Trigger`. Two things decide that ownership. The client
+raises a toast for all 15 statuses and is the only side that classifies
+severity (from `outcome.ok`), where the server side only ever covered six
+and typed every one of them `success`. And the camera path posts by raw
 `fetch`, which dispatches no htmx events and reads no response headers, so
 a server-owned toast could only ever reach the typed path — half the scan
 surface. Seven branches set one anyway, and the typed path duly showed two
-toasts for every add, lend, return, move and quick-rate (issue #45). A
-branch that needs the toast to say more than the title adds
+toasts for every add, lend, return, move and quick-rate (issue #45).
+
+**The reader consults declared attributes only — it matches no CSS classes.**
+A branch that needs the toast to say more than the title adds
 `data-scan-detail` to its detail line, the way `moved` and `checked_out`
-name the destination and the borrower.
+name the destination and the borrower and `found` names the location; the
+error arm's equivalent is `data-scan-error`, which replaces the assembled
+string rather than extending it. That last field was the one still read by
+class until issue #50: the handler picked its text with
+`.text-shelf-error:not(span)`, which also matched the empty
+`x-text="copyError"` paragraph inside the `not_found` arm's manual-add form,
+so an unresolvable barcode raised a pill with nothing in it. Reading by
+class is what makes any paragraph added to a card able to hijack the toast,
+which is why nothing here does it any more. `showToast` also floors an empty
+message to `Done`, so a blank pill is unreachable from any caller.
 
 When enrichment does not happen, the card names *which* dead end it hit rather
 than collapsing every case into "no match". `services/scan_outcome.py` makes

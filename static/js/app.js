@@ -12,6 +12,10 @@
 // muted small-text paragraph added above the authors line becomes the author.
 // The card now states its outcome outright in `data-scan-status`, and names
 // each field it wants read. This function is the only place that knows how.
+// `data-scan-error` (issue #50) was the last field still read by class: the
+// toast picked its text with `.text-shelf-error:not(span)`, which also matched
+// the empty `x-text="copyError"` paragraph in the not_found arm's manual-add
+// form and rendered a blank pill. Nothing here matches a class any more.
 //
 // Keep the status lists below in step with the badge's class ternary at the
 // foot of fragments/scan_result.html — that template and this table are the
@@ -42,12 +46,40 @@ function scanCardOutcome(root) {
     };
 }
 
+// Build the typed-scan toast from a card. Split out of the clear-scan-input
+// handler so it is reachable from a test without driving a real scan — the
+// same reason scanCardOutcome is a named function rather than inline.
+function scanCardToast(root) {
+    var outcome = scanCardOutcome(root);
+    // The error arm declares its own line; it replaces the assembled string
+    // rather than appending to it, because it IS the whole message.
+    var errEl = root.querySelector('[data-scan-error]');
+    var label = outcome.label || 'Done';
+    // The badge reads lower-case ('added', 'lent'); the toast is a sentence,
+    // so it opens capitalised the way the server string did.
+    label = label.charAt(0).toUpperCase() + label.slice(1);
+    var text;
+    if (errEl) {
+        text = errEl.textContent.trim();
+    } else {
+        text = label + (outcome.title ? ': ' + outcome.title : '');
+        // The detail line carries the second party the title cannot: the
+        // borrower on a lend, the destination on a move, the shelf on a find.
+        if (outcome.detail) text += ' — ' + outcome.detail;
+    }
+    // A card is a failure when its own status says so — not when some element
+    // inside it happens to be styled with a warning colour.
+    return {text: text, type: outcome.ok ? 'success' : 'warning'};
+}
+
 // --- Toast notifications ---
 function showToast(message, type) {
     var container = document.getElementById('toast-container');
     var colors = {success: 'bg-shelf-success', error: 'bg-shelf-error', warning: 'bg-shelf-warning'};
     var el = document.createElement('div');
     el.className = (colors[type] || 'bg-shelf-accent') + ' text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300';
+    // Structural, not belt-and-braces: makes a pill with nothing in it impossible from any caller.
+    message = (message || '').toString().trim() || 'Done';
     el.textContent = message;
     container.appendChild(el);
     setTimeout(function() { el.style.opacity = '0'; }, 2700);
@@ -122,25 +154,8 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
         // adding a response branch to /api/scan".
         var card = ok && document.querySelector('#scan-results > :first-child');
         if (card) {
-            var outcome = scanCardOutcome(card);
-            var errMsg = card.querySelector('.text-shelf-error:not(span)');
-            var label = outcome.label || 'Done';
-            // The badge reads lower-case ('added', 'lent'); the toast is a
-            // sentence, so it opens capitalised the way the server string did.
-            label = label.charAt(0).toUpperCase() + label.slice(1);
-            // A card is a failure when its own status says so — not when some
-            // element inside it happens to be styled with a warning colour.
-            var isErr = !outcome.ok;
-            var text;
-            if (errMsg) {
-                text = errMsg.textContent.trim();
-            } else {
-                text = label + (outcome.title ? ': ' + outcome.title : '');
-                // The detail line carries the second party the title cannot:
-                // the borrower on a lend, the destination on a move.
-                if (outcome.detail) text += ' — ' + outcome.detail;
-            }
-            showToast(text, isErr ? 'warning' : 'success');
+            var t = scanCardToast(card);
+            showToast(t.text, t.type);
         }
     } else if (action === 'clear-title-search' && ok) {
         var si = document.getElementById('title-search-input') || document.getElementById('game-search-input');

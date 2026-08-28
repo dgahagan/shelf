@@ -935,6 +935,24 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     or `cp` the fixed file aside before the first mutation and restore from
     that copy. A plan that writes the recipe should say which.
 
+  One more, found while orchestrating `feat/issue-50-blank-scan-toast`
+  (2026-08-28) — the "fallback branch absorbs it" bullet again, but the
+  absorbing thing is the **weakness of the assertion**, not a code path:
+  - **Assert what the output SAYS, not that it is non-empty.** The plan's pin
+    was "every one of the 15 scan statuses toasts non-empty text", and its
+    mutation instruction was "delete `data-scan-error` → the `error` row must
+    fail". It does not. With no `[data-scan-error]` the reader falls back to
+    `label + title`; the error arm declares no `data-scan-title`, and the
+    badge's `{% else %}` renders the status literal, so the toast reads
+    `'Error'` — non-empty, correctly typed `warning`, pin green, message
+    (`'Invalid ISBN'`) silently gone. A non-emptiness assertion can only catch
+    the *loudest* instance of a "says less than it should" defect; the quiet
+    instances are exactly the ones that ship. The fix was a required-substring
+    per status (`_TOAST_MUST_CONTAIN`), after which all three attribute
+    deletions redden. Generalises past toasts: whenever the defect class is
+    **degradation** rather than absence, an emptiness/count/truthiness check is
+    the wrong shape of assertion, because the degraded output is still present.
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -2068,12 +2086,22 @@ grep -rn "async def _[a-z_]*(.*client" tests/ | head -40
 - **Rule:** Do not set `HX-Trigger` on the response. The card's
   `data-scan-*` attributes are the toast's only input; add `data-scan-detail`
   to the branch's detail line if the toast needs to say something the title
-  does not.
+  does not, or `data-scan-error` if the branch's message *replaces* the toast
+  rather than extending it (the error arm's equivalent). **Never read a card
+  field by CSS class** — the reader matches declared attributes only.
 - **Why:** the client handler already toasts all 15 outcomes and is the only
   side that classifies them; a server trigger double-fires on the typed (htmx)
   path and is invisible on the camera (`fetch`) path. Issue #45.
+  The class-selector half is issue #50: the handler picked the toast's text
+  with `.text-shelf-error:not(span)`, which also matched the empty
+  `x-show="copyError"` paragraph inside the `not_found` arm's manual-add form,
+  so an unresolvable barcode raised a **blank pill**. A class selector hands
+  the toast to any element someone later adds to a card — `copyError` was the
+  second such element in this file's short life — and the next one will carry
+  text, so it will hijack the toast without looking broken.
 - **Evidence:** the seven sites removed on this branch — commit `cc01264`,
-  2026-08-27.
+  2026-08-27. The last class read replaced by `data-scan-error` — commit
+  `08c0212`, 2026-08-28 (issue #50).
 - **Verify:** `_toast_header` is called only from the three non-scan routes:
 
 ```bash
@@ -2083,9 +2111,12 @@ grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
 # _scan_mode_*, _scan_upc or _scan_upc_game.
 ```
 
-- **Status:** active — a lint candidate (`HX-Trigger` assignment inside a
-  `/api/scan` code path is mechanically checkable as a `make check-*`
-  tripwire).
+- **Status:** active — two lint candidates, neither built. (a) `HX-Trigger`
+  assignment inside a `/api/scan` code path is mechanically checkable as a
+  `make check-*` tripwire. (b) A Tailwind-class selector in `app.js`/`scan.js`
+  reading scan-card markup is equally checkable; issue #50 deliberately left it
+  unbuilt as speculative on one instance. **Revisit trigger:** a third element
+  added to a scan card that a reader picks up by class.
 
 ## G63 — When running a gate target in the background, never pipe it
 

@@ -1210,3 +1210,208 @@ def test_a_typed_duplicate_scan_raises_exactly_one_warning_toast(
     assert "bg-shelf-warning" in (toast.get_attribute("class") or "")
     _assert_exactly_one_toast(authed_page)
     assert_page_clean(authed_page)
+
+
+# --- T7: every status toasts something (issue #50) -------------------------
+#
+# T1+T2 replaced app.js's toast extractor with `scanCardToast()`, which reads
+# `data-scan-*` attributes exclusively (no CSS-class matching), and floored
+# `showToast`'s message to 'Done' when empty/whitespace. Both came out of one
+# bug: a `not_found` card toasted `''`, because the old selector
+# `.text-shelf-error:not(span)` matched the empty `x-text="copyError"`
+# paragraph inside the not_found arm's manual-add form — a hidden element
+# that still yields a (blank) textContent (`G51`).
+#
+# This section pins the fix across the router's full 15-status vocabulary,
+# not just the one status that shipped broken, so a future status — or a
+# regressed data-scan-* attribute on an existing one — fails here instead of
+# reaching a user as a blank toast.
+#
+# `G31`: every card is rendered from the real template with fake *data*,
+# never hand-written here — same discipline as `_render_card` above.
+
+
+def _render_status_card(status, **overrides):
+    from jinja2 import Environment, FileSystemLoader
+
+    from app.services.national import SEARCH_LANGS
+
+    ctx = {
+        "status": status,
+        "isbn": "025192107801",
+        "title": "",
+        "authors": "",
+        "cover_path": "",
+        "cover_pending": False,
+        "item_id": None,
+        "source": "",
+        "media_type": "book",
+        "media_type_label": "Book",
+        "message": "",
+        "enrich_status": None,
+        "enrich_provider": "",
+        "detect_overrode": False,
+        "detect_reason": "",
+        "locations": [],
+        "search_langs": SEARCH_LANGS,
+        "preview_cover": None,
+    }
+    ctx.update(overrides)
+    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
+    return env.get_template("fragments/scan_result.html").render(**ctx)
+
+
+_TOAST = "(html) => { const d = document.createElement('div'); d.innerHTML = html; " \
+         "return scanCardToast(d.querySelector('.scan-result')); }"
+
+
+# Context per status, ported from what app/routers/items.py actually sends —
+# the design plan's own evidence for this table.
+_STATUS_CASES = {
+    "added": dict(title="Dune", authors="Frank Herbert", item_id=7, source="openlibrary"),
+    "wishlisted": dict(title="Dune", authors="Frank Herbert", item_id=7, source="openlibrary"),
+    "duplicate": dict(title="Dune", item_id=7),
+    "checked_out": dict(title="Dune", item_id=7, message="Lent to Bea"),
+    "returned": dict(title="Dune", item_id=7, message="Returned from Bea"),
+    "moved": dict(title="Dune", item_id=7, message="Office Shelf → Loft Box"),
+    "confirmed": dict(title="Dune", item_id=7, message="Confirmed at Office Shelf"),
+    "relocated": dict(title="Dune", item_id=7, message="Was at Office Shelf, updated to Loft Box"),
+    "found": dict(title="Dune", item_id=7, message="Location: Office Shelf"),
+    "marked_read": dict(title="Dune", item_id=7, message="Marked as read"),
+    "already_checked_out": dict(title="Dune", item_id=7, message="Already lent to Bea"),
+    "not_checked_out": dict(title="Dune", item_id=7, message="Not currently checked out"),
+    "not_owned": dict(message="Not in your collection"),
+    "not_found": dict(message="No metadata found for this barcode", media_type="book"),
+    "error": dict(message="Invalid ISBN"),
+}
+
+# Per app.js's SCAN_OK_STATUSES — every other status toasts as a warning.
+_OK_STATUSES = {
+    "added", "wishlisted", "returned", "confirmed", "marked_read",
+    "checked_out", "moved", "found", "relocated",
+}
+
+# What each status's toast must actually SAY — the field the card declares,
+# not merely "some text".
+#
+# Non-emptiness alone is too weak to pin this contract, and `G31` caught it:
+# deleting `data-scan-error` from the error arm leaves the toast reading
+# "Error" (the badge's `{% else %}` literal, capitalised), which is non-empty
+# and correctly typed `warning`, so a non-empty assertion passes against the
+# broken template. The defect class here is "the toast says LESS than the card
+# beside it" — blank was only its loudest instance; #50 also found `not_owned`
+# dropping the barcode and `found` dropping the location. Pinning content is
+# what makes all three fail, and what makes a fourth instance impossible to
+# ship silently.
+_TOAST_MUST_CONTAIN = {
+    "added": "Dune",
+    "wishlisted": "Dune",
+    "duplicate": "Dune",
+    "checked_out": "Lent to Bea",
+    "returned": "Returned from Bea",
+    "moved": "Office Shelf \u2192 Loft Box",
+    "confirmed": "Confirmed at Office Shelf",
+    "relocated": "Was at Office Shelf, updated to Loft Box",
+    "found": "Location: Office Shelf",
+    "marked_read": "Dune",
+    "already_checked_out": "Already lent to Bea",
+    "not_checked_out": "Not currently checked out",
+    "not_owned": "025192107801",
+    "not_found": "025192107801",
+    "error": "Invalid ISBN",
+}
+
+assert set(_STATUS_CASES) == _OK_STATUSES | {
+    "duplicate", "already_checked_out", "not_checked_out",
+    "not_owned", "not_found", "error",
+}, "status table drifted from the 15-status vocabulary"
+assert set(_TOAST_MUST_CONTAIN) == set(_STATUS_CASES), (
+    "every status case needs the text its toast must carry"
+)
+
+
+@pytest.mark.parametrize("status", sorted(_STATUS_CASES), ids=sorted(_STATUS_CASES))
+def test_every_scan_status_toasts_non_empty_text(live_server, authed_page, status):
+    """The pin: every status in the router's vocabulary toasts *something*.
+
+    Parametrised over the full 15-status table so a future status — or a
+    regressed data-scan-* attribute on an existing one — fails here instead
+    of shipping a blank toast."""
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_status_card(status, **_STATUS_CASES[status])
+    toast = authed_page.evaluate(_TOAST, card)
+
+    assert toast["text"].strip() != "", f"{status} toasted empty text"
+    # The card declares this field; the toast must carry it. A toast that
+    # degrades to the bare badge label is the #50 defect in a quieter form.
+    must = _TOAST_MUST_CONTAIN[status]
+    assert must in toast["text"], (
+        f"{status} toasted {toast['text']!r}, which does not carry {must!r}"
+    )
+    expected_type = "success" if status in _OK_STATUSES else "warning"
+    assert toast["type"] == expected_type, (
+        f"{status} toasted type {toast['type']!r}, expected {expected_type!r}"
+    )
+    assert_page_clean(authed_page)
+
+
+def test_a_not_found_card_toasts_the_barcode_not_the_copy_error_slot(
+    live_server, authed_page
+):
+    """#50's own repro. The not_found arm's manual-add form carries an empty
+    `x-show="copyError"` paragraph — the exact element the old CSS-class
+    selector matched and toasted blank. Confirm it's genuinely present in the
+    rendered card (otherwise this isn't exercising the bug), then assert the
+    toast reads the barcode instead of that slot."""
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_status_card("not_found", **_STATUS_CASES["not_found"])
+    assert 'x-show="copyError"' in card, (
+        "the empty copyError paragraph must be in the card under test"
+    )
+
+    toast = authed_page.evaluate(_TOAST, card)
+    assert toast["text"] != ""
+    assert "025192107801" in toast["text"]
+    assert_page_clean(authed_page)
+
+
+def test_a_not_owned_card_toasts_the_barcode(live_server, authed_page):
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_status_card("not_owned", **_STATUS_CASES["not_owned"])
+    toast = authed_page.evaluate(_TOAST, card)
+
+    assert "025192107801" in toast["text"]
+    assert_page_clean(authed_page)
+
+
+def test_a_lookup_found_card_toasts_the_location(live_server, authed_page):
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    card = _render_status_card("found", **_STATUS_CASES["found"])
+    toast = authed_page.evaluate(_TOAST, card)
+
+    assert "Location:" in toast["text"]
+    assert "Office Shelf" in toast["text"]
+    assert_page_clean(authed_page)
+
+
+def test_an_empty_toast_message_still_renders_text(live_server, authed_page):
+    """T2's own pin, independent of any card: `showToast('')` must not render
+    a blank pill. Deliberately end-to-end (`G51`) — the point is what lands
+    in the live DOM, not a return value."""
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    authed_page.evaluate("() => showToast('', 'success')")
+
+    toast = authed_page.locator("#toast-container > div").first
+    expect(toast).to_be_visible(timeout=5_000)
+    assert (toast.text_content() or "").strip() != ""
+    assert_page_clean(authed_page)

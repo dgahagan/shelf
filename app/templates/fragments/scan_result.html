@@ -176,22 +176,24 @@
         {% elif status == 'duplicate' %}
         <p class="text-sm text-shelf-muted">Already in collection</p>
         {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'already_checked_out', 'not_checked_out') %}
-        {# data-scan-detail: app.js's scanCardOutcome reads this into the toast,
-           so a lend names its borrower and a move names its destination the way
-           the server's retired HX-Trigger string did. Deliberately not on the
-           error/not_owned arms below — the handler surfaces those through
-           .text-shelf-error instead. #}
+        {# The toast reads DECLARED ATTRIBUTES ONLY — app.js matches no classes.
+           data-scan-detail carries what the title cannot: a lend names its
+           borrower, a move its destination, a Lookup hit its location. The
+           error arm's equivalent is data-scan-error, which app.js prefers over
+           the whole assembled string. not_owned and marked_read deliberately
+           declare no detail: their message restates what the badge already
+           says, so a toast carrying both would say it twice. Issue #50. #}
         <p class="text-xs text-shelf-muted" data-scan-detail>{{ message }}</p>
         {% elif status == 'found' %}
-        <p class="text-xs text-shelf-muted">{{ message }}</p>
+        <p class="text-xs text-shelf-muted" data-scan-detail>{{ message }}</p>
         {% elif status == 'marked_read' %}
         <p class="text-xs text-shelf-muted">{{ message }}</p>
         {% elif status == 'not_owned' %}
-        <p class="font-medium font-mono">{{ isbn }}</p>
+        <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
         <p class="text-sm text-shelf-muted">{{ message }}</p>
         {% else %}
         <p class="font-medium font-mono">{{ isbn }}</p>
-        <p class="text-sm text-shelf-error">{{ message }}</p>
+        <p class="text-sm text-shelf-error" data-scan-error>{{ message }}</p>
         {% endif %}
 
         {# Enrichment notice slot (issue #36 T5) — thin metadata and/or a
