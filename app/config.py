@@ -137,7 +137,13 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
     "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
     "api.themoviedb.org": 0.1,  # no hard per-second cap
-    "api.upcitemdb.com": 1.0,  # trial tier has burst limits
+    # EXPLORER (the keyless trial tier this client uses) allows 6 lookups per
+    # minute and 100 per day; faster than the burst rate is declined with 429
+    # (https://www.upcitemdb.com/wp/docs/main/development/api-rate-limits/).
+    # 1.0 permitted 60/min — ten times the ceiling — so a run of scans bought
+    # 429s that read to the user as "not found". Do not lower below 10.0
+    # without moving off the trial tier.
+    "api.upcitemdb.com": 10.0,
 }
 
 # HTTP client defaults

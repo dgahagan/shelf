@@ -91,7 +91,7 @@ async def acquire(host: str) -> None:
 
 
 def _retry_after_seconds(resp: httpx.Response) -> float | None:
-    """Numeric `Retry-After` in seconds, uncapped; None if absent, negative or a date.
+    """Numeric `Retry-After` in seconds, uncapped; None if absent, negative, NaN or a date.
 
     The caller decides whether the number is worth waiting for.
     """
@@ -102,7 +102,10 @@ def _retry_after_seconds(resp: httpx.Response) -> float | None:
         seconds = float(raw.strip())
     except ValueError:
         return None  # HTTP-date form — fall back to our own backoff
-    if seconds < 0:
+    # NaN passes float(), fails every comparison, and so slips both the `< 0`
+    # guard and the caller's ceiling test — landing in `_sleep(nan)`, which
+    # raises under uvloop. `seconds != seconds` is the NaN test.
+    if seconds < 0 or seconds != seconds:
         return None
     return seconds
 

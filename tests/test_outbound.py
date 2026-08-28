@@ -319,6 +319,35 @@ def test_fetch_ignores_http_date_retry_after(recorded_sleeps):
     assert 0 < recorded_sleeps[0] <= outbound.BACKOFF_MAX
 
 
+@pytest.mark.parametrize("raw", ["nan", "NaN", "-nan"], ids=["nan", "NaN", "-nan"])
+def test_fetch_ignores_a_nan_retry_after(raw, recorded_sleeps):
+    """A non-numeric-but-float()-able header must not reach `_sleep`.
+
+    `float("nan")` passes `float()`, then fails *every* comparison: it slips
+    the `< 0` guard in `_retry_after_seconds` and the caller's
+    `> RETRY_AFTER_MAX` ceiling test alike, so the raw NaN becomes the delay.
+    `asyncio.sleep(nan)` then raises, and callers without a broad `except` —
+    `googlebooks.lookup`, `items_catalog.py` — turn that into an HTTP 500.
+
+    Asserted on the delay, never on the exception text: which loop raises and
+    what it says both move with the runtime. The shipping 3.12 image gave
+    uvloop's `cannot convert float NaN to integer` while its plain asyncio
+    returned normally; under Python 3.14 with uvloop 0.22.1 both raise
+    `Invalid delay: NaN`. A pin worded against either message proves nothing
+    on the other interpreter.
+    """
+    client = RecordingClient(
+        [StubResponse(503, headers={"Retry-After": raw}), StubResponse(200)]
+    )
+    resp = asyncio.run(outbound.fetch(client, "GET", "https://example.test/x"))
+    assert resp.status_code == 200
+    assert len(client.calls) == 2
+    assert len(recorded_sleeps) == 1
+    delay = recorded_sleeps[0]
+    assert delay == delay, "NaN reached _sleep"  # NaN is the only value that fails this
+    assert 0 < delay <= outbound.BACKOFF_MAX * (1 + outbound.JITTER)
+
+
 def test_fetch_backoff_grows_and_is_capped(recorded_sleeps):
     client = RecordingClient([StubResponse(503)] * 6)
     asyncio.run(outbound.fetch(client, "GET", "https://example.test/x", retries=5))

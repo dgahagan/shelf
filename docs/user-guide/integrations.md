@@ -87,7 +87,11 @@ same idea: an ntfy topic or JSON webhook URL for the overdue-loan digest. See
 Open Library, Google Books (keyless), Amazon cover images, UPC Item DB, and
 the Deutsche Nationalbibliothek for German ISBNs. Lookups send only the ISBN
 or UPC — never your account, collection or personal data. Requests to every
-provider are paced to its published rate limit.
+provider are paced to its published rate limit. UPC Item DB's free tier is
+the tightest of them at six lookups a minute, so Shelf leaves ten seconds
+between consecutive barcode lookups: scanning a stack of discs or games is
+deliberately unhurried. One scan on its own never waits, and ISBNs are not
+paced this way.
 
 Some of these meter you per day rather than per second — UPC Item DB's free
 tier allows 100 lookups a day, and keyless Google Books has a per-day project

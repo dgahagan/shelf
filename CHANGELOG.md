@@ -6,6 +6,38 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-08-28
+
+Shelf talks to other people's servers, and those servers push back — with a
+rate limit, or with a header saying "wait this long". Two of the ways Shelf
+handled that were wrong. It trusted a wait it should have discarded, which
+turned a scan into a server error; and it asked the barcode provider for
+lookups ten times faster than that provider allows, which got the lookups
+refused and told you your barcode was the problem. Neither is something you
+could have done anything about.
+
+### Fixed
+
+- **A malformed `Retry-After` header from a metadata provider no longer
+  crashes the lookup.** If a provider answered a rate-limit response with a
+  `Retry-After` of `nan`, Shelf tried to wait that long and raised instead —
+  surfacing as a server error on the Google Books and catalogue-search paths.
+  Such a header is now ignored and Shelf falls back to its own backoff, the
+  same as it already did for the date form. No provider Shelf talks to is
+  known to send one; this closes the path before one does.
+
+### Changed
+
+- **Scans of several barcodes in a row are paced slower, and stop being
+  rejected by the barcode provider.** UPC Item DB's free tier permits six
+  lookups a minute; Shelf was pacing itself at up to sixty, so working
+  through a stack of discs or games ran into the provider's own limit and
+  the cards came back saying you were rate-limited. Shelf now leaves ten
+  seconds between barcode lookups, which is the rate the tier actually
+  allows. A single scan is unaffected — the wait only applies to the second
+  and later scans in quick succession, and only to barcode (UPC) lookups,
+  not to ISBNs.
+
 ## [0.22.1] - 2026-08-27
 
 Type a barcode into the scan box and Shelf told you about it twice. One pop-up
@@ -1902,6 +1934,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.22.2]: https://github.com/dgahagan/shelf/releases/tag/v0.22.2
 [0.22.1]: https://github.com/dgahagan/shelf/releases/tag/v0.22.1
 [0.22.0]: https://github.com/dgahagan/shelf/releases/tag/v0.22.0
 [0.21.1]: https://github.com/dgahagan/shelf/releases/tag/v0.21.1

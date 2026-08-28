@@ -2087,6 +2087,40 @@ grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
   `/api/scan` code path is mechanically checkable as a `make check-*`
   tripwire).
 
+## G63 — When running a gate target in the background, never pipe it
+
+- **Rule:** Launch `make test`, `make test-e2e`, `make checks` and friends
+  **unpiped**. A pipe makes the reported exit status that of the *last* stage,
+  so `make ... | tail -N` exits 0 on a red gate and the completion
+  notification says success. If output must be trimmed, redirect to a file and
+  read the file, or use `set -o pipefail`, or check `${PIPESTATUS[0]}`.
+- **Why:** the failure is silent in the one direction that matters. A red gate
+  that announces itself as green is indistinguishable from a green one until
+  someone reads the whole log, and the next steps in a release — the public
+  push, the tag that publishes the image — are irreversible. `tail` also
+  discards the summary line it was meant to preserve: `make checks` piped to
+  `tail -20` kept twenty rows of the licence table and threw away the
+  `pip-audit` verdict entirely, so the check was neither passed nor failed,
+  just unread.
+- **Evidence:** 2026-08-27, twice in one release attempt.
+  `make test-e2e 2>&1 | tail -25` was reported as "exit code 0" while its
+  output contained `make: *** [Makefile:74: test-e2e] Error 1` and
+  `1 failed, 182 passed`. Later the same session,
+  `make checks 2>&1 | tail -20` reported 0 with the `pip-audit` result not in
+  the captured output; the verdict had to be recovered from
+  `reports/dep-audit-2026-08-27.txt`.
+- **Verify:** the mechanism, in one line:
+
+```bash
+(exit 1) | tail -1; echo "pipeline=$?  first-stage=${PIPESTATUS[0]}"
+# pipeline=0  first-stage=1   <- the 0 is what a background runner reports
+```
+
+- **Status:** documented — not a lint candidate: this is a property of how the
+  gate is invoked, not of anything the repo contains, so no `make check-*`
+  tripwire can see it. It belongs in the orchestrator's habits, which is why
+  it is written down rather than automated.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
