@@ -555,7 +555,33 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="googleBooksPanel"
          data-google-books-saved="{{ '1' if secrets_present['google_books_api_key'] else '' }}">
-        <h2 class="text-lg font-semibold mb-1">Google Books</h2>
+        <div class="flex items-center justify-between mb-1">
+            <h2 class="text-lg font-semibold">Google Books</h2>
+            <button @click="showGoogleBooksHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+        </div>
+
+        <!-- Help Modal -->
+        <div x-show="showGoogleBooksHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showGoogleBooksHelp = false" style="display:none">
+            <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
+                <h3 class="text-lg font-bold mb-3">Getting a Google Books API key</h3>
+                <p class="text-sm text-shelf-muted mb-3">The key comes from Google Cloud, not from a Google Books account.</p>
+                <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
+                    <li>Open the <span class="text-shelf-accent2">Google Cloud console</span> and select a project, or create one — a personal project is fine and the Books API needs no billing</li>
+                    <li>Enable the <span class="text-shelf-text">Books API</span> for that project</li>
+                    <li>Go to <span class="text-shelf-text">APIs &amp; Services &rarr; Credentials &rarr; Create credentials &rarr; API key</span> and copy the key</li>
+                    <li>Recommended: <span class="text-shelf-text">Edit API key &rarr; API restrictions &rarr; Restrict key &rarr; Books API</span>, so a leaked key can do nothing else</li>
+                    <li>Paste it below and press <span class="text-shelf-text">Test Key</span> before saving</li>
+                </ol>
+                <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
+                    <p class="font-medium text-shelf-text mb-1">Why bother?</p>
+                    <p>Anonymous Google Books requests are rate-limited per source IP address, and that budget is shared with everyone else calling from the same address. A key gives you a quota of your own.</p>
+                    <p class="mt-1">Google Books is the last book source tried on an ISBN scan, behind Open Library and Hardcover, so a key matters most if your scans often come back thin or you run bulk operations like the synopsis backfill.</p>
+                    <p class="mt-1 text-shelf-text">Do not set an HTTP referrer restriction — Shelf calls the API from the server, not the browser, and a referrer restriction rejects every request.</p>
+                </div>
+                <button @click="showGoogleBooksHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+            </div>
+        </div>
+
         <p class="text-sm text-shelf-muted mb-4">
             Optional. Google Books continues to work anonymously without a key.
             When configured, the key is used only for Google Books API requests.

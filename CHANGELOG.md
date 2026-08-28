@@ -6,6 +6,58 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-08-28
+
+Google Books is one of the sources Shelf falls back to when a scan needs more
+than Open Library can give it, and until now Shelf always called it
+anonymously. Anonymous Google Books requests are metered per source IP
+address, and that budget is shared with every other caller behind the same
+address — your ISP's NAT pool, a VPN exit, a cloud host. So those lookups can
+come back rate-limited on a completely idle Shelf, with nothing you could do
+about it. A probe from the development machine while testing this release hit
+exactly that: HTTP 429 with no key, on a query a credentialed request answered
+immediately. You can now give Shelf a Google Books API key of your own.
+
+Contributed by [@martialartistslife](https://github.com/martialartistslife) in
+[#52](https://github.com/dgahagan/shelf/pull/52).
+
+### Added
+
+- **Google Books accepts an optional API key.** Settings → Integrations has a
+  Google Books card: paste a key, press **Test Key** to confirm Google accepts
+  it before you save, and every Google Books request Shelf makes — ISBN
+  lookups, synopsis lookups and book cover search — is then made with your own
+  quota. The key can also be supplied as `GOOGLE_BOOKS_API_KEY` in the
+  environment, which overrides a stored one like every other credential.
+- **The card explains where the key comes from.** A **How to get a key?**
+  panel walks through it, because the key is issued by Google Cloud rather
+  than by a Google Books account and the path is not obvious. It also names
+  the one setting that will silently break it: an HTTP referrer restriction
+  rejects every request, since Shelf calls the API from the server and not
+  from your browser.
+- **A Google Books section in the integrations guide**, covering the same
+  ground at length plus the part worth knowing before you bother — Google
+  Books is the *last* book source tried on an ISBN scan, so a key changes
+  nothing visible while Open Library is answering, and earns its keep on thin
+  scans and on bulk work like the synopsis backfill or a large Photo Intake.
+
+### Changed
+
+- **Nothing stops working without a key, and that is deliberate.** Keyless
+  Google Books remains fully enabled; the key is optional in a way Hardcover,
+  IGDB, TMDb and ISBNdb are not. Leave the card empty and Shelf behaves
+  exactly as it did before.
+- **The key is write-only and never reaches a URL.** It is encrypted at rest
+  with the same key-outside-the-database scheme as every other credential, the
+  field renders blank once saved (leave it blank to keep the stored value),
+  and it is sent only in the `X-Goog-Api-Key` request header — so it cannot
+  end up in the outbound request URLs Shelf logs, and needs no redaction to
+  stay out of them.
+- **A rejected Google Books key says so.** Google answers an invalid key with
+  HTTP 400 rather than 401 or 403, so **Test Key** used to report a bare
+  `Google Books returned HTTP 400` for the one failure the button exists to
+  diagnose. It now reads **Google Books rejected the API key**.
+
 ## [0.22.3] - 2026-08-28
 
 Scan a barcode that no metadata source recognises and Shelf raised a pop-up
@@ -1959,6 +2011,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.23.0]: https://github.com/dgahagan/shelf/releases/tag/v0.23.0
 [0.22.3]: https://github.com/dgahagan/shelf/releases/tag/v0.22.3
 [0.22.2]: https://github.com/dgahagan/shelf/releases/tag/v0.22.2
 [0.22.1]: https://github.com/dgahagan/shelf/releases/tag/v0.22.1

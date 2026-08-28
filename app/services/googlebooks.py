@@ -207,7 +207,11 @@ async def test_connection(api_key: str) -> dict:
 
     if resp.status_code == 200:
         return {"ok": True, "message": "Connected to Google Books"}
-    if resp.status_code in (401, 403):
+    # 400 belongs here, not in the generic branch: Google Books answers an
+    # invalid key with 400 badRequest ("API key not valid"), never 401 or 403,
+    # so without it the one failure this button exists to diagnose reported a
+    # bare status code. Measured against the live API, 2026-08-28.
+    if resp.status_code in (400, 401, 403):
         return {"ok": False, "message": "Google Books rejected the API key"}
     if resp.status_code == 429:
         return {"ok": False, "message": "Google Books quota exceeded"}

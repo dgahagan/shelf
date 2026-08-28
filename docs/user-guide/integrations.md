@@ -73,10 +73,56 @@ numbers, value-over-time stats. See
 
 ## Google Books (optional API key)
 
-Google Books remains available anonymously. An optional API key can be saved
-in Settings to authenticate ISBN, synopsis, and cover searches. Shelf sends it
-only in the `X-Goog-Api-Key` request header; it is stored encrypted and never
-placed in request URLs.
+[Google Books](https://books.google.com) — free, and used with no key at all
+by default. The key is optional in a way the credentials above are not:
+nothing stops working without it.
+
+**Adds:** nothing new. It authenticates the Google Books requests Shelf
+already makes, which raises the request quota and makes those requests
+answer reliably.
+
+**Why you might want one.** Anonymous Google Books requests are rate-limited
+per source IP address, and that budget is shared with everyone else calling
+from the same address — your ISP's NAT pool, a VPN exit, a cloud host. Shelf
+paces its own outbound calls, but it cannot see the neighbours it is sharing
+the quota with, so an anonymous request can come back rate-limited on a
+perfectly idle Shelf. A key gives you a quota of your own.
+
+You will notice this only where Google Books is actually reached, which is
+less often than it sounds. It is the **last** book source tried on an ISBN
+scan — behind the Deutsche Nationalbibliothek for 978-3 ISBNs, Open Library,
+and Hardcover — so it answers for the books the others missed. It also backs
+synopsis lookups and book cover search. If Open Library is answering your
+scans, a key will change nothing you can see; if you regularly scan books
+that come back thin, or you run bulk operations like the synopsis backfill or
+a large Photo Intake, it is worth having.
+
+**Setup:** the key comes from Google Cloud, not from a Google Books account.
+
+1. Open the [Google Cloud console](https://console.cloud.google.com) and
+   select a project, or create one — a personal project is fine and the Books
+   API has no billing requirement.
+2. Enable the **Books API** for that project
+   ([direct link](https://console.cloud.google.com/apis/library/books.googleapis.com)).
+3. Go to **APIs & Services → Credentials → Create credentials → API key** and
+   copy the key it shows you.
+4. Optional but recommended: **Edit API key → API restrictions → Restrict
+   key → Books API**, so a leaked key can do nothing else.
+5. Paste it into the Google Books card under Settings → Integrations and
+   press **Test Key** before saving. A key with a stray character or a
+   missing API restriction reports *"Google Books rejected the API key"*
+   rather than failing quietly later.
+
+Application restrictions (HTTP referrer, IP address) are a poor fit here —
+Shelf calls the API from the server, not the browser, so a referrer
+restriction will reject every request. Leave the key unrestricted by
+application, or restrict by the IP address your server calls out from.
+
+**How the key is handled.** It is stored encrypted, shown write-only (the
+field renders blank once saved; leave it blank to keep the stored value), and
+sent only in the `X-Goog-Api-Key` request header — never in a request URL,
+which keeps it out of URLs that might be logged. Remove it at any time with
+**Remove saved key**; Shelf falls straight back to anonymous requests.
 
 ## Vision providers (Photo Intake)
 

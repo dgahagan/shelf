@@ -16,7 +16,9 @@ keyless. Keys unlock extras: Hardcover (sync, series checks), IGDB (games),
 TMDb (discs), ISBNdb (valuation), a vision provider (Photo Intake). The
 keyless tiers are metered per day, though — a heavy cataloguing session can
 exhaust one, after which scans come back empty until it resets. A key raises
-or removes that limit.
+or removes that limit. Google Books is the one source that accepts a key
+without needing one: it works keyless, and a key of your own only buys you a
+quota that nobody else is sharing.
 
 The scan card tells you which of these happened rather than making you guess:
 no key configured, a key the provider rejected, a provider that is

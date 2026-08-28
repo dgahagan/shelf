@@ -57,6 +57,7 @@ async def test_all_request_variants_remain_anonymous_without_key():
 
 @pytest.mark.parametrize("status,expected", [
     (200, {"ok": True, "message": "Connected to Google Books"}),
+    (400, {"ok": False, "message": "Google Books rejected the API key"}),
     (401, {"ok": False, "message": "Google Books rejected the API key"}),
     (403, {"ok": False, "message": "Google Books rejected the API key"}),
     (429, {"ok": False, "message": "Google Books quota exceeded"}),
@@ -90,7 +91,7 @@ async def test_connection_transport_failure_does_not_expose_key(caplog):
     assert sentinel not in caplog.text
 
 
-@pytest.mark.parametrize("status", [401, 403, 429])
+@pytest.mark.parametrize("status", [400, 401, 403, 429])
 @pytest.mark.asyncio
 async def test_credentialed_lookup_preserves_controlled_failure_behavior(status):
     fake_fetch = AsyncMock(return_value=httpx.Response(status))

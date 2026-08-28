@@ -79,6 +79,7 @@ lives:
 | **Audiobookshelf Sync** | Server URL + API token, **Test**, per-library include/exclude, sync interval, manual sync |
 | **Hardcover** | API token, import your Hardcover library, reading-status sync direction and schedule, export to Hardcover |
 | **Collection Valuation** | ISBNdb API key, valuate all / test key |
+| **Google Books** | Optional API key, **Test Key**. Authenticates the Google Books requests Shelf already makes; keyless access stays enabled without it |
 | **Movie Database (TMDb)** | API key for DVD / Blu-ray lookups, and for **Find cover** on a DVD |
 | **Photo Intake (Vision)** | Provider: Anthropic (API key + model), OpenAI-compatible (base URL, optional key, model, ingest long-edge), or Ollama (URL, model, ingest long-edge) |
 | **IGDB (Video Games)** | Twitch client ID + secret, for game lookups and for **Find cover** on a video game |

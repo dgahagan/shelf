@@ -32,7 +32,7 @@ New here? Start with **[Installation](installation.md)**, then
 | [Sharing](user-guide/sharing.md) | Public read-only wishlist and collection links |
 | [Stats & valuation](user-guide/stats-and-valuation.md) | Stats dashboard, ISBNdb valuation, the insurance report, display currency |
 | [Import & export](user-guide/import-and-export.md) | CSV, Goodreads/StoryGraph migration, portable archive, database backup |
-| [Integrations](user-guide/integrations.md) | Hardcover, Audiobookshelf, IGDB, TMDb, ISBNdb, vision providers — what each adds and how to connect it |
+| [Integrations](user-guide/integrations.md) | Hardcover, Audiobookshelf, IGDB, TMDb, ISBNdb, Google Books, vision providers — what each adds and how to connect it |
 | [Users & roles](user-guide/users-and-roles.md) | Admin / editor / viewer, adding users, passwords, the log viewer |
 
 ## Help

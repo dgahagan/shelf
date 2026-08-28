@@ -371,4 +371,6 @@ write-only credential fields, allow-listed image hosts for cover downloads,
 `noindex` + unguessable tokens on share links. Outbound request URLs are logged
 at INFO, so a filter on the `httpx` logger blanks the value of any
 credential-named query parameter first — TMDb v3 authentication requires its key
-in the query string, so the transport alone cannot keep it out of the log. See [SECURITY.md](../SECURITY.md).
+in the query string, so the transport alone cannot keep it out of the log. Where
+a provider accepts a header instead, Shelf uses one and stays out of that blind
+spot entirely: the optional Google Books key travels only in `X-Goog-Api-Key`. See [SECURITY.md](../SECURITY.md).

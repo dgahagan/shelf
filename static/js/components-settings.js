@@ -302,6 +302,7 @@ document.addEventListener('alpine:init', function () {
     Alpine.data('googleBooksPanel', function () {
         return {
             googleBooksStatus: false, googleBooksTesting: false,
+            showGoogleBooksHelp: false,
             googleBooksKey: '', googleBooksSaved: false,
             init() {
                 this.googleBooksSaved = this.$el.dataset.googleBooksSaved === '1';
