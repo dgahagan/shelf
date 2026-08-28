@@ -298,6 +298,28 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
+    // settings.html — Google Books card (optional credential)
+    Alpine.data('googleBooksPanel', function () {
+        return {
+            googleBooksStatus: false, googleBooksTesting: false,
+            googleBooksKey: '', googleBooksSaved: false,
+            init() {
+                this.googleBooksSaved = this.$el.dataset.googleBooksSaved === '1';
+            },
+            testGoogleBooks() {
+                if (!this.googleBooksKey && !this.googleBooksSaved) return;
+                this.googleBooksTesting = true; this.googleBooksStatus = false;
+                fetch('/api/settings/google-books/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
+                    body: JSON.stringify({ api_key: this.googleBooksKey })
+                }).then(r => r.json())
+                  .then(d => { this.googleBooksStatus = d; this.googleBooksTesting = false; })
+                  .catch(() => { this.googleBooksStatus = { ok: false, message: 'Connection failed' }; this.googleBooksTesting = false; });
+            }
+        };
+    });
+
     // settings.html — TMDb card (test key button)
     Alpine.data('tmdbPanel', function () {
         return {

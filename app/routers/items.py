@@ -366,15 +366,16 @@ async def scan_isbn(
             {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
         )
 
-    # Get Hardcover token for metadata enrichment
+    # Get optional metadata-provider credentials.
     with get_db() as db:
         hc_token = get_setting(db, "hardcover_token") or None
+        google_api_key = get_setting(db, "google_books_api_key") or None
 
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             metadata, source, hc_ids, lookup_rate_limited = await items_common._lookup_metadata(
-                isbn13, hc_token, client
+                isbn13, hc_token, client, google_api_key=google_api_key
             )
 
             if not metadata:
@@ -982,12 +983,14 @@ async def fetch_synopsis(item_id: int, _=Depends(require_role("editor"))):
             "SELECT isbn, title, authors FROM items WHERE id = ?", (item_id,)
         ).fetchone()
         hc_token = get_setting(db, "hardcover_token")
+        google_api_key = get_setting(db, "google_books_api_key")
     if not item:
         return {"ok": False, "message": "Item not found"}
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         desc = await synopsis_svc.fetch_description(
-            item["isbn"], item["title"], item["authors"], client, hc_token=hc_token)
+            item["isbn"], item["title"], item["authors"], client,
+            hc_token=hc_token, google_api_key=google_api_key)
 
     if desc:
         with get_db() as db:
@@ -1011,6 +1014,7 @@ async def backfill_synopses_stream(request: Request, _=Depends(require_role("adm
             synopsis_svc.BOOK_MEDIA_TYPES,
         ).fetchall()
         hc_token = get_setting(db, "hardcover_token")
+        google_api_key = get_setting(db, "google_books_api_key")
 
     if not items:
         async def empty_stream():
@@ -1028,7 +1032,7 @@ async def backfill_synopses_stream(request: Request, _=Depends(require_role("adm
                     try:
                         desc = await synopsis_svc.fetch_description(
                             item["isbn"], item["title"], item["authors"], client,
-                            hc_token=hc_token)
+                            hc_token=hc_token, google_api_key=google_api_key)
                     except Exception:
                         logger.exception("Synopsis fetch failed for item %d", item["id"])
                     if desc:
@@ -1192,7 +1196,6 @@ async def test_igdb_key(request: Request, _=Depends(require_role("admin"))):
         return {"ok": False, "message": "Both Client ID and Client Secret are required"}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         return await igdb.test_credentials(client_id, client_secret, client)
-
 
 
 

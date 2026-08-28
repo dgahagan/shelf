@@ -53,7 +53,8 @@ def _result_ok(authors: str | None, query_title: str, res: dict) -> bool:
 
 
 async def fetch_description(isbn: str | None, title: str | None, authors: str | None,
-                            client: httpx.AsyncClient, hc_token: str | None = None) -> str | None:
+                            client: httpx.AsyncClient, hc_token: str | None = None,
+                            google_api_key: str | None = None) -> str | None:
     """Find a description via Google Books (ISBN), then Hardcover (when a
     token is configured), then Open Library work search, then Google Books
     title/author search. Returns None if nothing credible is found.
@@ -62,7 +63,7 @@ async def fetch_description(isbn: str | None, title: str | None, authors: str | 
     is per-IP and exhausts under bulk backfills, and Open Library work
     records are frequently description-less even when the search matches."""
     if isbn:
-        meta = await googlebooks.lookup(isbn, client)
+        meta = await googlebooks.lookup(isbn, client, api_key=google_api_key)
         if meta and meta.get("description"):
             return meta["description"]
 
@@ -95,7 +96,9 @@ async def fetch_description(isbn: str | None, title: str | None, authors: str | 
         logger.debug("Open Library synopsis search failed for %r", title)
 
     try:
-        results = await googlebooks.search_by_title_author(search_title, first_author, client)
+        results = await googlebooks.search_by_title_author(
+            search_title, first_author, client, api_key=google_api_key
+        )
         for res in results:
             if _result_ok(authors, search_title, res) and res.get("description"):
                 return res["description"]

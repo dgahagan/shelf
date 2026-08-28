@@ -259,7 +259,7 @@ Shelf queries free, public APIs to look up book and game information — no API 
 | Source | What it provides | API key required? |
 |--------|-----------------|-------------------|
 | [Open Library](https://openlibrary.org) | Title, author, description, cover art, publish info, title search | No |
-| [Google Books](https://books.google.com) | Fallback metadata and cover art | No |
+| [Google Books](https://books.google.com) | Fallback metadata and cover art | No (optional key supported) |
 | [Amazon Images](https://www.amazon.com) | Fallback cover art via ISBN | No |
 | [UPC Item DB](https://www.upcitemdb.com) | Title lookup from UPC barcodes (games, DVDs) | No |
 
@@ -272,6 +272,7 @@ Configure in Settings to unlock additional features:
 | Service | Enables | Link |
 |---------|---------|------|
 | **Hardcover** | Reading status sync, richer metadata, import/export, Discover page | [hardcover.app](https://hardcover.app) |
+| **Google Books** | Optional credentialed metadata, synopsis, and cover requests; anonymous access remains available | [Google Books API](https://developers.google.com/books) |
 | **IGDB** (Twitch) | Video game metadata, cover art, and platform info | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
 | **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
 | **TMDb** | DVD/Blu-ray metadata and title search via UPC barcode | [themoviedb.org](https://www.themoviedb.org) |

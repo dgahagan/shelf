@@ -161,6 +161,7 @@ SECRET_ENV_VARS = {
     "abs_url": "ABS_URL",
     "abs_token": "ABS_TOKEN",
     "hardcover_token": "HARDCOVER_TOKEN",
+    "google_books_api_key": "GOOGLE_BOOKS_API_KEY",
     "isbndb_api_key": "ISBNDB_API_KEY",
     "tmdb_api_key": "TMDB_API_KEY",
     "igdb_client_id": "IGDB_CLIENT_ID",

@@ -16,6 +16,30 @@ def test_settings_page_loads(live_server, authed_page):
     expect(authed_page.locator("body")).to_contain_text("Settings")
 
 
+def test_google_books_optional_key_card_and_test_action(live_server, authed_page):
+    """The write-only card is CSP-functional without calling Google."""
+    authed_page.route(
+        "**/api/settings/google-books/test",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body='{"ok": true, "message": "Connected to Google Books"}',
+        ),
+    )
+    authed_page.goto(f"{live_server['url']}/settings")
+    authed_page.get_by_role("button", name="Integrations").click()
+
+    card = authed_page.locator("[data-google-books-saved]")
+    expect(card).to_contain_text("Optional")
+    key_input = card.locator('input[name="google_books_api_key"]')
+    expect(key_input).to_be_visible()
+    expect(key_input).to_have_value("")
+
+    key_input.fill("fake-e2e-google-key")
+    card.get_by_role("button", name="Test Key").click()
+    expect(card).to_contain_text("Connected to Google Books")
+
+
 def test_stats_page_loads(live_server, authed_page):
     """Stats page renders without error."""
     authed_page.goto(f"{live_server['url']}/stats")

@@ -242,11 +242,14 @@ async def add_book_from_search(
 
     with get_db() as db:
         hc_token = get_setting(db, "hardcover_token") or None
+        google_api_key = get_setting(db, "google_books_api_key") or None
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         # `_` = the rate-limited flag. *Add by ISBN* has no scan card to
         # render it on — deliberate, not an oversight.
-        metadata, source, hc_ids, _ = await items_common._lookup_metadata(isbn13, hc_token, client)
+        metadata, source, hc_ids, _ = await items_common._lookup_metadata(
+            isbn13, hc_token, client, google_api_key=google_api_key
+        )
 
         if not metadata:
             items_common._log_scan(isbn13, media_type, "not_found")

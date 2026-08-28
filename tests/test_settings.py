@@ -25,6 +25,28 @@ class TestGetSetting:
         monkeypatch.setenv("HARDCOVER_TOKEN", "env-token")
         assert get_setting(db, "hardcover_token") == "env-token"
 
+    def test_google_env_var_used_when_no_db_value(self, db, monkeypatch):
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "env-google-key")
+        assert get_setting(db, "google_books_api_key") == "env-google-key"
+
+    def test_google_env_var_overrides_stored_value(self, admin_client, db, monkeypatch):
+        admin_client.post(
+            "/api/settings",
+            data={"google_books_api_key": "stored-google-key"},
+            follow_redirects=False,
+        )
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "env-google-key")
+        assert get_setting(db, "google_books_api_key") == "env-google-key"
+
+    def test_blank_google_env_var_uses_stored_value(self, admin_client, db, monkeypatch):
+        admin_client.post(
+            "/api/settings",
+            data={"google_books_api_key": "stored-google-key"},
+            follow_redirects=False,
+        )
+        monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "")
+        assert get_setting(db, "google_books_api_key") == "stored-google-key"
+
     def test_no_env_override_for_unknown_keys(self, db, monkeypatch):
         """Keys not in SECRET_ENV_VARS should not check env."""
         db.execute("INSERT INTO settings (key, value) VALUES ('custom_key', 'db-val')")
