@@ -352,6 +352,31 @@ class TestHardcoverGraphqlRateLimit:
         assert calls == []
 
 
+class TestHardcoverLookupByIsbnFallback:
+    @pytest.mark.parametrize(
+        ("isbn", "expected_retry"),
+        [
+            ("9780306406157", "0306406152"),
+            ("0306406152", "0306406152"),
+        ],
+    )
+    async def test_isbn10_retry_uses_the_isbn10_value(self, isbn, expected_retry):
+        attempts = []
+
+        async def graphql(query, variables, **kwargs):
+            field = "isbn_10" if "where: { isbn_10:" in query else "isbn_13"
+            attempts.append((field, variables["isbn"]))
+            return {"editions": []}
+
+        with patch("app.services.hardcover._graphql", side_effect=graphql):
+            assert await hardcover.lookup_by_isbn(isbn, AsyncMock()) is None
+
+        assert attempts == [
+            ("isbn_13", isbn),
+            ("isbn_10", expected_retry),
+        ]
+
+
 class TestHardcoverLookupByIsbnRateLimit:
     """The callback must fire from either attempt -- the ISBN-13 lookup, or
     the ISBN-10 retry that runs when the first misses. `lookup_by_isbn`
