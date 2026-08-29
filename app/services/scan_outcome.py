@@ -27,7 +27,14 @@ from app.services import provider_result
 # renders nothing under the notice block, which is a silent no-op rather than
 # an error — so this tuple is the contract, and the test that pins it against
 # the template is what keeps the two in step.
-ENRICH_STATES = ("no_credential", "rejected", "quota", "no_provider", "no_match")
+ENRICH_STATES = (
+    "no_credential",
+    "rejected",
+    "quota",
+    "offline",
+    "no_provider",
+    "no_match",
+)
 
 # How each `ProviderResult.provider` identifier is spelled on the card. The
 # identifiers are display-free by design, so the mapping lives here beside the
@@ -73,13 +80,21 @@ def enrich_status(
        exactly this order when a cascade saw several.
     5. **`rate_limited`** → `"quota"` — the provider refused for rate reasons,
        so this may not be a genuine miss.
-    6. **`no_match`** — the honest default. The provider was asked and had
+    6. **`transport_failed`** → `"offline"` — Shelf could not reach the
+       provider at all. It ranks below `quota` because a refusal the provider
+       *sent* is a stronger statement than one it never answered.
+    7. **`no_match`** — the honest default. The provider was asked and had
        nothing.
 
-    `transport_failed` also answers `"no_match"`, and deliberately: the
-    connectivity card is a `status` of `error`, decided by the router before
-    this function is reached, so by the time a transport failure gets here the
-    router has already chosen to file the item anyway.
+    `transport_failed` used to answer `"no_match"` here. It does not any more,
+    and the reason the old answer looked right is worth keeping: on the scan
+    card the router chooses the connectivity card (a `status` of `error`)
+    *before* this function is reached whenever the product or cascade lookup
+    is what failed, so what still arrives here is a transport failure on the
+    **enrichment** leg of an item that was filed anyway — and "could not reach
+    TMDb" is a truer thing to tell that user than "no match". The search
+    surfaces added by issue #49 have no connectivity card at all, so for them
+    `"offline"` is the only way the state can be said.
     """
     if not has_provider:
         return "no_provider"
@@ -91,6 +106,8 @@ def enrich_status(
         return "rejected"
     if result.outcome == "rate_limited":
         return "quota"
+    if result.outcome == "transport_failed":
+        return "offline"
     return "no_match"
 
 
@@ -103,8 +120,9 @@ def not_found_status(
     branches would otherwise print "no <provider> match for this barcode"
     directly under "Not found — add manually below", saying the same thing
     twice in two vocabularies. Every *actionable* state still renders: a
-    missing key, a rejected key and a spent quota all mean the miss may not
-    be a real one, which is the whole reason these branches carry a notice.
+    missing key, a rejected key, a spent quota and an unreachable provider all
+    mean the miss may not be a real one, which is the whole reason these
+    branches carry a notice. `offline` therefore passes straight through.
     """
     state = enrich_status(result, has_provider=has_provider)
     return None if state == "no_match" else state

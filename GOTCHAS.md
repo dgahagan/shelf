@@ -1390,8 +1390,7 @@ python -m pytest tests/e2e/test_responsive.py -m e2e -q
   the *outer* type did not unify the inner one. The seven re-typed lookups all
   answer a `ProviderResult` now, but its `.payload` is still a **dict** for
   `tmdb.lookup_by_title` / `upcitemdb.lookup` / the four ISBN clients and a
-  **list** for `igdb.search_games`; `tmdb.search_movies` and
-  `openlibrary._search` were never re-typed and still return a bare list.
+  **list** for `igdb.search_games`.
   A helper written against "the first result with a payload" silently hands a
   list to code that indexes a dict. Adapt at the call site
   (`result.with_payload(result.payload[0])`) and state the helper's contract in
@@ -1400,6 +1399,16 @@ python -m pytest tests/e2e/test_responsive.py -m e2e -q
   moved one layer down rather than closing. `_first_hit` now carries a
   `ProviderResult` and `_scan_upc_game`'s `search_one_game` unwraps `[0]` into
   a fresh record before the ladder sees it — same adapter, new shape.
+- **Updated 2026-08-29** (plan `issue-49-search-outcomes`): the sentence this
+  Rule used to carry — "`tmdb.search_movies` and `openlibrary._search` were
+  never re-typed and still return a bare list" — is **gone, and its removal is
+  the point**. Those two, plus `igdb.search_game_art` and
+  `covers.search_covers`, now answer a `ProviderResult` like the rest. The
+  outer type is uniform across ten functions; the **inner** one still is not,
+  which is the whole entry. Re-typing more clients does not close this — it
+  widens the set of places a list can be handed to code expecting a dict. The
+  Verify greps below are what tell you where the boundary currently sits;
+  read them rather than trusting any list written into this Rule.
 - **Why:** the failure is invisible on paper and total at runtime. Issue #36's
   implementation plan specified one search ladder for the film and game paths
   and asserted the save tail was unchanged — correct for TMDb, wrong for IGDB,
@@ -2127,6 +2136,20 @@ grep -n "outbound.acquire\|outbound.fetch" app/services/*.py
   `test_tmdb_auth.py`, `test_title_search.py`, `test_scan_modes.py`,
   `test_outbound_sites.py`, `test_synopsis.py`. Grep for both before you start:
   the signature grep below, **plus** `grep -rn "AsyncMock(return_value=" tests/`.
+- **Sweep the stubs by what they are bound to, never by the literal**
+  (2026-08-29, plan `issue-49-search-outcomes`, `a12831e`). Re-typing
+  `covers.search_covers` meant rewriting its `AsyncMock(return_value=[])`
+  stubs — but `tests/test_covers.py` contains **25** occurrences of that exact
+  literal and only 20 of them stub `search_covers`; the other five stub
+  `search_cover_by_title`, whose list contract is deliberately unchanged. A
+  blanket replace wrapped the *book leg's* return in a `ProviderResult`, which
+  `search_covers` then wrapped again, and the doubly-wrapped record blew up
+  four call frames away in `payload or []` as
+  `TypeError: ProviderResult is not a boolean`. Worse, three of those five
+  bind the stub on a **later line** (`search = AsyncMock(...)` then
+  `monkeypatch.setattr(covers, "search_cover_by_title", search)`), so a
+  same-line grep for the literal reports them as safe. Read the `setattr`
+  target, not the `return_value`.
 - **Verify:** hand-written stubs are greppable; `AsyncMock` ones need no edit:
 
 ```bash
@@ -2201,6 +2224,15 @@ grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
   `make checks 2>&1 | tail -20` reported 0 with the `pip-audit` result not in
   the captured output; the verdict had to be recovered from
   `reports/dep-audit-2026-08-27.txt`.
+  **A third time on 2026-08-29** (plan `issue-49-search-outcomes`), in the
+  foreground and by the orchestrator that had just read this entry: `make
+  checks 2>&1 | tail -25` printed twenty-five rows of the licence table and no
+  verdict, so `make checks` was run again unpiped purely to see an exit code.
+  Nothing was mis-reported that time — the cost was the **re-run**, and on this
+  target that is not cheap: `make checks` carries the network-bound `pip-audit`
+  and licence scan, so the two runs took 8m 47s between them, 38% of the whole
+  plan's tool time, for one number. Piping a gate target wastes minutes even
+  when it does not lie to you.
 - **Verify:** the mechanism, in one line:
 
 ```bash
@@ -2212,6 +2244,15 @@ grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
   gate is invoked, not of anything the repo contains, so no `make check-*`
   tripwire can see it. It belongs in the orchestrator's habits, which is why
   it is written down rather than automated.
+  **Three recorded instances now, across three plans, each by someone who
+  could have quoted the rule.** That is the signal that prose is the wrong
+  mechanism here. The cheap fix is not a lint but a *habit with a default*:
+  when output must be trimmed, `make <target> > /tmp/gate.log 2>&1; echo $?`
+  and read the file — one form that is correct for every target, foreground or
+  background, instead of a judgement call per invocation. **Revisit trigger:**
+  a fourth instance; at that point add a `make checks-quiet` that tees to a
+  file and exits with the real status, so the convenient thing is also the
+  correct one.
 
 ## G64 — When writing a "Test key" button for a new provider
 
@@ -2290,6 +2331,57 @@ grep -n "^{% if status\|^{% elif status\|enrich_status == '" \
 - **Status:** documented. A lint candidate, but not a cheap one — the check
   that would work is "every state a given router branch can emit has an arm in
   the card that branch renders", which needs the router-to-card mapping.
+
+## G66 — When a client's docstring states its failure contract
+
+- **Rule:** That sentence is an assertion about **every exit path**, and it
+  goes stale in two directions nothing checks. Before writing or trusting one:
+  (a) walk every `return` *and* every unguarded expression that can raise —
+  "never raises" is not earned by handling the request if the **parse** is
+  still bare; (b) grep for siblings whose docstrings justify their own
+  contract by citing this one, because changing this function silently makes
+  those sentences false.
+- **Why:** the failure is invisible to the whole gate. A docstring is not
+  executed, so a wrong one costs nothing until someone *believes* it — and the
+  reader it misleads is the next person deciding whether they need a handler.
+  Both halves fired in one plan:
+  - **The unguarded parse.** `openlibrary._search` was re-typed with the
+    transport `except` the plan named, and a docstring saying "Never raises:
+    the request is wrapped … so a dead socket answers `transport_failed`
+    instead of reaching `search_books`' caller as a raised exception
+    (previously an uncaught 500)". `resp.json()` two lines down was still
+    bare, so a 200 with a non-JSON body — a proxy login page, a captive
+    portal — raised straight past it as the *same* HTTP 500 the paragraph
+    claimed to have closed. `lookup` in the same file had wrapped its own
+    parse since v0.24.0, with a comment giving exactly this reason.
+  - **The cited sibling.** `tmdb.search_posters` justified keeping its
+    `[]`-on-anything contract as "matching `search_movies`' existing
+    contract". The same commit re-typed `search_movies`, so the justification
+    evaporated while the sentence stayed. The honest reason turned out to be
+    better anyway: `search_posters` is only ever the *second* leg of
+    `covers._tmdb_candidates`, reached after `search_movies` already answered
+    `found` with the same key, so a credential it could report as rejected was
+    reported one call earlier.
+- **Evidence:** 2026-08-29, plan `issue-49-search-outcomes` — `ad12f51` (the
+  parse handler and its two pins, one per contract) and `169fb3d` (the
+  `search_posters` sentence). Both were caught in orchestrator review of the
+  task diff, not by the suite: the gate was green with the false docstrings in
+  place, because no test asked for a malformed body and no test reads prose.
+- **Verify:** the claim and the code still agree — every client that says
+  "never raises" wraps its parse, not just its request:
+
+```bash
+grep -rn "[Nn]ever raises" app/services/*.py
+```
+
+  For each hit, read the function's body to the end: a `resp.json()` or a
+  field walk outside a `try` is the entry firing. A pin costs one test — feed
+  the client `httpx.Response(200, content=b"<html>not json</html>")` and
+  assert the outcome rather than the raise.
+- **Status:** documented. Not a lint candidate as stated — deciding which
+  expressions can raise needs judgement — though the narrower "a function
+  whose docstring says *never raises* has a bare `resp.json()`" is
+  mechanically checkable and would have caught the first half.
 
 ## Graveyard
 

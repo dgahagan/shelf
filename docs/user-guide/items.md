@@ -34,6 +34,11 @@ its home.
   credential is missing rather than reporting "No covers found for this
   title.", which would be untrue: the artwork exists, Shelf just cannot ask
   for it.
+
+  The same is true once the credential is *there* but the provider will not
+  answer. A key the provider rejects, a provider that is rate-limiting us, and
+  a provider Shelf could not reach each say so by name — so **"No covers found
+  for this title." now means only that the provider answered and had nothing.**
 - **Metadata** — title, authors, publisher, year, pages, ISBN, language,
   series and position, platform (games), synopsis. **Fetch synopsis** pulls
   a description from Open Library, Google Books or Hardcover if one wasn't

@@ -20,7 +20,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.services import covers
+from app.services import covers, provider_result
 
 
 BOOK_FAMILY = ["book", "ebook", "audiobook", "kids_book", "comic"]
@@ -102,7 +102,7 @@ class TestTheBookPathIsUnchanged:
         args = book_search.await_args.args
         assert args[0] == "Dune"
         assert args[1] == "An Author"
-        assert result == [{"url": "u", "thumbnail": "t", "source": "Google Books"}]
+        assert result.payload == [{"url": "u", "thumbnail": "t", "source": "Google Books"}]
         assert tmdb.mock_calls == []
         assert igdb.mock_calls == []
 
@@ -149,7 +149,9 @@ class TestTheBookPathIsUnchanged:
 class TestDvdReachesTmdb:
     async def test_a_dvd_reaches_tmdb_and_never_the_book_path(self, no_providers, book_search):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 603, "publish_year": 1999}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 603, "publish_year": 1999}]
+        )
         tmdb.search_posters.return_value = [{"file_path": "/a.jpg", "iso_639_1": "en"}]
         tmdb.image_url.side_effect = lambda p, size: f"https://image.tmdb.org/t/p/{size}{p}"
 
@@ -158,7 +160,7 @@ class TestDvdReachesTmdb:
         )
 
         tmdb.search_movies.assert_awaited_once()
-        assert result == [{
+        assert result.payload == [{
             "url": "https://image.tmdb.org/t/p/w500/a.jpg",
             "thumbnail": "https://image.tmdb.org/t/p/w185/a.jpg",
             "source": "TMDb · EN",
@@ -167,7 +169,9 @@ class TestDvdReachesTmdb:
 
     async def test_each_poster_is_labelled_with_its_uppercased_language(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 1, "publish_year": None}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 1, "publish_year": None}]
+        )
         tmdb.search_posters.return_value = [
             {"file_path": "/a.jpg", "iso_639_1": "en"},
             {"file_path": "/b.jpg", "iso_639_1": "fr"},
@@ -176,25 +180,27 @@ class TestDvdReachesTmdb:
 
         result = await covers.search_covers(_item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS)
 
-        assert [c["source"] for c in result] == ["TMDb · EN", "TMDb · FR"]
+        assert [c["source"] for c in result.payload] == ["TMDb · EN", "TMDb · FR"]
 
     @pytest.mark.parametrize("lang", [None, "", "   "])
     async def test_a_poster_with_no_language_is_labelled_plain_tmdb(self, lang, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 1, "publish_year": None}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 1, "publish_year": None}]
+        )
         tmdb.search_posters.return_value = [{"file_path": "/a.jpg", "iso_639_1": lang}]
         tmdb.image_url.side_effect = lambda p, size: f"{size}{p}"
 
         result = await covers.search_covers(_item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS)
 
-        assert result[0]["source"] == "TMDb"
+        assert result.payload[0]["source"] == "TMDb"
 
     async def test_a_matching_publish_year_picks_that_hit_not_the_first(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [
+        tmdb.search_movies.return_value = provider_result.found("tmdb", [
             {"tmdb_id": 111, "publish_year": 1977},
             {"tmdb_id": 222, "publish_year": 1999},
-        ]
+        ])
         tmdb.search_posters.return_value = []
         tmdb.image_url.side_effect = lambda p, size: p
 
@@ -206,10 +212,10 @@ class TestDvdReachesTmdb:
 
     async def test_a_dvd_with_no_publish_year_resolves_via_the_first_hit(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [
+        tmdb.search_movies.return_value = provider_result.found("tmdb", [
             {"tmdb_id": 111, "publish_year": 1977},
             {"tmdb_id": 222, "publish_year": 1999},
-        ]
+        ])
         tmdb.search_posters.return_value = []
         tmdb.image_url.side_effect = lambda p, size: p
 
@@ -221,7 +227,9 @@ class TestDvdReachesTmdb:
 
     async def test_a_publish_year_matching_nothing_falls_back_to_the_first_hit(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 111, "publish_year": 1977}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 111, "publish_year": 1977}]
+        )
         tmdb.search_posters.return_value = []
         tmdb.image_url.side_effect = lambda p, size: p
 
@@ -233,29 +241,33 @@ class TestDvdReachesTmdb:
 
     async def test_no_search_hits_yields_nothing_and_never_asks_for_posters(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = []
+        tmdb.search_movies.return_value = provider_result.found("tmdb", [])
 
         result = await covers.search_covers(
             _item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS
         )
 
-        assert result == []
+        assert result.payload == []
         tmdb.search_posters.assert_not_awaited()
 
     async def test_a_hit_with_no_tmdb_id_never_asks_for_posters(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": None, "publish_year": None}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": None, "publish_year": None}]
+        )
 
         result = await covers.search_covers(
             _item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS
         )
 
-        assert result == []
+        assert result.payload == []
         tmdb.search_posters.assert_not_awaited()
 
     async def test_a_poster_with_no_file_path_is_skipped(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 1, "publish_year": None}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 1, "publish_year": None}]
+        )
         tmdb.search_posters.return_value = [
             {"file_path": None, "iso_639_1": "en"},
             {"file_path": "/b.jpg", "iso_639_1": "en"},
@@ -264,11 +276,13 @@ class TestDvdReachesTmdb:
 
         result = await covers.search_covers(_item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS)
 
-        assert len(result) == 1
+        assert len(result.payload) == 1
 
     async def test_the_tmdb_gallery_caps_at_twelve(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 1, "publish_year": None}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 1, "publish_year": None}]
+        )
         tmdb.search_posters.return_value = [
             {"file_path": f"/{i}.jpg", "iso_639_1": "en"} for i in range(30)
         ]
@@ -276,15 +290,15 @@ class TestDvdReachesTmdb:
 
         result = await covers.search_covers(_item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS)
 
-        assert len(result) == covers.MAX_CANDIDATES == 12
+        assert len(result.payload) == covers.MAX_CANDIDATES == 12
 
 
 class TestVideoGameReachesIgdb:
     async def test_a_game_reaches_igdb_and_never_the_book_path(self, no_providers, book_search):
         _, igdb = no_providers
-        igdb.search_game_art.return_value = [
+        igdb.search_game_art.return_value = provider_result.found("igdb", [
             {"title": "Portal", "cover_image_id": "c1", "artwork_image_ids": ["a1"]}
-        ]
+        ])
         igdb.image_url.side_effect = lambda i, size: f"{size}/{i}"
 
         result = await covers.search_covers(
@@ -292,62 +306,62 @@ class TestVideoGameReachesIgdb:
         )
 
         igdb.search_game_art.assert_awaited_once()
-        assert len(result) == 2
+        assert len(result.payload) == 2
         book_search.assert_not_awaited()
 
     async def test_cover_and_artwork_are_separate_candidates_cover_first(self, no_providers):
         _, igdb = no_providers
-        igdb.search_game_art.return_value = [
+        igdb.search_game_art.return_value = provider_result.found("igdb", [
             {"title": "Portal", "cover_image_id": "c1", "artwork_image_ids": ["a1", "a2"]}
-        ]
+        ])
         igdb.image_url.side_effect = lambda i, size: f"{size}/{i}"
 
         result = await covers.search_covers(
             _item(media_type="video_game"), "Q", object(), creds=IGDB_CREDS
         )
 
-        assert [c["source"] for c in result] == [
+        assert [c["source"] for c in result.payload] == [
             "IGDB · Portal · cover",
             "IGDB · Portal · art",
             "IGDB · Portal · art",
         ]
-        assert result[0]["url"] == "t_cover_big/c1"
-        assert result[0]["thumbnail"] == "t_cover_small/c1"
-        assert result[1]["url"] == "t_720p/a1"
-        assert result[1]["thumbnail"] == "t_screenshot_med/a1"
+        assert result.payload[0]["url"] == "t_cover_big/c1"
+        assert result.payload[0]["thumbnail"] == "t_cover_small/c1"
+        assert result.payload[1]["url"] == "t_720p/a1"
+        assert result.payload[1]["thumbnail"] == "t_screenshot_med/a1"
 
     async def test_a_game_with_no_cover_still_yields_its_artwork(self, no_providers):
         _, igdb = no_providers
-        igdb.search_game_art.return_value = [
+        igdb.search_game_art.return_value = provider_result.found("igdb", [
             {"title": "Portal", "cover_image_id": None, "artwork_image_ids": ["a1"]}
-        ]
+        ])
         igdb.image_url.side_effect = lambda i, size: f"{size}/{i}"
 
         result = await covers.search_covers(
             _item(media_type="video_game"), "Q", object(), creds=IGDB_CREDS
         )
 
-        assert [c["source"] for c in result] == ["IGDB · Portal · art"]
+        assert [c["source"] for c in result.payload] == ["IGDB · Portal · art"]
 
     async def test_a_long_game_title_is_truncated_in_the_label(self, no_providers):
         _, igdb = no_providers
-        igdb.search_game_art.return_value = [
+        igdb.search_game_art.return_value = provider_result.found("igdb", [
             {"title": "Super Mario Odyssey Deluxe Edition", "cover_image_id": "c1",
              "artwork_image_ids": []}
-        ]
+        ])
         igdb.image_url.side_effect = lambda i, size: i
 
         result = await covers.search_covers(
             _item(media_type="video_game"), "Q", object(), creds=IGDB_CREDS
         )
 
-        name = result[0]["source"].removeprefix("IGDB · ").removesuffix(" · cover")
+        name = result.payload[0]["source"].removeprefix("IGDB · ").removesuffix(" · cover")
         assert len(name) == 24
         assert name.endswith("…")
 
     async def test_the_platform_column_is_passed_through_to_igdb(self, no_providers):
         _, igdb = no_providers
-        igdb.search_game_art.return_value = []
+        igdb.search_game_art.return_value = provider_result.found("igdb", [])
 
         await covers.search_covers(
             _item(media_type="video_game", platform="snes"), "Q", object(), creds=IGDB_CREDS
@@ -357,17 +371,17 @@ class TestVideoGameReachesIgdb:
 
     async def test_the_igdb_gallery_caps_at_twelve_across_all_games(self, no_providers):
         _, igdb = no_providers
-        igdb.search_game_art.return_value = [
+        igdb.search_game_art.return_value = provider_result.found("igdb", [
             {"title": f"G{i}", "cover_image_id": f"c{i}", "artwork_image_ids": [f"a{i}", f"b{i}"]}
             for i in range(5)
-        ]
+        ])
         igdb.image_url.side_effect = lambda i, size: i
 
         result = await covers.search_covers(
             _item(media_type="video_game"), "Q", object(), creds=IGDB_CREDS
         )
 
-        assert len(result) == covers.MAX_CANDIDATES == 12
+        assert len(result.payload) == covers.MAX_CANDIDATES == 12
 
 
 class TestNoProviderCanRaise:
@@ -375,36 +389,39 @@ class TestNoProviderCanRaise:
     all the same `[]` to the picker — and none of them is an exception."""
 
     @pytest.mark.parametrize("media_type,creds", [("dvd", TMDB_CREDS), ("video_game", IGDB_CREDS)])
-    async def test_an_upstream_failure_yields_an_empty_list(
+    async def test_an_upstream_failure_is_transport_failed(
         self, media_type, creds, no_providers
     ):
+        """Was pinned at `[]`. The candidate list is still empty on screen, but
+        the picker can now say *why* instead of implying a genuine miss."""
         tmdb, igdb = no_providers
         tmdb.search_movies.side_effect = RuntimeError("HTTP 500")
         igdb.search_game_art.side_effect = RuntimeError("HTTP 500")
 
         result = await covers.search_covers(_item(media_type=media_type), "Q", object(), creds=creds)
 
-        assert result == []
+        assert result.outcome == "transport_failed"
+        assert not result.found
 
     @pytest.mark.parametrize("media_type,creds", [("dvd", TMDB_CREDS), ("video_game", IGDB_CREDS)])
-    async def test_a_raised_timeout_yields_an_empty_list(self, media_type, creds, no_providers):
+    async def test_a_raised_timeout_is_transport_failed(self, media_type, creds, no_providers):
         tmdb, igdb = no_providers
         tmdb.search_movies.side_effect = TimeoutError("slow")
         igdb.search_game_art.side_effect = TimeoutError("slow")
 
         result = await covers.search_covers(_item(media_type=media_type), "Q", object(), creds=creds)
 
-        assert result == []
+        assert result.outcome == "transport_failed"
 
     @pytest.mark.parametrize("media_type,creds", [("dvd", TMDB_CREDS), ("video_game", IGDB_CREDS)])
     async def test_an_empty_result_set_yields_an_empty_list(self, media_type, creds, no_providers):
         tmdb, igdb = no_providers
-        tmdb.search_movies.return_value = []
-        igdb.search_game_art.return_value = []
+        tmdb.search_movies.return_value = provider_result.found("tmdb", [])
+        igdb.search_game_art.return_value = provider_result.found("igdb", [])
 
         result = await covers.search_covers(_item(media_type=media_type), "Q", object(), creds=creds)
 
-        assert result == []
+        assert result.payload == []
 
     @pytest.mark.parametrize("media_type", ["dvd", "video_game"])
     @pytest.mark.parametrize("creds", [{}, {"tmdb_api_key": "", "igdb_client_id": "",
@@ -412,11 +429,13 @@ class TestNoProviderCanRaise:
     async def test_an_absent_credential_yields_nothing_without_any_outbound_call(
         self, media_type, creds, no_providers
     ):
+        """`no_credential`, not an empty list — though the routes guard first,
+        so what the user sees is `_search_note`, never this outcome."""
         tmdb, igdb = no_providers
 
         result = await covers.search_covers(_item(media_type=media_type), "Q", object(), creds=creds)
 
-        assert result == []
+        assert result.outcome == "no_credential"
         tmdb.search_movies.assert_not_awaited()
         tmdb.search_posters.assert_not_awaited()
         igdb.search_game_art.assert_not_awaited()
@@ -428,7 +447,7 @@ class TestNoProviderCanRaise:
             _item(media_type="dvd"), "Q", object(), creds={"tmdb_api_key": "   "}
         )
 
-        assert result == []
+        assert result.outcome == "no_credential"
         tmdb.search_movies.assert_not_awaited()
 
     async def test_one_igdb_operand_alone_is_not_enough(self, no_providers):
@@ -439,7 +458,7 @@ class TestNoProviderCanRaise:
             result = await covers.search_covers(
                 _item(media_type="video_game"), "Q", object(), creds=creds
             )
-            assert result == []
+            assert result.outcome == "no_credential"
 
         igdb.search_game_art.assert_not_awaited()
 
@@ -449,23 +468,25 @@ class TestTheRowShapesItActuallyGets:
         """`sqlite3.Row` raises `IndexError` for an unselected column and has
         no `.get()` — a bare subscript here would be a 500."""
         _, igdb = no_providers
-        igdb.search_game_art.return_value = []
+        igdb.search_game_art.return_value = provider_result.found("igdb", [])
         row = _row(_full=False, media_type="video_game", title="T", authors=None)
 
         result = await covers.search_covers(row, "Q", object(), creds=IGDB_CREDS)
 
-        assert result == []
+        assert result.payload == []
         assert igdb.search_game_art.await_args.kwargs["platform"] is None
 
     async def test_a_sqlite_row_missing_publish_year_does_not_raise(self, no_providers):
         tmdb, _ = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 7, "publish_year": 1999}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 7, "publish_year": 1999}]
+        )
         tmdb.search_posters.return_value = []
         row = _row(_full=False, media_type="dvd", title="T", authors=None)
 
         result = await covers.search_covers(row, "Q", object(), creds=TMDB_CREDS)
 
-        assert result == []
+        assert result.payload == []
         assert tmdb.search_posters.await_args.args[0] == 7
 
     async def test_a_sqlite_row_on_the_book_path_passes_its_authors_through(
@@ -484,19 +505,87 @@ class TestTheCandidateContract:
         self, media_type, creds, no_providers
     ):
         tmdb, igdb = no_providers
-        tmdb.search_movies.return_value = [{"tmdb_id": 1, "publish_year": None}]
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 1, "publish_year": None}]
+        )
         tmdb.search_posters.return_value = [{"file_path": "/a.jpg", "iso_639_1": "en"}]
         tmdb.image_url.side_effect = lambda p, size: p
-        igdb.search_game_art.return_value = [
+        igdb.search_game_art.return_value = provider_result.found("igdb", [
             {"title": "G", "cover_image_id": "c", "artwork_image_ids": ["a"]}
-        ]
+        ])
         igdb.image_url.side_effect = lambda i, size: i
 
         result = await covers.search_covers(_item(media_type=media_type), "Q", object(), creds=creds)
 
-        assert result
-        for candidate in result:
+        assert result.payload
+        for candidate in result.payload:
             assert set(candidate) == {"url", "thumbnail", "source"}
+
+
+class TestTheProviderOutcomeReachesThePicker:
+    """Issue #49: the picker could only ever say "No covers found".
+
+    `search_covers` now carries the provider's own outcome outward, so a
+    rejected key, a spent quota and an unreachable provider are three
+    different things on screen instead of one.
+    """
+
+    async def test_a_rejected_tmdb_key_propagates_and_stops_the_second_call(
+        self, no_providers
+    ):
+        """The poster call must not go out: the search already said the key is
+        bad, and asking again with it would be a second pointless request."""
+        tmdb, _ = no_providers
+        tmdb.search_movies.return_value = provider_result.rejected("tmdb", status=401)
+
+        result = await covers.search_covers(
+            _item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS
+        )
+
+        assert result.outcome == "rejected"
+        assert result.status == 401
+        tmdb.search_posters.assert_not_awaited()
+
+    async def test_a_rate_limited_igdb_search_propagates(self, no_providers):
+        _, igdb = no_providers
+        igdb.search_game_art.return_value = provider_result.rate_limited("igdb", status=429)
+
+        result = await covers.search_covers(
+            _item(media_type="video_game"), "Q", object(), creds=IGDB_CREDS
+        )
+
+        assert result.outcome == "rate_limited"
+
+    async def test_a_film_found_with_no_posters_is_found_and_empty(self, no_providers):
+        """The case that must stay the generic "No covers found" line: TMDb
+        answered, the film exists, and no poster survived the filter. A miss
+        here is genuine, so it gets no notice."""
+        tmdb, _ = no_providers
+        tmdb.search_movies.return_value = provider_result.found(
+            "tmdb", [{"tmdb_id": 603, "publish_year": None}]
+        )
+        tmdb.search_posters.return_value = []
+
+        result = await covers.search_covers(
+            _item(media_type="dvd"), "Q", object(), creds=TMDB_CREDS
+        )
+
+        assert result.found
+        assert result.payload == []
+
+    async def test_the_book_branch_is_wrapped_as_found(self, no_providers, book_search):
+        """Not re-typed — the book path fans out over two sources that each
+        swallow their own failure, so it has no single outcome to report."""
+        book_search.return_value = [
+            {"url": "u", "thumbnail": "t", "source": "Open Library"}
+        ]
+
+        result = await covers.search_covers(
+            _item(media_type="book"), "Q", object(), creds={}
+        )
+
+        assert result.found
+        assert result.payload[0]["source"] == "Open Library"
 
 
 class TestRequiredCredentials:

@@ -17,7 +17,7 @@ from app.auth import require_role
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES
 from app.database import get_db, get_game_platforms, get_setting
 from app.routers import items_common
-from app.services import covers, igdb, openlibrary, tmdb
+from app.services import covers, igdb, openlibrary, scan_outcome, tmdb
 from app.services import isbn as isbn_svc
 from app.services import upc as upc_svc
 from app.services.item_write import insert_item
@@ -55,21 +55,16 @@ async def search_games(
             q.strip(), igdb_id, igdb_secret, client,
             platform=platform or None, limit=10,
         )
-    if result.outcome == "rejected":
-        # `search_games` reports a rejected credential as an outcome, and this
-        # route has nothing else to say about it — same shape as the
-        # missing-credential block above. A quota miss still renders the empty
-        # result list; roadmap cluster b owns telling those two apart here.
-        return HTMLResponse(
-            '<p class="text-sm text-shelf-error">IGDB rejected the configured '
-            'credentials. Check them in <a href="/settings" '
-            'class="text-shelf-accent2 underline">Settings</a>.</p>'
-        )
     results = result.payload or []
+    search_status = scan_outcome.not_found_status(result)
+    search_provider = scan_outcome.provider_label(result)
 
     return templates.TemplateResponse(
         request, "fragments/game_search_results.html",
-        {"results": results, "platform": platform},
+        {
+            "results": results, "platform": platform,
+            "search_status": search_status, "search_provider": search_provider,
+        },
     )
 
 @router.post("/games/add")
@@ -196,11 +191,18 @@ async def search_books(
         search_lang = get_setting(db, "metadata_search_lang") or "en"
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await openlibrary.search_books(q.strip(), client, limit=10, lang=search_lang)
+        result = await openlibrary.search_books(q.strip(), client, limit=10, lang=search_lang)
+        results = result.payload or []
+
+    search_status = scan_outcome.not_found_status(result)
+    search_provider = scan_outcome.provider_label(result)
 
     return templates.TemplateResponse(
         request, "fragments/book_search_results.html",
-        {"results": results, "media_type": media_type, "query": q.strip()},
+        {
+            "results": results, "media_type": media_type, "query": q.strip(),
+            "search_status": search_status, "search_provider": search_provider,
+        },
     )
 
 @router.post("/books/add")
@@ -307,11 +309,17 @@ async def search_dvds(
         )
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        results = await tmdb.search_movies(q.strip(), tmdb_key, client, limit=10)
+        result = await tmdb.search_movies(q.strip(), tmdb_key, client, limit=10)
 
+    results = result.payload or []
+    search_status = scan_outcome.not_found_status(result)
+    search_provider = scan_outcome.provider_label(result)
     return templates.TemplateResponse(
         request, "fragments/dvd_search_results.html",
-        {"results": results, "query": q.strip()},
+        {
+            "results": results, "query": q.strip(),
+            "search_status": search_status, "search_provider": search_provider,
+        },
     )
 
 @router.post("/dvds/add")

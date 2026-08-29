@@ -6,6 +6,68 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-08-29
+
+0.24.0 taught the *scan* card to say why a barcode found nothing — a rejected
+key, a spent quota, a provider that could not be reached. The other four ways
+into the same providers were left behind. Search by Title for a book, a film or
+a game, or press **Find cover** on an item, and every one of those failures
+still rendered as "No books found for …" or "No covers found for this title."
+So the searches you fall back to when a barcode does not work were exactly the
+ones that could not tell you the search had failed rather than come up empty.
+
+All four surfaces now read from the same vocabulary the scan card does, and
+they gained a state the scan card did not have: `offline`, for a provider Shelf
+could not reach at all. **An empty result box now means only one thing — the
+provider answered and genuinely had nothing.**
+
+### Added
+
+- **The three title searches say why a search came back empty.** Books
+  (Open Library), movies (TMDb) and video games (IGDB) each now show the
+  reason above the result box: *"TMDb rejected the configured key — this may
+  not be a genuine miss. Check it in Settings → Integrations."*, *"IGDB is
+  rate-limiting us right now — this may not be a genuine miss. Try again
+  later."*, or *"Could not reach TMDb — check connectivity and try again."*
+  The Settings link goes straight to the card holding that credential.
+  Open Library needs no key, so a book search never claims a rejected one —
+  it can report a spent quota and an unreachable provider, and nothing else.
+  ([#49](https://github.com/dgahagan/shelf/issues/49))
+- **The Find cover picker does the same, for films and games.** A rejected
+  TMDb key, a rate-limited IGDB, and a provider that could not be reached each
+  say so by name instead of falling back to "No covers found for this title."
+- **A new "could not reach the provider" state.** Previously a dead socket had
+  no words of its own anywhere, and came out as a miss. It now ranks just below
+  a spent quota, on the reasoning that a refusal the provider actually sent is
+  a stronger statement than one it never answered.
+
+### Changed
+
+- **A key IGDB rejects on the game *search* request is now told apart.** 0.24.0
+  distinguished a credential refused at the Twitch *token* exchange but left
+  this one deliberately unclosed, reading as "no IGDB match for this barcode".
+  It now reads as a rejection, on both the title search and the cover picker.
+  A malformed search query is still a genuine miss: IGDB answers one with
+  HTTP 400, and sending you to Settings over a Shelf bug would be wrong.
+- **A rejected IGDB search throws away the cached Twitch token.** A token
+  Twitch had stopped honouring was re-presented until it expired on its own, so
+  fixing the app in the Twitch console had no effect until Shelf was restarted.
+  The next search re-exchanges it. A rate-limited or malformed search does not
+  evict anything — only a rejection does.
+- **An unconfigured provider still outranks all of this.** With no TMDb key at
+  all, the cover picker says *"DVD cover search needs a TMDb API key"* and adds
+  no reason underneath: nothing was asked, so there is no outcome to report.
+- **The book branch of the cover picker is unchanged.** It fans out over
+  Google Books and Open Library, which each absorb their own failures, so it
+  has no single outcome to report and does not pretend to one.
+
+### Fixed
+
+- **A network failure during an Open Library title search no longer returns
+  HTTP 500.** Neither a dead socket nor a response body that will not parse
+  escapes the client any more; both render the appropriate notice on an
+  ordinary page.
+
 ## [0.24.0] - 2026-08-29
 
 When a barcode scan came back with nothing, Shelf said "Not found" — and meant
@@ -2076,6 +2138,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.25.0]: https://github.com/dgahagan/shelf/releases/tag/v0.25.0
 [0.24.0]: https://github.com/dgahagan/shelf/releases/tag/v0.24.0
 [0.23.0]: https://github.com/dgahagan/shelf/releases/tag/v0.23.0
 [0.22.3]: https://github.com/dgahagan/shelf/releases/tag/v0.22.3

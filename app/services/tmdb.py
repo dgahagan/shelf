@@ -95,11 +95,20 @@ async def lookup_by_title(
         return provider_result.no_match("tmdb", status=resp.status_code)
 
 
-async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
-    """Search TMDb by title, return multiple results.
+async def search_movies(
+    query: str, api_key: str, client: httpx.AsyncClient, limit: int = 10,
+) -> provider_result.ProviderResult:
+    """Search TMDb by title, returning a `ProviderResult` (`provider="tmdb"`)
+    whose payload is a **list** of movie dicts — unlike `lookup_by_title`,
+    whose payload is a single dict (G45).
 
-    Keeps its `[]`-on-any-failure contract: its caller renders a result list and
-    surfacing the auth/empty distinction there is a separate piece of work.
+    Classified the same way `lookup_by_title` is:
+    `rejected` for 401/403 (`_AUTH_STATUSES`), `rate_limited` for a 429 (both
+    via `provider_result.classify_response`, auth outranking the rate-limit
+    signal on the same response), `transport_failed` for a dead socket or any
+    other exception raised by the request itself, `no_match` for a 200 whose
+    parsed movie list is empty or for any other non-200, and `found` for a
+    200 with at least one movie — payload the `list[dict]` built below.
     """
     extra_params, headers = _auth(api_key)
     try:
@@ -110,8 +119,14 @@ async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, lim
             headers=headers,
             timeout=10,
         )
-        if resp.status_code != 200:
-            return []
+    except Exception:
+        return provider_result.transport_failed("tmdb")
+
+    classified = provider_result.classify_response("tmdb", resp, auth_statuses=_AUTH_STATUSES)
+    if classified is not None:
+        return classified
+
+    try:
         results = resp.json().get("results", [])[:limit]
         movies = []
         for movie in results:
@@ -127,9 +142,11 @@ async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, lim
                 "publish_year": int(year) if year.isdigit() else None,
                 "cover_url": cover_url,
             })
-        return movies
+        if not movies:
+            return provider_result.no_match("tmdb", status=resp.status_code)
+        return provider_result.found("tmdb", movies, status=resp.status_code)
     except Exception:
-        return []
+        return provider_result.no_match("tmdb", status=resp.status_code)
 
 
 async def search_posters(tmdb_id: int, api_key: str, client: httpx.AsyncClient, limit: int = 12) -> list[dict]:
@@ -144,10 +161,11 @@ async def search_posters(tmdb_id: int, api_key: str, client: httpx.AsyncClient, 
 
     `[]` on anything that goes wrong: non-200 (401/403 included), a malformed
     JSON body, or a transport exception. This never signals a rejected
-    credential the way `lookup_by_title` does — unlike that one, a rejected
-    credential is indistinguishable here from a movie with no posters,
-    matching `search_movies`' existing contract. That is a deliberate,
-    narrower scope for this task, not an oversight.
+    credential the way `lookup_by_title` and `search_movies` do, and it does
+    not need to: it is only ever reached as the *second* leg of
+    `covers._tmdb_candidates`, after `search_movies` already answered `found`
+    with the same key. A credential this call could report as rejected would
+    have been reported one call earlier.
     """
     extra_params, headers = _auth(api_key)
     try:

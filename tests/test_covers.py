@@ -2,6 +2,8 @@
 import re
 from unittest.mock import AsyncMock
 
+from app.services import provider_result
+
 from tests.conftest import _insert_item
 
 
@@ -473,7 +475,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         item_id = _insert_item(db, title="The Matrix", isbn="9780900007001", media_type="dvd")
         db.commit()
 
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -493,7 +495,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         )
         db.commit()
 
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -514,7 +516,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         resp = editor_client.post(
@@ -533,7 +535,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
 
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -548,7 +550,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
         db.commit()
 
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -563,7 +565,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         item_id = _insert_item(db, title="Dune", isbn="9780900007006")
         db.commit()
 
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -578,7 +580,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         item_id = _insert_item(db, title="Dune", isbn="9780900007007")
         db.commit()
         monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "env-google-key")
-        search = AsyncMock(return_value=[])
+        search = AsyncMock(return_value=provider_result.found("openlibrary", []))
         monkeypatch.setattr(covers, "search_covers", search)
 
         editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -599,7 +601,7 @@ class TestTheUnconfiguredProviderNote:
 
         item_id = _insert_item(db, title="Tron", isbn="9780900008001", media_type="dvd")
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -618,7 +620,7 @@ class TestTheUnconfiguredProviderNote:
         item_id = _insert_item(db, title="Tron", isbn="9780900008002", media_type="dvd")
         db.commit()
         monkeypatch.setenv("TMDB_API_KEY", "from-the-environment")
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -635,7 +637,7 @@ class TestTheUnconfiguredProviderNote:
         item_id = _insert_item(db, title="Doom", isbn="9780900008003", media_type="video_game")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -652,7 +654,7 @@ class TestTheUnconfiguredProviderNote:
         item_id = _insert_item(db, title="Doom", isbn="9780900008004", media_type="video_game")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -667,7 +669,7 @@ class TestTheUnconfiguredProviderNote:
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -681,7 +683,7 @@ class TestTheUnconfiguredProviderNote:
         item_id = _insert_item(db, title="Tron", isbn="9780900008006", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "   "))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -697,7 +699,7 @@ class TestTheUnconfiguredProviderNote:
         item_id = _insert_item(db, title="Tron", isbn="9780900008007", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -708,7 +710,7 @@ class TestTheUnconfiguredProviderNote:
 
         item_id = _insert_item(db, title="Dune", isbn="9780900008008")
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -723,7 +725,7 @@ class TestTheUnconfiguredProviderNote:
         item_id = _insert_item(db, title="Tron", isbn="9780900008009", media_type="dvd")
         db.commit()
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.post(
             f"/api/items/{item_id}/cover-select",
@@ -751,7 +753,7 @@ class TestTheSearchNoteRendersInTheFragment:
 
         item_id = _insert_item(db, title="Tron", isbn="9780900009001", media_type="dvd")
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -769,7 +771,7 @@ class TestTheSearchNoteRendersInTheFragment:
         )
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -785,7 +787,7 @@ class TestTheSearchNoteRendersInTheFragment:
         item_id = _insert_item(db, title="Heat", isbn="9780900009003", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -800,7 +802,7 @@ class TestTheSearchNoteRendersInTheFragment:
 
         item_id = _insert_item(db, title="Dune", isbn="9780900009004")
         db.commit()
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -820,9 +822,121 @@ class TestTheSearchNoteRendersInTheFragment:
             "thumbnail": "https://example.test/cover-thumb.jpg",
             "source": "TMDb · EN",
         }
-        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=[candidate]))
+        monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [candidate])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
         assert resp.status_code == 200
         assert "TMDb · EN" in resp.text
+
+
+class TestTheProviderOutcomeRendersInThePicker:
+    """Issue #49: "No covers found for this title." used to mean five things.
+
+    A rejected key, a spent quota and an unreachable provider are now each
+    said in the same words the scan card uses, from the same projection
+    (`scan_outcome.not_found_status`) — so the two surfaces cannot drift into
+    two vocabularies for one provider record.
+    """
+
+    def _dvd(self, db, isbn):
+        item_id = _insert_item(db, title="Tron", isbn=isbn, media_type="dvd")
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("tmdb_api_key", "a-configured-key"),
+        )
+        # G48: commit before the request — the route opens its own connection.
+        db.commit()
+        return item_id
+
+    def test_a_rejected_key_names_the_provider_and_links_settings(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = self._dvd(db, "9780900009001")
+        monkeypatch.setattr(
+            covers, "search_covers",
+            AsyncMock(return_value=provider_result.rejected("tmdb", status=401)),
+        )
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        assert 'data-search-status="rejected"' in resp.text
+        assert "TMDb rejected the configured key" in resp.text
+        assert 'href="/settings"' in resp.text
+        # The generic line must be *replaced*, not stacked above the notice.
+        assert "No covers found" not in resp.text
+
+    def test_a_rate_limited_provider_says_to_try_again_later(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = self._dvd(db, "9780900009002")
+        monkeypatch.setattr(
+            covers, "search_covers",
+            AsyncMock(return_value=provider_result.rate_limited("tmdb", status=429)),
+        )
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert 'data-search-status="quota"' in resp.text
+        assert "rate-limiting us right now" in resp.text
+        assert "No covers found" not in resp.text
+
+    def test_an_unreachable_provider_says_check_connectivity(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = self._dvd(db, "9780900009003")
+        monkeypatch.setattr(
+            covers, "search_covers",
+            AsyncMock(return_value=provider_result.transport_failed("tmdb")),
+        )
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert 'data-search-status="offline"' in resp.text
+        assert "Could not reach TMDb" in resp.text
+
+    def test_a_genuine_miss_still_gets_the_generic_line_and_no_notice(
+        self, editor_client, db, monkeypatch
+    ):
+        """`not_found_status` squelches `no_match`, so the fragment's own
+        "No covers found" line is not said twice in two vocabularies."""
+        from app.services import covers
+
+        item_id = self._dvd(db, "9780900009004")
+        monkeypatch.setattr(
+            covers, "search_covers",
+            AsyncMock(return_value=provider_result.found("tmdb", [])),
+        )
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert "No covers found for this title." in resp.text
+        assert "data-search-status" not in resp.text
+
+    def test_the_unconfigured_note_still_wins_over_a_status(
+        self, editor_client, db, monkeypatch
+    ):
+        """Precedence: nothing was asked, so there is no outcome to report —
+        even if the stub hands one back. The note is the useful thing to say."""
+        from app.services import covers
+
+        item_id = _insert_item(
+            db, title="Tron", isbn="9780900009005", media_type="dvd"
+        )
+        db.commit()  # deliberately no tmdb_api_key row
+        monkeypatch.setattr(
+            covers, "search_covers",
+            AsyncMock(return_value=provider_result.rejected("tmdb", status=401)),
+        )
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert "TMDb API key" in resp.text
+        assert "rejected the configured key" not in resp.text

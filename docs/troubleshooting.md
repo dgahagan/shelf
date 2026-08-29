@@ -45,7 +45,10 @@ has a barcode for this).
 - Many pre-2007 books carry only an ISBN-10 *printed* and an EAN that isn't
   the ISBN; type the ISBN-10.
 - Store-price-sticker barcodes aren't ISBNs. Peel.
-- Genuinely obscure editions: use **Title search** or **Add manually**.
+- Genuinely obscure editions: use **Title search** or **Add manually**. The
+  title-search result box makes the same distinctions this card does — a
+  rejected key, a rate-limited provider and an unreachable one each say so,
+  so an empty box there is a real miss and not a silent failure.
 - A **connectivity card** is a different problem: the lookup could not reach
   the provider at all (DNS, no route, a timeout). It is not a missing record,
   and the scan is logged as `error` rather than `not_found`. Check the
@@ -118,11 +121,10 @@ server log carries a WARNING naming the HTTP status. Exhausting the Twitch
 request budget at that same token exchange gives the rate-limit line rather
 than a miss.
 
-One IGDB case is still not distinguished, deliberately: a credential IGDB
-rejects on the *game search* request — as opposed to the token exchange
-above — reads as "no IGDB match". If the key is fresh and the game is
-well known, check the server log for a 401 before believing the card.
-Tracked as [#49](https://github.com/dgahagan/shelf/issues/49).
+A credential IGDB rejects on the *game search* request — as opposed to the
+token exchange above — is now told apart too, and the cached Twitch token is
+thrown away when it happens, so fixing the app in the Twitch console takes
+effect on your next scan instead of after a restart.
 
 **Books make the same distinction too, on a different card.** A book scan
 tries up to four sources in order, so a rejected Hardcover or Google Books
@@ -142,11 +144,15 @@ usually means one of three things:
 - **No credential.** The picker says so outright — *"DVD cover search needs a
   TMDb API key"*, or the equivalent for IGDB's Client ID and Secret. Add it in
   Settings → Integrations.
-- **A credential that is present but rejected.** This one is quieter: the
-  picker falls back to *"No covers found for this title."*, which is
-  misleading. Confirm with Settings → Integrations → **Test key**. IGDB needs
-  *both* the Client ID and the Client Secret, and a Twitch secret that has
-  been rotated fails the token exchange without any other symptom.
+- **A credential that is present but rejected.** The picker says so by name —
+  *"TMDb rejected the configured key"*, with a link to Settings. (It used to
+  fall back to *"No covers found for this title."*, which was misleading.)
+  IGDB needs *both* the Client ID and the Client Secret, and a Twitch secret
+  that has been rotated fails the token exchange without any other symptom.
+- **The provider is rate-limiting us.** *"IGDB is rate-limiting us right now"* —
+  wait and try again; nothing is wrong with your key or the item.
+- **Shelf could not reach the provider.** *"Could not reach TMDb — check
+  connectivity"*: DNS, no route, or a timeout. Not a missing record.
 - **The game's platform is narrowing the search.** A game searches IGDB with
   the platform recorded on the item, so a title IGDB does not list for that
   platform returns nothing — and typing a different query does not lift the

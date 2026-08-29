@@ -191,8 +191,11 @@ _SEARCH_FIELDS = ("key,title,author_name,first_publish_year,publisher,cover_i,is
 
 
 async def search_books(query: str, client: httpx.AsyncClient, limit: int = 10,
-                        lang: str = "en") -> list[dict]:
-    """Search Open Library by title. Returns list of book summaries."""
+                        lang: str = "en") -> provider_result.ProviderResult:
+    """Search Open Library by title, returning a `ProviderResult`
+    (`provider="openlibrary"`) whose payload is a **list** of book summaries
+    (G45 — a list, not a dict, unlike the ISBN-lookup clients).
+    """
     return await _search({"q": query}, client, limit, lang)
 
 
@@ -201,61 +204,99 @@ async def search_by_title_author(title: str, author: str | None, client: httpx.A
     """Field-scoped search — Open Library matches the title itself (including
     alternate titles, so '1984' finds 'Nineteen Eighty-Four'). Callers must
     still check authors: adaptations/study guides of famous titles rank high.
+
+    Deliberately kept on the old `list[dict]` (`[]`-on-anything-wrong)
+    contract — unlike `search_books`, this is not re-typed to `ProviderResult`
+    by this task. Its three consumers (`app/routers/intake.py`,
+    `app/routers/items_common.py`, `app/services/synopsis.py`) are untouched:
+    `items_common.py` sits on the ISBN scan path and `intake.py` belongs to a
+    different plan, so widening this contract is out of scope here.
     """
     params = {"title": title}
     if author:
         params["author"] = author
-    return await _search(params, client, limit, lang)
+    return (await _search(params, client, limit, lang)).payload or []
 
 
-async def _search(params: dict, client: httpx.AsyncClient, limit: int, lang: str = "en") -> list[dict]:
+async def _search(
+    params: dict, client: httpx.AsyncClient, limit: int, lang: str = "en",
+) -> provider_result.ProviderResult:
+    """Shared search request for `search_books` and `search_by_title_author`.
+
+    Never raises — the request **and** the response parse each get their own
+    handler, the shape `lookup` above uses. Both halves are load-bearing and
+    both were the same HTTP 500 before: a dead socket answers
+    `transport_failed("openlibrary")`, and a body this client cannot read — a
+    proxy page returned as 200, say — answers `no_match`, instead of reaching
+    `search_books`' caller as a raised exception.
+
+    The `classify_response` call below takes no `auth_statuses`: Open Library
+    needs no API key, so nothing it returns can be a rejected credential. A
+    429 is `rate_limited` and any other non-200 is `no_match`.
+    """
     await _rate_limit()
-    resp = await client.get(
-        "https://openlibrary.org/search.json",
-        # lang makes the `editions` subquery surface the best edition per
-        # work in the caller's configured search language, so translations
-        # in other languages don't win the ISBN pick
-        params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": lang},
-        headers={"User-Agent": USER_AGENT},
-    )
-    if resp.status_code != 200:
+    try:
+        resp = await client.get(
+            "https://openlibrary.org/search.json",
+            # lang makes the `editions` subquery surface the best edition per
+            # work in the caller's configured search language, so translations
+            # in other languages don't win the ISBN pick
+            params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": lang},
+            headers={"User-Agent": USER_AGENT},
+        )
+    except (httpx.TimeoutException, httpx.NetworkError):
+        logger.debug("Open Library search failed for %r: transport error", params, exc_info=True)
+        return provider_result.transport_failed("openlibrary")
+
+    classified = provider_result.classify_response("openlibrary", resp)
+    if classified is not None:
         logger.debug("Open Library search failed for %r: HTTP %d", params, resp.status_code)
-        return []
+        return classified
 
-    docs = resp.json().get("docs", [])
-    results = []
-    for doc in docs:
-        title = doc.get("title")
-        if not title:
-            continue
-        authors = doc.get("author_name", [])
-        # Prefer the best-matching edition's ISBNs (language-aware), then
-        # fall back to the work-wide pool
-        edition_docs = (doc.get("editions") or {}).get("docs") or []
-        isbns = (edition_docs[0].get("isbn") if edition_docs else None) or doc.get("isbn", [])
-        # Prefer ISBN-13 (starts with 978/979)
-        isbn = None
-        for i in isbns:
-            if len(i) == 13:
-                isbn = i
-                break
-        if not isbn and isbns:
-            isbn = isbns[0]
+    # The response parse gets its own catch-all, exactly as `lookup` above
+    # does: this function's contract is now "never raises", and an
+    # unexpected body shape would otherwise reach `items_catalog.search_books`
+    # as the very HTTP 500 the transport handler above was added to close.
+    try:
+        docs = resp.json().get("docs", [])
+        results = []
+        for doc in docs:
+            title = doc.get("title")
+            if not title:
+                continue
+            authors = doc.get("author_name", [])
+            # Prefer the best-matching edition's ISBNs (language-aware), then
+            # fall back to the work-wide pool
+            edition_docs = (doc.get("editions") or {}).get("docs") or []
+            isbns = (edition_docs[0].get("isbn") if edition_docs else None) or doc.get("isbn", [])
+            # Prefer ISBN-13 (starts with 978/979)
+            isbn = None
+            for i in isbns:
+                if len(i) == 13:
+                    isbn = i
+                    break
+            if not isbn and isbns:
+                isbn = isbns[0]
 
-        cover_url = None
-        cover_i = doc.get("cover_i")
-        if cover_i:
-            cover_url = f"https://covers.openlibrary.org/b/id/{cover_i}-M.jpg"
+            cover_url = None
+            cover_i = doc.get("cover_i")
+            if cover_i:
+                cover_url = f"https://covers.openlibrary.org/b/id/{cover_i}-M.jpg"
 
-        results.append({
-            "title": title,
-            "work_key": doc.get("key"),
-            "languages": doc.get("language") or [],
-            "authors": ", ".join(authors) if authors else None,
-            "publish_year": doc.get("first_publish_year"),
-            "publisher": doc.get("publisher", [None])[0] if doc.get("publisher") else None,
-            "cover_url": cover_url,
-            "isbn": isbn,
-            "page_count": doc.get("number_of_pages_median"),
-        })
-    return results
+            results.append({
+                "title": title,
+                "work_key": doc.get("key"),
+                "languages": doc.get("language") or [],
+                "authors": ", ".join(authors) if authors else None,
+                "publish_year": doc.get("first_publish_year"),
+                "publisher": doc.get("publisher", [None])[0] if doc.get("publisher") else None,
+                "cover_url": cover_url,
+                "isbn": isbn,
+                "page_count": doc.get("number_of_pages_median"),
+            })
+        if not results:
+            return provider_result.no_match("openlibrary", status=resp.status_code)
+        return provider_result.found("openlibrary", results, status=resp.status_code)
+    except Exception:
+        logger.debug("Open Library search body unreadable for %r", params, exc_info=True)
+        return provider_result.no_match("openlibrary", status=resp.status_code)

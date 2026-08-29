@@ -130,6 +130,18 @@ it needs; the routes derive their "provider not configured" message from
 returns URL strings only — nothing fetches an image — so each candidate still
 reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 
+`search_covers` returns a `ProviderResult` whose payload is the candidate
+list, so the picker projects the provider's own outcome through the same
+`scan_outcome.not_found_status` the scan card uses — one vocabulary across
+both surfaces. The route renders three things in precedence order: the
+unconfigured-provider note first (nothing was asked, so there is no outcome to
+report), then the actionable state, then the generic "No covers found" line,
+which now means only that the provider answered and had nothing. A `found`
+result with an **empty** payload is that genuine miss and is not an error. The
+book branch is wrapped as `found` rather than re-typed: it fans out over two
+sources that each swallow their own failure, so it has no single outcome to
+report.
+
 ### Scan outcomes
 
 The scan-result card is the single source of a scan's outcome, and the
@@ -178,6 +190,7 @@ The states, in precedence order:
 | `no_credential` | nothing was asked, because nothing could be |
 | `rejected` | the provider refused the configured credential — outranks `quota`, being the one the user can act on |
 | `quota` | the provider answered 429; this may not be a genuine miss |
+| `offline` | Shelf could not reach the provider at all — below `quota`, because a refusal the provider *sent* is a stronger statement than one it never answered |
 | `no_match` | the provider was asked and had nothing |
 
 A state with no arm in the template renders nothing rather than raising, so
@@ -188,7 +201,14 @@ whose cascade was starved and for a UPC whose *product* lookup was.
 `services/scan_outcome.py`'s `enrich_status` is a **projection** over one
 `ProviderResult` (plus a `has_provider` flag), not a reassembly from booleans
 the caller had to keep in step — a branch that holds no flags at all can still
-call it and get back one of the five states above. Its sibling
+call it and get back one of the six states above. A `transport_failed` record
+answers `offline` rather than `no_match`: the scan routers pick the
+connectivity card *before* this function whenever the product or cascade
+lookup was what failed, so what reaches here is an enrichment-leg failure on
+an item that was filed anyway. The `offline` arm therefore lives in the
+**added** card only — every branch that renders the `not_found` card turns a
+transport failure into the connectivity card first, so an arm there would be
+copy nothing can produce. Its sibling
 `not_found_status` answers the same projection but suppresses `no_match`,
 because a "Not found" card already says that in its own words; `provider_label`
 reads the display name straight off the record's `provider` field. Because the
@@ -202,7 +222,17 @@ Every metadata client answers with a `ProviderResult`
 (`app/services/provider_result.py`) instead of raising or returning a bare
 value: one of `found`, `no_match`, `no_credential`, `rejected`, `rate_limited`
 or `transport_failed`, carrying the provider that answered and the HTTP
-status where there is one. `classify_response` turns a raw response the
+status where there is one. This is not only the ISBN and UPC *lookups*: the
+three catalog **search** functions (`openlibrary.search_books`,
+`tmdb.search_movies`, `igdb.search_games`), `igdb.search_game_art` and
+`covers.search_covers` answer the same type, with a **list** payload rather
+than a dict (G45 — the outer type is uniform, the inner one is not). IGDB's
+search leg classifies 401/403 through its own `_SEARCH_AUTH_STATUSES`, which
+deliberately omits the 400 the *token* endpoint uses for a bad client id:
+`/games` answers a malformed Apicalypse query with 400, and that is a Shelf
+bug rather than a rejected credential. A rejection on that leg also evicts the
+cached Twitch token, so the next call re-exchanges instead of re-presenting a
+bearer the provider has stopped honouring. `classify_response` turns a raw response the
 client did not have to parse into that outcome — an auth status (401/403 for
 Hardcover; 400, 401 or 403 for Google Books, which answers a bad key with 400
 rather than 401 or 403) outranks a 429, so a status that could be read as

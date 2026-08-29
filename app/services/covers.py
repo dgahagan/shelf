@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import COVERS_DIR
-from app.services import googlebooks, igdb, outbound, tmdb
+from app.services import googlebooks, igdb, outbound, provider_result, tmdb
 
 logger = logging.getLogger(__name__)
 
@@ -208,13 +208,22 @@ def _label(text: str | None, limit: int = _LABEL_CHARS) -> str:
     return text[: limit - 1].rstrip() + "…"
 
 
-async def search_covers(item, query: str, client: httpx.AsyncClient, *, creds: dict) -> list[dict]:
+async def search_covers(
+    item, query: str, client: httpx.AsyncClient, *, creds: dict
+) -> provider_result.ProviderResult:
     """Find cover candidates for `item`, dispatching on its media type.
 
-    Returns a `list[dict]`, each `{"url", "thumbnail", "source"}` — the shape
-    `fragments/cover_search.html` renders. Never raises: each provider
-    swallows its own failures and a missing credential yields `[]` with no
-    outbound call.
+    Returns a `ProviderResult` whose payload is a `list[dict]`, each
+    `{"url", "thumbnail", "source"}` — the shape `fragments/cover_search.html`
+    renders. **Never raises**, which is the half of the old contract that
+    stays; what went is `[]`-for-everything, which is why a rejected TMDb key
+    and a film with no posters were the same thing on screen (G47's
+    `_search_note` face).
+
+    A provider's non-`found` outcome is carried out as it stands, so the route
+    can project it through `scan_outcome.not_found_status`. `found` with an
+    **empty** payload is a real answer and stays the generic "No covers found"
+    line: the provider replied, and nothing survived the filter.
 
     `item` is a mapping with `media_type`, `title` and `authors`, plus
     `publish_year` and `platform` for the two new branches. It is a
@@ -238,31 +247,50 @@ async def search_covers(item, query: str, client: httpx.AsyncClient, *, creds: d
     # Called as the bare module global on purpose: eight tests in
     # tests/test_covers.py patch `covers.search_cover_by_title` by attribute,
     # and a local alias or a from-import would detach every one of them.
-    return await search_cover_by_title(
+    #
+    # Wrapped as `found` rather than re-typed: the book branch fans out over
+    # Google Books and Open Library and swallows each one's failure on its own
+    # (`search_cover_by_title` above), so it has no single outcome to report.
+    # Re-typing that cascade is `plan-cover-editions`' work.
+    return provider_result.found("openlibrary", await search_cover_by_title(
         query,
         _col(item, "authors"),
         client,
         google_api_key=creds.get("google_books_api_key"),
-    )
+    ))
 
 
-async def _tmdb_candidates(item, query: str, client: httpx.AsyncClient, creds: dict) -> list[dict]:
-    """TMDb's poster set for a film. Returns `[]` on any failure.
+async def _tmdb_candidates(
+    item, query: str, client: httpx.AsyncClient, creds: dict
+) -> provider_result.ProviderResult:
+    """TMDb's poster set for a film, as a `ProviderResult`. Never raises.
 
     Two upstream calls, because `items` stores no `tmdb_id`: find the film,
-    then list its posters. `tmdb.search_movies` returns a **list** (G45), so
-    the unwrap is explicit rather than an index.
+    then list its posters. `tmdb.search_movies` returns a `ProviderResult`
+    whose payload is a **list** (G45), so the `[0]` unwrap below is explicit
+    at this call site rather than hidden in a shared helper.
+
+    A non-`found` search outcome is returned as it stands — that is what lets
+    the picker say "TMDb rejected the configured key" instead of "no covers".
+    Everything after a successful search is `found` with whatever survived:
+    an empty poster list is a genuine miss, not a failure.
 
     Labelled by language: TMDb's poster sets are largely the same film in
     different languages and are otherwise indistinguishable at tile size.
     """
     key = (creds.get("tmdb_api_key") or "").strip()
     if not key:
-        return []
+        # Unreachable from the two picker routes, which check credentials
+        # first — but it is the honest value, and `_search_note` still wins on
+        # screen for the unconfigured case.
+        return provider_result.no_credential("tmdb")
     try:
-        results = await tmdb.search_movies(query, key, client, limit=5)
-        if not results:
-            return []
+        result = await tmdb.search_movies(query, key, client, limit=5)
+        # Never `if not result:` — `ProviderResult.__bool__` raises, and the
+        # `except Exception` below would swallow it into a miss: green and wrong.
+        if not result.found:
+            return result
+        results = result.payload
 
         hit = None
         year = _col(item, "publish_year")
@@ -271,11 +299,11 @@ async def _tmdb_candidates(item, query: str, client: httpx.AsyncClient, creds: d
         if hit is None:
             hit = results[0] if results else None
         if hit is None:
-            return []
+            return provider_result.found("tmdb", [])
 
         tmdb_id = hit.get("tmdb_id")
         if not tmdb_id:
-            return []
+            return provider_result.found("tmdb", [])
 
         posters = await tmdb.search_posters(tmdb_id, key, client, limit=MAX_CANDIDATES)
         candidates = []
@@ -292,18 +320,22 @@ async def _tmdb_candidates(item, query: str, client: httpx.AsyncClient, creds: d
             })
             if len(candidates) >= MAX_CANDIDATES:
                 break
-        return candidates
+        return provider_result.found("tmdb", candidates)
     except Exception:
         logger.debug("TMDb cover search failed", exc_info=True)
-        return []
+        return provider_result.transport_failed("tmdb")
 
 
-async def _igdb_candidates(item, query: str, client: httpx.AsyncClient, creds: dict) -> list[dict]:
-    """IGDB cover art and artwork for a game. Returns `[]` on any failure.
+async def _igdb_candidates(
+    item, query: str, client: httpx.AsyncClient, creds: dict
+) -> provider_result.ProviderResult:
+    """IGDB cover art and artwork for a game, as a `ProviderResult`. Never raises.
 
-    One upstream call. `igdb.search_game_art` returns a **list** (G45), one
-    entry per game; this emits one candidate per *image*, each game's cover
-    before its artwork.
+    One upstream call. `igdb.search_game_art` returns a `ProviderResult` whose
+    payload is a **list** (G45), one entry per game; this emits one candidate
+    per *image*, each game's cover before its artwork. A non-`found` outcome is
+    returned as it stands, so a rejected Twitch credential reaches the picker
+    as a rejection rather than as an empty gallery.
 
     The label carries provider, which game, and cover-versus-artwork, because
     region-variant covers and key art are indistinguishable at thumbnail size.
@@ -311,13 +343,20 @@ async def _igdb_candidates(item, query: str, client: httpx.AsyncClient, creds: d
     cid = (creds.get("igdb_client_id") or "").strip()
     secret = (creds.get("igdb_client_secret") or "").strip()
     if not cid or not secret:
-        return []
+        # Unreachable from the routes (G49: they check both fields first), but
+        # the honest value; `_search_note` is what the user actually sees.
+        return provider_result.no_credential("igdb")
     try:
-        games = await igdb.search_game_art(
+        result = await igdb.search_game_art(
             query, cid, secret, client,
             platform=_col(item, "platform"),
             limit=5,
         )
+        # Never `if not result:` — `ProviderResult.__bool__` raises, and the
+        # `except Exception` below would swallow it into `[]`: green and wrong.
+        if not result.found:
+            return result
+        games = result.payload
         candidates = []
         for game in games:
             name = _label(game.get("title"))
@@ -334,10 +373,10 @@ async def _igdb_candidates(item, query: str, client: httpx.AsyncClient, creds: d
                     "thumbnail": igdb.image_url(art_id, "t_screenshot_med"),
                     "source": f"IGDB · {name} · art",
                 })
-        return candidates[:MAX_CANDIDATES]
+        return provider_result.found("igdb", candidates[:MAX_CANDIDATES])
     except Exception:
         logger.debug("IGDB cover search failed", exc_info=True)
-        return []
+        return provider_result.transport_failed("igdb")
 
 
 def _isbn13_to_isbn10_for_amazon(isbn13: str) -> str:

@@ -18,7 +18,7 @@ from app.auth import require_role
 from app.config import COVERS_DIR, HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.routers import items_common
-from app.services import covers, cover_queue, openlibrary
+from app.services import covers, cover_queue, openlibrary, scan_outcome
 from app.services import isbn as isbn_svc
 
 logger = logging.getLogger(__name__)
@@ -95,10 +95,11 @@ def _search_note(media_type: str | None, creds: dict) -> str | None:
     provider that simply found nothing — that case keeps the generic
     "No covers found for this title." line.
 
-    Known false negative: `tmdb.search_movies` returns `[]` for a *rejected*
-    key by deliberate contract, so a bad TMDb key still reads as "no covers
-    found" rather than this note. Accepted (G47) — fixing it would change a
-    contract `items_catalog.py` also consumes.
+    This answers only "was anything asked?". What the provider *said* when it
+    was asked is `_search_status` below, and the template renders this note
+    first: an unconfigured provider was never called, so there is no outcome
+    to report. (The G47 false negative this docstring used to accept —
+    a rejected TMDb key reading as "no covers found" — closed with issue #49.)
     """
     keys = covers.required_credentials(media_type)
     if not keys:
@@ -106,6 +107,20 @@ def _search_note(media_type: str | None, creds: dict) -> str | None:
     if all((creds.get(key) or "").strip() for key in keys):
         return None
     return _SEARCH_NOTES.get(covers.MEDIA_TYPE_PROVIDERS.get(media_type or ""))
+
+
+def _search_status(result) -> tuple[str | None, str | None]:
+    """The picker's half of the scan card's vocabulary: `(state, provider)`.
+
+    The same projection the scan card uses, from the same module, so the two
+    surfaces cannot drift into two ways of saying "rejected key". `None` for a
+    genuine miss — `not_found_status` squelches `no_match`, because the
+    fragment's own "No covers found for this title." already says it.
+    """
+    return (
+        scan_outcome.not_found_status(result),
+        scan_outcome.provider_label(result),
+    )
 
 
 def _cover_search_credentials(db, media_type: str | None) -> dict[str, str]:
@@ -139,16 +154,19 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
     search_query = (query or "").strip() or item["title"]
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        candidates = await covers.search_covers(item, search_query, client, creds=creds)
+        result = await covers.search_covers(item, search_query, client, creds=creds)
 
+    search_status, search_provider = _search_status(result)
     return templates.TemplateResponse(
         request, "fragments/cover_search.html",
         {
-            "candidates": candidates,
+            "candidates": result.payload or [],
             "item_id": item_id,
             "cover_path": item["cover_path"],
             "query": search_query,
             "search_note": _search_note(item["media_type"], creds),
+            "search_status": search_status,
+            "search_provider": search_provider,
         },
     )
 
@@ -188,16 +206,19 @@ async def cover_select(
     search_query = (query or "").strip() or item["title"]
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        candidates = await covers.search_covers(item, search_query, client, creds=creds)
+        result = await covers.search_covers(item, search_query, client, creds=creds)
 
+    search_status, search_provider = _search_status(result)
     resp = templates.TemplateResponse(
         request, "fragments/cover_search.html",
         {
-            "candidates": candidates,
+            "candidates": result.payload or [],
             "item_id": item_id,
             "cover_path": item["cover_path"],
             "query": search_query,
             "search_note": _search_note(item["media_type"], creds),
+            "search_status": search_status,
+            "search_provider": search_provider,
             "failed_url": url,
         },
     )

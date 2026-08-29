@@ -8,6 +8,7 @@ import respx
 
 from app.config import MEDIA_TYPES
 
+from app.services import provider_result
 from app.services.openlibrary import search_books
 from app.services.tmdb import search_movies, lookup_by_title
 
@@ -38,8 +39,10 @@ class TestOpenLibrarySearch:
             })
         )
         async with httpx.AsyncClient() as client:
-            results = await search_books("Dune", client, limit=5)
+            result = await search_books("Dune", client, limit=5)
 
+        assert result.found
+        results = result.payload
         assert len(results) == 2
         assert results[0]["title"] == "Dune"
         assert results[0]["authors"] == "Frank Herbert"
@@ -50,23 +53,67 @@ class TestOpenLibrarySearch:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_search_empty_query_returns_empty(self):
+    async def test_search_empty_query_returns_no_match(self):
         respx.get("https://openlibrary.org/search.json").mock(
             return_value=httpx.Response(200, json={"docs": []})
         )
         async with httpx.AsyncClient() as client:
-            results = await search_books("nonexistentbook12345", client)
-        assert results == []
+            result = await search_books("nonexistentbook12345", client)
+        assert result.outcome == "no_match"
+        assert result.status == 200
 
     @respx.mock
     @pytest.mark.asyncio
     async def test_search_handles_api_error(self):
+        """A non-200, non-429 response (Open Library takes no API key, so this
+        can never be a rejected credential) is `no_match`, carrying the status
+        that caused it."""
         respx.get("https://openlibrary.org/search.json").mock(
             return_value=httpx.Response(500)
         )
         async with httpx.AsyncClient() as client:
-            results = await search_books("test", client)
-        assert results == []
+            result = await search_books("test", client)
+        assert result.outcome == "no_match"
+        assert result.status == 500
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_search_rate_limited(self):
+        respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(429)
+        )
+        async with httpx.AsyncClient() as client:
+            result = await search_books("test", client)
+        assert result.outcome == "rate_limited"
+        assert result.status == 429
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_an_unreadable_body_is_a_miss_not_a_500(self):
+        """The other half of the closed 500, and the one a transport handler
+        alone does not cover: a 200 whose body is not the JSON this client
+        expects used to raise out of `_search` into the route. `lookup` has
+        wrapped its own parse for this reason since v0.24.0.
+        """
+        respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(200, content=b"<html>not json</html>")
+        )
+        async with httpx.AsyncClient() as client:
+            result = await search_books("test", client)
+        assert result.outcome == "no_match"
+        assert result.status == 200
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_search_transport_failure(self):
+        """A dead socket used to raise straight out of `search_books` into the
+        route as an HTTP 500 — this is the case that closes it."""
+        respx.get("https://openlibrary.org/search.json").mock(
+            side_effect=httpx.ConnectError("boom")
+        )
+        async with httpx.AsyncClient() as client:
+            result = await search_books("test", client)
+        assert result.outcome == "transport_failed"
 
     @respx.mock
     @pytest.mark.asyncio
@@ -80,8 +127,8 @@ class TestOpenLibrarySearch:
             })
         )
         async with httpx.AsyncClient() as client:
-            results = await search_books("book", client)
-        assert results[0]["isbn"] == "9780123456786"
+            result = await search_books("book", client)
+        assert result.payload[0]["isbn"] == "9780123456786"
 
     @respx.mock
     @pytest.mark.asyncio
@@ -102,6 +149,45 @@ class TestOpenLibrarySearch:
         async with httpx.AsyncClient() as client:
             await search_books("buch", client, lang="de")
         assert route.calls.last.request.url.params["lang"] == "de"
+
+
+class TestOpenLibrarySearchByTitleAuthorKeepsListContract:
+    """`search_by_title_author` is deliberately NOT re-typed — its three
+    consumers (intake.py, items_common.py, synopsis.py) still expect a bare
+    list and are out of scope for this task."""
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_on_api_error(self):
+        respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(500)
+        )
+        async with httpx.AsyncClient() as client:
+            from app.services.openlibrary import search_by_title_author
+            results = await search_by_title_author("Dune", "Frank Herbert", client)
+        assert results == []
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_on_an_unreadable_body(self):
+        respx.get("https://openlibrary.org/search.json").mock(
+            return_value=httpx.Response(200, content=b"<html>not json</html>")
+        )
+        async with httpx.AsyncClient() as client:
+            from app.services.openlibrary import search_by_title_author
+            results = await search_by_title_author("Dune", "Frank Herbert", client)
+        assert results == []
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_on_transport_failure(self):
+        respx.get("https://openlibrary.org/search.json").mock(
+            side_effect=httpx.ConnectError("boom")
+        )
+        async with httpx.AsyncClient() as client:
+            from app.services.openlibrary import search_by_title_author
+            results = await search_by_title_author("Dune", "Frank Herbert", client)
+        assert results == []
 
 
 class TestTmdbSearchMovies:
@@ -129,14 +215,15 @@ class TestTmdbSearchMovies:
             })
         )
         async with httpx.AsyncClient() as client:
-            results = await search_movies("Blade Runner", "fake-key", client)
+            result = await search_movies("Blade Runner", "fake-key", client)
 
-        assert len(results) == 2
-        assert results[0]["tmdb_id"] == 100
-        assert results[0]["title"] == "Blade Runner"
-        assert results[0]["publish_year"] == 1982
-        assert "poster1.jpg" in results[0]["cover_url"]
-        assert results[1]["title"] == "Blade Runner 2049"
+        assert result.found
+        assert len(result.payload) == 2
+        assert result.payload[0]["tmdb_id"] == 100
+        assert result.payload[0]["title"] == "Blade Runner"
+        assert result.payload[0]["publish_year"] == 1982
+        assert "poster1.jpg" in result.payload[0]["cover_url"]
+        assert result.payload[1]["title"] == "Blade Runner 2049"
 
     @respx.mock
     @pytest.mark.asyncio
@@ -145,8 +232,8 @@ class TestTmdbSearchMovies:
             return_value=httpx.Response(401)
         )
         async with httpx.AsyncClient() as client:
-            results = await search_movies("test", "bad-key", client)
-        assert results == []
+            result = await search_movies("test", "bad-key", client)
+        assert result.outcome == "rejected"
 
     @respx.mock
     @pytest.mark.asyncio
@@ -155,8 +242,8 @@ class TestTmdbSearchMovies:
             return_value=httpx.Response(200, json={"results": []})
         )
         async with httpx.AsyncClient() as client:
-            results = await search_movies("nonexistent", "key", client)
-        assert results == []
+            result = await search_movies("nonexistent", "key", client)
+        assert result.outcome == "no_match"
 
     @respx.mock
     @pytest.mark.asyncio
@@ -166,8 +253,8 @@ class TestTmdbSearchMovies:
             return_value=httpx.Response(200, json={"results": movies})
         )
         async with httpx.AsyncClient() as client:
-            results = await search_movies("movie", "key", client, limit=5)
-        assert len(results) == 5
+            result = await search_movies("movie", "key", client, limit=5)
+        assert len(result.payload) == 5
 
 
 class TestTmdbLookupByTitle:
@@ -219,7 +306,9 @@ class TestAutoNeverReachesTheDatabase:
         from app.services import openlibrary
 
         async def _search(q, client, limit=10, lang="en"):
-            return [{"title": "A Book", "authors": "Someone", "isbn": "9780306406157"}]
+            return provider_result.found("openlibrary", [
+                {"title": "A Book", "authors": "Someone", "isbn": "9780306406157"}
+            ])
 
         monkeypatch.setattr(openlibrary, "search_books", _search)
 
@@ -291,3 +380,231 @@ class TestAutoNeverReachesTheDatabase:
 
     def test_auto_is_not_a_media_type(self):
         assert "auto" not in MEDIA_TYPES
+
+
+class TestSearchOutcomeNoticesReplaceTheMissLine:
+    """Issue #49's last surface: the three title-search fragments project a
+    rejected key / spent quota / dead socket through `scan_outcome`, the same
+    way the scan card and the cover picker already do (`a12831e`).
+
+    The client contracts themselves (rejected/rate_limited/transport_failed
+    outcomes) are pinned in T2-T4 above and in `test_igdb_auth.py` /
+    `test_covers.py` — this class only pins that the *routes* project them
+    and that the *fragments* render the shared notice instead of stacking it
+    on top of the miss line.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _creds(self, db):
+        # Games and DVDs need configured credentials to get past the
+        # unconfigured-provider guard before a ProviderResult can even be
+        # produced. Open Library takes no key, so books needs none of this.
+        # G48: commit before the request — the route opens its own connection.
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("igdb_client_id", "test-client-id"),
+        )
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("igdb_client_secret", "test-client-secret"),
+        )
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("tmdb_api_key", "test-tmdb-key"),
+        )
+        db.commit()
+
+    # -- games --------------------------------------------------------
+
+    def test_game_search_rejected_names_the_provider_and_links_settings(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.rejected("igdb", status=403)
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert "IGDB" in resp.text
+        assert 'data-search-status="rejected"' in resp.text
+        assert 'href="/settings"' in resp.text
+        assert "No games found" not in resp.text
+
+    def test_game_search_rate_limited_renders_the_quota_copy(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.rate_limited("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="quota"' in resp.text
+        assert "rate-limiting" in resp.text
+        assert "No games found" not in resp.text
+
+    def test_game_search_transport_failed_renders_the_offline_copy(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.transport_failed("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="offline"' in resp.text
+        assert "Could not reach" in resp.text
+        assert "No games found" not in resp.text
+
+    def test_game_search_no_match_renders_only_the_existing_miss_line(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.no_match("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert "No games found" in resp.text
+        assert "data-search-status" not in resp.text
+
+    # -- dvds ---------------------------------------------------------
+
+    def test_dvd_search_rejected_names_the_provider_and_links_settings(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.rejected("tmdb", status=401)
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert "TMDb" in resp.text
+        assert 'data-search-status="rejected"' in resp.text
+        assert 'href="/settings"' in resp.text
+        assert "No movies found" not in resp.text
+
+    def test_dvd_search_rate_limited_renders_the_quota_copy(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.rate_limited("tmdb")
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="quota"' in resp.text
+        assert "rate-limiting" in resp.text
+        assert "No movies found" not in resp.text
+
+    def test_dvd_search_transport_failed_renders_the_offline_copy(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.transport_failed("tmdb")
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="offline"' in resp.text
+        assert "Could not reach" in resp.text
+        assert "No movies found" not in resp.text
+
+    def test_dvd_search_no_match_renders_only_the_existing_miss_line(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.no_match("tmdb")
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert "No movies found" in resp.text
+        assert "data-search-status" not in resp.text
+
+    # -- books ----------------------------------------------------------
+    # Open Library takes no API key, so `search_books` can never produce
+    # `rejected` (T2's client contract) — no rejected case for books.
+
+    def test_book_search_rate_limited_renders_the_quota_copy(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.rate_limited("openlibrary")
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get("/api/books/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="quota"' in resp.text
+        assert "rate-limiting" in resp.text
+        assert "No books found" not in resp.text
+
+    def test_book_search_transport_failed_renders_the_offline_copy(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.transport_failed("openlibrary")
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get("/api/books/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="offline"' in resp.text
+        assert "Could not reach" in resp.text
+        assert "No books found" not in resp.text
+
+    def test_book_search_no_match_renders_only_the_existing_miss_line(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.no_match("openlibrary")
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get("/api/books/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert "No books found" in resp.text
+        assert "data-search-status" not in resp.text
+
+
+class TestTheRejectedCopyNeverCreepsBackIntoTheRouter:
+    """G53: the grep pin lives in exactly this one place. Do not add a
+    comment to `items_catalog.py` quoting the literal below — it would trip
+    this test's own pin."""
+
+    def test_router_source_has_no_router_built_rejected_copy(self):
+        from pathlib import Path
+
+        router = Path(__file__).resolve().parents[1] / "app/routers/items_catalog.py"
+        assert "IGDB rejected" not in router.read_text()

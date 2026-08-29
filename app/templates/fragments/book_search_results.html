@@ -35,6 +35,8 @@
     </div>
     {% endfor %}
 </div>
+{% elif search_status %}
+{% include "fragments/search_status_notice.html" %}
 {% elif query %}
 <p class="text-sm text-shelf-muted">No books found for "{{ query }}". Try a different search.</p>
 {% endif %}

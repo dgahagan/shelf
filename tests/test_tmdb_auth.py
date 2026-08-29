@@ -143,10 +143,11 @@ class TestLookupByTitleAuthSignal:
             "cover_url": f"{tmdb.TMDB_IMAGE_BASE}/matrix.jpg",
         }
 
-    async def test_search_movies_keeps_returning_an_empty_list_on_401(self, fake_fetch):
-        """Its caller renders a list; changing that contract is not this task."""
+    async def test_search_movies_401_is_rejected_rather_than_no_such_film(self, fake_fetch):
         fake_fetch.return_value = StubResponse(401)
-        assert await tmdb.search_movies("Dune", V4_TOKEN, object()) == []
+        result = await tmdb.search_movies("Dune", V4_TOKEN, object())
+        assert result.outcome == "rejected"
+        assert result.provider == "tmdb"
 
 
 class TestLookupByTitleRateLimit:
@@ -180,11 +181,11 @@ class TestLookupByTitleRateLimit:
 
 
 class TestSearchMoviesAndPostersStayOutOfScope:
-    """The pin that keeps a later plan's surface out of this one (T6).
-
-    `search_movies` and `search_posters` keep their `[]`-on-any-failure
-    contract and take no `on_rate_limit` callback — only `lookup_by_title`
-    got one in this task.
+    """`search_posters` keeps its own `[]`-on-any-failure contract (a later
+    plan's surface, T6) — `search_movies` no longer does, since re-typing it
+    to a `ProviderResult` is exactly what this task does (see
+    `TestSearchMoviesOutcomes` below). Neither takes an `on_rate_limit`
+    callback — only `lookup_by_title` got one, in an earlier task.
     """
 
     def test_search_movies_has_no_on_rate_limit_keyword(self):
@@ -195,13 +196,48 @@ class TestSearchMoviesAndPostersStayOutOfScope:
         import inspect
         assert "on_rate_limit" not in inspect.signature(tmdb.search_posters).parameters
 
-    async def test_search_movies_still_returns_empty_list_on_429(self, fake_fetch):
-        fake_fetch.return_value = StubResponse(429)
-        assert await tmdb.search_movies("Dune", V4_TOKEN, object()) == []
-
     async def test_search_posters_still_returns_empty_list_on_429(self, fake_fetch):
         fake_fetch.return_value = StubResponse(429)
         assert await tmdb.search_posters(603, V4_TOKEN, object()) == []
+
+
+class TestSearchMoviesOutcomes:
+    """`search_movies` is classified exactly the way `lookup_by_title` is —
+    the only difference is its payload is a list of movies, not one dict."""
+
+    async def test_a_429_is_rate_limited(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(429)
+        result = await tmdb.search_movies("Dune", V4_TOKEN, object())
+        assert result.outcome == "rate_limited"
+        assert result.provider == "tmdb"
+
+    async def test_a_403_is_rejected(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(403)
+        result = await tmdb.search_movies("Dune", V4_TOKEN, object())
+        assert result.outcome == "rejected"
+
+    async def test_a_transport_error_is_transport_failed(self, fake_fetch):
+        fake_fetch.side_effect = RuntimeError("boom")
+        result = await tmdb.search_movies("Dune", V4_TOKEN, object())
+        assert result.outcome == "transport_failed"
+
+    async def test_a_200_with_no_results_is_no_match(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"results": []})
+        result = await tmdb.search_movies("nonexistent", V4_TOKEN, object())
+        assert result.outcome == "no_match"
+
+    async def test_a_200_with_hits_is_found_and_payload_is_a_list(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(200, json_data={"results": [{
+            "id": 603,
+            "title": "The Matrix",
+            "overview": "A hacker learns the truth.",
+            "release_date": "1999-03-30",
+            "poster_path": "/matrix.jpg",
+        }]})
+        result = await tmdb.search_movies("The Matrix", V3_KEY, object())
+        assert result.found
+        assert isinstance(result.payload, list)
+        assert result.payload[0]["title"] == "The Matrix"
 
 
 class TestTestKeyMessages:
@@ -338,7 +374,7 @@ class TestImageUrlRegression:
             "poster_path": "/abc.jpg",
         }]})
         result = await tmdb.search_movies("The Matrix", V3_KEY, object())
-        assert result[0]["cover_url"] == "https://image.tmdb.org/t/p/w500/abc.jpg"
+        assert result.payload[0]["cover_url"] == "https://image.tmdb.org/t/p/w500/abc.jpg"
 
     async def test_lookup_by_title_still_builds_the_same_poster_url(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"results": [{

@@ -63,7 +63,8 @@ class TestSearchGameArt:
             },
         ])]
         result = await igdb.search_game_art("Mario", "cid", "secret", object())
-        assert result == [{
+        assert result.found
+        assert result.payload == [{
             "title": "Super Mario Odyssey",
             "cover_image_id": "cov1",
             "artwork_image_ids": ["art1", "art2"],
@@ -77,8 +78,8 @@ class TestSearchGameArt:
             },
         ])]
         result = await igdb.search_game_art("Odd Game", "cid", "secret", object())
-        assert result[0]["cover_image_id"] is None
-        assert result[0]["artwork_image_ids"] == ["art1"]
+        assert result.payload[0]["cover_image_id"] is None
+        assert result.payload[0]["artwork_image_ids"] == ["art1"]
 
     async def test_more_than_three_artworks_are_truncated_to_three(self, fake_fetch):
         fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(200, json_data=[
@@ -89,7 +90,7 @@ class TestSearchGameArt:
             },
         ])]
         result = await igdb.search_game_art("Many Artworks", "cid", "secret", object())
-        assert result[0]["artwork_image_ids"] == ["art0", "art1", "art2"]
+        assert result.payload[0]["artwork_image_ids"] == ["art0", "art1", "art2"]
 
     async def test_a_platform_slug_adds_a_where_platforms_clause(self, fake_fetch):
         fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(200, json_data=[])]
@@ -112,21 +113,46 @@ class TestSearchGameArt:
         query = call.kwargs["content"]
         assert 'Baldur\\"s Gate' in query
 
-    async def test_no_token_yields_an_empty_list(self, fake_fetch):
+    async def test_a_rejected_token_is_carried_out_as_it_stands(self, fake_fetch):
+        """A 401 on the *token* endpoint — `_get_token`'s own classification,
+        returned unchanged rather than flattened to a list (was `== []`)."""
         fake_fetch.return_value = StubResponse(401)
-        assert await igdb.search_game_art("Mario", "cid", "secret", object()) == []
+        result = await igdb.search_game_art("Mario", "cid", "secret", object())
+        assert result.outcome == "rejected"
 
-    async def test_an_http_500_yields_an_empty_list(self, fake_fetch):
+    async def test_an_http_500_is_a_miss(self, fake_fetch):
         fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(500)]
-        assert await igdb.search_game_art("Mario", "cid", "secret", object()) == []
+        result = await igdb.search_game_art("Mario", "cid", "secret", object())
+        assert result.outcome == "no_match"
+        assert result.status == 500
 
-    async def test_a_raised_transport_error_yields_an_empty_list(self, fake_fetch):
+    async def test_a_raised_transport_error_is_transport_failed(self, fake_fetch):
         fake_fetch.side_effect = [TOKEN_RESPONSE, httpx.ConnectError("boom")]
-        assert await igdb.search_game_art("Mario", "cid", "secret", object()) == []
+        result = await igdb.search_game_art("Mario", "cid", "secret", object())
+        assert result.outcome == "transport_failed"
 
-    async def test_an_empty_result_list_from_igdb_yields_an_empty_list(self, fake_fetch):
+    async def test_a_search_leg_403_is_rejected_and_evicts_the_token(self, fake_fetch):
+        """The art search shares `_classify_search` with `search_games`, so it
+        shares the eviction too — the two had drifted before, which is how the
+        cover picker stayed silent about a bad key after the scan card learned
+        to say it."""
+        fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(403)]
+        result = await igdb.search_game_art("Mario", "cid", "secret", object())
+        assert result.outcome == "rejected"
+        assert ("cid", "secret") not in igdb._token_cache
+
+    async def test_a_search_leg_429_is_rate_limited(self, fake_fetch):
+        fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(429)]
+        result = await igdb.search_game_art("Mario", "cid", "secret", object())
+        assert result.outcome == "rate_limited"
+
+    async def test_an_empty_result_list_from_igdb_is_a_miss(self, fake_fetch):
+        """A 200 with no games — the one case that is still a genuine miss,
+        and the only reason the picker's "No covers found" line survives."""
         fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(200, json_data=[])]
-        assert await igdb.search_game_art("Mario", "cid", "secret", object()) == []
+        result = await igdb.search_game_art("Mario", "cid", "secret", object())
+        assert result.outcome == "no_match"
+        assert result.status == 200
 
 
 class TestParseGameCoverUrlRegression:

@@ -137,10 +137,17 @@ class TestTheOtherThreeEntryPointsAbsorbIt:
     shared assumption.
     """
 
-    async def test_search_game_art_still_returns_an_empty_list(self, fake_fetch):
-        """Its docstring says "never raises" and the cover picker depends on it."""
+    async def test_search_game_art_reports_the_rejection(self, fake_fetch):
+        """Was pinned at `[]`; issue #49 is what opens its rejection channel.
+
+        "Never raises" is the half of its contract that survives — what went
+        is `[]`-for-everything, which is why a bad key looked like a game with
+        no art in the cover picker.
+        """
         fake_fetch.return_value = StubResponse(403)
-        assert await igdb.search_game_art("Halo", CLIENT_ID, CLIENT_SECRET, object()) == []
+        result = await igdb.search_game_art("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rejected"
+        assert result.provider == "igdb"
 
     async def test_lookup_game_still_returns_none(self, fake_fetch):
         """`items_catalog.add_game_from_search` has no handler — this would be a 500."""
@@ -155,15 +162,21 @@ class TestTheOtherThreeEntryPointsAbsorbIt:
             "message": "Authentication failed — check Client ID and Secret",
         }
 
-    async def test_the_cover_picker_still_returns_an_empty_list(self, fake_fetch):
-        """`covers.search_covers` says "Never raises" — plan 2 changes that, not this one."""
+    async def test_the_cover_picker_carries_the_rejection_out(self, fake_fetch):
+        """The end of the chain this file has been pinning since issue #42.
+
+        Twitch rejects the pair → `_get_token` says `rejected` → `search_game_art`
+        returns it as it stands → `_igdb_candidates` propagates → `search_covers`
+        hands it to the route, which projects it onto the picker's notice.
+        Pinned at `[]` twice before ("plan 2 changes that" — this is plan 2).
+        """
         fake_fetch.return_value = StubResponse(403)
         item = {"media_type": "video_game", "title": "Halo", "authors": "", "platform": "xbox"}
         result = await covers.search_covers(
             item, "Halo", object(),
             creds={"igdb_client_id": CLIENT_ID, "igdb_client_secret": CLIENT_SECRET},
         )
-        assert result == []
+        assert result.outcome == "rejected"
 
 
 class TestSearchGamesReportsARateLimit:
@@ -182,18 +195,81 @@ class TestSearchGamesReportsARateLimit:
         assert (await igdb.search_games(
             "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
 
-    async def test_a_401_on_the_search_call_is_still_a_miss(self, fake_fetch):
-        """Issue #49's remainder, pinned as it stands rather than as it should be.
+    async def test_a_401_on_the_search_call_is_a_rejection_that_evicts(self, fake_fetch):
+        """Issue #49's remainder, now closed — this is the pin that went red.
 
-        `_AUTH_STATUSES` is applied to the *token* endpoint only; the search
-        call classifies 429 and nothing else, so a 401 here reads as "no such
-        game". That is deliberate scope, and this test is what will go red
-        when #49 closes it.
+        `_AUTH_STATUSES` applies to the *token* endpoint; the search leg has
+        its own `_SEARCH_AUTH_STATUSES`. A 401 here means the token Twitch
+        handed us is no longer honoured, so the cached copy is evicted: it is
+        usually still unexpired, and without eviction the same dead bearer is
+        re-presented until it ages out, with no way for the user to retry.
         """
         fake_fetch.return_value = StubResponse(401)
         igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
-        assert (await igdb.search_games(
-            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rejected"
+        assert (CLIENT_ID, CLIENT_SECRET) not in igdb._token_cache
+
+    async def test_a_403_on_the_search_call_also_evicts(self, fake_fetch):
+        fake_fetch.return_value = StubResponse(403)
+        igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rejected"
+        assert (CLIENT_ID, CLIENT_SECRET) not in igdb._token_cache
+
+    async def test_a_400_on_the_search_call_is_a_miss_and_keeps_the_token(self, fake_fetch):
+        """The one status that is in `_AUTH_STATUSES` and *not* in the search set.
+
+        Twitch answers a bad client id with 400 on the **token** endpoint, so
+        that set carries it. IGDB answers a malformed Apicalypse query with
+        400 on **`/games`** — a Shelf bug in our own query builder, not a
+        rejected credential. Classifying it as `rejected` would send the user
+        to Settings to fix a key that works, and would throw away a perfectly
+        good token on the way.
+        """
+        fake_fetch.return_value = StubResponse(400)
+        igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "no_match"
+        assert igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] == ("tok", 1e12)
+
+    async def test_a_429_keeps_the_token(self, fake_fetch):
+        """Only a rejection evicts — a quota miss says nothing about the key."""
+        fake_fetch.return_value = StubResponse(429)
+        igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rate_limited"
+        assert igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] == ("tok", 1e12)
+
+    async def test_the_next_search_after_a_rejection_re_exchanges_the_token(
+        self, fake_fetch
+    ):
+        """What the eviction is *for*, asserted end to end.
+
+        Without it the second search reuses the cached bearer and never talks
+        to Twitch again, so a user who fixes their app in the Twitch console
+        stays broken until the process restarts.
+        """
+        igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("dead-token", 1e12)
+        fake_fetch.return_value = StubResponse(401)
+        await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+
+        calls = []
+
+        async def _record(client, method, url, **kwargs):
+            calls.append(url)
+            if url == igdb.TWITCH_TOKEN_URL:
+                return StubResponse(200, json_data={
+                    "access_token": "fresh-token", "expires_in": 3600,
+                })
+            return StubResponse(200, json_data=[{"id": 1, "name": "Halo"}])
+
+        fake_fetch.side_effect = _record
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+
+        assert igdb.TWITCH_TOKEN_URL in calls, calls
+        assert result.found
+        assert igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)][0] == "fresh-token"
 
     async def test_a_hit_carries_the_list_as_its_payload(self, fake_fetch):
         """G45: the payload stays a list — the router unwraps `[0]`, not this."""
@@ -229,7 +305,8 @@ class TestTheRoutesDoNotFiveHundred:
         # `@router.get("/games/search")` (`app/routers/items_catalog.py:31`).
         resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
         assert resp.status_code == 200
-        assert "IGDB rejected the configured credentials" in resp.text
+        assert "IGDB rejected the configured key" in resp.text
+        assert 'data-search-status="rejected"' in resp.text
 
     def test_add_game_renders_the_existing_failure_card_not_a_500(
         self, editor_client, fake_fetch

@@ -40,10 +40,21 @@
     {% if not candidates %}
     {# Said whenever the search came back empty — including when the current-cover
        tile above is the only thing in the grid, or the user is stranded with no
-       explanation for why nothing appeared. When the route supplied search_note
-       (the media type's provider is unconfigured), that note replaces the
-       generic text below so the user knows why nothing appeared. #}
-    <p class="text-sm text-shelf-muted">{{ search_note or "No covers found for this title." }}</p>
+       explanation for why nothing appeared.
+
+       Three cases in precedence order, and the order is the point. `search_note`
+       first: the provider is unconfigured, so nothing was asked and there is no
+       outcome to report. Then `search_status` — the provider was asked and said
+       something actionable (rejected key, spent quota, unreachable), which the
+       shared notice spells out. Only then the generic line, which now means what
+       it says: the provider answered and genuinely had nothing. #}
+    {% if search_note %}
+    <p class="text-sm text-shelf-muted">{{ search_note }}</p>
+    {% elif search_status %}
+    {% include "fragments/search_status_notice.html" %}
+    {% else %}
+    <p class="text-sm text-shelf-muted">No covers found for this title.</p>
+    {% endif %}
     {% endif %}
 
     <div class="mt-3 space-y-2">

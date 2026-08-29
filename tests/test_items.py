@@ -287,7 +287,8 @@ class TestTitleSearchEndpoints:
                 "page_count": 240,
             }
         ]
-        with patch("app.services.openlibrary.search_books", new=AsyncMock(return_value=fake_results)):
+        with patch("app.services.openlibrary.search_books",
+                   new=AsyncMock(return_value=provider_result.found("openlibrary", fake_results))):
             resp = admin_client.get("/api/title-search?q=test&media_type=book")
         assert resp.status_code == 200
         assert b"Test Driven Development" in resp.content

@@ -70,14 +70,15 @@ class TestPrecedence:
     def test_no_match_is_the_default(self):
         assert enrich_status(pr.no_match("tmdb")) == "no_match"
 
-    def test_a_transport_failure_reads_as_a_miss(self):
-        """Deliberate: the connectivity card is a `status`, decided upstream.
+    def test_a_transport_failure_says_it_could_not_be_reached(self):
+        """Issue #49 gave the state its own name; it used to answer "no_match".
 
         By the time this function sees a `transport_failed` record the router
-        has already chosen to file the item rather than render the error card,
-        so the notice has nothing better to say than "no match".
+        has already chosen to file the item rather than render the error card
+        — but "could not reach DNB" is a truer thing to tell that user than
+        "no match", and the search surfaces have no connectivity card at all.
         """
-        assert enrich_status(pr.transport_failed("dnb")) == "no_match"
+        assert enrich_status(pr.transport_failed("dnb")) == "offline"
 
     def test_every_returned_state_is_declared(self):
         """Nothing can be returned that `ENRICH_STATES` does not list."""
@@ -91,6 +92,18 @@ class TestPrecedence:
                     seen.add(got)
         assert seen <= set(ENRICH_STATES)
 
+    def test_offline_sits_between_quota_and_no_provider(self):
+        """The ladder's order is the tuple's order, and both are load-bearing.
+
+        `offline` ranks below `quota` — a refusal the provider *sent* is a
+        stronger statement than one it never answered — and above the two
+        states that mean nothing was asked or nothing was found.
+        """
+        assert ENRICH_STATES.index("offline") == ENRICH_STATES.index("quota") + 1
+        assert (
+            ENRICH_STATES.index("offline") < ENRICH_STATES.index("no_provider")
+        )
+
     def test_has_provider_is_keyword_only(self):
         """The one remaining flag must not be positionally transposable."""
         with pytest.raises(TypeError):
@@ -103,13 +116,15 @@ class TestNotFoundStatus:
     def test_a_miss_says_nothing_twice(self):
         assert not_found_status(pr.no_match("openlibrary")) is None
 
-    def test_a_transport_failure_is_also_silent(self):
-        assert not_found_status(pr.transport_failed("dnb")) is None
+    def test_a_transport_failure_is_actionable_and_still_renders(self):
+        """`offline` is not `no_match`, so it survives the not-found squelch."""
+        assert not_found_status(pr.transport_failed("dnb")) == "offline"
 
     @pytest.mark.parametrize("result, state", [
         (pr.rejected("google", status=400), "rejected"),
         (pr.rate_limited("google"), "quota"),
         (pr.no_credential("hardcover"), "no_credential"),
+        (pr.transport_failed("tmdb"), "offline"),
     ])
     def test_every_actionable_state_still_renders(self, result, state):
         """A missing, rejected or throttled key means the miss may not be real."""

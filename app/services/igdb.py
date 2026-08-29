@@ -30,6 +30,13 @@ _token_cache: dict[tuple[str, str], tuple[str, float]] = {}
 # 401 and 403 are carried for the same reason TMDb carries them.
 _AUTH_STATUSES = (400, 401, 403)
 
+# The same question asked of the *search* endpoint, and the answer differs by
+# one status. IGDB's `/games` answers a malformed Apicalypse query with 400 —
+# a Shelf bug, not a rejected credential — so folding 400 in here would send a
+# user to Settings to fix a key that is working, for a defect in our own query
+# builder. A 400 on the search leg stays `no_match` and keeps its debug log.
+_SEARCH_AUTH_STATUSES = (401, 403)
+
 
 # Map our platform slugs to IGDB platform IDs
 # See: https://api-docs.igdb.com/#platform
@@ -129,6 +136,37 @@ async def _get_token(
         return provider_result.transport_failed("igdb")
 
 
+def _classify_search(
+    resp, key: tuple[str, str]
+) -> provider_result.ProviderResult | None:
+    """Classify a `/games` response, or `None` for a 200 the caller must read.
+
+    Shared by `search_games` and `search_game_art` so the two cannot drift —
+    they had drifted before, which is how a rejected credential stayed
+    invisible on the cover picker after the scan card learned to say it.
+
+    A `rejected` verdict **evicts the cached token** before returning. The
+    token itself is usually still unexpired, so without the eviction a Twitch
+    app whose access was revoked keeps re-presenting the same dead bearer
+    until the cache entry ages out on its own — and the user has no way to
+    retry short of restarting the app. Evicting means the next call
+    re-exchanges, which is the exchange it would have needed anyway.
+    """
+    if resp.status_code in _SEARCH_AUTH_STATUSES:
+        _token_cache.pop(key, None)
+        logger.warning(
+            "IGDB rejected the access token (HTTP %d) — evicted, next call re-exchanges",
+            resp.status_code,
+        )
+        return provider_result.rejected("igdb", status=resp.status_code)
+    if outbound.is_rate_limited(resp):
+        return provider_result.rate_limited("igdb", status=resp.status_code)
+    if resp.status_code != 200:
+        logger.debug("IGDB search failed: HTTP %d — %s", resp.status_code, resp.text[:200])
+        return provider_result.no_match("igdb", status=resp.status_code)
+    return None
+
+
 async def search_games(
     title: str,
     client_id: str,
@@ -177,14 +215,9 @@ async def search_games(
             content=query,
             timeout=10,
         )
-        if outbound.is_rate_limited(resp):
-            return provider_result.rate_limited("igdb", status=resp.status_code)
-        if resp.status_code != 200:
-            # 401 here is #49's remainder — the *search* call has its own
-            # rejection channel that this task deliberately does not open, so
-            # it still reads as a miss. See the design plan's `## Unblocks`.
-            logger.debug("IGDB search failed: HTTP %d — %s", resp.status_code, resp.text[:200])
-            return provider_result.no_match("igdb", status=resp.status_code)
+        classified = _classify_search(resp, (client_id, client_secret))
+        if classified is not None:
+            return classified
 
         results = []
         for game in resp.json():
@@ -205,27 +238,31 @@ async def search_game_art(
     *,
     platform: str | None = None,
     limit: int = 5,
-) -> list[dict]:
+) -> provider_result.ProviderResult:
     """Search IGDB for a game's cover and artwork image ids, for the cover
     picker gallery.
 
-    Returns a **list**, one dict per game — like `search_games` and unlike
-    `lookup_game` (dict-or-`None`). Each entry is
-    `{"title", "cover_image_id", "artwork_image_ids"}`, where `cover_image_id`
-    is `None` when the game has no cover and `artwork_image_ids` is capped at
-    3. These are IGDB image ids, not URLs — turning them into display
-    candidates (`url`/`thumbnail`/`source`) is the caller's job in
-    `covers.py`, not this client's.
+    Returns a `ProviderResult` (`provider="igdb"`) whose payload is a
+    **list**, one dict per game — like `search_games` and unlike `lookup_game`
+    (dict-or-`None`), so G45's shape question has the same answer here. Each
+    entry is `{"title", "cover_image_id", "artwork_image_ids"}`, where
+    `cover_image_id` is `None` when the game has no cover and
+    `artwork_image_ids` is capped at 3. These are IGDB image ids, not URLs —
+    turning them into display candidates (`url`/`thumbnail`/`source`) is the
+    caller's job in `covers.py`, not this client's.
 
-    `[]` on anything that goes wrong: no token, a rejected credential, non-200,
-    a malformed JSON body, or a transport exception. This never raises — the
-    cover picker's `covers.search_covers` says the same of itself
-    (`app/services/covers.py`), and both contracts change together or not at
-    all.
+    **This never raises**, which is the half of the old contract that stays.
+    What changed is the other half: it no longer answers `[]` for everything
+    that went wrong. A non-`found` token result is returned as it stands; the
+    search leg is classified by `_classify_search` exactly as `search_games`'
+    is (including the token eviction on a rejection); a malformed body or a
+    transport exception is `transport_failed`; and a 200 with no games is
+    `no_match`. `covers.search_covers` carries the outcome onward, so the
+    cover picker can tell a rejected key from a genuine miss.
     """
     token_result = await _get_token(client_id, client_secret, client)
     if not token_result.found:
-        return []
+        return token_result
     token = token_result.payload
 
     headers = {
@@ -251,9 +288,9 @@ async def search_game_art(
             content=query,
             timeout=10,
         )
-        if resp.status_code != 200:
-            logger.debug("IGDB art search failed: HTTP %d — %s", resp.status_code, resp.text[:200])
-            return []
+        classified = _classify_search(resp, (client_id, client_secret))
+        if classified is not None:
+            return classified
 
         results = []
         for game in resp.json():
@@ -266,10 +303,12 @@ async def search_game_art(
                     a["image_id"] for a in artworks if a.get("image_id")
                 ][:3],
             })
-        return results
+        if not results:
+            return provider_result.no_match("igdb", status=resp.status_code)
+        return provider_result.found("igdb", results, status=resp.status_code)
     except Exception:
         logger.debug("IGDB art search error", exc_info=True)
-        return []
+        return provider_result.transport_failed("igdb")
 
 
 async def lookup_game(

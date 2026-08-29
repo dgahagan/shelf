@@ -13,7 +13,7 @@ its call actually sees.
 import httpx
 import pytest
 
-from app.services import igdb, provider_result, tmdb, upcitemdb
+from app.services import igdb, outbound, provider_result, tmdb, upcitemdb
 from app.services import upc as upc_svc
 from app.database import get_db
 from app.routers import items_common
@@ -1113,16 +1113,20 @@ class TestQuotaNotice:
         assert "rate-limiting us right now" not in resp.text
         assert len(calls) == 1, calls
 
-    def test_a_transport_failure_stops_the_ladder_and_reads_as_a_miss(
+    def test_a_transport_failure_stops_the_ladder_and_says_so(
         self, editor_client, db, monkeypatch, stub_upc
     ):
-        """The one behaviour this plan changed outright, pinned as decided.
+        """The ladder-stop property is this test's point and must survive.
 
-        Today `tmdb.lookup_by_title` answered `None` on a timeout and the
+        `tmdb.lookup_by_title` once answered `None` on a timeout and the
         ladder tried the next rung — a second `HTTP_TIMEOUT` against a host
-        that had just proved unreachable. It stops now. The card still says
-        "no match": the connectivity card belongs to the *product* lookup,
-        which succeeded, so the disc is filed rather than refused.
+        that had just proved unreachable. It stops now, which is what
+        `len(calls) == 1` pins.
+
+        Issue #49 changed only what the card *says*: the disc is still filed
+        rather than refused (the connectivity card belongs to the *product*
+        lookup, which succeeded), but the enrichment notice now names the
+        unreachable provider instead of claiming a miss.
         """
         stub_upc(GOODFELLAS)
         calls = []
@@ -1137,8 +1141,14 @@ class TestQuotaNotice:
         resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
 
         assert resp.status_code == 200
-        assert "no TMDb match for this barcode" in resp.text
-        assert "check connectivity" not in resp.text
+        assert "could not reach TMDb" in resp.text
+        assert "no TMDb match for this barcode" not in resp.text
+        # Still the *added* card, not the connectivity card: the product
+        # lookup succeeded, so the disc is filed. Assert the connectivity
+        # card's own message, not the bare phrase — the added card's new
+        # offline copy says "Check connectivity" too, and a pin that passed
+        # only on capitalisation would defend nothing (G31).
+        assert "Metadata lookup failed" not in resp.text
         assert len(calls) == 1, calls
 
     def test_a_genuine_miss_still_renders_the_no_match_copy_byte_identically(
@@ -1175,6 +1185,42 @@ class TestQuotaNotice:
 
         assert resp.status_code == 200
         assert "rate-limiting us right now" in resp.text
+
+    def test_a_search_leg_401_reaches_the_rejected_arm_through_the_real_client(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """The reachability pin: `items_common.py`'s `rejected` branch was
+        unreachable from the game path until now, so the arm read as live copy
+        that nothing could produce (G65's corollary, the other way round).
+
+        Driven through the **real** `igdb.search_games` — `outbound.fetch`
+        answers the token exchange 200 and the `/games` search 401 — because a
+        pin that stubs the client is blind to the client's own classification,
+        which is the whole thing this task changed (G31).
+        """
+        stub_upc(MARIO)
+        _set_igdb_creds(monkeypatch)
+        igdb._token_cache.clear()
+
+        async def _fetch(client, method, url, **kwargs):
+            if url == igdb.TWITCH_TOKEN_URL:
+                return _StubResp(200, {"access_token": "tok", "expires_in": 3600})
+            return _StubResp(401)
+
+        monkeypatch.setattr(outbound, "fetch", _fetch)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": "video_game"}
+        )
+
+        assert resp.status_code == 200
+        assert "IGDB rejected the configured key" in resp.text
+        # Filed with the title the product lookup gave, not refused.
+        row = db.execute("SELECT * FROM items WHERE media_type = 'video_game'").fetchone()
+        assert row is not None
+        assert row["title"]
+        # And the dead token is gone, so the user's next scan re-exchanges.
+        assert ("cid", "secret") not in igdb._token_cache
 
 
 class TestAMediaTypeWithNoProvider:

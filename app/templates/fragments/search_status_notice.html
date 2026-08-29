@@ -1,0 +1,23 @@
+{# The one notice all four search surfaces render: the two title-search
+   fragments, the game one, and the cover picker.
+
+   G58: the router hands in a bare state name and a bare provider label, and
+   every word of copy — plus the Settings anchor — lives here, where Jinja
+   escapes it. These fragments also render provider-supplied titles, so a
+   notice assembled in Python and marked `|safe` would be one interpolation
+   away from stored XSS.
+
+   `no_credential` deliberately has no arm. Every route that renders this
+   checks its provider's credentials before making a request, so the state
+   cannot arrive here, and a live-looking arm nothing can produce is the
+   defect G65's corollary exists to name. `no_match` has none either: the
+   route projects through `scan_outcome.not_found_status`, which squelches it
+   so the surface's own "nothing found" line is not said twice in two
+   vocabularies. #}
+{% if search_status == 'rejected' %}
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ search_provider }} rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations.</p>
+{% elif search_status == 'quota' %}
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ search_provider }} is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later.</p>
+{% elif search_status == 'offline' %}
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">Could not reach {{ search_provider }} &mdash; check connectivity and try again.</p>
+{% endif %}

@@ -46,6 +46,11 @@ pre-ISBN books, retro game cartridges, discs with a scuffed UPC:
 - **Video games** — IGDB title search (needs IGDB credentials); filter by
   platform for "Super Mario Bros." ambiguity.
 
+An empty result box tells you *why* it is empty, in the same words the scan
+card uses: a rejected key, a provider that is rate-limiting us, or a provider
+Shelf could not reach at all. "No books found for …" now means only what it
+says — the provider answered and genuinely had nothing.
+
 ## Manual add
 
 **Add manually** opens a blank item form for anything lookup can't find: a
