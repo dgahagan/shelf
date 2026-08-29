@@ -24,6 +24,7 @@ from app.services.item_write import insert_item
 from app.services import openlibrary, googlebooks, hardcover, covers, national
 from app.services import detect
 from app.services import cover_queue
+from app.services import scan_outcome
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
 from app.services import authors as authors_svc
@@ -372,62 +373,69 @@ async def scan_isbn(
         google_api_key = get_setting(db, "google_books_api_key") or None
 
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
-    try:
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            metadata, source, hc_ids, lookup_rate_limited = await items_common._lookup_metadata(
-                isbn13, hc_token, client, google_api_key=google_api_key
-            )
+    # No try/except around this block any more: every leg returns
+    # `transport_failed` rather than raising, and `_fetch_preview_cover`
+    # swallows everything of its own, so the old `httpx.TimeoutException` /
+    # `NetworkError` arms had become dead code that reads as live (G47). The
+    # connectivity card is rendered from the cascade outcome below; the
+    # separate "timed out — try again" wording collapses into it.
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        metadata, source, hc_ids, cascade = await items_common._lookup_metadata(
+            isbn13, hc_token, client, google_api_key=google_api_key
+        )
 
-            if not metadata:
-                preview_cover = await items_common._fetch_preview_cover(isbn13, client)
-                items_common._log_scan(isbn13, media_type, "not_found", mode=mode)
+        if not metadata:
+            # G47 applied to the book path: a cascade that could not reach
+            # anybody is not a book that does not exist. Only an Open
+            # Library exception used to reach this card; the other three
+            # legs swallowed their transport failures into `not_found`.
+            if cascade.outcome == "transport_failed":
+                logger.warning("Network error looking up ISBN %s", isbn13)
+                items_common._log_scan(isbn13, media_type, "error", mode=mode)
                 return templates.TemplateResponse(
                     request, "fragments/scan_result.html",
-                    {
-                        "status": "not_found", "isbn": isbn13, "media_type": media_type,
-                        "message": "Not found — add manually below",
-                        "preview_cover": preview_cover,
-                        # The same vocabulary the added-card notice uses, and no
-                        # provider name: four sources feed this cascade and any
-                        # subset can be starved, so naming one would be a guess.
-                        # Nothing else about this branch changes — the user's
-                        # options are the same, only the explanation is new.
-                        "enrich_status": "quota" if lookup_rate_limited else None,
-                        "locations": items_common._manual_form_locations(),
-                    },
+                    {"status": "error", "isbn": isbn13,
+                     "message": "Network error during lookup — check connectivity"},
                 )
 
-            item_id = items_common._save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
+            preview_cover = await items_common._fetch_preview_cover(isbn13, client)
+            items_common._log_scan(isbn13, media_type, "not_found", mode=mode)
+            # The same vocabulary the added-card notice uses, projected
+            # from the cascade record — so `rejected` reaches the arm
+            # `fragments/scan_result.html` has always carried for it and
+            # the card can name the credential that was refused.
+            # `not_found_status`, not `enrich_status`: this card's own
+            # message already says "Not found", so a `no_match` notice
+            # would repeat it. Both UPC branches project the same way.
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {
+                    "status": "not_found", "isbn": isbn13, "media_type": media_type,
+                    "message": "Not found — add manually below",
+                    "preview_cover": preview_cover,
+                    "enrich_status": scan_outcome.not_found_status(cascade),
+                    "enrich_provider": scan_outcome.provider_label(cascade),
+                    "locations": items_common._manual_form_locations(),
+                },
+            )
 
-            # Wishlist mode: set owned = 0
-            if mode == "wishlist":
-                with get_db() as db:
-                    db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
+        item_id = items_common._save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
 
-            # Queue the cover instead of downloading it in-request. The
-            # hints are the exact three inputs the download used to take, so
-            # the worker runs the same chain this request would have.
-            hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
-            cover_queue.enqueue(item_id, hints={
-                "cover_url": metadata.get("cover_url") if source != "hardcover" else None,
-                "cover_id": metadata.get("cover_id"),
-                "hardcover_cover_url": hc_cover,
-            })
+        # Wishlist mode: set owned = 0
+        if mode == "wishlist":
+            with get_db() as db:
+                db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
 
-    except httpx.TimeoutException:
-        logger.warning("Timeout looking up ISBN %s", isbn13)
-        items_common._log_scan(isbn13, media_type, "error", mode=mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": isbn13, "message": "Metadata lookup timed out — try again"},
-        )
-    except httpx.NetworkError:
-        logger.warning("Network error looking up ISBN %s", isbn13)
-        items_common._log_scan(isbn13, media_type, "error", mode=mode)
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": isbn13, "message": "Network error during lookup — check connectivity"},
-        )
+        # Queue the cover instead of downloading it in-request. The
+        # hints are the exact three inputs the download used to take, so
+        # the worker runs the same chain this request would have.
+        hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
+        cover_queue.enqueue(item_id, hints={
+            "cover_url": metadata.get("cover_url") if source != "hardcover" else None,
+            "cover_id": metadata.get("cover_id"),
+            "hardcover_cover_url": hc_cover,
+        })
+
 
     status = "wishlisted" if mode == "wishlist" else "added"
     items_common._log_scan(isbn13, media_type, status, item_id, mode)

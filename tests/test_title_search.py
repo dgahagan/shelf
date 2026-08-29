@@ -187,9 +187,9 @@ class TestTmdbLookupByTitle:
         async with httpx.AsyncClient() as client:
             result = await lookup_by_title("The Matrix", "key", client)
 
-        assert result is not None
-        assert result["title"] == "The Matrix"
-        assert result["publish_year"] == 1999
+        assert result.found
+        assert result.payload["title"] == "The Matrix"
+        assert result.payload["publish_year"] == 1999
 
     @respx.mock
     @pytest.mark.asyncio
@@ -199,7 +199,7 @@ class TestTmdbLookupByTitle:
         )
         async with httpx.AsyncClient() as client:
             result = await lookup_by_title("nonexistent", "key", client)
-        assert result is None
+        assert result.outcome == "no_match"
 
 
 class TestAutoNeverReachesTheDatabase:

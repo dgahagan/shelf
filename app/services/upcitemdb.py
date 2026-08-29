@@ -23,11 +23,10 @@ film path (TMDb) and the game path (IGDB) climb this same ladder.
 
 import logging
 import re
-from collections.abc import Callable
 
 import httpx
 
-from app.services import outbound
+from app.services import outbound, provider_result
 
 logger = logging.getLogger(__name__)
 
@@ -138,54 +137,50 @@ def search_queries(raw: str) -> list[str]:
     return ladder
 
 
-async def lookup(
-    upc: str, client: httpx.AsyncClient,
-    *, on_rate_limit: Callable[[], None] | None = None,
-) -> dict | None:
-    """Look up a barcode, returning the first matching retail product.
+async def lookup(upc: str, client: httpx.AsyncClient) -> provider_result.ProviderResult:
+    """Look up a barcode, returning a `ProviderResult` (`provider="upcitemdb"`).
 
-    Returns `{"title", "category", "brand", "images"}` — the whole useful part
-    of the response, not just the title.
+    `found`'s payload is `{"title", "category", "brand", "images"}` — the
+    whole useful part of the response, not just the title.
 
-    `None` for every failure that means "no such record": a non-200, a
+    `no_match` for every failure that means "no such record": a non-200, a
     malformed body, an empty `items` list. That is the contract the bare catch
     existed for — an unresolvable UPC must reach the scan page's "not found"
     manual-add form rather than an error.
 
-    **A transport failure is not one of those** and propagates:
-    `httpx.TimeoutException` and `httpx.NetworkError` reach `_scan_upc`'s
-    handler, which renders the connectivity card and logs the scan as `error`.
-    Offline is not "no such record" (GOTCHAS G47).
+    **A transport failure is not one of those.** `httpx.TimeoutException` and
+    `httpx.NetworkError` are recorded as `transport_failed` rather than folded
+    into `no_match`, so `_scan_upc` can render the connectivity card and log
+    the scan as `error`. Offline is not "no such record" (GOTCHAS G47).
 
-    `on_rate_limit`, when given, is called once if the provider answered 429 —
-    a rate-limited product lookup is not "unknown barcode" either.
+    `rate_limited` for a 429 — a rate-limited product lookup is not "unknown
+    barcode" either.
     """
     try:
         resp = await outbound.fetch(
             client, "GET", UPC_LOOKUP_URL, params={"upc": upc}, timeout=10,
         )
-        if on_rate_limit is not None and outbound.is_rate_limited(resp):
-            on_rate_limit()
-        if resp.status_code != 200:
+        classified = provider_result.classify_response("upcitemdb", resp)
+        if classified is not None:
             logger.debug("UPC Item DB lookup failed: HTTP %d", resp.status_code)
-            return None
+            return classified
         items = resp.json().get("items", [])
         if not items:
-            return None
+            return provider_result.no_match("upcitemdb", status=resp.status_code)
         item = items[0]
-        return {
+        return provider_result.found("upcitemdb", {
             "title": item.get("title"),
             "category": item.get("category"),
             "brand": item.get("brand"),
             "images": item.get("images") or [],
-        }
+        }, status=resp.status_code)
     except (httpx.TimeoutException, httpx.NetworkError):
-        # Offline is not "no such record". `_scan_upc`'s handler renders the
-        # connectivity card and logs the scan as `error`; telling a self-hoster
-        # with broken DNS that the disc was not found sends them looking for
-        # the wrong thing, and makes the scan log agree with the wrong story.
-        # GOTCHAS G47.
-        raise
+        # Offline is not "no such record". `_scan_upc` renders the
+        # connectivity card and logs the scan as `error` off this outcome;
+        # telling a self-hoster with broken DNS that the disc was not found
+        # sends them looking for the wrong thing, and makes the scan log
+        # agree with the wrong story. GOTCHAS G47.
+        return provider_result.transport_failed("upcitemdb")
     except Exception:
         logger.debug("UPC Item DB lookup error", exc_info=True)
-        return None
+        return provider_result.no_match("upcitemdb")

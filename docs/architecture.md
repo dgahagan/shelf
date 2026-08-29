@@ -103,7 +103,11 @@ until a provider answers. Both the film and game paths climb that one ladder.
 TMDb accepts either credential type: a 32-hex v3 API Key authenticates as a
 query parameter, anything else as a Bearer token, decided in one helper that
 the Settings key test shares. A credential rejection is distinguishable from
-an empty result set, and files the item title-only rather than silently.
+an empty result set, and files the item title-only rather than silently. The
+ladder stops at the first rung that reports a rejection, a rate limit or a
+transport failure instead of trying a shorter query — the same credential
+cannot answer differently on a shorter phrasing of the same request, and a
+host that just timed out costs another round trip per retry.
 
 **Covers** (`services/covers.py`) cascade: Open Library → Hardcover → DNB →
 Amazon → Google Books → IGDB, with manual upload and a search picker. Game
@@ -181,31 +185,59 @@ A state with no arm in the template renders nothing rather than raising, so
 test. The same `quota` vocabulary appears on the `not_found` card, for an ISBN
 whose cascade was starved and for a UPC whose *product* lookup was.
 
-Telling a rejected credential from a miss needs the client to say so, which is
-why `tmdb.lookup_by_title` raises `TmdbAuthError` and `igdb.search_games`
-raises `IgdbAuthError`. Only those two entry points propagate: IGDB's other
-three each absorb it, because their callers have no handler and their return
-shapes differ. Likewise `upcitemdb.lookup` lets `httpx.TimeoutException` and
-`httpx.NetworkError` out while still swallowing every "no such record" failure
-to `None` — offline and "unknown barcode" are not the same answer, and the
-scan log records the first as `error` rather than `not_found`.
+`services/scan_outcome.py`'s `enrich_status` is a **projection** over one
+`ProviderResult` (plus a `has_provider` flag), not a reassembly from booleans
+the caller had to keep in step — a branch that holds no flags at all can still
+call it and get back one of the five states above. Its sibling
+`not_found_status` answers the same projection but suppresses `no_match`,
+because a "Not found" card already says that in its own words; `provider_label`
+reads the display name straight off the record's `provider` field. Because the
+projection needs nothing but the record itself, a rejected Hardcover or
+Google Books credential now renders on the book scan path too — on the
+"Not found" card, since the ISBN cascade has no further source to fall back
+to — the same way a rejected TMDb or IGDB credential already did on the film
+and game paths.
+
+Every metadata client answers with a `ProviderResult`
+(`app/services/provider_result.py`) instead of raising or returning a bare
+value: one of `found`, `no_match`, `no_credential`, `rejected`, `rate_limited`
+or `transport_failed`, carrying the provider that answered and the HTTP
+status where there is one. `classify_response` turns a raw response the
+client did not have to parse into that outcome — an auth status (401/403 for
+Hardcover; 400, 401 or 403 for Google Books, which answers a bad key with 400
+rather than 401 or 403) outranks a 429, so a status that could be read as
+either resolves to the one the user can act on. No client raises for a
+rejected credential or a spent quota any more.
 
 Three of the four ISBN sources never enter `outbound.fetch` at all: they call
-`outbound.acquire` and issue `client.get` themselves. So the rate-limit signal
-is exported as a **predicate over a response** (`outbound.is_rate_limited`)
-that each client applies to the response it already holds, rather than as a
-marker set inside `fetch` — which would have been structurally unreachable for
-three quarters of the cascade. Each source reports the hit through an optional
-`on_rate_limit` callback, defaulted to `None` so every pre-existing caller is
-unchanged.
+`outbound.acquire` and issue `client.get` themselves, then run the response
+they already hold through `classify_response`. A transport failure — a dead
+socket or a timeout — is caught inside the client and returned as
+`transport_failed`, the same as any other outcome; no source propagates one,
+Open Library included, so `_lookup_metadata` and the *Add by ISBN* path both
+call the cascade without a handler and still see every leg's answer. The
+connectivity card is rendered whenever the cascade's own outcome is
+`transport_failed`, which needs no source to raise — the record already
+says so, and a genuinely offline box still reaches it.
 
-That signal is the *only* thing a cascade source raises about: all four now
-match `dnb.lookup`'s never-raises contract, `googlebooks.lookup` included.
-`_lookup_metadata` and the *Add by ISBN* path both call them without a
-handler, so a source that threw would abandon the remaining sources and
-surface as the connectivity card even while the others were reachable. A
-genuinely offline box still reaches that card — `openlibrary.lookup`, first in
-the cascade, still propagates transport failures.
+Because `_lookup_metadata` wraps no leg in `except Exception` any more, "no
+source propagates" has to cover the *parse* as well as the request: an
+unreadable body — a proxy page returned as 200, a MARC record shaped in a way
+the field mapping did not anticipate — is caught inside the client and
+returned as `no_match`, so the cascade falls through to the next source
+instead of failing the scan. Open Library's follow-up author and description
+requests sit outside that guard on purpose: they run after the edition is
+already a hit, so a dead socket there costs those two fields and leaves the
+hit standing, rather than being laundered into "no such book".
+
+`provider_result.combine` folds a cascade's legs into the one record a caller
+reports: a hit wins outright; otherwise the most actionable failure wins —
+`rejected` outranks `rate_limited`, which outranks `transport_failed`, which
+outranks `no_match`, which outranks `no_credential` (a leg that was never
+asked should not speak over one that was asked and refused) — and the winner
+is returned **as it stands**, keeping the leg's own provider so the card can
+name the credential that was refused. The ISBN cascade, the UPC product
+lookup and the TMDb/IGDB query ladder above all resolve through it.
 
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
 external host has a minimum interval matching its published rate limit,

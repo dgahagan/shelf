@@ -1,11 +1,10 @@
 """TMDb API client for movie/TV metadata lookup."""
 
 import re
-from collections.abc import Callable
 
 import httpx
 
-from app.services import outbound
+from app.services import outbound, provider_result
 
 TMDB_SEARCH_URL = "https://api.themoviedb.org/3/search/movie"
 TMDB_IMAGE_ROOT = "https://image.tmdb.org/t/p"
@@ -22,15 +21,6 @@ _V3_KEY = re.compile(r"[0-9a-fA-F]{32}")
 # as a rejection — they already share `_auth`, and this is the other half of
 # the same "one decision in one place" argument. 403 is a suspended key.
 _AUTH_STATUSES = (401, 403)
-
-
-class TmdbAuthError(Exception):
-    """TMDb rejected the credential (HTTP 401/403).
-
-    Distinct from "no such film", which is a `None` return. Without this the
-    two are indistinguishable, which is exactly how an auth failure came to be
-    filed as a bare title.
-    """
 
 
 def _auth(api_key: str) -> tuple[dict, dict]:
@@ -58,17 +48,19 @@ def image_url(file_path: str, size: str = "w500") -> str:
 
 async def lookup_by_title(
     title: str, api_key: str, client: httpx.AsyncClient,
-    *, on_rate_limit: Callable[[], None] | None = None,
-) -> dict | None:
-    """Search TMDb by title, return first result as metadata dict.
+) -> provider_result.ProviderResult:
+    """Search TMDb by title, returning a `ProviderResult` (`provider="tmdb"`).
 
-    Raises `TmdbAuthError` when TMDb rejects the credential; returns `None` for
-    an empty result set or any other failure. Only the request and the parse sit
-    inside the swallow-all handler, so the auth signal cannot be eaten by it.
-
-    `on_rate_limit`, when given, is called once if the provider answered 429 —
-    after the auth-status raise, so a rejected key still wins over a quota
-    signal on the same response.
+    `found`'s payload is today's metadata dict. `rejected` for 401/403
+    (`_AUTH_STATUSES`) — distinct from "no such film", which is `no_match`;
+    without that distinction an auth failure used to be filed as a bare
+    title. `rate_limited` for a 429, checked after the auth-status
+    classification so a rejected key still wins over a quota signal on the
+    same response (`provider_result.classify_response`'s own ordering).
+    `transport_failed` for a dead socket or any other exception raised by the
+    request itself; `no_match` for an empty result set, a malformed body, or
+    any other non-200. Only the request and the parse sit inside their own
+    catch-all handlers, so the auth/rate-limit signal cannot be eaten by them.
     """
     extra_params, headers = _auth(api_key)
     try:
@@ -80,31 +72,27 @@ async def lookup_by_title(
             timeout=10,
         )
     except Exception:
-        return None
+        return provider_result.transport_failed("tmdb")
 
-    if resp.status_code in _AUTH_STATUSES:
-        raise TmdbAuthError(f"TMDb rejected the credential (HTTP {resp.status_code})")
-
-    if on_rate_limit is not None and outbound.is_rate_limited(resp):
-        on_rate_limit()
+    classified = provider_result.classify_response("tmdb", resp, auth_statuses=_AUTH_STATUSES)
+    if classified is not None:
+        return classified
 
     try:
-        if resp.status_code != 200:
-            return None
         results = resp.json().get("results", [])
         if not results:
-            return None
+            return provider_result.no_match("tmdb", status=resp.status_code)
         movie = results[0]
         cover_url = image_url(movie["poster_path"]) if movie.get("poster_path") else None
         year = movie.get("release_date", "")[:4]
-        return {
+        return provider_result.found("tmdb", {
             "title": movie.get("title", ""),
             "description": movie.get("overview"),
             "publish_year": int(year) if year.isdigit() else None,
             "cover_url": cover_url,
-        }
+        }, status=resp.status_code)
     except Exception:
-        return None
+        return provider_result.no_match("tmdb", status=resp.status_code)
 
 
 async def search_movies(query: str, api_key: str, client: httpx.AsyncClient, limit: int = 10) -> list[dict]:
@@ -155,10 +143,11 @@ async def search_posters(tmdb_id: int, api_key: str, client: httpx.AsyncClient, 
     (`url`/`thumbnail`/`source`) is the caller's job, not this client's.
 
     `[]` on anything that goes wrong: non-200 (401/403 included), a malformed
-    JSON body, or a transport exception. This never raises `TmdbAuthError` —
-    unlike `lookup_by_title`, a rejected credential is indistinguishable here
-    from a movie with no posters, matching `search_movies`' existing contract.
-    That is a deliberate, narrower scope for this task, not an oversight.
+    JSON body, or a transport exception. This never signals a rejected
+    credential the way `lookup_by_title` does — unlike that one, a rejected
+    credential is indistinguishable here from a movie with no posters,
+    matching `search_movies`' existing contract. That is a deliberate,
+    narrower scope for this task, not an oversight.
     """
     extra_params, headers = _auth(api_key)
     try:

@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from app.database import get_db
+from app.services import provider_result
 from tests.conftest import _insert_item, _insert_borrower, _insert_location
 
 
@@ -257,7 +258,7 @@ class TestQuickRateMode:
 class TestGoogleBooksCredentialPropagation:
     def test_env_key_reaches_scan_lookup(self, admin_client, monkeypatch):
         monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "scan-google-key")
-        lookup = AsyncMock(return_value=(None, "manual", {}, False))
+        lookup = AsyncMock(return_value=(None, "manual", {}, provider_result.no_match("openlibrary")))
         with patch("app.routers.items_common._lookup_metadata", new=lookup), \
              patch("app.routers.items_common._fetch_preview_cover", new=AsyncMock(return_value=None)):
             admin_client.post("/api/scan", data={
@@ -268,7 +269,7 @@ class TestGoogleBooksCredentialPropagation:
 
     def test_env_key_reaches_add_by_isbn_lookup(self, editor_client, monkeypatch):
         monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "add-google-key")
-        lookup = AsyncMock(return_value=(None, "manual", {}, False))
+        lookup = AsyncMock(return_value=(None, "manual", {}, provider_result.no_match("openlibrary")))
         with patch("app.routers.items_common._lookup_metadata", new=lookup):
             editor_client.post("/api/books/add", data={
                 "isbn": "9780000099979", "media_type": "book",
@@ -284,7 +285,7 @@ class TestManualAddForm:
     def _scan_unknown(self, client):
         with patch(
             "app.routers.items_common._lookup_metadata",
-            new=AsyncMock(return_value=(None, "", {}, False)),
+            new=AsyncMock(return_value=(None, "", {}, provider_result.no_match("openlibrary"))),
         ), patch(
             "app.routers.items_common._fetch_preview_cover",
             new=AsyncMock(return_value=None),
@@ -354,7 +355,7 @@ class TestScanCoverQueue:
     def _scan(self, client, isbn, metadata, source="openlibrary", hc_ids=None, mode="add"):
         with patch(
             "app.routers.items_common._lookup_metadata",
-            AsyncMock(return_value=(metadata, source, hc_ids or {}, False)),
+            AsyncMock(return_value=(metadata, source, hc_ids or {}, provider_result.found("openlibrary", metadata))),
         ), patch(
             "app.services.covers.download_cover", AsyncMock(return_value="covers/x.jpg")
         ) as download:
@@ -501,7 +502,8 @@ class TestTheBarcodeOutranksTheDropdown:
         from app.routers import items_common
 
         async def _lookup(isbn13, hc_token, client, *, google_api_key=None):
-            return ({"title": "A Real Novel", "authors": "Someone"}, "openlibrary", {}, False)
+            meta = {"title": "A Real Novel", "authors": "Someone"}
+            return (meta, "openlibrary", {}, provider_result.found("openlibrary", meta))
 
         monkeypatch.setattr(items_common, "_lookup_metadata", _lookup)
 

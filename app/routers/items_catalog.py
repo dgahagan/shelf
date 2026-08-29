@@ -51,20 +51,21 @@ async def search_games(
         )
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        try:
-            results = await igdb.search_games(
-                q.strip(), igdb_id, igdb_secret, client,
-                platform=platform or None, limit=10,
-            )
-        except igdb.IgdbAuthError:
-            # `search_games` now propagates a rejected credential, and this
-            # route has no other handler — without this it would be a 500.
-            # Same shape as the missing-credential block above it.
-            return HTMLResponse(
-                '<p class="text-sm text-shelf-error">IGDB rejected the configured '
-                'credentials. Check them in <a href="/settings" '
-                'class="text-shelf-accent2 underline">Settings</a>.</p>'
-            )
+        result = await igdb.search_games(
+            q.strip(), igdb_id, igdb_secret, client,
+            platform=platform or None, limit=10,
+        )
+    if result.outcome == "rejected":
+        # `search_games` reports a rejected credential as an outcome, and this
+        # route has nothing else to say about it — same shape as the
+        # missing-credential block above. A quota miss still renders the empty
+        # result list; roadmap cluster b owns telling those two apart here.
+        return HTMLResponse(
+            '<p class="text-sm text-shelf-error">IGDB rejected the configured '
+            'credentials. Check them in <a href="/settings" '
+            'class="text-shelf-accent2 underline">Settings</a>.</p>'
+        )
+    results = result.payload or []
 
     return templates.TemplateResponse(
         request, "fragments/game_search_results.html",

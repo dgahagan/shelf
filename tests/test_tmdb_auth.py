@@ -100,29 +100,34 @@ class TestLookupAndTestKeyShareTheBuilder:
 
 
 class TestLookupByTitleAuthSignal:
-    async def test_a_401_raises_rather_than_looking_like_no_such_film(self, fake_fetch):
+    async def test_a_401_is_rejected_rather_than_looking_like_no_such_film(self, fake_fetch):
         fake_fetch.return_value = StubResponse(401, json_data={"status_message": "Invalid API key"})
-        with pytest.raises(tmdb.TmdbAuthError):
-            await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "rejected"
+        assert result.provider == "tmdb"
 
-    async def test_a_403_raises_too(self, fake_fetch):
+    async def test_a_403_is_rejected_too(self, fake_fetch):
         fake_fetch.return_value = StubResponse(403)
-        with pytest.raises(tmdb.TmdbAuthError):
-            await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "rejected"
 
-    async def test_an_empty_result_set_is_still_none(self, fake_fetch):
+    async def test_an_empty_result_set_is_no_match(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"results": []})
-        assert await tmdb.lookup_by_title("Dune", V4_TOKEN, object()) is None
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "no_match"
+        assert result.payload is None
 
-    async def test_a_500_is_still_none(self, fake_fetch):
+    async def test_a_500_is_no_match(self, fake_fetch):
         fake_fetch.return_value = StubResponse(500)
-        assert await tmdb.lookup_by_title("Dune", V4_TOKEN, object()) is None
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "no_match"
 
-    async def test_a_transport_error_is_still_none(self, fake_fetch):
+    async def test_a_transport_error_is_transport_failed(self, fake_fetch):
         fake_fetch.side_effect = RuntimeError("boom")
-        assert await tmdb.lookup_by_title("Dune", V4_TOKEN, object()) is None
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "transport_failed"
 
-    async def test_a_hit_still_returns_the_metadata_dict(self, fake_fetch):
+    async def test_a_hit_is_found_and_carries_the_metadata_dict(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"results": [{
             "title": "The Matrix",
             "overview": "A hacker learns the truth.",
@@ -130,7 +135,8 @@ class TestLookupByTitleAuthSignal:
             "poster_path": "/matrix.jpg",
         }]})
         result = await tmdb.lookup_by_title("The Matrix", V3_KEY, object())
-        assert result == {
+        assert result.found
+        assert result.payload == {
             "title": "The Matrix",
             "description": "A hacker learns the truth.",
             "publish_year": 1999,
@@ -144,38 +150,33 @@ class TestLookupByTitleAuthSignal:
 
 
 class TestLookupByTitleRateLimit:
-    """T6 — `lookup_by_title` reports a 429 through `on_rate_limit`."""
+    """T6 — `lookup_by_title` classifies a 429 as `rate_limited`; T4 makes it
+    a `ProviderResult` outcome rather than an `on_rate_limit` callback."""
 
-    async def test_a_429_calls_on_rate_limit_once_and_still_returns_none(self, fake_fetch):
+    async def test_a_429_is_rate_limited_and_payload_is_none(self, fake_fetch):
         fake_fetch.return_value = StubResponse(429)
-        calls = []
-        result = await tmdb.lookup_by_title(
-            "Dune", V4_TOKEN, object(), on_rate_limit=lambda: calls.append(1)
-        )
-        assert result is None
-        assert calls == [1]
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "rate_limited"
+        assert result.payload is None
 
-    async def test_a_401_raises_and_does_not_call_on_rate_limit(self, fake_fetch):
+    async def test_a_401_is_rejected_not_rate_limited(self, fake_fetch):
+        """Rejected outranks rate_limited in `classify_response`'s own order
+        (`test_provider_result.py::TestClassifyResponse.test_auth_outranks_rate_limiting`
+        pins the general case) — this is `lookup_by_title`'s own instance of it:
+        a rejected key must never read as "come back later"."""
         fake_fetch.return_value = StubResponse(401)
-        calls = []
-        with pytest.raises(tmdb.TmdbAuthError):
-            await tmdb.lookup_by_title(
-                "Dune", V4_TOKEN, object(), on_rate_limit=lambda: calls.append(1)
-            )
-        assert calls == []
+        result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
+        assert result.outcome == "rejected"
 
-    async def test_a_200_hit_never_calls_on_rate_limit(self, fake_fetch):
+    async def test_a_200_hit_is_found_not_rate_limited(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"results": [{
             "title": "The Matrix",
             "overview": "A hacker learns the truth.",
             "release_date": "1999-03-30",
             "poster_path": "/matrix.jpg",
         }]})
-        calls = []
-        await tmdb.lookup_by_title(
-            "The Matrix", V3_KEY, object(), on_rate_limit=lambda: calls.append(1)
-        )
-        assert calls == []
+        result = await tmdb.lookup_by_title("The Matrix", V3_KEY, object())
+        assert result.found
 
 
 class TestSearchMoviesAndPostersStayOutOfScope:
@@ -232,8 +233,8 @@ class TestTestKeyMessages:
             result = await tmdb.test_key(V3_KEY, object())
             assert result == {"ok": False, "message": "Invalid API key"}
             fake_fetch.return_value = StubResponse(status)
-            with pytest.raises(tmdb.TmdbAuthError):
-                await tmdb.lookup_by_title("Dune", V3_KEY, object())
+            lookup_result = await tmdb.lookup_by_title("Dune", V3_KEY, object())
+            assert lookup_result.outcome == "rejected"
 
     async def test_500_reports_an_unexpected_response(self, fake_fetch):
         fake_fetch.return_value = StubResponse(500)
@@ -347,7 +348,7 @@ class TestImageUrlRegression:
             "poster_path": "/abc.jpg",
         }]})
         result = await tmdb.lookup_by_title("The Matrix", V3_KEY, object())
-        assert result["cover_url"] == "https://image.tmdb.org/t/p/w500/abc.jpg"
+        assert result.payload["cover_url"] == "https://image.tmdb.org/t/p/w500/abc.jpg"
 
     def test_tmdb_image_base_is_unchanged(self):
         assert tmdb.TMDB_IMAGE_BASE == "https://image.tmdb.org/t/p/w500"

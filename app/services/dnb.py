@@ -18,11 +18,10 @@ import logging
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
-from collections.abc import Callable
 
 import httpx
 
-from app.services import outbound
+from app.services import outbound, provider_result
 
 logger = logging.getLogger(__name__)
 
@@ -162,17 +161,20 @@ def _parse_record(record: ET.Element) -> dict | None:
     return result
 
 
-async def lookup(
-    isbn13: str, client: httpx.AsyncClient,
-    *, on_rate_limit: Callable[[], None] | None = None,
-) -> dict | None:
-    """Look up a book by ISBN-13 via the DNB SRU catalog. Returns metadata dict or None.
+async def lookup(isbn13: str, client: httpx.AsyncClient) -> provider_result.ProviderResult:
+    """Look up a book by ISBN-13 via the DNB SRU catalog.
 
-    Never raises — any HTTP error, non-200 response, or XML parse error is
-    logged at debug level and treated as a miss.
+    Never raises: the request and the response parse are each wrapped in
+    their own catch-all handler, matching `googlebooks.lookup`'s contract —
+    this sits in the ISBN cascade (`items_common._lookup_metadata`), which
+    stopped wrapping its legs in `except Exception` when the clients started
+    returning outcomes, so nothing above here would catch one.
 
-    `on_rate_limit`, when given, is called once if the provider answered 429.
-    Defaulting to `None` keeps every existing caller byte-identical.
+    Returns a `ProviderResult`: `found("dnb", metadata)` on a real hit;
+    `no_match` for a 200 with no title-bearing MARC record, malformed XML, a
+    MARC record the field mapping cannot read, or any other non-200, non-429
+    status; `rate_limited` for a 429; `transport_failed` for any
+    `httpx.HTTPError`.
     """
     await _rate_limit()
     try:
@@ -188,26 +190,29 @@ async def lookup(
         )
     except httpx.HTTPError as exc:
         logger.debug("DNB SRU lookup failed for ISBN %s: %s", isbn13, exc)
-        return None
+        return provider_result.transport_failed("dnb")
 
-    if on_rate_limit is not None and outbound.is_rate_limited(resp):
-        on_rate_limit()
-
-    if resp.status_code != 200:
+    classified = provider_result.classify_response("dnb", resp)
+    if classified is not None:
         logger.debug("DNB SRU lookup failed for ISBN %s: HTTP %d", isbn13, resp.status_code)
-        return None
+        return classified
 
+    # The whole parse — not just `fromstring` — is wrapped in one catch-all,
+    # as `googlebooks.lookup` does. `_parse_record` makes no requests, so this
+    # cannot swallow a transport failure; what it catches is a MARC record
+    # shaped in a way the field mapping did not anticipate, which must fall
+    # through to the next cascade source rather than 500 the scan.
     try:
         root = ET.fromstring(resp.text)
-    except ET.ParseError as exc:
-        logger.debug("DNB SRU lookup: malformed XML for ISBN %s: %s", isbn13, exc)
-        return None
 
-    # Multiple records can come back for one ISBN (reprints/editions) — take
-    # the first with a usable title, as googlebooks.lookup does.
-    marc_records = root.findall(f".//{{{SRU_NS}}}recordData/{{{MARC_NS}}}record")
-    for marc_record in marc_records:
-        parsed = _parse_record(marc_record)
-        if parsed:
-            return parsed
-    return None
+        # Multiple records can come back for one ISBN (reprints/editions) —
+        # take the first with a usable title, as googlebooks.lookup does.
+        marc_records = root.findall(f".//{{{SRU_NS}}}recordData/{{{MARC_NS}}}record")
+        for marc_record in marc_records:
+            parsed = _parse_record(marc_record)
+            if parsed:
+                return provider_result.found("dnb", parsed, status=resp.status_code)
+        return provider_result.no_match("dnb", status=resp.status_code)
+    except Exception:
+        logger.debug("DNB SRU lookup: malformed response for ISBN %s", isbn13, exc_info=True)
+        return provider_result.no_match("dnb", status=resp.status_code)

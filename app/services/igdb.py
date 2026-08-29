@@ -6,11 +6,10 @@ Supports searching games by title + platform, and looking up by IGDB game ID.
 
 import logging
 import time
-from collections.abc import Callable
 
 import httpx
 
-from app.services import outbound
+from app.services import outbound, provider_result
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +30,6 @@ _token_cache: dict[tuple[str, str], tuple[str, float]] = {}
 # 401 and 403 are carried for the same reason TMDb carries them.
 _AUTH_STATUSES = (400, 401, 403)
 
-
-class IgdbAuthError(Exception):
-    """Twitch rejected the IGDB credential pair.
-
-    Distinct from "no such game", which is an empty list. Without this the two
-    are indistinguishable, which is issue #42.
-    """
 
 # Map our platform slugs to IGDB platform IDs
 # See: https://api-docs.igdb.com/#platform
@@ -80,12 +72,22 @@ def image_url(image_id: str, size: str = "t_cover_big") -> str:
     return f"{IGDB_IMAGE_ROOT}/{size}/{image_id}.jpg"
 
 
-async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClient) -> str | None:
-    """Get or refresh the Twitch OAuth token for IGDB access."""
+async def _get_token(
+    client_id: str, client_secret: str, client: httpx.AsyncClient,
+) -> provider_result.ProviderResult:
+    """Get or refresh the Twitch OAuth token for IGDB access.
+
+    Returns a `ProviderResult` (`provider="igdb"`) whose payload is the token
+    string. `rejected` when Twitch refuses the credential pair, `rate_limited`
+    when the token endpoint 429s — a channel it never had, which is why a
+    spent Twitch quota used to render as "no such game" (issue #49 part 1) —
+    `no_match` for any other non-200, and `transport_failed` for a blip or an
+    unparseable body. Every consumer projects its own contract from this.
+    """
     key = (client_id, client_secret)
     cached = _token_cache.get(key)
     if cached and time.time() < cached[1] - 60:
-        return cached[0]
+        return provider_result.found("igdb", cached[0])
 
     try:
         resp = await outbound.fetch(
@@ -100,27 +102,31 @@ async def _get_token(client_id: str, client_secret: str, client: httpx.AsyncClie
         )
     except Exception:
         logger.debug("IGDB token error", exc_info=True)
-        return None  # a network blip is not a credential problem
+        # A network blip is not a credential problem.
+        return provider_result.transport_failed("igdb")
 
-    # Outside every handler on purpose. Before this the whole body sat in one
-    # `try/except Exception`, so a raise here was caught eight lines later and
-    # a rejected credential was indistinguishable from a miss (issue #42).
-    if resp.status_code in _AUTH_STATUSES:
-        logger.warning("Twitch rejected the IGDB credentials (HTTP %d)", resp.status_code)
-        raise IgdbAuthError(f"Twitch rejected the IGDB credentials (HTTP {resp.status_code})")
+    # Outside the parse handler on purpose. Before this the whole body sat in
+    # one `try/except Exception`, so a raise here was caught eight lines later
+    # and a rejected credential was indistinguishable from a miss (issue #42).
+    classified = provider_result.classify_response(
+        "igdb", resp, auth_statuses=_AUTH_STATUSES
+    )
+    if classified is not None:
+        if classified.outcome == "rejected":
+            logger.warning("Twitch rejected the IGDB credentials (HTTP %d)", resp.status_code)
+        else:
+            logger.warning("IGDB token request failed: HTTP %d", resp.status_code)
+        return classified
 
     try:
-        if resp.status_code != 200:
-            logger.warning("IGDB token request failed: HTTP %d", resp.status_code)
-            return None
         data = resp.json()
         token = data["access_token"]
         expires = time.time() + data.get("expires_in", 3600)
         _token_cache[key] = (token, expires)
-        return token
+        return provider_result.found("igdb", token, status=resp.status_code)
     except Exception:
         logger.debug("IGDB token parse error", exc_info=True)
-        return None
+        return provider_result.transport_failed("igdb")
 
 
 async def search_games(
@@ -130,25 +136,22 @@ async def search_games(
     client: httpx.AsyncClient,
     platform: str | None = None,
     limit: int = 10,
-    *,
-    on_rate_limit: Callable[[], None] | None = None,
-) -> list[dict]:
+) -> provider_result.ProviderResult:
     """Search IGDB for games by title, optionally filtered by platform.
 
-    Returns a list of dicts with: igdb_id, title, platform_names, publish_year,
-    publisher, cover_url, summary.
+    Returns a `ProviderResult` (`provider="igdb"`) whose **payload is a list**
+    of dicts with: igdb_id, title, platform_names, publish_year, publisher,
+    cover_url, summary. It stays a list rather than becoming a single dict —
+    the router unwraps `[0]` itself (GOTCHAS G45).
 
-    **Raises `IgdbAuthError`** when Twitch rejects the credential pair — alone
-    among this module's entry points, because the scan path needs to tell a
-    rejected key from a genuine miss (issue #42). `[]` still means "no such
-    game", and every other failure is still swallowed to `[]`.
-
-    `on_rate_limit`, when given, is called once if the provider answered 429.
-    Defaulting to `None` keeps every existing caller byte-identical.
+    A non-`found` token result is returned **as it stands**, so a rejected
+    credential, a spent Twitch quota and a dead socket each keep their own
+    outcome instead of collapsing into "no such game" (issues #42, #49).
     """
-    token = await _get_token(client_id, client_secret, client)
-    if not token:
-        return []
+    token_result = await _get_token(client_id, client_secret, client)
+    if not token_result.found:
+        return token_result
+    token = token_result.payload
 
     headers = {
         "Client-ID": client_id,
@@ -174,19 +177,24 @@ async def search_games(
             content=query,
             timeout=10,
         )
-        if on_rate_limit is not None and outbound.is_rate_limited(resp):
-            on_rate_limit()
+        if outbound.is_rate_limited(resp):
+            return provider_result.rate_limited("igdb", status=resp.status_code)
         if resp.status_code != 200:
+            # 401 here is #49's remainder — the *search* call has its own
+            # rejection channel that this task deliberately does not open, so
+            # it still reads as a miss. See the design plan's `## Unblocks`.
             logger.debug("IGDB search failed: HTTP %d — %s", resp.status_code, resp.text[:200])
-            return []
+            return provider_result.no_match("igdb", status=resp.status_code)
 
         results = []
         for game in resp.json():
             results.append(_parse_game(game))
-        return results
+        if not results:
+            return provider_result.no_match("igdb", status=resp.status_code)
+        return provider_result.found("igdb", results, status=resp.status_code)
     except Exception:
         logger.debug("IGDB search error", exc_info=True)
-        return []
+        return provider_result.transport_failed("igdb")
 
 
 async def search_game_art(
@@ -215,12 +223,10 @@ async def search_game_art(
     (`app/services/covers.py`), and both contracts change together or not at
     all.
     """
-    try:
-        token = await _get_token(client_id, client_secret, client)
-    except IgdbAuthError:
+    token_result = await _get_token(client_id, client_secret, client)
+    if not token_result.found:
         return []
-    if not token:
-        return []
+    token = token_result.payload
 
     headers = {
         "Client-ID": client_id,
@@ -278,12 +284,10 @@ async def lookup_game(
     (`items_catalog.add_game_from_search`) has no handler, and propagating
     would turn *Add game from search* into a 500.
     """
-    try:
-        token = await _get_token(client_id, client_secret, client)
-    except IgdbAuthError:
+    token_result = await _get_token(client_id, client_secret, client)
+    if not token_result.found:
         return None
-    if not token:
-        return None
+    token = token_result.payload
 
     headers = {
         "Client-ID": client_id,
@@ -325,12 +329,10 @@ async def test_credentials(client_id: str, client_secret: str, client: httpx.Asy
     that surface is the one issues #39 and #41 were about — it does not get a
     500 from this change.
     """
-    try:
-        token = await _get_token(client_id, client_secret, client)
-    except IgdbAuthError:
+    token_result = await _get_token(client_id, client_secret, client)
+    if not token_result.found:
         return {"ok": False, "message": "Authentication failed — check Client ID and Secret"}
-    if not token:
-        return {"ok": False, "message": "Authentication failed — check Client ID and Secret"}
+    token = token_result.payload
 
     # Quick test query
     try:

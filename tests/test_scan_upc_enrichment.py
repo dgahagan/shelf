@@ -13,7 +13,7 @@ its call actually sees.
 import httpx
 import pytest
 
-from app.services import igdb, tmdb, upcitemdb
+from app.services import igdb, provider_result, tmdb, upcitemdb
 from app.services import upc as upc_svc
 from app.database import get_db
 from app.routers import items_common
@@ -52,8 +52,10 @@ def _product(title):
 def stub_upc(monkeypatch):
     """Patch upcitemdb.lookup to return one product, with no network."""
     def _install(title):
-        async def _lookup(upc, client, on_rate_limit=None):
-            return _product(title) if title is not None else None
+        async def _lookup(upc, client):
+            if title is None:
+                return provider_result.no_match("upcitemdb")
+            return provider_result.found("upcitemdb", _product(title))
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
     return _install
 
@@ -65,16 +67,16 @@ class TestDvdScanClimbsTheLadder:
         stub_upc(GOODFELLAS)
         seen = []
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             seen.append(query)
             if len(seen) == 1:
-                return None
-            return {
+                return provider_result.no_match("tmdb")
+            return provider_result.found("tmdb", {
                 "title": "Goodfellas",
                 "description": "Henry Hill rises through the mob.",
                 "publish_year": 1990,
                 "cover_url": None,
-            }
+            })
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -95,9 +97,9 @@ class TestDvdScanClimbsTheLadder:
         stub_upc(GOODFELLAS)
         seen = []
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             seen.append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -112,8 +114,8 @@ class TestDvdScanClimbsTheLadder:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -138,12 +140,14 @@ class TestDvdScanClimbsTheLadder:
         stub_upc(TOM)
         seen = []
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             seen.append(query)
             if query == "Tom":
-                return {"title": "Tom at the Farm", "description": "A different film.",
-                        "publish_year": 2013, "cover_url": None}
-            return None
+                return provider_result.found("tmdb", {
+                    "title": "Tom at the Farm", "description": "A different film.",
+                    "publish_year": 2013, "cover_url": None,
+                })
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -163,8 +167,8 @@ class TestDvdScanClimbsTheLadder:
         """An auth failure must not become a lost scan — nor a 500."""
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            raise tmdb.TmdbAuthError("HTTP 401")
+        async def _lookup_by_title(query, key, client):
+            return provider_result.rejected("tmdb", status=401)
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -183,9 +187,9 @@ class TestDvdScanClimbsTheLadder:
         stub_upc(GOODFELLAS)
         called = []
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             called.append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         monkeypatch.delenv("TMDB_API_KEY", raising=False)
@@ -205,13 +209,11 @@ class TestGameScanClimbsTheSameLadder:
         stub_upc(MARIO)
         seen = []
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
             seen.append(query)
             if len(seen) == 1:
-                return []
-            return [{
+                return provider_result.no_match("igdb")
+            return provider_result.found("igdb", [{
                 "igdb_id": 1,
                 "title": "Super Mario Odyssey",
                 "description": "Mario travels the globe.",
@@ -219,7 +221,7 @@ class TestGameScanClimbsTheSameLadder:
                 "publish_year": 2017,
                 "cover_url": None,
                 "developer": "Nintendo EPD",
-            }]
+            }])
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -242,10 +244,8 @@ class TestGameScanClimbsTheSameLadder:
     ):
         stub_upc(MARIO)
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -269,10 +269,8 @@ class TestGameScanHonoursWishlistMode:
     """
 
     def _stub_no_igdb_hit(self, monkeypatch):
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
 
@@ -332,22 +330,22 @@ class TestUnresolvableAndTitlelessProducts:
         self, editor_client, db, monkeypatch, stub_upc, title, media_type
     ):
         """A 200 with no usable title is not_found, not an IndexError → HTTP 500."""
-        async def _lookup(upc, client, on_rate_limit=None):
-            return {"title": title, "category": None, "brand": None, "images": []}
+        async def _lookup(upc, client):
+            return provider_result.found(
+                "upcitemdb", {"title": title, "category": None, "brand": None, "images": []}
+            )
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
 
         called = []
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             called.append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
             called.append(query)
-            return []
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         monkeypatch.setattr(igdb, "search_games", _search_games)
@@ -380,17 +378,15 @@ class TestTheProductIsFetchedOnce:
     ):
         calls = []
 
-        async def _lookup(code, client, on_rate_limit=None):
+        async def _lookup(code, client):
             calls.append(code)
-            return _product(title)
+            return provider_result.found("upcitemdb", _product(title))
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
@@ -410,9 +406,10 @@ class TestARescanCostsNoOutboundCall:
 
     Moving the whole duplicate check below `upcitemdb.lookup` would make every
     re-scan of an owned disc pay for a network round-trip, and — because that
-    client returns None on any non-200 and swallows every exception (G47) — a
-    429, an exhausted quota or a broken DNS would render "Not found — add
-    manually below" for an item already on the shelf.
+    client's payload is None on any non-200, and offline is now its own
+    `transport_failed` outcome rather than a raise (G47) — a 429, an exhausted
+    quota or a broken DNS would render "Not found — add manually below" for an
+    item already on the shelf.
     """
 
     def _own_the_disc(self, db):
@@ -428,9 +425,9 @@ class TestARescanCostsNoOutboundCall:
         self._own_the_disc(db)
         calls = []
 
-        async def _lookup(code, client, on_rate_limit=None):
+        async def _lookup(code, client):
             calls.append(code)
-            return _product(GOODFELLAS)
+            return provider_result.found("upcitemdb", _product(GOODFELLAS))
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
 
@@ -470,9 +467,9 @@ class TestARescanCostsNoOutboundCall:
         self._own_the_disc(db)
         stub_calls = []
 
-        async def _lookup(code, client, on_rate_limit=None):
+        async def _lookup(code, client):
             stub_calls.append(code)
-            return _product(MARIO)
+            return provider_result.found("upcitemdb", _product(MARIO))
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
 
@@ -502,7 +499,7 @@ class TestScanIntegrityErrorGuard:
     PARAMS = [("dvd", DVD_UPC, GOODFELLAS), ("video_game", GAME_UPC, MARIO)]
 
     def _race_during_lookup(self, monkeypatch, media_type, title):
-        async def _lookup_then_race(code, client, on_rate_limit=None):
+        async def _lookup_then_race(code, client):
             # A *separate* connection, in this thread — the `db` fixture's
             # belongs to the test thread and the route runs in another. This
             # is the rival writer, committing inside the lookup window.
@@ -511,15 +508,13 @@ class TestScanIntegrityErrorGuard:
                     rival, title="Raced In", isbn=None, media_type=media_type,
                     upc=upc_svc.normalize_upc(code),
                 )
-            return _product(title)
+            return provider_result.found("upcitemdb", _product(title))
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup_then_race)
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
@@ -589,15 +584,13 @@ class TestTheProductRecordOutranksTheDropdown:
         """Record which provider each scan reached, and hit neither."""
         seen = {"tmdb": [], "igdb": []}
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             seen["tmdb"].append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
             seen["igdb"].append(query)
-            return []
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         monkeypatch.setattr(igdb, "search_games", _search_games)
@@ -606,8 +599,10 @@ class TestTheProductRecordOutranksTheDropdown:
         return seen
 
     def _scan(self, monkeypatch, editor_client, title, category, hint):
-        async def _lookup(code, client, on_rate_limit=None):
-            return {"title": title, "category": category, "brand": None, "images": []}
+        async def _lookup(code, client):
+            return provider_result.found(
+                "upcitemdb", {"title": title, "category": category, "brand": None, "images": []}
+            )
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
         return editor_client.post(
@@ -707,9 +702,9 @@ class TestEnrichmentNoticeSlot:
         stub_upc(GOODFELLAS)
         called = []
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             called.append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         monkeypatch.delenv("TMDB_API_KEY", raising=False)
@@ -728,8 +723,8 @@ class TestEnrichmentNoticeSlot:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            raise tmdb.TmdbAuthError("HTTP 401")
+        async def _lookup_by_title(query, key, client):
+            return provider_result.rejected("tmdb", status=401)
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -747,8 +742,8 @@ class TestEnrichmentNoticeSlot:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -766,8 +761,8 @@ class TestEnrichmentNoticeSlot:
         """Scanned under 'video_game' but the title's own '[DVD]' tag wins."""
         stub_upc(TOM)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -786,11 +781,11 @@ class TestEnrichmentNoticeSlot:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return {
+        async def _lookup_by_title(query, key, client):
+            return provider_result.found("tmdb", {
                 "title": "Goodfellas", "description": "Henry Hill rises through the mob.",
                 "publish_year": 1990, "cover_url": None,
-            }
+            })
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -818,7 +813,7 @@ class TestFilmBranchProvenance:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
+        async def _lookup_by_title(query, key, client):
             raise AssertionError("must not be called without a key")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
@@ -836,8 +831,8 @@ class TestFilmBranchProvenance:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            raise tmdb.TmdbAuthError("HTTP 401")
+        async def _lookup_by_title(query, key, client):
+            return provider_result.rejected("tmdb", status=401)
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -853,8 +848,8 @@ class TestFilmBranchProvenance:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -871,11 +866,11 @@ class TestFilmBranchProvenance:
         """The other half — the fix must not blank out honest provenance."""
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return {
+        async def _lookup_by_title(query, key, client):
+            return provider_result.found("tmdb", {
                 "title": "Goodfellas", "description": "Henry Hill rises through the mob.",
                 "publish_year": 1990, "cover_url": None,
-            }
+            })
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -890,13 +885,12 @@ class TestFilmBranchProvenance:
 class TestGameBranchEnrichmentNotice:
     """Game branch: the same four distinctions the film branch makes (#42).
 
-    `igdb.search_games` used to collapse a rejected Twitch token, a transport
-    failure and a genuine empty result into one `[]`, so "no match" was
-    rendered for a revoked credential too. It raises `igdb.IgdbAuthError` for
-    the first of those now and reports the third through `on_rate_limit`, so
-    "not configured", "rejected", "rate-limited" and "no match" are four
-    distinct cards. A transport failure is still `[]` and still reads as a
-    miss — that one is genuinely ambiguous from the router.
+    `igdb.search_games` used to collapse a rejected Twitch token, a spent
+    quota, a transport failure and a genuine empty result into one `[]`, so
+    "no match" was rendered for a revoked credential too. Each is its own
+    `ProviderResult` outcome now, so "not configured", "rejected",
+    "rate-limited" and "no match" are four distinct cards. A transport failure
+    still reads as a miss — that one is genuinely ambiguous from the router.
     """
 
     def test_an_empty_igdb_result_renders_the_no_match_copy(
@@ -904,10 +898,8 @@ class TestGameBranchEnrichmentNotice:
     ):
         stub_upc(MARIO)
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -927,18 +919,16 @@ class TestGameBranchEnrichmentNotice:
         """Issue #42: a revoked Twitch credential is no longer filed as a miss.
 
         This test pinned the limitation before; it pins the fix now. Same stub
-        shape as the no-match control above, except `search_games` raises
-        `igdb.IgdbAuthError` instead of returning `[]` — which is exactly what
-        the real client does since the token exchange stopped swallowing its
-        own raise. The control beside it is what makes this mean anything: if
-        both moved together the stub would be what is pinned, not the branch.
+        shape as the no-match control above, except `search_games` answers
+        `rejected` instead of `no_match` — which is exactly what the real
+        client does now that the token exchange returns its own outcome. The
+        control beside it is what makes this mean anything: if both moved
+        together the stub would be what is pinned, not the branch.
         """
         stub_upc(MARIO)
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            raise igdb.IgdbAuthError("Twitch rejected the IGDB credentials (HTTP 401)")
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.rejected("igdb", status=401)
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -959,10 +949,8 @@ class TestGameBranchEnrichmentNotice:
         game is in the collection under its cleaned barcode title."""
         stub_upc(MARIO)
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            raise igdb.IgdbAuthError("Twitch rejected the IGDB credentials (HTTP 401)")
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.rejected("igdb", status=401)
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -985,11 +973,9 @@ class TestGameBranchEnrichmentNotice:
         stub_upc(MARIO)
         called = []
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
             called.append(query)
-            return []
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         monkeypatch.delenv("IGDB_CLIENT_ID", raising=False)
@@ -1008,10 +994,10 @@ class TestGameBranchEnrichmentNotice:
 class TestQuotaNotice:
     """T6 (#42/#44 follow-on) — a 429 from either outbound phase renders the
     quota copy, not a genuine miss. `lookup_rate_limited` in `_scan_upc` is
-    one flag shared by both phases (UPC Item DB, TMDb) via one closure, so
-    these stubs call `on_rate_limit` directly rather than trying to reproduce
-    what a real 429 response looks like end to end — that plumbing is pinned
-    at the client layer in `test_upcitemdb.py` / `test_tmdb_auth.py`.
+    one flag shared by both phases (UPC Item DB, TMDb), so these stubs return
+    a `rate_limited` `ProviderResult` directly rather than trying to
+    reproduce what a real 429 response looks like end to end — that plumbing
+    is pinned at the client layer in `test_upcitemdb.py` / `test_tmdb_auth.py`.
     """
 
     @pytest.mark.parametrize("hint", ("dvd", "video_game"))
@@ -1020,9 +1006,9 @@ class TestQuotaNotice:
     ):
         """Driven through the real client, because the stubbed shape is a lie.
 
-        A 429 is a non-200, so `upcitemdb.lookup` returns `None` after firing
-        the callback — there is no title, `search_queries` yields `[]`, and
-        `_scan_upc` returns on the `if not queries:` branch **above** the
+        A 429 is a non-200, so `upcitemdb.lookup`'s payload is `None` for its
+        `rate_limited` outcome — there is no title, `search_queries` yields
+        `[]`, and `_scan_upc` returns on the `if not queries:` branch **above** the
         `enrich_status` ladder. So the product-phase quota can never reach the
         added-card notice; a stub that both fires the callback and returns a
         product pins a response the client cannot produce.
@@ -1059,10 +1045,8 @@ class TestQuotaNotice:
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            if on_rate_limit:
-                on_rate_limit()
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.rate_limited("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -1072,17 +1056,52 @@ class TestQuotaNotice:
         assert resp.status_code == 200
         assert "rate-limiting us right now" in resp.text
 
-    def test_a_rejected_key_that_is_also_429ing_renders_rejected_not_quota(
+    def test_a_429_stops_the_ladder_and_renders_quota(
         self, editor_client, db, monkeypatch, stub_upc
     ):
-        """Precedence pin: a rejected credential outranks a quota signal seen
-        on the same scan — same ranking the game branch already holds."""
-        stub_upc(GOODFELLAS)
+        """The ladder stops on a quota rung; it does not climb down to a
+        shorter query.
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            if on_rate_limit:
-                on_rate_limit()
-            raise tmdb.TmdbAuthError("HTTP 401")
+        Deliberate, and a change from the callback era: the same throttled
+        host cannot answer differently on a shorter title, and each retry
+        costs another `HTTP_TIMEOUT`. `_first_hit`'s docstring says so.
+
+        `rejected` outranking `quota` is not pinned here any more — a single
+        `ProviderResult` carries one outcome and the stop means one scan
+        cannot see both, so the ranking lives where it is now decided:
+        `test_provider_result.py::test_rejected_outranks_rate_limited` and
+        `test_scan_outcome.py::test_rejected_outranks_quota_through_combine`.
+        """
+        stub_upc(GOODFELLAS)
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            return provider_result.rate_limited("tmdb")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "rate-limiting us right now" in resp.text
+        assert len(calls) == 1, calls
+
+    def test_a_rejected_key_stops_the_ladder_and_renders_rejected(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """A rejected credential does not improve on a shorter query.
+
+        The raise already stopped the ladder here; the record has to keep
+        doing it, or a revoked key costs one outbound call per rung.
+        """
+        stub_upc(GOODFELLAS)
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            return provider_result.rejected("tmdb", status=401)
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -1092,14 +1111,43 @@ class TestQuotaNotice:
         assert resp.status_code == 200
         assert "TMDb rejected the configured key" in resp.text
         assert "rate-limiting us right now" not in resp.text
+        assert len(calls) == 1, calls
+
+    def test_a_transport_failure_stops_the_ladder_and_reads_as_a_miss(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """The one behaviour this plan changed outright, pinned as decided.
+
+        Today `tmdb.lookup_by_title` answered `None` on a timeout and the
+        ladder tried the next rung — a second `HTTP_TIMEOUT` against a host
+        that had just proved unreachable. It stops now. The card still says
+        "no match": the connectivity card belongs to the *product* lookup,
+        which succeeded, so the disc is filed rather than refused.
+        """
+        stub_upc(GOODFELLAS)
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            return provider_result.transport_failed("tmdb")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd"})
+
+        assert resp.status_code == 200
+        assert "no TMDb match for this barcode" in resp.text
+        assert "check connectivity" not in resp.text
+        assert len(calls) == 1, calls
 
     def test_a_genuine_miss_still_renders_the_no_match_copy_byte_identically(
         self, editor_client, db, monkeypatch, stub_upc
     ):
         stub_upc(GOODFELLAS)
 
-        async def _lookup_by_title(query, key, client, on_rate_limit=None):
-            return None
+        async def _lookup_by_title(query, key, client):
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -1115,12 +1163,8 @@ class TestQuotaNotice:
     ):
         stub_upc(MARIO)
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            if on_rate_limit:
-                on_rate_limit()
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.rate_limited("igdb")
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -1171,7 +1215,7 @@ class TestAMediaTypeWithNoProvider:
 
         async def _lookup_by_title(query, key, client, **kwargs):
             calls.append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -1190,7 +1234,7 @@ class TestAMediaTypeWithNoProvider:
 
         async def _lookup_by_title(query, key, client, **kwargs):
             calls.append(query)
-            return None
+            return provider_result.no_match("tmdb")
 
         monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
         _set_tmdb_key(monkeypatch)
@@ -1208,10 +1252,8 @@ class TestAMediaTypeWithNoProvider:
         """`video_game` is in the map, and forks at the game branch anyway."""
         stub_upc(MARIO)
 
-        async def _search_games(
-            query, cid, secret, client, platform=None, limit=10, on_rate_limit=None
-        ):
-            return []
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
@@ -1242,13 +1284,17 @@ class TestATransportFailureIsNotAnAbsentBarcode:
     broken DNS was told the disc was not found, and the scan was logged
     `not_found`, so the log the troubleshooting docs point them at agreed with
     the wrong story. Both halves are pinned here: the card *and* the log row.
+
+    `upcitemdb.lookup` now returns a `transport_failed` `ProviderResult`
+    rather than raising — the two stubs below return that record directly
+    instead of raising `httpx.ConnectError` themselves.
     """
 
     def test_a_transport_failure_renders_the_connectivity_card(
         self, editor_client, db, monkeypatch
     ):
-        async def _lookup(upc, client, on_rate_limit=None):
-            raise httpx.ConnectError("offline")
+        async def _lookup(upc, client):
+            return provider_result.transport_failed("upcitemdb")
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
 
@@ -1263,8 +1309,8 @@ class TestATransportFailureIsNotAnAbsentBarcode:
     ):
         """Read it back from the DB — "the log agrees with the card" is half
         of what G47 is about."""
-        async def _lookup(upc, client, on_rate_limit=None):
-            raise httpx.ConnectError("offline")
+        async def _lookup(upc, client):
+            return provider_result.transport_failed("upcitemdb")
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
 
@@ -1310,8 +1356,8 @@ class TestATransportFailureIsNotAnAbsentBarcode:
     ):
         """The sibling contract, and the reason the bare catch existed: a 200
         with an empty `items` list is still "no such record"."""
-        async def _lookup(upc, client, on_rate_limit=None):
-            return None
+        async def _lookup(upc, client):
+            return provider_result.no_match("upcitemdb")
 
         monkeypatch.setattr(upcitemdb, "lookup", _lookup)
 

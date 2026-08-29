@@ -46,15 +46,22 @@ has a barcode for this).
   the ISBN; type the ISBN-10.
 - Store-price-sticker barcodes aren't ISBNs. Peel.
 - Genuinely obscure editions: use **Title search** or **Add manually**.
-- **"Metadata lookup failed — check connectivity"** is a different card and a
-  different problem: the lookup could not reach the provider at all (DNS,
-  no route, a timeout). It is not a missing record, and the scan is logged as
-  `error` rather than `not_found`. Check the container's network before
-  hunting for the barcode.
+- A **connectivity card** is a different problem: the lookup could not reach
+  the provider at all (DNS, no route, a timeout). It is not a missing record,
+  and the scan is logged as `error` rather than `not_found`. Check the
+  container's network before hunting for the barcode. The wording differs by
+  what you scanned — an ISBN gives **"Network error during lookup — check
+  connectivity"**, a UPC **"Metadata lookup failed — check connectivity"**.
+  Every book source reaches that card: Hardcover, Google Books and the DNB
+  catalog used to turn an unreachable network into a plain "not found", so a
+  Shelf that was simply offline reported the books as unknown.
 - If several barcodes in a row come back empty, the provider's daily quota
   may be spent rather than the records missing — see [A scan comes back empty
   and the log says a provider asked for a long
   wait](#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
+- A "Not found" card naming a rejected Hardcover or Google Books key means
+  the credential, not the barcode, needs fixing — see [A scan added only a
+  title](#a-scan-added-only-a-title).
 
 ## Metadata came back wrong or sparse
 
@@ -107,8 +114,25 @@ time:
 indistinguishable from a genuine miss — IGDB's search returned an empty list
 for both — so the card said "no IGDB match" either way. It now says **"IGDB
 rejected the configured key"** when the token exchange is refused, and the
-server log carries a WARNING naming the HTTP status. If a game still comes
-back thin, "no IGDB match" now means what it says.
+server log carries a WARNING naming the HTTP status. Exhausting the Twitch
+request budget at that same token exchange gives the rate-limit line rather
+than a miss.
+
+One IGDB case is still not distinguished, deliberately: a credential IGDB
+rejects on the *game search* request — as opposed to the token exchange
+above — reads as "no IGDB match". If the key is fresh and the game is
+well known, check the server log for a 401 before believing the card.
+Tracked as [#49](https://github.com/dgahagan/shelf/issues/49).
+
+**Books make the same distinction too, on a different card.** A book scan
+tries up to four sources in order, so a rejected Hardcover or Google Books
+key has nowhere left to fall back to for even a bare title — the barcode
+renders **"Not found — add manually below"** instead of an added item, with
+**"Hardcover rejected the configured key"** or **"Google Books rejected the
+configured key"** underneath. Settings → Integrations → **Test key** is the
+fix either way. Google Books answers a bad key with HTTP **400**, not 401 or
+403 — a status that reads like a plain missing record in a log — so the scan
+card, not the log, is where to check first.
 
 ## Find cover finds nothing for a DVD or a game
 

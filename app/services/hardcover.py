@@ -1,44 +1,57 @@
 """Hardcover.app GraphQL API client for book metadata and library sync."""
 
 import logging
-from collections.abc import Callable
 
 import httpx
 
-from app.services import outbound
+from app.services import outbound, provider_result
 from app.services.isbn import isbn13_to_isbn10
 
 logger = logging.getLogger(__name__)
 
 API_URL = "https://api.hardcover.app/v1/graphql"
 
+# What Hardcover answers with when it will not accept the credential.
+# Measured against the live API (GOTCHAS G64): a bad bearer token comes back
+# as 401 Unauthorized. 403 is kept alongside it as a defensive fallback — the
+# same shape googlebooks.py's _AUTH_STATUSES takes for its own measurement —
+# in case Hardcover ever splits "bad token" from "token lacks scope".
+_AUTH_STATUSES = (401, 403)
+
 
 async def _rate_limit():
     await outbound.acquire("api.hardcover.app")
 
 
-async def _graphql(
+async def _graphql_outcome(
     query: str,
     variables: dict | None = None,
     token: str | None = None,
     client: httpx.AsyncClient | None = None,
-    *,
-    on_rate_limit: Callable[[], None] | None = None,
-) -> dict | None:
-    """Execute a GraphQL query against Hardcover. Returns data dict or None on error.
+) -> provider_result.ProviderResult:
+    """Execute a GraphQL query against Hardcover, classified as a `ProviderResult`.
 
-    `on_rate_limit`, when given, is called once if the provider answered 429.
-    Defaulting to `None` keeps every existing caller byte-identical. Only
-    `lookup_by_isbn` forwards this — every other caller here passes nothing.
+    Every Hardcover query and mutation requires a bearer token — unlike Open
+    Library/DNB (no auth at all) or Google Books (an anonymous request is a
+    legitimate, if unkeyed, call) — so a missing token is `no_credential`
+    rather than an anonymous request left to fail against the API.
+
+    On a real 200, `found`'s payload is the GraphQL `data` object itself
+    (which may still hold an empty result set — `lookup_by_isbn` is the layer
+    that decides whether that counts as a hit). GraphQL `errors` inside a 200
+    body is `no_match`; a dead socket or any other exception is
+    `transport_failed`.
     """
+    if not token:
+        return provider_result.no_credential("hardcover")
+
     await _rate_limit()
     headers = {"Content-Type": "application/json"}
-    if token:
-        # Handle tokens pasted with or without the "Bearer " prefix
-        if token.lower().startswith("bearer "):
-            headers["Authorization"] = token
-        else:
-            headers["Authorization"] = f"Bearer {token}"
+    # Handle tokens pasted with or without the "Bearer " prefix
+    if token.lower().startswith("bearer "):
+        headers["Authorization"] = token
+    else:
+        headers["Authorization"] = f"Bearer {token}"
 
     payload = {"query": query}
     if variables:
@@ -49,22 +62,33 @@ async def _graphql(
         client = httpx.AsyncClient(timeout=30)
     try:
         resp = await client.post(API_URL, json=payload, headers=headers)
-        if on_rate_limit is not None and outbound.is_rate_limited(resp):
-            on_rate_limit()
-        if resp.status_code != 200:
+        classified = provider_result.classify_response(
+            "hardcover", resp, auth_statuses=_AUTH_STATUSES
+        )
+        if classified is not None:
             logger.debug("Hardcover API returned HTTP %d", resp.status_code)
-            return None
+            return classified
         body = resp.json()
         if body.get("errors"):
             logger.debug("Hardcover GraphQL errors: %s", body["errors"])
-            return None
-        return body.get("data")
+            return provider_result.no_match("hardcover", status=resp.status_code)
+        return provider_result.found("hardcover", body.get("data"), status=resp.status_code)
     except Exception:
         logger.warning("Hardcover API request failed", exc_info=True)
-        return None
+        return provider_result.transport_failed("hardcover")
     finally:
         if own_client:
             await client.aclose()
+
+
+async def _graphql(
+    query: str,
+    variables: dict | None = None,
+    token: str | None = None,
+    client: httpx.AsyncClient | None = None,
+) -> dict | None:
+    """Execute a GraphQL query against Hardcover. Returns data dict or None on error."""
+    return (await _graphql_outcome(query, variables, token, client)).payload
 
 
 async def test_connection(token: str) -> dict:
@@ -83,12 +107,16 @@ async def test_connection(token: str) -> dict:
 
 async def lookup_by_isbn(
     isbn: str, client: httpx.AsyncClient, token: str | None = None,
-    *, on_rate_limit: Callable[[], None] | None = None,
-) -> dict | None:
-    """Look up a book by ISBN via Hardcover editions table. Returns metadata dict or None.
+) -> provider_result.ProviderResult:
+    """Look up a book by ISBN via Hardcover editions table.
 
-    `on_rate_limit`, when given, is forwarded to both `_graphql` calls below —
-    the ISBN-13 attempt and the ISBN-10 retry — and so may fire from either.
+    Returns a `ProviderResult` (`provider="hardcover"`): `found` with today's
+    metadata dict; `no_credential` when no token was given; `no_match` when
+    neither the ISBN-13 attempt nor the ISBN-10 retry turns up an edition
+    with a titled book. A `rejected` / `rate_limited` / `transport_failed`
+    outcome from the ISBN-13 attempt short-circuits before the ISBN-10
+    retry — the same credential or the same dead connection cannot answer
+    differently on a second try.
     """
     # Try ISBN-13 first, then ISBN-10
     query = """
@@ -115,21 +143,25 @@ async def lookup_by_isbn(
     }
     """
 
-    data = await _graphql(query, {"isbn": isbn}, token=token, client=client, on_rate_limit=on_rate_limit)
+    result = await _graphql_outcome(query, {"isbn": isbn}, token=token, client=client)
+    if not result.found and result.outcome != "no_match":
+        return result
+    data = result.payload
     if not data or not data.get("editions"):
         # Try as ISBN-10
         isbn10 = isbn13_to_isbn10(isbn) or isbn
         query_10 = query.replace("isbn_13", "isbn_10")
-        data = await _graphql(
-            query_10, {"isbn": isbn10}, token=token, client=client, on_rate_limit=on_rate_limit
-        )
+        result = await _graphql_outcome(query_10, {"isbn": isbn10}, token=token, client=client)
+        if not result.found and result.outcome != "no_match":
+            return result
+        data = result.payload
         if not data or not data.get("editions"):
-            return None
+            return provider_result.no_match("hardcover")
 
     edition = data["editions"][0]
     book = edition.get("book")
     if not book or not book.get("title"):
-        return None
+        return provider_result.no_match("hardcover")
 
     # Extract authors
     authors = None
@@ -165,7 +197,7 @@ async def lookup_by_isbn(
         if m:
             publish_year = int(m.group(1))
 
-    return {
+    return provider_result.found("hardcover", {
         "title": book["title"],
         "subtitle": book.get("subtitle"),
         "authors": authors,
@@ -179,7 +211,7 @@ async def lookup_by_isbn(
         "isbn10": edition.get("isbn_10"),
         "hardcover_book_id": book.get("id"),
         "hardcover_edition_id": edition.get("id"),
-    }
+    })
 
 
 async def get_user_id(token: str) -> int | None:
@@ -414,7 +446,7 @@ HC_TO_STATUS = {1: "want_to_read", 2: "reading", 3: "read", 4: "reading", 5: "re
 
 async def find_book_id_by_isbn(isbn: str, token: str, client: httpx.AsyncClient) -> int | None:
     """Look up a Hardcover book_id by ISBN. Returns book_id or None."""
-    meta = await lookup_by_isbn(isbn, client, token=token)
+    meta = (await lookup_by_isbn(isbn, client, token=token)).payload
     if meta:
         return meta.get("hardcover_book_id")
     return None

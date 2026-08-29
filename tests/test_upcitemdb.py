@@ -163,9 +163,10 @@ class TestLookup:
             "images": ["https://i5.walmartimages.com/x.jpg"],
         }]})
 
-        product = await upcitemdb.lookup("085391163121", object())
+        result = await upcitemdb.lookup("085391163121", object())
 
-        assert product == {
+        assert result.found
+        assert result.payload == {
             "title": GOODFELLAS,
             "category": "Electronics > Video > Televisions",
             "brand": "Warner",
@@ -174,8 +175,8 @@ class TestLookup:
 
     async def test_missing_fields_come_back_as_none_and_an_empty_list(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"items": [{"title": "X"}]})
-        product = await upcitemdb.lookup("1", object())
-        assert product == {"title": "X", "category": None, "brand": None, "images": []}
+        result = await upcitemdb.lookup("1", object())
+        assert result.payload == {"title": "X", "category": None, "brand": None, "images": []}
 
     async def test_it_routes_through_outbound_without_retry_timeouts(self, fake_fetch):
         """Request path: a retried read timeout must not triple HTTP_TIMEOUT."""
@@ -192,11 +193,15 @@ class TestLookup:
 
     async def test_a_404_is_none(self, fake_fetch):
         fake_fetch.return_value = StubResponse(404)
-        assert await upcitemdb.lookup("1", object()) is None
+        result = await upcitemdb.lookup("1", object())
+        assert result.outcome == "no_match"
+        assert result.payload is None
 
     async def test_an_empty_item_list_is_none(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"items": []})
-        assert await upcitemdb.lookup("1", object()) is None
+        result = await upcitemdb.lookup("1", object())
+        assert result.outcome == "no_match"
+        assert result.payload is None
 
     @pytest.mark.parametrize(
         "exc",
@@ -215,18 +220,15 @@ class TestLookup:
         hierarchy and needs naming.
         """
         fake_fetch.side_effect = exc
-        with pytest.raises((httpx.TimeoutException, httpx.NetworkError)):
-            await upcitemdb.lookup("1", object())
+        result = await upcitemdb.lookup("1", object())
+        assert result.outcome == "transport_failed"
 
-    async def test_a_429_calls_on_rate_limit_and_returns_none(self, fake_fetch):
+    async def test_a_429_is_rate_limited(self, fake_fetch):
         """T6: a rate-limited product lookup is not 'unknown barcode' either."""
         fake_fetch.return_value = StubResponse(429)
-        calls = []
-        result = await upcitemdb.lookup(
-            "1", object(), on_rate_limit=lambda: calls.append(1)
-        )
-        assert result is None
-        assert calls == [1]
+        result = await upcitemdb.lookup("1", object())
+        assert result.outcome == "rate_limited"
+        assert result.payload is None
 
     async def test_a_malformed_body_is_still_none(self, fake_fetch):
         """The contract the bare catch existed for — assert it explicitly,
@@ -239,7 +241,9 @@ class TestLookup:
                 raise ValueError("not json")
 
         fake_fetch.return_value = _Bad()
-        assert await upcitemdb.lookup("1", object()) is None
+        result = await upcitemdb.lookup("1", object())
+        assert result.outcome == "no_match"
+        assert result.payload is None
 
 
 def test_the_module_does_not_import_the_provider_clients():

@@ -6,7 +6,7 @@ import httpx
 import pytest
 import respx
 
-from app.services import synopsis
+from app.services import provider_result, synopsis
 from tests.conftest import _insert_item
 
 GB_URL = "https://www.googleapis.com/books/v1/volumes"
@@ -22,7 +22,7 @@ def _gb_volume(title="Dune", authors=("Frank Herbert",), description="A desert p
 class TestFetchDescription:
     @pytest.mark.asyncio
     async def test_google_key_reaches_isbn_and_title_searches(self):
-        isbn_lookup = AsyncMock(return_value=None)
+        isbn_lookup = AsyncMock(return_value=provider_result.no_match("google"))
         title_search = AsyncMock(return_value=[])
         with patch("app.services.googlebooks.lookup", new=isbn_lookup), \
              patch("app.services.openlibrary.search_by_title_author", new=AsyncMock(return_value=[])), \

@@ -1386,13 +1386,20 @@ python -m pytest tests/e2e/test_responsive.py -m e2e -q
 ## G45 — When one helper fans out over several metadata providers
 
 - **Rule:** Check each provider's **return shape** before routing them through
-  a shared helper. This repo's metadata clients are not uniform:
-  `tmdb.lookup_by_title`, `openlibrary`/`googlebooks`/`upcitemdb.lookup` return
-  a **dict or `None`**, while `igdb.search_games` and `tmdb.search_movies`
-  return a **list** (`[]` on failure). A helper written against "the first
-  truthy provider result" silently hands a list to code that indexes a dict.
-  Adapt at the call site (`results[0] if results else None`) and state the
-  helper's contract in its docstring.
+  a shared helper. This repo's metadata clients are not uniform, and unifying
+  the *outer* type did not unify the inner one. The seven re-typed lookups all
+  answer a `ProviderResult` now, but its `.payload` is still a **dict** for
+  `tmdb.lookup_by_title` / `upcitemdb.lookup` / the four ISBN clients and a
+  **list** for `igdb.search_games`; `tmdb.search_movies` and
+  `openlibrary._search` were never re-typed and still return a bare list.
+  A helper written against "the first result with a payload" silently hands a
+  list to code that indexes a dict. Adapt at the call site
+  (`result.with_payload(result.payload[0])`) and state the helper's contract in
+  its docstring.
+- **Updated 2026-08-28** (`05671bc`, plan `provider-outcome-type`): the trap
+  moved one layer down rather than closing. `_first_hit` now carries a
+  `ProviderResult` and `_scan_upc_game`'s `search_one_game` unwraps `[0]` into
+  a fresh record before the ladder sees it — same adapter, new shape.
 - **Why:** the failure is invisible on paper and total at runtime. Issue #36's
   implementation plan specified one search ladder for the film and game paths
   and asserted the save tail was unchanged — correct for TMDb, wrong for IGDB,
@@ -1414,9 +1421,16 @@ grep -rn -- "-> list\[dict\]\|-> dict | None" app/services/*.py
 ```
 
   (a multi-line signature puts the annotation on its own line, so do not anchor
-  this on `^async def` — `igdb.search_games` is exactly that shape and an
-  anchored grep misses the one client the entry is about. Expect **both** return
-  shapes in the output; only one shape means the clients were unified and this
+  this on `^async def` — an anchored grep misses exactly that shape. Expect
+  **both** shapes in the output. Since the seven scan-path lookups moved to
+  `ProviderResult`, read the payload shapes too:
+
+```bash
+grep -rn "provider_result.found(" app/services/*.py
+```
+
+  A `found(..., [..])` beside a `found(..., {..})` is the live disagreement;
+  only one shape across both greps means the clients were unified and this
   entry retires.)
 - **Status:** documented. Not a lint candidate — deciding whether a given
   helper fans out over providers needs judgement, not a grep.
@@ -1474,17 +1488,35 @@ python -c "from app.services.upcitemdb import search_queries as q; \
 - **Closed on `feat/issues-42-44-scan-outcome-honesty`** (2026-08-27). Two
   tasks, one per face of it: **T2** (`758004b`) gave IGDB an `IgdbAuthError` so
   a rejected Twitch credential stops looking like an empty result, and **T5**
-  (`1b22096`) closed the stated core — `upcitemdb.lookup` now re-raises
+  (`1b22096`) closed the stated core — `upcitemdb.lookup` re-raised
   `httpx.TimeoutException` and `httpx.NetworkError` while still swallowing
   every "no such record" failure to `None`, so an unresolvable barcode still
-  reaches the manual-add form and a broken resolver reaches the connectivity
+  reached the manual-add form and a broken resolver reached the connectivity
   card. The scan is logged `error` rather than `not_found`, so the log agrees
   with the card.
+- **Re-stated 2026-08-28** (`8a18f51`, `85dad35`, plan `provider-outcome-type`):
+  **no client raises for this any more**, and the rule reads the same either
+  way — decide once whether "offline" and "no such record" are the same
+  outcome, then make sure the caller's handling of the answer is *reachable*.
+  `upcitemdb.lookup` returns `transport_failed`; `_scan_upc` checks the outcome
+  instead of catching, and `IgdbAuthError` / `TmdbAuthError` are gone. The same
+  pass found the entry's other face on the book path: `scan_isbn`'s
+  `except httpx.TimeoutException` / `NetworkError` arms had become dead code
+  that reads as live, because `_fetch_preview_cover` swallows everything of its
+  own — deleted, with the connectivity card now rendered from the cascade's own
+  `transport_failed` outcome. **A handler for an exception nothing can raise is
+  the same defect as a swallowed exception, pointing the other way.**
 - **Verify:** the grep below **still returns hits, and they now mean the
   opposite** — the branch is live, not dead:
 
 ```bash
 grep -n "check connectivity" app/routers/items_common.py
+```
+
+  and, since 2026-08-28, on the book path too:
+
+```bash
+grep -n "check connectivity" app/routers/items.py
 ```
 
   What proves it is a test, not a reading:
@@ -2041,8 +2073,21 @@ grep -rn 'x-show="[^"]*" *:\(src\|href\)=' app/templates/
 - **Evidence:** `40bba94` (2026-08-27, T1 — the predicate and its five pins);
   `3a1593c` (T7 — all four ISBN sources applying it, including the Hardcover
   case where `lookup_by_isbn` never sees a `Response` at all and the callback
-  has to be forwarded through `_graphql` on **both** the ISBN-13 attempt and
+  had to be forwarded through `_graphql` on **both** the ISBN-13 attempt and
   the ISBN-10 retry).
+- **The rule has a boundary, found 2026-08-28** (plan `provider-outcome-type`,
+  `da40f73`..`05671bc`). This entry was quoted *against* returning a result
+  type, and that reading is wrong. The predicate rule is about a signal
+  computed inside a helper some callers bypass. It says nothing against a
+  **client returning its own outcome**, because every caller of a client holds
+  its return value by definition — that is the one thing a bypass cannot take
+  away. The callback this entry's Evidence describes is gone: the four ISBN
+  clients each call `provider_result.classify_response(...)`, which still uses
+  `outbound.is_rate_limited` on the response the client already holds. So the
+  predicate survives *inside* the classifier; only the callback that carried
+  its answer outward was replaced. **Before invoking this entry against a
+  design, check whether the callers share the value or merely share the
+  helper.** The corollary below is untouched and is the part that still bites.
 - **Verify:** both call shapes must still exist, or the clients were unified
   and this entry retires:
 
@@ -2071,6 +2116,17 @@ grep -n "outbound.acquire\|outbound.fetch" app/services/*.py
   signature-agnostic.
 - **Evidence:** `e93a06a`, `5e4e8df` (2026-08-27) — 40 stub signatures between
   them; `3a1593c` the same day — none.
+- **Removing one costs the same, and the *return* shape costs more**
+  (2026-08-28, plan `provider-outcome-type`). Deleting `on_rate_limit` from
+  seven clients broke every hand-written stub that declared it, in exactly the
+  same way; and re-typing those clients' **returns** to `ProviderResult` broke
+  the `AsyncMock(return_value=...)` stubs the signature change had left alone —
+  the two costs are disjoint, so a change that does both hits every stub in the
+  suite. Measured: ~70 stubs across `test_scan_upc_enrichment.py`,
+  `test_isbn_scan_quota.py`, `test_items.py`, `test_igdb_auth.py`,
+  `test_tmdb_auth.py`, `test_title_search.py`, `test_scan_modes.py`,
+  `test_outbound_sites.py`, `test_synopsis.py`. Grep for both before you start:
+  the signature grep below, **plus** `grep -rn "AsyncMock(return_value=" tests/`.
 - **Verify:** hand-written stubs are greppable; `AsyncMock` ones need no edit:
 
 ```bash
@@ -2133,7 +2189,12 @@ grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
   `tail -20` kept twenty rows of the licence table and threw away the
   `pip-audit` verdict entirely, so the check was neither passed nor failed,
   just unread.
-- **Evidence:** 2026-08-27, twice in one release attempt.
+- **Evidence:** 2026-08-27, twice in one release attempt; **again 2026-08-28**,
+  in the 0.23.0 release, with this entry already written — `{ make test; make
+  test-e2e; make checks 2>&1 | tail -40; }` reported exit 0 for the block
+  because that is `tail`'s status, and the forty captured rows were the licence
+  table. `make checks` had to be re-run unpiped to learn anything. The rule
+  survives being known; it does not survive being convenient.
   `make test-e2e 2>&1 | tail -25` was reported as "exit code 0" while its
   output contained `make: *** [Makefile:74: test-e2e] Error 1` and
   `1 failed, 182 passed`. Later the same session,
@@ -2151,6 +2212,84 @@ grep -n '_toast_header' app/routers/items.py app/routers/items_common.py
   gate is invoked, not of anything the repo contains, so no `make check-*`
   tripwire can see it. It belongs in the orchestrator's habits, which is why
   it is written down rather than automated.
+
+## G64 — When writing a "Test key" button for a new provider
+
+- **Rule:** Do not assume a rejected credential arrives as **401** or **403**.
+  Measure what the provider actually returns for a bad key *before* writing the
+  status mapping, and put every status it uses into the rejected branch.
+- **Why:** the friendly message is the entire point of the button, and the
+  generic `f"...returned HTTP {status}"` fallback is indistinguishable from a
+  working mapping until someone tries a genuinely bad key. The failure is
+  invisible to tests, because the tests are written against the same assumption
+  the code was.
+- **Evidence:** 2026-08-28, PR #52. `googlebooks.test_connection` mapped
+  `401`/`403` to *"Google Books rejected the API key"*. **Google Books answers
+  an invalid key with `400 badRequest`** — `"API key not valid. Please pass a
+  valid API key."` — so the friendly branch was unreachable and every Test Key
+  run in the test drive rendered `Google Books returned HTTP 400`. Truthful,
+  and useless to someone who has just pasted a key with a stray character in
+  it. Caught by the live drive, not by the review or the gate: both parametrized
+  tests asserted `[401, 403, 429]`, the same three the code handled. Fixed in
+  `6bc0569`.
+- **Verify:** point the check at the live API with a deliberately invalid key
+  and read the status, rather than reasoning from what the status *should* be:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H 'X-Goog-Api-Key: not-a-real-key' \
+  'https://www.googleapis.com/books/v1/volumes?q=isbn:9780140328721&maxResults=1'
+# 400
+```
+
+- **Status:** documented — not a lint candidate: no static check can know which
+  status a third-party API picks for a bad credential. It is a measurement, and
+  it has to be taken once per provider.
+
+## G65 — When a plan says a template arm is written but unreachable
+
+- **Rule:** Before believing that a state's copy already exists and only needs
+  a router change, find out **which top-level branch of the template that arm
+  lives in**. `fragments/scan_result.html` is not one card with one notice
+  slot: it opens `{% if status == 'not_found' %}` over a whole card with its
+  own notice arms, and everything else falls to a second card with a different
+  arm set. An `enrich_status` arm in one is invisible from the other, whatever
+  the line number says.
+- **Why:** the reasoning that produces the mistake is sound right up to the
+  end. You grep the template for the state, you find the arm, you read the copy,
+  you conclude the work is a one-line router change — and the branch you are
+  editing renders the *other* card. The failure is silent in exactly the way
+  the notice slot is designed to be: a state with no arm in the reached branch
+  renders **nothing**, so the test that asserts a card came back 200 passes and
+  the card is quietly missing its explanation.
+- **Evidence:** 2026-08-28, plan `provider-outcome-type` (`85dad35`). Both the
+  design plan and its impl plan asserted *"the copy is written and the ISBN
+  path cannot reach it"*, citing `scan_result.html:211`'s `rejected` arm — and
+  four cross-vendor plan reviews read past it. `:211` is in the **added**-card
+  branch; `scan_isbn`'s enrichment failure renders the **not_found** card,
+  which carried a `quota` arm and nothing else. The router change alone made
+  the test go green on `status == 200` and rendered no notice at all. The arm
+  had to be added to the not_found card.
+- **The corollary, applied in the same commit:** having found one branch's arm
+  set incomplete, do not fill it in speculatively. A `no_credential` arm was
+  deliberately **not** added, because no branch that renders that card can
+  produce the state — the ISBN cascade always runs at least one credential-free
+  leg, and both UPC branches project from a product lookup that needs no key.
+  Live-looking dead copy is the same defect one step on (G47).
+- **Verify:** count the card branches and their arm sets — more than one
+  `{% if status ==` at column 0 means the arms are per-branch:
+
+```bash
+grep -n "^{% if status\|^{% elif status\|enrich_status == '" \
+  app/templates/fragments/scan_result.html
+```
+
+  `tests/test_scan_outcome.py::test_every_declared_state_has_a_template_arm`
+  does **not** catch this: it greps the whole file, so an arm in either card
+  satisfies it. That blind spot is the entry.
+- **Status:** documented. A lint candidate, but not a cheap one — the check
+  that would work is "every state a given router branch can emit has an arm in
+  the card that branch renders", which needs the router-to-card mapping.
 
 ## Graveyard
 

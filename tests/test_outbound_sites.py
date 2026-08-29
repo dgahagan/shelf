@@ -107,7 +107,7 @@ class TestGooglebooks:
 
         result = await googlebooks.lookup("9780441172719", client)
 
-        assert result is None
+        assert result.outcome == "no_match"
         call = fake_fetch.await_args
         assert call.args == (client, "GET", "https://www.googleapis.com/books/v1/volumes")
         assert call.kwargs.get("params") == {"q": "isbn:9780441172719"}
@@ -135,7 +135,7 @@ class TestIgdb:
 
         token = await igdb._get_token("cid", "secret", client)
 
-        assert token == "tok"
+        assert token.payload == "tok"
         call = fake_fetch.await_args
         assert call.args == (client, "POST", igdb.TWITCH_TOKEN_URL)
         assert call.kwargs.get("data") == {
@@ -158,8 +158,8 @@ class TestIgdb:
         token1 = await igdb._get_token("a", "s1", client)
         token2 = await igdb._get_token("a", "s2", client)
 
-        assert token1 == "tok1"
-        assert token2 == "tok2"
+        assert token1.payload == "tok1"
+        assert token2.payload == "tok2"
         assert fake_fetch.await_count == 2
 
     async def test_get_token_cached_for_same_credentials(self, fake_fetch):
@@ -170,8 +170,8 @@ class TestIgdb:
         token1 = await igdb._get_token("a", "s1", client)
         token2 = await igdb._get_token("a", "s1", client)
 
-        assert token1 == "tok"
-        assert token2 == "tok"
+        assert token1.payload == "tok"
+        assert token2.payload == "tok"
         assert fake_fetch.await_count == 1
 
 
@@ -184,7 +184,7 @@ class TestTmdb:
 
         result = await tmdb.lookup_by_title("Dune", "api-key", client)
 
-        assert result is None
+        assert result.outcome == "no_match"
         call = fake_fetch.await_args
         assert call.args == (client, "GET", tmdb.TMDB_SEARCH_URL)
         assert call.kwargs.get("params") == {"query": "Dune"}
@@ -200,7 +200,7 @@ class TestTmdb:
 
         result = await tmdb.lookup_by_title("Dune", v3, client)
 
-        assert result is None
+        assert result.outcome == "no_match"
         call = fake_fetch.await_args
         assert call.kwargs.get("params") == {"query": "Dune", "api_key": v3}
         assert not call.kwargs.get("headers")

@@ -1,13 +1,20 @@
 import logging
-from collections.abc import Callable
 
 import httpx
 
 from app.config import HTTP_TIMEOUT
-from app.services import outbound
+from app.services import outbound, provider_result
 
 logger = logging.getLogger(__name__)
 VOLUMES_URL = "https://www.googleapis.com/books/v1/volumes"
+
+# What Google Books answers with when it will not accept the credential.
+# Measured against the live API (GOTCHAS G64): an invalid key comes back as
+# 400 badRequest ("API key not valid"), never 401 or 403 — `lookup` and
+# `test_connection` share this so the two cannot disagree about what counts
+# as a rejection. `lookup` only applies it when a key was actually sent: an
+# anonymous request answered 400 is a malformed query, not a bad credential.
+_AUTH_STATUSES = (400, 401, 403)
 
 
 def _api_headers(api_key: str | None) -> dict[str, str]:
@@ -19,17 +26,18 @@ def _api_headers(api_key: str | None) -> dict[str, str]:
 async def lookup(
     isbn: str, client: httpx.AsyncClient,
     *, api_key: str | None = None,
-    on_rate_limit: Callable[[], None] | None = None,
-) -> dict | None:
-    """Look up a book by ISBN via Google Books API. Returns metadata dict or None.
+) -> provider_result.ProviderResult:
+    """Look up a book by ISBN via Google Books API.
 
     Never raises: the request and the response parse are each wrapped in
     their own catch-all handler, matching `dnb.lookup`'s contract — this sits
     in the ISBN cascade (`items_common._lookup_metadata`) and on the *Add by
     ISBN* path, neither of which handles an exception from here.
 
-    `on_rate_limit`, when given, is called once if the provider answered 429.
-    Defaulting to `None` keeps every existing caller byte-identical.
+    Returns a `ProviderResult`: `found("google", metadata)` on a real hit;
+    `rejected` for 400/401/403 when `api_key` was sent (G64); `rate_limited`
+    for a 429; `transport_failed` for a dead socket; `no_match` for anything
+    else, including a 200 with no usable title.
     """
     try:
         resp = await outbound.fetch(
@@ -40,24 +48,23 @@ async def lookup(
         )
     except Exception:
         logger.debug("Google Books lookup failed for ISBN %s", isbn, exc_info=True)
-        return None
+        return provider_result.transport_failed("google")
 
-    if on_rate_limit is not None and outbound.is_rate_limited(resp):
-        on_rate_limit()
-
-    if resp.status_code != 200:
+    auth_statuses = _AUTH_STATUSES if _api_headers(api_key) else ()
+    classified = provider_result.classify_response("google", resp, auth_statuses=auth_statuses)
+    if classified is not None:
         logger.debug("Google Books lookup failed for ISBN %s: HTTP %d", isbn, resp.status_code)
-        return None
+        return classified
 
     try:
         data = resp.json()
         items = data.get("items", [])
         if not items:
-            return None
+            return provider_result.no_match("google", status=resp.status_code)
 
         info = items[0].get("volumeInfo", {})
         if not info.get("title"):
-            return None
+            return provider_result.no_match("google", status=resp.status_code)
 
         result = {
             "title": info["title"],
@@ -110,10 +117,10 @@ async def lookup(
             result["series_name"] = series.get("title")
             result["series_position"] = series.get("bookDisplayNumber")
 
-        return result
+        return provider_result.found("google", result, status=resp.status_code)
     except Exception:
         logger.debug("Google Books lookup: malformed response for ISBN %s", isbn, exc_info=True)
-        return None
+        return provider_result.no_match("google", status=resp.status_code)
 
 
 async def search_by_title_author(
@@ -208,10 +215,10 @@ async def test_connection(api_key: str) -> dict:
     if resp.status_code == 200:
         return {"ok": True, "message": "Connected to Google Books"}
     # 400 belongs here, not in the generic branch: Google Books answers an
-    # invalid key with 400 badRequest ("API key not valid"), never 401 or 403,
-    # so without it the one failure this button exists to diagnose reported a
-    # bare status code. Measured against the live API, 2026-08-28.
-    if resp.status_code in (400, 401, 403):
+    # invalid key with 400 badRequest ("API key not valid"), never 401 or 403
+    # (GOTCHAS G64) — shared with `lookup` as `_AUTH_STATUSES` so the two
+    # cannot disagree about what counts as a rejection.
+    if resp.status_code in _AUTH_STATUSES:
         return {"ok": False, "message": "Google Books rejected the API key"}
     if resp.status_code == 429:
         return {"ok": False, "message": "Google Books quota exceeded"}

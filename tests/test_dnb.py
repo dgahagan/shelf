@@ -25,18 +25,19 @@ class TestDnbLookup:
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783608963762", client)
 
-        assert result is not None
-        assert result["title"] == "Kurze Antworten auf große Fragen"
+        assert result.outcome == "found"
+        meta = result.payload
+        assert meta["title"] == "Kurze Antworten auf große Fragen"
         # 100 $a "Hawking, Stephen W." inverted to display order. The two
         # 700 entries are translators ($4 trl / $e Übersetzer) and must be
         # excluded — only author-relator added entries join the list.
-        assert result["authors"] == "Stephen W. Hawking"
-        assert result["publisher"] == "Klett-Cotta"
-        assert result["publish_year"] == 2018
-        assert result["page_count"] == 252
-        assert result["language"] == "de"  # MARC "ger" mapped to ISO 639-1
-        assert result["isbn10"] == "3608963766"
-        assert "description" not in result
+        assert meta["authors"] == "Stephen W. Hawking"
+        assert meta["publisher"] == "Klett-Cotta"
+        assert meta["publish_year"] == 2018
+        assert meta["page_count"] == 252
+        assert meta["language"] == "de"  # MARC "ger" mapped to ISO 639-1
+        assert meta["isbn10"] == "3608963766"
+        assert "description" not in meta
 
     @respx.mock
     @pytest.mark.asyncio
@@ -47,15 +48,16 @@ class TestDnbLookup:
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783423148566", client)
 
-        assert result is not None
-        assert result["title"] == "Matou"
-        assert result["subtitle"] == "Roman"
-        assert result["authors"] == "Michael Köhlmeier"
-        assert result["publisher"] == "dtv"
-        assert result["publish_year"] == 2023
-        assert result["page_count"] == 954
-        assert result["language"] == "de"  # MARC "ger" mapped to ISO 639-1
-        assert result["isbn10"] == "342314856X"
+        assert result.outcome == "found"
+        meta = result.payload
+        assert meta["title"] == "Matou"
+        assert meta["subtitle"] == "Roman"
+        assert meta["authors"] == "Michael Köhlmeier"
+        assert meta["publisher"] == "dtv"
+        assert meta["publish_year"] == 2023
+        assert meta["page_count"] == 954
+        assert meta["language"] == "de"  # MARC "ger" mapped to ISO 639-1
+        assert meta["isbn10"] == "342314856X"
 
     @respx.mock
     @pytest.mark.asyncio
@@ -66,53 +68,54 @@ class TestDnbLookup:
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783596294312", client)
 
-        assert result is not None
-        assert result["title"] == "Buddenbrooks"
-        assert result["authors"] == "Thomas Mann"
+        assert result.outcome == "found"
+        meta = result.payload
+        assert meta["title"] == "Buddenbrooks"
+        assert meta["authors"] == "Thomas Mann"
         # First record in the fixture is the 2025 Fischer Taschenbuch reissue.
-        assert result["publish_year"] == 2025
-        assert result["publisher"] == "Fischer Taschenbuch"
-        assert result["page_count"] == 843
+        assert meta["publish_year"] == 2025
+        assert meta["publisher"] == "Fischer Taschenbuch"
+        assert meta["page_count"] == 843
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_no_hit_returns_none(self):
+    async def test_no_hit_is_no_match(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(
             return_value=httpx.Response(200, text=_fixture("dnb_sru_nohit.xml"))
         )
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783000000000", client)
-        assert result is None
+        assert result.outcome == "no_match"
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_malformed_xml_returns_none_without_raising(self):
+    async def test_malformed_xml_is_no_match_without_raising(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(
             return_value=httpx.Response(200, text="<not><valid&xml")
         )
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783608963762", client)
-        assert result is None
+        assert result.outcome == "no_match"
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_http_error_returns_none_without_raising(self):
+    async def test_http_error_is_no_match_without_raising(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(
             return_value=httpx.Response(500)
         )
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783608963762", client)
-        assert result is None
+        assert result.outcome == "no_match"
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_connection_error_returns_none_without_raising(self):
+    async def test_connection_error_is_transport_failed(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(
             side_effect=httpx.ConnectError("boom")
         )
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783608963762", client)
-        assert result is None
+        assert result.outcome == "transport_failed"
 
     @respx.mock
     @pytest.mark.asyncio

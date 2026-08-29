@@ -6,8 +6,11 @@ Secret with exactly what it answers for "no such game" — an empty list. A scan
 of a game whose Twitch credentials had been revoked was filed as a bare title
 under the "no match" copy, with nothing in the log above DEBUG.
 
-`search_games` now raises `IgdbAuthError`; the other three entry points each
-decide for themselves, because their return shapes and their callers' handlers
+`_get_token` now answers with a `ProviderResult` and `search_games` returns the
+non-`found` one as it stands, so a rejected credential, a spent Twitch quota
+(#49 part 1 — a channel the token endpoint never had) and a dead socket each
+keep their own outcome. The other three entry points project today's contracts
+from that record, because their return shapes and their callers' handlers
 differ (GOTCHAS G45, G49).
 """
 
@@ -16,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services import covers, igdb
+from app.services import covers, igdb, provider_result
 
 
 CLIENT_ID = "abcdef0123456789"
@@ -59,7 +62,7 @@ TOKEN_OK = StubResponse(200, json_data={"access_token": "tok", "expires_in": 360
 
 
 class TestGetTokenAuthSignal:
-    """The raise has to escape `_get_token`'s own handler, or nothing changes."""
+    """The rejection has to escape `_get_token`'s own parse handler, or nothing changes."""
 
     async def test_the_auth_statuses_are_the_ones_twitch_answers(self):
         """Pinned as a literal, not read from the constant.
@@ -73,29 +76,46 @@ class TestGetTokenAuthSignal:
         assert igdb._AUTH_STATUSES == (400, 401, 403)
 
     @pytest.mark.parametrize("status", (400, 401, 403))
-    async def test_a_rejected_credential_raises(self, status, fake_fetch):
+    async def test_a_rejected_credential_is_rejected(self, status, fake_fetch):
         fake_fetch.return_value = StubResponse(status)
-        with pytest.raises(igdb.IgdbAuthError):
-            await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object())
+        result = await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rejected"
+        assert result.status == status
 
     @pytest.mark.parametrize("status", (400, 401, 403))
-    async def test_a_rejected_credential_raises_out_of_search_games(self, status, fake_fetch):
+    async def test_the_rejection_reaches_search_games(self, status, fake_fetch):
         """The whole point: the signal reaches the scan path, not just the token call."""
         fake_fetch.return_value = StubResponse(status)
-        with pytest.raises(igdb.IgdbAuthError):
-            await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rejected"
+
+    async def test_a_429_from_the_token_endpoint_is_rate_limited(self, fake_fetch):
+        """Issue #49 part 1: the token exchange had no quota channel at all.
+
+        `_get_token` returned a bare `str | None`, so a spent Twitch quota was
+        the same `None` as a bad secret and reached the card as "no such game".
+        """
+        fake_fetch.return_value = StubResponse(429)
+        assert (await igdb._get_token(
+            CLIENT_ID, CLIENT_SECRET, object())).outcome == "rate_limited"
+        assert (await igdb.search_games(
+            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "rate_limited"
 
     async def test_a_500_from_the_token_endpoint_is_not_an_auth_failure(self, fake_fetch):
-        """A provider outage is not a rejected key — `None`/`[]`, never a raise."""
+        """A provider outage is not a rejected key — a miss, never a rejection."""
         fake_fetch.return_value = StubResponse(500)
-        assert await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object()) is None
-        assert await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object()) == []
+        assert (await igdb._get_token(
+            CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
+        assert (await igdb.search_games(
+            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
 
     async def test_a_transport_exception_is_not_an_auth_failure(self, fake_fetch):
         """A network blip is not a credential problem — the comment in the code says so."""
         fake_fetch.side_effect = RuntimeError("boom")
-        assert await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object()) is None
-        assert await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object()) == []
+        assert (await igdb._get_token(
+            CLIENT_ID, CLIENT_SECRET, object())).outcome == "transport_failed"
+        assert (await igdb.search_games(
+            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "transport_failed"
 
     async def test_the_rejection_is_logged_at_warning_and_names_the_status(
         self, fake_fetch, caplog
@@ -103,8 +123,7 @@ class TestGetTokenAuthSignal:
         """Half of #42 is what a log reader sees; DEBUG was invisible in practice."""
         fake_fetch.return_value = StubResponse(401)
         with caplog.at_level(logging.WARNING, logger="app.services.igdb"):
-            with pytest.raises(igdb.IgdbAuthError):
-                await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object())
+            await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object())
         assert "401" in caplog.text
         assert "rejected" in caplog.text.lower()
 
@@ -112,9 +131,10 @@ class TestGetTokenAuthSignal:
 class TestTheOtherThreeEntryPointsAbsorbIt:
     """Three callers with three return shapes and no handlers (G45, G49).
 
-    `search_games` is the only entry point that propagates. Each of these
-    swallows the signal on purpose, and the reason differs per caller — so
-    each gets its own pin rather than one shared assumption.
+    `search_games` is the only entry point that carries the outcome outward.
+    Each of these projects today's contract from the record on purpose, and
+    the reason differs per caller — so each gets its own pin rather than one
+    shared assumption.
     """
 
     async def test_search_game_art_still_returns_an_empty_list(self, fake_fetch):
@@ -147,29 +167,42 @@ class TestTheOtherThreeEntryPointsAbsorbIt:
 
 
 class TestSearchGamesReportsARateLimit:
-    async def test_a_429_calls_the_callback_once(self, fake_fetch):
+    """The *search* call's own 429, distinct from the token endpoint's above."""
+
+    async def test_a_429_on_the_search_call_is_rate_limited(self, fake_fetch):
         fake_fetch.return_value = StubResponse(429)
         igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
-        seen = []
-        assert await igdb.search_games(
-            "Halo", CLIENT_ID, CLIENT_SECRET, object(), on_rate_limit=lambda: seen.append(1)
-        ) == []
-        assert seen == [1]
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "rate_limited"
+        assert result.payload is None
 
-    async def test_a_hit_does_not_call_the_callback(self, fake_fetch):
+    async def test_an_empty_result_set_is_a_miss_not_a_quota(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data=[])
         igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
-        seen = []
-        await igdb.search_games(
-            "Halo", CLIENT_ID, CLIENT_SECRET, object(), on_rate_limit=lambda: seen.append(1)
-        )
-        assert seen == []
+        assert (await igdb.search_games(
+            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
 
-    async def test_the_callback_is_optional(self, fake_fetch):
-        """Default `None` is what keeps `items_catalog` and every existing test identical."""
-        fake_fetch.return_value = StubResponse(429)
+    async def test_a_401_on_the_search_call_is_still_a_miss(self, fake_fetch):
+        """Issue #49's remainder, pinned as it stands rather than as it should be.
+
+        `_AUTH_STATUSES` is applied to the *token* endpoint only; the search
+        call classifies 429 and nothing else, so a 401 here reads as "no such
+        game". That is deliberate scope, and this test is what will go red
+        when #49 closes it.
+        """
+        fake_fetch.return_value = StubResponse(401)
         igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
-        assert await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object()) == []
+        assert (await igdb.search_games(
+            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
+
+    async def test_a_hit_carries_the_list_as_its_payload(self, fake_fetch):
+        """G45: the payload stays a list — the router unwraps `[0]`, not this."""
+        fake_fetch.return_value = StubResponse(200, json_data=[{"id": 1, "name": "Halo"}])
+        igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.found
+        assert isinstance(result.payload, list)
+        assert result.payload[0]["title"] == "Halo"
 
 
 class TestTheRoutesDoNotFiveHundred:
@@ -224,7 +257,6 @@ class TestStubbingTheModuleWholesale:
     async def test_sync_helpers_must_be_magicmock(self, monkeypatch):
         stub = AsyncMock()
         stub.image_url = MagicMock(side_effect=lambda i, size="t_cover_big": f"https://x/{i}.jpg")
-        stub.IgdbAuthError = igdb.IgdbAuthError
         monkeypatch.setattr(covers, "igdb", stub)
         # Assert on the *value*, not a count — a coroutine has a length too.
         assert covers.igdb.image_url("abc") == "https://x/abc.jpg"

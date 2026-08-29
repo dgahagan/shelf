@@ -10,10 +10,22 @@
         <div class="flex-1 min-w-0">
             <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
             <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} (cover found on Amazon){% endif %}</p>
-            {# G58: a state name from the router, the copy here. No provider is
-               named — the ISBN cascade has four sources and any subset can be
-               starved, and a rate-limited UPC product lookup lands here too. #}
-            {% if enrich_status == 'quota' %}
+            {# G58: a state name and a bare provider name from the router, the
+               copy here. Two arms, because two are all this card can be
+               given: the router suppresses `no_match` (it would repeat the
+               message above in a second vocabulary), and no branch that
+               renders this card can produce `no_credential` — the ISBN
+               cascade always runs at least one credential-free leg, and both
+               UPC branches project from a product lookup that needs no key.
+               A third arm would be live-looking dead copy, which is the class
+               of defect this card's history is made of. `enrich_provider` is
+               the leg that actually answered, so `rejected` names it; the
+               quota copy names nobody, because any subset of a four-source
+               cascade can be starved and a rate-limited UPC product lookup
+               lands here too. #}
+            {% if enrich_status == 'rejected' %}
+            <p class="text-xs text-shelf-warning mt-1">{{ enrich_provider }} rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations, or add it below.</p>
+            {% elif enrich_status == 'quota' %}
             <p class="text-xs text-shelf-warning mt-1">A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below.</p>
             {% endif %}
         </div>

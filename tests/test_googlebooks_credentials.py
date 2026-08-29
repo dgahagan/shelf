@@ -91,12 +91,15 @@ async def test_connection_transport_failure_does_not_expose_key(caplog):
     assert sentinel not in caplog.text
 
 
-@pytest.mark.parametrize("status", [400, 401, 403, 429])
+@pytest.mark.parametrize(("status", "expected_outcome"), [
+    (400, "rejected"), (401, "rejected"), (403, "rejected"), (429, "rate_limited"),
+])
 @pytest.mark.asyncio
-async def test_credentialed_lookup_preserves_controlled_failure_behavior(status):
+async def test_credentialed_lookup_preserves_controlled_failure_behavior(status, expected_outcome):
     fake_fetch = AsyncMock(return_value=httpx.Response(status))
     with patch("app.services.googlebooks.outbound.fetch", new=fake_fetch):
-        assert await googlebooks.lookup("9780441172719", object(), api_key="fake-key") is None
+        result = await googlebooks.lookup("9780441172719", object(), api_key="fake-key")
+    assert result.outcome == expected_outcome
 
 
 @pytest.mark.asyncio
@@ -105,10 +108,12 @@ async def test_credentialed_lookup_preserves_transport_and_malformed_behavior():
         "app.services.googlebooks.outbound.fetch",
         new=AsyncMock(side_effect=httpx.ConnectError("offline")),
     ):
-        assert await googlebooks.lookup("9780441172719", object(), api_key="fake-key") is None
+        result = await googlebooks.lookup("9780441172719", object(), api_key="fake-key")
+    assert result.outcome == "transport_failed"
 
     with patch(
         "app.services.googlebooks.outbound.fetch",
         new=AsyncMock(return_value=httpx.Response(200, content=b"not-json")),
     ):
-        assert await googlebooks.lookup("9780441172719", object(), api_key="fake-key") is None
+        result = await googlebooks.lookup("9780441172719", object(), api_key="fake-key")
+    assert result.outcome == "no_match"

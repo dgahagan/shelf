@@ -18,6 +18,7 @@ from app.database import (
     get_db,
     init_db,
 )
+from app.services import provider_result
 from tests.conftest import _insert_item, _insert_borrower, _insert_location
 
 
@@ -1120,23 +1121,32 @@ class TestDnbRoutingAndLanguageCapture:
     async def test_9783_scan_consults_dnb_first(self):
         from app.routers.items_common import _lookup_metadata
 
-        dnb_mock = AsyncMock(return_value=dict(self.DNB_META))
+        dnb_calls = []
+
+        async def dnb_lookup(isbn13, client):
+            # Strict two-argument signature: passing the removed
+            # `on_rate_limit` keyword must raise TypeError here, not be
+            # absorbed by a `**kw` catch-all.
+            dnb_calls.append((isbn13, client))
+            return provider_result.found("dnb", dict(self.DNB_META))
+
         ol_mock = AsyncMock()
-        with patch("app.services.dnb.lookup", new=dnb_mock), \
+        with patch("app.services.dnb.lookup", new=dnb_lookup), \
              patch("app.services.openlibrary.lookup", new=ol_mock):
             metadata, source, hc_ids, _ = await _lookup_metadata("9783608963762", None, None)
 
         assert source == "dnb"
         assert metadata["language"] == "de"
-        dnb_mock.assert_awaited_once()
+        assert dnb_calls == [("9783608963762", None)]
         ol_mock.assert_not_awaited()
 
     async def test_dnb_miss_falls_through_to_openlibrary(self):
         from app.routers.items_common import _lookup_metadata
 
         ol_meta = {"title": "OL Book"}
-        with patch("app.services.dnb.lookup", new=AsyncMock(return_value=None)), \
-             patch("app.services.openlibrary.lookup", new=AsyncMock(return_value=dict(ol_meta))):
+        with patch("app.services.dnb.lookup", new=AsyncMock(return_value=provider_result.no_match("dnb"))), \
+             patch("app.services.openlibrary.lookup",
+                   new=AsyncMock(return_value=provider_result.found("openlibrary", dict(ol_meta)))):
             metadata, source, _, _rl = await _lookup_metadata("9783608963762", None, None)
 
         assert source == "openlibrary"
@@ -1147,21 +1157,25 @@ class TestDnbRoutingAndLanguageCapture:
 
         dnb_mock = AsyncMock()
         with patch("app.services.dnb.lookup", new=dnb_mock), \
-             patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "US Book"})):
+             patch("app.services.openlibrary.lookup",
+                   new=AsyncMock(return_value=provider_result.found("openlibrary", {"title": "US Book"}))):
             metadata, source, _, _rl = await _lookup_metadata("9780441172719", None, None)
 
         assert source == "openlibrary"
         dnb_mock.assert_not_awaited()
 
-    async def test_dnb_raising_is_swallowed_and_cascade_proceeds(self):
+    async def test_dnb_raising_now_propagates(self):
+        """T2 removed items_common's broad `except Exception` around the
+        national-provider call — the client itself now converts transport
+        errors to `transport_failed` (never raises), so a raise reaching
+        here is a genuine bug and must surface rather than be swallowed."""
         from app.routers.items_common import _lookup_metadata
 
         with patch("app.services.dnb.lookup", new=AsyncMock(side_effect=RuntimeError("boom"))), \
-             patch("app.services.openlibrary.lookup", new=AsyncMock(return_value={"title": "OL Book"})):
-            metadata, source, _, _rl = await _lookup_metadata("9783608963762", None, None)
-
-        assert source == "openlibrary"
-        assert metadata["title"] == "OL Book"
+             patch("app.services.openlibrary.lookup",
+                   new=AsyncMock(return_value=provider_result.found("openlibrary", {"title": "OL Book"}))):
+            with pytest.raises(RuntimeError, match="boom"):
+                await _lookup_metadata("9783608963762", None, None)
 
     async def test_hardcover_enrich_fires_for_dnb_hit(self):
         from app.routers.items_common import _lookup_metadata
@@ -1171,8 +1185,10 @@ class TestDnbRoutingAndLanguageCapture:
             "description": "Klappentext", "hardcover_book_id": 5,
             "hardcover_edition_id": 7, "cover_url": None,
         }
-        with patch("app.services.dnb.lookup", new=AsyncMock(return_value=dict(self.DNB_META))), \
-             patch("app.services.hardcover.lookup_by_isbn", new=AsyncMock(return_value=hc_data)):
+        with patch("app.services.dnb.lookup",
+                   new=AsyncMock(return_value=provider_result.found("dnb", dict(self.DNB_META)))), \
+             patch("app.services.hardcover.lookup_by_isbn",
+                   new=AsyncMock(return_value=provider_result.found("hardcover", hc_data))):
             metadata, source, hc_ids, _ = await _lookup_metadata("9783608963762", "tok", None)
 
         assert source == "dnb"
@@ -1183,8 +1199,9 @@ class TestDnbRoutingAndLanguageCapture:
     async def test_google_fallback_receives_optional_api_key(self):
         from app.routers.items_common import _lookup_metadata
 
-        google = AsyncMock(return_value={"title": "Google Book"})
-        with patch("app.services.openlibrary.lookup", new=AsyncMock(return_value=None)), \
+        google = AsyncMock(return_value=provider_result.found("google", {"title": "Google Book"}))
+        with patch("app.services.openlibrary.lookup",
+                   new=AsyncMock(return_value=provider_result.no_match("openlibrary"))), \
              patch("app.services.googlebooks.lookup", new=google):
             metadata, source, _, _ = await _lookup_metadata(
                 "9780441172719", None, None, google_api_key="google-key"
@@ -1193,7 +1210,9 @@ class TestDnbRoutingAndLanguageCapture:
         assert metadata["title"] == "Google Book"
         assert source == "google"
         assert google.await_args.kwargs["api_key"] == "google-key"
-        assert callable(google.await_args.kwargs["on_rate_limit"])
+        # The removed keyword must not be forwarded at all — not just
+        # tolerated (see GOTCHAS G61/T2).
+        assert "on_rate_limit" not in google.await_args.kwargs
 
     def test_save_item_persists_language(self, db):
         from app.routers.items_common import _save_item
@@ -1227,7 +1246,7 @@ class TestDnbRoutingAndLanguageCapture:
 
         async with httpx.AsyncClient() as client:
             result = await openlibrary.lookup("9783161484100", client)
-        assert result["language"] == "de"
+        assert result.payload["language"] == "de"
 
     @respx.mock
     async def test_googlebooks_lookup_captures_language(self):
@@ -1240,7 +1259,7 @@ class TestDnbRoutingAndLanguageCapture:
 
         async with httpx.AsyncClient() as client:
             result = await googlebooks.lookup("9783161484100", client)
-        assert result["language"] == "de"
+        assert result.payload["language"] == "de"
 
 
 class TestLanguageOnEditAndDetail:

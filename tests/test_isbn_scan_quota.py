@@ -16,7 +16,7 @@ import httpx
 import pytest
 
 from app.routers import items_common
-from app.services import dnb, googlebooks, hardcover, openlibrary
+from app.services import dnb, googlebooks, hardcover, openlibrary, provider_result
 
 
 ISBN13 = "9780441172719"
@@ -49,13 +49,13 @@ class TestTheCascadeReportsBeingStarved:
     ):
         isbn = DE_ISBN13 if source == "dnb" else ISBN13
 
+        # All four sources return a ProviderResult now (T2/T3), so one stub
+        # shape covers openlibrary/googlebooks/dnb/hardcover alike.
         async def _miss(*a, **kw):
-            return None
+            return provider_result.no_match("stub")
 
-        async def _starved(*a, on_rate_limit=None, **kw):
-            if on_rate_limit:
-                on_rate_limit()
-            return None
+        async def _starved(*a, **kw):
+            return provider_result.rate_limited("stub")
 
         for name, mod in (
             ("openlibrary", openlibrary), ("googlebooks", googlebooks), ("dnb", dnb),
@@ -80,7 +80,7 @@ class TestTheCascadeReportsBeingStarved:
     ):
         """The control. Byte-identical to v0.21.1 — no extra line at all."""
         async def _miss(*a, **kw):
-            return None
+            return provider_result.no_match("stub")
 
         for mod in (openlibrary, googlebooks, dnb):
             monkeypatch.setattr(mod, "lookup", _miss)
@@ -101,12 +101,10 @@ class TestTheCascadeReportsBeingStarved:
     ):
         """The user's options do not change; only the explanation does."""
         async def _miss(*a, **kw):
-            return None
+            return provider_result.no_match("stub")
 
-        async def _starved(*a, on_rate_limit=None, **kw):
-            if on_rate_limit:
-                on_rate_limit()
-            return None
+        async def _starved(*a, **kw):
+            return provider_result.rate_limited("stub")
 
         for mod in (openlibrary, googlebooks, dnb):
             monkeypatch.setattr(mod, "lookup", _starved if starved else _miss)
@@ -128,12 +126,10 @@ class TestTheCascadeReportsBeingStarved:
         starved — a flag set by a source that was not consulted would make the
         card argue with itself."""
         async def _hit(*a, **kw):
-            return {"title": "Dune", "authors": "Frank Herbert"}
+            return provider_result.found("openlibrary", {"title": "Dune", "authors": "Frank Herbert"})
 
-        async def _would_starve(*a, on_rate_limit=None, **kw):
-            if on_rate_limit:
-                on_rate_limit()
-            return None
+        async def _would_starve(*a, **kw):
+            return provider_result.rate_limited("stub")
 
         monkeypatch.setattr(openlibrary, "lookup", _hit)
         monkeypatch.setattr(googlebooks, "lookup", _would_starve)
@@ -154,10 +150,8 @@ class TestTheOtherThreeCallersIgnoreIt:
     def test_add_by_isbn_behaves_exactly_as_today_under_a_429(
         self, editor_client, db, monkeypatch
     ):
-        async def _starved(*a, on_rate_limit=None, **kw):
-            if on_rate_limit:
-                on_rate_limit()
-            return None
+        async def _starved(*a, **kw):
+            return provider_result.rate_limited("stub")
 
         for mod in (openlibrary, googlebooks, dnb):
             monkeypatch.setattr(mod, "lookup", _starved)
@@ -173,10 +167,8 @@ class TestTheOtherThreeCallersIgnoreIt:
     def test_the_store_queue_flush_behaves_exactly_as_today_under_a_429(
         self, admin_client, db, monkeypatch
     ):
-        async def _starved(*a, on_rate_limit=None, **kw):
-            if on_rate_limit:
-                on_rate_limit()
-            return None
+        async def _starved(*a, **kw):
+            return provider_result.rate_limited("stub")
 
         for mod in (openlibrary, googlebooks, dnb):
             monkeypatch.setattr(mod, "lookup", _starved)
