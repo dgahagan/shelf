@@ -196,11 +196,13 @@ class TestTier4NeverEscapesMediaTypes:
 
 
 class TestADeliberateNonBookHintSurvivesTier4:
-    """The dropdown is the only evidence a CD will ever have.
+    """When the record names neither, the dropdown is the evidence.
 
     §1's rule is that a *book-family* hint is wrong on a non-978 barcode, not
-    that every hint is. Discarding a deliberate "CD" here would silently refile
-    every scanned album as a DVD — Shelf has no CD detection anywhere to put
+    that every hint is. Tier 2 now reads an audio tag out of the retail title
+    and tier 3 reads a "Music CDs" category, so most albums are detected — but
+    where the record carries neither, discarding a deliberate "CD" here would
+    still silently refile the album as a DVD, and nothing downstream could put
     back what the dropdown said.
     """
 
@@ -349,3 +351,201 @@ class TestRecognisedHardwareAnswersHardware:
         )
         assert d.media_type == "video_game"
         assert d.signal == "detected"
+
+
+# --- Issue: a scanned music CD is detected, not guessed as a film ----------
+#
+# The six rows are the real upcitemdb records for six real CD barcodes
+# (design plan, probe 1). They are pasted as literals rather than read from
+# `.devdocs/plan-scan-audio-signal-probes/cd_titles.json` — `.devdocs/` is
+# gitignored, and a committed test may not depend on it.
+
+_OBSERVED_CD_RECORDS = [
+    pytest.param(
+        "Fleetwood Mac - Rumours - CD",
+        "Media > Music & Sound Recordings > Music CDs",
+        id="rumours",
+    ),
+    pytest.param(
+        "The Beatles - Abbey Road - CD",
+        "Media > Music & Sound Recordings > Music CDs",
+        id="abbey_road",
+    ),
+    pytest.param(
+        "Clockcleaner - Nevermind - Rock - CD",
+        "Media > Music & Sound Recordings > Music CDs",
+        id="nevermind",
+    ),
+    pytest.param(
+        "The Eagles - Hotel California - Music & Performance - CD",
+        "Media > Music & Sound Recordings > Music CDs",
+        id="hotel_california",
+    ),
+    pytest.param(
+        # Title only: the category is the bare "Media", which decides nothing.
+        "Miles Davis Kind of Blue Audio CD", "Media",
+        id="kind_of_blue_title_only",
+    ),
+    pytest.param(
+        # Category only: no audio tag anywhere in the title.
+        "Born in the USA", "Media > Music & Sound Recordings > Music CDs",
+        id="born_in_the_usa_category_only",
+    ),
+]
+
+
+class TestAMusicDiscIsDetectedAsACD:
+    """Tier 2 gains an audio arm and tier 3 a music-CD arm.
+
+    Before this, `cd` was a value only the dropdown could supply: every
+    scanned album fell to the tier-4 fallback, filed as `dvd` with
+    `signal="none"`, and climbed the TMDb ladder. The two arms are
+    complementary and their union covers 6 of 6 observed records.
+    """
+
+    @pytest.mark.parametrize("title, category", _OBSERVED_CD_RECORDS)
+    def test_every_observed_cd_record_is_detected_as_a_cd(self, title, category):
+        d = detect_media_type("upc", "auto", title, category)
+        assert d.media_type == "cd"
+        assert d.signal == "detected"
+        assert d.reason
+
+    def test_a_title_audio_tag_decides_without_any_category(self):
+        """The `Kind of Blue` arm: category is the bare "Media".
+
+        The reason names the *fuller* tag, because `_AUDIO_MARKERS` is
+        ordered most-specific-first.
+        """
+        d = detect_media_type("upc", "auto", "Miles Davis Kind of Blue Audio CD", "Media")
+        assert d.media_type == "cd"
+        assert "'Audio CD'" in d.reason
+
+    def test_a_music_cd_category_decides_without_any_title_tag(self):
+        """The `Born in the USA` arm: nothing in the title says CD."""
+        d = detect_media_type(
+            "upc", "auto", "Born in the USA",
+            "Media > Music & Sound Recordings > Music CDs",
+        )
+        assert d.media_type == "cd"
+        assert d.signal == "detected"
+        assert "music cd" in d.reason.lower()
+
+    @pytest.mark.parametrize("title, marker", [
+        ("Purple Rain [DVD/CD Combo]", "DVD"),
+        ("The Bodyguard Blu-ray + Soundtrack CD", "Blu-ray"),
+        ("Woodstock 40th Anniversary [Blu-ray] Bonus CD", "Blu-ray"),
+        ("Terminator 2 [DVD] (includes bonus CD-ROM)", "[DVD]"),
+    ])
+    def test_a_disc_bundle_carrying_cd_is_still_a_disc(self, title, marker):
+        """Format is checked before every arm that can be wrong about it.
+
+        The first three film rows in the probe corpus that fire on "CD" are
+        disc bundles that also carry a format tag. Audio-first would file a
+        concert Blu-ray as a music album.
+
+        The fourth is the same argument one rung over, and the reason
+        `CD-ROM` is not in `_PLATFORM_MARKERS`: a platform token beats a
+        format tag, so while `CD-ROM` sat in that table this bundle filed as
+        a *video game* with a confident reason. Restore it there and this
+        row goes red.
+        """
+        d = detect_media_type("upc", "auto", title, None)
+        assert d.media_type == "dvd"
+        assert f"'{marker}'" in d.reason
+
+    @pytest.mark.parametrize("title", [
+        "Vinyl",
+        "Almost Famous",
+        "The Soundtrack of Our Lives",
+        "Sound of Metal",
+        "Off the Record",
+        "Family Album",
+        "Stereo",
+        "Disco Pigs",
+        "High Fidelity",
+        "The Last Record Store",
+    ])
+    def test_an_audio_word_adversary_is_never_a_cd(self, title):
+        """The roadmap's anticipated risk, measured and avoided.
+
+        `Soundtrack`, `Vinyl` and `Record` as tokens would catch every one of
+        these; none of them is needed, and none of them is in the table. Each
+        row must still reach the honest tier-4 fallback.
+        """
+        d = detect_media_type("upc", "auto", title, None)
+        assert d.media_type == "dvd"
+        assert d.signal == "none"
+
+    @pytest.mark.parametrize("title", [
+        "Myst PC CD-ROM",
+        "The Sims 2 PC CD-ROM Deluxe",
+        "Command & Conquer Red Alert (PC CD-ROM)",
+        "Baldur's Gate II PC CD ROM",
+    ])
+    def test_a_pc_cd_game_is_a_game(self, title):
+        """`PC CD` joins `PC DVD` in the platform table.
+
+        All four carry that token, and the platform arm runs before the
+        `CD-ROM` medium arm, so the reason names the more specific one.
+        Without it the audio arm would file four PC games as music albums.
+        """
+        d = detect_media_type("upc", "auto", title, None)
+        assert d.media_type == "video_game"
+        assert d.signal == "detected"
+        assert "PC CD" in d.reason
+
+    @pytest.mark.parametrize("title", [
+        "Myst CD-ROM",
+        "Command & Conquer (CD-ROM)",
+    ])
+    def test_a_bare_cd_rom_game_is_a_game(self, title):
+        """`CD-ROM` gets its own arm, between format and audio.
+
+        `_contains_marker` treats the hyphen as a word boundary, so the "CD"
+        audio marker matches *inside* "CD-ROM". A bare CD-ROM title carries no
+        `PC CD` and no format tag, so with `PC CD` alone these two would fall
+        to the audio arm and file as music albums with a confident reason —
+        an admitted guess upgraded to a confident misfile. Below format, not
+        above it, so a film bundle carrying the token still files as a disc
+        (`test_a_disc_bundle_carrying_cd_is_still_a_disc`).
+        """
+        d = detect_media_type("upc", "auto", title, None)
+        assert d.media_type == "video_game"
+        assert d.signal == "detected"
+        assert "CD-ROM" in d.reason
+
+    def test_tier_2_still_runs_before_the_music_cd_category(self):
+        """A `Music CDs` category never overrules a marker already in the title.
+
+        upcitemdb files disc bundles under music categories often enough that
+        this is a real shape, not a hypothetical one.
+        """
+        d = detect_media_type(
+            "upc", "auto", "Purple Rain [DVD/CD Combo]",
+            "Media > Music & Sound Recordings > Music CDs",
+        )
+        assert d.media_type == "dvd"
+
+    def test_an_audio_tag_beats_a_deliberate_hint(self):
+        """The existing tier-2-outranks-the-dropdown rule, now reachable for CDs.
+
+        Same rule as `test_a_real_title_marker_still_beats_a_deliberate_hint`
+        one class up; this is the CD instance of it.
+        """
+        d = detect_media_type("upc", "dvd", "Fleetwood Mac - Rumours - CD", None)
+        assert d.media_type == "cd"
+        assert d.signal == "detected"
+
+    @pytest.mark.parametrize("hint", sorted(MEDIA_TYPES))
+    def test_every_undetectable_hint_still_survives_tier_4(self, hint):
+        """G57, re-asked after the CD arms landed.
+
+        The entry's question is "list the values this detector can never
+        produce" — each one is a value only the user can supply, so each must
+        survive a no-signal outcome. `cd` has now come off that list, which
+        makes the list exactly the book family. This is the repaired form of
+        the entry's own Verify script, which unpacks a two-tuple `Detection`
+        has not been since #43.
+        """
+        d = detect_media_type("upc", hint, None, None)
+        assert d.media_type == hint or hint in set(_BOOK_FAMILY_HINTS_FOR_TEST)

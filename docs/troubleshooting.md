@@ -114,8 +114,10 @@ time:
   decided by the *format*.
 - **"Shelf has no metadata source for this format yet."** — nothing to fix,
   and nothing to configure. The format has no provider wired up, so no lookup
-  was attempted. CDs are the case today (see the roadmap's MusicBrainz item);
-  the disc is filed under its barcode title.
+  was attempted. CDs are the case today; the disc is filed under its barcode
+  title. Since 0.26.0 a music CD reaches this on **Auto** — an audio tag in the
+  retail title or a `Music CDs` category is enough, so you no longer have to
+  pick CD from the dropdown to get the quiet answer instead of a guessed film.
 - **"no TMDb match for this barcode."** — nothing to fix. The provider
   genuinely has no record for that title; **Find cover** or **Edit** it by
   hand.

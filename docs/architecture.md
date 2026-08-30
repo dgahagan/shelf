@@ -64,7 +64,8 @@ dropdown is an input to that decision, not an oracle over it.
 
 Two classes of scan are filed under their cleaned retail title with no
 metadata request at all, and they are decided by different things. The first
-is a resolved media type with **no** metadata provider — a CD, today. The map is
+is a resolved media type with **no** metadata provider — a CD, today, and now
+reached on `auto` rather than only from the dropdown. The map is
 `UPC_METADATA_PROVIDERS` in `routers/items_common.py`, deliberately *not*
 `covers.MEDIA_TYPE_PROVIDERS`: that one falls unrecognised types through to
 the book cover search, which is a working fallback for covers and a false
@@ -88,11 +89,46 @@ provider answer to project, because no provider was asked.
 `detect_media_type(barcode_type, hint, title, category)` is pure and offline,
 and runs four tiers in confidence order: an ISBN prefix decides the
 book family outright (the dropdown only picks *among* book / kids book /
-audiobook / eBook / comic, which no barcode can distinguish); then platform
-and format markers in the **raw** retail title, platform beating format so
-`Alice Madness Returns (PC DVD)` is a game; then `Software > Video Game
-Software` as a category, which may decide only `video_game`; then a fallback
-whose first arm is the hardware case above.
+audiobook / eBook / comic, which no barcode can distinguish); then platform,
+format and audio markers in the **raw** retail title; then a category; then a
+fallback whose first arm is the hardware case above.
+
+Tier 2's four arms run in the order **platform → format → medium → audio**,
+and every seam is measured rather than chosen. Platform beats format so
+`Alice Madness Returns (PC DVD)` is a game. Format beats the two arms below it
+because every film title in the probe corpus that carries `CD` is a disc bundle
+that also carries a format tag (`Purple Rain [DVD/CD Combo]`, `The Bodyguard
+Blu-ray + Soundtrack CD`), so format-first files all three as discs where a
+later arm would file a concert Blu-ray as an album. `_AUDIO_MARKERS` is
+`["Audio CD", "Compact Disc", "CD"]`, most specific first so the reason names
+the fuller tag.
+
+`CD-ROM` is a **medium, not a platform**, and it has its own arm
+(`_MEDIUM_MARKERS`) between format and audio for that reason. It is
+load-bearing rather than redundant with `PC CD`: `_contains_marker` treats the
+hyphen as a word boundary, so the bare `CD` audio marker matches *inside*
+`CD-ROM`. A title like `Myst CD-ROM` carries no `PC CD` and no format tag, so
+without the token it would fall through to the audio arm and be filed as a
+music album — with a confident reason attached, which is worse than the honest
+fallback it replaced. It also removes those titles from the film ladder
+entirely, closing a live `G46` rung
+(`search_queries("Command & Conquer Red Alert (PC CD-ROM)")` descends to
+`Command`).
+
+It sits **below** format, unlike the platform table, because a platform token
+is allowed to beat a format tag and a medium token is not: a film bundle can
+carry both (`Terminator 2 [DVD] (includes bonus CD-ROM)`), and while `CD-ROM`
+sat in `_PLATFORM_MARKERS` such a row filed as a video game ahead of its own
+`[DVD]`.
+
+Tier 3 admits exactly two categories, and both name the medium itself rather
+than a shelf: `Software > Video Game Software` decides `video_game`, and
+`Media > … > Music CDs` decides `cd`. Neither prohibition below is breached —
+no category decides `dvd`, and neither of these names a platform. The music-CD
+arm decides alone deliberately: `Born in the USA` carries no title tag at all
+and is 1 of the 6 observed CD records, so a confirmatory rule would miss it for
+no gain against a category with zero measured false positives.
+
 Two prohibitions are load-bearing and written into the module beside the
 marker table: **no category ever decides `dvd`** (discs categorise as
 `Electronics > Video > Televisions`), and **no category naming a platform

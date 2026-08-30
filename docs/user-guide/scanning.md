@@ -82,11 +82,20 @@ overrode you. The reverse holds too: a non-ISBN barcode is certainly not a
 book, so a disc scanned under "Book" is not filed as one.
 
 For a UPC there is no certain prefix, so Shelf reads the product record it
-already fetched — the platform or format wording in the retail title
-(`Nintendo Switch`, `[DVD]`, `4K UHD`) first, then the product category, and
-only ever for games. A category is never enough on its own to call something a
-disc, and a category naming a *console* is never enough to call something a
-game — that is the shelf the product sits on, not what the product is.
+already fetched — the platform, format, medium or audio wording in the retail
+title (`Nintendo Switch`, `PC CD`, `[DVD]`, `4K UHD`, `CD-ROM`, `Audio CD`)
+first, then the product category, which may name a game (`Video Game Software`) or a
+music CD (`Music CDs`) and nothing else. A category is never enough on its own
+to call something a disc, and a category naming a *console* is never enough to
+call something a game — that is the shelf the product sits on, not what the
+product is.
+
+The four title arms are checked in order, and the order matters. A game whose
+own subtitle carries a format word (`Alice Madness Returns (PC DVD)`) is a
+game, not a disc. A disc bundle whose own title carries `CD` or `CD-ROM`
+(`Purple Rain [DVD/CD Combo]`, `Terminator 2 [DVD] (includes bonus CD-ROM)`)
+is a disc, not an album and not a game. Each arm runs after the one that
+could be wrong about it.
 
 **Auto** is the default for a new install: it means "read the barcode and
 decide", and it is the one to leave it on. If you have used Shelf before,
@@ -94,8 +103,10 @@ your saved choice is left alone — nothing is silently reinterpreted — and th
 barcode rule above corrects a stale one anyway.
 
 When nothing in the barcode or the product record disagrees with you, your
-choice stands. That matters for CDs in particular: Shelf has no CD detection,
-so the dropdown is the only thing that can say "this is a CD".
+choice stands. That still matters for CDs: a music CD is detected on Auto when
+the retail title carries an audio tag (`… - CD`, `Audio CD`) or the category
+names music CDs, but when the record names **neither**, the dropdown is what
+says it — and the choice stands.
 
 Books further divide into book, kids book, audiobook, eBook, comic / graphic
 novel — the barcode cannot tell those apart, so they stay yours to pick.
@@ -140,7 +151,9 @@ different responses:
   genuine miss, so it is worth trying again before adding anything by hand.
 - **Shelf has no metadata source for this format yet** — nothing to fix. CDs
   are the case today: there is no music provider wired up, so a scanned CD is
-  filed under its barcode title. This one is decided by the *format*; the
+  filed under its barcode title. That now happens on **Auto** — the CD is
+  detected rather than needing the dropdown — and it is still filed silently,
+  with no film database asked. This one is decided by the *format*; the
   hardware case above is decided by the *title*.
 - **the provider had no match** — nothing to fix either. It was asked, and it
   genuinely does not have this edition.

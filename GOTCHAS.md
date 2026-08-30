@@ -815,6 +815,20 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     general question is this entry's, one layer out: not "which branch does my
     pin land in" but **"whose markup am I asserting on?"**
 
+  One more, found on `feat/scan-audio-signal` (2026-08-30), and it is the
+  "redundant guards" trap wearing a different hat:
+  - **Two independent detectors for one property absorb each other's
+    mutation.** CD detection landed as two complementary arms — an audio tag in
+    the title and a `Music CDs` category — whose union covers 6 of 6 observed
+    records *because* 4 of the 6 carry both. Deleting the audio arm reddened
+    **1** of the six parametrised rows and deleting the category arm reddened
+    **1**; only removing both reddened all six. A reviewer reading "5 of 6 still
+    green" would reasonably conclude the arm was dead code. The fix is not more
+    pins but naming the rows that carry each arm alone — here `kind_of_blue`
+    (title only) and `born_in_the_usa` (category only) — and mutating against
+    *those* rather than against the set. Redundancy that is the point of the
+    design still costs you a mutation check per layer.
+
   Two more, both found on `feat/issues-42-44-scan-outcome-honesty` (2026-08-27),
   and both about a pin landing one layer away from the change:
   - **A pin that stubs the client cannot see inside the client.** T5 narrowed
@@ -1168,10 +1182,13 @@ grep -rn "^\s\+from app\.\(routers\|services\)\." app/ --include='*.py'
 grep -rn "setattr(.*_enrich_import_covers\|setattr(.*_lookup_metadata\|setattr(.*_save_item" tests/
 ```
 
-  (the second grep's hits must all resolve to `app.routers.items`, never
-  `app.routers.intake` / `app.routers.store` — as of 2026-08-23 all four hits
-  patch it through the `items_router` import alias, so grep for the alias too,
-  not just the dotted path.)
+  (the second grep's hits must resolve to the module that **defines** the
+  helper, never to `app.routers.intake` / `app.routers.store`. The defining
+  module moved when the item routes were split: `_lookup_metadata` and
+  `_save_item` now live in `app/routers/items_common.py`, and as of 2026-08-30
+  all six hits patch them through the `items_common` alias — re-read the import
+  block before trusting a grep for any one alias name. The alias in this note
+  has already gone stale once, from `items_router`.)
 - **Status:** documented.
 
 ## G38 — When a camera viewfinder has more than one way to leave or restart it
@@ -1496,6 +1513,29 @@ python -c "from app.services.upcitemdb import search_queries as q; \
   pin is asserting against a branch it does not mean to — **G31**'s "which
   branch does your pin land in", in its provider-test form. Caught by running
   the mutation, which is the only reason anyone knew.
+- **Third instance, same lever, no new floor** — `9fd9425` (2026-08-30). Four
+  PC CD-ROM game titles (`Myst PC CD-ROM`, `Command & Conquer Red Alert
+  (PC CD-ROM)`, …) carried no `_PLATFORM_MARKERS` member, so they filed as
+  `dvd`/`none` and climbed the film ladder; `Command & Conquer Red Alert
+  (PC CD-ROM)` descended to **`Command`**, seven characters, clearing
+  `MIN_SOLO_WORD = 7` legally. The fix was again not a shorter ladder but two
+  tokens in the tier-2 tables (`PC CD` in `_PLATFORM_MARKERS`, `CD-ROM` in its
+  own `_MEDIUM_MARKERS` arm below format), which forks those titles to IGDB and
+  takes them off the film ladder entirely. **The pattern across all
+  three: the remedy has never once been the floor.** Twice it was teaching the
+  caller to recognise the input, once it was declining the search outright. If
+  your instinct on the next instance is to raise `MIN_SOLO_WORD`, that is the
+  tell you have not found the class yet.
+- **The stub must lie, *and* its lie must be distinguishable.** The rule above
+  says the stub returns the confident wrong hit. A run of the CD pins
+  (`1104b4a`) found the second half: the plan specified the wrong film's title
+  as `"Rumours"`, and one of the real records is `Fleetwood Mac - Rumours - CD`,
+  which a `cd` verdict files under its **full raw title** (no provider, so no
+  ladder, so `search_queries[0]` is the whole string). The card assertion
+  `assert WRONG_FILM not in resp.text` would then have reddened on the
+  *correctly filed* row and stayed silent about the bug. Pick a stub value with
+  **zero substring overlap** against every real title in the parametrise list,
+  and say in the test that you checked.
 - **Status:** documented. Not a lint candidate — how short is too short is a
   judgement about the provider, not a grep.
 
@@ -1959,10 +1999,10 @@ grep -n "^async def\|^def " app/services/tmdb.py app/services/igdb.py
 - **Why:** the damage is invisible and it lands on exactly the data the feature
   cannot help with. Issue #36 added media-type detection over the scan form's
   dropdown. Its tier-4 fallback — "no signal, so return a safe default" —
-  resolved a UPC with no usable title or category to `dvd`. But `cd` is a real
-  `MEDIA_TYPES` member and **Shelf has no CD detection anywhere**: no code path
-  reads or writes a CD from a barcode, and the dropdown is the only evidence a
-  CD will ever have. Shipping that fallback would have refiled every scanned
+  resolved a UPC with no usable title or category to `dvd`. At the time `cd`
+  was a real `MEDIA_TYPES` member that **no code path could produce**: nothing
+  read or wrote a CD from a barcode, and the dropdown was the only evidence a
+  CD would ever have. Shipping that fallback would have refiled every scanned
   album as a DVD, with no test failing and nothing on screen disagreeing —
   found only by asking "which media types can detection *not* see?" while
   wiring the dispatch. The design plan had the right rule all along ("a
@@ -1971,25 +2011,41 @@ grep -n "^async def\|^def " app/services/tmdb.py app/services/igdb.py
   reviews for.
 - **The question to ask**, before writing any such fallback: *list the values
   this detector can never produce.* Each one is a value only the user can
-  supply, so each one must survive a no-signal outcome. Here that list was
-  exactly `cd`, and it was one line of code away from being data loss.
+  supply, so each one must survive a no-signal outcome. In 2026-08 that list
+  was exactly `cd`, and it was one line of code away from being data loss.
+- **Re-ask the question every time the detector gains an arm.** The list is not
+  a constant; it is a fact about the current tiers, and it shrinks as they
+  grow. `9fd9425` (2026-08-30) gave tier 2 an audio-marker arm and tier 3 a
+  `Music CDs` category arm, so **`cd` came off the list** — the values
+  detection can never produce are now the book family only (`book`,
+  `kids_book`, `audiobook`, `ebook`, `comic`), which is exactly
+  `_BOOK_FAMILY_HINTS`. The rule did not change and the hint branch was not
+  touched; what changed is which values depend on it, and that is the part a
+  reader will assume is still true.
 - **Evidence:** `1df2409` (2026-08-26, issue #36 T4) — `detect.py`'s tier 4
   honours a non-book hint and falls back only on a book-family or absent one;
   pinned by `tests/test_detect.py::TestADeliberateNonBookHintSurvivesTier4`
   and `test_a_deliberate_cd_choice_survives_a_product_record_with_no_markers`.
   Mutation-checked: removing the honour-the-hint branch fails four tests.
 - **Verify:** the set of undetectable types is still covered — every
-  `MEDIA_TYPES` key that no tier can return must survive tier 4:
+  `MEDIA_TYPES` key that no tier can return must survive tier 4. (The script
+  below used to unpack `got, _ = d(...)`; `detect_media_type` has returned a
+  `slots` `Detection` since #43, so it raised `TypeError` before it asserted
+  anything — a Verify line that has quietly not run since 2026-08-29. Read
+  `.media_type`.)
 
 ```bash
 python -c "
 from app.config import MEDIA_TYPES
 from app.services.detect import detect_media_type as d
 for k in MEDIA_TYPES:
-    got, _ = d('upc', k, None, None)
+    got = d('upc', k, None, None).media_type
     assert got == k or k in {'book','kids_book','audiobook','ebook','comic'}, (k, got)
 print('every non-book hint survives tier 4')"
 ```
+
+  Pinned in the suite too, so it cannot rot again silently:
+  `tests/test_detect.py::TestAMusicDiscIsDetectedAsACD::test_every_undetectable_hint_still_survives_tier_4`.
 
 - **Status:** documented. Not a lint candidate — "can this detector produce
   this value" is a question about the detector's logic, not a grep.
@@ -2024,6 +2080,14 @@ print('every non-book hint survives tier 4')"
   builder**, stated where the next reader will see it, or an accident of the
   current branch set. A one-off notice assembled inline in a route handler is
   the second kind, always.
+- **The other half, which costs a test rather than a page.** Because the scan
+  card renders `{{ detect_reason }}` **escaped** — correctly — a string the
+  router built with quotes in it does not arrive intact. `detect`'s reasons are
+  `Title carries a 'CD' audio tag — filed as CD.`, and the apostrophes reach
+  `resp.text` as `&#39;`, so `assert "'CD'" in resp.text` fails while the reason
+  is present and right. Match around the quotes, or assert on the unescaped
+  `Detection.reason` at the unit level and leave the card assertion coarse.
+  Found writing the CD scan pins (`1104b4a`, 2026-08-30).
 - **Evidence:** `1976713` (2026-08-26, issue #36 T5) — caught in orchestrator
   review of the task diff, before the commit.
 - **Verify:** every `|safe` in a template still renders something built in the
@@ -2426,6 +2490,47 @@ grep -rn "[Nn]ever raises" app/services/*.py
   expressions can raise needs judgement — though the narrower "a function
   whose docstring says *never raises* has a bare `resp.json()`" is
   mechanically checkable and would have caught the first half.
+
+## G67 — When your change adds lines to a module at its size cap
+
+- **Rule:** `tests/test_module_sizes.py` caps ten files, and
+  `app/routers/items_common.py` is sitting at exactly its cap of 900. The
+  **next** line added to it fails the gate. Before scoping work that touches
+  it, read `LIMITS` in that test and check the headroom you actually have —
+  and when there is none, plan the extraction as part of the task rather than
+  discovering it when the suite goes red. The cap's own instruction says where
+  the lines should go: *"move domain logic to `app/services/`"*.
+- **Why:** it is a tripwire that fires on the change *after* the one that
+  filled the budget, so the person who pays is never the person who spent it.
+  Two releases in a row landed on this file — v0.25.0 (issue #49) and v0.25.1
+  (issue #43) — and both were scoped without anyone reading the remaining
+  headroom; #43 finished at exactly 900 with the gate still green, which is
+  the worst possible resting place, because nothing signals it. A plan that
+  has already been reviewed and had its tasks parallelised is an expensive
+  place to discover that a file has to be split first.
+- **Evidence:** 2026-08-29, plan `issue-43-hardware-signal`. The T3 run-plan
+  note flagged the cap and marked it "carried to the curation step"; the
+  curation commit `088d12d` did not mention it, and the diff review
+  (`gemini-G67`) raised it independently against the finished diff. Triaged
+  `defer` — real, but not a defect on that branch, since the gate was green.
+- **Verify:** the headroom on any capped module, before scoping work on it:
+
+```bash
+python -m pytest tests/test_module_sizes.py -q   # the tripwire itself
+python3 -c "
+import re, pathlib
+src = pathlib.Path('tests/test_module_sizes.py').read_text()
+for path, cap in re.findall(r'\"([^\"]+\.(?:py|html))\": \((\d+),', src):
+    n = len(pathlib.Path(path).read_text().splitlines())
+    print(f'{n:>5}/{cap:<5} {\"FULL\" if n >= int(cap) else \"\":<4} {path}')
+"
+```
+
+- **Status:** documented. The cap is already mechanically enforced — what is
+  missing is the *warning* before the budget is spent, not the failure after.
+  A lint that fails at 95% of a cap would move the signal to the change that
+  actually fills it; not built, because a soft cap nobody can silence is its
+  own problem.
 
 ## Graveyard
 

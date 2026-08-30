@@ -680,7 +680,8 @@ class TestTheProductRecordOutranksTheDropdown:
     def test_a_deliberate_cd_choice_survives_a_product_record_with_no_markers(
         self, editor_client, db, monkeypatch, providers
     ):
-        """Shelf has no CD detection, so the dropdown is a CD's only evidence.
+        """When the retail record names neither a CD tag nor a music-CD
+        category, the dropdown is what says it, and the choice stands.
 
         Detection must not quietly refile an album as a DVD — the tier-4 rule
         is that a *book-family* hint is wrong on a UPC, not that every hint is.
@@ -1665,6 +1666,236 @@ class TestARecognisedHardwareScanAsksNobody:
         row = self._stored(db)
         assert row["title"] == "Blade Runner 2049"
         assert row["source"] == "tmdb"
+
+
+class TestAnAutoScannedCDIsFiledAsACDAndAsksNobody:
+    """T2 (issue #43's follow-on) — `detect`'s audio and music-CD arms
+    (`app/services/detect.py` tier 2/3; see `TestAMusicDiscIsDetectedAsACD`
+    in `tests/test_detect.py`) resolve a scanned album to `cd` before
+    `_scan_upc` ever reaches the metadata fork, so `no_metadata_provider`
+    (`items_common.py:558`) declines the TMDb ladder the same way a
+    recognised console does above.
+
+    `G46`'s stub warning applies exactly as it did for #43: a TMDb stub that
+    answers `no_match` for every query leaves a CD's stored title identical
+    to what the fix files (`queries[0]` either way), so the stored-field pin
+    means nothing unless the stub would actually lie. Every stub below
+    answers a confident, real-looking wrong film — never `no_match` — on
+    every query it is asked. None of the six observed CD titles or the six
+    game titles contains the wrong film's title as a substring, so a card
+    that carries it is unambiguous evidence TMDb was reached.
+    """
+
+    _WRONG_FILM = {
+        "title": "Paris, Texas",
+        "description": "Not this item at all.",
+        "publish_year": 1984,
+        "cover_url": None,
+    }
+
+    _WRONG_GAME = {
+        "igdb_id": 999,
+        "title": "Not The Right Game",
+        "description": "Not this item at all.",
+        "publisher": "Nobody",
+        "publish_year": 1999,
+        "cover_url": None,
+        "developer": "Nobody",
+    }
+
+    _OBSERVED_CD_RECORDS = [
+        pytest.param(
+            "Fleetwood Mac - Rumours - CD",
+            "Media > Music & Sound Recordings > Music CDs",
+            id="rumours",
+        ),
+        pytest.param(
+            "The Beatles - Abbey Road - CD",
+            "Media > Music & Sound Recordings > Music CDs",
+            id="abbey_road",
+        ),
+        pytest.param(
+            "Clockcleaner - Nevermind - Rock - CD",
+            "Media > Music & Sound Recordings > Music CDs",
+            id="nevermind",
+        ),
+        pytest.param(
+            "The Eagles - Hotel California - Music & Performance - CD",
+            "Media > Music & Sound Recordings > Music CDs",
+            id="hotel_california",
+        ),
+        pytest.param(
+            "Miles Davis Kind of Blue Audio CD", "Media",
+            id="kind_of_blue",
+        ),
+        pytest.param(
+            "Born in the USA",
+            "Media > Music & Sound Recordings > Music CDs",
+            id="born_in_the_usa",
+        ),
+    ]
+
+    @pytest.fixture
+    def cd_tmdb_calls(self, monkeypatch):
+        """Own stub (not the shared `providers` fixture — G46's note names
+        that fixture by line range specifically because it answers
+        `no_match` everywhere and would blind this pin). Records every
+        query and answers every one with a confident wrong film.
+        """
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            return provider_result.found("tmdb", dict(self._WRONG_FILM))
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+        return calls
+
+    def _scan_cd(self, monkeypatch, editor_client, title, category, hint="auto"):
+        async def _lookup(code, client):
+            return provider_result.found(
+                "upcitemdb",
+                {"title": title, "category": category, "brand": None, "images": []},
+            )
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+        return editor_client.post(
+            "/api/scan", data={"isbn": DVD_UPC, "media_type": hint}
+        )
+
+    def _stored(self, db):
+        return db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+
+    @pytest.mark.parametrize("title, category", _OBSERVED_CD_RECORDS)
+    def test_a_scanned_cd_is_filed_as_a_cd_and_tmdb_is_never_asked(
+        self, editor_client, db, monkeypatch, cd_tmdb_calls, title, category
+    ):
+        resp = self._scan_cd(monkeypatch, editor_client, title, category)
+
+        assert resp.status_code == 200
+        row = self._stored(db)
+        assert row is not None
+        assert row["media_type"] == "cd"
+        assert row["source"] == "upc"
+        assert row["description"] is None
+        assert row["publish_year"] is None
+        assert row["title"] == upcitemdb.search_queries(title)[0]
+        assert cd_tmdb_calls == []
+        assert "Shelf has no metadata source for this format yet" in resp.text
+        assert self._WRONG_FILM["title"] not in resp.text
+
+    def test_a_deliberate_dvd_hint_still_loses_to_the_title_tag(
+        self, editor_client, db, monkeypatch, cd_tmdb_calls
+    ):
+        """A title tag beats a deliberate hint — the existing tier-2 rule
+        (`test_a_platform_marker_beats_a_format_tag_in_the_same_title` and
+        friends), not a new one T2 introduces."""
+        resp = self._scan_cd(
+            monkeypatch, editor_client,
+            "Fleetwood Mac - Rumours - CD",
+            "Media > Music & Sound Recordings > Music CDs",
+            hint="dvd",
+        )
+
+        assert resp.status_code == 200
+        row = self._stored(db)
+        assert row["media_type"] == "cd"
+        assert cd_tmdb_calls == []
+        # detect_overrode is set (hint 'dvd' != resolved 'cd'), so the card
+        # carries the detect reason. Jinja HTML-escapes the quotes around
+        # the marker, so match around them rather than the literal apostrophe.
+        assert "Title carries a" in resp.text and "audio tag" in resp.text
+
+    @pytest.fixture
+    def game_calls(self, monkeypatch):
+        """Own stub for the CD-ROM/PC-CD platform-marker games: IGDB
+        answers a confident hit on the first rung (which also stops the
+        ladder before a bare 'Command' is ever formed), TMDb answers a
+        confident wrong film on anything it is asked — the point is that it
+        is never asked at all.
+        """
+        calls = {"tmdb": [], "igdb": []}
+
+        async def _lookup_by_title(query, key, client):
+            calls["tmdb"].append(query)
+            return provider_result.found("tmdb", dict(self._WRONG_FILM))
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            calls["igdb"].append(query)
+            return provider_result.found("igdb", [dict(self._WRONG_GAME)])
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_tmdb_key(monkeypatch)
+        _set_igdb_creds(monkeypatch)
+        return calls
+
+    def _scan_game(self, monkeypatch, editor_client, title):
+        async def _lookup(code, client):
+            return provider_result.found(
+                "upcitemdb",
+                {"title": title, "category": None, "brand": None, "images": []},
+            )
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+        return editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": "auto"}
+        )
+
+    @pytest.mark.parametrize("title", [
+        "Myst PC CD-ROM", "The Sims 2 PC CD-ROM Deluxe",
+        "Command & Conquer Red Alert (PC CD-ROM)", "Baldur's Gate II PC CD ROM",
+        "Myst CD-ROM", "Command & Conquer (CD-ROM)",
+    ])
+    def test_a_pc_cd_rom_title_is_a_game_and_tmdb_is_never_asked(
+        self, editor_client, db, monkeypatch, game_calls, title
+    ):
+        resp = self._scan_game(monkeypatch, editor_client, title)
+
+        assert resp.status_code == 200
+        # Select the scanned row, not rows that already match the property
+        # being asserted — a `WHERE media_type = 'video_game'` pin fails with
+        # "row is None" whether the item was misfiled or never stored at all.
+        row = db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+        assert row is not None
+        assert row["media_type"] == "video_game"
+        assert game_calls["igdb"], "IGDB was never asked"
+        assert game_calls["tmdb"] == []
+
+    def test_a_disc_bundle_still_reaches_tmdb(
+        self, editor_client, db, monkeypatch
+    ):
+        """The regression guard for the arm order at the `/api/scan` level:
+        format beats audio, so a bundle that carries both a format tag and
+        'CD' — and whose upcitemdb category names music CDs — must still
+        resolve to `dvd` and still climb the TMDb ladder.
+        """
+        async def _lookup(code, client):
+            return provider_result.found(
+                "upcitemdb",
+                {"title": "Purple Rain [DVD/CD Combo]",
+                 "category": "Media > Music & Sound Recordings > Music CDs",
+                 "brand": None, "images": []},
+            )
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            return provider_result.no_match("tmdb")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+
+        resp = editor_client.post("/api/scan", data={"isbn": DVD_UPC, "media_type": "auto"})
+
+        assert resp.status_code == 200
+        row = db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+        assert row["media_type"] == "dvd"
+        assert calls, "the disc bundle never reached TMDb"
 
 
 def _set_tmdb_key(monkeypatch, key="0123456789abcdef0123456789abcdef"):

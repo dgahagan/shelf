@@ -4,7 +4,39 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.26.0] - 2026-08-30
+
+A music CD scanned on **Auto** was filed as a DVD and then searched against a
+film database. Nothing in Shelf could see a CD at all: the retail title's audio
+wording was not read, the product category was not read, and the dropdown was
+the only thing that could ever say "this is a CD". So an album fell to the
+honest-but-wrong fallback, climbed the film ladder, and came back with a
+stranger's synopsis, year and cover — or, at best, with a card that admitted it
+had guessed.
+
+### Added
+
+- **A scanned music CD is detected as a CD.** On Auto, Shelf now reads an audio
+  tag out of the retail title (`Fleetwood Mac - Rumours - CD`, `Miles Davis Kind
+  of Blue Audio CD`) or a `Music CDs` product category, and files the item as a
+  CD with no film-database request at all. The card says which one decided it.
+  The two together cover every real CD barcode in the sample; neither alone
+  does. There is still no music metadata provider wired up, so a CD is filed
+  under its own title and the card says so — which is the honest answer, and a
+  quiet one.
+
+### Changed
+
+- **PC CD-ROM games are recognised as games**, with or without a `PC` in the
+  title (`Myst PC CD-ROM`, `Command & Conquer (CD-ROM)`), and are looked up on
+  IGDB instead of climbing the film ladder. They used to be filed as discs with
+  no signal, and the ladder for `Command & Conquer Red Alert (PC CD-ROM)`
+  descended as far as the single word `Command`.
+- A retail title that carries both a format tag and `CD` or `CD-ROM` — `Purple
+  Rain [DVD/CD Combo]`, `Terminator 2 [DVD] (includes bonus CD-ROM)` — is still
+  a disc. Format wording is read before both the medium and the audio wording,
+  so a concert Blu-ray is not filed as an album and a film with a bonus disc is
+  not filed as a game.
 
 ## [0.25.1] - 2026-08-29
 
@@ -2180,6 +2212,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.26.0]: https://github.com/dgahagan/shelf/releases/tag/v0.26.0
 [0.25.1]: https://github.com/dgahagan/shelf/releases/tag/v0.25.1
 [0.25.0]: https://github.com/dgahagan/shelf/releases/tag/v0.25.0
 [0.24.0]: https://github.com/dgahagan/shelf/releases/tag/v0.24.0
