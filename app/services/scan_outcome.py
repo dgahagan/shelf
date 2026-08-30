@@ -28,6 +28,11 @@ from app.services import provider_result
 # an error — so this tuple is the contract, and the test that pins it against
 # the template is what keeps the two in step.
 ENRICH_STATES = (
+    # `enrich_status()` never returns this one. It means no provider was asked
+    # at all — `enrich_status` is a projection over a `ProviderResult`, and a
+    # hardware scan has no `ProviderResult` because nothing was asked. The
+    # router assigns it directly (issue #43).
+    "no_lookup",
     "no_credential",
     "rejected",
     "quota",
@@ -35,6 +40,13 @@ ENRICH_STATES = (
     "no_provider",
     "no_match",
 )
+
+# `fragments/scan_result.html` is two cards, not one, and their arm sets differ.
+# A state with no arm in the branch that was reached renders *nothing* —
+# silently. The template's own comments argue each omission; these tuples are
+# what a test can check. G65.
+NOT_FOUND_ARMS: tuple[str, ...] = ("rejected", "quota")
+RESULT_CARD_ARMS: tuple[str, ...] = ENRICH_STATES
 
 # How each `ProviderResult.provider` identifier is spelled on the card. The
 # identifiers are display-free by design, so the mapping lives here beside the
@@ -65,7 +77,9 @@ def enrich_status(
     `None` means enrichment succeeded — the caller has real metadata and the
     card shows no notice at all.
 
-    Precedence, and why it is this way round:
+    Precedence, and why it is this way round. (`no_lookup` is not on this
+    list: it is never returned here, only assigned directly by the router for
+    a scan that never reached this function at all — see `ENRICH_STATES`.)
 
     1. **`no_provider`** outranks everything, because it is the only one that
        is true *before* any request is made. Shelf never asked, so nothing it

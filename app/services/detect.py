@@ -16,11 +16,25 @@ actually has:
    word in its own subtitle (a DVD-ROM PC game) still resolves as a game.
 3. Category — confirmatory only, and only for video_game. See the two
    prohibitions above `_PLATFORM_MARKERS` below; nothing here may decide dvd.
-4. No signal — a deliberate non-book hint (`cd`, `dvd`, `video_game`) is
-   the only evidence left and stands; otherwise resolve to a concrete
-   `MEDIA_TYPES` member anyway and say in the reason that it is a fallback,
-   never a detection. The return is **always** a `MEDIA_TYPES` member — never
-   `"auto"`, never an unchecked hint string.
+4. No signal, in three parts. **First**, recognised hardware: a title
+   carrying a hardware word *and* a platform marker (`_is_hardware_title`)
+   is a console, controller or headset. That is a weaker answer than a
+   detection and a stronger one than nothing — it says what the item is
+   *not*, which is enough for a caller to decline a film search it would
+   otherwise lose (`signal="hardware"`). It sits above the hint branch
+   deliberately: a dropdown choice asserts what the item *is*, not that a
+   film search on a title containing "Console" will match. Then a deliberate
+   non-book hint (`cd`, `dvd`, `video_game`) stands (`signal="hinted"`);
+   otherwise resolve to a concrete `MEDIA_TYPES` member anyway and say in
+   the reason that it is a fallback, never a detection (`signal="none"`).
+   The `media_type` is **always** a `MEDIA_TYPES` member — never `"auto"`,
+   never an unchecked hint string.
+
+The return is a `Detection`, not a bare tuple: the tier that decided is worth
+more to a caller than the verdict alone. `_scan_upc` reads `signal` to skip
+the TMDb ladder for hardware, because that ladder's shortest rung answers
+"PlayStation" with a confident match for a different film (`G46` — missing
+enrichment is recoverable, wrong enrichment is not).
 
 G46 (see GOTCHAS.md): this module reads the *raw* scanned title, never a
 shortened search-query rung. `app/services/upcitemdb.py`'s `search_queries`
@@ -30,8 +44,36 @@ gone. Callers must pass the title as scanned, not a ladder rung.
 """
 
 import re
+from dataclasses import dataclass
+from typing import Literal
 
 from app.config import MEDIA_TYPES
+
+# How detection reached its verdict. Callers branch on what the answer is
+# *worth*, never on which tier produced it — a tier number is a fact about
+# this module's internal order and would invite `tier >= 4` comparisons that
+# silently acquire meaning when a tier is inserted.
+Signal = Literal["detected", "hinted", "hardware", "none"]
+
+# The same names as `Signal`, in the same order, as a runtime value. Keep it
+# and the `Literal` in step — a test pins that they agree.
+SIGNALS: tuple[str, ...] = ("detected", "hinted", "hardware", "none")
+
+
+@dataclass(frozen=True, slots=True)
+class Detection:
+    """What detection decided, and how much that verdict is worth.
+
+    Deliberately **no** `__bool__`, unlike `ProviderResult`. That class raises
+    because every pre-existing caller was written `if result:` and a dataclass
+    is always truthy. Every caller here *unpacks a tuple*, which a dataclass
+    refuses loudly on its own — a raising `__bool__` would defend nothing.
+    """
+
+    media_type: str   # always a MEDIA_TYPES member, as today
+    reason: str       # the card's prose, as today
+    signal: str       # a SIGNALS member
+
 
 # Hints that mean "this is some kind of book" and are honoured as-is when the
 # barcode is an ISBN. Not every MEDIA_TYPES key is book-family — dvd, cd and
@@ -74,6 +116,25 @@ _PLATFORM_MARKERS = [
 
 _HARDWARE_TERMS = ["console", "controller", "headset"]
 
+
+def _is_hardware_title(title: str) -> bool:
+    """A hardware word *conjoined with* a platform marker.
+
+    A hardware word alone is not enough — `Console Wars`, `Air Traffic
+    Controller` and `The Controller 2019` are films. The conjunction is also
+    what the suppression below has always meant in practice: `is_hardware`
+    can only change the outcome when a platform marker would otherwise have
+    matched, so requiring both is behaviour-preserving for tier 2 while
+    being narrow enough to act on at tier 4.
+
+    Deliberately narrow. `Sony PULSE 3D Wireless Headset` names no member of
+    `_PLATFORM_MARKERS` and is a **known, accepted** false negative; widening
+    either table to catch it re-opens the three film titles above.
+    """
+    if not any(_contains_marker(title, term) for term in _HARDWARE_TERMS):
+        return False
+    return any(_contains_marker(title, marker) for marker in _PLATFORM_MARKERS)
+
 _FORMAT_MARKERS = [
     "[DVD]", "Blu-ray", "Bluray", "4K Ultra HD", "4K UHD", "UHD", "DVD",
 ]
@@ -92,20 +153,30 @@ def _contains_marker(text: str, marker: str) -> bool:
     return re.search(pattern, text.lower()) is not None
 
 
-def _match_title_markers(title: str) -> tuple[str, str] | None:
-    """Tier 2. Returns (media_type, reason), or None if the title says nothing."""
-    is_hardware = any(_contains_marker(title, term) for term in _HARDWARE_TERMS)
-    if not is_hardware:
+def _match_title_markers(title: str) -> Detection | None:
+    """Tier 2. A `Detection`, or None if the title says nothing.
+
+    Typed as the record rather than a tuple because `detect_media_type`
+    returns this value through unchanged — a helper still handing back a bare
+    pair would slip a tuple out through a signature promising a `Detection`,
+    and nothing on the call path would notice.
+    """
+    # `_is_hardware_title` here is behaviour-preserving, not a change: the
+    # bare hardware-word test it replaces could only ever alter the outcome
+    # when a platform marker would otherwise have matched, so requiring the
+    # conjunction skips the loop in exactly the same cases. One predicate now
+    # serves both this guard and the tier-4 arm, so the two cannot drift.
+    if not _is_hardware_title(title):
         for marker in _PLATFORM_MARKERS:
             if _contains_marker(title, marker):
-                return "video_game", (
+                return Detection("video_game", (
                     f"Title names the {marker} platform — filed as Video Game."
-                )
+                ), "detected")
     for marker in _FORMAT_MARKERS:
         if _contains_marker(title, marker):
-            return "dvd", (
+            return Detection("dvd", (
                 f"Title carries a '{marker}' format tag — filed as DVD / Blu-ray."
-            )
+            ), "detected")
     return None
 
 
@@ -127,8 +198,12 @@ def _category_decides_video_game(category: str) -> bool:
 
 def detect_media_type(
     barcode_type: str, hint: str, title: str | None, category: str | None,
-) -> tuple[str, str]:
-    """Return (media_type, reason). `reason` is what the card shows.
+) -> Detection:
+    """Return a `Detection`. `reason` is what the card shows.
+
+    `signal` says how much the verdict is worth: `detected` if a tier 1-3
+    rule fired, `hardware` if the title names console hardware, `hinted` if
+    the user's non-book dropdown choice stood, `none` if nothing at all did.
 
     `media_type` is always a member of `app.config.MEDIA_TYPES` — never
     `"auto"`, never a hint passed through unchecked. That is the point of
@@ -151,15 +226,15 @@ def detect_media_type(
     # is not evidence about the barcode; it is discarded here too).
     if barcode_type == "isbn":
         if hint in _BOOK_FAMILY_HINTS:
-            return hint, (
+            return Detection(hint, (
                 f"Hint '{MEDIA_TYPES[hint]}' confirmed by ISBN barcode."
-            )
+            ), "detected")
         if hint is not None:
-            return "book", (
+            return Detection("book", (
                 f"ISBN barcodes are books — overriding the "
                 f"'{MEDIA_TYPES[hint]}' hint to Book."
-            )
-        return "book", "ISBN barcode — filed as Book."
+            ), "detected")
+        return Detection("book", "ISBN barcode — filed as Book.", "detected")
 
     # Tier 2: title markers.
     if title:
@@ -169,10 +244,23 @@ def detect_media_type(
 
     # Tier 3: category, confirmatory-only in practice (see docstring above).
     if category and _category_decides_video_game(category):
-        return "video_game", (
+        return Detection("video_game", (
             f"Category '{category}' names video game software — filed as "
             f"Video Game."
-        )
+        ), "detected")
+
+    # Tier 4, first: Shelf recognised the item, and recognised it as
+    # something it has no media type for. That is a weaker answer than a
+    # detection and a stronger one than nothing — it says what the item is
+    # *not*, which is enough for a caller to decline a film search it would
+    # otherwise lose. It sits above the hint branch deliberately: a dropdown
+    # choice asserts what the item is, not that a film search on a title
+    # containing "Console" will match.
+    if title and _is_hardware_title(title):
+        return Detection("dvd", (
+            "Title names console hardware, not a film or a game — filed as "
+            "DVD / Blu-ray. Change it on the item if that's wrong."
+        ), "hardware")
 
     # Tier 4: no signal. Still resolve to a concrete MEDIA_TYPES member, and
     # say plainly whether this is the user's own answer or a fallback.
@@ -190,17 +278,17 @@ def detect_media_type(
     # detection, and invisible until a user noticed their music shelf had
     # turned into films.
     if hint is not None and hint not in _BOOK_FAMILY_HINTS:
-        return hint, (
+        return Detection(hint, (
             f"Nothing in the barcode or the product record said otherwise — "
             f"kept your '{MEDIA_TYPES[hint]}' choice."
-        )
+        ), "hinted")
 
     if barcode_type == "upc":
-        return "dvd", (
+        return Detection("dvd", (
             "UPC barcode carried no usable title or category signal — filed "
             "as DVD / Blu-ray. Change it on the item if that's wrong."
-        )
-    return "dvd", (
+        ), "none")
+    return Detection("dvd", (
         "Couldn't tell from the barcode — filed as DVD / Blu-ray. Change it "
         "on the item if that's wrong."
-    )
+    ), "none")

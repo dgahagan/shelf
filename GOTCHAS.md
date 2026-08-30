@@ -1474,6 +1474,28 @@ python -c "from app.services.upcitemdb import search_queries as q; \
   assert q('Goodfellas [DVD]  Feature Thriller Drama')[-1] == 'Goodfellas'"
 ```
 
+- **Second instance, and the sharper half of the rule** — `15a8244`
+  (2026-08-29, issue #43). A `PlayStation 5 Console` barcode filed as
+  *"PlayStation: Makers & Gamers - Street Fighter"*. `MIN_SOLO_WORD = 7` did
+  not help: `"PlayStation"` is eleven characters and clears the floor legally.
+  **The floor measures length, and length is not the only thing that can be
+  wrong with a rung.** The fix was not a shorter ladder but declining to climb
+  it at all for one input class — a title naming console hardware, which
+  `detect` had recognised all along and discarded. Where a floor cannot
+  separate the cases, ask whether the *caller* already knows enough to skip
+  the search.
+- **Pinning the stored fields is necessary and not sufficient — the stub must
+  answer.** This entry says "pin the stored fields against a rung that should
+  not exist", and a first draft of #43's tests did exactly that and still
+  passed against the bug. The reason: the stub returned `no_match` for every
+  rung, so the miss path filed `queries[0]` — *the same value the fix files*.
+  Removing the fix reddened only the call-count assertion; the stored-title
+  assertion never moved. A provider stub must **return the confident wrong hit
+  the real provider returns** (`tests/test_scan_upc_enrichment.py`'s
+  `TestARecognisedHardwareScanAsksNobody._WRONG_FILM`), or the stored-field
+  pin is asserting against a branch it does not mean to — **G31**'s "which
+  branch does your pin land in", in its provider-test form. Caught by running
+  the mutation, which is the only reason anyone knew.
 - **Status:** documented. Not a lint candidate — how short is too short is a
   judgement about the provider, not a grep.
 
@@ -2090,7 +2112,13 @@ grep -rn 'x-show="[^"]*" *:\(src\|href\)=' app/templates/
   computed inside a helper some callers bypass. It says nothing against a
   **client returning its own outcome**, because every caller of a client holds
   its return value by definition — that is the one thing a bypass cannot take
-  away. The callback this entry's Evidence describes is gone: the four ISBN
+  away. **Confirmed by a second use** (`803c1eb`, 2026-08-29, issue #43):
+  `detect_media_type` now returns a `Detection` carrying its own `signal`
+  rather than setting a marker, and the judgment it used to compute and throw
+  away — that a title names console hardware — reaches both production callers
+  because both hold the return. Read the boundary before invoking this entry
+  against a design: a function returning its own outcome is the shape this
+  rule permits, not the one it forbids. The callback this entry's Evidence describes is gone: the four ISBN
   clients each call `provider_result.classify_response(...)`, which still uses
   `outbound.is_rate_limited` on the response the client already holds. So the
   predicate survives *inside* the classifier; only the callback that carried
@@ -2328,9 +2356,25 @@ grep -n "^{% if status\|^{% elif status\|enrich_status == '" \
   `tests/test_scan_outcome.py::test_every_declared_state_has_a_template_arm`
   does **not** catch this: it greps the whole file, so an arm in either card
   satisfies it. That blind spot is the entry.
-- **Status:** documented. A lint candidate, but not a cheap one — the check
-  that would work is "every state a given router branch can emit has an arm in
-  the card that branch renders", which needs the router-to-card mapping.
+- **Half of it is now mechanical** (`3aaea06`, 2026-08-29, issue #43). The
+  blind spot this entry describes — `test_every_declared_state_has_a_template_arm`
+  greps the whole file, so the *union* of both cards satisfies it — is closed.
+  `scan_outcome.NOT_FOUND_ARMS` and `RESULT_CARD_ARMS` declare each branch's
+  arm set as the one place that fact is written down, and the test splits the
+  template on its single column-0 `{% else %}` and asserts **set equality**
+  per branch. Deleting the `quota` arm from the `not_found` card now reddens
+  that branch's assertion while the result card's stays green, which is
+  exactly the case the old test could not see. Two details are load-bearing:
+  the splitter tests `line.rstrip() == "{% else %}"`, because `strip()` also
+  matches the three *indented* `{% else %}` arms inside the cards and slices
+  at the wrong line; and it asserts exactly one boundary exists, so a second
+  card fails loudly instead of mis-slicing silently.
+- **Status:** documented. **The corollary is still the live half** — do not add
+  an arm to a branch that cannot produce the state. What remains un-linted is
+  the reachability direction: "every state a given router branch can *emit*
+  has an arm in the card that branch renders" still needs the router-to-card
+  mapping, which does not exist. **Revisit trigger** unchanged: a third router
+  branch starts rendering `scan_result.html`.
 
 ## G66 — When a client's docstring states its failure contract
 

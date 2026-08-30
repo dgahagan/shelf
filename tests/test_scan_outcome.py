@@ -19,7 +19,9 @@ import pytest
 from app.services import provider_result as pr
 from app.services.scan_outcome import (
     ENRICH_STATES,
+    NOT_FOUND_ARMS,
     PROVIDER_LABELS,
+    RESULT_CARD_ARMS,
     enrich_status,
     not_found_status,
     provider_label,
@@ -109,6 +111,30 @@ class TestPrecedence:
         with pytest.raises(TypeError):
             enrich_status(pr.no_match("tmdb"), False)  # type: ignore[misc]
 
+    def test_no_lookup_is_first_in_the_tuple(self):
+        """Arm order in the template follows tuple order (issue #43).
+
+        `no_lookup` is not a rank in this function's ladder — nothing here
+        ever returns it — but its position in `ENRICH_STATES` still matters
+        because the template's first-match `{% if %}`/`{% elif %}` chain is
+        built in tuple order.
+        """
+        assert ENRICH_STATES[0] == "no_lookup"
+
+    def test_no_lookup_is_never_returned(self):
+        """`enrich_status` is a projection over a `ProviderResult`.
+
+        A hardware scan has no `ProviderResult` — nothing was asked — so no
+        outcome this function can be handed should ever come back as
+        `no_lookup`. Only the router (T3) assigns that state directly.
+        """
+        for outcome in pr.OUTCOMES:
+            for has_provider in (True, False):
+                got = enrich_status(
+                    pr.ProviderResult(outcome, "tmdb"), has_provider=has_provider
+                )
+                assert got != "no_lookup"
+
 
 class TestNotFoundStatus:
     """The variant for a card whose own message already says "Not found"."""
@@ -152,17 +178,70 @@ class TestProviderLabel:
             assert "<" not in label and "." not in label
 
 
-def test_every_declared_state_has_a_template_arm():
-    """The contract that keeps the module and the card in step.
+class TestTemplateArmsPerBranch:
+    """The contract that keeps the module and the card in step — per branch.
 
     A state the template has no arm for renders *nothing* under the notice
     block — a silent no-op, not an error. So a new state added here without a
-    Jinja arm would ship as an invisible card, and only this pin would say so.
+    Jinja arm would ship as an invisible card, and only a pin would say so.
+
+    `fragments/scan_result.html` is two cards, not one card with one notice
+    slot: it opens on `{% if status == 'not_found' %}` over a whole card with
+    its own, smaller arm set, and a single top-level `{% else %}` falls
+    through to a second, larger card with a different arm set (G65). A state
+    with no arm in the branch actually reached at render time renders
+    nothing, regardless of whether some *other* branch happens to have an arm
+    for it — so a whole-file regex that unions both branches together cannot
+    see that half the contract is missing. This class checks each half on
+    its own, against `NOT_FOUND_ARMS` and `RESULT_CARD_ARMS` respectively,
+    with set equality rather than a subset check: an arm the tuple does not
+    declare is the other half of the same defect, meaning the template grew
+    copy nobody wrote down.
+
+    G53: don't reproduce the raw comparison this splitter greps for inside a
+    comment or docstring the same regex could read — say the state names in
+    backticks instead, the way `scan_result.html`'s own comments do.
     """
-    template = (
+
+    _TEMPLATE_PATH = (
         Path(__file__).resolve().parents[1]
         / "app/templates/fragments/scan_result.html"
-    ).read_text()
-    arms = set(re.findall(r"enrich_status == '([a-z_]+)'", template))
-    missing = set(ENRICH_STATES) - arms
-    assert not missing, f"states with no template arm: {sorted(missing)}"
+    )
+    _ARM_PATTERN = r"enrich_status == '([a-z_]+)'"
+
+    @classmethod
+    def _halves(cls) -> tuple[str, str]:
+        """Split the template on its one top-level `{% else %}`.
+
+        The test is `line.rstrip() == "{% else %}"`, and `rstrip` rather than
+        `strip` is the whole point: only a tag at **column 0** is the card
+        boundary. `strip()` would also match the nested `{% else %}` arms
+        (ternaries, per-field notices) that sit indented inside both cards —
+        four lines rather than one — and slice the file at the wrong place.
+        Exactly
+        one such line must exist: if the template ever grows a second card,
+        this must fail loudly rather than silently mis-slice the file at the
+        wrong line.
+        """
+        lines = cls._TEMPLATE_PATH.read_text().splitlines()
+        boundaries = [i for i, line in enumerate(lines) if line.rstrip() == "{% else %}"]
+        assert len(boundaries) == 1, (
+            "expected exactly one top-level {% else %} splitting the two "
+            f"cards in scan_result.html, found {len(boundaries)} at lines "
+            f"{[b + 1 for b in boundaries]} — the branch split this test "
+            "relies on may have changed shape"
+        )
+        boundary = boundaries[0]
+        not_found_half = "\n".join(lines[:boundary])
+        result_card_half = "\n".join(lines[boundary + 1:])
+        return not_found_half, result_card_half
+
+    def test_not_found_card_arms_match_declared(self):
+        not_found_half, _ = self._halves()
+        arms = set(re.findall(self._ARM_PATTERN, not_found_half))
+        assert arms == set(NOT_FOUND_ARMS)
+
+    def test_result_card_arms_match_declared(self):
+        _, result_card_half = self._halves()
+        arms = set(re.findall(self._ARM_PATTERN, result_card_half))
+        assert arms == set(RESULT_CARD_ARMS)

@@ -6,6 +6,48 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.25.1] - 2026-08-29
+
+Scanning a PlayStation 5 barcode produced a card that argued with itself: an
+honest *"UPC barcode carried no usable title or category signal"* notice
+directly above the confident, wrong title **"PlayStation: Makers & Gamers -
+Street Fighter"** — and the wrong title is what got stored. Detection had
+recognised the barcode's retail title as console hardware and then discarded
+that judgment, so the film-title search ladder descended to the one-word query
+`PlayStation`, which a film database answers with a confident match for an
+unrelated work.
+
+Shelf now declines that search rather than the honesty. A missing title you can
+fill in by hand; a wrong one looks correct and stays.
+
+### Fixed
+
+- **A scanned console is no longer filed as somebody else's film**
+  ([#43](https://github.com/dgahagan/shelf/issues/43)). A scan whose title names
+  console hardware — a hardware word (console, controller, headset) *together
+  with* a platform name — is now filed under its own title with no lookup
+  attempted at all, and the card says so: *"Added with title only — the title
+  names console hardware, so no film or game lookup was attempted."*
+  `Nintendo Switch Pro Controller` and `Xbox Series X Console 1TB` were the same
+  defect on barcodes nobody had reported, and are fixed by the same change.
+- **Genuine discs still enrich exactly as before.** Both halves of the test have
+  to match, so `Console Wars`, `Air Traffic Controller` and `The Controller` are
+  films and are still searched normally. Titles whose useful search rung is the
+  second or third — `Blade Runner 2049 4-Disc Ultimate Collector Edition`,
+  `Parasite Criterion Collection` — still climb the full ladder and still
+  enrich.
+- **The hardware notice is said once, not twice.** On a scan left on **Auto**
+  the card rendered the new notice and the older "filed as DVD / Blu-ray"
+  explanation back to back — two amber paragraphs for one idea. The correction
+  instruction now lives inside the notice itself, which also gives the
+  explicit-format path an instruction it never had.
+
+Deliberately not done: recognition needs a platform name, so a `Sony PULSE 3D
+Wireless Headset` is not read as hardware and is still searched. Its ladder is
+only two rungs and stops short of the bare word `Sony`, so the exposure there is
+a miss rather than a wrong match. And nothing already in your collection
+changes — this alters what future scans do, not what is already filed.
+
 ## [0.25.0] - 2026-08-29
 
 0.24.0 taught the *scan* card to say why a barcode found nothing — a rejected
@@ -2138,6 +2180,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.25.1]: https://github.com/dgahagan/shelf/releases/tag/v0.25.1
 [0.25.0]: https://github.com/dgahagan/shelf/releases/tag/v0.25.0
 [0.24.0]: https://github.com/dgahagan/shelf/releases/tag/v0.24.0
 [0.23.0]: https://github.com/dgahagan/shelf/releases/tag/v0.23.0

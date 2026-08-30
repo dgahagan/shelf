@@ -22,7 +22,12 @@
                for the same reason and not by oversight: every branch that
                renders this card checks `transport_failed` first and renders
                the connectivity card instead, so the state cannot arrive here
-               (G65's corollary). `enrich_provider` is
+               (G65's corollary). `no_lookup` is absent for the same kind of
+               reason: it is assigned only on the film branch's file-it path,
+               which renders the result card below, never this one — a
+               hardware detection needs a product title to name, and every
+               branch that renders this card returns above detection when
+               there is none. `enrich_provider` is
                the leg that actually answered, so `rejected` names it; the
                quota copy names nobody, because any subset of a four-source
                cascade can be starved and a rate-limited UPC product lookup
@@ -222,7 +227,14 @@
            that came off a scanned barcode, and a notice assembled in Python
            would be one interpolation away from stored XSS. The router sends
            a state and a provider name; Jinja escapes both. #}
-        {% if enrich_status == 'no_credential' %}
+        {# `no_lookup` carries the media-type correction itself rather than
+           leaning on `detect_reason` below, because that line renders only
+           when the detection overrode the dropdown — so a console scanned
+           under an explicit `dvd` hint would otherwise be told nothing could
+           be corrected. Self-contained here, suppressed there. #}
+        {% if enrich_status == 'no_lookup' %}
+        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; the title names console hardware, so no film or game lookup was attempted. Change the type on the item if that's wrong.</p>
+        {% elif enrich_status == 'no_credential' %}
         <p class="text-xs text-shelf-warning mt-1">Added with title only. Add {{ 'an' if enrich_provider == 'IGDB' else 'a' }} {{ enrich_provider }} API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.</p>
         {% elif enrich_status == 'rejected' %}
         <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; {{ enrich_provider }} rejected the configured key.</p>
@@ -235,7 +247,13 @@
         {% elif enrich_status == 'no_match' %}
         <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; no {{ enrich_provider }} match for this barcode.</p>
         {% endif %}
-        {% if detect_overrode and detect_reason %}
+        {# Suppressed under `no_lookup`: that arm already names console hardware
+           as the cause and says how to correct the type, so rendering
+           `detect_reason` too printed the same fact twice — three amber lines
+           on desktop and seven on mobile for one idea (test drive, #43
+           Observation 1). Every other state keeps it: their copy explains the
+           *enrichment*, and the override is a separate thing that happened. #}
+        {% if detect_overrode and detect_reason and enrich_status != 'no_lookup' %}
         <p class="text-xs text-shelf-warning mt-1">{{ detect_reason }}</p>
         {% endif %}
     </div>

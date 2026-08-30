@@ -713,11 +713,13 @@ def _detected_game_override_reason():
     """
     from app.services import detect
 
-    media_type, reason = detect.detect_media_type(
+    detection = detect.detect_media_type(
         "upc", "book", "Super Mario Odyssey", "Software > Video Game Software",
     )
-    assert media_type == "video_game", "fixture scenario stopped detecting as a game"
-    return reason
+    assert detection.media_type == "video_game", (
+        "fixture scenario stopped detecting as a game"
+    )
+    return detection.reason
 
 
 def test_a_stale_book_hint_is_submitted_verbatim_and_the_detector_overrides_it(

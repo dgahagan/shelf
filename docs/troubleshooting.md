@@ -105,6 +105,13 @@ time:
   it in."** — nothing is broken. The provider answered with HTTP 429. Wait and
   re-scan; the item is already filed. No provider is named because a book
   lookup consults up to four and any subset can be starved at once.
+- **"the title names console hardware, so no film or game lookup was
+  attempted."** — nothing to fix. The shortened title Shelf would have
+  searched on is just `PlayStation` or `Nintendo`, and a film database answers
+  that with a confident match for an unrelated film, so Shelf files the title
+  it read and asks nobody. Correct the type or the title on the item page if
+  it read the title wrong. This one is decided by the *title*; the next is
+  decided by the *format*.
 - **"Shelf has no metadata source for this format yet."** — nothing to fix,
   and nothing to configure. The format has no provider wired up, so no lookup
   was attempted. CDs are the case today (see the roadmap's MusicBrainz item);

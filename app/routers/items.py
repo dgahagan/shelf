@@ -351,7 +351,9 @@ async def scan_isbn(
     # alone. Everything below this line uses the *resolved* type: the
     # duplicate check keys on it, and so does the row that gets saved.
     hint = media_type
-    media_type, detect_reason = detect.detect_media_type(barcode_type, hint, None, None)
+    detection = detect.detect_media_type(barcode_type, hint, None, None)
+    media_type = detection.media_type
+    detect_reason = detection.reason
     detect_overrode = media_type != hint
 
     # Check duplicate

@@ -62,13 +62,28 @@ then TMDb (film) or IGDB (game). **Which of the two is decided by
 is fetched once, above the fork, precisely so detection can read it. The
 dropdown is an input to that decision, not an oracle over it.
 
-A resolved media type with **no** metadata provider — a CD, today — is filed
-under its cleaned retail title with no metadata request at all. The map is
+Two classes of scan are filed under their cleaned retail title with no
+metadata request at all, and they are decided by different things. The first
+is a resolved media type with **no** metadata provider — a CD, today. The map is
 `UPC_METADATA_PROVIDERS` in `routers/items_common.py`, deliberately *not*
 `covers.MEDIA_TYPE_PROVIDERS`: that one falls unrecognised types through to
 the book cover search, which is a working fallback for covers and a false
 claim for metadata. A new `MEDIA_TYPES` member therefore gets the honest
 "no provider" answer by default rather than a film search.
+
+The second is decided by the **title**, not the type: a scan whose retail
+title names console hardware. `detect._is_hardware_title` requires a member of
+`_HARDWARE_TERMS` (console, controller, headset) *conjoined with* a
+`_PLATFORM_MARKERS` name, and the conjunction is what keeps `Console Wars` and
+`Air Traffic Controller` out — a hardware word alone is a film title. Such a
+scan resolves to `dvd` like any other unrecognised disc, so the provider map
+above would happily send it to TMDb; `_scan_upc` declines instead, because the
+`search_queries` ladder's shortest rung for `PlayStation 5 Console` is
+`PlayStation`, and TMDb answers that with a confident match for an unrelated
+film (`G46` — missing enrichment is recoverable, wrong enrichment is not). The
+card reports it as `no_lookup`, the one `ENRICH_STATES` member the router
+assigns directly rather than projecting from a `ProviderResult`: there is no
+provider answer to project, because no provider was asked.
 
 `detect_media_type(barcode_type, hint, title, category)` is pure and offline,
 and runs four tiers in confidence order: an ISBN prefix decides the
@@ -76,14 +91,22 @@ book family outright (the dropdown only picks *among* book / kids book /
 audiobook / eBook / comic, which no barcode can distinguish); then platform
 and format markers in the **raw** retail title, platform beating format so
 `Alice Madness Returns (PC DVD)` is a game; then `Software > Video Game
-Software` as a category, which may decide only `video_game`; then a fallback.
+Software` as a category, which may decide only `video_game`; then a fallback
+whose first arm is the hardware case above.
 Two prohibitions are load-bearing and written into the module beside the
 marker table: **no category ever decides `dvd`** (discs categorise as
 `Electronics > Video > Televisions`), and **no category naming a platform
 ever decides `video_game`** (`Electronics > Video Game Consoles` carried both
 a cartridge and a console in the same sample). The tier-4 fallback returns a
-`MEDIA_TYPES` member unconditionally — a deliberate non-book choice stands,
-anything else lands on `dvd` — so `auto` never reaches a row. It reads the
+`MEDIA_TYPES` member unconditionally — recognised hardware and then a
+deliberate non-book choice stand, anything else lands on `dvd` — so `auto`
+never reaches a row. It returns a `Detection`, not a bare pair: `media_type`,
+the card's `reason`, and a `signal` (`detected` / `hinted` / `hardware` /
+`none`) saying how much the verdict is worth. The hardware arm sits **above**
+the hint branch deliberately — a dropdown choice asserts what the item is, not
+that a film search on a title containing "Console" will match — and below the
+category tier, because a genuine `Software > Video Game Software` category is
+a real detection. It reads the
 raw title, never a `search_queries` rung: the ladder strips exactly the
 markers tier 2 matches on.
 
@@ -182,10 +205,13 @@ stored XSS. Both UPC branches previously carried their own near-identical
 copy of this ladder, which is how the film branch came to make four
 distinctions while the game branch made two.
 
-The states, in precedence order:
+The states. `no_lookup` sits outside the ladder — the router assigns it
+directly, for a scan that never reached `enrich_status` at all — and the rest
+are in precedence order:
 
 | state | meaning |
 |---|---|
+| `no_lookup` | no provider was asked, because the title named console hardware. Never returned by `enrich_status`: that is a projection over a provider answer there was never going to be |
 | `no_provider` | Shelf has no metadata source for this format. Outranks everything, because it is the only one true *before* any request is made |
 | `no_credential` | nothing was asked, because nothing could be |
 | `rejected` | the provider refused the configured credential — outranks `quota`, being the one the user can act on |
@@ -201,8 +227,8 @@ whose cascade was starved and for a UPC whose *product* lookup was.
 `services/scan_outcome.py`'s `enrich_status` is a **projection** over one
 `ProviderResult` (plus a `has_provider` flag), not a reassembly from booleans
 the caller had to keep in step — a branch that holds no flags at all can still
-call it and get back one of the six states above. A `transport_failed` record
-answers `offline` rather than `no_match`: the scan routers pick the
+call it and get back one of the six *projected* states above. A
+`transport_failed` record answers `offline` rather than `no_match`: the scan routers pick the
 connectivity card *before* this function whenever the product or cascade
 lookup was what failed, so what reaches here is an enrichment-leg failure on
 an item that was filed anyway. The `offline` arm therefore lives in the

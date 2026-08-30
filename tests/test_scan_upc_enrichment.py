@@ -648,6 +648,12 @@ class TestTheProductRecordOutranksTheDropdown:
         )
         assert providers["igdb"] == [], "a console reached IGDB as if it were a game"
         assert self._stored(db)["media_type"] != "video_game"
+        # Issue #43. This pin had the PlayStation 5 row all along and asserted
+        # only that it missed *IGDB* — so the scan sailed on to TMDb, whose
+        # one-word "PlayStation" rung answered with a different film, and the
+        # suite stayed green while the bug shipped. Asking the other half of
+        # the question is what turns this row into a real guard.
+        assert providers["tmdb"] == [], "a console was searched on a film database"
 
     def test_a_dvd_format_tag_routes_to_tmdb_even_under_a_game_hint(
         self, editor_client, db, monkeypatch, providers
@@ -1416,6 +1422,249 @@ class TestATransportFailureIsNotAnAbsentBarcode:
             "SELECT result FROM scan_log ORDER BY id DESC LIMIT 1"
         ).fetchone()
         assert row["result"] == "not_found"
+
+
+class TestARecognisedHardwareScanAsksNobody:
+    """Issue #43: a PlayStation 5 barcode was filed as a Street Fighter film.
+
+    `detect` knew the title named console hardware and threw that judgment
+    away, so `_scan_upc` climbed its retail-title ladder to the one-word rung
+    "PlayStation" — which TMDb answers, confidently, with a different work.
+    The card then carried an honest "no usable signal" notice directly above a
+    confidently wrong title, and the stored row kept it.
+
+    `G46`'s trade, applied: **missing enrichment is recoverable, wrong
+    enrichment is not.** A title-only row still has Retry cover, Find cover and
+    the item editor; a row filed as someone else's film has nothing that says
+    it is wrong.
+
+    Every pin here asserts **both halves** — the stored fields *and* that the
+    provider was never called. `G46`'s own note is that asserting only which
+    queries were sent passes against the bug, because the query sequence was
+    correct and the answer was another film.
+    """
+
+    # What TMDb really answers for the short rungs — a confident hit for an
+    # unrelated work. The first row is verbatim from the issue's own log.
+    _WRONG_FILM = {
+        "PlayStation": "PlayStation: Makers & Gamers - Street Fighter",
+        "Nintendo": "Nintendo Quest",
+        "Xbox": "Xbox: The Console Wars",
+    }
+
+    @pytest.fixture
+    def tmdb_calls(self, monkeypatch):
+        """Record every TMDb title lookup, and **answer the short rungs**.
+
+        The stub deliberately returns a *found* result for the one-word rungs,
+        because that is what the provider really does and it is the only shape
+        that makes the stored-title assertions real pins. A stub answering
+        `no_match` everywhere leaves the row filed under `queries[0]` either
+        way, so the title assertion would pass against the bug and only the
+        call-count assertion would ever bite — `G46`'s own note, and a defect
+        this fixture had until the mutation check caught it.
+
+        Patched on `tmdb` — the module that **defines** the symbol, not the
+        router that reaches it (`G37`). A plain function, not an `AsyncMock`
+        over the module: `tmdb` mixes async `lookup_by_title` with sync
+        `image_url`, so a blanket `AsyncMock()` would silently turn the sync
+        half into un-awaited coroutines (`G56`).
+        """
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            wrong = self._WRONG_FILM.get(query)
+            if wrong is None:
+                return provider_result.no_match("tmdb")
+            return provider_result.found(
+                "tmdb",
+                {"title": wrong, "description": "Not this item at all.",
+                 "publish_year": 2016, "cover_url": None},
+            )
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+        return calls
+
+    def _scan(self, monkeypatch, editor_client, title, hint="auto", category=None):
+        async def _lookup(code, client):
+            return provider_result.found(
+                "upcitemdb",
+                {"title": title, "category": category, "brand": None, "images": []},
+            )
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+        return editor_client.post(
+            "/api/scan", data={"isbn": DVD_UPC, "media_type": hint}
+        )
+
+    def _stored(self, db):
+        return db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+
+    def test_a_console_is_filed_under_its_own_title_and_tmdb_is_never_asked(
+        self, editor_client, db, monkeypatch, tmdb_calls
+    ):
+        """The reported barcode. Both halves, per `G46`."""
+        resp = self._scan(monkeypatch, editor_client, "PlayStation 5 Console")
+
+        assert resp.status_code == 200
+        assert tmdb_calls == [], f"a console was searched on TMDb: {tmdb_calls}"
+        row = self._stored(db)
+        assert row is not None
+        assert row["title"] == "PlayStation 5 Console"
+        assert row["source"] == "upc"
+        assert row["media_type"] == "dvd"
+
+    def test_the_same_scan_under_an_explicit_dvd_hint_behaves_identically(
+        self, editor_client, db, monkeypatch, tmdb_calls
+    ):
+        """Dan's decision, 2026-08-29: the skip overrides the dropdown.
+
+        A hint asserts what the item *is*; it asserts nothing about whether a
+        film search on a title containing "Console" will match. Honouring it
+        here would leave the reported failure reachable for anyone not on Auto.
+        """
+        self._scan(monkeypatch, editor_client, "PlayStation 5 Console", hint="dvd")
+
+        assert tmdb_calls == []
+        assert self._stored(db)["title"] == "PlayStation 5 Console"
+
+    def test_a_controller_is_the_same_defect_and_the_same_fix(
+        self, editor_client, db, monkeypatch, tmdb_calls
+    ):
+        """The adjacent instance the issue never reported.
+
+        Its ladder is `['Nintendo Switch Pro Controller', 'Nintendo Switch
+        Pro', 'Nintendo']`, and "Nintendo" is a rung a film provider answers.
+        """
+        self._scan(monkeypatch, editor_client, "Nintendo Switch Pro Controller")
+
+        assert tmdb_calls == []
+        assert self._stored(db)["title"] == "Nintendo Switch Pro Controller"
+
+    def test_the_card_says_nothing_was_looked_up_not_that_nothing_matched(
+        self, editor_client, monkeypatch, tmdb_calls
+    ):
+        """`no_match` would be a lie in the register of a fact — #42/#44's defect."""
+        resp = self._scan(monkeypatch, editor_client, "PlayStation 5 Console")
+
+        assert "no film or game lookup was attempted" in resp.text
+        assert "no TMDb match for this barcode" not in resp.text
+        # The card and the row must agree — the whole defect was a card that
+        # argued with the title beside it.
+        assert "Street Fighter" not in resp.text
+
+    def test_the_card_says_it_once_not_twice(
+        self, editor_client, monkeypatch, tmdb_calls
+    ):
+        """Test drive, #43 Observation 1.
+
+        On Auto the filed `dvd` differs from the `auto` hint, so
+        `detect_overrode` is true and the template used to render
+        `detect_reason` directly beneath the `no_lookup` arm — two amber
+        paragraphs both saying the title named console hardware, seven lines
+        of them at 390px. The arm now carries the correction clause itself
+        and the template suppresses `detect_reason` for this one state.
+        """
+        resp = self._scan(monkeypatch, editor_client, "PlayStation 5 Console")
+
+        assert resp.text.count("names console hardware") == 1
+        # `detect_reason`'s own wording, which must not appear beside the arm.
+        assert "not a film or a game" not in resp.text
+        # ...but the correction the suppressed line used to carry survives.
+        assert "Change the type on the item if that's wrong" in resp.text
+
+    def test_the_correction_clause_survives_an_explicit_hint(
+        self, editor_client, monkeypatch, tmdb_calls
+    ):
+        """The reason the clause moved into the arm rather than the arm going.
+
+        Under an explicit `dvd` hint `detect_overrode` is false, so
+        `detect_reason` never rendered here even before the suppression. Had
+        the fix simply dropped the arm's explanation and leaned on
+        `detect_reason`, this path would say a lookup was skipped and never
+        say why or what to do about it.
+        """
+        resp = self._scan(
+            monkeypatch, editor_client, "PlayStation 5 Console", hint="dvd"
+        )
+
+        assert "names console hardware" in resp.text
+        assert "Change the type on the item if that's wrong" in resp.text
+
+    def test_a_non_hardware_override_still_renders_the_detect_reason(
+        self, editor_client, monkeypatch, tmdb_calls
+    ):
+        """The suppression is scoped to `no_lookup`, not to overrides at large.
+
+        A `[DVD]`-tagged title scanned as a game is a `detected` signal: its
+        enrichment notice explains the *lookup*, and the override is a
+        separate fact the card still has to state.
+        """
+        resp = self._scan(
+            monkeypatch, editor_client, "Tom Jones [DVD]", hint="video_game"
+        )
+
+        assert "filed as DVD / Blu-ray" in resp.text
+
+    def test_a_hardware_detection_never_reaches_the_game_branch(
+        self, editor_client, monkeypatch, tmdb_calls
+    ):
+        """What makes the design's unreachability argument a pin.
+
+        The skip lives in the film branch because a hardware detection always
+        resolves to `dvd` — the platform loop it suppresses is the only thing
+        that could have produced `video_game`. If that ever stops being true,
+        this fails rather than the skip silently not applying (`G47`).
+        """
+        called = []
+        real = items_common._scan_upc_game
+
+        async def _spy(*args, **kwargs):
+            called.append(True)
+            return await real(*args, **kwargs)
+
+        monkeypatch.setattr(items_common, "_scan_upc_game", _spy)
+        self._scan(monkeypatch, editor_client, "PlayStation 5 Console")
+
+        assert called == [], "a hardware detection reached the game branch"
+
+    def test_a_genuine_disc_still_climbs_the_ladder_and_still_enriches(
+        self, editor_client, db, monkeypatch
+    ):
+        """The regression guard, and why the issue's own remedy was rejected.
+
+        The issue proposed refusing to descend the ladder for *any* tier-4
+        scan. Probe 1 measured what that costs: `Blade Runner 2049 4-Disc
+        Ultimate Collector Edition` is a genuine disc whose useful rung is the
+        **second**, so the cap would have traded one visible wrong title for a
+        silent class of missing enrichment. It must still reach rung 2 and
+        still file the TMDb metadata.
+        """
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            if query == "Blade Runner 2049":
+                return provider_result.found(
+                    "tmdb",
+                    {"title": "Blade Runner 2049", "description": "A blade runner.",
+                     "publish_year": 2017, "cover_url": None},
+                )
+            return provider_result.no_match("tmdb")
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+        self._scan(
+            monkeypatch, editor_client,
+            "Blade Runner 2049 4-Disc Ultimate Collector Edition",
+        )
+
+        assert "Blade Runner 2049" in calls, f"never reached rung 2: {calls}"
+        row = self._stored(db)
+        assert row["title"] == "Blade Runner 2049"
+        assert row["source"] == "tmdb"
 
 
 def _set_tmdb_key(monkeypatch, key="0123456789abcdef0123456789abcdef"):

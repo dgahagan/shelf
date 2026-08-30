@@ -526,12 +526,14 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # several rather than an oracle.
     hint = media_type
     barcode_type = upc_svc.detect_barcode_type(upc_norm)
-    media_type, detect_reason = detect.detect_media_type(
+    detection = detect.detect_media_type(
         barcode_type,
         hint,
         (product or {}).get("title"),
         (product or {}).get("category"),
     )
+    media_type = detection.media_type
+    detect_reason = detection.reason
     detect_overrode = media_type != hint
 
     # Video games: the record above, then IGDB for metadata.
@@ -541,6 +543,13 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             detect_reason=detect_reason, detect_overrode=detect_overrode,
             product_result=product_result,
         )
+
+    # A recognised console: file it, ask nobody. The ladder below climbs to
+    # "PlayStation", which TMDb answers with a confident match for another
+    # film (#43; `G46` — missing enrichment is recoverable, wrong is not).
+    # Below the fork, not above: hardware always resolves to `dvd`, so
+    # threading this into `_scan_upc_game` gives it no consumer (`G47`).
+    is_hardware = detection.signal == "hardware"
 
     # A resolved media type with no metadata provider is filed under its
     # cleaned title with no outbound request at all. Before this, a CD was
@@ -561,7 +570,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # which normalises to no queries at all. That is a not_found, not an index
     # error on queries[0].
     queries: list[str] = upcitemdb.search_queries((product or {}).get("title") or "")
-    if queries and tmdb_key and not no_metadata_provider:
+    if queries and tmdb_key and not no_metadata_provider and not is_hardware:
         # No transport handler here, deliberately: `tmdb.lookup_by_title`
         # returns `transport_failed` as a `ProviderResult`, never a raise, so
         # a handler here would be dead code that reads as live (`G47`). A TMDb
@@ -608,13 +617,15 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # `test_a_hit_beside_a_rejection_is_still_a_hit`. The product record's only
     # failure channel is the `if not queries:` early return above, which
     # projects from it instead.
-    enrich_status = scan_outcome.enrich_status(
+    # `no_lookup` is assigned, never projected: `enrich_status` reads a
+    # `ProviderResult` and a hardware scan has none — nothing was asked.
+    enrich_status = "no_lookup" if is_hardware else scan_outcome.enrich_status(
         tmdb_result, has_provider=not no_metadata_provider
     )
     # `None` so no arm can interpolate a provider name that does not exist:
     # the template's `no_provider` arm names none, and this router cannot
-    # reach an arm that does. Either alone is one edit from the other breaking.
-    enrich_provider = None if no_metadata_provider else "TMDb"
+    # reach an arm that does. A hardware scan names nobody, one step stronger.
+    enrich_provider = None if (no_metadata_provider or is_hardware) else "TMDb"
 
     # Provenance, decided before the placeholder below overwrites `metadata`.
     # `tmdb` is a claim that TMDb answered — it must not be stamped on a row

@@ -112,20 +112,36 @@ than film or game titles — `Goodfellas [DVD]  Feature Thriller Drama …` — 
 Shelf strips format tags, platform suffixes and edition wording, and if that
 still finds nothing it retries with progressively shorter versions of the
 title. It stops short of searching a single short word, because a one-word
-search comes back with a *different* film rather than nothing. When no provider
-matches, the item is still added under its own title — use **Retry cover** or
-**Find cover** on the item page to fill it in.
+search comes back with a *different* film rather than nothing.
 
-**And the card says why it was thin**, because the five reasons need five
+For one class of scan it does not search at all. When the retail title names
+console hardware — a console, controller or headset **together with** a
+platform name, as in `PlayStation 5 Console` or `Nintendo Switch Pro
+Controller` — Shelf files the item under that title and asks no provider
+anything. The shortened title would be `PlayStation`, and a film database
+answers that with a confident match for an unrelated film, so the choice is
+between a thin record and a wrong one. Shelf declines the search rather than
+the honesty. Both halves have to match: `Console Wars` and `Air Traffic
+Controller` are films, and they still get the full ladder.
+
+When no provider matches, the item is still added under its own title — use
+**Retry cover** or **Find cover** on the item page, or edit the title and type
+directly in the item editor, to fill it in.
+
+**And the card says why it was thin**, because the six reasons need six
 different responses:
 
+- **no lookup was attempted** — nothing to fix. The title named console
+  hardware, so Shelf declined to guess rather than filing someone else's film.
+  Correct the type or the title on the item page if it read the title wrong.
 - **no key configured** — add one in Settings → Integrations.
 - **the key was rejected** — fix it. The provider answered, and said no.
 - **a provider is rate-limiting us** — wait and re-scan. This may not be a
   genuine miss, so it is worth trying again before adding anything by hand.
 - **Shelf has no metadata source for this format yet** — nothing to fix. CDs
   are the case today: there is no music provider wired up, so a scanned CD is
-  filed under its barcode title and no lookup is attempted at all.
+  filed under its barcode title. This one is decided by the *format*; the
+  hardware case above is decided by the *title*.
 - **the provider had no match** — nothing to fix either. It was asked, and it
   genuinely does not have this edition.
 
