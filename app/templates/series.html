@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Series — Shelf{% endblock %}
 {% block content %}
+{% set can_edit = user and user.role in ('admin', 'editor') %}
 <div class="mb-6">
     <h1 class="text-2xl font-bold">Series <span class="text-shelf-muted text-lg font-normal">({{ series_list|length }})</span></h1>
     <p class="text-sm text-shelf-muted mt-1">Your library grouped by series. Gaps are inferred from position numbers{% if has_hardcover %}; use <span class="text-shelf-accent2">Check completeness</span> to compare against Hardcover's full series listing{% endif %}.</p>
@@ -64,7 +65,7 @@
                 </p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
-                {% if has_hardcover %}
+                {% if has_hardcover and can_edit %}
                 <button @click="fetchDescription"
                         :disabled="fetching"
                         class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text hover:border-shelf-accent/50 transition-colors disabled:opacity-50"
@@ -72,6 +73,8 @@
                     <span x-show="!fetching">Fetch synopsis</span>
                     <span x-show="fetching" style="display:none">Fetching&hellip;</span>
                 </button>
+                {% endif %}
+                {% if has_hardcover %}
                 <button @click="check"
                         :disabled="checking"
                         class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50"
@@ -80,8 +83,8 @@
                     <span x-show="checking" style="display:none">Checking&hellip;</span>
                 </button>
                 {% endif %}
-                <!-- Outside the has_hardcover gate: rename/disband are local
-                     operations and must be reachable without a token. -->
+                {% if can_edit %}
+                <!-- Rename/disband are local mutations and do not depend on Hardcover. -->
                 <div class="relative">
                     <button @click="toggleMenu" aria-label="Series actions"
                             class="px-2 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs leading-none hover:text-shelf-text hover:border-shelf-accent/50 transition-colors"
@@ -102,9 +105,11 @@
                                 data-testid="remove-all">Remove all books&hellip;</button>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
 
+        {% if can_edit %}
         <!-- Rename / merge -->
         <div x-show="renaming" style="display:none" class="mt-3 border-t border-shelf-border pt-3">
             <p class="text-xs text-shelf-muted mb-1">Rename this series. Typing the name of another series merges the two.</p>
@@ -143,19 +148,23 @@
                 <span x-show="removeError" style="display:none" class="text-xs text-shelf-error" x-text="removeError"></span>
             </div>
         </div>
+        {% endif %}
 
         <!-- Series synopsis: read view + inline edit -->
         <div class="mt-3">
             <div x-show="!editing">
                 <p x-show="description" class="text-sm text-shelf-muted leading-relaxed whitespace-pre-line"
                    x-text="description" data-testid="series-synopsis"></p>
+                {% if can_edit %}
                 <button @click="startEdit"
                         class="text-xs text-shelf-accent2 hover:text-shelf-text transition-colors mt-1"
                         data-testid="edit-synopsis">
                     <span x-show="description">Edit synopsis</span>
                     <span x-show="!description">+ Add synopsis</span>
                 </button>
+                {% endif %}
             </div>
+            {% if can_edit %}
             <div x-show="editing" style="display:none">
                 <textarea x-model="draft" rows="4" placeholder="What is this series about?"
                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50"
@@ -172,6 +181,7 @@
                     <span x-show="descError" style="display:none" class="text-xs text-shelf-error" x-text="descError"></span>
                 </div>
             </div>
+            {% endif %}
         </div>
 
         <!-- Owned/wishlisted volumes -->
@@ -214,12 +224,14 @@
                             <span class="text-shelf-muted w-10 shrink-0 text-right" x-text="b.series_position !== null ? '#' + b.series_position : ''"></span>
                             <span class="text-shelf-text truncate" x-text="b.title"></span>
                             <span class="text-shelf-muted text-xs truncate" x-text="b.authors || ''"></span>
+                            {% if can_edit %}
                             <button x-show="!added[b.hardcover_book_id]"
                                     @click="addToWishlist(b)"
                                     class="ml-auto px-2 py-0.5 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors shrink-0">
                                 + Wishlist
                             </button>
                             <span x-show="added[b.hardcover_book_id]" style="display:none" class="ml-auto text-xs text-shelf-success shrink-0">Wishlisted</span>
+                            {% endif %}
                         </div>
                     </template>
                 </div>
