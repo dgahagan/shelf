@@ -73,11 +73,19 @@ async def add_tag(request: Request, item_id: int, name: str = Form(...),
 async def remove_tag(request: Request, item_id: int, tag_id: int,
                      _=Depends(require_role("editor"))):
     with get_db() as db:
-        db.execute(
+        item = db.execute("SELECT id FROM items WHERE id = ?", (item_id,)).fetchone()
+        if not item:
+            return HTMLResponse("Item not found", status_code=404)
+
+        deleted = db.execute(
             "DELETE FROM item_tags WHERE item_id = ? AND tag_id = ?",
             (item_id, tag_id),
         )
-        # Garbage-collect orphaned tags so the Browse dropdown stays clean
+        if deleted.rowcount != 1:
+            return HTMLResponse("Tag not found on item", status_code=404)
+
+        # Garbage-collect orphaned tags so the Browse dropdown stays clean,
+        # but only after an association was actually removed.
         db.execute(
             "DELETE FROM tags WHERE id = ? "
             "AND NOT EXISTS (SELECT 1 FROM item_tags WHERE tag_id = ?)",
