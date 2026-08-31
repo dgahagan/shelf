@@ -9,6 +9,7 @@ from app.services.isbn import (
     isbn13_to_isbn10,
     validate_isbn10,
     validate_isbn13,
+    canonical_isbn_pair,
 )
 from app.services.upc import normalize_barcode, detect_barcode_type, validate_upc
 
@@ -35,7 +36,6 @@ class TestIsbn10ToIsbn13:
         assert isbn10_to_isbn13("123") is None
 
     def test_the_hobbit(self):
-        # The Hobbit: ISBN-10 054792822X -> ISBN-13 9780547928227
         assert isbn10_to_isbn13("054792822X") == "9780547928227"
 
 
@@ -51,7 +51,6 @@ class TestIsbn13ToIsbn10:
         assert isbn13_to_isbn10("978") is None
 
     def test_check_digit_x(self):
-        # ISBN-13 9780074625422 -> ISBN-10 007462542X (check digit is X)
         result = isbn13_to_isbn10("9780074625422")
         assert result == "007462542X"
 
@@ -67,8 +66,10 @@ class TestToIsbn13:
         assert to_isbn13("978-0-13-468599-1") == "9780134685991"
 
     def test_upc_12_digit_prepends_zero(self):
-        # 12-digit UPC -> 13-digit EAN
         assert to_isbn13("012345678905") == "0012345678905"
+
+    def test_non_isbn_ean13_keeps_legacy_passthrough(self):
+        assert to_isbn13("4006381333931") == "4006381333931"
 
     def test_invalid_returns_none(self):
         assert to_isbn13("invalid") is None
@@ -133,6 +134,31 @@ class TestValidateIsbn13:
 
     def test_non_string_returns_false(self):
         assert validate_isbn13(123) is False
+
+
+class TestCanonicalIsbnPair:
+    def test_isbn10_returns_matching_pair(self):
+        assert canonical_isbn_pair("054792822X") == ("9780547928227", "054792822X")
+
+    def test_isbn13_returns_matching_isbn10(self):
+        assert canonical_isbn_pair("9780441172719") == ("9780441172719", "0441172717")
+
+    def test_979_has_no_isbn10_equivalent(self):
+        assert canonical_isbn_pair("9791234567896") == ("9791234567896", None)
+
+    def test_normalizes_formatting(self):
+        assert canonical_isbn_pair("978-0-54-792822-7") == ("9780547928227", "054792822X")
+
+    def test_rejects_bad_checksum(self):
+        assert canonical_isbn_pair("9780441172710") is None
+        assert canonical_isbn_pair("0441172718") is None
+
+    def test_rejects_upc_even_though_legacy_converter_accepts_it(self):
+        assert canonical_isbn_pair("012345678905") is None
+
+    def test_blank_or_non_string_is_invalid(self):
+        assert canonical_isbn_pair("") is None
+        assert canonical_isbn_pair(None) is None
 
 
 # --- UPC ---

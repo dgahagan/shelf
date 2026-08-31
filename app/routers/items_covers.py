@@ -179,6 +179,16 @@ async def cover_select(
     _=Depends(require_role("editor")),
 ):
     """Download a selected cover URL and save it for an item."""
+    # The downloader writes directly to the item-id-derived cover path. A
+    # stale link must therefore be rejected before network I/O, otherwise an
+    # unknown id can leave an orphan file and still receive a success redirect.
+    with get_db() as db:
+        item_exists = db.execute(
+            "SELECT 1 FROM items WHERE id = ?", (item_id,)
+        ).fetchone()
+    if not item_exists:
+        return HTMLResponse("Not found", status_code=404)
+
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         cover_path = await covers._download_to_item(item_id, url, client)
 

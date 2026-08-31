@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Browse — Shelf{% endblock %}
 {% block content %}
-<div x-data="browsePage" data-initial-query="{{ initial_query or '' }}">
+{% set can_select = user and user.role in ('editor', 'admin') %}
+{% set can_bulk_edit = user and user.role == 'admin' %}
+<div x-data="browsePage" data-initial-query="{{ initial_query or '' }}" data-can-select="{{ '1' if can_select else '0' }}">
+    {% if can_select %}
     <!-- Bulk Action Bar -->
     <div x-show="selectMode && selectedIds.length > 0" x-transition
          class="fixed bottom-0 inset-x-0 z-40 bg-shelf-card border-t border-shelf-border py-3 px-4 shadow-lg">
         <div class="max-w-7xl mx-auto flex items-center gap-3 flex-wrap">
             <span class="text-sm text-shelf-muted" x-text="selectedIds.length + ' selected'"></span>
+            {% if can_bulk_edit %}
             <select x-model="bulkLocationVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
                 <option value="">Move to location...</option>
                 {% for loc in locations %}
@@ -50,9 +54,11 @@
                 <button @click="bulkUpdate({series_name: '__clear__'})"
                         class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text">Clear</button>
             </div>
+            {% endif %}
             <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">Delete Selected</button>
         </div>
     </div>
+    {% endif %}
 
     <!-- Header + Filters -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -74,6 +80,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
             </div>
+            {% if can_select %}
             <!-- Select mode -->
             <div class="relative shrink-0">
                 <button @click="toggleSelectMode()"
@@ -86,7 +93,7 @@
                 <!-- First-use tooltip -->
                 <div x-show="showSelectTip" x-transition
                      class="absolute top-full left-0 mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg p-2 shadow-xl z-50 text-xs text-shelf-muted">
-                    Tap items to select them for bulk move, type change, status update, or delete.
+                    {% if can_bulk_edit %}Tap items to bulk edit or delete them.{% else %}Tap items to delete them in bulk.{% endif %}
                 </div>
             </div>
             <template x-if="selectMode">
@@ -95,6 +102,7 @@
                     <button @click="deselectAll()" x-show="selectedIds.length > 0" class="px-2 py-1 rounded text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Deselect All</button>
                 </div>
             </template>
+            {% endif %}
             <!-- Column picker (list view only) -->
             <div class="relative shrink-0" x-show="viewMode === 'list'">
                 <button @click="columnsOpen = !columnsOpen"

@@ -5,7 +5,7 @@ import re
 
 import httpx
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
@@ -31,8 +31,17 @@ HC_STATUSES = {
 @router.post("/test")
 async def test_hardcover(request: Request, _=Depends(require_role("admin"))):
     """Test a Hardcover API token."""
-    data = await request.json()
-    token = data.get("token", "").strip()
+    try:
+        data = await request.json()
+    except Exception:
+        return {"ok": False, "message": "Invalid request body"}
+    if not isinstance(data, dict):
+        return {"ok": False, "message": "Invalid request body"}
+
+    raw_token = data.get("token")
+    if raw_token is not None and not isinstance(raw_token, str):
+        return {"ok": False, "message": "Invalid request body"}
+    token = (raw_token or "").strip()
     if not token:
         # Masked field posts empty — test the stored token instead
         with get_db() as db:
@@ -79,8 +88,31 @@ async def search_hardcover(request: Request, q: str = "", _=Depends(require_role
 @router.post("/add-to-shelf")
 async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("editor"))):
     """Add a book from Hardcover search to Shelf as a wishlist item."""
-    data = await request.json()
-    title = data.get("title", "").strip()
+    try:
+        data = await request.json()
+    except Exception:
+        return {"ok": False, "message": "Invalid request body"}
+    if not isinstance(data, dict):
+        return {"ok": False, "message": "Invalid request body"}
+
+    raw_title = data.get("title")
+    if raw_title is not None and not isinstance(raw_title, str):
+        return {"ok": False, "message": "Invalid request body"}
+    for key in ("authors", "isbn", "publisher", "description", "series_name", "cover_url"):
+        value = data.get(key)
+        if value is not None and not isinstance(value, str):
+            return {"ok": False, "message": "Invalid request body"}
+    for key in ("hardcover_book_id", "year", "pages"):
+        value = data.get(key)
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+            return {"ok": False, "message": "Invalid request body"}
+    series_position = data.get("series_position")
+    if series_position is not None and (
+        isinstance(series_position, bool) or not isinstance(series_position, (int, float))
+    ):
+        return {"ok": False, "message": "Invalid request body"}
+
+    title = (raw_title or "").strip()
     if not title:
         return {"ok": False, "message": "Title required"}
 
@@ -140,7 +172,9 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
 async def set_hardcover_schedule(interval: str = Form("off"), _=Depends(require_role("admin"))):
     """Set the Hardcover sync schedule."""
     if interval not in ("off", "daily", "weekly"):
-        interval = "off"
+        return JSONResponse(
+            {"ok": False, "message": "Invalid sync interval"}, status_code=400
+        )
     with get_db() as db:
         db.execute(
             "INSERT INTO settings (key, value) VALUES ('hc_sync_interval', ?) "

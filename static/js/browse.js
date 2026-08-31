@@ -2,6 +2,7 @@ function browsePage() {
     return {
         selectMode: false,
         selectedIds: [],
+        canSelect: false,
         showSelectTip: false,
         bulkLocationVal: '',
         bulkTypeVal: '',
@@ -33,6 +34,7 @@ function browsePage() {
             // first rather than being populated lazily.
             this.visibleCols = this.loadColumns();
             this.searchQuery = this.$el.dataset.initialQuery || '';
+            this.canSelect = this.$el.dataset.canSelect === '1';
             // Returning to a bare /browse re-applies the last filter set.
             // Falls through to the sort-only restore when there's nothing stored
             // (sessionStorage is per-tab, so a new tab always lands here).
@@ -111,9 +113,8 @@ function browsePage() {
             }
             if (e.key === 'Escape') {
                 if (this.selectMode) { this.selectMode = false; this.selectedIds = []; e.preventDefault(); }
-            } else if (e.key === 'e') {
-                this.selectMode = !this.selectMode;
-                if (!this.selectMode) this.selectedIds = [];
+            } else if (e.key === 'e' && this.canSelect) {
+                this.toggleSelectMode();
                 e.preventDefault();
             } else if (e.key === 'g') {
                 this.setView(this.viewMode === 'grid' ? 'list' : 'grid');
@@ -386,6 +387,7 @@ function browsePage() {
         },
 
         toggleSelectMode() {
+            if (!this.canSelect) return;
             this.selectMode = !this.selectMode;
             if (!this.selectMode) this.selectedIds = [];
             localStorage.setItem('shelf-select-used', '1');
@@ -423,6 +425,13 @@ function browsePage() {
             this.selectedIds = [];
         },
 
+        // Alpine's CSP evaluator has no access to browser globals, so the
+        // template's bare parseInt(...) call must resolve on component scope.
+        // Keep the conversion here rather than weakening script-src.
+        parseInt(value) {
+            return Number.parseInt(value, 10);
+        },
+
         async bulkUpdate(updates) {
             if (!this.selectedIds.length) return;
             try {
@@ -445,13 +454,38 @@ function browsePage() {
         },
 
         async bulkDelete() {
-            if (!confirm('Delete ' + this.selectedIds.length + ' items?')) return;
-            for (var id of this.selectedIds) {
-                await fetch('/api/items/' + id, {method: 'DELETE', headers: {'X-CSRF-Token': window.csrfToken()}});
+            var ids = this.selectedIds.slice();
+            if (!ids.length || !confirm('Delete ' + ids.length + ' items?')) return;
+
+            var deleted = 0;
+            var failed = 0;
+            for (var id of ids) {
+                try {
+                    var resp = await fetch('/api/items/' + id, {
+                        method: 'DELETE',
+                        headers: {'X-CSRF-Token': window.csrfToken()}
+                    });
+                    if (resp.ok) deleted += 1;
+                    else failed += 1;
+                } catch (e) {
+                    failed += 1;
+                }
             }
-            showToast('Deleted ' + this.selectedIds.length + ' items', 'success');
-            this.selectedIds = [];
-            location.reload();
+
+            if (failed === 0) {
+                showToast('Deleted ' + deleted + ' items', 'success');
+                this.selectedIds = [];
+                location.reload();
+                return;
+            }
+
+            if (deleted > 0) {
+                showToast('Deleted ' + deleted + ' items; ' + failed + ' failed', 'error');
+                this.selectedIds = [];
+                location.reload();
+            } else {
+                showToast('Delete failed for ' + failed + ' items', 'error');
+            }
         }
     }
 }

@@ -21,11 +21,22 @@ from app.services import covers, igdb, openlibrary, scan_outcome, tmdb
 from app.services import isbn as isbn_svc
 from app.services import upc as upc_svc
 from app.services.item_write import insert_item
+from app.services.write_targets import UnknownLocationError, validated_location_id
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
+_LOCATION_ERROR = "Selected location no longer exists — choose another location"
+
+
+def _location_error(request: Request, templates, isbn: str = ""):
+    """Render the normal scan-card error for a stale location selection."""
+    return templates.TemplateResponse(
+        request,
+        "fragments/scan_result.html",
+        {"status": "error", "isbn": isbn, "message": _LOCATION_ERROR},
+    )
 
 
 @router.get("/games/search")
@@ -67,6 +78,7 @@ async def search_games(
         },
     )
 
+
 @router.post("/games/add")
 async def add_game_from_search(
     request: Request,
@@ -77,6 +89,15 @@ async def add_game_from_search(
 ):
     """Add a video game to the collection from an IGDB search result."""
     templates = request.app.state.templates
+
+    # A location can disappear between rendering the search form and clicking
+    # Add. Reject that target before spending an IGDB request on an insert that
+    # SQLite's foreign key will refuse anyway.
+    try:
+        with get_db() as db:
+            loc_id = validated_location_id(db, location_id)
+    except UnknownLocationError:
+        return _location_error(request, templates)
 
     with get_db() as db:
         client_id = get_setting(db, "igdb_client_id")
@@ -93,8 +114,6 @@ async def add_game_from_search(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": "", "message": "Failed to fetch game details from IGDB"},
         )
-
-    loc_id = location_id if location_id and location_id > 0 else None
 
     with get_db() as db:
         valid_platforms = get_game_platforms(db)
@@ -149,7 +168,9 @@ async def add_game_from_search(
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {metadata['title'][:50]}")
     return resp
 
+
 BOOK_MEDIA_TYPES = {"book", "kids_book", "audiobook", "ebook", "comic"}
+
 
 @router.get("/title-search")
 async def title_search(
@@ -174,6 +195,7 @@ async def title_search(
     if not items_common.is_valid_media_type(media_type):
         media_type = "book"
     return await search_books(request, q=q, media_type=media_type, _=_)
+
 
 @router.get("/books/search")
 async def search_books(
@@ -205,6 +227,7 @@ async def search_books(
         },
     )
 
+
 @router.post("/books/add")
 async def add_book_from_search(
     request: Request,
@@ -223,12 +246,19 @@ async def add_book_from_search(
             {"status": "error", "isbn": isbn.strip(),
              "message": "Unrecognised media type — pick one and try again"},
         )
-    isbn13 = isbn_svc.to_isbn13(isbn.strip())
-    if not isbn13:
+    pair = isbn_svc.canonical_isbn_pair(isbn.strip())
+    if pair is None:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
         )
+    isbn13, _isbn10 = pair
+
+    try:
+        with get_db() as db:
+            loc_id = validated_location_id(db, location_id)
+    except UnknownLocationError:
+        return _location_error(request, templates, isbn13)
 
     # Check duplicate
     with get_db() as db:
@@ -261,7 +291,7 @@ async def add_book_from_search(
                 {"status": "error", "isbn": isbn13, "message": "Could not fetch metadata for this ISBN"},
             )
 
-        item_id = items_common._save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
+        item_id = items_common._save_item(metadata, isbn13, media_type, loc_id, source, hc_ids)
 
         hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
         cover_path = await covers.download_cover(
@@ -288,6 +318,7 @@ async def add_book_from_search(
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {metadata['title'][:50]}")
     return resp
 
+
 @router.get("/dvds/search")
 async def search_dvds(
     request: Request,
@@ -305,7 +336,7 @@ async def search_dvds(
     if not tmdb_key:
         return HTMLResponse(
             '<p class="text-sm text-shelf-error">TMDb API key not configured. '
-            'Add it in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
+            'Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
         )
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -322,6 +353,7 @@ async def search_dvds(
         },
     )
 
+
 @router.post("/dvds/add")
 async def add_dvd_from_search(
     request: Request,
@@ -335,7 +367,12 @@ async def add_dvd_from_search(
 ):
     """Add a DVD/Blu-ray to the collection from a TMDb search result."""
     templates = request.app.state.templates
-    loc_id = location_id if location_id and location_id > 0 else None
+
+    try:
+        with get_db() as db:
+            loc_id = validated_location_id(db, location_id)
+    except UnknownLocationError:
+        return _location_error(request, templates)
 
     # Check duplicate by title
     with get_db() as db:

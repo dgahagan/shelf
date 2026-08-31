@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from app.auth import require_role
 from app.database import get_db, get_setting
@@ -47,12 +47,26 @@ def get_overdue_loans(db) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def _borrower_settings_error(code: str) -> RedirectResponse:
+    return RedirectResponse(url=f"/settings?borrower_error={code}", status_code=303)
+
+
 # --- Borrowers ---
 
 @router.post("/borrowers")
 async def create_borrower(name: str = Form(...), _=Depends(require_role("admin"))):
+    clean_name = name.strip()
+    if not clean_name:
+        return JSONResponse(
+            {"ok": False, "message": "Borrower name is required"}, status_code=400
+        )
     with get_db() as db:
-        db.execute("INSERT OR IGNORE INTO borrowers (name) VALUES (?)", (name.strip(),))
+        existing = db.execute(
+            "SELECT id FROM borrowers WHERE name = ?", (clean_name,)
+        ).fetchone()
+        if existing:
+            return _borrower_settings_error("duplicate")
+        db.execute("INSERT INTO borrowers (name) VALUES (?)", (clean_name,))
     return RedirectResponse(url="/settings", status_code=303)
 
 
@@ -66,14 +80,14 @@ async def delete_borrower(borrower_id: int, _=Depends(require_role("admin"))):
     matching what deleting a location or a platform already does.
     """
     with get_db() as db:
-        # Take the write lock *before* reading the guard. sqlite3 opens no
-        # transaction for a bare SELECT, so without this the active-loan
-        # count is read outside any lock and a checkout committed between
-        # that read and the DELETE below would be destroyed as "history".
-        # The foreign key used to make that interleaving fail safe; the
-        # cascade removes that accidental protection, so the lock replaces
-        # it. Read, decide, and write are now one serialized unit.
+        # Take the write lock *before* reading either existence or the active-
+        # loan guard. This serializes the decision with checkout creation.
         db.execute("BEGIN IMMEDIATE")
+        borrower = db.execute(
+            "SELECT id FROM borrowers WHERE id = ?", (borrower_id,)
+        ).fetchone()
+        if not borrower:
+            return _borrower_settings_error("missing")
         active = db.execute(
             "SELECT COUNT(*) as c FROM checkouts WHERE borrower_id = ? AND checked_in IS NULL",
             (borrower_id,),
@@ -97,11 +111,27 @@ async def checkout_item(
     _=Depends(require_role("editor")),
 ):
     """Check out an item to a borrower."""
-    templates = request.app.state.templates
     due = (date.today() + timedelta(days=due_days)).isoformat() if due_days > 0 else None
 
     with get_db() as db:
-        # Check not already checked out
+        # Guard and insert must be one serialized write decision. Without a
+        # write lock, two requests can both observe no active checkout before
+        # either INSERT commits and create contradictory simultaneous loans.
+        db.execute("BEGIN IMMEDIATE")
+        item = db.execute("SELECT id FROM items WHERE id = ?", (item_id,)).fetchone()
+        if not item:
+            return JSONResponse(
+                {"ok": False, "message": "Item not found"}, status_code=404
+            )
+
+        borrower = db.execute(
+            "SELECT id FROM borrowers WHERE id = ?", (borrower_id,)
+        ).fetchone()
+        if not borrower:
+            return JSONResponse(
+                {"ok": False, "message": "Borrower not found"}, status_code=404
+            )
+
         active = db.execute(
             "SELECT id FROM checkouts WHERE item_id = ? AND checked_in IS NULL", (item_id,)
         ).fetchone()

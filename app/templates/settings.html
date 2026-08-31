@@ -4,6 +4,34 @@
 <div class="max-w-2xl mx-auto" x-data="settingsTabs">
     <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
+    {% set platform_error = request.query_params.get('platform_error') %}
+    {% if platform_error in ('blank', 'duplicate', 'missing') %}
+    <div data-testid="platform-error-banner"
+         class="bg-shelf-bg text-shelf-error border border-shelf-border rounded-lg px-4 py-2 text-sm mb-6">
+        {% if platform_error == 'blank' %}
+        Platform name is required.
+        {% elif platform_error == 'duplicate' %}
+        A platform with that name or identifier already exists.
+        {% else %}
+        That platform no longer exists.
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% set borrower_error = request.query_params.get('borrower_error') %}
+    {% if borrower_error in ('blank', 'duplicate', 'missing') %}
+    <div data-testid="borrower-mutation-error-banner"
+         class="bg-shelf-bg text-shelf-error border border-shelf-border rounded-lg px-4 py-2 text-sm mb-6">
+        {% if borrower_error == 'blank' %}
+        Borrower name is required.
+        {% elif borrower_error == 'duplicate' %}
+        A borrower with that name already exists.
+        {% else %}
+        That borrower no longer exists.
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Tab Bar -->
     <div class="flex gap-1 mb-6 border-b border-shelf-border">
         <button @click="setTab('library')" data-testid="tab-library"
