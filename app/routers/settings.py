@@ -77,7 +77,10 @@ async def test_google_books(request: Request):
     if not isinstance(body, dict):
         return {"ok": False, "message": "Invalid request"}
 
-    api_key = (body.get("api_key") or "").strip()
+    raw_api_key = body.get("api_key")
+    if raw_api_key is not None and not isinstance(raw_api_key, str):
+        return {"ok": False, "message": "Invalid request"}
+    api_key = (raw_api_key or "").strip()
     if not api_key:
         with get_db() as db:
             api_key = get_setting(db, "google_books_api_key")
@@ -216,8 +219,18 @@ async def notify_test(request: Request):
         body = await request.json()
     except Exception:
         return {"ok": False, "message": "Invalid request"}
-    url = (body.get("url") or "").strip()
-    fmt = body.get("format") or "ntfy"
+    if not isinstance(body, dict):
+        return {"ok": False, "message": "Invalid request"}
+
+    raw_url = body.get("url")
+    raw_fmt = body.get("format")
+    if (
+        (raw_url is not None and not isinstance(raw_url, str))
+        or (raw_fmt is not None and not isinstance(raw_fmt, str))
+    ):
+        return {"ok": False, "message": "Invalid request"}
+    url = (raw_url or "").strip()
+    fmt = raw_fmt or "ntfy"
     if not url:
         # Masked field posts empty — test the stored URL instead
         from app.database import get_setting
