@@ -126,7 +126,7 @@ class TestGraphQLIntCoercion:
         """Non-integer book_id must raise ValueError before any query is built."""
         from app.services.hardcover import create_user_book
         with pytest.raises((ValueError, TypeError)):
-            await create_user_book("token", "malicious}")
+            await create_user_book("token", "malicious")
 
     @pytest.mark.anyio
     async def test_create_user_book_rejects_non_int_status_id(self):
@@ -398,7 +398,7 @@ class TestCSVFieldLengthCaps:
             "authors": "Author Name",
             "publisher": "Publisher",
             "series_name": "Series",
-            "isbn": "9780000001234",
+            "isbn": "9780000001238",
             "media_type": "book",
         }
         fields.update(overrides)
@@ -455,7 +455,7 @@ class TestCSVFieldLengthCaps:
 
     def test_at_limit_fields_import_successfully(self, admin_client):
         """Exactly 1000 characters should be accepted."""
-        csv_content = self._make_csv(authors="A" * 1000, isbn="9780000001235")
+        csv_content = self._make_csv(authors="A" * 1000, isbn="9780000001245")
         resp = admin_client.post(
             "/api/import/csv",
             files={"file": ("test.csv", io.BytesIO(csv_content.encode()), "text/csv")},

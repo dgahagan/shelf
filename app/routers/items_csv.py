@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
 from app.auth import require_role
+from app.config import MEDIA_TYPES
 from app.database import get_db
 from app.routers import items_common
 from app.services import cover_queue
@@ -73,6 +74,13 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
 
     form = await request.form()
     mode = form.get("mode", "skip")  # skip or update
+    if mode not in ("skip", "update"):
+        return {
+            "error": "Invalid import mode",
+            "imported": 0,
+            "skipped": 0,
+            "errors": [],
+        }
     to_read_wishlist = form.get("to_read_wishlist") in ("1", "true", "on")
     enrich_covers = form.get("enrich_covers") in ("1", "true", "on")
     csv_file = form.get("file")
@@ -125,8 +133,21 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                     errors.append(f"Row {i}: series_name too long (max {_CSV_MAX_TEXT} chars)")
                     continue
 
-                isbn_val = norm["isbn"]
+                raw_isbn = norm["isbn"]
+                if raw_isbn:
+                    isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn)
+                    if isbn_pair is None:
+                        errors.append(f"Row {i}: invalid ISBN")
+                        continue
+                else:
+                    isbn_pair = None
+                isbn_val = isbn_pair[0] if isbn_pair else None
+                isbn10_val = isbn_pair[1] if isbn_pair else None
+
                 media = norm["media_type"]
+                if media not in MEDIA_TYPES:
+                    errors.append(f"Row {i}: invalid media_type")
+                    continue
 
                 owned = norm["owned"]
                 if to_read_wishlist and norm["reading_status"] == "want_to_read":
@@ -149,8 +170,9 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                 if isbn_val:
                     file_key = ("isbn", isbn_val, media)
                     existing = db.execute(
-                        "SELECT id FROM items WHERE isbn = ? AND media_type = ?",
-                        (isbn_val, media),
+                        "SELECT id FROM items WHERE media_type = ? AND "
+                        "(isbn = ? OR (? IS NOT NULL AND isbn10 = ?))",
+                        (media, isbn_val, isbn10_val, isbn10_val),
                     ).fetchone()
                 else:
                     file_key = ("title", title.strip().lower(), authors_val.strip().lower(), media)
@@ -192,6 +214,7 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                     title=title,
                     authors=norm["authors"],
                     isbn=isbn_val,
+                    isbn10=isbn10_val,
                     media_type=media,
                     publisher=norm["publisher"],
                     publish_year=int(pub_year) if pub_year and str(pub_year).isdigit() else None,

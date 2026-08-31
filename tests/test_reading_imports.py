@@ -316,7 +316,7 @@ class TestStorygraphImport:
 
 class TestGenericStillWorks:
     def test_generic_format_reported(self, admin_client):
-        csv_content = "title,authors,isbn\nSome Book,Someone,9780000000111"
+        csv_content = "title,authors,isbn\nSome Book,Someone,9780000000118"
         data = _post_csv(admin_client, csv_content).json()
         assert data["format"] == "generic"
         assert data["imported"] == 1
@@ -555,15 +555,15 @@ class TestEnrichImportCoversQueues:
         monkeypatch.delenv("SHELF_DISABLE_COVER_ENRICH", raising=False)
         csv_content = (
             "title,authors,isbn,media_type\n"
-            "Some Book,Someone,9780000000111,book\n"
-            "Some DVD,,9780000000222,dvd"
+            "Some Book,Someone,9780000000118,book\n"
+            "Some DVD,,9780000000224,dvd"
         )
         with patch("app.routers.items_common._enrich_import_covers", new=AsyncMock()) as enrich:
             data = _post_csv(admin_client, csv_content, enrich_covers="1").json()
 
         assert data["covers_queued"] == 1
         book_id = db.execute(
-            "SELECT id FROM items WHERE isbn = '9780000000111'"
+            "SELECT id FROM items WHERE isbn = '9780000000118'"
         ).fetchone()["id"]
         enrich.assert_called_once_with([book_id])
 

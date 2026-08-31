@@ -41,7 +41,7 @@ def test_csv_export(live_server, browser, setup_admin):
 def test_csv_import(live_server, authed_page):
     """Uploading a CSV file via the settings page imports items."""
     # Build a minimal CSV
-    csv_content = "title,media_type,isbn\nImported Book,book,9780000222333\n"
+    csv_content = "title,media_type,isbn\nImported Book,book,9780000222336\n"
 
     authed_page.goto(f"{live_server['url']}/settings")
     authed_page.wait_for_load_state("networkidle")
@@ -83,9 +83,9 @@ def test_goodreads_import_via_ui(live_server, authed_page):
         "Private Notes,Read Count,Owned Copies"
     )
     rows = [
-        '1,GR Read Book,Ann Author,"Author, Ann",,"=""""","=""9780900000011""",'
+        '1,GR Read Book,Ann Author,"Author, Ann",,"=""""","=""9780900000010""",'
         '5,4.2,Ace,Paperback,300,2005,1999,2023/08/15,2023/01/02,,,read,,,,1,0',
-        '2,GR Wishlist Book,Bob Writer,"Writer, Bob",,"=""""","=""9780900000028""",'
+        '2,GR Wishlist Book,Bob Writer,"Writer, Bob",,"=""""","=""9780900000027""",'
         '0,4.0,Bantam,Hardcover,500,1990,1989,,2023/01/02,,,to-read,,,,0,0',
     ]
     csv_content = header + "\n" + "\n".join(rows) + "\n"
