@@ -5,7 +5,7 @@ import re
 
 import httpx
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
@@ -140,7 +140,9 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
 async def set_hardcover_schedule(interval: str = Form("off"), _=Depends(require_role("admin"))):
     """Set the Hardcover sync schedule."""
     if interval not in ("off", "daily", "weekly"):
-        interval = "off"
+        return JSONResponse(
+            {"ok": False, "message": "Invalid sync interval"}, status_code=400
+        )
     with get_db() as db:
         db.execute(
             "INSERT INTO settings (key, value) VALUES ('hc_sync_interval', ?) "
