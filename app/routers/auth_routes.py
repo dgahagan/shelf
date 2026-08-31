@@ -150,7 +150,7 @@ async def create_user(
     username = username.strip()
     display_name = display_name.strip() or username
     if role not in ("admin", "editor", "viewer"):
-        role = "viewer"
+        return {"ok": False, "message": "Invalid role"}
     if len(password) < 8:
         return {"ok": False, "message": "Password must be at least 8 characters"}
     if not username or len(username) < 2:
