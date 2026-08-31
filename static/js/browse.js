@@ -423,6 +423,13 @@ function browsePage() {
             this.selectedIds = [];
         },
 
+        // Alpine's CSP evaluator has no access to browser globals, so the
+        // template's bare parseInt(...) call must resolve on component scope.
+        // Keep the conversion here rather than weakening script-src.
+        parseInt(value) {
+            return Number.parseInt(value, 10);
+        },
+
         async bulkUpdate(updates) {
             if (!this.selectedIds.length) return;
             try {

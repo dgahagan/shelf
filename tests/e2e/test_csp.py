@@ -6,6 +6,7 @@ both "policy too loose" regressions (inline script sneaks in) and "policy too
 strict" ones (a required asset gets blocked and the page silently degrades).
 """
 import pytest
+from playwright.sync_api import expect
 
 from tests.e2e.conftest import assert_page_clean, attach_page_guard, insert_item
 
@@ -68,3 +69,39 @@ def test_js_stack_boots_under_csp(live_server, browser, setup_admin):
     assert page.evaluate("typeof window.browsePage") == "function"
     assert_page_clean(page)
     ctx.close()
+
+
+def test_shortcut_help_interacts_without_inline_script_violation(
+    live_server, browser, setup_admin
+):
+    """The keyboard-help button must actually work under Shelf's no-inline CSP."""
+    ctx = browser.new_context()
+    try:
+        page = attach_page_guard(ctx.new_page())
+        page.add_init_script(_VIOLATION_PROBE)
+        page.goto(f"{live_server['url']}/login")
+        page.fill("input[name=username]", setup_admin["username"])
+        page.fill("input[name=password]", setup_admin["password"])
+        page.click("button[type=submit]")
+        page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+
+        trigger = page.locator('button[title="Keyboard shortcuts (?)"]')
+        modal = page.locator("#shortcut-modal")
+        expect(modal).to_be_hidden()
+
+        trigger.click()
+        expect(modal).to_be_visible()
+        expect(modal).to_contain_text("Keyboard Shortcuts")
+        assert page.evaluate("window.__cspViolations") == []
+
+        modal.locator("button").click()
+        expect(modal).to_be_hidden()
+
+        trigger.click()
+        expect(modal).to_be_visible()
+        page.keyboard.press("Escape")
+        expect(modal).to_be_hidden()
+        assert page.evaluate("window.__cspViolations") == []
+        assert_page_clean(page)
+    finally:
+        ctx.close()
