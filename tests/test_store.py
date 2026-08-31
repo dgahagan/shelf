@@ -174,7 +174,7 @@ class TestStoreQueue:
         monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "store-google-key")
         lookup = AsyncMock(return_value=(None, None, {}, False))
         with patch("app.routers.items_common._lookup_metadata", new=lookup):
-            admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
+            admin_client.post("/api/store/queue", json={"isbns": ["9780900000010"]})
 
         assert lookup.await_args.kwargs["google_api_key"] == "store-google-key"
 
@@ -193,7 +193,7 @@ class TestStoreQueue:
     def test_bare_add_when_nothing_found(self, admin_client, db):
         with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(return_value=(None, None, {}, False))):
-            resp = admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
+            resp = admin_client.post("/api/store/queue", json={"isbns": ["9780900000010"]})
         assert resp.json()["results"][0]["status"] == "added_bare"
 
     def test_duplicate_reported(self, admin_client, db):

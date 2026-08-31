@@ -96,6 +96,8 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
         body = await request.json()
     except Exception:
         return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+    if not isinstance(body, dict):
+        return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
     isbns = body.get("isbns")
     if not isinstance(isbns, list) or not all(isinstance(x, str) for x in isbns):
         return JSONResponse({"error": "isbns must be a list of strings"}, status_code=400)
@@ -109,15 +111,17 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
     results = []
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for raw in isbns:
-            isbn13 = isbn_svc.to_isbn13(raw)
-            if not isbn13:
+            pair = isbn_svc.canonical_isbn_pair(raw)
+            if pair is None:
                 results.append({"isbn": raw, "status": "invalid"})
                 continue
+            isbn13, isbn10 = pair
 
             with get_db() as db:
                 existing = db.execute(
-                    "SELECT id, title FROM items WHERE isbn = ? AND media_type = 'book'",
-                    (isbn13,),
+                    "SELECT id, title FROM items WHERE media_type = 'book' AND "
+                    "(isbn = ? OR (? IS NOT NULL AND isbn10 = ?))",
+                    (isbn13, isbn10, isbn10),
                 ).fetchone()
             if existing:
                 results.append({
@@ -165,12 +169,13 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
                 except Exception:
                     logger.exception("Store queue: save failed for %s, falling back to bare add", isbn13)
 
-            # Bare fallback — never lose a scan
+            # Bare fallback — never lose a valid ISBN scan
             with get_db() as db:
                 item_id = insert_item(
                     db,
                     title=f"Unknown — ISBN {isbn13}",
                     isbn=isbn13,
+                    isbn10=isbn10,
                     media_type="book",
                     owned=0,
                     source="store_queue",

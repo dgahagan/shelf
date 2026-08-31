@@ -20,7 +20,7 @@ pytestmark = pytest.mark.e2e
 
 OWNED_ISBN = "9780901000018"
 WISHLIST_ISBN = "9780901000025"
-UNKNOWN_ISBN = "9780901000032"
+UNKNOWN_ISBN = "9780901000033"
 
 
 def _login(live_server, ctx, setup_admin):
@@ -70,11 +70,10 @@ def test_offline_verdicts_and_queue_flush(live_server, browser, setup_admin):
         expect(pg.get_by_test_id("verdict")).to_contain_text("NOT IN LIBRARY")
         expect(pg.get_by_test_id("queue-count")).to_have_text("1")
 
-        # Back online: flush the queue (fake ISBN -> lookup fails -> bare
-        # wishlist add; the scan must never be lost)
-        ctx.set_offline(False)
+        # Going back online automatically flushes the queue. Observe that
+        # request rather than racing the auto-flush with a manual button click.
         with pg.expect_response("**/api/store/queue") as resp_info:
-            pg.get_by_test_id("sync-now").click()
+            ctx.set_offline(False)
         result = resp_info.value.json()["results"][0]
         assert result["status"] in ("wishlisted", "added_bare"), result
 
