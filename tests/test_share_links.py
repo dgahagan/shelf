@@ -37,6 +37,11 @@ class TestShareLinkLifecycle:
         client.cookies.clear()
         assert client.get(f"/share/{link['token']}").status_code == 404
 
+    def test_revoke_missing_link_404(self, admin_client):
+        resp = admin_client.post("/api/share/999999/delete", follow_redirects=False)
+        assert resp.status_code == 404
+        assert resp.json() == {"ok": False, "message": "Share link not found"}
+
     def test_viewer_cannot_create_or_revoke(self, client, viewer_user):
         from app.auth import create_token
         token = create_token(viewer_user["id"], viewer_user["username"], viewer_user["role"],
@@ -52,9 +57,18 @@ class TestShareLinkLifecycle:
         assert resp.headers.get("x-robots-tag") == "noindex"
         assert client.get("/share/bad").headers.get("x-robots-tag") == "noindex"
 
-    def test_bad_scope_defaults_to_wishlist(self, admin_client):
-        link = _create_link(admin_client, scope="everything")
-        assert link["scope"] == "wishlist"
+    def test_invalid_scope_rejected_without_creating_link(self, admin_client, db):
+        before = db.execute("SELECT COUNT(*) FROM share_links").fetchone()[0]
+        resp = admin_client.post(
+            "/api/share",
+            data={"scope": "everything", "label": "Forged"},
+            follow_redirects=False,
+        )
+        after = db.execute("SELECT COUNT(*) FROM share_links").fetchone()[0]
+
+        assert resp.status_code == 400
+        assert resp.json() == {"ok": False, "message": "Invalid share scope"}
+        assert after == before
 
 
 class TestShareScoping:
