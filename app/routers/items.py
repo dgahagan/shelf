@@ -508,8 +508,20 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         upc_code = None
         isbn13 = isbn_svc.to_isbn13(isbn) if isbn else None
         isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if isbn13 else None
-    pub_year = form.get("publish_year")
-    platform = form.get("platform") or None
+
+    pub_year_raw = (form.get("publish_year") or "").strip()
+    if pub_year_raw:
+        try:
+            pub_year = int(pub_year_raw)
+        except (TypeError, ValueError):
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "error", "isbn": isbn, "message": "Invalid publish year"},
+            )
+    else:
+        pub_year = None
+
+    platform = (form.get("platform") or "").strip() or None
     language = form.get("language", "").strip() or None
 
     # #19 "copy from" prefill: series_name + location_id are optional and
@@ -527,7 +539,11 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
 
     with get_db() as db:
         if platform and platform not in get_game_platforms(db):
-            platform = None
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "error", "isbn": isbn,
+                 "message": "Unrecognised game platform — pick one and try again"},
+            )
         if location_id is not None:
             loc_row = db.execute("SELECT id FROM locations WHERE id = ?", (location_id,)).fetchone()
             if not loc_row:
@@ -544,7 +560,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
                     upc=upc_code,
                     media_type=media_type,
                     publisher=form.get("publisher"),
-                    publish_year=int(pub_year) if pub_year else None,
+                    publish_year=pub_year,
                     platform=platform,
                     series_name=series_name,
                     location_id=location_id,
@@ -1206,7 +1222,6 @@ async def test_igdb_key(request: Request, _=Depends(require_role("admin"))):
         return {"ok": False, "message": "Both Client ID and Client Secret are required"}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         return await igdb.test_credentials(client_id, client_secret, client)
-
 
 
 
