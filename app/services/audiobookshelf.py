@@ -24,12 +24,22 @@ def get_excluded_libraries() -> set[str]:
         return set()
 
 
+def _normalise_publish_year(value):
+    """Match SQLite's usual INTEGER coercion so an unchanged year stays unchanged."""
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
+
 async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
     """Sync items from Audiobookshelf. Returns summary stats.
 
     on_progress: optional async callback(current, total, title, status) for progress updates.
     """
-    stats = {"added": 0, "updated": 0, "skipped": 0, "errors": 0}
+    stats = {"added": 0, "updated": 0, "unchanged": 0, "skipped": 0, "errors": 0}
 
     headers = {"Authorization": f"Bearer {abs_token}"}
     excluded = get_excluded_libraries()
@@ -45,15 +55,24 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
             if lib.get("id") not in excluded
         ]
 
-        # First pass: fetch all library items to get total count
+        # First pass: fetch all library items to get total count. A single
+        # large/slow library should not prevent healthy libraries from syncing.
         lib_items = []
         for lib in libraries:
             lib_id = lib["id"]
-            resp = await client.get(
-                f"{abs_url}/api/libraries/{lib_id}/items",
-                headers=headers,
-                params={"limit": 10000},
-            )
+            try:
+                resp = await client.get(
+                    f"{abs_url}/api/libraries/{lib_id}/items",
+                    headers=headers,
+                    params={"limit": 10000},
+                )
+            except httpx.TimeoutException:
+                logger.warning(
+                    "Timed out fetching Audiobookshelf library %s; skipping it for this sync",
+                    lib_id,
+                )
+                stats["errors"] += 1
+                continue
             if resp.status_code != 200:
                 stats["errors"] += 1
                 continue
@@ -101,7 +120,21 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                 if not title:
                     stats["skipped"] += 1
                     if on_progress:
-                        await on_progress(current, total, "(untitled)", "skipped")
+                        item_label = abs_id or "unknown item"
+                        await on_progress(
+                            current, total,
+                            f"Missing title — Audiobookshelf item {item_label}",
+                            "skipped",
+                        )
+                    continue
+                if not abs_id:
+                    stats["skipped"] += 1
+                    if on_progress:
+                        await on_progress(
+                            current, total,
+                            f"Missing Audiobookshelf item ID — {title}",
+                            "skipped",
+                        )
                     continue
 
                 authors = metadata.get("authorName") or metadata.get("author")
@@ -109,7 +142,7 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                 isbn = metadata.get("isbn") or metadata.get("asin")
                 series_name = metadata.get("seriesName")
                 publisher = metadata.get("publisher")
-                pub_year = metadata.get("publishedYear")
+                pub_year = _normalise_publish_year(metadata.get("publishedYear"))
                 description = metadata.get("description")
 
                 duration_secs = media.get("duration")
@@ -117,25 +150,101 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
 
                 with get_db() as db:
                     existing = db.execute(
-                        "SELECT id FROM items WHERE abs_id = ?", (abs_id,)
+                        """SELECT id, title, authors, narrator, isbn, series_name,
+                                  publisher, publish_year, description, duration_mins,
+                                  media_type, abs_id, abs_library_id, cover_path
+                           FROM items WHERE abs_id = ?""",
+                        (abs_id,),
                     ).fetchone()
 
+                    # Shelf permits the same ISBN across formats, but not twice
+                    # within one media type. ABS IDs alone are therefore not
+                    # enough to decide whether an insert is safe: a manually
+                    # catalogued audiobook may already occupy the ISBN slot,
+                    # or ABS itself may expose duplicate records for it.
+                    isbn_match = None
+                    if isbn:
+                        if existing:
+                            isbn_match = db.execute(
+                                """SELECT id, abs_id FROM items
+                                   WHERE isbn = ? AND media_type = ? AND id != ?
+                                   ORDER BY id LIMIT 1""",
+                                (isbn, media_type, existing["id"]),
+                            ).fetchone()
+                        else:
+                            isbn_match = db.execute(
+                                """SELECT id, abs_id FROM items
+                                   WHERE isbn = ? AND media_type = ?
+                                   ORDER BY id LIMIT 1""",
+                                (isbn, media_type),
+                            ).fetchone()
+
+                    if isbn_match:
+                        if existing or isbn_match["abs_id"]:
+                            logger.warning(
+                                "Skipping ABS item %s (%s): ISBN %s already belongs "
+                                "to Shelf item %s for media type %s",
+                                abs_id, title, isbn, isbn_match["id"], media_type,
+                            )
+                            stats["skipped"] += 1
+                            if on_progress:
+                                await on_progress(
+                                    current, total,
+                                    f"ISBN conflict with Shelf item {isbn_match['id']} — {title} ({isbn})",
+                                    "skipped",
+                                )
+                            continue
+
+                        # Adopt an existing manually-added same-format item
+                        # instead of attempting a duplicate insert. From this
+                        # point on it follows the normal ABS update path.
+                        existing = db.execute(
+                            """SELECT id, title, authors, narrator, isbn, series_name,
+                                      publisher, publish_year, description, duration_mins,
+                                      media_type, abs_id, abs_library_id, cover_path
+                               FROM items WHERE id = ?""",
+                            (isbn_match["id"],),
+                        ).fetchone()
+
                     if existing:
-                        db.execute(
-                            """UPDATE items SET title=?, authors=?, narrator=?,
-                               isbn=?, series_name=?, publisher=?, publish_year=?,
-                               description=?, duration_mins=?, media_type=?,
-                               abs_library_id=?,
-                               updated_at=datetime('now')
-                               WHERE abs_id=?""",
-                            (title, authors, narrator, isbn, series_name,
-                             publisher, pub_year, description, duration_mins,
-                             media_type, lib_id, abs_id),
-                        )
-                        stats["updated"] += 1
+                        desired = {
+                            "title": title,
+                            "authors": authors,
+                            "narrator": narrator,
+                            "isbn": isbn,
+                            "series_name": series_name,
+                            "publisher": publisher,
+                            "publish_year": pub_year,
+                            "description": description,
+                            "duration_mins": duration_mins,
+                            "media_type": media_type,
+                            "abs_id": abs_id,
+                            "abs_library_id": lib_id,
+                        }
+                        changed = any(existing[key] != value for key, value in desired.items())
+
+                        if changed:
+                            db.execute(
+                                """UPDATE items SET title=?, authors=?, narrator=?,
+                                   isbn=?, series_name=?, publisher=?, publish_year=?,
+                                   description=?, duration_mins=?, media_type=?,
+                                   abs_id=?, abs_library_id=?,
+                                   updated_at=datetime('now')
+                                   WHERE id=?""",
+                                (title, authors, narrator, isbn, series_name,
+                                 publisher, pub_year, description, duration_mins,
+                                 media_type, abs_id, lib_id, existing["id"]),
+                            )
+                            stats["updated"] += 1
+                            status = "updated"
+                        else:
+                            stats["unchanged"] += 1
+                            status = "unchanged"
+
                         item_id = existing["id"]
+                        fetch_cover = changed or not existing["cover_path"]
                         if on_progress:
-                            await on_progress(current, total, title, "updated")
+                            await on_progress(current, total, title, status)
                     else:
                         item_id = insert_item(
                             db,
@@ -154,10 +263,15 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                             source="audiobookshelf",
                         )
                         stats["added"] += 1
+                        fetch_cover = True
                         if on_progress:
                             await on_progress(current, total, title, "added")
 
-                # Download cover from ABS
+                # Download covers for new/changed items, or fill a missing
+                # cover on an otherwise unchanged item. Stable items with a
+                # cover no longer re-download the same image on every sync.
+                if not fetch_cover:
+                    continue
                 try:
                     cover_resp = await client.get(
                         f"{abs_url}/api/items/{abs_id}/cover",
