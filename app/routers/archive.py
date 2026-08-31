@@ -92,7 +92,7 @@ async def import_archive(request: Request, _=Depends(require_role("admin"))):
     form = await request.form()
     mode = form.get("mode", "skip")
     if mode not in ("skip", "update"):
-        mode = "skip"
+        return _refusal("Invalid import mode")
     replace_covers = _truthy(form.get("replace_covers"), False)
 
     upload = form.get("file")
@@ -131,7 +131,7 @@ async def plan_archive_import(request: Request, _=Depends(require_role("admin"))
     form = await request.form()
     mode = form.get("mode", "skip")
     if mode not in ("skip", "update"):
-        mode = "skip"
+        return _refusal("Invalid import mode")
 
     upload = form.get("file")
     if not upload or not hasattr(upload, "read"):
@@ -178,6 +178,9 @@ async def apply_archive_import(request: Request, _=Depends(require_role("admin")
     SELECTION_DEFAULTS value. Staged files are consumed in `finally`,
     whether apply succeeds or errors."""
     form = await request.form()
+    mode = form.get("mode", "skip")
+    if mode not in ("skip", "update"):
+        return _refusal("Invalid import mode")
     upload_id = form.get("upload_id") or ""
 
     import_staging.sweep_expired()
@@ -187,9 +190,6 @@ async def apply_archive_import(request: Request, _=Depends(require_role("admin")
     if zip_path is None or plan is None:
         return _refusal(_PREVIEW_EXPIRED)
 
-    mode = form.get("mode", "skip")
-    if mode not in ("skip", "update"):
-        mode = "skip"
     if mode != plan.get("mode"):
         # The staged upload/plan are left in place — this is a stale form,
         # not an invalid or expired preview, so the same upload_id can be
