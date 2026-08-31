@@ -1,6 +1,6 @@
 import logging
+import sqlite3
 
-import bcrypt
 from fastapi import APIRouter, Form, Request, Depends
 from fastapi.responses import RedirectResponse, HTMLResponse
 
@@ -13,6 +13,12 @@ from app.config import get_client_ip
 from app.database import get_db
 
 logger = logging.getLogger(__name__)
+
+# Unknown usernames must do the same one bcrypt verification as known usernames
+# without generating a fresh salt/hash on every request. The hash is created
+# once at process start; the fixed plaintext is deliberately not a valid
+# account credential and only exists to equalise the password-check work factor.
+_DUMMY_PASSWORD_HASH = hash_password("dummy")
 
 router = APIRouter()
 
@@ -39,8 +45,8 @@ async def login(request: Request, username: str = Form(...), password: str = For
         ).fetchone()
 
     if not user:
-        # Run a dummy bcrypt check to prevent username enumeration via timing
-        bcrypt.checkpw(b"dummy", bcrypt.hashpw(b"dummy", bcrypt.gensalt()))
+        # One bcrypt verification on both known and unknown username paths.
+        verify_password("dummy", _DUMMY_PASSWORD_HASH)
         logger.warning("Failed login attempt for username=%s from %s", username, get_client_ip(request))
         return templates.TemplateResponse(
             request, "login.html",
@@ -113,6 +119,12 @@ async def setup(
         )
 
     with get_db() as db:
+        # The initial get_user_count() is only a fast path. Serialize the
+        # authoritative "still no users?" decision with the insert so two
+        # concurrent first-run requests cannot both create an administrator.
+        db.execute("BEGIN IMMEDIATE")
+        if db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+            return RedirectResponse(url="/login", status_code=303)
         db.execute(
             "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, 'admin')",
             (username, hash_password(password), display_name),
@@ -162,7 +174,7 @@ async def create_user(
                 "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)",
                 (username, hash_password(password), display_name, role),
             )
-    except Exception:
+    except sqlite3.IntegrityError:
         logger.warning("Failed to create user '%s': username already exists", username)
         return {"ok": False, "message": "Username already exists"}
 
