@@ -7,7 +7,7 @@ field set — never locations, loans, valuations, notes, or ISBNs.
 import secrets
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from app.auth import require_role
 from app.database import get_db
@@ -53,7 +53,9 @@ async def create_share_link(
     _=Depends(require_role("admin")),
 ):
     if scope not in SCOPES:
-        scope = "wishlist"
+        return JSONResponse(
+            {"ok": False, "message": "Invalid share scope"}, status_code=400
+        )
     token = secrets.token_urlsafe(16)
     with get_db() as db:
         db.execute(
@@ -66,5 +68,9 @@ async def create_share_link(
 @router.post("/api/share/{link_id}/delete")
 async def revoke_share_link(link_id: int, _=Depends(require_role("admin"))):
     with get_db() as db:
-        db.execute("DELETE FROM share_links WHERE id = ?", (link_id,))
+        cursor = db.execute("DELETE FROM share_links WHERE id = ?", (link_id,))
+        if cursor.rowcount != 1:
+            return JSONResponse(
+                {"ok": False, "message": "Share link not found"}, status_code=404
+            )
     return RedirectResponse(url="/settings", status_code=303)
