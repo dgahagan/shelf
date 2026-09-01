@@ -3,7 +3,7 @@ import logging
 
 import httpx
 
-from app.database import get_db
+from app.database import get_db, get_setting
 from app.services import covers
 from app.services.item_write import insert_item
 
@@ -183,8 +183,16 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
 
 
 def get_playback_url(abs_url: str, abs_id: str) -> str:
-    """Construct the Audiobookshelf web player URL."""
-    return f"{abs_url}/item/{abs_id}"
+    """Construct the browser-facing Audiobookshelf item URL.
+
+    ``abs_url`` remains the API/sync endpoint. When an ``abs_public_url``
+    setting is present, links opened by the user's browser use that root
+    instead; otherwise the API URL is the backwards-compatible fallback.
+    """
+    with get_db() as db:
+        public_url = get_setting(db, "abs_public_url")
+    base_url = (public_url or abs_url).rstrip("/")
+    return f"{base_url}/item/{abs_id}"
 
 
 def _normalize_title(title: str) -> str:

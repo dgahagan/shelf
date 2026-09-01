@@ -76,6 +76,30 @@ async def test_audiobookshelf(request: Request):
         return {"ok": False, "message": "Connection failed — check URL and network"}
 
 
+@router.post("/audiobookshelf/public-url")
+async def save_abs_public_url(abs_public_url: str = Form("")):
+    """Save the browser-facing ABS root used for item deep links.
+
+    Sync and API traffic deliberately continue to use ``abs_url``. This
+    separate value is for deployments where Shelf reaches Audiobookshelf via
+    an internal Docker/LAN address while users reach it through a public or
+    reverse-proxy hostname.
+    """
+    public_url = abs_public_url.strip().rstrip("/")
+    if public_url and _validate_abs_url(public_url):
+        return RedirectResponse(
+            url="/settings?abs_public_url_error=invalid", status_code=303
+        )
+
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO settings (key, value) VALUES ('abs_public_url', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (public_url,),
+        )
+    return RedirectResponse(url="/settings", status_code=303)
+
+
 @router.get("/audiobookshelf/libraries")
 async def list_abs_libraries():
     """List ABS libraries with their current include/exclude state."""
