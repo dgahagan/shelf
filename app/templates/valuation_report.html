@@ -18,12 +18,13 @@
         a { text-decoration: none; color: inherit; }
     }
 </style>
+<script src="/static/js/valuation-report.js" defer></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-2">
         <h1 class="text-2xl font-bold">Collection Valuation Report</h1>
-        <button onclick="window.print()" class="no-print px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+        <button type="button" data-print-page class="no-print px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
             Print / Save as PDF
         </button>
     </div>
