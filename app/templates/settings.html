@@ -4,6 +4,21 @@
 <div class="max-w-2xl mx-auto" x-data="settingsTabs">
     <h1 class="text-2xl font-bold mb-6">Settings</h1>
 
+    {# Known codes only: never reflect arbitrary query-string text. #}
+    {% set location_error = request.query_params.get('location_error') %}
+    {% if location_error in ('blank', 'duplicate', 'missing') %}
+    <div data-testid="location-error-banner"
+         class="bg-shelf-bg text-shelf-error border border-shelf-border rounded-lg px-4 py-2 text-sm mb-6">
+        {% if location_error == 'blank' %}
+        Location name is required.
+        {% elif location_error == 'duplicate' %}
+        A location with that name already exists.
+        {% else %}
+        That location no longer exists.
+        {% endif %}
+    </div>
+    {% endif %}
+
     <!-- Tab Bar -->
     <div class="flex gap-1 mb-6 border-b border-shelf-border">
         <button @click="setTab('library')" data-testid="tab-library"
