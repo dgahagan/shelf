@@ -4,6 +4,104 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+A community audit release in progress. [@sudo-rpaisley](https://github.com/sudo-rpaisley)
+opened 23 pull requests in a single day (2026-08-31), then two more, against one
+coherent theme: **a write that cannot be honoured should say so, not quietly do
+something else.** Endpoints that coerced a bad value into a plausible default —
+an unknown share scope into `wishlist`, an unknown import mode into `skip`, an
+invalid role into `viewer` — now reject it. Twelve have landed so far; the rest
+are coming in sequence.
+
+### Fixed
+
+- **Share-link mutations reject what they cannot honour.** An unknown share scope
+  was silently converted to `wishlist`, so a malformed or forged request could
+  succeed while creating a different kind of link than it asked for; revoking a
+  link that does not exist redirected as though it had worked. Both are now
+  rejected, the second with a 404. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#58](https://github.com/dgahagan/shelf/pull/58).
+- **Valuation credential tests validate their request body.** Malformed ISBNdb
+  and TMDb test payloads and non-string keys are refused, so a bad supplied value
+  can no longer fall through and silently test the *saved* credentials instead.
+  Blank and missing keys still fall back to the configured ones, as before.
+  Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#63](https://github.com/dgahagan/shelf/pull/63).
+- **Archive import rejects an unknown mode instead of coercing it to `skip`.**
+  The same check now covers legacy import, preview planning and staged apply, and
+  an invalid apply mode is refused before any staged work is touched. Contributed
+  by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#65](https://github.com/dgahagan/shelf/pull/65).
+- **Removing a tag is truthful about what it removed.** Removing a tag from an
+  item that no longer exists, or a tag that was never attached to it, returned
+  success; orphan tags were then garbage-collected on the strength of a removal
+  that never happened. Both cases now return 404, unrelated associations survive
+  a stale or forged request, and the cleanup runs only after a real removal.
+  Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#68](https://github.com/dgahagan/shelf/pull/68).
+- **A failed scan request is reported as a failure.** Recent-scan HTML, Inventory
+  Missing and camera scans all consumed the response body without checking the
+  status first, so an HTTP error page could render as if it were content. All
+  three now check the status and surface a concise error. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#69](https://github.com/dgahagan/shelf/pull/69).
+- **The valuation report's Print button works again.** Its action was an inline
+  `onclick="window.print()"`, which Shelf's own `script-src 'self'` policy blocks
+  — the report rendered correctly and its main output control was inert. The
+  handler moved to a vendored script. Unit coverage proved the report's HTML and
+  totals all along; only a browser-level click could expose this. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#78](https://github.com/dgahagan/shelf/pull/78).
+
+- **Creating a user rejects an unknown role.** The create-user endpoint treated
+  any unrecognised role as `viewer`, so a malformed or forged request could
+  succeed while creating an account with permissions other than the ones asked
+  for. It now refuses, matching the role-*update* endpoint, which had rejected
+  the same input all along. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#57](https://github.com/dgahagan/shelf/pull/57).
+- **Lending settings reject an unknown notification format.** An unrecognised
+  `notify_format` was coerced to `ntfy`, and the rest of the lending settings in
+  the same request were saved along with it — so one malformed field could change
+  settings the sender never named. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#56](https://github.com/dgahagan/shelf/pull/56).
+- **Settings integration tests validate their request body.** Non-object
+  notification-test payloads and non-string URL, format and Google Books key
+  values are refused before any outbound request is made. The masked-field
+  fallback to configured credentials is unchanged. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#64](https://github.com/dgahagan/shelf/pull/64).
+- **Login no longer leaks whether a username exists through timing.** An unknown
+  username generated a fresh bcrypt hash per request to pad the response; that
+  work is now constant and does not hash per attempt. First-admin setup is also
+  serialised, re-checking the zero-user invariant inside the write transaction,
+  and a duplicate-user integrity error is handled without swallowing unrelated
+  database failures. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#71](https://github.com/dgahagan/shelf/pull/71).
+
+### Changed
+
+- **The Viewer role's UI now matches what its endpoints allow.** Item-detail
+  lending, check-in and Push-to-Hardcover, the Editor-only Series mutations, and
+  Discover's wishlist controls and Settings link were all rendered for Viewer
+  accounts whose requests the backend would refuse. They are hidden now; loan
+  context, read-only Series, Discover search and Viewer-permitted reading status
+  are all preserved. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#77](https://github.com/dgahagan/shelf/pull/77).
+
+### Added
+
+- **A browser-level product journey for the Stats dashboard**, covering the
+  headline KPIs, all four charts, the media-type and location breakdowns,
+  drill-down back to a real item, and a clean console. Test-only. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#74](https://github.com/dgahagan/shelf/pull/74).
+
 ## [0.26.1] - 2026-09-01
 
 A scanned console accessory was decided by whatever disc word its retail title
