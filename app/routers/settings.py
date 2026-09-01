@@ -153,7 +153,9 @@ async def update_lending_settings(
     days = lending_overdue_days.strip() or "28"
     if not days.isdigit():
         return {"ok": False, "message": "Overdue days must be a whole number"}
-    fmt = notify_format if notify_format in FORMATS else "ntfy"
+    fmt = (notify_format or "").strip()
+    if fmt not in FORMATS:
+        return {"ok": False, "message": "Unknown notification format"}
 
     with get_db() as db:
         for key, value in [
