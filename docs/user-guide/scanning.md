@@ -135,6 +135,26 @@ between a thin record and a wrong one. Shelf declines the search rather than
 the honesty. Both halves have to match: `Console Wars` and `Air Traffic
 Controller` are films, and they still get the full ladder.
 
+A format or disc word on the same listing does not change the answer.
+`PlayStation 5 Wireless Headset DVD`, `… CD` and `… CD-ROM` are all still the
+headset — filed under its own title, with nobody asked. Retail listings
+carry that wording for reasons of their own, and it says nothing about what the
+object is, so the hardware reading comes **before** the format, medium and
+audio wording is read rather than after it.
+
+The recognition is deliberately narrow, and one gap is known: a hardware
+listing that names **no** platform, such as `Sony PULSE 3D Wireless Headset`,
+is not recognised and is still searched. That is accepted rather than
+overlooked. Widening the check to catch it would catch `Console Wars` and `Air
+Traffic Controller` with it, and the search itself is not dangerous here — the
+shortened title stops at three words, which is not the kind of query that comes
+back with a confident wrong film.
+
+That last point is about the film ladder. One variant of the same unrecognised
+listing takes a different route: `Sony PULSE 3D Wireless Headset CD-ROM` is read
+as software, so it is filed as a Video Game and looked up on IGDB rather than
+climbing the ladder. Correct the type on the item page if that is wrong.
+
 When no provider matches, the item is still added under its own title — use
 **Retry cover** or **Find cover** on the item page, or edit the title and type
 directly in the item editor, to fill it in.

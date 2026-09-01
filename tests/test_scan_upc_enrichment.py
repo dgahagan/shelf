@@ -1668,6 +1668,250 @@ class TestARecognisedHardwareScanAsksNobody:
         assert row["source"] == "tmdb"
 
 
+class TestATaggedHardwareTitleStillAsksNobody:
+    """T2, issue #43's own follow-on (`GOTCHAS.md` G68).
+
+    `_match_title_markers` used to guard only its platform loop with
+    `_is_hardware_title` — the medium arm (`CD-ROM`), the format arm
+    (`[DVD]`/`DVD`/`Blu-ray`) and the audio arm (`CD`) ran unguarded. So a
+    title that names *both* console hardware *and* carries one of those
+    tags — "PlayStation 5 Wireless Headset CD-ROM" is the shape that shipped
+    the bug — still let tier 2 decide on the tag alone: `video_game`,
+    `detected` for the `CD-ROM` case, which `UPC_METADATA_PROVIDERS` maps to
+    IGDB, so a real IGDB search went out for a headset. T1 moved the guard to
+    `_match_title_markers`'s first statement, an unconditional `return None`,
+    so tier 2 now declines every one of these titles outright and the tier-4
+    hardware arm answers instead — the same `dvd`/`hardware` verdict a bare
+    "PlayStation 5 Console" already gets in `TestARecognisedHardwareScanAsksNobody`
+    above.
+
+    Sibling to that class, not a subclass of it — subclassing would re-collect
+    its tests under this class's name too, which is not what "reuse the
+    shapes" means. `_scan`, `_stored` and the `tmdb_calls` fixture (including
+    `_WRONG_FILM`) are copied here verbatim; that class's own tests are
+    untouched.
+    """
+
+    # Copied from `TestARecognisedHardwareScanAsksNobody._WRONG_FILM`.
+    _WRONG_FILM = {
+        "PlayStation": "PlayStation: Makers & Gamers - Street Fighter",
+        "Nintendo": "Nintendo Quest",
+        "Xbox": "Xbox: The Console Wars",
+    }
+
+    # A confident wrong game IGDB would answer for a short rung, on the same
+    # pattern as `TestAnAutoScannedCDIsFiledAsACDAndAsksNobody._WRONG_GAME`
+    # below. "Astro's Playroom" — checked: zero substring overlap, either
+    # direction, against every title this class scans ("PlayStation 5
+    # Wireless Headset CD-ROM"/"DVD"/"CD", "Console Wars [DVD]", "Myst
+    # CD-ROM"), so a card carrying it is unambiguous evidence IGDB was
+    # reached (`G46`).
+    _WRONG_GAME = {
+        "igdb_id": 4242,
+        "title": "Astro's Playroom",
+        "description": "Not this item at all.",
+        "publisher": "Nobody",
+        "publish_year": 2020,
+        "cover_url": None,
+        "developer": "Nobody",
+    }
+
+    @pytest.fixture
+    def tmdb_calls(self, monkeypatch):
+        """Copied from `TestARecognisedHardwareScanAsksNobody.tmdb_calls` —
+        see that fixture's docstring for why it must answer the short rungs
+        rather than `no_match` everywhere (`G46`)."""
+        calls = []
+
+        async def _lookup_by_title(query, key, client):
+            calls.append(query)
+            wrong = self._WRONG_FILM.get(query)
+            if wrong is None:
+                return provider_result.no_match("tmdb")
+            return provider_result.found(
+                "tmdb",
+                {"title": wrong, "description": "Not this item at all.",
+                 "publish_year": 2016, "cover_url": None},
+            )
+
+        monkeypatch.setattr(tmdb, "lookup_by_title", _lookup_by_title)
+        _set_tmdb_key(monkeypatch)
+        return calls
+
+    @pytest.fixture
+    def igdb_calls(self, monkeypatch):
+        """Record every IGDB title search, and answer a confident wrong game
+        — never `no_match` — on the same `G46` reasoning `tmdb_calls` above
+        documents: a stub that answers `no_match` everywhere would leave a
+        hardware title's stored fallback title identical to what the fix
+        files, so the call-count assertion would be the only thing that
+        could ever go red.
+
+        A plain `async def`, not an `AsyncMock` over the module: `igdb` mixes
+        async `search_games` with sync `image_url`/`_escape`/`_parse_game`,
+        so a blanket mock would turn the sync half into un-awaited coroutines
+        (`G56`). Patched onto `igdb` — the module that *defines* the symbol,
+        not `items_common`, which only holds a reference to it (`G37`).
+
+        The payload is a **list**, matching the real
+        `igdb.search_games` signature and return shape
+        (`app/services/igdb.py:170` — "the router unwraps `[0]` itself",
+        G45) — the same shape
+        `TestAnAutoScannedCDIsFiledAsACDAndAsksNobody.game_calls` uses below.
+        """
+        calls = []
+
+        async def _search_games(title, client_id, client_secret, client, platform=None, limit=10):
+            calls.append(title)
+            return provider_result.found("igdb", [dict(self._WRONG_GAME)])
+
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_igdb_creds(monkeypatch)
+        return calls
+
+    def _scan(self, monkeypatch, editor_client, title, hint="auto", category=None):
+        async def _lookup(code, client):
+            return provider_result.found(
+                "upcitemdb",
+                {"title": title, "category": category, "brand": None, "images": []},
+            )
+
+        monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+        return editor_client.post(
+            "/api/scan", data={"isbn": DVD_UPC, "media_type": hint}
+        )
+
+    def _stored(self, db):
+        return db.execute("SELECT * FROM items WHERE upc IS NOT NULL").fetchone()
+
+    def test_a_cd_rom_tagged_hardware_title_never_reaches_igdb(
+        self, editor_client, db, monkeypatch, tmdb_calls, igdb_calls
+    ):
+        """The row that was red before T1.
+
+        Before T1, only the platform loop was guarded, so tier 2 still fired
+        on the bare "CD-ROM" medium marker: `video_game`/`detected`, which
+        `UPC_METADATA_PROVIDERS` sends to IGDB. Both providers are stubbed
+        here — TMDb as a negative control, since a fix that merely rerouted
+        the branch without truly skipping the ladder could still reach it.
+        """
+        called = []
+        real = items_common._scan_upc_game
+
+        async def _spy(*args, **kwargs):
+            called.append(True)
+            return await real(*args, **kwargs)
+
+        monkeypatch.setattr(items_common, "_scan_upc_game", _spy)
+
+        resp = self._scan(
+            monkeypatch, editor_client, "PlayStation 5 Wireless Headset CD-ROM",
+        )
+
+        assert resp.status_code == 200
+        assert igdb_calls == [], f"a hardware title was searched on IGDB: {igdb_calls}"
+        assert tmdb_calls == []
+        assert called == [], "a hardware detection reached the game branch"
+
+        row = self._stored(db)
+        assert row is not None
+        assert row["media_type"] == "dvd"
+        assert row["source"] == "upc"
+        assert row["title"] == "PlayStation 5 Wireless Headset CD-ROM"
+        assert row["description"] is None
+
+        assert "no film or game lookup was attempted" in resp.text
+        assert "Astro's Playroom" not in resp.text
+
+    @pytest.mark.parametrize("title,stored", [
+        # "DVD" is a `_NOISE_PHRASES` member, stripped from anywhere in the
+        # title rather than only as a trailing "- DVD" suffix, so the DVD row
+        # files without its tag. "CD" is in no noise or platform-suffix list,
+        # so the CD row keeps its own. Both are literals on purpose: comparing
+        # against `search_queries(title)[0]` would assert the implementation
+        # against itself and follow the ladder if it ever changed (`G31` —
+        # whose value is the pin actually reading?).
+        ("PlayStation 5 Wireless Headset DVD", "PlayStation 5 Wireless Headset"),
+        ("PlayStation 5 Wireless Headset CD", "PlayStation 5 Wireless Headset CD"),
+    ])
+    def test_a_dvd_or_cd_tagged_hardware_title_never_reaches_tmdb(
+        self, editor_client, db, monkeypatch, tmdb_calls, title, stored
+    ):
+        """The sibling rows: a `[DVD]`/`DVD`/`Blu-ray` format tag or a bare
+        `CD` audio tag on a hardware title used to let tier 2's format/audio
+        arms decide `detected` on their own, ahead of the hardware verdict.
+
+        The stored title is the *cleaned* scanned title, never a provider's
+        answer — that is the pin. It is not always the raw scanned string
+        byte-for-byte: `clean_title` strips the bare word "DVD" as retail
+        noise wherever it appears, so the DVD row files without its tag while
+        the CD row keeps its own. Expected values are literals in the
+        parametrise list above; see the note there.
+        """
+        resp = self._scan(monkeypatch, editor_client, title)
+
+        assert resp.status_code == 200
+        assert tmdb_calls == [], f"a hardware title was searched on TMDb: {tmdb_calls}"
+
+        row = self._stored(db)
+        assert row is not None
+        assert row["media_type"] == "dvd"
+        assert row["source"] == "upc"
+        assert row["title"] == stored
+
+        assert "no film or game lookup was attempted" in resp.text
+        assert "Shelf has no metadata source for this format yet" not in resp.text
+        assert "filed as DVD / Blu-ray" not in resp.text
+
+    def test_a_format_tag_on_hardware_never_earns_detected_even_under_an_explicit_hint(
+        self, editor_client, monkeypatch, tmdb_calls
+    ):
+        """Dan's decision, 2026-08-30: a format tag on a hardware listing
+        never earned `detected`, hint or no hint.
+
+        Under the explicit `dvd` hint the resolved type and the hint already
+        agree (`dvd == dvd`), so this alone can't distinguish "the hardware
+        arm decided" from "tier 2's own format arm decided and happened to
+        land on the same value" — except that only the hardware arm's card
+        text says so, and only the hardware arm skips TMDb. If the guard did
+        not sit above tier 2, "PlayStation 5 Wireless Headset DVD"'s own
+        "DVD" tag would let tier 2 answer `detected` before the hint is ever
+        consulted, and this scan would climb the ladder.
+        """
+        resp = self._scan(
+            monkeypatch, editor_client, "PlayStation 5 Wireless Headset DVD",
+            hint="dvd",
+        )
+
+        assert tmdb_calls == []
+        assert "names console hardware" in resp.text
+
+    def test_a_non_hardware_format_tag_still_reaches_tmdb(
+        self, editor_client, db, monkeypatch, tmdb_calls
+    ):
+        """Regression guard: the guard did not widen at the route. A film
+        with its own `[DVD]` tag and no hardware word — `Console Wars`
+        contains the hardware word "console" but names no platform, so
+        `_is_hardware_title` is false — must still climb the ladder."""
+        resp = self._scan(monkeypatch, editor_client, "Console Wars [DVD]")
+
+        assert resp.status_code == 200
+        assert tmdb_calls, "a non-hardware DVD never reached TMDb"
+        assert self._stored(db)["media_type"] == "dvd"
+
+    def test_a_non_hardware_medium_tag_still_reaches_igdb(
+        self, editor_client, db, monkeypatch, igdb_calls
+    ):
+        """Regression guard, the medium arm's twin: `Myst CD-ROM` names no
+        hardware word at all, so it was never affected by the bug and must
+        not be affected by the fix either."""
+        resp = self._scan(monkeypatch, editor_client, "Myst CD-ROM")
+
+        assert resp.status_code == 200
+        assert igdb_calls, "a non-hardware CD-ROM never reached IGDB"
+        assert self._stored(db)["media_type"] == "video_game"
+
+
 class TestAnAutoScannedCDIsFiledAsACDAndAsksNobody:
     """T2 (issue #43's follow-on) — `detect`'s audio and music-CD arms
     (`app/services/detect.py` tier 2/3; see `TestAMusicDiscIsDetectedAsACD`

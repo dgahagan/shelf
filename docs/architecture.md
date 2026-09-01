@@ -90,8 +90,9 @@ provider answer to project, because no provider was asked.
 and runs four tiers in confidence order: an ISBN prefix decides the
 book family outright (the dropdown only picks *among* book / kids book /
 audiobook / eBook / comic, which no barcode can distinguish); then platform,
-format and audio markers in the **raw** retail title; then a category; then a
-fallback whose first arm is the hardware case above.
+format, medium and audio markers in the **raw** retail title, unless the title
+is hardware, in which case none of them run; then a category; then a fallback
+whose first arm is the hardware case above.
 
 Tier 2's four arms run in the order **platform → format → medium → audio**,
 and every seam is measured rather than chosen. Platform beats format so
@@ -120,6 +121,22 @@ is allowed to beat a format tag and a medium token is not: a film bundle can
 carry both (`Terminator 2 [DVD] (includes bonus CD-ROM)`), and while `CD-ROM`
 sat in `_PLATFORM_MARKERS` such a row filed as a video game ahead of its own
 `[DVD]`.
+
+The same predicate gates **all four** of tier 2's arms, not just the platform
+loop it was first written beside. `_match_title_markers` returns nothing at all
+for a hardware title — its first statement is the guard — so no format, medium
+or audio word on that title can decide, and the hardware arm above answers.
+Tier 3's two medium-naming categories still outrank it, which is deliberate: a
+genuine `Software > Video Game Software` or `Music CDs` category is a real
+detection about a mis-shelved accessory, and re-deciding tier 3 is a different
+question. `G68` is why the guard is the function's first statement rather than
+a wrapper somewhere inside it: an arm added below inherits the guard, and no
+arm can be added above it. The failure that closed was concrete — with only the
+platform loop guarded, `PlayStation 5 Wireless Headset CD-ROM` matched the
+medium arm, filed as `video_game`, and reached **IGDB**, because `_scan_upc`
+forks on the type before it ever reads the hardware signal. A guard that skips
+one branch of a decision it exists to skip entirely is a hole waiting for the
+next branch.
 
 Tier 3 admits exactly two categories, and both name the medium itself rather
 than a shelf: `Software > Video Game Software` decides `video_game`, and

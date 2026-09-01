@@ -4,6 +4,53 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [0.26.1] - 2026-09-01
+
+A scanned console accessory was decided by whatever disc word its retail title
+happened to carry. `PlayStation 5 Wireless Headset DVD` was filed as a film and
+searched on TMDb; `… CD` was filed as a CD; and `… CD-ROM` was filed as a
+**video game and looked up on IGDB** — a real provider request for a headset.
+The hardware check was there and had been since 0.25.1, but it guarded only the
+arm it was written beside, so every arm added below it inherited a hole rather
+than the guard.
+
+### Fixed
+
+- **A console accessory is still hardware, whatever disc word is on the box.**
+  The hardware check now runs before any format, medium or audio wording is
+  read, so `PlayStation 5 Wireless Headset DVD`, `… CD` and `… CD-ROM` are each
+  filed under the title as read with no lookup attempted, exactly as
+  `PlayStation 5 Console` has been since 0.25.1. The `CD-ROM` case was the one
+  that mattered: it reached IGDB and could store another game's title, year and
+  cover on an accessory.
+- **The check is now the first thing tier 2 does**, so an arm added below it
+  cannot re-open the gap. `Console Wars [DVD]`, `Air Traffic Controller
+  Blu-ray` and `The Controller 2019 DVD` are films and are still detected and
+  searched normally — the recognition needs a hardware word *and* a platform
+  name, and that has not changed.
+
+### Changed
+
+- **A `DVD`-tagged hardware title now reports itself as hardware.** It used to
+  say *"Title carries a 'DVD' format tag"* and file the item as a disc
+  detection; it now says it names console hardware. This is deliberate: a
+  format tag on a hardware listing is a shelf-listing artifact, not evidence
+  that the object is media, so the disc reading was never earned. What Shelf
+  stores is unchanged — the item is still filed as DVD / Blu-ray, since Shelf
+  has no type for hardware — but the card no longer claims a detection it did
+  not make.
+
+A hardware listing that names **no** platform, such as `Sony PULSE 3D Wireless
+Headset`, is still not recognised and is still searched. That remains accepted
+rather than overlooked: widening the check to catch it would catch the three
+film titles above with it, and the shortened title here stops at three words,
+which is not the kind of query that returns a confident wrong film. One
+sub-case takes a different route: the same unrecognised listing tagged `CD-ROM`
+is read as software, filed as a video game and looked up on IGDB rather than
+climbing the film ladder — so the three-word argument above does not cover it.
+If a wrong match on such a title is ever reported, by either route, that is the
+trigger to look again.
+
 ## [0.26.0] - 2026-08-30
 
 A music CD scanned on **Auto** was filed as a DVD and then searched against a
@@ -2212,6 +2259,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.26.1]: https://github.com/dgahagan/shelf/releases/tag/v0.26.1
 [0.26.0]: https://github.com/dgahagan/shelf/releases/tag/v0.26.0
 [0.25.1]: https://github.com/dgahagan/shelf/releases/tag/v0.25.1
 [0.25.0]: https://github.com/dgahagan/shelf/releases/tag/v0.25.0

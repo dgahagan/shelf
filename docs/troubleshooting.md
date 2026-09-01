@@ -110,8 +110,10 @@ time:
   searched on is just `PlayStation` or `Nintendo`, and a film database answers
   that with a confident match for an unrelated film, so Shelf files the title
   it read and asks nobody. Correct the type or the title on the item page if
-  it read the title wrong. This one is decided by the *title*; the next is
-  decided by the *format*.
+  it read the title wrong. This also covers a hardware title that carries
+  `DVD`, `CD` or `CD-ROM` — the tag is read as a shelf-listing artifact, not as
+  the item's type. This one is decided by the *title*; the next is decided by
+  the *format*.
 - **"Shelf has no metadata source for this format yet."** — nothing to fix,
   and nothing to configure. The format has no provider wired up, so no lookup
   was attempted. CDs are the case today; the disc is filed under its barcode

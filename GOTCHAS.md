@@ -967,6 +967,34 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     **degradation** rather than absence, an emptiness/count/truthiness check is
     the wrong shape of assertion, because the degraded output is still present.
 
+  Three more, all found on `feat/scan-hardware-residual` (2026-09-01), and all
+  about a pin whose *expectation* is the problem rather than its subject:
+  - **A pin that computes its expectation from the implementation asserts
+    nothing.** A stored-title pin was written
+    `assert row["title"] == upcitemdb.search_queries(title)[0]` because the
+    plan's literal turned out to be wrong (`clean_title` strips the bare word
+    `DVD` as retail noise from *anywhere* in a title, so
+    `PlayStation 5 Wireless Headset DVD` files without its tag, while `CD` and
+    `CD-ROM` keep theirs). It passes, and it would keep passing if the ladder
+    changed underneath it — it says "the row holds whatever `search_queries`
+    returns", which is the code restated. Write the literal, and if you do not
+    know the literal, go and measure it. This is the entry's "whose markup am
+    I asserting on?" one layer out: **whose value is the expectation?**
+  - **A parametrise list built by introspection can silently match nothing.**
+    A structural pin enumerated every module-level `*_MARKERS` table in
+    `detect` by `vars()` so a future table is covered without editing the
+    test. A rename — or a typo in the suffix — makes the list empty, and an
+    empty parametrise list is a green test that ran zero cases. Pair every
+    discovery-driven list with a companion assertion that it is non-empty and
+    contains the names you expect to be there.
+  - **A multi-signal mutation claim needs a probe, because `assert` aborts.**
+    The plan required a row to go red "on `igdb_calls`, the spy, **and** the
+    stored `media_type` — not only on one assertion". A class run cannot show
+    that: the first failing `assert` ends the function and the rest never
+    execute. Confirm it with a throwaway test that *prints* every signal under
+    the mutation instead of asserting, then delete it. Otherwise "red on N
+    assertions" is a claim nobody checked.
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -2531,6 +2559,70 @@ for path, cap in re.findall(r'\"([^\"]+\.(?:py|html))\": \((\d+),', src):
   A lint that fails at 95% of a cap would move the signal to the change that
   actually fills it; not built, because a soft cap nobody can silence is its
   own problem.
+
+## G68 — When a guard skips one check, ask which checks it exists to skip
+
+- **Rule:** a predicate that suppresses a lookup because the input is *not the
+  kind of thing the lookup is for* has to suppress **every** branch that would
+  answer the same question — not just the branch it was written beside. When
+  you add a new branch below such a guard, re-read the guard: if its reason
+  applies to your branch too, it now has a hole it did not have yet.
+- **Why:** the guard reads as correct at the line it sits on, and each new
+  branch below it is individually correct as well. Nothing goes red. The hole
+  only shows up on an input that reaches the *new* branch — which by
+  construction is the input nobody wrote a case for, because the guard was
+  supposed to have caught it.
+- **Evidence:** 2026-08-30, plan `scan-audio-signal`, diff review
+  `gemini-B2`. `_match_title_markers` (`app/services/detect.py:218`) guarded
+  only the platform loop with `_is_hardware_title`, so a hardware title fell
+  through to the format loop and — as of that plan — the audio loop:
+  `PlayStation 5 Wireless Headset CD` filed `cd`/`detected` instead of
+  reaching the tier-4 hardware arm. The guard's own comment called the
+  platform-only scope "behaviour-preserving", and it was, at the time it was
+  written: `PlayStation 5 Wireless Headset DVD` already filed `dvd`/`detected`
+  at `9a4bef5`. The audio arm widened the hole by one token without anyone
+  looking at the guard. Triaged **defer**, not because it is wrong but because
+  the one-line fix (`return None` when hardware) changes issue #43's contract
+  for format-tagged hardware titles — that belonged with the roadmap's residual
+  hardware shape (ii), not silently inside a release.
+- **What the deferral got wrong, and it is the more useful half of this
+  entry.** The Status line below used to argue the hole was harmless, because
+  "a `cd` verdict declines every provider exactly as `hardware` does" — so it
+  would only become a defect once `cd` gained a provider. That reasoning was
+  checked against the wrong arm. The **medium** arm decides `video_game`, not
+  `cd`, and `video_game` already had a provider: `UPC_METADATA_PROVIDERS` maps
+  it to `igdb` (`app/routers/items_common.py:422`), and `_scan_upc` forks on
+  `media_type == "video_game"` *before* it ever reads `detection.signal`, so
+  the hardware suppression was unreachable on that branch by construction. A
+  scanned `PlayStation 5 Wireless Headset CD-ROM` sent a real IGDB request and
+  could store another game's title, year and cover. **When you defer a
+  guard-scope hole on the grounds that its outcome is harmless, enumerate
+  every branch the guard now fails to cover and check the consequence of each
+  — not the one that prompted the finding.**
+- **Verify:** for each branch under a suppressing guard, feed it an input the
+  guard is meant to reject and assert the guard's outcome, not the branch's:
+
+```bash
+python3 -c "
+from app.services.detect import detect_media_type
+for tag in ('', ' DVD', ' Blu-ray', ' CD', ' Audio CD', ' CD-ROM'):
+    d = detect_media_type('upc', None, 'PlayStation 5 Wireless Headset' + tag, None)
+    print(repr(tag), d.media_type, d.signal)
+"
+```
+
+- **Status:** **fixed `1193fc3`** (2026-09-01, plan `scan-hardware-residual`).
+  `_is_hardware_title` is now the **first statement** of
+  `_match_title_markers` and returns `None`, so all four arms are gated and an
+  arm added below inherits the guard rather than the hole — nothing can be
+  added above it. The Verify script above is the acceptance test and now
+  prints `dvd hardware` on every row. The rule stays: this entry is kept for
+  the guard-scope question and for the deferral error above, not because the
+  instance is live. Not a lint candidate — "which branches does this guard
+  exist to skip" is a judgement about intent, and the structural remedy here
+  is a test that enumerates the marker tables by introspection
+  (`test_no_marker_in_any_table_decides_a_hardware_title`), which grows with
+  the module instead of a `make check-*`.
 
 ## Graveyard
 
