@@ -46,9 +46,15 @@ function scanPage() {
 
         loadRecentScans(m) {
             fetch('/api/recent-scans?mode=' + encodeURIComponent(m))
-                .then(function(r) { return r.text(); })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.text();
+                })
                 .then(function(html) {
                     document.getElementById('scan-results').innerHTML = html;
+                })
+                .catch(function() {
+                    showToast('Could not load recent scans', 'error');
                 });
         },
 
@@ -105,9 +111,18 @@ function scanPage() {
             var form = new FormData();
             form.set('location_id', this.location);
             form.set('scanned_ids', this.inventoryScannedIds.join(','));
-            var resp = await fetch('/api/inventory/missing', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}, body: form});
-            var html = await resp.text();
-            document.getElementById('inventory-missing').innerHTML = html;
+            try {
+                var resp = await fetch('/api/inventory/missing', {
+                    method: 'POST',
+                    headers: {'X-CSRF-Token': window.csrfToken()},
+                    body: form
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                var html = await resp.text();
+                document.getElementById('inventory-missing').innerHTML = html;
+            } catch (e) {
+                showToast('Could not check missing items', 'error');
+            }
         },
 
         async toggleCamera() {
@@ -218,6 +233,7 @@ function scanPage() {
             if (this.mode === 'lend') formData.set('borrower_id', this.borrowerId);
             try {
                 var resp = await fetch('/api/scan', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: formData });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 var html = await resp.text();
 
                 // Insert result into the scan results list
@@ -252,7 +268,7 @@ function scanPage() {
                     }
                 }
             } catch (err) {
-                this.scanResult = { ok: false, warn: false, label: 'error', title: 'Network error', isbn: code };
+                this.scanResult = { ok: false, warn: false, label: 'error', title: 'Scan failed', isbn: code };
             }
             this.scanLoading = false;
         }
