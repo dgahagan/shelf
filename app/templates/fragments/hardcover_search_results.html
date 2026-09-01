@@ -1,3 +1,4 @@
+{% set can_edit = user and user.role in ('admin', 'editor') %}
 {% if not results and query %}
 <p class="text-shelf-muted text-sm text-center py-8">No results for "{{ query }}"</p>
 {% elif results %}
@@ -31,8 +32,8 @@
             <p class="text-xs text-shelf-muted mt-1.5 line-clamp-2">{{ book.description[:200] }}</p>
             {% endif %}
 
-            <!-- Add button -->
             <div class="mt-2">
+                {% if can_edit %}
                 <button x-show="!added"
                         @click="addBook($event)"
                         data-book='{{ book|tojson }}'
@@ -45,6 +46,11 @@
                 <template x-if="error && !added">
                     <span class="text-xs text-shelf-error" x-text="error"></span>
                 </template>
+                {% elif book.in_shelf %}
+                <span class="text-xs text-shelf-success">In your library</span>
+                {% else %}
+                <span class="text-xs text-shelf-muted">Not in your library</span>
+                {% endif %}
             </div>
         </div>
     </div>

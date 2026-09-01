@@ -135,7 +135,7 @@
                 {% endif %}
 
                 <!-- Hardcover Sync -->
-                {% if has_hardcover %}
+                {% if has_hardcover and user and user.role in ('admin', 'editor') %}
                 <div class="mb-4" x-data="hardcoverPush" data-item-id="{{ item.id }}">
                     <button @click="push"
                             :disabled="hcPushing"
@@ -187,6 +187,7 @@
                 </div>
 
                 <!-- Lending -->
+                {% if (user and user.role in ('admin', 'editor')) or current_checkout or checkout_history %}
                 <div class="mb-6" x-data="{ showLendForm: false }">
                     <p class="text-sm font-medium text-shelf-muted mb-2">Lending</p>
                     {% if current_checkout %}
@@ -197,13 +198,15 @@
                          · Due: <span class="{% if current_checkout.due_date < now_date %}text-shelf-error{% endif %}">{{ current_checkout.due_date }}</span>
                         {% endif %}
                         </p>
+                        {% if user and user.role in ('admin', 'editor') %}
                         <form action="/api/checkouts/{{ current_checkout.id }}/checkin" method="post" class="mt-2">
                             <button type="submit" class="px-3 py-1 bg-shelf-success/20 text-shelf-success rounded text-xs hover:bg-shelf-success/30 transition-colors">
                                 Check In
                             </button>
                         </form>
+                        {% endif %}
                     </div>
-                    {% else %}
+                    {% elif user and user.role in ('admin', 'editor') %}
                     <button @click="showLendForm = !showLendForm"
                             class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:border-shelf-accent/50 transition-colors">
                         Lend this item
@@ -249,6 +252,7 @@
                     </details>
                     {% endif %}
                 </div>
+                {% endif %}
 
                 <!-- Actions -->
                 <div class="flex gap-3">

@@ -6,8 +6,12 @@
 
     {% if not has_hardcover %}
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center">
+        {% if user and user.role == 'admin' %}
         <p class="text-shelf-muted mb-3">Connect your Hardcover account to search for books and add them to your wishlist.</p>
         <a href="/settings" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors inline-block">Go to Settings</a>
+        {% else %}
+        <p class="text-shelf-muted">Hardcover is not connected. Ask an administrator to configure the integration.</p>
+        {% endif %}
     </div>
     {% else %}
     <div x-data="{ query: '' }">
@@ -23,7 +27,11 @@
 
         <!-- Results -->
         <div id="hc-results">
+            {% if user and user.role in ('admin', 'editor') %}
             <p class="text-shelf-muted text-sm text-center py-8">Search Hardcover's catalog to find books and add them to your wishlist.</p>
+            {% else %}
+            <p class="text-shelf-muted text-sm text-center py-8">Search Hardcover's catalog to explore books.</p>
+            {% endif %}
         </div>
     </div>
     {% endif %}
