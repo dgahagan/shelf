@@ -18,15 +18,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api")
 
 
+async def _optional_test_key(request: Request) -> tuple[str | None, dict | None]:
+    """Read an optional string key from a credential-test JSON body.
+
+    Missing, null, or empty values preserve the masked-field fallback to the
+    configured credential. A supplied value with the wrong JSON shape is a
+    malformed request and must not silently test a different saved key.
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if body is None:
+        body = {}
+    if not isinstance(body, dict):
+        return None, {"ok": False, "message": "Invalid request body"}
+
+    raw_key = body.get("key")
+    if raw_key is not None and not isinstance(raw_key, str):
+        return None, {"ok": False, "message": "Invalid request body"}
+    return (raw_key or "").strip(), None
+
+
 @router.post("/valuate/test-key")
 async def test_isbndb_key(request: Request, _=Depends(require_role("admin"))):
     """Test whether an ISBNdb API key is valid. Accepts key from POST body or falls back to DB."""
-    api_key = ""
-    try:
-        body = await request.json()
-        api_key = (body.get("key") or "").strip()
-    except Exception:
-        pass
+    api_key, request_error = await _optional_test_key(request)
+    if request_error:
+        return request_error
 
     if not api_key:
         with get_db() as db:
@@ -57,12 +76,9 @@ async def test_isbndb_key(request: Request, _=Depends(require_role("admin"))):
 @router.post("/tmdb/test-key")
 async def test_tmdb_key(request: Request, _=Depends(require_role("admin"))):
     """Test whether a TMDb API key is valid. Accepts key from POST body or falls back to DB."""
-    api_key = ""
-    try:
-        body = await request.json()
-        api_key = (body.get("key") or "").strip()
-    except Exception:
-        pass
+    api_key, request_error = await _optional_test_key(request)
+    if request_error:
+        return request_error
 
     if not api_key:
         # get_setting, not get_all_settings: the latter returns only keys that
