@@ -17,11 +17,22 @@ duplicating that here would let the two disagree.
     python scripts/stamp_test_badges.py --check    # exit 1 if stale, write nothing
 
 `make badges` stamps it; `make check-badges` (in `make checks-fast`) verifies
-it, so a PR that adds a test and forgets to restamp fails the gate rather than
-shipping a badge that lies.
+it, so a badge that lies fails the gate rather than shipping.
+
+**The staleness check is advisory on a pull-request CI build, and only there.**
+It is unsatisfiable in that context, which is different from being inconvenient:
+a PR that adds a test makes the badge stale, and a PR that *restamps* the badge
+collides with every other PR that restamps, on one line of README. A batch of
+otherwise-disjoint PRs would become mutually unmergeable -- measured 2026-09-01,
+when 25 community PRs arrived at once and all of them went red here and nowhere
+else. The two community PRs before that batch (#52, #53, both 2026-08-28) each
+restamped the badge to get green, which worked only because they landed weeks
+apart. So on `pull_request` the check reports and returns 0; on push to main, and
+everywhere local, it still fails. Main is where the person who *can* restamp is.
 """
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -94,6 +105,16 @@ def stamp(check_only=False):
             print("Test-count badges are stale:", file=sys.stderr)
             for line in stale:
                 print(f"  {line}", file=sys.stderr)
+            if not staleness_is_enforceable():
+                # Advisory here by design -- see the module docstring. Say so
+                # loudly: a tripwire that goes quiet is worse than one that
+                # fails, because nobody learns it stopped watching.
+                print("\nADVISORY on a pull-request build: this cannot be "
+                      "satisfied here, because a restamp in each PR would "
+                      "collide across the batch. The maintainer runs "
+                      "`make badges` once after merging. Enforced on push to "
+                      "main and locally.", file=sys.stderr)
+                return 0
             print("\nRun `make badges` and commit README.md.", file=sys.stderr)
             return 1
         print("Test-count badges: README matches collection.")
@@ -106,6 +127,16 @@ def stamp(check_only=False):
     else:
         print("Test-count badges already current.")
     return 0
+
+
+def staleness_is_enforceable() -> bool:
+    """False only on a pull-request CI build, where the check cannot be met.
+
+    Deliberately narrow: `GITHUB_EVENT_NAME` is `pull_request` only in that one
+    context. A push to main, a local run and a manual dispatch all still
+    enforce, so the badge cannot drift anywhere it can actually be fixed.
+    """
+    return os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
 
 
 def main():

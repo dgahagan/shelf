@@ -8,6 +8,7 @@ disarmed tripwire that silently passes is the failure this file exists to catch.
 """
 
 import importlib.util
+import os
 from pathlib import Path
 
 import pytest
@@ -20,16 +21,60 @@ _spec.loader.exec_module(stamp_test_badges)
 
 
 class TestBadgeStamp:
+    @pytest.mark.skipif(
+        os.environ.get("GITHUB_EVENT_NAME") == "pull_request",
+        reason="Unsatisfiable on a PR build: a restamp in each PR collides "
+               "across the batch. Enforced on push to main and locally.")
     def test_readme_badges_are_current(self):
         """The committed README matches what pytest collects right now.
 
         This is the same assertion `make check-badges` makes, kept here so a
         `make test` run catches the drift too — someone adding a test is far
         more likely to run the suite than the lint.
+
+        **Skipped on a pull-request build, and only there.** Every PR that adds
+        a test makes this badge stale, and a PR that restamps it conflicts with
+        every other PR that restamps, on one README line — so a batch of
+        disjoint PRs becomes mutually unmergeable. Measured 2026-09-01 across 25
+        community PRs, every one of which failed here and nowhere else. This is
+        the one case where the file's own warning about a disarmed tripwire does
+        not apply: the check is not weakened, it is moved to `push` on main,
+        where the person who can run `make badges` actually is. The other four
+        tests in this class still run on a PR — they test the generator, not the
+        committed count, so nothing about the tripwire's machinery goes
+        unwatched here.
         """
         assert stamp_test_badges.stamp(check_only=True) == 0, (
             "README test-count badges are stale — run `make badges` and commit "
             "README.md")
+
+    def test_pr_builds_downgrade_staleness_to_advisory(self, tmp_path, monkeypatch):
+        """`--check` returns 0 on a PR build with a stale badge, 1 otherwise.
+
+        The skip above only covers this file. `make checks-fast` calls the
+        script's CLI, so the same context rule has to hold there or the PR gate
+        still fails on the lint step instead of the test step.
+        """
+        readme_copy = tmp_path / "README.md"
+        slug, _args = stamp_test_badges.SUITES[0]
+        pattern = stamp_test_badges._badge_re(slug)
+        readme_copy.write_text(
+            pattern.sub(r"\g<1>1\g<3>",
+                        stamp_test_badges.README_PATH.read_text(), count=1))
+        monkeypatch.setattr(stamp_test_badges, "README_PATH", readme_copy)
+
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+        assert stamp_test_badges.staleness_is_enforceable() is False
+        assert stamp_test_badges.stamp(check_only=True) == 0
+
+        # Every other context still fails on the same stale file.
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+        assert stamp_test_badges.staleness_is_enforceable() is True
+        assert stamp_test_badges.stamp(check_only=True) == 1
+
+        monkeypatch.delenv("GITHUB_EVENT_NAME")
+        assert stamp_test_badges.staleness_is_enforceable() is True
+        assert stamp_test_badges.stamp(check_only=True) == 1
 
     def test_regexes_still_match_the_readme(self):
         """Both badge anchors are present, so neither tripwire is disarmed.
@@ -46,7 +91,14 @@ class TestBadgeStamp:
                 "no longer looking at the right thing.")
 
     def test_detects_a_wrong_count(self, tmp_path, monkeypatch):
-        """A hand-edited number fails --check and is repaired by a write pass."""
+        """A hand-edited number fails --check and is repaired by a write pass.
+
+        Pins the enforcing context explicitly. Without this the test inherits
+        whatever `GITHUB_EVENT_NAME` the runner has, and on a PR build the
+        advisory downgrade turns the expected 1 into a 0 — the detector would
+        look broken when only the context had changed.
+        """
+        monkeypatch.delenv("GITHUB_EVENT_NAME", raising=False)
         readme_copy = tmp_path / "README.md"
         original = stamp_test_badges.README_PATH.read_text()
         slug, args = stamp_test_badges.SUITES[0]
