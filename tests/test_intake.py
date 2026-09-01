@@ -2,7 +2,6 @@
 import functools
 import json
 import logging
-import sqlite3
 
 import anthropic
 import httpx
@@ -904,13 +903,17 @@ class TestConfirmEndpoint:
         assert data["added"][1]["matched"] is False
 
     @respx.mock
-    def test_bad_location_is_not_reported_as_isbn_duplicate(self, admin_client, db):
-        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
-        with pytest.raises(sqlite3.IntegrityError):
-            admin_client.post("/api/intake/confirm", json={
-                "books": [{"title": "Bad Location Book", "authors": None}],
-                "location_id": 999999,
-            })
+    def test_bad_location_is_rejected_before_metadata_or_insert(self, admin_client, db):
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Bad Location Book", "authors": None}],
+            "location_id": 999999,
+        })
+        assert resp.json() == {
+            "ok": False,
+            "message": "Selected location no longer exists — choose another location",
+        }
+        assert route.called is False
         row = db.execute("SELECT id FROM items WHERE title = 'Bad Location Book'").fetchone()
         assert row is None
 
@@ -1144,17 +1147,22 @@ class TestConfirmWithIsbn:
         enrich.assert_called_once_with([strong, weak])
 
     @respx.mock
-    def test_bad_location_on_strong_path_is_not_reported_as_isbn_duplicate(
-            self, admin_client, monkeypatch):
-        # The strong path has its own IntegrityError handler; a FK failure
-        # there must re-raise, not be labelled an ISBN duplicate either.
-        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}, False))
-        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
-        with pytest.raises(sqlite3.IntegrityError):
-            admin_client.post("/api/intake/confirm", json={
-                "books": [{"title": "Dune", "isbn": ISBN13}],
-                "location_id": 999999,
-            })
+    def test_bad_location_on_strong_path_is_rejected_before_cascade(
+            self, admin_client, db, monkeypatch):
+        calls = []
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", {}, False), record=calls)
+        route = respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}],
+            "location_id": 999999,
+        })
+        assert resp.json() == {
+            "ok": False,
+            "message": "Selected location no longer exists — choose another location",
+        }
+        assert calls == []
+        assert route.called is False
+        assert db.execute("SELECT id FROM items WHERE title = 'Dune'").fetchone() is None
 
     @respx.mock
     def test_integrity_error_is_classified_on_strong_path(self, admin_client, db, monkeypatch):

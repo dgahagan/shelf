@@ -18,12 +18,14 @@ from app.services import authors as authors_svc
 from app.services import national
 from app.services.title_match import titles_agree
 from app.services.item_write import insert_item
+from app.services.write_targets import UnknownLocationError, validated_location_id
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/intake", dependencies=[Depends(require_role("editor"))])
 
 MAX_PHOTO_DIMENSION = 100_000  # sanity bound on client-reported pixels
+_LOCATION_ERROR = "Selected location no longer exists — choose another location"
 
 # Same five types cover enrichment treats as the book catalogue.
 BOOK_SEARCH_MEDIA_TYPES = cover_queue.COVER_REQUEUE_MEDIA_TYPES
@@ -200,8 +202,9 @@ async def _confirm_one(
                     item_id = items_common._save_item(metadata, printed_isbn13, media_type,
                                          location_id, "photo_intake", hc_ids)
                 except sqlite3.IntegrityError:
-                    # A bad location_id raises the same exception (FK,
-                    # PRAGMA foreign_keys=ON) — classify before labelling.
+                    # A location deleted after the boundary check can still
+                    # raise the same FK exception; classify ISBN races before
+                    # allowing the invariant failure to propagate.
                     if _isbn_taken(printed_isbn13, media_type):
                         return "skipped", {
                             "title": title, "reason": "ISBN already in library"}, None
@@ -274,9 +277,8 @@ async def _confirm_one(
             if taken:
                 return "skipped", {"title": title, "reason": "ISBN already in library"}, None
 
-        # 5. Insert. A bad location_id also raises IntegrityError (FK,
-        # PRAGMA foreign_keys=ON) — classify before labelling it an ISBN
-        # duplicate.
+        # 5. Insert. A location deleted after the boundary check can still
+        # fail the FK invariant here; an ISBN race is classified separately.
         try:
             item_id = insert_item(
                 db,
@@ -310,6 +312,12 @@ async def _confirm_one(
 @router.post("/confirm")
 async def confirm_books(payload: IntakeConfirm):
     """Insert confirmed candidates as items via the normal metadata pipeline."""
+    try:
+        with get_db() as db:
+            location_id = validated_location_id(db, payload.location_id)
+    except UnknownLocationError:
+        return {"ok": False, "message": _LOCATION_ERROR}
+
     added, skipped = [], []
     new_item_ids: list[int] = []
 
@@ -327,7 +335,7 @@ async def confirm_books(payload: IntakeConfirm):
                 continue
 
             status, entry, item_id = await _confirm_one(
-                book, client, search_lang, preferred_marc, payload.location_id,
+                book, client, search_lang, preferred_marc, location_id,
                 payload.owned, hc_token, google_api_key)
             if status == "added":
                 added.append(entry)
