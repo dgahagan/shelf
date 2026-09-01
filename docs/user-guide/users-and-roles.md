@@ -11,6 +11,10 @@ logins, three roles.
 
 Cover controls — **Find cover**, **Upload**, **Remove cover**, **Retry
 cover** — are editor+; a viewer doesn't see them on the item page at all.
+The same goes for **Lend** / **Check in** and **Push to Hardcover** on the item
+page, the Series page's rename, merge and disband actions, and Discover's
+add-to-wishlist buttons: viewers get the read-only view of each, with the
+loan context and the Series list still shown.
 
 The first account created in the setup wizard is an admin. There must always
 be at least one admin.

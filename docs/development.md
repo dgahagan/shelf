@@ -84,7 +84,11 @@ suite carries. Both are **generated, not written**: `scripts/stamp_test_badges.p
 takes the numbers from `pytest --co` — collection only, so it is offline and
 runs in under two seconds — and rewrites the shields.io URLs in place.
 `make badges` stamps them, `make check-badges` (inside `make checks-fast`, so
-CI runs it) fails if the committed numbers no longer match what collects.
+CI runs it) fails if the committed numbers no longer match what collects —
+except on a **pull-request build**, where it reports the drift and passes.
+Every PR that adds a test would otherwise go red on the badge alone, and a PR
+that restamps it collides with every other restamping PR on one README line.
+The badge is restamped on `main` after the merge instead.
 
 The counts come from collection rather than from a run on purpose. Collection
 cannot pass or fail, so the badge asserts only *"this suite contains N tests"*,

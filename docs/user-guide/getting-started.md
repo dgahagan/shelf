@@ -28,6 +28,9 @@ Out of the box:
 | **Discover** | Hardcover-powered recommendations (appears with a Hardcover token) |
 | **Settings** | Admin only. [Configuration](../configuration.md) |
 
+Press **?** on any page (or the **?** button, bottom left) for the keyboard
+shortcut list; **Escape** closes it.
+
 ## 3. Add your first book
 
 On a phone: open **Scan**, leave the mode on **Add**, tap the camera button,

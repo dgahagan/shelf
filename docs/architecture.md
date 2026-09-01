@@ -75,8 +75,9 @@ claim for metadata. A new `MEDIA_TYPES` member therefore gets the honest
 The second is decided by the **title**, not the type: a scan whose retail
 title names console hardware. `detect._is_hardware_title` requires a member of
 `_HARDWARE_TERMS` (console, controller, headset) *conjoined with* a
-`_PLATFORM_MARKERS` name, and the conjunction is what keeps `Console Wars` and
-`Air Traffic Controller` out — a hardware word alone is a film title. Such a
+`_PLATFORM_MARKERS` name or a `_HARDWARE_BRANDS` member, and the conjunction is
+what keeps `Console Wars` and `Air Traffic Controller` out — a hardware word
+alone is a film title. Such a
 scan resolves to `dvd` like any other unrecognised disc, so the provider map
 above would happily send it to TMDb; `_scan_upc` declines instead, because the
 `search_queries` ladder's shortest rung for `PlayStation 5 Console` is
@@ -381,8 +382,11 @@ preview's resample, JPEG-encoded →
 `/api/intake/analyze` sends the image(s) to the configured backend
 (Anthropic, OpenAI-compatible, Ollama — one interface, three adapters),
 logging each part's filename, MIME type and byte size → tile results are
-merged and de-duplicated → the user edits → `/confirm` runs each row
-through the metadata pipeline and enqueues covers. Photos are never
+merged and de-duplicated → the user edits → `/confirm` validates the target
+location first (`services/write_targets.py`, shared with any writer that
+takes a location id — a stale id is refused before settings, providers or
+inserts are touched, never surfaced as a foreign-key failure), then runs each
+row through the metadata pipeline and enqueues covers. Photos are never
 stored.
 
 ## Background tasks
@@ -391,7 +395,10 @@ Started in the app lifespan, each polling every 5 minutes and reading its
 schedule from `settings`: Audiobookshelf sync, Hardcover reading-status
 sync, overdue-loan reminder digest (ntfy / webhook via `services/notify.py`),
 plus the cover queue worker. All are plain `asyncio` tasks in the one
-process.
+process. The Audiobookshelf sync is idempotent per item — an unchanged item
+is neither rewritten nor re-covered, and a same-format ISBN already present
+is adopted rather than inserted — and isolated per library, so one library's
+timeout is reported for that library and the rest still run.
 
 ## Frontend
 
@@ -507,7 +514,9 @@ one transaction.
 ## Security posture
 
 Non-root container, HTTPS from first boot, strict CSP, CSRF everywhere,
-bcrypt, short-lived sliding JWTs, per-IP rate limiting, encrypted secrets,
+bcrypt with a constant-cost login path (an unknown username costs the same
+as a wrong password, so timing does not enumerate accounts), short-lived
+sliding JWTs, per-IP rate limiting, encrypted secrets,
 write-only credential fields, allow-listed image hosts for cover downloads,
 `noindex` + unguessable tokens on share links. Outbound request URLs are logged
 at INFO, so a filter on the `httpx` logger blanks the value of any

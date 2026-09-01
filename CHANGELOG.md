@@ -4,15 +4,19 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.27.0] - 2026-09-01
 
-A community audit release in progress. [@sudo-rpaisley](https://github.com/sudo-rpaisley)
+A community audit release. [@sudo-rpaisley](https://github.com/sudo-rpaisley)
 opened 23 pull requests in a single day (2026-08-31), then two more, against one
-coherent theme: **a write that cannot be honoured should say so, not quietly do
-something else.** Endpoints that coerced a bad value into a plausible default —
-an unknown share scope into `wishlist`, an unknown import mode into `skip`, an
-invalid role into `viewer` — now reject it. Twelve have landed so far; the rest
-are coming in sequence.
+coherent theme:
+**a write that cannot be honoured should say so, not quietly do something
+else.** Endpoints that coerced a bad value into a plausible default — an unknown
+share scope into `wishlist`, an unknown import mode into `skip`, an invalid role
+into `viewer`, an unsupported sync interval into `off` — now reject it and leave
+what was there alone. Twenty-one of those pull requests ship here; the remaining
+four are still under review and will follow. Alongside them, a hardware
+recognition gap left open in 0.26.1 is closed: a brand-named accessory that
+names no platform is filed as hardware and asks no provider.
 
 ### Fixed
 
@@ -54,7 +58,6 @@ are coming in sequence.
   totals all along; only a browser-level click could expose this. Contributed by
   [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
   [#78](https://github.com/dgahagan/shelf/pull/78).
-
 - **Creating a user rejects an unknown role.** The create-user endpoint treated
   any unrecognised role as `viewer`, so a malformed or forged request could
   succeed while creating an account with permissions other than the ones asked
@@ -82,6 +85,75 @@ are coming in sequence.
   database failures. Contributed by
   [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
   [#71](https://github.com/dgahagan/shelf/pull/71).
+- **A brand-named accessory is hardware, whatever platform it omits.** `Logitech
+  G Pro X Gaming Headset` or `Sony PULSE 3D Wireless Headset` used to be searched
+  on The Movie Database, and a `CD-ROM`- or `[DVD]`-tagged one reached IGDB or
+  claimed a format detection it had no grounds for. The shortest search for a
+  long brand name — `Logitech` on its own — is exactly the one-word query that
+  comes back with someone else's film. Recognition now needs a hardware word
+  together with a platform name *or* a known peripheral brand; the film titles
+  that share a hardware word (`Console Wars`, `Air Traffic Controller`) are
+  unaffected, and a listing whose brand is not known is filed as before.
+- **Adding a game or film from a provider search rejects bad form values.** An
+  unknown game platform was silently cleared before the IGDB request went out; a
+  blank film title or a malformed publish year was quietly dropped. All three are
+  now refused before any provider request is made or anything is stored.
+  Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#59](https://github.com/dgahagan/shelf/pull/59).
+- **Manual add rejects a malformed publish year and an unknown game platform.** A
+  non-numeric year used to become a server error at insert time, and an
+  unrecognised platform was stored as no platform at all. Both are refused and
+  no item is created. Valid manual adds are unchanged. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#60](https://github.com/dgahagan/shelf/pull/60).
+- **An unknown Hardcover sync interval no longer switches the schedule off.**
+  Anything other than `off`, `daily` or `weekly` was saved as `off`, so a
+  malformed or stale request could silently disable a working schedule. It is
+  now refused and the stored schedule is kept. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#61](https://github.com/dgahagan/shelf/pull/61).
+- **Audiobookshelf settings reject what they cannot honour.** A malformed
+  connection-test URL or token is refused before the saved-credential fallback
+  runs, a malformed excluded-library selection is refused instead of being
+  coerced, and an unsupported sync interval no longer silently disables the
+  sync. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#62](https://github.com/dgahagan/shelf/pull/62).
+- **Location administration says when it did not do what you asked.** A blank or
+  duplicate location name is refused with a message in Settings, renaming a
+  location that no longer exists reports that rather than a database error, and
+  deleting one that does not exist reports failure instead of success. Only
+  fixed, known messages are rendered. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#67](https://github.com/dgahagan/shelf/pull/67).
+- **Check-in is truthful, and a loan closes once.** Checking in a loan that does
+  not exist returns 404 and one already returned returns 409, the close is
+  conditional so two concurrent check-ins cannot both succeed, and a due date
+  beyond the supported range is refused rather than raising a server error.
+  Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#72](https://github.com/dgahagan/shelf/pull/72).
+- **Audiobookshelf sync survives collisions and timeouts, and stops rewriting
+  what has not changed.** An ISBN you had already catalogued by hand in the same
+  format is adopted rather than attempted as a duplicate insert; a duplicate
+  same-format ISBN inside Audiobookshelf is skipped with a reason instead of
+  aborting the run; one library timing out no longer stops the healthy ones;
+  unchanged items are not rewritten and their covers are not downloaded again;
+  and every skipped item says why. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#73](https://github.com/dgahagan/shelf/pull/73).
+- **Browse's bulk "move to location" Apply works again, and the shortcut help
+  closes on Escape.** The Apply button's expression never evaluated under
+  Alpine's CSP build, and the keyboard-shortcut help modal's inline handlers were
+  inert under Shelf's own policy. Both moved to vendored scripts, and a browser
+  test now asserts the journey raises no CSP violation. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#75](https://github.com/dgahagan/shelf/pull/75).
+- **Photo Intake refuses a location that no longer exists.** A stale location id
+  used to surface as a foreign-key failure only after the metadata lookups had
+  already been made; it is now rejected before any settings read, provider
+  request or insert, with a stable message. Leaving the location unset behaves
+  as before. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#76](https://github.com/dgahagan/shelf/pull/76).
 
 ### Changed
 
@@ -93,6 +165,12 @@ are coming in sequence.
   are all preserved. Contributed by
   [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
   [#77](https://github.com/dgahagan/shelf/pull/77).
+- **A pull-request build no longer fails on a stale test-count badge.** Every PR
+  that adds a test made the README badge stale, and a PR that restamped it
+  collided with every other restamping PR on the same line, so a batch of
+  otherwise-disjoint pull requests became mutually unmergeable. The check now
+  reports and passes on pull-request builds; on `main` and locally it still
+  fails, so the badge cannot drift anywhere it can actually be fixed.
 
 ### Added
 
@@ -101,6 +179,12 @@ are coming in sequence.
   drill-down back to a real item, and a clean console. Test-only. Contributed by
   [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
   [#74](https://github.com/dgahagan/shelf/pull/74).
+- **The Audiobookshelf sync summary in Settings shows an Unchanged count**, so a
+  repeat sync that touched nothing reads as such rather than as a run that
+  updated everything. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#73](https://github.com/dgahagan/shelf/pull/73).
+
 
 ## [0.26.1] - 2026-09-01
 
@@ -2357,6 +2441,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.27.0]: https://github.com/dgahagan/shelf/releases/tag/v0.27.0
 [0.26.1]: https://github.com/dgahagan/shelf/releases/tag/v0.26.1
 [0.26.0]: https://github.com/dgahagan/shelf/releases/tag/v0.26.0
 [0.25.1]: https://github.com/dgahagan/shelf/releases/tag/v0.25.1

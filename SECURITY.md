@@ -23,6 +23,8 @@ it weren't:
   CDNs (all assets vendored)
 - CSRF protection on all mutating requests
 - bcrypt password hashing; JWT sessions in HTTP-only, secure cookies
+- Login takes the same time whether or not the username exists, so a failed
+  attempt does not reveal which accounts are real
 - Role-based access control (admin / editor / viewer)
 - Third-party API credentials encrypted at rest (key kept outside the DB, so
   database backups contain ciphertext only) and write-only in the UI

@@ -39,8 +39,8 @@ this for".
 grouping every item by location with per-location subtotals and a grand
 total — what exists, where it is, what it would cost to replace. Items
 without a value are listed too (a documentation report needs them),
-flagged **Missing Value**. Print to PDF from the browser and file it with your
-policy.
+flagged **Missing Value**. The **Print** button on the page opens the browser's
+print dialog; save it as a PDF and file it with your policy.
 
 ## Display currency
 

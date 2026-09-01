@@ -60,7 +60,10 @@ The **Photo Intake** nav tab appears once a provider is saved.
    and description come with it. A row without one falls back to the title +
    author search (an author-match guard rejects wrong editions). Either way
    covers are fetched in the background, and the Done panel flags any row
-   that was added with no metadata match.
+   that was added with no metadata match. **Add books to** above the list
+   picks the location every row lands in (or none). If that location was
+   deleted while the page was open, Confirm refuses before any lookup runs
+   and says so — nothing is half-imported.
 
 Nothing is imported until you confirm, and the photo itself is never stored.
 

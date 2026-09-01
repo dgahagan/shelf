@@ -107,9 +107,9 @@ time:
   lookup consults up to four and any subset can be starved at once.
 - **"the title names console hardware, so no film or game lookup was
   attempted."** — nothing to fix. The shortened title Shelf would have
-  searched on is just `PlayStation` or `Nintendo`, and a film database answers
-  that with a confident match for an unrelated film, so Shelf files the title
-  it read and asks nobody. Correct the type or the title on the item page if
+  searched on is just `PlayStation` or `Nintendo`, or a brand name such as
+  `Logitech`, and a film database answers that with a confident match for an
+  unrelated film, so Shelf files the title it read and asks nobody. Correct the type or the title on the item page if
   it read the title wrong. This also covers a hardware title that carries
   `DVD`, `CD` or `CD-ROM` — the tag is read as a shelf-listing artifact, not as
   the item's type. This one is decided by the *title*; the next is decided by
@@ -236,6 +236,8 @@ Passwords are bcrypt hashes. Generate one —
 - **Test** the connection on its card.
 - ABS: make sure at least one library is selected.
 - Both run on an interval read every 5 minutes; "Sync now" is immediate.
+- ABS: a summary of *0 added, 0 updated, N unchanged* means the sync ran and
+  found nothing new — that is success, not a stall.
 - Env-var overrides (`HARDCOVER_TOKEN`, `ABS_TOKEN`) beat what's stored —
   if you changed the key in Settings and nothing changed, check your `.env`.
 

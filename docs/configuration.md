@@ -67,7 +67,7 @@ lives:
 |---|---|
 | **Collection** | Display currency (20 choices; formatting only, never conversion). Preferred language for title searches |
 | **Navigation** | Which tabs appear in the nav. Tabs for unconfigured integrations hide themselves automatically; you can also hide any tab manually |
-| **Locations** | Add, rename and delete shelves/rooms. Deleting a location unassigns its items |
+| **Locations** | Add, rename and delete shelves/rooms. Names must be unique and non-blank — a clash is refused with a message rather than saved. Deleting a location unassigns its items |
 | **Borrowers** | People you lend to. Deleting a borrower keeps their loan history |
 | **Game Platforms** | The platform list used for video games — 30 built in, add your own |
 | **Lending** | "Overdue after N days" for loans without a due date (0 disables). Notification URL (ntfy topic or JSON webhook) for the daily overdue digest, with a **Send test** button |

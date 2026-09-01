@@ -1564,6 +1564,26 @@ python -c "from app.services.upcitemdb import search_queries as q; \
   *correctly filed* row and stayed silent about the bug. Pick a stub value with
   **zero substring overlap** against every real title in the parametrise list,
   and say in the test that you checked.
+- **Fourth instance — and the deferral that hid it was an unmeasured
+  number** — `75c5b06` (2026-09-01, plan `scan-hardware-no-platform`). The
+  prior plan deferred brand-named hardware (`Sony PULSE 3D Wireless Headset`)
+  on the argument that "the shortened title stops at three words". True for
+  `Sony` — four characters, under `MIN_SOLO_WORD` — and false for every
+  brand of seven or more: `Logitech G Pro X Gaming Headset` descends to bare
+  `Logitech`, legally. Nobody had run `search_queries` over more than the one
+  example. The remedy was again the caller recognising the input (a
+  `_HARDWARE_BRANDS` table as the second half of the hardware conjunction),
+  not the floor. When a deferral rests on a claim about the ladder, run the
+  ladder over a dozen inputs before writing it down.
+- **A stub keyed on the rung you expect misses the rung you get.** The
+  sibling hardware classes key `_WRONG_FILM` on the one-word rungs
+  (`PlayStation`, `Nintendo`, `Xbox`). Two brand shapes bottom out at
+  different rungs — `Logitech` and `Sony PULSE 3D` — so a dict keyed the same
+  way answers `no_match` for every rung the second shape sends, and the miss
+  path files `queries[0]`, the value the fix files. The per-rung dict only
+  ever worked because those titles all shared a rung. Where a class scans
+  titles whose ladders differ, answer **every** query with the wrong hit and
+  say why in the fixture.
 - **Status:** documented. Not a lint candidate — how short is too short is a
   judgement about the provider, not a grep.
 
@@ -2616,9 +2636,13 @@ for tag in ('', ' DVD', ' Blu-ray', ' CD', ' Audio CD', ' CD-ROM'):
   `_match_title_markers` and returns `None`, so all four arms are gated and an
   arm added below inherits the guard rather than the hole — nothing can be
   added above it. The Verify script above is the acceptance test and now
-  prints `dvd hardware` on every row. The rule stays: this entry is kept for
-  the guard-scope question and for the deferral error above, not because the
-  instance is live. Not a lint candidate — "which branches does this guard
+  prints `dvd hardware` on every row. Widened once since, through the same
+  seam: `75c5b06` (2026-09-01) added `_HARDWARE_BRANDS` as the second half of
+  `_is_hardware_title`'s conjunction, and because the predicate is the first
+  statement, all four arms and the tier-4 arm moved together — the script
+  prints the same for `Sony PULSE 3D Wireless Headset` + tag. The rule
+  stays: this entry is kept for the guard-scope question and for the
+  deferral error above, not because the instance is live. Not a lint candidate — "which branches does this guard
   exist to skip" is a judgement about intent, and the structural remedy here
   is a test that enumerates the marker tables by introspection
   (`test_no_marker_in_any_table_decides_a_hardware_title`), which grows with

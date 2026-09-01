@@ -33,6 +33,15 @@ URL and token, **Test**, then choose which libraries to include. Set an
 interval for automatic sync or run it by hand. Items removed from ABS can be
 cleaned up from the same card.
 
+**Repeat syncs are cheap and safe to run.** An item whose metadata has not
+changed since the last sync is left alone — not rewritten, and its cover is
+not downloaded again — and the summary on the card counts it under
+**Unchanged**, beside Added, Updated and Skipped. An audiobook or eBook whose
+ISBN you had already catalogued by hand in the same format is adopted and
+linked rather than added a second time; a duplicate of the same ISBN inside
+ABS is skipped with a reason. If one library times out, the others still sync
+and the timeout is reported for that library alone.
+
 A scan that comes back thin tells you **on the card** which of five things
 happened: no credential configured, a credential the provider rejected, a
 provider that is rate-limiting you right now, a format Shelf has no metadata
