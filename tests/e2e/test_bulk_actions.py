@@ -56,7 +56,11 @@ def test_bulk_move_apply_moves_selected_list_item(live_server, authed_page):
     expect(authed_page.get_by_text("1 selected", exact=True)).to_be_visible()
 
     authed_page.locator('select[x-model="bulkLocationVal"]').select_option(str(location_id))
-    apply_button = authed_page.get_by_role("button", name="Apply", exact=True).first
+    # Four buttons read "Apply"; the location one is x-show'd on this select.
+    # A role locator with `.first` resolves before Alpine flips it visible, so
+    # it pins the always-rendered (disabled) series Apply and times out — name
+    # the button by its own guard instead.
+    apply_button = authed_page.locator('button[x-show="bulkLocationVal"]')
     expect(apply_button).to_be_visible()
     apply_button.click()
 

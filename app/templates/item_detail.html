@@ -16,6 +16,9 @@
                 {% else %}
                 <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
                     <span>No Cover</span>
+                    {# …and it keys on the ISBN because the route does: retry-cover
+                       answers "No ISBN" without one, and the reload would hide that. #}
+                    {% if item.isbn %}
                     {% if user and user.role in ('admin', 'editor') %}
                     {# Retry ISBN re-runs the automatic download chain, so it means
                        nothing once a cover exists — it alone stays missing-only. #}
@@ -24,6 +27,7 @@
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
                         Retry ISBN
                     </button>
+                    {% endif %}
                     {% endif %}
                 </div>
                 {% endif %}
@@ -134,6 +138,9 @@
                 </div>
                 {% endif %}
 
+                {# Hardcover Sync — a books service, and the push needs an ISBN or an
+                   existing Hardcover id; the id terms keep an already-synced row visible. #}
+                {% if item.media_type in book_media_types and (item.isbn or item.hardcover_book_id or item.hardcover_user_book_id) %}
                 <!-- Hardcover Sync -->
                 {% if has_hardcover and user and user.role in ('admin', 'editor') %}
                 <div class="mb-4" x-data="hardcoverPush" data-item-id="{{ item.id }}">
@@ -152,6 +159,7 @@
                         <p class="text-xs text-shelf-success mt-1">Added to your Hardcover library</p>
                     </template>
                 </div>
+                {% endif %}
                 {% endif %}
 
                 <!-- Also in Audiobookshelf (linked digital copy, direct deep link) -->
@@ -180,11 +188,16 @@
                 </div>
                 {% endif %}
 
+                {# Reading Status — the book family, or anything else while a status is
+                   still set so it can be cleared. The gate lives here, not in the
+                   fragment: the toggle route renders that without book_media_types. #}
+                {% if item.media_type in book_media_types or item.reading_status %}
                 <!-- Reading Status -->
                 <div class="mb-6">
                     <p class="text-sm font-medium text-shelf-muted mb-2">Reading Status</p>
                     {% include "fragments/reading_status.html" %}
                 </div>
+                {% endif %}
 
                 <!-- Lending -->
                 {% if (user and user.role in ('admin', 'editor')) or current_checkout or checkout_history %}

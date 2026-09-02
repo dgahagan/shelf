@@ -4,6 +4,28 @@ All notable changes to Shelf are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+## [0.27.1] - 2026-09-01
+
+A tidy-up of the item page. Since 0.26.0 every scanned album lands on a page
+that was built for books, so a CD offered a **Retry ISBN** button, a **Push to
+Hardcover** button and a **Reading Status** row it could do nothing with — and
+a video game page had always done the same. Those controls now show only where
+they can act.
+
+### Changed
+
+- **The item page shows only the controls its item can use.** A CD, DVD or
+  video game page used to offer **Retry ISBN**, **Push to Hardcover** and a
+  **Reading Status** row, all inert: the first two need an ISBN and Hardcover
+  is a books service, and an album is not read. Retry ISBN now appears only
+  when the item has an ISBN; Push to Hardcover only on a book-family item
+  with an ISBN (or one already linked to Hardcover); and Reading Status only
+  on books, kids' books, audiobooks, ebooks and comics — or while a status is
+  still set on anything else, so a stale one can be cleared. Adding an ISBN
+  in Edit brings the first two back.
+
 ## [0.27.0] - 2026-09-01
 
 A community audit release. [@sudo-rpaisley](https://github.com/sudo-rpaisley)
@@ -2441,6 +2463,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.27.1]: https://github.com/dgahagan/shelf/releases/tag/v0.27.1
 [0.27.0]: https://github.com/dgahagan/shelf/releases/tag/v0.27.0
 [0.26.1]: https://github.com/dgahagan/shelf/releases/tag/v0.26.1
 [0.26.0]: https://github.com/dgahagan/shelf/releases/tag/v0.26.0

@@ -44,7 +44,9 @@ its home.
   a description from Open Library, Google Books or Hardcover if one wasn't
   captured on add.
 - **Reading status** — Want to read / Reading / Read, with start and finish
-  dates. Viewers can set this too; it's the one thing they can change.
+  dates. Viewers can set this too; it's the one thing they can change. It
+  appears on books, kids' books, audiobooks, ebooks and comics — discs and
+  games don't carry one.
 - **Location** and **owned / wishlist** flag.
 - **Tags** — add or remove chips inline.
 - **Loan state** — who has it and since when, with check-in right there.
@@ -58,6 +60,11 @@ its home.
 and the cover upload. Changing the ISBN does *not* re-fetch metadata
 automatically — use **Retry cover** / **Fetch synopsis** afterwards, or
 delete and rescan if the record was wrong from the start.
+
+**Retry cover** appears once the item has an ISBN. **Push to Hardcover**
+appears only for book-family items, and only when the item has an ISBN or
+an existing Hardcover link, so adding an ISBN in Edit helps only for
+book-family rows.
 
 ## Covers
 

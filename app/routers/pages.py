@@ -5,7 +5,7 @@ from fastapi.responses import RedirectResponse
 
 from app import browse_filters, nav
 from app.auth import require_role
-from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE
+from app.config import MEDIA_TYPES, DEFAULT_PAGE_SIZE, BOOK_MEDIA_TYPES
 from app.currency import get_currency
 from app.database import get_db, get_setting, get_game_platforms, get_reading_history
 from app.routers import items_common
@@ -271,6 +271,7 @@ async def item_detail(
             "item_tags": item_tags,
             "all_tags": all_tags,
             "media_types": MEDIA_TYPES,
+            "book_media_types": BOOK_MEDIA_TYPES,
             "game_platforms": game_platforms,
             "has_hardcover": has_hardcover,
             "current_checkout": current_checkout,

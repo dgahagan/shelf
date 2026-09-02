@@ -2648,6 +2648,75 @@ for tag in ('', ' DVD', ' Blu-ray', ' CD', ' Audio CD', ' CD-ROM'):
   (`test_no_marker_in_any_table_decides_a_hardware_title`), which grows with
   the module instead of a `make check-*`.
 
+## G69 — When a pin asserts a section's label is *absent* with a bare substring
+
+- **Rule:** Assert on the element, not the words — `>Reading Status</p>`, or a
+  `data-testid` — and keep every `<!-- Section -->` HTML marker **inside** the
+  `{% if %}` that gates the section. Explanatory notes beside a gate go in Jinja
+  `{# … #}`, which is stripped at render, never in `<!-- … -->`, which ships.
+- **Why:** the templates mark every block with an HTML comment carrying the
+  block's own name (`<!-- Reading Status -->`, `<!-- Hardcover Sync -->`), and
+  those comments are part of the response body. A gate wrapped *below* the
+  marker removes the heading and leaves the comment, so `"Reading Status" not in
+  html` stays red on every page the gate is supposed to clear — and the
+  matching positive pin (`"Reading Status" in html`) would have been green
+  **with the heading deleted**, because the comment satisfies it. The trap has
+  two faces: a negative that cannot pass, which you notice, and a positive that
+  cannot fail, which you do not. The existing `"Retry ISBN" in html` pins in
+  `tests/test_covers.py` are safe only because no comment carries that string.
+- **Evidence:** `0a34c8f` (2026-09-01, plan `item-detail-book-controls`). The
+  first draft put the reading-status gate under the marker and wrote the note
+  as an HTML comment; three of eight pins failed on the comment text, and the
+  fix was moving both markers inside their gates and asserting on the `<p>`.
+- **Verify:** an HTML comment whose text is also a rendered label, or an
+  absence pin on a bare label, is greppable:
+
+```bash
+grep -rn '<!-- Reading Status -->\|<!-- Hardcover Sync -->' app/templates/item_detail.html
+grep -n 'HEADING = ' tests/test_item_detail.py    # must read ">Reading Status</p>"
+```
+
+  Both markers must sit on the line *after* their `{% if` and the constant must
+  name the element.
+- **Status:** documented. Lint candidate — "a `not in html` pin whose needle also
+  appears verbatim inside a `<!-- -->` in the rendered template" is checkable in
+  `scripts/check_test_conventions.py`, but needs a template→test mapping the
+  script does not have; noisy until it does.
+
+## G70 — When an E2E locator can match more than one element and one of them is `x-show`-toggled
+
+- **Rule:** Never disambiguate with `.first` / `.nth()` on a role or text
+  locator when a sibling copy of the same label is toggled by `x-show` (or
+  `:disabled`). Name the element by its own guard — `button[x-show="bulkLocationVal"]`
+  — or by a `data-testid`. The rule holds even when the *visible* copy is the
+  one you want: a role locator excludes hidden elements, so which copy is
+  "first" depends on whether Alpine has run yet.
+- **Why:** Playwright resolves a locator once at the start of an action and
+  keeps that element for every retry unless it detaches. Right after
+  `select_option`, the location Apply still reads as hidden for one tick, so
+  `.first` lands on the always-rendered series Apply (`:disabled="!bulkSeriesVal"`),
+  `to_be_visible()` passes on it, and the click retries "element is not
+  enabled" for 30 s against the wrong button while the right one is visible
+  and enabled beside it. The call log names the resolved element — read it;
+  "not enabled" on a button you never disabled is this trap.
+- **Evidence:** `a5bae17` (2026-09-01). `test_bulk_move_apply_moves_selected_list_item`
+  arrived in `f3a5d05` (PR #75) with `get_by_role("button", name="Apply").first`
+  and was red on `main` from the day it landed; the item-detail-book-controls
+  run found it as the one E2E failure and it failed 3/3 on `main` too. Probe:
+  at T0 after the select the role locator's first was the series button, at
+  T+500 ms the location button.
+- **Verify:** every `.first` on a role/text locator in the E2E suite is a
+  candidate — eyeball each against the template for a duplicate label under
+  `x-show`:
+
+```bash
+grep -n 'get_by_role(.*)\.first\|get_by_text(.*)\.first' tests/e2e/*.py
+```
+
+- **Status:** documented. Lint candidate: `scripts/check_test_conventions.py`
+  could flag `.first` on `get_by_role`/`get_by_text` outright, but the suite
+  has legitimate uses on unique-per-page labels; noisy until each is named.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

@@ -1,4 +1,6 @@
 """T1 — record footer, wishlist badge, value as-of date, admin integration block."""
+import pytest
+
 from tests.conftest import _insert_item
 
 
@@ -279,3 +281,123 @@ class TestSeriesProgress:
         assert series_html.count('data-testid="series-card"') == 1
         # ...and both spellings' books live inside that one card
         assert "Dune Messiah" in series_html
+
+
+class TestBookShapedControls:
+    """The item page shows only the controls its item can use.
+
+    Retry ISBN keys on the ISBN (the route's own precondition), Push to Hardcover
+    on the book family plus an ISBN or an existing Hardcover id, and Reading
+    Status on the book family — or on anything else while a status is still set,
+    so a stale one can be cleared. Every negative here has row 5 as its positive
+    control, and every row seeds and commits before it requests.
+    """
+
+    RETRY = "retry-cover"
+    PUSH = "Push to Hardcover"
+    SYNCED = "Synced to Hardcover"
+    HEADING = ">Reading Status</p>"
+    SECTION = 'id="reading-status-section"'
+    CLEAR = 'title="Clear status"'
+
+    @pytest.mark.parametrize("media_type", ["cd", "video_game"])
+    def test_a_disc_or_cartridge_loses_all_three_and_keeps_the_page(
+        self, editor_client, db, monkeypatch, media_type,
+    ):
+        monkeypatch.setenv("HARDCOVER_TOKEN", "hc-token")
+        item_id = _insert_item(db, title="Not A Book", isbn=None, media_type=media_type)
+        db.commit()
+
+        resp = editor_client.get(f"/item/{item_id}")
+        html = resp.text
+
+        assert resp.status_code == 200
+        assert self.RETRY not in html
+        assert self.PUSH not in html
+        assert self.HEADING not in html
+        assert self.SECTION not in html
+        # The page lost three controls, not the page.
+        assert 'data-testid="cover-controls"' in html
+        assert f'href="/item/{item_id}/edit' in html
+        assert "hx-delete=" in html
+
+    def test_a_book_without_an_isbn_keeps_reading_status_only(
+        self, editor_client, db, monkeypatch,
+    ):
+        monkeypatch.setenv("HARDCOVER_TOKEN", "hc-token")
+        item_id = _insert_item(db, title="No ISBN Book", isbn=None, media_type="book")
+        db.commit()
+
+        html = editor_client.get(f"/item/{item_id}").text
+
+        assert self.HEADING in html
+        assert self.SECTION in html
+        assert self.RETRY not in html
+        assert self.PUSH not in html
+
+    def test_an_existing_hardcover_id_keeps_the_hardcover_row_without_an_isbn(
+        self, editor_client, db, monkeypatch,
+    ):
+        monkeypatch.setenv("HARDCOVER_TOKEN", "hc-token")
+        synced_id = _insert_item(
+            db, title="Synced No ISBN", isbn=None, media_type="book",
+            hardcover_user_book_id=4242,
+        )
+        linked_id = _insert_item(
+            db, title="Linked No ISBN", isbn=None, media_type="book",
+            hardcover_book_id=99,
+        )
+        db.commit()
+
+        assert self.SYNCED in editor_client.get(f"/item/{synced_id}").text
+        assert self.PUSH in editor_client.get(f"/item/{linked_id}").text
+
+    def test_a_book_with_an_isbn_carries_all_three_the_positive_control(
+        self, editor_client, db, monkeypatch,
+    ):
+        monkeypatch.setenv("HARDCOVER_TOKEN", "hc-token")
+        item_id = _insert_item(db, title="Full Book", isbn="9780900007001", media_type="book")
+        db.commit()
+
+        html = editor_client.get(f"/item/{item_id}").text
+
+        assert self.RETRY in html
+        assert self.PUSH in html
+        assert self.HEADING in html
+
+    def test_a_disc_with_a_stale_status_can_still_clear_it(self, viewer_client, db):
+        """The undo path — and the G65 pin: the toggle route renders the
+        fragment without book_media_types in context and must not care."""
+        item_id = _insert_item(
+            db, title="Read DVD", isbn=None, media_type="dvd", reading_status="read",
+        )
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+        assert self.HEADING in html
+        assert self.CLEAR in html
+
+        resp = viewer_client.post(f"/api/items/{item_id}/reading-status", data={"status": ""})
+        assert resp.status_code == 200
+        assert self.SECTION in resp.text
+
+        assert self.HEADING not in viewer_client.get(f"/item/{item_id}").text
+
+    def test_a_dvd_with_an_isbn_gets_retry_but_not_hardcover(
+        self, editor_client, db, monkeypatch,
+    ):
+        """Retry is route-keyed; Push is family-keyed. e2e/test_browse.py seeds this row."""
+        monkeypatch.setenv("HARDCOVER_TOKEN", "hc-token")
+        item_id = _insert_item(db, title="ISBN DVD", isbn="9780000999002", media_type="dvd")
+        db.commit()
+
+        html = editor_client.get(f"/item/{item_id}").text
+
+        assert self.RETRY in html
+        assert self.PUSH not in html
+
+    def test_a_viewer_sees_no_reading_status_on_a_disc(self, viewer_client, db):
+        item_id = _insert_item(db, title="Viewer CD", isbn=None, media_type="cd")
+        db.commit()
+
+        assert self.HEADING not in viewer_client.get(f"/item/{item_id}").text

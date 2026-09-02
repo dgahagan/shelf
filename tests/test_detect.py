@@ -4,12 +4,12 @@ import typing
 
 import pytest
 
-from app.config import MEDIA_TYPES
+from app.config import MEDIA_TYPES, BOOK_MEDIA_TYPES
 from app.services import detect
 from app.services.detect import SIGNALS, Signal, detect_media_type
 from app.services.upc import detect_barcode_type
 
-_BOOK_FAMILY_HINTS_FOR_TEST = ["book", "kids_book", "audiobook", "ebook", "comic"]
+_BOOK_FAMILY_HINTS_FOR_TEST = sorted(BOOK_MEDIA_TYPES)
 
 # --- The six resolved probe rows from the design doc -----------------------
 #
@@ -772,3 +772,15 @@ class TestAMusicDiscIsDetectedAsACD:
         """
         d = detect_media_type("upc", hint, None, None)
         assert d.media_type == hint or hint in set(_BOOK_FAMILY_HINTS_FOR_TEST)
+
+
+def test_every_five_type_book_family_declaration_agrees_with_config():
+    """config.BOOK_MEDIA_TYPES is the family's home; the three older five-type
+    literals are deferred repoints (design §1) and must not drift from it.
+    synopsis.BOOK_MEDIA_TYPES is deliberately four and is not compared."""
+    from app.routers import items_catalog, series
+
+    assert BOOK_MEDIA_TYPES <= set(MEDIA_TYPES)
+    assert detect._BOOK_FAMILY_HINTS == BOOK_MEDIA_TYPES
+    assert set(series.UNASSIGNED_MEDIA_TYPES) == BOOK_MEDIA_TYPES
+    assert items_catalog.BOOK_MEDIA_TYPES == BOOK_MEDIA_TYPES
