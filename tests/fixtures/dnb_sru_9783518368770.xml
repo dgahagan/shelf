@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/"><version>1.1</version><numberOfRecords>1</numberOfRecords><records><record><recordSchema>MARC21-xml</recordSchema><recordPacking>xml</recordPacking><recordData><record xmlns="http://www.loc.gov/MARC21/slim" type="Bibliographic">
+    <leader>00000nam a2200000 c 4500</leader>
+    <controlfield tag="001">890760306</controlfield>
+    <controlfield tag="003">DE-101</controlfield>
+    <controlfield tag="005">20231129063315.0</controlfield>
+    <controlfield tag="007">tu</controlfield>
+    <controlfield tag="008">890508s1989    gw ||||| |||| 00||||ger  </controlfield>
+    <datafield tag="015" ind1=" " ind2=" ">
+      <subfield code="a">89,A21,0892</subfield>
+      <subfield code="2">dnb</subfield>
+    </datafield>
+    <datafield tag="016" ind1="7" ind2=" ">
+      <subfield code="2">DE-101</subfield>
+      <subfield code="a">890760306</subfield>
+    </datafield>
+    <datafield tag="020" ind1=" " ind2=" ">
+      <subfield code="a">9783518368770</subfield>
+      <subfield code="c">kart. : DM 14.00</subfield>
+      <subfield code="9">978-3-518-36877-0</subfield>
+    </datafield>
+    <datafield tag="020" ind1=" " ind2=" ">
+      <subfield code="a">351836877X</subfield>
+      <subfield code="c">kart. : DM 14.00</subfield>
+      <subfield code="9">3-518-36877-X</subfield>
+    </datafield>
+    <datafield tag="035" ind1=" " ind2=" ">
+      <subfield code="a">(DE-599)DNB890760306</subfield>
+    </datafield>
+    <datafield tag="035" ind1=" " ind2=" ">
+      <subfield code="a">(OCoLC)75054203</subfield>
+    </datafield>
+    <datafield tag="040" ind1=" " ind2=" ">
+      <subfield code="a">1200</subfield>
+      <subfield code="b">ger</subfield>
+      <subfield code="c">DE-101</subfield>
+      <subfield code="d">9999</subfield>
+    </datafield>
+    <datafield tag="041" ind1=" " ind2=" ">
+      <subfield code="a">ger</subfield>
+    </datafield>
+    <datafield tag="044" ind1=" " ind2=" ">
+      <subfield code="c">XA-DE</subfield>
+    </datafield>
+    <datafield tag="084" ind1=" " ind2=" ">
+      <subfield code="a">59</subfield>
+      <subfield code="a">810</subfield>
+      <subfield code="a">820</subfield>
+      <subfield code="a">830</subfield>
+      <subfield code="a">839</subfield>
+      <subfield code="a">840</subfield>
+      <subfield code="a">850</subfield>
+      <subfield code="a">860</subfield>
+      <subfield code="a">870</subfield>
+      <subfield code="a">880</subfield>
+      <subfield code="a">890</subfield>
+      <subfield code="a">B</subfield>
+      <subfield code="q">DE-101</subfield>
+      <subfield code="2">sdnb</subfield>
+    </datafield>
+    <datafield tag="100" ind1="1" ind2=" ">
+      <subfield code="0">(DE-588)118568043</subfield>
+      <subfield code="0">https://d-nb.info/gnd/118568043</subfield>
+      <subfield code="0">(DE-101)118568043</subfield>
+      <subfield code="a">Kundera, Milan</subfield>
+      <subfield code="d">1929-2023</subfield>
+      <subfield code="e">Verfasser</subfield>
+      <subfield code="4">aut</subfield>
+      <subfield code="2">gnd</subfield>
+    </datafield>
+    <datafield tag="245" ind1="1" ind2="0">
+      <subfield code="a">&#152;Das&#156; Leben ist anderswo</subfield>
+      <subfield code="b">Roman</subfield>
+      <subfield code="c">Milan Kundera. [Aus d. Tschech. von Franz Peter Künzel]</subfield>
+    </datafield>
+    <datafield tag="250" ind1=" " ind2=" ">
+      <subfield code="a">[13. Aufl.]</subfield>
+    </datafield>
+    <datafield tag="264" ind1=" " ind2="1">
+      <subfield code="a">Frankfurt am Main</subfield>
+      <subfield code="b">Suhrkamp</subfield>
+      <subfield code="c">[1989]</subfield>
+    </datafield>
+    <datafield tag="300" ind1=" " ind2=" ">
+      <subfield code="a">367 S.</subfield>
+      <subfield code="c">18 cm</subfield>
+    </datafield>
+    <datafield tag="336" ind1=" " ind2=" ">
+      <subfield code="a">Text</subfield>
+      <subfield code="b">txt</subfield>
+      <subfield code="2">rdacontent</subfield>
+    </datafield>
+    <datafield tag="337" ind1=" " ind2=" ">
+      <subfield code="a">ohne Hilfsmittel zu benutzen</subfield>
+      <subfield code="b">n</subfield>
+      <subfield code="2">rdamedia</subfield>
+    </datafield>
+    <datafield tag="338" ind1=" " ind2=" ">
+      <subfield code="a">Band</subfield>
+      <subfield code="b">nc</subfield>
+      <subfield code="2">rdacarrier</subfield>
+    </datafield>
+    <datafield tag="366" ind1=" " ind2=" ">
+      <subfield code="c">IP 20221008</subfield>
+      <subfield code="2">onixas</subfield>
+    </datafield>
+    <datafield tag="490" ind1="1" ind2=" ">
+      <subfield code="a">Suhrkamp Taschenbuch</subfield>
+      <subfield code="v">377</subfield>
+    </datafield>
+    <datafield tag="700" ind1="1" ind2="2">
+      <subfield code="a">Kundera, Milan</subfield>
+      <subfield code="d">1929-2023</subfield>
+      <subfield code="2">gnd</subfield>
+      <subfield code="t">Život je jinde</subfield>
+      <subfield code="g">dt.</subfield>
+    </datafield>
+    <datafield tag="830" ind1=" " ind2="0">
+      <subfield code="a">Suhrkamp Taschenbuch</subfield>
+      <subfield code="v">377</subfield>
+      <subfield code="w">(DE-101)015103463</subfield>
+      <subfield code="w">(DE-600)968207-7</subfield>
+      <subfield code="9">3377</subfield>
+      <subfield code="7">as</subfield>
+    </datafield>
+    <datafield tag="850" ind1=" " ind2=" ">
+      <subfield code="a">DE-101b</subfield>
+    </datafield>
+  </record></recordData><recordPosition>1</recordPosition></record></records><echoedSearchRetrieveRequest><version>1.1</version><query>num=9783518368770</query><xQuery xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/><recordSchema>MARC21-xml</recordSchema></echoedSearchRetrieveRequest></searchRetrieveResponse>

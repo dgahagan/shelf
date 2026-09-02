@@ -72,6 +72,14 @@ Sources disagree. **Edit** the record; **Find cover** for another image;
 **Fetch synopsis** if the description is missing. For German books, make
 sure you're on 0.11+ (DNB source).
 
+**A German title or author shows small boxes, and a search for the full
+title finds nothing.** DNB marks a title's leading article and a name's
+particle with invisible non-sorting characters, and before 0.27.2 they were
+stored as part of the text. New lookups on 0.27.2+ store clean text. Rows
+stored earlier are not rewritten: open **Edit** and retype the title or
+author to clear them. The same release stops a translation listing its
+author twice.
+
 **DVDs and games that filed a bare title — no synopsis, no year, no cover —
 were a bug, not a missing key.** TMDb rejected the credential type the setup
 docs told you to paste, and retail barcode titles were sent to the provider

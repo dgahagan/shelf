@@ -10,18 +10,19 @@ rejects the same person written with different diacritics or an abbreviated
 given name, and the only symptom is missing cover art.
 
 `language` is mapped from the record's MARC bibliographic code to ISO 639-1
-via app.services.national.to_iso639_1 (unmappable codes are stored
-lowercased as received rather than dropped).
+via app.services.bib_normalize.to_iso639_1 (unmappable codes are stored
+lowercased as received rather than dropped). The name inversion, year and
+extent parsing come from the same module — it is the format-independent
+half of national-bibliography parsing, shared with the other national
+providers, so a new one reuses it rather than copying this file's regexes.
 """
 
 import logging
-import re
-import unicodedata
 import xml.etree.ElementTree as ET
 
 import httpx
 
-from app.services import outbound, provider_result
+from app.services import authors, bib_normalize, outbound, provider_result
 
 logger = logging.getLogger(__name__)
 
@@ -34,16 +35,6 @@ async def _rate_limit():
     await outbound.acquire("services.dnb.de")
 
 
-def _invert_name(name: str) -> str:
-    """"Lastname, Firstname" -> "Firstname Lastname" display order."""
-    last, sep, first = name.partition(",")
-    if not sep:
-        return name.strip()
-    first = first.strip()
-    last = last.strip()
-    return f"{first} {last}" if first else last
-
-
 def _datafields(record: ET.Element, tag: str) -> list[ET.Element]:
     return record.findall(f"{{{MARC_NS}}}datafield[@tag='{tag}']")
 
@@ -52,7 +43,7 @@ def _text(raw: str) -> str:
     # DNB's MARC21-xml uses decomposed (NFD) Unicode for diacritics (e.g.
     # "o" + combining diaeresis rather than "ö") — canonicalize to NFC so
     # stored/displayed text matches what other sources and users type.
-    return unicodedata.normalize("NFC", raw.strip())
+    return bib_normalize.nfc(raw)
 
 
 def _subfield(datafield: ET.Element, code: str) -> str | None:
@@ -99,16 +90,26 @@ def _parse_record(record: ET.Element) -> dict | None:
     # Authors: 100 (main entry) $a, plus 700 (added entries) $a — but 700
     # covers translators/editors too, so keep only entries whose relator
     # marks an author ($4 "aut", or $e "Verfasser"). A 700 with no relator
-    # at all gets the benefit of the doubt.
-    author_names = []
+    # at all gets the benefit of the doubt — unless it carries $t, which
+    # makes it a name/title entry for a *related work* (the original of a
+    # translation, say), whose name is the 100 author again. Names are also
+    # de-duplicated through authors.matches (G22), never by string equality,
+    # so the same person under two spellings still collapses to one.
+    author_names: list[str] = []
+
+    def _add_author(raw_name: str) -> None:
+        name = bib_normalize.invert_name(raw_name)
+        if name and not any(authors.matches(name, seen) for seen in author_names):
+            author_names.append(name)
+
     for df in _datafields(record, "100"):
         a = _subfield(df, "a")
         if a:
-            author_names.append(_invert_name(a))
+            _add_author(a)
     for df in _datafields(record, "700"):
         a = _subfield(df, "a")
-        if a and _is_author_relator(df):
-            author_names.append(_invert_name(a))
+        if a and _subfield(df, "t") is None and _is_author_relator(df):
+            _add_author(a)
     if author_names:
         result["authors"] = ", ".join(author_names)
 
@@ -119,18 +120,18 @@ def _parse_record(record: ET.Element) -> dict | None:
         if publisher:
             result["publisher"] = publisher
         pub_date = _subfield(pub_fields[0], "c") or ""
-        year_match = re.search(r"(\d{4})", pub_date)
-        if year_match:
-            result["publish_year"] = int(year_match.group(1))
+        year = bib_normalize.first_year(pub_date)
+        if year is not None:
+            result["publish_year"] = year
 
     # Page count: 300 $a, e.g. "252 Seiten" / "758 S." — leading integer.
     extent_fields = _datafields(record, "300")
     if extent_fields:
         extent = _subfield(extent_fields[0], "a")
         if extent:
-            page_match = re.match(r"\s*(\d+)", extent)
-            if page_match:
-                result["page_count"] = int(page_match.group(1))
+            pages = bib_normalize.leading_int(extent)
+            if pages is not None:
+                result["page_count"] = pages
 
     # Language: 041 $a, falling back to 008 positions 35-37.
     language = None
@@ -143,11 +144,7 @@ def _parse_record(record: ET.Element) -> dict | None:
             code = cf008.text[35:38].strip()
             language = code or None
     if language:
-        # Late import: national.py imports this module for its provider
-        # registry, so a module-level import here would be circular.
-        from app.services.national import to_iso639_1
-
-        result["language"] = to_iso639_1(language)
+        result["language"] = bib_normalize.to_iso639_1(language)
 
     # ISBN-10: the 020 field whose $a is 10 characters.
     for df in _datafields(record, "020"):

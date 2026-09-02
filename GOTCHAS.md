@@ -549,12 +549,20 @@ grep -n "create_task(items_common._enrich_import_covers" app/routers/intake.py
 - **Rule:** Two normalizations are mandatory, or the data is subtly wrong:
   (1) MARC21-xml text arrives as **decomposed (NFD) Unicode** — "Köhlmeier"
   is `o` + combining diaeresis — so normalize every extracted subfield to
-  NFC before storing (`dnb._text` is the worked example), or search/display
+  NFC before storing (`bib_normalize.nfc` is the shared helper; `dnb._text`
+  routes every subfield through it), or search/display
   diverges from NFC text from other sources; (2) **700 added entries are
   not authors** by default — translators/editors carry `$4 trl` / `$e
   Übersetzer` relators, so filter 700 to author relators (`$4 aut`, `$e
   Verfasser*`, or no relator at all) before joining into `authors`
-  (`dnb._is_author_relator`). The registry in `app/services/national.py`
+  (`dnb._is_author_relator`) — and a 700 carrying `$t` is a name/title
+  entry for a *related work*, not a second author, so skip it and
+  de-duplicate the rest through `authors.matches()` (G22); (3) DNB wraps a
+  title's article and a name's particle in **C1 non-sorting markers**
+  U+0098/U+009C (`&#152;Der&#156; Kontrabaß`) — they survive NFC, render as
+  boxes and break LIKE search, so `bib_normalize.nfc` drops the C1 block
+  before normalising (found live by the bib-normalize test drive; none of
+  the original fixtures carried one). The registry in `app/services/national.py`
   makes new providers one file + one line — a copy that skips either step
   looks correct in every quick test.
 - **Why:** Both defects are invisible in ASCII-only fixtures and
@@ -567,9 +575,16 @@ grep -n "create_task(items_common._enrich_import_covers" app/routers/intake.py
 - **Verify:** the shared client still normalizes and filters:
 
 ```bash
-grep -n 'normalize("NFC"' app/services/dnb.py       # expect >= 1
+grep -n 'bib_normalize.nfc' app/services/dnb.py      # expect >= 1 (via _text)
+grep -n 'normalize("NFC"' app/services/bib_normalize.py   # expect >= 1
 python -m pytest tests/test_dnb.py -q                # translator-exclusion asserted
 ```
+
+  (The NFC call moved from `dnb._text` into `bib_normalize.nfc` on
+  2026-09-01, plan `bib-normalize`; the old single-file grep now returns 0
+  on a correct tree. A new provider that builds its strings through
+  `bib_normalize` gets NFC for free — the trap left is a provider that reads
+  a payload field *without* going through it.)
 
 - **Status:** documented.
 

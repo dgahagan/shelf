@@ -6,6 +6,42 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.27.2] - 2026-09-01
+
+A fix release for German books. Every 978-3 ISBN is looked up at the Deutsche
+Nationalbibliothek (DNB) first, and two habits of its records left marks on
+the item: invisible control characters around a title's leading article and a
+name's particle, and the same author listed twice on a translation. Both are
+fixed. Underneath, the DNB parser now runs on a shared bibliographic
+normaliser so the next national provider reuses it — every DNB field parses
+to the same value as before.
+
+### Changed
+
+- **The DNB parser runs on a shared bibliographic normaliser.** Author-name
+  inversion, imprint and year parsing, and the MARC → ISO 639-1 language
+  mapping now live in one module that any national ISBN provider can call,
+  instead of being copied per provider. Nothing a user sees changes: the
+  four DNB fixture records parse to identical values, and the metadata
+  order (DNB → Open Library → Hardcover → Google Books) is untouched.
+
+### Fixed
+
+- **German titles and author names no longer carry invisible control
+  characters.** DNB wraps a title's article and a name's particle in MARC
+  non-sorting markers (U+0098 / U+009C), so "Der Kontrabaß" and "Johann
+  Wolfgang von Goethe" arrived with control characters that rendered as
+  boxes on the scan card and the item page and made a search for the full
+  title return nothing. New DNB lookups now store clean text. Rows stored
+  before this release are not rewritten — no migration touches your data —
+  so a title that shows boxes today is fixed by retyping it in Edit.
+- **A translated book no longer lists its author twice.** When a DNB record
+  carries a name/title added entry for the original work — a translation's
+  700 `$t` — the same person was appended again ("Milan Kundera, Milan
+  Kundera"). Those entries are skipped, and the remaining names are
+  de-duplicated with the same author matching the rest of the app uses, so
+  a genuine second author still survives.
+
 ## [0.27.1] - 2026-09-01
 
 A tidy-up of the item page. Since 0.26.0 every scanned album lands on a page
@@ -2463,6 +2499,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.27.2]: https://github.com/dgahagan/shelf/releases/tag/v0.27.2
 [0.27.1]: https://github.com/dgahagan/shelf/releases/tag/v0.27.1
 [0.27.0]: https://github.com/dgahagan/shelf/releases/tag/v0.27.0
 [0.26.1]: https://github.com/dgahagan/shelf/releases/tag/v0.26.1

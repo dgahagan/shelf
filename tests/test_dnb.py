@@ -79,6 +79,41 @@ class TestDnbLookup:
 
     @respx.mock
     @pytest.mark.asyncio
+    async def test_nonsort_markers_stripped_and_related_work_entry_not_an_author(self):
+        # Live record (test-drive Observations 1 and 2): 245 $a carries DNB's
+        # U+0098/U+009C non-sorting markers around "Das", and a 700 with $t
+        # (the Czech original) names the 100 author again with no relator.
+        respx.get("https://services.dnb.de/sru/dnb").mock(
+            return_value=httpx.Response(200, text=_fixture("dnb_sru_9783518368770.xml"))
+        )
+        async with httpx.AsyncClient() as client:
+            result = await dnb.lookup("9783518368770", client)
+
+        assert result.outcome == "found"
+        meta = result.payload
+        assert meta["title"] == "Das Leben ist anderswo"
+        assert not any(0x80 <= ord(ch) <= 0x9F for ch in meta["title"])
+        assert meta["authors"] == "Milan Kundera"
+        assert meta["subtitle"] == "Roman"
+        assert meta["publisher"] == "Suhrkamp"
+        assert meta["publish_year"] == 1989  # "[1989]"
+        assert meta["page_count"] == 367
+
+    def test_parse_record_dedupes_same_author_across_100_and_700(self):
+        # No $t and no relator: the benefit-of-the-doubt branch still applies,
+        # but the same person (here under a different spelling) is one author.
+        xml = """<record xmlns="http://www.loc.gov/MARC21/slim">
+          <datafield tag="245"><subfield code="a">Solaris</subfield></datafield>
+          <datafield tag="100"><subfield code="a">Lem, Stanisław</subfield></datafield>
+          <datafield tag="700"><subfield code="a">Lem, Stanislaw</subfield></datafield>
+          <datafield tag="700"><subfield code="a">Rottensteiner, Franz</subfield></datafield>
+        </record>"""
+        import xml.etree.ElementTree as ET
+        meta = dnb._parse_record(ET.fromstring(xml))
+        assert meta["authors"] == "Stanisław Lem, Franz Rottensteiner"
+
+    @respx.mock
+    @pytest.mark.asyncio
     async def test_no_hit_is_no_match(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(
             return_value=httpx.Response(200, text=_fixture("dnb_sru_nohit.xml"))

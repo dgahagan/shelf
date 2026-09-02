@@ -171,8 +171,9 @@ app/
                    share, tags, valuation, sync (ABS), hardcover, checkouts, locations,
                    platforms, archive, settings, auth_routes, pages
   services/        external clients + domain logic: openlibrary, hardcover, googlebooks,
-                   dnb/national, igdb, tmdb, isbndb, upc, covers + cover_queue, vision +
-                   tiling, audiobookshelf, archive, reading_imports, notify, outbound
+                   dnb/national + bib_normalize, igdb, tmdb, isbndb, upc, covers +
+                   cover_queue, vision + tiling, audiobookshelf, archive,
+                   reading_imports, notify, outbound
   templates/       Jinja2 pages + fragments/ for HTMX swaps
 static/            vendored JS/CSS, Alpine components, service worker, Tailwind output
 tests/             unit/integration; tests/e2e/ Playwright
