@@ -2451,3 +2451,54 @@ def _set_tmdb_key(monkeypatch, key="0123456789abcdef0123456789abcdef"):
 def _set_igdb_creds(monkeypatch):
     monkeypatch.setenv("IGDB_CLIENT_ID", "cid")
     monkeypatch.setenv("IGDB_CLIENT_SECRET", "secret")
+
+
+class TestUpcBranchesRefuseBadValues:
+    """The UPC halves of the scan card go through the same funnel (#54,
+    plan-review R1a). A stale location or unknown platform used to be a
+    foreign-key 500 / a silent NULL; both are the `error` card now."""
+
+    def _gone_location(self, db):
+        loc_id = db.execute("INSERT INTO locations (name) VALUES ('Gone')").lastrowid
+        db.execute("DELETE FROM locations WHERE id = ?", (loc_id,))
+        db.commit()
+        return loc_id
+
+    def test_dvd_add_with_a_stale_location_renders_the_error_card(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(GOODFELLAS)
+        monkeypatch.delenv("TMDB_API_KEY", raising=False)
+        loc_id = self._gone_location(db)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": DVD_UPC, "media_type": "dvd", "location_id": str(loc_id)}
+        )
+
+        assert resp.status_code == 200
+        assert "data-scan-error" in resp.text
+        assert f"Location {loc_id} not found" in resp.text
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0
+        assert db.execute(
+            "SELECT result FROM scan_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()["result"] == "error"
+
+    def test_game_add_with_an_unknown_platform_renders_the_error_card(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(MARIO)
+
+        async def _search_games(query, cid, secret, client, platform=None, limit=10):
+            return provider_result.no_match("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search_games)
+        _set_igdb_creds(monkeypatch)
+
+        resp = editor_client.post(
+            "/api/scan", data={"isbn": GAME_UPC, "media_type": "video_game", "platform": "ps9"}
+        )
+
+        assert resp.status_code == 200
+        assert "data-scan-error" in resp.text
+        assert "ps9" in resp.text
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0

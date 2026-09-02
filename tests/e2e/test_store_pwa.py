@@ -18,9 +18,9 @@ from tests.e2e.conftest import (
 
 pytestmark = pytest.mark.e2e
 
-OWNED_ISBN = "9780901000018"
-WISHLIST_ISBN = "9780901000025"
-UNKNOWN_ISBN = "9780901000032"
+OWNED_ISBN = "9789010000187"
+WISHLIST_ISBN = "9789010000255"
+UNKNOWN_ISBN = "9789010000323"
 
 
 def _login(live_server, ctx, setup_admin):

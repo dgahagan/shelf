@@ -133,7 +133,7 @@ class TestOverdueComputation:
 
 class TestReminderDigest:
     def _seed_overdue(self, db):
-        item_id = _insert_item(db, title="Very Late Book", isbn="9780900000101")
+        item_id = _insert_item(db, title="Very Late Book", isbn="9789000001019")
         borrower_id = _insert_borrower(db, name="Slow Reader")
         _lend(db, item_id, borrower_id, days_ago=60)
         _set(db, "notify_url", "https://ntfy.example/shelf")

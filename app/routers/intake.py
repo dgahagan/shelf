@@ -17,7 +17,7 @@ from app.services import isbn as isbn_svc
 from app.services import authors as authors_svc
 from app.services import national
 from app.services.title_match import titles_agree
-from app.services.item_write import insert_item
+from app.services.item_write import ItemValueError, insert_item, update_item_fields
 from app.services.write_targets import UnknownLocationError, validated_location_id
 
 logger = logging.getLogger(__name__)
@@ -211,7 +211,7 @@ async def _confirm_one(
                     raise
                 if not owned:
                     with get_db() as db:
-                        db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
+                        update_item_fields(db, item_id, {"owned": 0})
                 # The catalogue's title is the record; the row's was the query.
                 return "added", {
                     "title": metadata["title"], "id": item_id, "matched": True}, item_id
@@ -257,15 +257,23 @@ async def _confirm_one(
             language = national.to_iso639_1(meta_langs[0])
 
     # A surviving printed ISBN names the physical copy; Open Library's names
-    # its best-known edition. The printed one wins.
+    # its best-known edition. The printed one wins. `isbn10` is no longer
+    # tracked here — the funnel derives it from `isbn` on insert.
     isbn13 = None
-    isbn10 = None
     if printed_isbn13:
         isbn13 = printed_isbn13
-        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13)
     elif meta.get("isbn"):
-        isbn13 = isbn_svc.to_isbn13(meta["isbn"]) or meta["isbn"]
-        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if len(isbn13) == 13 else None
+        # A provider's (Open Library's) ISBN: pre-cleaned, dropped on a bad
+        # check digit rather than refused (#54) — this is a weak-path hint,
+        # not a value the user typed.
+        pair = isbn_svc.canonical_isbn_pair(meta["isbn"])
+        if pair is None:
+            logger.info(
+                "Intake: Open Library ISBN %r for %r is not a valid ISBN — not stored",
+                meta["isbn"], title,
+            )
+        else:
+            isbn13 = pair[0]
 
     with get_db() as db:
         # 4. ISBN dupe check, scoped to media type.
@@ -285,7 +293,6 @@ async def _confirm_one(
                 title=title,
                 authors=book.authors or meta.get("authors"),
                 isbn=isbn13,
-                isbn10=isbn10,
                 media_type=media_type,
                 publisher=meta.get("publisher"),
                 publish_year=meta.get("publish_year"),
@@ -334,9 +341,16 @@ async def confirm_books(payload: IntakeConfirm):
             if not title:
                 continue
 
-            status, entry, item_id = await _confirm_one(
-                book, client, search_lang, preferred_marc, location_id,
-                payload.owned, hc_token, google_api_key)
+            try:
+                status, entry, item_id = await _confirm_one(
+                    book, client, search_lang, preferred_marc, location_id,
+                    payload.owned, hc_token, google_api_key)
+            except ItemValueError as e:
+                # A stale location is caught by the boundary check above and
+                # never reaches here; this guards a field _confirm_one has
+                # not yet boundary-checked (G47 — see the forced-raise pin).
+                skipped.append({"title": title, "reason": str(e)})
+                continue
             if status == "added":
                 added.append(entry)
                 new_item_ids.append(item_id)

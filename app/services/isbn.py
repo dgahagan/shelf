@@ -15,6 +15,13 @@ def isbn10_to_isbn13(isbn10: str) -> str | None:
 
 
 def to_isbn13(raw: str) -> str | None:
+    """Return Shelf's historical 13-digit barcode/ISBN representation.
+
+    This helper is intentionally permissive. It is used by legacy lookup and
+    compatibility paths as well as by ISBN code, so checksum enforcement does
+    not belong here. User-facing ISBN write boundaries must use
+    ``canonical_isbn_pair`` instead.
+    """
     isbn = normalize_isbn(raw)
     # UPC-A (12 digits) -> EAN-13 by prepending 0
     if len(isbn) == 12 and isbn.isdigit():
@@ -61,3 +68,21 @@ def isbn13_to_isbn10(isbn13: str) -> str | None:
     check = (11 - (total % 11)) % 11
     check_char = "X" if check == 10 else str(check)
     return body + check_char
+
+
+def canonical_isbn_pair(raw: str) -> tuple[str, str | None] | None:
+    """Validate an ISBN and return its canonical ISBN-13/ISBN-10 pair.
+
+    This is for persistence boundaries where the value is known to be an
+    ISBN, not a generic retail barcode. A 979 ISBN has no ISBN-10 equivalent,
+    so the second element is ``None``.
+    """
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    isbn = normalize_isbn(raw)
+    if validate_isbn10(isbn):
+        isbn13 = isbn10_to_isbn13(isbn)
+        return (isbn13, isbn) if isbn13 else None
+    if validate_isbn13(isbn):
+        return isbn, isbn13_to_isbn10(isbn)
+    return None

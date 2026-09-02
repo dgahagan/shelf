@@ -6,6 +6,87 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.28.0] - 2026-09-02
+
+Until this release, every way of getting an item into Shelf checked its values
+differently, or not at all. An ISBN whose check digit doesn't add up was
+refused by the scanner but accepted by the edit form, by CSV import, by the
+store queue and by a sync — so a collection filled up with ISBNs that no
+lookup would ever match and no duplicate check would ever catch, and the only
+sign was a book that wouldn't find its own cover. This release puts a single
+value stage in front of every write. The same ISBN is now refused the same way
+everywhere, with the same message, and the item edit form gets its first error
+banner (#54).
+
+The canonical ISBN rule at the centre of it is taken verbatim from
+[@sudo-rpaisley](https://github.com/sudo-rpaisley)'s work in
+[#79](https://github.com/dgahagan/shelf/pull/79).
+
+Nothing rewrites your existing data. There is no migration: a row that already
+holds an invalid ISBN keeps it, and Browse, search and the lookup scan modes
+still find it. You will meet the new rule the next time you edit that row.
+
+### Added
+
+- **The item edit form tells you what was wrong.** A refused save shows a
+  banner at the top of the form naming the problem — an ISBN whose check digit
+  doesn't add up, a media type, location, game platform or reading status
+  Shelf doesn't recognise, or a non-number in a number field — and **nothing
+  else on the form is saved**. Until now the edit form had no error surface at
+  all.
+- **A Store Mode scan that can't be read is kept, not dropped.** A barcode
+  queued offline whose check digit fails is saved as a wishlist row titled
+  `Unreadable barcode — <code>` with no ISBN, logged like any other scan, and
+  the flush reports how many couldn't be read. Store Mode's whole promise is
+  that a queued scan is never lost, and a misread digit is exactly the case
+  where you are standing in a shop with no other record of it. Rescanning the
+  same bad barcode matches the row it already made instead of queueing a
+  second one.
+
+### Changed
+
+- **Every path that writes an item now checks its values, once.** The ISBN
+  check digit, the media type, the location, the game platform, the reading
+  status and the owned flag are validated in the write layer itself, on add,
+  edit, bulk edit, merge, CSV import, the store queue and the scan card's
+  move / inventory modes — so an ISBN whose digit doesn't add up is refused
+  everywhere with the same message, entering an ISBN-10 stores the ISBN-13
+  and ISBN-10 pair, and changing an ISBN in Edit rewrites its ISBN-10 instead
+  of leaving the old one behind (#54). A typed ISBN in Add mode is checked
+  *before* the lookup, so a mistyped digit costs no network call; the lookup
+  modes stay lenient on purpose, so an old row with a bad ISBN is still found
+  when you scan it. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#79](https://github.com/dgahagan/shelf/pull/79).
+- **Audiobookshelf ASINs are no longer stored as ISBNs.** An ABS item with
+  only an ASIN syncs without an ISBN, and a row that carried an ASIN in its
+  ISBN field from an earlier sync is cleared on the next sync (counted under
+  Updated) — you do not have to hunt those rows down by hand any more. A
+  provider ISBN that fails its check digit — from ABS, Hardcover, or a title
+  search — is dropped with a line in the log rather than refusing the whole
+  item.
+- **Portable archive import keeps a row whose ISBN is invalid.** The row is
+  imported without the ISBN and named in the import report; a row with an
+  unknown media type or platform is refused and named the same way. The rest
+  of the archive still applies.
+- **CSV import lists the rows it rejected, not just how many.** The panel
+  reported `Errors: 37` and stopped there, which told you nothing you could
+  act on. It now lists the offending rows under the summary — `Row N:` and
+  the reason — up to twenty of them, and always reports the true total. This
+  matters more now that the value stage refuses rows a long Goodreads or
+  StoryGraph export used to import silently.
+- **A refused merge names the record it rejected.** Merging several records
+  stops on the first one whose values fail, and it used to report only the bad
+  value, leaving you to work out which item carried it. The message now gives
+  that record's title and id.
+
+### Fixed
+
+- **Deleting a location no longer breaks a form that was already open.** Manual
+  add, bulk edit and the scan card used to answer with a server error when the
+  location you picked had been deleted in the meantime. They now refuse the
+  save with a message that says so.
+
 ## [0.27.2] - 2026-09-01
 
 A fix release for German books. Every 978-3 ISBN is looked up at the Deutsche
@@ -2499,6 +2580,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.28.0]: https://github.com/dgahagan/shelf/releases/tag/v0.28.0
 [0.27.2]: https://github.com/dgahagan/shelf/releases/tag/v0.27.2
 [0.27.1]: https://github.com/dgahagan/shelf/releases/tag/v0.27.1
 [0.27.0]: https://github.com/dgahagan/shelf/releases/tag/v0.27.0

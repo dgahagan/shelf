@@ -21,13 +21,13 @@ class TestValuationReport:
     def _seed(self, db):
         office = _insert_location(db, "Office")
         attic = _insert_location(db, "Attic")
-        _insert_item(db, title="Priced Office Book", isbn="9780900000501",
+        _insert_item(db, title="Priced Office Book", isbn="9789000005017",
                      location_id=office, estimated_value=25.50)
-        _insert_item(db, title="Unpriced Office Book", isbn="9780900000518",
+        _insert_item(db, title="Unpriced Office Book", isbn="9789000005185",
                      location_id=office)
-        _insert_item(db, title="Attic Book", isbn="9780900000525",
+        _insert_item(db, title="Attic Book", isbn="9789000005253",
                      location_id=attic, estimated_value=10.00)
-        _insert_item(db, title="Homeless Book", isbn="9780900000532",
+        _insert_item(db, title="Homeless Book", isbn="9789000005321",
                      estimated_value=5.00)
         db.execute("COMMIT")
 
@@ -72,10 +72,10 @@ class TestManualValueOverride:
     def test_totals_and_sort_use_effective_value(self, admin_client, db):
         office = _insert_location(db, "Office")
         # Manual value lower than estimate — effective value should be the manual one.
-        _insert_item(db, title="Alpha High Estimate Low Manual", isbn="9780900000601",
+        _insert_item(db, title="Alpha High Estimate Low Manual", isbn="9789000006014",
                      location_id=office, estimated_value=100.00, manual_value=10.00)
         # Manual value higher than estimate — effective value should be the manual one.
-        _insert_item(db, title="Beta Low Estimate High Manual", isbn="9780900000618",
+        _insert_item(db, title="Beta Low Estimate High Manual", isbn="9789000006182",
                      location_id=office, estimated_value=5.00, manual_value=90.00)
         db.execute("COMMIT")
 
@@ -91,9 +91,9 @@ class TestManualValueOverride:
         assert html.index("Beta Low Estimate High Manual") < html.index("Alpha High Estimate Low Manual")
 
     def test_manual_badge_marks_overridden_rows_only(self, admin_client, db):
-        _insert_item(db, title="Manual Priced Book", isbn="9780900000625",
+        _insert_item(db, title="Manual Priced Book", isbn="9789000006250",
                      estimated_value=15.00, manual_value=99.00)
-        _insert_item(db, title="Plain Estimated Book", isbn="9780900000632",
+        _insert_item(db, title="Plain Estimated Book", isbn="9789000006328",
                      estimated_value=15.00)
         db.execute("COMMIT")
 
@@ -105,7 +105,7 @@ class TestManualValueOverride:
     def test_estimated_only_item_unaffected_by_manual_value_feature(self, admin_client, db):
         """Regression guard: an item with no manual override behaves exactly
         as before the feature — same displayed value, no badge."""
-        _insert_item(db, title="Estimate Only Book", isbn="9780900000649",
+        _insert_item(db, title="Estimate Only Book", isbn="9789000006496",
                      estimated_value=42.00)
         db.execute("COMMIT")
 
@@ -124,7 +124,7 @@ class TestValuateStream:
 
     def _run(self, admin_client, db, price=12.5):
         """Drive one streamed valuation over a single priced item."""
-        _insert_item(db, title="Streamed Book", isbn="9780900000700")
+        _insert_item(db, title="Streamed Book", isbn="9789000007004")
         db.execute("INSERT INTO settings (key, value) VALUES ('isbndb_api_key', 'k')")
         db.commit()
         with patch("app.services.isbndb.lookup_price",
@@ -191,5 +191,5 @@ class TestISBNdbUSDCaveat:
         assert self.CAVEAT_TEXT not in html
 
     def _seed_priced_item(self, db):
-        _insert_item(db, title="Priced Book", isbn="9780900000700", estimated_value=9.99)
+        _insert_item(db, title="Priced Book", isbn="9789000007004", estimated_value=9.99)
         db.execute("COMMIT")

@@ -35,7 +35,7 @@ class TestProviderFor:
         try:
             assert provider_for("9783161484100") is sentinel
             # A prefix that only matches the shorter key still resolves.
-            assert provider_for("9783400000000") is dnb
+            assert provider_for("9783400000009") is dnb
         finally:
             del PREFIX_PROVIDERS["97831"]
 

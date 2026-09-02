@@ -100,7 +100,7 @@ class TestValuateItemEndpoint:
 
     def test_env_only_key_reaches_the_service(self, admin_client, db, monkeypatch):
         monkeypatch.setenv("ISBNDB_API_KEY", "env-only-isbndb-key")
-        item_id = _insert_item(db, title="Env Only Book", isbn="9780900000901")
+        item_id = _insert_item(db, title="Env Only Book", isbn="9789000009015")
         db.commit()
 
         stub = AsyncMock(return_value={"book": {}})
@@ -121,7 +121,7 @@ class TestValuateAllEndpoint:
 
     def test_env_only_key_reaches_the_service(self, admin_client, db, monkeypatch):
         monkeypatch.setenv("ISBNDB_API_KEY", "env-only-isbndb-key")
-        _insert_item(db, title="Env Only Book", isbn="9780900000902")
+        _insert_item(db, title="Env Only Book", isbn="9789000009022")
         db.commit()
 
         stub = AsyncMock(return_value={"book": {}})
@@ -142,7 +142,7 @@ class TestValuateStreamEndpoint:
 
     def test_env_only_key_first_event_is_not_missing_key(self, admin_client, db, monkeypatch):
         monkeypatch.setenv("ISBNDB_API_KEY", "env-only-isbndb-key")
-        _insert_item(db, title="Env Only Book", isbn="9780900000900")
+        _insert_item(db, title="Env Only Book", isbn="9789000009008")
         db.commit()
 
         stub = AsyncMock(return_value={"book": {}})
@@ -165,7 +165,7 @@ class TestHardcoverPushEndpoint:
 
     def test_env_only_token_reaches_the_service(self, admin_client, db, monkeypatch):
         monkeypatch.setenv("HARDCOVER_TOKEN", "env-only-hc-token")
-        item_id = _insert_item(db, title="Env Only Book", isbn="9780900000903")
+        item_id = _insert_item(db, title="Env Only Book", isbn="9789000009039")
         db.commit()
 
         stub = AsyncMock(return_value={

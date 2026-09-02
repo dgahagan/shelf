@@ -23,7 +23,7 @@ document.addEventListener('securitypolicyviolation', function(e) {
 
 
 def test_no_csp_violations_on_key_pages(live_server, browser, setup_admin):
-    item_id = insert_item(live_server["data_dir"], title="CSP Probe Book", isbn="9780000000301")
+    item_id = insert_item(live_server["data_dir"], title="CSP Probe Book", isbn="9780000003010")
 
     ctx = browser.new_context()
     page = attach_page_guard(ctx.new_page())

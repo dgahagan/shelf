@@ -476,7 +476,7 @@ def test_review_row_renders_isbn_media_type_and_recognized_marker(live_server, i
 def test_confirm_round_trip_sends_edits_and_persists_them(live_server, intake_page):
     # Row 1 is already in the library, so confirm skips it before any lookup.
     insert_item(live_server["data_dir"], title="E2E Read Book",
-                authors="Someone", isbn="9780000009901")
+                authors="Someone", isbn="9780000099013")
 
     _analyze(live_server, intake_page)
     rows = intake_page.locator("[data-testid=intake-row]")

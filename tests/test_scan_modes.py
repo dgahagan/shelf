@@ -13,10 +13,10 @@ class TestAddMode:
     """Default add mode — existing behavior, smoke tests."""
 
     def test_add_duplicate_returns_duplicate(self, admin_client, db):
-        item_id = _insert_item(db, title="Existing Book", isbn="9780000000001")
+        item_id = _insert_item(db, title="Existing Book", isbn="9780000000026")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000001", "media_type": "book", "mode": "add",
+            "isbn": "9780000000026", "media_type": "book", "mode": "add",
         })
         assert resp.status_code == 200
         assert b"duplicate" in resp.content
@@ -45,34 +45,34 @@ class TestWishlistMode:
 
 class TestLendMode:
     def test_lend_item(self, admin_client, db):
-        item_id = _insert_item(db, title="Lendable Book", isbn="9780000000010")
+        item_id = _insert_item(db, title="Lendable Book", isbn="9780000000125")
         borrower_id = _insert_borrower(db, "Alice")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000010", "mode": "lend", "borrower_id": str(borrower_id),
+            "isbn": "9780000000125", "mode": "lend", "borrower_id": str(borrower_id),
         })
         assert resp.status_code == 200
         assert b"checked_out" in resp.content or b"Lent to" in resp.content
         assert "HX-Trigger" not in resp.headers
 
     def test_lend_no_borrower(self, admin_client, db):
-        _insert_item(db, title="Book", isbn="9780000000011")
+        _insert_item(db, title="Book", isbn="9780000000132")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000011", "mode": "lend",
+            "isbn": "9780000000132", "mode": "lend",
         })
         assert resp.status_code == 200
         assert b"No borrower selected" in resp.content
 
     def test_lend_not_in_collection(self, admin_client):
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000099999", "mode": "lend", "borrower_id": "1",
+            "isbn": "9780000999993", "mode": "lend", "borrower_id": "1",
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content
 
     def test_lend_already_checked_out(self, admin_client, db):
-        item_id = _insert_item(db, title="Checked Out Book", isbn="9780000000012")
+        item_id = _insert_item(db, title="Checked Out Book", isbn="9780000000149")
         borrower_id = _insert_borrower(db, "Bob")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
@@ -80,7 +80,7 @@ class TestLendMode:
         )
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000012", "mode": "lend", "borrower_id": str(borrower_id),
+            "isbn": "9780000000149", "mode": "lend", "borrower_id": str(borrower_id),
         })
         assert resp.status_code == 200
         assert b"already_checked_out" in resp.content or b"Already lent" in resp.content
@@ -88,7 +88,7 @@ class TestLendMode:
 
 class TestReturnMode:
     def test_return_item(self, admin_client, db):
-        item_id = _insert_item(db, title="Return Me", isbn="9780000000020")
+        item_id = _insert_item(db, title="Return Me", isbn="9780000000217")
         borrower_id = _insert_borrower(db, "Carol")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
@@ -96,24 +96,24 @@ class TestReturnMode:
         )
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000020", "mode": "return",
+            "isbn": "9780000000217", "mode": "return",
         })
         assert resp.status_code == 200
         assert b"returned" in resp.content or b"Returned" in resp.content
         assert "HX-Trigger" not in resp.headers
 
     def test_return_not_checked_out(self, admin_client, db):
-        _insert_item(db, title="Home Book", isbn="9780000000021")
+        _insert_item(db, title="Home Book", isbn="9780000000248")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000021", "mode": "return",
+            "isbn": "9780000000248", "mode": "return",
         })
         assert resp.status_code == 200
         assert b"not_checked_out" in resp.content or b"Not currently checked out" in resp.content
 
     def test_return_not_in_collection(self, admin_client):
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000099998", "mode": "return",
+            "isbn": "9780000999986", "mode": "return",
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
@@ -122,10 +122,10 @@ class TestReturnMode:
 class TestMoveMode:
     def test_move_item(self, admin_client, db):
         loc_id = _insert_location(db, "Garage")
-        item_id = _insert_item(db, title="Moving Book", isbn="9780000000030")
+        item_id = _insert_item(db, title="Moving Book", isbn="9780000000309")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000030", "mode": "move", "location_id": str(loc_id),
+            "isbn": "9780000000309", "mode": "move", "location_id": str(loc_id),
         })
         assert resp.status_code == 200
         assert b"moved" in resp.content
@@ -137,10 +137,10 @@ class TestMoveMode:
         assert row["location_id"] == loc_id
 
     def test_move_no_location(self, admin_client, db):
-        _insert_item(db, title="Stuck Book", isbn="9780000000031")
+        _insert_item(db, title="Stuck Book", isbn="9780000000316")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000031", "mode": "move",
+            "isbn": "9780000000316", "mode": "move",
         })
         assert resp.status_code == 200
         assert b"No target location" in resp.content
@@ -149,7 +149,7 @@ class TestMoveMode:
         loc_id = _insert_location(db, "Office")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000099997", "mode": "move", "location_id": str(loc_id),
+            "isbn": "9780000999979", "mode": "move", "location_id": str(loc_id),
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
@@ -169,10 +169,10 @@ class TestInventoryMode:
     def test_inventory_relocates_item(self, admin_client, db):
         loc_a = _insert_location(db, "Shelf A")
         loc_b = _insert_location(db, "Shelf B")
-        item_id = _insert_item(db, title="Wrong Place", isbn="9780000000041", location_id=loc_a)
+        item_id = _insert_item(db, title="Wrong Place", isbn="9780000000415", location_id=loc_a)
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000041", "mode": "inventory", "location_id": str(loc_b),
+            "isbn": "9780000000415", "mode": "inventory", "location_id": str(loc_b),
         })
         assert resp.status_code == 200
         assert b"relocated" in resp.content
@@ -185,24 +185,24 @@ class TestInventoryMode:
         loc_id = _insert_location(db, "Shelf C")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000099996", "mode": "inventory", "location_id": str(loc_id),
+            "isbn": "9780000999962", "mode": "inventory", "location_id": str(loc_id),
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
 
     def test_inventory_no_location(self, admin_client, db):
-        _insert_item(db, title="Item", isbn="9780000000042")
+        _insert_item(db, title="Item", isbn="9780000000422")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000042", "mode": "inventory",
+            "isbn": "9780000000422", "mode": "inventory",
         })
         assert resp.status_code == 200
         assert b"No audit location" in resp.content
 
     def test_inventory_missing_endpoint(self, admin_client, db):
         loc_id = _insert_location(db, "Living Room")
-        item1 = _insert_item(db, title="Found", isbn="9780000000050", location_id=loc_id)
-        item2 = _insert_item(db, title="Missing", isbn="9780000000051", location_id=loc_id)
+        item1 = _insert_item(db, title="Found", isbn="9780000000507", location_id=loc_id)
+        item2 = _insert_item(db, title="Missing", isbn="9780000000514", location_id=loc_id)
         db.commit()
         resp = admin_client.post("/api/inventory/missing", data={
             "location_id": str(loc_id),
@@ -215,17 +215,17 @@ class TestInventoryMode:
 
 class TestLookupMode:
     def test_lookup_found(self, admin_client, db):
-        _insert_item(db, title="Found Book", isbn="9780000000060")
+        _insert_item(db, title="Found Book", isbn="9780000000606")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000060", "mode": "lookup",
+            "isbn": "9780000000606", "mode": "lookup",
         })
         assert resp.status_code == 200
         assert b"found" in resp.content
 
     def test_lookup_not_found(self, admin_client):
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000099995", "mode": "lookup",
+            "isbn": "9780000999955", "mode": "lookup",
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
@@ -233,10 +233,10 @@ class TestLookupMode:
 
 class TestQuickRateMode:
     def test_quick_rate_marks_as_read(self, admin_client, db):
-        item_id = _insert_item(db, title="Rate Me", isbn="9780000000070")
+        item_id = _insert_item(db, title="Rate Me", isbn="9780000000705")
         db.commit()
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000000070", "mode": "quick_rate",
+            "isbn": "9780000000705", "mode": "quick_rate",
         })
         assert resp.status_code == 200
         assert b"Marked as read" in resp.content
@@ -249,7 +249,7 @@ class TestQuickRateMode:
 
     def test_quick_rate_not_in_collection(self, admin_client):
         resp = admin_client.post("/api/scan", data={
-            "isbn": "9780000099994", "mode": "quick_rate",
+            "isbn": "9780000999948", "mode": "quick_rate",
         })
         assert resp.status_code == 200
         assert b"Not in your collection" in resp.content or b"not found" in resp.content
@@ -262,7 +262,7 @@ class TestGoogleBooksCredentialPropagation:
         with patch("app.routers.items_common._lookup_metadata", new=lookup), \
              patch("app.routers.items_common._fetch_preview_cover", new=AsyncMock(return_value=None)):
             admin_client.post("/api/scan", data={
-                "isbn": "9780000099986", "media_type": "book", "mode": "add",
+                "isbn": "9780000999863", "media_type": "book", "mode": "add",
             })
 
         assert lookup.await_args.kwargs["google_api_key"] == "scan-google-key"
@@ -272,7 +272,7 @@ class TestGoogleBooksCredentialPropagation:
         lookup = AsyncMock(return_value=(None, "manual", {}, provider_result.no_match("openlibrary")))
         with patch("app.routers.items_common._lookup_metadata", new=lookup):
             editor_client.post("/api/books/add", data={
-                "isbn": "9780000099979", "media_type": "book",
+                "isbn": "9780000999795", "media_type": "book",
             })
 
         assert lookup.await_args.kwargs["google_api_key"] == "add-google-key"
@@ -291,7 +291,7 @@ class TestManualAddForm:
             new=AsyncMock(return_value=None),
         ):
             return client.post("/api/scan", data={
-                "isbn": "9780000099993", "media_type": "book", "mode": "add",
+                "isbn": "9780000999931", "media_type": "book", "mode": "add",
             })
 
     def test_manual_form_has_copy_picker_and_new_fields(self, admin_client, db):
@@ -328,7 +328,7 @@ class TestRecentScans:
         # Insert scan_log entries for different modes
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode) VALUES (?, ?, ?, ?)",
-            ("9780000000001", "book", "added", "add"),
+            ("9780000000026", "book", "added", "add"),
         )
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode) VALUES (?, ?, ?, ?)",
@@ -338,7 +338,7 @@ class TestRecentScans:
 
         resp_add = admin_client.get("/api/recent-scans?mode=add")
         assert resp_add.status_code == 200
-        assert b"9780000000001" in resp_add.content
+        assert b"9780000000026" in resp_add.content
 
         resp_move = admin_client.get("/api/recent-scans?mode=move")
         assert resp_move.status_code == 200
@@ -394,7 +394,7 @@ class TestScanCoverQueue:
         from app.services import cover_queue
 
         metadata = {"title": "Polled Book", "authors": "A. Writer", "cover_id": 5}
-        resp, _ = self._scan(admin_client, "9780000000102", metadata)
+        resp, _ = self._scan(admin_client, "9780000001023", metadata)
         job = cover_queue._get_queue().get_nowait()
 
         html = resp.text
@@ -407,7 +407,7 @@ class TestScanCoverQueue:
 
         metadata = {"title": "HC Book", "authors": "A. Writer",
                     "cover_url": "https://hc.test/c.jpg"}
-        self._scan(admin_client, "9780000000103", metadata, source="hardcover")
+        self._scan(admin_client, "9780000001030", metadata, source="hardcover")
 
         job = cover_queue._get_queue().get_nowait()
         assert job.hints["cover_url"] is None
@@ -417,7 +417,7 @@ class TestScanCoverQueue:
         from app.services import cover_queue
 
         metadata = {"title": "Wanted Book", "authors": "A. Writer"}
-        resp, _ = self._scan(admin_client, "9780000000104", metadata, mode="wishlist")
+        resp, _ = self._scan(admin_client, "9780000001047", metadata, mode="wishlist")
         assert resp.status_code == 200
 
         job = cover_queue._get_queue().get_nowait()
@@ -430,7 +430,7 @@ class TestCoverStatusEndpoint:
 
     def test_cover_present_returns_the_image_and_stops_polling(self, admin_client, db):
         item_id = _insert_item(
-            db, title="Has Cover", isbn="9780000000110", cover_path="covers/7.jpg"
+            db, title="Has Cover", isbn="9780000001108", cover_path="covers/7.jpg"
         )
         db.commit()
         resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=1")
@@ -439,21 +439,21 @@ class TestCoverStatusEndpoint:
         assert "hx-get" not in resp.text
 
     def test_first_poll_schedules_the_second(self, admin_client, db):
-        item_id = _insert_item(db, title="Pending", isbn="9780000000111")
+        item_id = _insert_item(db, title="Pending", isbn="9780000001115")
         db.commit()
         resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=1")
         assert f'hx-get="/api/items/{item_id}/cover-status?attempt=2"' in resp.text
         assert "delay:3000ms" in resp.text
 
     def test_last_poll_settles(self, admin_client, db):
-        item_id = _insert_item(db, title="Pending", isbn="9780000000112")
+        item_id = _insert_item(db, title="Pending", isbn="9780000001122")
         db.commit()
         resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=2")
         assert "hx-get" not in resp.text
         assert "data-cover-settled" in resp.text
 
     def test_attempt_is_clamped(self, admin_client, db):
-        item_id = _insert_item(db, title="Pending", isbn="9780000000113")
+        item_id = _insert_item(db, title="Pending", isbn="9780000001139")
         db.commit()
         resp = admin_client.get(f"/api/items/{item_id}/cover-status?attempt=99")
         assert resp.status_code == 200
@@ -468,13 +468,13 @@ class TestCoverStatusEndpoint:
         assert "data-cover-settled" in resp.text
 
     def test_viewer_may_read_it(self, viewer_client, db):
-        item_id = _insert_item(db, title="Pending", isbn="9780000000114")
+        item_id = _insert_item(db, title="Pending", isbn="9780000001146")
         db.commit()
         resp = viewer_client.get(f"/api/items/{item_id}/cover-status")
         assert resp.status_code == 200
 
     def test_unauthenticated_is_redirected(self, client, db):
-        item_id = _insert_item(db, title="Pending", isbn="9780000000115")
+        item_id = _insert_item(db, title="Pending", isbn="9780000001153")
         db.commit()
         resp = client.get(
             f"/api/items/{item_id}/cover-status", follow_redirects=False
@@ -566,3 +566,94 @@ class TestTheBarcodeOutranksTheDropdown:
             "SELECT COUNT(*) c FROM items WHERE isbn = ?", (self.ISBN,)
         ).fetchone()["c"]
         assert count == 1
+
+
+class TestAddModeChecksTheDigit:
+    """#54 on the scan card. The check sits *before* the lookup, so the
+    mutation-sensitive assertion is "the lookup was not called" — the funnel
+    would still refuse the row, so the card alone is not a sufficient pin."""
+
+    BAD = "9780441172710"
+
+    def _scan(self, client, mode, **extra):
+        with patch("app.routers.items_common._lookup_metadata", new=AsyncMock()) as lookup:
+            resp = client.post("/api/scan", data={
+                "isbn": self.BAD, "media_type": "book", "mode": mode, **extra,
+            })
+        return resp, lookup
+
+    @pytest.mark.parametrize("mode", ["add", "wishlist"])
+    def test_bad_digit_is_refused_before_the_lookup(self, admin_client, db, mode):
+        resp, lookup = self._scan(admin_client, mode)
+        assert resp.status_code == 200
+        assert "data-scan-error" in resp.text
+        assert "Invalid ISBN" in resp.text
+        lookup.assert_not_awaited()
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0
+        log = db.execute(
+            "SELECT result FROM scan_log ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        assert log["result"] == "error"
+
+    def test_lookup_mode_still_finds_a_row_with_a_bad_isbn(self, admin_client, db):
+        """Control: `to_isbn13` stays permissive, so an old row whose stored
+        ISBN fails the checksum is still found by the existing-item modes."""
+        _insert_item(db, title="Legacy Bad ISBN", isbn=self.BAD)
+        db.commit()
+        resp = admin_client.post("/api/scan", data={
+            "isbn": self.BAD, "media_type": "book", "mode": "lookup",
+        })
+        assert resp.status_code == 200
+        assert "Legacy Bad ISBN" in resp.text
+
+    def test_stale_location_is_refused_before_the_lookup(self, admin_client, db):
+        loc_id = _insert_location(db, name="Gone")
+        db.execute("DELETE FROM locations WHERE id = ?", (loc_id,))
+        db.commit()
+        with patch("app.routers.items_common._lookup_metadata", new=AsyncMock()) as lookup:
+            resp = admin_client.post("/api/scan", data={
+                "isbn": "9780547928227", "media_type": "book", "mode": "add",
+                "location_id": str(loc_id),
+            })
+        assert resp.status_code == 200
+        assert "data-scan-error" in resp.text
+        assert f"Location {loc_id} not found" in resp.text
+        lookup.assert_not_awaited()
+        assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0
+
+
+class TestMoveAndInventoryRefuseAStaleLocation:
+    """A deleted location used to be a foreign-key 500 on the move and
+    inventory writes; both are the `error` card now (#54)."""
+
+    def _gone(self, db):
+        loc_id = _insert_location(db, name="Gone")
+        db.execute("DELETE FROM locations WHERE id = ?", (loc_id,))
+        return loc_id
+
+    def test_move_to_a_deleted_location_renders_the_error_card(self, admin_client, db):
+        here = _insert_location(db, name="Here")
+        item_id = _insert_item(db, title="Movable", isbn="9780000000026", location_id=here)
+        gone = self._gone(db)
+        db.commit()
+        resp = admin_client.post("/api/scan", data={
+            "isbn": "9780000000026", "media_type": "book", "mode": "move",
+            "location_id": str(gone),
+        })
+        assert resp.status_code == 200
+        assert "data-scan-error" in resp.text
+        assert f"Location {gone} not found" in resp.text
+        assert db.execute("SELECT location_id FROM items WHERE id = ?", (item_id,)).fetchone()["location_id"] == here
+
+    def test_inventory_relocate_to_a_deleted_location_renders_the_error_card(self, admin_client, db):
+        here = _insert_location(db, name="Here")
+        item_id = _insert_item(db, title="Audited", isbn="9780000000026", location_id=here)
+        gone = self._gone(db)
+        db.commit()
+        resp = admin_client.post("/api/scan", data={
+            "isbn": "9780000000026", "media_type": "book", "mode": "inventory",
+            "location_id": str(gone),
+        })
+        assert resp.status_code == 200
+        assert "data-scan-error" in resp.text
+        assert db.execute("SELECT location_id FROM items WHERE id = ?", (item_id,)).fetchone()["location_id"] == here

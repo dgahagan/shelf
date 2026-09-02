@@ -164,13 +164,15 @@ a real detection. It reads the
 raw title, never a `search_queries` rung: the ladder strips exactly the
 markers tier 2 matches on.
 
-`media_type` is validated at the route boundary rather than at the save
-layer, because `insert_item` validates field *names* and not values and the
-column carries no `CHECK`. `items_common.is_valid_media_type()` is the single
-guard, called from `/api/items/manual`, `/api/books/add` and
-`/api/title-search`; `/api/intake/confirm` validates through its Pydantic
-model. CSV and archive import do **not** validate, which is a known gap
-rather than an oversight — no `auto` value can arrive through either.
+The resolved `media_type` — like every other value an item row carries — is
+checked once, at the save layer: `item_write.validate_item_fields()` refuses
+an unknown media type on every insert and on every user-facing update, CSV
+and archive import included (see "Writing items" below). Routes keep no copy
+of that check. `items_common.is_valid_media_type()` survives only as the
+`auto` guard on the two boundaries that do provider work *before* the
+insert, `/api/title-search` and `/api/books/add`: `auto` is a scan-form
+option, never a stored type, and a lookup must not be paid for on its
+behalf.
 
 A retail title is not a search query —
 `Goodfellas [DVD]  Feature Thriller Drama …` matches nothing — so the same
@@ -482,7 +484,13 @@ inner scroll container does not affect.
 
 Store Mode is a PWA: a service worker precaches the
 store page and the library ISBN set lives in the browser; unknown scans
-queue locally and flush via `/api/store/queue`. Precaching is cache-first, so
+queue locally and flush via `/api/store/queue`. The flush route's invariant is
+that **a queued scan is never lost**: the client removes a flushed code from
+its queue on the response, so a bare refusal would destroy the scan. A code
+that fails the value stage is therefore saved the same way a failed metadata
+lookup is — a bare wishlist row with `isbn` NULL and the raw code (bounded to
+32 characters) in the title — and returned as `unreadable` for the page to
+count. Precaching is cache-first, so
 the cache name has to change whenever a precached file does — `SW_VERSION` is
 generated from a digest of the precache contents by `make css` rather than
 typed by hand (see `docs/development.md` § Service worker versioning).
@@ -510,6 +518,54 @@ the live table rather than carrying its own copy, raises on an unknown field
 instead of dropping it, and leaves unset columns to their `SCHEMA` defaults.
 Callers pass their own connection so the insert and any follow-up writes share
 one transaction.
+
+Field names were the first invariant; **values are the second.** The same
+module holds the one value stage, `validate_item_fields()`, and every write
+runs it: `insert_item()`, and the two update funnels that carry every
+user-supplied edit — `update_item_fields()` for one row (the edit form, the
+scan card's move / inventory / quick-rate modes, reading status, CSV's
+reading-tracker update, the syncs) and `update_items_fields()` for bulk edit.
+The rules, enforced once: an ISBN must pass its check digit, and setting
+either ISBN column rewrites **both** from the canonical 13/10 pair
+(`isbn.canonical_isbn_pair`, a 979 has no ISBN-10); `media_type` must be a
+`MEDIA_TYPES` key; a `location_id` must exist; a `platform` must be a
+configured game platform; `reading_status` is one of `want_to_read`,
+`reading`, `read`; `owned` is 0 or 1. A field an update does not carry is not
+validated, so touching `notes` never reads `isbn`.
+
+A failed rule raises a typed subclass of `ItemValueError` (a `ValueError`,
+defined in `services/write_targets.py` so the pre-existing
+`UnknownLocationError` can sit under it): `InvalidIsbn`, `UnknownMediaType`,
+`UnknownLocationError`, `UnknownPlatform`, `InvalidReadingStatus`,
+`InvalidOwned`. Each carries a stable `code` and the `field` it belongs to;
+the message is the sentence a user reads. Routes reduce to one
+`except ItemValueError` and render it on their own surface — the scan card's
+error arm, the edit form's `?error=<code>` banner (copy lives in the
+template, keyed on the code), a `{"ok": false, "message": …}` body, a
+per-row `errors` line on CSV import. Two provider-backed boundaries also
+check the ISBN digit and the location *before* their lookup (`/api/scan`'s
+add mode, `/api/books/add`), so a mistyped value never costs a network call;
+lookup modes keep the permissive `to_isbn13`, so an old row whose stored
+ISBN fails the check is still found by a scan.
+
+**A user's value is refused; a provider's is dropped.** The funnel is strict
+in both cases. A value typed into a form, a CSV row, or the store queue is
+refused with its message. An ISBN that arrives from a provider — an
+Audiobookshelf record, a Hardcover edition, an Open Library title-search hit,
+a row in a portable archive — is pre-cleaned at the call site with
+`canonical_isbn_pair()` and stored as `NULL` when it fails, with a warning in
+the log (and, for an archive, a line in the import's error report), because a
+sync or a restore that refuses a whole row over a bad ISBN loses data. The
+visible consequence: Audiobookshelf ASINs are no longer stored in `isbn`, and
+a row that carried one from an earlier sync is cleared on the next.
+
+The rule is pinned structurally. `tests/test_item_write.py` requires that
+`INSERT INTO items` exists only in `item_write.py`, and that every raw
+`UPDATE items SET` outside it matches an allowlist of system-managed writes
+(`cover_path`, `estimated_value`, the Hardcover ids, the `location_id = NULL`
+and `platform = NULL` cascades, the name-keyed series rename, three
+migrations) — a new user-value write anywhere else fails the suite, and so
+does a stale allowlist entry.
 
 ## Security posture
 

@@ -19,6 +19,11 @@ Hardcover, and the **Discover** tab (recommendations).
 Hardcover card. Choose a sync schedule for reading status; run **Import
 library** once if you have history there.
 
+An ISBN that arrives from Hardcover — or from an Open Library title search —
+and fails its check digit is dropped rather than stored, with a line in the
+server log naming it. The item is still added; it just arrives without an
+ISBN, and you can type the right one into **Edit**.
+
 ## Audiobookshelf
 
 [audiobookshelf.org](https://www.audiobookshelf.org) — self-hosted
@@ -41,6 +46,13 @@ ISBN you had already catalogued by hand in the same format is adopted and
 linked rather than added a second time; a duplicate of the same ISBN inside
 ABS is skipped with a reason. If one library times out, the others still sync
 and the timeout is reported for that library alone.
+
+An ABS item that has only an ASIN (no ISBN) syncs **without** an ISBN —
+an ASIN isn't one, and storing it there broke the edit form and the
+duplicate checks. A row that got an ASIN in its ISBN field from an earlier
+sync is cleared on the next sync and counted under **Updated**. An item
+whose ISBN in ABS fails its check digit is treated the same way, with a line
+in the server log naming it.
 
 A scan that comes back thin tells you **on the card** which of five things
 happened: no credential configured, a credential the provider rejected, a

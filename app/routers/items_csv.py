@@ -19,7 +19,7 @@ from app.database import get_db
 from app.routers import items_common
 from app.services import cover_queue
 from app.services import isbn as isbn_svc
-from app.services.item_write import insert_item
+from app.services.item_write import ItemValueError, insert_item, update_item_fields
 
 logger = logging.getLogger(__name__)
 
@@ -175,12 +175,15 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                     # for reading-tracker imports
                     _update_from_csv_row(db, existing["id"], norm)
                     if fmt != reading_imports.GENERIC:
-                        db.execute(
-                            "UPDATE items SET reading_status = COALESCE(?, reading_status), "
-                            "date_finished = COALESCE(?, date_finished), owned = ?, "
-                            "updated_at = datetime('now') WHERE id = ?",
-                            (norm["reading_status"], norm["date_finished"], int(owned), existing["id"]),
-                        )
+                        # COALESCE semantics: only touch reading_status /
+                        # date_finished when this row actually carries one;
+                        # owned is always authoritative from the row.
+                        tracker_fields = {"owned": int(owned)}
+                        if norm["reading_status"] is not None:
+                            tracker_fields["reading_status"] = norm["reading_status"]
+                        if norm["date_finished"] is not None:
+                            tracker_fields["date_finished"] = norm["date_finished"]
+                        update_item_fields(db, existing["id"], tracker_fields)
                     imported += 1
                     continue
 
@@ -206,6 +209,8 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                 if isbn_val:
                     new_item_ids.append(new_id)
                 imported += 1
+            except ItemValueError as e:
+                errors.append(f"Row {i}: {e}")
             except Exception as e:
                 errors.append(f"Row {i}: {e}")
 
@@ -220,7 +225,10 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     return {
         "imported": imported,
         "skipped": skipped,
+        # `errors` is capped for the wire; `error_count` is the true total, so
+        # the UI can list twenty of thirty-seven and still say thirty-seven.
         "errors": errors[:20],
+        "error_count": len(errors),
         "format": fmt,
         "covers_queued": covers_queued,
     }
@@ -243,8 +251,4 @@ def _update_from_csv_row(db, item_id: int, row: dict):
             else:
                 updates[db_key] = val
     if updates:
-        set_clause = ", ".join(f"{k} = ?" for k in updates)
-        db.execute(
-            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-            list(updates.values()) + [item_id],
-        )
+        update_item_fields(db, item_id, updates)

@@ -373,7 +373,7 @@ def test_scan_cover_poll_settles_after_two_attempts(live_server, authed_page):
     data_dir = live_server["data_dir"]
     url = live_server["url"]
 
-    item_id = insert_item(data_dir, title="Poll Settles", isbn="9780000007002")
+    item_id = insert_item(data_dir, title="Poll Settles", isbn="9780000070029")
 
     fragment = authed_page.request.get(
         f"{url}/api/items/{item_id}/cover-status?attempt=0"
@@ -1144,12 +1144,12 @@ def test_a_typed_move_scan_raises_exactly_one_toast_naming_the_destination(
     dest_id = _insert_location(data_dir, "Toast Destination Shelf")
     insert_item(
         data_dir, title="Toast Move Subject", media_type="book",
-        isbn="9780000045001",
+        isbn="9780000450012",
     )
 
     _open_scan_in_mode(authed_page, live_server, "Move")
     authed_page.select_option("#location", str(dest_id))
-    authed_page.fill("#isbn-input", "9780000045001")
+    authed_page.fill("#isbn-input", "9780000450012")
     authed_page.press("#isbn-input", "Enter")
 
     toast = authed_page.locator("#toast-container > div").first
@@ -1170,14 +1170,14 @@ def test_a_typed_lend_scan_raises_exactly_one_toast_naming_the_borrower(
     _insert_borrower(data_dir, "Toast Borrower Bea")
     insert_item(
         data_dir, title="Toast Lend Subject", media_type="book",
-        isbn="9780000045002",
+        isbn="9780000450029",
     )
 
     _open_scan_in_mode(authed_page, live_server, "Lend")
     authed_page.select_option(
         "select[name=borrower_id]", label="Toast Borrower Bea"
     )
-    authed_page.fill("#isbn-input", "9780000045002")
+    authed_page.fill("#isbn-input", "9780000450029")
     authed_page.press("#isbn-input", "Enter")
 
     toast = authed_page.locator("#toast-container > div").first

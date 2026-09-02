@@ -119,7 +119,7 @@ class TestDnbLookup:
             return_value=httpx.Response(200, text=_fixture("dnb_sru_nohit.xml"))
         )
         async with httpx.AsyncClient() as client:
-            result = await dnb.lookup("9783000000000", client)
+            result = await dnb.lookup("9780000000156", client)
         assert result.outcome == "no_match"
 
     @respx.mock
@@ -165,6 +165,6 @@ class TestDnbLookup:
             return_value=httpx.Response(200, text=_fixture("dnb_sru_nohit.xml"))
         )
         async with httpx.AsyncClient() as client:
-            await dnb.lookup("9783000000000", client)
+            await dnb.lookup("9780000000156", client)
 
         assert calls == [1]

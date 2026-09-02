@@ -29,5 +29,7 @@ def test_manual_add_rejects_unknown_platform_without_inserting(editor_client, db
     )
 
     assert response.status_code == 200
-    assert "Unrecognised game platform" in response.text
+    # The route's own check is gone; the funnel names the platform (#54).
+    assert "Unknown game platform" in response.text
+    assert "not-a-real-platform" in response.text
     assert _item_count(db, title="Bad Platform Manual") == 0

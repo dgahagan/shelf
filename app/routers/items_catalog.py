@@ -20,7 +20,7 @@ from app.routers import items_common
 from app.services import covers, igdb, openlibrary, scan_outcome, tmdb
 from app.services import isbn as isbn_svc
 from app.services import upc as upc_svc
-from app.services.item_write import insert_item
+from app.services.item_write import ItemValueError, insert_item, validated_location_id
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,9 @@ async def add_game_from_search(
             {"status": "error", "isbn": "", "message": "Failed to fetch game details from IGDB"},
         )
 
-    loc_id = location_id if location_id and location_id > 0 else None
+    # The funnel's own <=0-is-no-location rule applies on write; no need to
+    # pre-map the sentinel here (#54).
+    loc_id = location_id
 
     with get_db() as db:
         # Check duplicate by title + platform
@@ -120,18 +122,31 @@ async def add_game_from_search(
             {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
         )
 
+    # location_id is the funnel's to check (#54): insert_item raises
+    # ItemValueError and the card carries its message. Rendered after the
+    # block so nothing runs under the write.
+    value_error = None
     with get_db() as db:
-        item_id = insert_item(
-            db,
-            title=metadata["title"],
-            description=metadata.get("description"),
-            media_type="video_game",
-            publisher=metadata.get("publisher"),
-            publish_year=metadata.get("publish_year"),
-            series_name=metadata.get("series_name"),
-            platform=platform_val,
-            location_id=loc_id,
-            source="igdb",
+        try:
+            item_id = insert_item(
+                db,
+                title=metadata["title"],
+                description=metadata.get("description"),
+                media_type="video_game",
+                publisher=metadata.get("publisher"),
+                publish_year=metadata.get("publish_year"),
+                series_name=metadata.get("series_name"),
+                platform=platform_val,
+                location_id=loc_id,
+                source="igdb",
+            )
+        except ItemValueError as e:
+            value_error = str(e)
+
+    if value_error:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": "", "message": value_error},
         )
 
     # Download cover
@@ -174,7 +189,7 @@ async def title_search(
         return await search_games(request, q=q, platform=platform, _=_)
     if media_type == "dvd":
         return await search_dvds(request, q=q, _=_)
-    # Guard 1 of 3. `scan.html`'s hx-include carries #media-type here, so once
+    # The `auto` guard. `scan.html`'s hx-include carries #media-type here, so once
     # Auto is in that picker this route receives `auto` — and there is no
     # barcode on this path, so `auto` has nothing to mean. Resolve it (and any
     # other out-of-set value) to a concrete type *before* dispatching, so the
@@ -223,27 +238,40 @@ async def add_book_from_search(
 ):
     """Add a book to the collection from a title search result (by ISBN)."""
     templates = request.app.state.templates
-    # Guard 2 of 3 — the route boundary, where the value guard belongs. The
-    # save layer cannot do it, so nothing below here would.
+    # The `auto` guard, kept in front of the lookup below so a bad value never
+    # costs a provider call; the funnel checks the value again on the save.
     if not items_common.is_valid_media_type(media_type):
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn.strip(),
              "message": "Unrecognised media type — pick one and try again"},
         )
+    # Check digit before the lookup, as `/api/scan`'s add branch does (#54).
     isbn13 = isbn_svc.to_isbn13(isbn.strip())
-    if not isbn13:
+    pair = isbn_svc.canonical_isbn_pair(isbn13) if isbn13 else None
+    if pair is None:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
         )
+    isbn13 = pair[0]
 
-    # Check duplicate
+    # Check duplicate, and refuse a stale location before the lookup too.
+    location_error = None
     with get_db() as db:
+        try:
+            location_id = validated_location_id(db, location_id)
+        except ItemValueError as e:
+            location_error = str(e)
         existing = db.execute(
             "SELECT id, title FROM items WHERE isbn = ? AND media_type = ?",
             (isbn13, media_type),
         ).fetchone()
+    if location_error:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn13, "message": location_error},
+        )
     if existing:
         items_common._log_scan(isbn13, media_type, "duplicate", existing["id"])
         return templates.TemplateResponse(
@@ -362,7 +390,9 @@ async def add_dvd_from_search(
     else:
         year = None
 
-    loc_id = location_id if location_id and location_id > 0 else None
+    # The funnel's own <=0-is-no-location rule applies on write; no need to
+    # pre-map the sentinel here (#54).
+    loc_id = location_id
 
     # Check duplicate by title
     with get_db() as db:
@@ -377,15 +407,28 @@ async def add_dvd_from_search(
             {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
         )
 
+    # location_id is the funnel's to check (#54): insert_item raises
+    # ItemValueError and the card carries its message. Rendered after the
+    # block so nothing runs under the write.
+    value_error = None
     with get_db() as db:
-        item_id = insert_item(
-            db,
-            title=title,
-            description=description or None,
-            media_type="dvd",
-            publish_year=year,
-            location_id=loc_id,
-            source="tmdb",
+        try:
+            item_id = insert_item(
+                db,
+                title=title,
+                description=description or None,
+                media_type="dvd",
+                publish_year=year,
+                location_id=loc_id,
+                source="tmdb",
+            )
+        except ItemValueError as e:
+            value_error = str(e)
+
+    if value_error:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": "", "message": value_error},
         )
 
     # Download cover

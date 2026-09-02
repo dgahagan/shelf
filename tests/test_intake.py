@@ -629,11 +629,11 @@ class TestAnalyzeEndpoint:
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [
             {
                 "title": "Die Verwandlung", "author_name": ["Franz Kafka"],
-                "isbn": ["9780000000016"], "language": ["eng"],
+                "isbn": ["9780000000163"], "language": ["eng"],
             },
             {
                 "title": "Die Verwandlung", "author_name": ["Franz Kafka"],
-                "isbn": ["9783150000010"], "language": ["ger"],
+                "isbn": ["9781500000103"], "language": ["ger"],
             },
         ]}))
         resp = admin_client.post("/api/intake/confirm", json={
@@ -641,7 +641,7 @@ class TestAnalyzeEndpoint:
         })
         assert resp.json()["ok"] is True
         row = db.execute("SELECT isbn, language FROM items WHERE title = 'Die Verwandlung'").fetchone()
-        assert row["isbn"] == "9783150000010"
+        assert row["isbn"] == "9781500000103"
         assert row["language"] == "de"
 
     def test_viewer_forbidden(self, viewer_client):
@@ -1186,6 +1186,60 @@ class TestConfirmWithIsbn:
         assert data["skipped"][0]["reason"] == "ISBN already in library"
         assert db.execute(
             "SELECT COUNT(*) c FROM items WHERE isbn = ?", (ISBN13,)).fetchone()["c"] == 1
+
+    @respx.mock
+    def test_weak_path_bad_check_digit_isbn_is_dropped_and_batch_continues(
+            self, admin_client, db, monkeypatch, caplog):
+        """A weak-path (Open Library search) ISBN is a provider value —
+        pre-cleaned, dropped on a bad check digit, never refused (#54). The
+        second book (its own strong-path printed ISBN) still lands."""
+        _patch_lookup(monkeypatch, result=(None, "manual", {}, False))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
+            "title": "Dune", "author_name": ["Frank Herbert"],
+            "isbn": ["9780441172710"],
+        }]}))
+        with caplog.at_level("INFO"):
+            resp = admin_client.post("/api/intake/confirm", json={
+                "books": [
+                    {"title": "Dune", "authors": "Frank Herbert"},
+                    {"title": "Solaris", "isbn": "9780156027601"},
+                ],
+            })
+        data = resp.json()
+        assert [a["title"] for a in data["added"]] == ["Dune", "Solaris"]
+
+        row = db.execute(
+            "SELECT isbn, isbn10 FROM items WHERE title = 'Dune'").fetchone()
+        assert row["isbn"] is None and row["isbn10"] is None
+        assert "9780441172710" in caplog.text
+
+    @respx.mock
+    def test_save_item_value_error_is_skipped_and_batch_continues(
+            self, admin_client, db, monkeypatch):
+        """No real path reaches `except ItemValueError` in `confirm_books`
+        today (G47) — `_confirm_one` boundary-checks location before any
+        outbound call, and everything else it passes to `_save_item` /
+        `insert_item` is already known-good by the time it gets there. Force
+        the arm by making `_save_item` raise, and confirm the batch survives
+        it rather than 500ing."""
+        from app.routers import items_common
+        from app.services.item_write import InvalidIsbn
+
+        _patch_lookup(monkeypatch, result=(FULL_META, "openlibrary", HC_IDS, False))
+        respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
+
+        def boom(*args, **kwargs):
+            raise InvalidIsbn("Invalid ISBN: x")
+        monkeypatch.setattr(items_common, "_save_item", boom)
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "isbn": ISBN13}, {"title": "Solaris"}],
+        })
+        data = resp.json()
+        assert data["skipped"] == [{"title": "Dune", "reason": "Invalid ISBN: x"}]
+        assert [a["title"] for a in data["added"]] == ["Solaris"]
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Dune'").fetchone()["c"] == 0
 
 
 class TestIntakePage:

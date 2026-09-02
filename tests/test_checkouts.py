@@ -36,7 +36,7 @@ class TestBorrowers:
 
     def test_delete_borrower_with_active_checkout_blocked(self, admin_client, db):
         bid = _insert_borrower(db, "Dan")
-        item_id = _insert_item(db, title="Book", isbn="9780000000100")
+        item_id = _insert_item(db, title="Book", isbn="9780000001009")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
             (item_id, bid),
@@ -73,7 +73,7 @@ class TestBorrowers:
 
     def test_delete_borrower_history_is_scoped(self, admin_client, db):
         """Only the deleted borrower's rows go — a co-borrower on the same item stays."""
-        item_id = _insert_item(db, title="Shared Book", isbn="9780000000102")
+        item_id = _insert_item(db, title="Shared Book", isbn="9780000001023")
         a_id = _insert_borrower(db, "Aaron")
         b_id = _insert_borrower(db, "Bianca")
         for borrower_id in (a_id, b_id):
@@ -110,7 +110,7 @@ class TestBorrowers:
         import app.routers.checkouts as checkouts_mod
 
         bid = _insert_borrower(db, "Frida")
-        _insert_item(db, title="Lockable", isbn="9780000000103")
+        _insert_item(db, title="Lockable", isbn="9780000001030")
         db.commit()
 
         probe_results = []
@@ -160,7 +160,7 @@ class TestBorrowers:
         import app.routers.checkouts as checkouts_mod
 
         bid = _insert_borrower(db, "Gus")
-        item_id = _insert_item(db, title="Rollback Book", isbn="9780000000104")
+        item_id = _insert_item(db, title="Rollback Book", isbn="9780000001047")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out, checked_in) "
             "VALUES (?, ?, datetime('now'), datetime('now'))",
@@ -204,7 +204,7 @@ class TestBorrowers:
 
 class TestCheckout:
     def test_checkout_item(self, admin_client, db):
-        item_id = _insert_item(db, title="Checkout Book", isbn="9780000000110")
+        item_id = _insert_item(db, title="Checkout Book", isbn="9780000001108")
         bid = _insert_borrower(db, "Eve")
         db.commit()
         resp = admin_client.post(f"/api/items/{item_id}/checkout", data={
@@ -224,7 +224,7 @@ class TestCheckout:
         assert checkout["notes"] == "Be careful"
 
     def test_checkout_already_checked_out(self, admin_client, db):
-        item_id = _insert_item(db, title="Already Out", isbn="9780000000111")
+        item_id = _insert_item(db, title="Already Out", isbn="9780000001115")
         bid = _insert_borrower(db, "Frank")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
@@ -240,7 +240,7 @@ class TestCheckout:
 
 class TestCheckin:
     def test_checkin_item(self, admin_client, db):
-        item_id = _insert_item(db, title="Return Book", isbn="9780000000120")
+        item_id = _insert_item(db, title="Return Book", isbn="9780000001207")
         bid = _insert_borrower(db, "Grace")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
@@ -270,7 +270,7 @@ class TestOverdue:
         assert resp.json() == []
 
     def test_overdue_list_with_overdue_items(self, admin_client, db):
-        item_id = _insert_item(db, title="Overdue Book", isbn="9780000000130")
+        item_id = _insert_item(db, title="Overdue Book", isbn="9780000001306")
         bid = _insert_borrower(db, "Hank")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out, due_date) VALUES (?, ?, datetime('now', '-30 days'), date('now', '-1 day'))",

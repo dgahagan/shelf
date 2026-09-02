@@ -36,6 +36,13 @@ Queued unknowns are looked up and **added to your wishlist** (with metadata
 and cover) the next time you open the page online. Nothing is lost if you
 close the tab; the queue lives in the browser.
 
+A barcode the scanner misreads is kept too. If a queued code fails its check
+digit it can't be looked up, so instead of dropping it Shelf saves a wishlist
+row titled **Unreadable barcode — <code>** with no ISBN, and the sync line
+says how many couldn't be read. Open that row later and type the right ISBN
+into **Edit**. Scanning the same bad barcode again matches the row it already
+made rather than queueing a second one.
+
 ### Installing it as an app
 
 On the store page use the browser's **Add to Home Screen**. It then launches

@@ -300,7 +300,7 @@ def wide_item(live_server):
     return insert_item(
         live_server["data_dir"],
         title="A Deliberately Long Title For Measuring Layout Overflow",
-        isbn="9780000000401",
+        isbn="9780000004017",
         authors="Ann Author, Bee Coauthor",
         series_name="The Very Long Series Name For Measurement",
         series_position=1,

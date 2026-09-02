@@ -27,8 +27,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app import config
+from app.services import isbn as isbn_svc
 from app.services.covers import MAX_COVER_SIZE, MIN_COVER_SIZE, _looks_like_image
-from app.services.item_write import insert_item
+from app.services.item_write import insert_item, update_item_fields
 
 logger = logging.getLogger(__name__)
 
@@ -574,7 +575,8 @@ def _apply_item_update(db, item_id: int, item: dict, loc_id: int | None) -> None
     mirroring _update_from_csv_row's only-overwrite-with-a-nonempty-value
     discipline (app/routers/items.py), extended to the archive's wider
     column set. created_at is never touched here; updated_at always stamps
-    to now, even when nothing else changed."""
+    to now, even when nothing else changed (update_item_fields does that
+    with an empty `updates` dict — a bare touch)."""
     updates: dict[str, object] = {}
     for col in _ITEM_COLUMNS:
         if col in ("created_at", "updated_at"):
@@ -586,14 +588,7 @@ def _apply_item_update(db, item_id: int, item: dict, loc_id: int | None) -> None
             updates[col] = val
     if loc_id is not None:
         updates["location_id"] = loc_id
-    if not updates:
-        db.execute("UPDATE items SET updated_at = datetime('now') WHERE id = ?", (item_id,))
-        return
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
-    db.execute(
-        f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-        list(updates.values()) + [item_id],
-    )
+    update_item_fields(db, item_id, updates)
 
 
 def _has_local_cover(item_id: int) -> bool:
@@ -744,7 +739,12 @@ def plan_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
             if not title:
                 errors.append(f"Archive item {ref}: missing title")
                 continue
-            isbn_val = (item.get("isbn") or "").strip() or None
+            # The same pre-clean apply_plan uses, so plan and apply dedupe on
+            # the same value: a bad-ISBN row matches by title in both stages
+            # rather than planning `create` and applying `update` (drift).
+            raw_isbn = (item.get("isbn") or "").strip() or None
+            isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
+            isbn_val = isbn_pair[0] if isbn_pair else None
             media = (item.get("media_type") or "book").strip() or "book"
             authors = item.get("authors")
             cover_arcname = item.get("cover")
@@ -993,7 +993,16 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                 drifted += 1
                 continue
 
-            isbn_val = (item.get("isbn") or "").strip() or None
+            # A provider value (the exporting instance's own items.isbn), not
+            # something the user is typing here — pre-cleaned per #54 rather
+            # than refused: a bad check digit (or, on an older export, an ABS
+            # ASIN that predates the audiobookshelf.py pre-clean) is dropped
+            # and recorded in `errors`, but the row is still imported. G27:
+            # a "recovery" that silently drops a row over one bad field is
+            # the trap an archive restore must not fall into.
+            raw_isbn = (item.get("isbn") or "").strip() or None
+            isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
+            isbn_val, isbn10_val = isbn_pair or (None, None)
             media = (item.get("media_type") or "book").strip() or "book"
             authors = item.get("authors")
 
@@ -1034,6 +1043,11 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
             item_norm = dict(item)
             item_norm["title"] = title
             item_norm["isbn"] = isbn_val
+            # Always the cleaned pair's second element (None on a dropped or
+            # 979 ISBN) — never the archive's raw isbn10 verbatim, which
+            # could otherwise disagree with the cleaned isbn and trip the
+            # funnel's own check digit validation on isbn10 alone.
+            item_norm["isbn10"] = isbn10_val
             item_norm["media_type"] = media
             item_norm["source"] = item.get("source") or "manual"
             # owned is NOT NULL DEFAULT 1 on the items table; 0 is a real
@@ -1047,6 +1061,12 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
             if verdict == "skip":
                 skipped += 1
                 continue
+
+            if raw_isbn and isbn_val is None:
+                errors.append(
+                    f"Archive item {archive_id} ({title!r}): imported without "
+                    f"its ISBN — {raw_isbn!r} is not a valid ISBN"
+                )
 
             if existing:
                 real_id = existing["id"]

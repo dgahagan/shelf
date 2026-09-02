@@ -33,8 +33,8 @@ class TestTagEndpoints:
         assert row["name"] == "signed"
 
     def test_add_reuses_existing_tag_case_insensitive(self, admin_client, db):
-        a = _insert_item(db, isbn="9780900000401")
-        b = _insert_item(db, isbn="9780900000418")
+        a = _insert_item(db, isbn="9789000004010")
+        b = _insert_item(db, isbn="9789000004188")
         db.execute("COMMIT")
         _add_tag(admin_client, a, "Signed")
         _add_tag(admin_client, b, "signed")
@@ -71,8 +71,8 @@ class TestTagEndpoints:
         assert db.execute("SELECT COUNT(*) as c FROM tags").fetchone()["c"] == 0
 
     def test_remove_keeps_shared_tag(self, admin_client, db):
-        a = _insert_item(db, isbn="9780900000425")
-        b = _insert_item(db, isbn="9780900000432")
+        a = _insert_item(db, isbn="9789000004256")
+        b = _insert_item(db, isbn="9789000004324")
         db.execute("COMMIT")
         _add_tag(admin_client, a, "book-club")
         _add_tag(admin_client, b, "book-club")
@@ -99,8 +99,8 @@ class TestTagEndpoints:
 
 class TestTagFiltering:
     def _seed(self, admin_client, db):
-        a = _insert_item(db, title="Signed Book", isbn="9780900000449")
-        b = _insert_item(db, title="Plain Book", isbn="9780900000456")
+        a = _insert_item(db, title="Signed Book", isbn="9789000004492")
+        b = _insert_item(db, title="Plain Book", isbn="9789000004560")
         db.execute("COMMIT")
         _add_tag(admin_client, a, "signed")
         return a, b
@@ -118,7 +118,7 @@ class TestTagFiltering:
         assert "Plain Book" not in html
 
     def test_browse_shows_tag_dropdown_only_when_tags_exist(self, admin_client, db):
-        _insert_item(db, title="Untagged", isbn="9780900000463")
+        _insert_item(db, title="Untagged", isbn="9789000004638")
         db.execute("COMMIT")
         assert 'id="tag-filter"' not in admin_client.get("/browse").text
         item = db.execute("SELECT id FROM items").fetchone()

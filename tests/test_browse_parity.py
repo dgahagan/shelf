@@ -42,29 +42,29 @@ def seeded_library(db):
     loc_b = _insert_location(db, "Shelf B")
 
     _insert_item(
-        db, title="Book Read", isbn="9780000001001", media_type="book",
+        db, title="Book Read", isbn="9780000010018", media_type="book",
         location_id=loc_a, reading_status="read", language="eng",
     )
     _insert_item(
-        db, title="Book Two", isbn="9780000001002", media_type="book",
+        db, title="Book Two", isbn="9780000010025", media_type="book",
         location_id=loc_b,
     )
     _insert_item(
-        db, title="Book Unlocated", isbn="9780000001003", media_type="book",
+        db, title="Book Unlocated", isbn="9780000010032", media_type="book",
     )
     _insert_item(
-        db, title="DVD One", isbn="9780000002001", media_type="dvd",
+        db, title="DVD One", isbn="9780000020017", media_type="dvd",
         location_id=loc_a,
     )
     _insert_item(
-        db, title="DVD Two", isbn="9780000002002", media_type="dvd",
+        db, title="DVD Two", isbn="9780000020024", media_type="dvd",
     )
     _insert_item(
-        db, title="Wishlist Book", isbn="9780000003001", media_type="book",
+        db, title="Wishlist Book", isbn="9780000030016", media_type="book",
         owned=0,
     )
     deu = _insert_item(
-        db, title="Deutsches Buch", isbn="9780000004001", media_type="book",
+        db, title="Deutsches Buch", isbn="9780000040015", media_type="book",
         location_id=loc_b, language="deu",
     )
 
@@ -72,7 +72,7 @@ def seeded_library(db):
     # non-empty result set on both routes rather than trivially matching
     # nothing on each.
     tagged = _insert_item(
-        db, title="Signed Copy", isbn="9780000005001", media_type="book",
+        db, title="Signed Copy", isbn="9780000050014", media_type="book",
         location_id=loc_a, language="eng",
     )
     tag_id = db.execute("INSERT INTO tags (name) VALUES (?)", ("signed",)).lastrowid

@@ -119,7 +119,7 @@ class TestBulkRetryEndpoint:
         assert not resolve.called
 
     def test_counts_successes_and_failures(self, admin_client, db):
-        _insert_item(db, title="Found", isbn="9780000000001")
+        _insert_item(db, title="Found", isbn="9780000000026")
         _insert_item(db, title="Not Found", isbn="9780000000002")
         db.commit()
 
@@ -144,7 +144,7 @@ class TestBulkRetryEndpoint:
         because resolve_missing_cover's title-search fallback accepts the
         first Open Library hit when the item has no authors.
         """
-        book = _insert_item(db, title="A Book", isbn="9780000000003")
+        book = _insert_item(db, title="A Book", isbn="9780000000033")
         _insert_item(db, title="Dune", isbn=None, media_type="dvd")
         _insert_item(db, title="The Hobbit", isbn=None, media_type="video_game")
         _insert_item(db, title="Abbey Road", isbn=None, media_type="cd")
@@ -162,9 +162,9 @@ class TestBulkRetryEndpoint:
         throw away the covers already fetched in that run."""
         import httpx
 
-        _insert_item(db, title="First", isbn="9780000000004")
-        _insert_item(db, title="Slow", isbn="9780000000005")
-        _insert_item(db, title="Third", isbn="9780000000006")
+        _insert_item(db, title="First", isbn="9780000000057")
+        _insert_item(db, title="Slow", isbn="9780000000064")
+        _insert_item(db, title="Third", isbn="9780000000071")
         db.commit()
 
         with patch("app.routers.items_common.resolve_missing_cover",
@@ -180,7 +180,7 @@ class TestBulkRetryEndpoint:
 class TestBulkRetryStream:
     def test_stream_skips_non_book_media_types(self, admin_client, db):
         """The UI button uses the SSE variant — same filter must apply."""
-        book = _insert_item(db, title="A Book", isbn="9780000000007")
+        book = _insert_item(db, title="A Book", isbn="9780000000088")
         _insert_item(db, title="Dune", isbn=None, media_type="dvd")
         db.commit()
 
@@ -196,8 +196,8 @@ class TestBulkRetryStream:
     def test_stream_survives_one_failing_item(self, admin_client, db):
         import httpx
 
-        _insert_item(db, title="First", isbn="9780000000008")
-        _insert_item(db, title="Slow", isbn="9780000000009")
+        _insert_item(db, title="First", isbn="9780000000095")
+        _insert_item(db, title="Slow", isbn="9780000000118")
         db.commit()
 
         with patch("app.routers.items_common.resolve_missing_cover",

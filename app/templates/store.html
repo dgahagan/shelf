@@ -68,6 +68,12 @@
             <p id="sync-hint" class="text-xs text-shelf-warning hidden"></p>
         </div>
 
+        {# Outcome of the last flush. Deliberately OUTSIDE #queue-section:
+           that block hides itself once the queue drains, which is exactly
+           when this line has something to report. #}
+        <p id="sync-result" data-testid="sync-result"
+           class="hidden text-xs text-shelf-warning text-center"></p>
+
         <!-- PWA install (revealed only when the browser fires beforeinstallprompt) -->
         <button id="install-app" data-testid="install-app"
                 class="hidden w-full px-4 py-3 bg-shelf-card border border-shelf-accent/40 text-shelf-accent2 rounded-xl text-sm font-medium hover:bg-shelf-hover transition-colors">

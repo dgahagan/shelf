@@ -19,7 +19,7 @@ from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.services import covers
 from app.services import isbn as isbn_svc
-from app.services.item_write import insert_item
+from app.services.item_write import insert_item, update_item_fields
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,10 @@ router = APIRouter()
 _STATIC_DIR = Path(__file__).parent.parent.parent / "static"
 
 QUEUE_BATCH_LIMIT = 50
+
+# A queued code that fails validation is echoed into an item title, so it is
+# bounded here rather than trusting the client's string length.
+_RAW_CODE_MAX = 32
 
 
 @router.get("/store")
@@ -88,7 +92,11 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
 
     A queued scan is never lost — if metadata lookup fails for any reason
     (not found, timeout, offline server), a bare wishlist item is created
-    with the ISBN as its title so it can be enriched later.
+    with the ISBN as its title so it can be enriched later. A code that
+    fails the #54 value funnel (a misread check digit, say) is saved the
+    same way, without an ISBN, rather than dropped: the client removes a
+    flushed code from its queue, so returning a bare refusal would lose the
+    scan outright.
     """
     from app.routers import items_common
 
@@ -109,10 +117,32 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
     results = []
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         for raw in isbns:
-            isbn13 = isbn_svc.to_isbn13(raw)
-            if not isbn13:
-                results.append({"isbn": raw, "status": "invalid"})
+            pair = isbn_svc.canonical_isbn_pair(raw)
+            if pair is None:
+                # #54's funnel refuses this code, but this route's promise is
+                # that a queued scan is never lost: the user scanned it in a
+                # shop and has no other record of it. Keep it as a bare
+                # wishlist row with no ISBN — the raw code rides in the title
+                # so it can be corrected from the item page — rather than
+                # reporting a status the client silently drops off the queue.
+                # Before #54 a bad check digit passed the permissive
+                # `to_isbn13` and landed here as a normal add.
+                label = raw.strip()[:_RAW_CODE_MAX] or "(empty)"
+                with get_db() as db:
+                    item_id = insert_item(
+                        db,
+                        title=f"Unreadable barcode — {label}",
+                        media_type="book",
+                        owned=0,
+                        source="store_queue",
+                    )
+                items_common._log_scan(label, "book", "unreadable", item_id, "wishlist")
+                results.append({
+                    "isbn": raw, "status": "unreadable",
+                    "title": f"Unreadable barcode — {label}", "item_id": item_id,
+                })
                 continue
+            isbn13 = pair[0]
 
             with get_db() as db:
                 existing = db.execute(
@@ -142,7 +172,7 @@ async def store_queue(request: Request, _=Depends(require_role("editor"))):
                 try:
                     item_id = items_common._save_item(metadata, isbn13, "book", None, source, hc_ids)
                     with get_db() as db:
-                        db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
+                        update_item_fields(db, item_id, {"owned": 0})
                     try:
                         hc_cover = metadata.get("cover_url") if source == "hardcover" else hc_ids.get("cover_url")
                         cover_path = await covers.download_cover(

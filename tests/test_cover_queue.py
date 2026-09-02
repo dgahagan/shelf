@@ -259,7 +259,7 @@ def test_sole_deferred_job_is_waited_out(monkeypatch, fake_clock):
 
 
 def test_hints_reach_download_cover(db, monkeypatch):
-    item_id = _insert_item(db, title="Hinted", isbn="9780000000010")
+    item_id = _insert_item(db, title="Hinted", isbn="9780000000125")
     db.commit()
     download = AsyncMock(return_value="covers/x.jpg")
 
@@ -286,7 +286,7 @@ def test_hints_reach_download_cover(db, monkeypatch):
 
 
 def test_without_hints_the_call_shape_is_unchanged(db, monkeypatch):
-    item_id = _insert_item(db, title="Plain", isbn="9780000000011")
+    item_id = _insert_item(db, title="Plain", isbn="9780000000132")
     db.commit()
     download = AsyncMock(return_value=None)
 
@@ -301,7 +301,7 @@ def test_without_hints_the_call_shape_is_unchanged(db, monkeypatch):
         await cover_queue.process_one(None)
 
     asyncio.run(scenario())
-    assert download.await_args_list[0].args == (item_id, "9780000000011", None, None, None)
+    assert download.await_args_list[0].args == (item_id, "9780000000132", None, None, None)
 
 
 # --------------------------------------------------------------------------
@@ -310,12 +310,12 @@ def test_without_hints_the_call_shape_is_unchanged(db, monkeypatch):
 
 
 def test_requeue_picks_only_recent_coverless_items(db):
-    recent = _insert_item(db, title="Recent", isbn="9780000000020")
+    recent = _insert_item(db, title="Recent", isbn="9780000000217")
     _insert_item(
-        db, title="Old", isbn="9780000000021", created_at="2020-01-01 00:00:00"
+        db, title="Old", isbn="9780000000248", created_at="2020-01-01 00:00:00"
     )
     _insert_item(
-        db, title="Has cover", isbn="9780000000022", cover_path="covers/9.jpg"
+        db, title="Has cover", isbn="9780000000255", cover_path="covers/9.jpg"
     )
     db.commit()
 
@@ -337,7 +337,7 @@ def test_requeue_skips_non_book_media_types(db):
     Its title-search fallback accepts the first Open Library hit when the
     item has no authors and then writes that book's ISBN onto the row.
     """
-    book = _insert_item(db, title="A Book", isbn="9780000000030")
+    book = _insert_item(db, title="A Book", isbn="9780000000309")
     _insert_item(db, title="A Film", isbn=None, media_type="dvd")
     _insert_item(db, title="A Game", isbn=None, media_type="video_game")
     _insert_item(db, title="An Album", isbn=None, media_type="cd")
@@ -376,7 +376,7 @@ def test_requeue_includes_every_book_media_type(db):
 
 
 def test_start_is_disabled_by_the_env_gate(db, monkeypatch):
-    _insert_item(db, title="Coverless", isbn="9780000000050")
+    _insert_item(db, title="Coverless", isbn="9780000000507")
     db.commit()
     monkeypatch.setenv("SHELF_DISABLE_COVER_ENRICH", "1")
 
@@ -390,7 +390,7 @@ def test_start_is_disabled_by_the_env_gate(db, monkeypatch):
 
 
 def test_start_requeues_and_returns_a_task(db, monkeypatch):
-    item_id = _insert_item(db, title="Coverless", isbn="9780000000051")
+    item_id = _insert_item(db, title="Coverless", isbn="9780000000514")
     db.commit()
     monkeypatch.delenv("SHELF_DISABLE_COVER_ENRICH", raising=False)
 

@@ -43,7 +43,7 @@ def test_bulk_move_apply_moves_selected_list_item(live_server, authed_page):
     item_id = insert_item(
         live_server["data_dir"],
         title="Bulk Move Browser Probe",
-        isbn="9780000999401",
+        isbn="9780009994012",
     )
 
     authed_page.goto(f"{live_server['url']}/browse")

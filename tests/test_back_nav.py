@@ -59,7 +59,7 @@ class TestItemDetailBackLink:
     """GET /item/{id}?from=... renders the resolved back target."""
 
     def test_from_series_renders_series_target(self, viewer_client, db):
-        item_id = _insert_item(db, title="Series Origin Book", isbn="9780910000001")
+        item_id = _insert_item(db, title="Series Origin Book", isbn="9789100000011")
         db.commit()
 
         resp = viewer_client.get(f"/item/{item_id}?from=series")
@@ -69,7 +69,7 @@ class TestItemDetailBackLink:
         assert "Back to collection" not in resp.text
 
     def test_from_stats_renders_stats_target(self, viewer_client, db):
-        item_id = _insert_item(db, title="Stats Origin Book", isbn="9780910000002")
+        item_id = _insert_item(db, title="Stats Origin Book", isbn="9789100000028")
         db.commit()
 
         resp = viewer_client.get(f"/item/{item_id}?from=stats")
@@ -78,7 +78,7 @@ class TestItemDetailBackLink:
         assert "Back to stats" in resp.text
 
     def test_absent_from_renders_browse_default(self, viewer_client, db):
-        item_id = _insert_item(db, title="No Origin Book", isbn="9780910000003")
+        item_id = _insert_item(db, title="No Origin Book", isbn="9789100000035")
         db.commit()
 
         resp = viewer_client.get(f"/item/{item_id}")
@@ -87,7 +87,7 @@ class TestItemDetailBackLink:
         assert "Back to collection" in resp.text
 
     def test_unknown_from_renders_browse_default(self, viewer_client, db):
-        item_id = _insert_item(db, title="Unknown Origin Book", isbn="9780910000004")
+        item_id = _insert_item(db, title="Unknown Origin Book", isbn="9789100000042")
         db.commit()
 
         resp = viewer_client.get(f"/item/{item_id}?from=bogus")
@@ -96,7 +96,7 @@ class TestItemDetailBackLink:
         assert "Back to collection" in resp.text
 
     def test_hostile_from_never_reaches_html(self, viewer_client, db):
-        item_id = _insert_item(db, title="Hostile Origin Book", isbn="9780910000005")
+        item_id = _insert_item(db, title="Hostile Origin Book", isbn="9789100000059")
         db.commit()
 
         hostile_values = [
@@ -116,7 +116,7 @@ class TestItemDetailBackLink:
 
     def test_invalid_from_not_propagated_to_edit_button(self, editor_client, db):
         """An invalid `from` degrades silently — no stray `?from=` anywhere."""
-        item_id = _insert_item(db, title="No Stray Param Book", isbn="9780910000006")
+        item_id = _insert_item(db, title="No Stray Param Book", isbn="9789100000066")
         db.commit()
 
         resp = editor_client.get(f"/item/{item_id}?from=bogus")
@@ -125,7 +125,7 @@ class TestItemDetailBackLink:
         assert f'href="/item/{item_id}/edit"' in resp.text
 
     def test_valid_from_propagated_to_edit_button(self, editor_client, db):
-        item_id = _insert_item(db, title="Propagated Param Book", isbn="9780910000007")
+        item_id = _insert_item(db, title="Propagated Param Book", isbn="9789100000073")
         db.commit()
 
         resp = editor_client.get(f"/item/{item_id}?from=series")
@@ -137,7 +137,7 @@ class TestItemEditBackLink:
     """GET /item/{id}/edit?from=... keeps the origin in its links and form."""
 
     def test_from_series_kept_in_back_and_cancel_links(self, editor_client, db):
-        item_id = _insert_item(db, title="Edit Series Origin", isbn="9780910000008")
+        item_id = _insert_item(db, title="Edit Series Origin", isbn="9789100000080")
         db.commit()
 
         resp = editor_client.get(f"/item/{item_id}/edit?from=series")
@@ -146,7 +146,7 @@ class TestItemEditBackLink:
         assert 'name="from" value="series"' in resp.text
 
     def test_invalid_from_not_kept(self, editor_client, db):
-        item_id = _insert_item(db, title="Edit Invalid Origin", isbn="9780910000009")
+        item_id = _insert_item(db, title="Edit Invalid Origin", isbn="9789100000097")
         db.commit()
 
         resp = editor_client.get(f"/item/{item_id}/edit?from=//evil.com")
@@ -160,7 +160,7 @@ class TestUpdateItemRedirect:
     """POST /api/items/{id} propagates the validated origin in its 303."""
 
     def test_redirect_carries_valid_origin(self, editor_client, db):
-        item_id = _insert_item(db, title="Redirect Origin Book", isbn="9780910000010")
+        item_id = _insert_item(db, title="Redirect Origin Book", isbn="9789100000103")
         db.commit()
 
         resp = editor_client.post(
@@ -172,7 +172,7 @@ class TestUpdateItemRedirect:
         assert resp.headers["location"] == f"/item/{item_id}?from=series"
 
     def test_redirect_drops_invalid_origin(self, editor_client, db):
-        item_id = _insert_item(db, title="Redirect Bad Origin Book", isbn="9780910000011")
+        item_id = _insert_item(db, title="Redirect Bad Origin Book", isbn="9789100000110")
         db.commit()
 
         resp = editor_client.post(
@@ -185,7 +185,7 @@ class TestUpdateItemRedirect:
 
     def test_redirect_no_fields_still_carries_origin(self, editor_client, db):
         """The early-return path (no updatable fields) also carries `from`."""
-        item_id = _insert_item(db, title="Redirect Empty Fields Book", isbn="9780910000012")
+        item_id = _insert_item(db, title="Redirect Empty Fields Book", isbn="9789100000127")
         db.commit()
 
         resp = editor_client.post(

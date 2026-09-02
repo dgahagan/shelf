@@ -2557,8 +2557,9 @@ grep -rn "[Nn]ever raises" app/services/*.py
 ## G67 — When your change adds lines to a module at its size cap
 
 - **Rule:** `tests/test_module_sizes.py` caps ten files, and
-  `app/routers/items_common.py` is sitting at exactly its cap of 900. The
-  **next** line added to it fails the gate. Before scoping work that touches
+  `app/routers/items_common.py` sits one line under its cap of 900 (899 as of
+  `a8e97a5`, 2026-09-02, after issue #54's T4 was scoped to net ≤ 0 lines and
+  landed at −1). The **next** two lines added to it fail the gate. Before scoping work that touches
   it, read `LIMITS` in that test and check the headroom you actually have —
   and when there is none, plan the extraction as part of the task rather than
   discovering it when the suite goes red. The cap's own instruction says where
@@ -2731,6 +2732,126 @@ grep -n 'get_by_role(.*)\.first\|get_by_text(.*)\.first' tests/e2e/*.py
 - **Status:** documented. Lint candidate: `scripts/check_test_conventions.py`
   could flag `.first` on `get_by_role`/`get_by_text` outright, but the suite
   has legitimate uses on unique-per-page labels; noisy until each is named.
+
+## G71 — When a write path starts enforcing an invariant the fixtures already violate
+
+- **Rule:** Scrub the fixtures **first, in their own commit, with no app
+  change** — then land the enforcement. And scrub for what the fixture
+  *means* as well as for what the rule checks: replace a literal with one
+  that keeps every property a test reads from it, and seed the *derived*
+  columns the rule will now compute, not only the column it validates.
+- **Why:** the suite is built on raw-SQL seeds that bypass every check, so
+  it can carry an invariant violation for years and go red the moment the
+  app enforces it — and then every failure in the enforcement commit reads
+  as "the funnel broke something" rather than "this fixture was never
+  valid". Issue #54's value stage found **346 distinct checksum-invalid
+  ISBN-13 literals across 49 test files** (`tests/conftest.py`'s
+  `_insert_item` default among them), about sixty of which reached a write
+  path. Three things the mechanical scrub got wrong, each a shape worth
+  knowing:
+  - **The replacement changed a property the test read.** "Drop the digit
+    after `978`, recompute the check" is lossy for the *registration group*:
+    `9783400000000` → `9784000000000` turned a German ISBN Japanese, and
+    `national.PREFIX_PROVIDERS` stopped routing it to DNB; two language-
+    backfill pins flipped the same way. A fixture literal can be read for
+    more than its validity — choose the replacement per test, not per
+    formula, wherever a prefix or a substring is load-bearing.
+  - **The predicted default already existed.** The plan wrote "replace the
+    default with `9780000000002`"; that value was already a distinct, valid
+    literal elsewhere in the tree, and the E2E server is session-scoped
+    (G34) with `UNIQUE(isbn, media_type)` spanning every file's seeds, so
+    the mapping had to be proven injective over the **whole** tree.
+  - **Valid is not consistent.** Two archive round-trip seeds carried a
+    valid `isbn` and no `isbn10`; the funnel derives `isbn10` on import, so
+    the byte-for-byte round-trip broke on a row the validity scan had
+    passed. When the new rule *computes* a column, seed it.
+- **Evidence:** `ffd3329` (2026-09-02, plan `issue-54-item-value-funnel` T1 —
+  the scrub, with the full old→new table in the commit body), `0c103f9` (T3 —
+  the enforcement, and the two archive seeds). The Gemini plan review named
+  the shape before the run (`gemini-GC1`).
+- **Verify:** the scrub's own acceptance line still holds — no
+  checksum-invalid ISBN-13 literal outside the deliberate negative pins:
+
+```bash
+python3 - <<'EOF'
+import re, pathlib, sys
+sys.path.insert(0, ".")
+from app.services.isbn import validate_isbn13
+skip = {"tests/test_isbn.py"}
+bad = []
+for p in pathlib.Path("tests").rglob("*.py"):
+    if str(p) in skip: continue
+    for i, line in enumerate(p.read_text().splitlines(), 1):
+        for lit in re.findall(r"(?<!\d)97[89]\d{10}(?!\d)", line):
+            if not validate_isbn13(lit) and lit != "9780441172710":
+                bad.append(f"{p}:{i} {lit}")
+print("\n".join(bad) or "clean")
+EOF
+```
+
+  `9780441172710` is the one literal that is *supposed* to be invalid (the
+  probe every refusal pin uses). A hit here is a fixture that will go red
+  under the next invariant, or a new negative pin that needs adding to the
+  exclusion.
+
+- **Status:** documented. Lint candidate — the Verify block above is the
+  lint; it needs only an opt-out marker for negative pins to become a
+  `make check-*` target. Revisit trigger: an invalid literal reaching a
+  write path again, or `upc` validation landing (deferred from #54).
+
+## G72 — When a sync writes a provider's identifier into a user-editable column
+
+- **Rule:** Decide, at the call site, whether the value is the **user's**
+  (refuse it with a message) or the **provider's** (pre-clean it, store
+  `NULL` on failure, log a warning naming the source) — and never let a
+  provider's *different* identifier stand in for the column's own. The
+  funnel below is strict either way; dropping versus refusing is the
+  caller's decision, stated in a comment beside the call.
+- **Why:** `audiobookshelf.py` wrote `metadata.get("isbn") or
+  metadata.get("asin")` into `items.isbn` for years. An ASIN is not an
+  ISBN, so every audiobook without one carried junk in a column the edit
+  form posts back on every save, the duplicate check keys on, and the
+  archive exports — and once the write layer validated ISBNs (#54), those
+  rows could not be saved from Edit until the field was cleared, and a
+  naive sync would have refused every such item instead of syncing it. The
+  general shape: a fallback that reaches for the *next best* identifier
+  looks like resilience at the sync and reads as corruption everywhere
+  else. The two kinds of caller need opposite handling, and the difference
+  is not visible from inside the write layer — only the caller knows whose
+  value it holds.
+- **The consequence to say out loud:** a pre-clean *rewrites history* on
+  the next run. Rows whose `isbn` held an ASIN from an earlier sync are
+  scrubbed to `NULL` on the next sync (`desired["isbn"]` becomes `None`,
+  `changed` is true) and counted `updated`. That is the right outcome and
+  it belongs in the changelog and the integrations page, because a user
+  who exported an archive before it and restores it after will see the
+  ASIN rows reported as "imported without its ISBN".
+- **Two-stage flows must pre-clean in both stages.** Archive import plans a
+  verdict per row and applies it later; pre-cleaning only `apply_plan` made
+  the plan dedupe on the raw ISBN (no match → `create`) and the apply on the
+  cleaned one (title match → `update`), so the row landed in `drifted`
+  instead of being applied. A dedupe rule two stages share must dedupe on
+  the same value.
+- **Evidence:** `b40c372` (2026-09-02, plan `issue-54-item-value-funnel` T6
+  — ABS, Hardcover, archive; the plan/apply agreement pin
+  `tests/test_archive.py::TestPlanAndApplyAgreeOnABadIsbn`), `184bb86` (T5 —
+  photo intake's Open Library ISBN), `a8e97a5` (T4 — the title-search ISBN
+  in `resolve_missing_cover`). Mechanism in `app/services/item_write.py`'s
+  module docstring ("a user's value is refused; a provider's is dropped").
+- **Verify:** every provider ISBN site still pre-cleans, and no site reads
+  an ASIN into `isbn`:
+
+```bash
+grep -rn 'get("asin")' app/ --include=*.py          # must only feed the warning, never isbn=
+grep -rn "canonical_isbn_pair" app/services/audiobookshelf.py app/routers/hardcover.py \
+    app/services/archive.py app/routers/intake.py app/routers/items_common.py | wc -l   # >= 6
+```
+
+- **Status:** documented. Not a lint candidate as stated — which caller is
+  a provider is judgement — though "a new `insert_item`/`update_item_fields`
+  call site in `app/services/` that passes `isbn=` without a
+  `canonical_isbn_pair` in the same function" is greppable and would catch
+  the next sync adapter.
 
 ## Graveyard
 

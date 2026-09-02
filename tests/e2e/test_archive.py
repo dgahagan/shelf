@@ -126,7 +126,7 @@ def test_archive_export_download_contains_expected_entries(live_server, authed_p
         live_server,
         title="Archive E2E Book",
         media_type="book",
-        isbn="9780000777666",
+        isbn="9780007776665",
     )
 
     _open_data_tab(authed_page, live_server)
@@ -158,7 +158,7 @@ def test_archive_reimport_skip_then_update(live_server, authed_page):
         live_server,
         title="Archive Reimport Book",
         media_type="book",
-        isbn="9780000777777",
+        isbn="9780007777778",
     )
 
     _open_data_tab(authed_page, live_server)
@@ -248,13 +248,13 @@ def test_archive_preview_deselect_reading_log(live_server, authed_page):
         live_server,
         title="Reading Log Book A",
         media_type="book",
-        isbn="9780000777801",
+        isbn="9780007778010",
     )
     item_b = _seed_item_with_cover(
         live_server,
         title="Reading Log Book B",
         media_type="book",
-        isbn="9780000777802",
+        isbn="9780007778027",
     )
     _seed_reading_log(live_server, item_a, count=2)
     _seed_reading_log(live_server, item_b, count=1)
@@ -350,7 +350,7 @@ def test_archive_import_failure_reports_without_throwing(live_server, authed_pag
         live_server,
         title="Archive Failure Book",
         media_type="book",
-        isbn="9780000777888",
+        isbn="9780007778881",
     )
 
     _open_data_tab(authed_page, live_server)

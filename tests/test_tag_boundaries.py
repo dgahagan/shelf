@@ -11,8 +11,8 @@ def test_remove_tag_rejects_missing_item(admin_client):
 
 
 def test_remove_tag_rejects_tag_not_attached_to_item(admin_client, db):
-    target_id = _insert_item(db, title="Target", isbn="9780000999609")
-    other_id = _insert_item(db, title="Other", isbn="9780000999616")
+    target_id = _insert_item(db, title="Target", isbn="9780009996092")
+    other_id = _insert_item(db, title="Other", isbn="9780009996160")
     db.execute("INSERT INTO tags (name) VALUES ('shared')")
     tag_id = db.execute("SELECT id FROM tags WHERE name = 'shared'").fetchone()["id"]
     db.execute(

@@ -78,11 +78,11 @@ class TestChartBuilders:
 
 class TestStatsPage:
     def test_charts_render(self, admin_client, db):
-        _insert_item(db, title="Read One", isbn="9780903000011", authors="Frank Herbert",
+        _insert_item(db, title="Read One", isbn="9789030000112", authors="Frank Herbert",
                      reading_status="read", date_finished="2024-03-01")
-        _insert_item(db, title="Read Two", isbn="9780903000028", authors="Frank Herbert, Brian Herbert",
+        _insert_item(db, title="Read Two", isbn="9789030000280", authors="Frank Herbert, Brian Herbert",
                      reading_status="read", date_finished="2025-01-15")
-        _insert_item(db, title="Unread", isbn="9780903000035", authors="Ursula K. Le Guin")
+        _insert_item(db, title="Unread", isbn="9789030000358", authors="Ursula K. Le Guin")
         db.execute("COMMIT")
 
         html = admin_client.get("/stats").text
@@ -98,7 +98,7 @@ class TestStatsPage:
 
     def test_read_this_year_kpi(self, admin_client, db):
         from datetime import date
-        _insert_item(db, title="This Year", isbn="9780903000042",
+        _insert_item(db, title="This Year", isbn="9789030000426",
                      reading_status="read", date_finished=f"{date.today().year}-02-01")
         db.execute("COMMIT")
         html = admin_client.get("/stats").text
@@ -129,9 +129,9 @@ class TestStatsPage:
         assert "$" not in chart_section
 
     def test_stats_total_uses_manual_override(self, admin_client, db):
-        _insert_item(db, title="Overridden", isbn="9780903000066",
+        _insert_item(db, title="Overridden", isbn="9789030000662",
                      estimated_value=10.00, manual_value=50.00)
-        _insert_item(db, title="Estimated Only", isbn="9780903000073",
+        _insert_item(db, title="Estimated Only", isbn="9789030000730",
                      estimated_value=20.00)
         db.execute("COMMIT")
 
@@ -140,9 +140,9 @@ class TestStatsPage:
         assert "$70" in html
 
     def test_stats_total_renders_in_configured_currency(self, admin_client, db):
-        _insert_item(db, title="Overridden", isbn="9780903000066",
+        _insert_item(db, title="Overridden", isbn="9789030000662",
                      estimated_value=10.00, manual_value=50.00)
-        _insert_item(db, title="Estimated Only", isbn="9780903000073",
+        _insert_item(db, title="Estimated Only", isbn="9789030000730",
                      estimated_value=20.00)
         db.execute("COMMIT")
         _set_currency(db, "EUR")
@@ -152,9 +152,9 @@ class TestStatsPage:
         assert "€70" in html
 
     def test_stats_total_falls_back_when_override_cleared(self, admin_client, db):
-        item_id = _insert_item(db, title="Overridden", isbn="9780903000080",
+        item_id = _insert_item(db, title="Overridden", isbn="9789030000808",
                                 estimated_value=10.00, manual_value=50.00)
-        _insert_item(db, title="Estimated Only", isbn="9780903000097",
+        _insert_item(db, title="Estimated Only", isbn="9789030000976",
                      estimated_value=20.00)
         db.execute("COMMIT")
 
@@ -171,7 +171,7 @@ class TestStatsPage:
 
 class TestValuationSnapshot:
     def test_batch_valuation_writes_history(self, admin_client, db):
-        _insert_item(db, title="Valuable", isbn="9780903000059")
+        _insert_item(db, title="Valuable", isbn="9789030000594")
         db.execute("INSERT INTO settings (key, value) VALUES ('isbndb_api_key', 'k')")
         db.execute("COMMIT")
 

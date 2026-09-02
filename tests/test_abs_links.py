@@ -59,9 +59,9 @@ class TestAutoLink:
 
 class TestAlsoInAbsBadge:
     def _seed_linked(self, db):
-        book = _insert_item(db, title="Dune", isbn="9780900000601", media_type="book",
+        book = _insert_item(db, title="Dune", isbn="9789000006014", media_type="book",
                             authors="Frank Herbert")
-        audio = _insert_item(db, title="Dune", isbn="9780900000618", media_type="audiobook",
+        audio = _insert_item(db, title="Dune", isbn="9789000006182", media_type="audiobook",
                              authors="Frank Herbert", abs_id="li_abc")
         db.execute(
             "INSERT INTO item_links (item_a_id, item_b_id) VALUES (?, ?)",
@@ -84,8 +84,8 @@ class TestAlsoInAbsBadge:
         assert "Also in Audiobookshelf (Audiobook)" not in html
 
     def test_no_badge_without_abs_url_setting(self, admin_client, db):
-        book = _insert_item(db, title="Dune", isbn="9780900000625", media_type="book")
-        audio = _insert_item(db, title="Dune A", isbn="9780900000632",
+        book = _insert_item(db, title="Dune", isbn="9789000006250", media_type="book")
+        audio = _insert_item(db, title="Dune A", isbn="9789000006328",
                              media_type="audiobook", abs_id="li_abc")
         db.execute("INSERT INTO item_links (item_a_id, item_b_id) VALUES (?, ?)",
                    (min(book, audio), max(book, audio)))

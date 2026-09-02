@@ -52,7 +52,7 @@ def test_browse_search(live_server, authed_page):
 
 def test_browse_media_type_filter(live_server, authed_page):
     """Selecting a media-type filter triggers an HTMX reload."""
-    insert_item(live_server["data_dir"], title="Filter Test", media_type="book", isbn="9780000444555")
+    insert_item(live_server["data_dir"], title="Filter Test", media_type="book", isbn="9780004445557")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
@@ -83,8 +83,8 @@ def test_browse_grid_list_toggle(live_server, authed_page):
 def test_browse_filters_restored_on_return(live_server, authed_page):
     """Issue #8: leaving Browse and coming back via a bare /browse link must
     repopulate the filter controls AND re-apply them to the results."""
-    insert_item(live_server["data_dir"], title="Restorable Novel", media_type="book", isbn="9780000999001")
-    insert_item(live_server["data_dir"], title="Restorable Disc", media_type="dvd", isbn="9780000999002")
+    insert_item(live_server["data_dir"], title="Restorable Novel", media_type="book", isbn="9780009990014")
+    insert_item(live_server["data_dir"], title="Restorable Disc", media_type="dvd", isbn="9780009990021")
 
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
@@ -111,8 +111,8 @@ def test_browse_filters_restored_on_return(live_server, authed_page):
 def test_browse_clear_all_filters_drops_restore(live_server, authed_page):
     """'Clear all' must also drop the stored querystring, so a later return to
     /browse does not resurrect the filters."""
-    insert_item(live_server["data_dir"], title="Clearable Novel", media_type="book", isbn="9780000999003")
-    insert_item(live_server["data_dir"], title="Clearable Disc", media_type="dvd", isbn="9780000999004")
+    insert_item(live_server["data_dir"], title="Clearable Novel", media_type="book", isbn="9780009990038")
+    insert_item(live_server["data_dir"], title="Clearable Disc", media_type="dvd", isbn="9780009990045")
 
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
@@ -135,8 +135,8 @@ def test_browse_search_survives_other_filter_change_on_narrow_viewport(live_serv
     viewport (where the user types into the mobile box and the desktop box stays
     empty) changing any other filter silently wiped the search. Both inputs are
     now x-model bound to one value, so the duplicates always agree."""
-    insert_item(live_server["data_dir"], title="Narrow Foundation", media_type="book", isbn="9780000999005")
-    insert_item(live_server["data_dir"], title="Narrow Neuromancer", media_type="book", isbn="9780000999006")
+    insert_item(live_server["data_dir"], title="Narrow Foundation", media_type="book", isbn="9780009990052")
+    insert_item(live_server["data_dir"], title="Narrow Neuromancer", media_type="book", isbn="9780009990069")
 
     authed_page.set_viewport_size({"width": 480, "height": 900})
     authed_page.goto(f"{live_server['url']}/browse")
@@ -183,7 +183,7 @@ def test_infinite_scroll_appends_rows_in_list_view(live_server, authed_page):
     htmx.process(), hx-trigger="revealed" is never registered and nothing
     loads at all.
     """
-    _seed_two_pages(live_server, "ListScroll", 9780771000000)
+    _seed_two_pages(live_server, "ListScroll", 9787710000001)
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     authed_page.locator("[data-testid='view-list']").click()
@@ -203,7 +203,7 @@ def test_infinite_scroll_appends_rows_in_list_view(live_server, authed_page):
 
 def test_infinite_scroll_appends_cards_in_grid_view(live_server, authed_page):
     """Grid view keeps appending cover cards."""
-    _seed_two_pages(live_server, "GridScroll", 9780772000000)
+    _seed_two_pages(live_server, "GridScroll", 9787720000008)
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     authed_page.locator("[data-testid='view-grid']").click()
@@ -242,7 +242,7 @@ def _login_with_seeded_storage(browser, live_server, setup_admin, storage):
 def test_column_picker_only_in_list_view(live_server, authed_page):
     """The column picker is a list-view-only control."""
     insert_item(live_server["data_dir"], title="Picker Visibility Probe",
-                media_type="book", isbn="9780000999101")
+                media_type="book", isbn="9780009991011")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
@@ -257,7 +257,7 @@ def test_hiding_a_column_persists_across_reload(live_server, authed_page):
     """Unticking a column in the picker hides it live and across a reload,
     and is recorded in the shelf-columns localStorage blob."""
     insert_item(live_server["data_dir"], title="Column Hide Probe",
-                media_type="book", isbn="9780000999102", authors="Jane Doe")
+                media_type="book", isbn="9780009991028", authors="Jane Doe")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     authed_page.locator("[data-testid='view-list']").click()
@@ -294,7 +294,7 @@ def test_hiding_a_column_persists_across_reload(live_server, authed_page):
 def test_reset_restores_defaults(live_server, authed_page):
     """Reset restores the registry's default-on set and drops the stored blob."""
     insert_item(live_server["data_dir"], title="Reset Defaults Probe",
-                media_type="book", isbn="9780000999103")
+                media_type="book", isbn="9780009991035")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     authed_page.locator("[data-testid='view-list']").click()
@@ -326,7 +326,7 @@ def test_stale_storage_is_ignored(live_server, browser, setup_admin):
     turned off, a name missing entirely) must not break the page or win over
     a locked column — and a missing name falls back to its registry default."""
     insert_item(live_server["data_dir"], title="Stale Storage Probe",
-                media_type="book", isbn="9780000999104")
+                media_type="book", isbn="9780009991042")
     storage = {
         "shelf-columns": json.dumps({"bogus": True, "title": False, "author": False}),
         "shelf-view": "list",
@@ -354,7 +354,7 @@ def test_two_tabs_do_not_overwrite_each_others_columns(live_server, browser, set
     the user only finds out on reload. Both changes must survive.
     """
     insert_item(live_server["data_dir"], title="Two Tab Probe",
-                media_type="book", isbn="9780000999107", authors="Jane Doe")
+                media_type="book", isbn="9780009991073", authors="Jane Doe")
     ctx, page_a = _login_with_seeded_storage(
         browser, live_server, setup_admin, {"shelf-view": "list"}
     )
@@ -404,7 +404,7 @@ def test_two_tabs_do_not_overwrite_each_others_columns(live_server, browser, set
 def test_locked_columns_are_not_in_the_picker(live_server, authed_page):
     """select, cover and title are always-on and never offered in the menu."""
     insert_item(live_server["data_dir"], title="Locked Columns Probe",
-                media_type="book", isbn="9780000999105")
+                media_type="book", isbn="9780009991059")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     authed_page.locator("[data-testid='view-list']").click()
@@ -424,7 +424,7 @@ def test_infinite_scroll_appends_rows_with_custom_columns(live_server, browser, 
     before load — the one thing the unit suite cannot see: the MutationObserver
     -> htmx.process() path plus Alpine re-evaluating x-show on rows swapped in
     after mount."""
-    _seed_two_pages(live_server, "CustomColScroll", 9780773000000)
+    _seed_two_pages(live_server, "CustomColScroll", 9787730000005)
     storage = {
         "shelf-columns": json.dumps({"value": True, "author": False}),
         "shelf-view": "list",
@@ -459,7 +459,7 @@ def test_browse_has_no_pageerrors_in_either_view(live_server, authed_page):
     """Grid view, then list view with every pickable column switched on —
     zero uncaught page errors in either state."""
     insert_item(live_server["data_dir"], title="No Page Errors Probe",
-                media_type="book", isbn="9780000999106")
+                media_type="book", isbn="9780009991066")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     expect(authed_page.locator("a[data-item-id]").first).to_be_visible()
@@ -505,8 +505,8 @@ def test_browse_sort_restored_in_new_session(live_server, authed_page):
     # 'Zza' / 'Zzb' keep both items on page 1 under title_desc, and they stay on
     # page 1 under the default order too — so a single pairwise comparison is
     # valid under either ordering.
-    insert_item(live_server["data_dir"], title="Zza Sortprobe Alpha", media_type="book", isbn="9780000999011")
-    insert_item(live_server["data_dir"], title="Zzb Sortprobe Beta", media_type="book", isbn="9780000999012")
+    insert_item(live_server["data_dir"], title="Zza Sortprobe Alpha", media_type="book", isbn="9780009990113")
+    insert_item(live_server["data_dir"], title="Zzb Sortprobe Beta", media_type="book", isbn="9780009990120")
 
     _reset_browse_storage(authed_page, live_server["url"])
     authed_page.goto(f"{live_server['url']}/browse")
@@ -551,8 +551,8 @@ def test_browse_sort_restored_in_new_session(live_server, authed_page):
 def test_browse_sort_restore_keeps_list_view(live_server, authed_page):
     """The restored-sort request must carry `view`, or the server renders grid
     cards that get swapped into the list table (the issue #7 failure mode)."""
-    insert_item(live_server["data_dir"], title="Zzc Listprobe Alpha", media_type="book", isbn="9780000999013")
-    insert_item(live_server["data_dir"], title="Zzd Listprobe Beta", media_type="book", isbn="9780000999014")
+    insert_item(live_server["data_dir"], title="Zzc Listprobe Alpha", media_type="book", isbn="9780009990137")
+    insert_item(live_server["data_dir"], title="Zzd Listprobe Beta", media_type="book", isbn="9780009990144")
 
     _reset_browse_storage(authed_page, live_server["url"])
     authed_page.goto(f"{live_server['url']}/browse")
@@ -606,9 +606,9 @@ def test_browse_language_filter_narrows_and_composes(live_server, authed_page):
     """T10: the language filter narrows the row set and composes with the
     media-type filter — including after the OOB swap replaces the selects."""
     insert_item(live_server["data_dir"], title="Sprachprobe Deutsch",
-                media_type="book", isbn="9783000777001", language="de")
+                media_type="book", isbn="9780007770014", language="de")
     insert_item(live_server["data_dir"], title="Sprachprobe Deutsch Disc",
-                media_type="dvd", isbn="9783000777002", language="de")
+                media_type="dvd", isbn="9780007770021", language="de")
     insert_item(live_server["data_dir"], title="Sprachprobe English",
                 media_type="book", isbn="9780000777003", language="en")
     authed_page.goto(f"{live_server['url']}/browse")

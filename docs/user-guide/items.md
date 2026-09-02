@@ -61,6 +61,21 @@ and the cover upload. Changing the ISBN does *not* re-fetch metadata
 automatically — use **Retry cover** / **Fetch synopsis** afterwards, or
 delete and rescan if the record was wrong from the start.
 
+The ISBN is checked when you save. An ISBN whose check digit doesn't add up
+is refused with a banner at the top of the form, and **nothing else on the
+form is saved** — correct the ISBN or clear the field and save again.
+Entering an ISBN-10 stores both forms (the ISBN-13 and the ISBN-10 it
+implies); a 979 ISBN has no ISBN-10 and stores none. The same banner
+appears for a media type, location, game platform or reading status Shelf
+doesn't recognise, and for a non-number in a number field.
+
+An item whose stored ISBN isn't a real ISBN — older Audiobookshelf syncs
+stored an ASIN there when a title had no ISBN — has to have it corrected or
+cleared before the form will save, since the form submits every field. Clear
+it and the item keeps everything else. For the Audiobookshelf case you
+usually don't have to: from 0.28.0 the next sync clears an ASIN out of the
+ISBN field for you (see [Integrations](integrations.md)).
+
 **Retry cover** appears once the item has an ISBN. **Push to Hardcover**
 appears only for book-family items, and only when the item has an ISBN or
 an existing Hardcover link, so adding an ISBN in Edit helps only for
@@ -92,6 +107,11 @@ twin. If you end up with duplicates anyway (two different ISBNs for one
 book, or a manual add before a scan), keep the better record and delete the
 other; tags and loan history live on the record, so move anything you need
 first.
+
+Bulk **Merge** copies the fields the kept record lacks from the others
+before removing them. A merge that would copy an invalid ISBN is refused and
+both records are left in place. The message names the record it stopped on,
+by title and id, so a merge of several records tells you which one to fix.
 
 ## Deleting
 

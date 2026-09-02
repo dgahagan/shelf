@@ -196,7 +196,7 @@ def viewer_client(client, viewer_user):
     return client
 
 
-def _insert_item(db, title="Test Book", isbn="9780000000001", media_type="book", **kwargs):
+def _insert_item(db, title="Test Book", isbn="9780000000026", media_type="book", **kwargs):
     """Insert a test item and return its ID."""
     fields = {"title": title, "isbn": isbn, "media_type": media_type, "source": "test"}
     fields.update(kwargs)

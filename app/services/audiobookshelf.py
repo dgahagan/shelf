@@ -6,6 +6,8 @@ import httpx
 from app.database import get_db
 from app.services import covers
 from app.services.item_write import insert_item
+from app.services.item_write import ItemValueError, update_item_fields
+from app.services import isbn as isbn_svc
 
 logger = logging.getLogger(__name__)
 
@@ -139,7 +141,18 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
 
                 authors = metadata.get("authorName") or metadata.get("author")
                 narrator = metadata.get("narratorName")
-                isbn = metadata.get("isbn") or metadata.get("asin")
+                # A provider value, and ABS audiobooks frequently carry an
+                # ASIN in this same metadata field rather than an ISBN.
+                # Pre-cleaned per #54: never written into items.isbn — the
+                # raw value survives only in the warning below.
+                raw_isbn = metadata.get("isbn") or metadata.get("asin")
+                isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
+                if raw_isbn and isbn_pair is None:
+                    logger.warning(
+                        "%s: %r is not a valid ISBN — stored without one",
+                        f"Audiobookshelf item {abs_id} ({title})", raw_isbn,
+                    )
+                isbn = isbn_pair[0] if isbn_pair else None
                 series_name = metadata.get("seriesName")
                 publisher = metadata.get("publisher")
                 pub_year = _normalise_publish_year(metadata.get("publishedYear"))
@@ -206,6 +219,10 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                             (isbn_match["id"],),
                         ).fetchone()
 
+                    # A bad value here is one ABS record, not the whole sync
+                    # (#54) — insert_item()/update_item_fields() raise
+                    # ItemValueError before touching SQLite, so nothing is
+                    # written for this item and the loop moves on.
                     if existing:
                         desired = {
                             "title": title,
@@ -223,45 +240,47 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         }
                         changed = any(existing[key] != value for key, value in desired.items())
 
-                        if changed:
-                            db.execute(
-                                """UPDATE items SET title=?, authors=?, narrator=?,
-                                   isbn=?, series_name=?, publisher=?, publish_year=?,
-                                   description=?, duration_mins=?, media_type=?,
-                                   abs_id=?, abs_library_id=?,
-                                   updated_at=datetime('now')
-                                   WHERE id=?""",
-                                (title, authors, narrator, isbn, series_name,
-                                 publisher, pub_year, description, duration_mins,
-                                 media_type, abs_id, lib_id, existing["id"]),
-                            )
-                            stats["updated"] += 1
-                            status = "updated"
-                        else:
-                            stats["unchanged"] += 1
-                            status = "unchanged"
+                        try:
+                            if changed:
+                                update_item_fields(db, existing["id"], desired)
+                                stats["updated"] += 1
+                                status = "updated"
+                            else:
+                                stats["unchanged"] += 1
+                                status = "unchanged"
+                        except ItemValueError as e:
+                            stats["errors"] += 1
+                            if on_progress:
+                                await on_progress(current, total, f"{title}: {e}", "error")
+                            continue
 
                         item_id = existing["id"]
                         fetch_cover = changed or not existing["cover_path"]
                         if on_progress:
                             await on_progress(current, total, title, status)
                     else:
-                        item_id = insert_item(
-                            db,
-                            title=title,
-                            authors=authors,
-                            isbn=isbn,
-                            media_type=media_type,
-                            publisher=publisher,
-                            publish_year=pub_year,
-                            description=description,
-                            series_name=series_name,
-                            narrator=narrator,
-                            duration_mins=duration_mins,
-                            abs_id=abs_id,
-                            abs_library_id=lib_id,
-                            source="audiobookshelf",
-                        )
+                        try:
+                            item_id = insert_item(
+                                db,
+                                title=title,
+                                authors=authors,
+                                isbn=isbn,
+                                media_type=media_type,
+                                publisher=publisher,
+                                publish_year=pub_year,
+                                description=description,
+                                series_name=series_name,
+                                narrator=narrator,
+                                duration_mins=duration_mins,
+                                abs_id=abs_id,
+                                abs_library_id=lib_id,
+                                source="audiobookshelf",
+                            )
+                        except ItemValueError as e:
+                            stats["errors"] += 1
+                            if on_progress:
+                                await on_progress(current, total, f"{title}: {e}", "error")
+                            continue
                         stats["added"] += 1
                         fetch_cover = True
                         if on_progress:

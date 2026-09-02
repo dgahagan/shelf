@@ -12,7 +12,8 @@ from app.auth import require_role
 from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.services import hardcover, covers
-from app.services.item_write import insert_item
+from app.services import isbn as isbn_svc
+from app.services.item_write import ItemValueError, insert_item, update_item_fields
 
 logger = logging.getLogger(__name__)
 
@@ -102,28 +103,43 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
     cover_path = None
     cover_url = data.get("cover_url")
 
-    from app.services.isbn import isbn13_to_isbn10
-    isbn10 = isbn13_to_isbn10(isbn) if isbn else None
-
-    with get_db() as db:
-        item_id = insert_item(
-            db,
-            title=title,
-            authors=data.get("authors"),
-            isbn=isbn,
-            isbn10=isbn10,
-            media_type="book",
-            publisher=data.get("publisher"),
-            publish_year=data.get("year"),
-            page_count=data.get("pages"),
-            description=data.get("description"),
-            series_name=data.get("series_name"),
-            series_position=data.get("series_position"),
-            reading_status="want_to_read",
-            source="hardcover",
-            owned=0,
-            hardcover_book_id=hc_book_id,
+    # A Hardcover ISBN is a provider value: pre-cleaned per #54 rather than
+    # refused — a bad check digit is dropped, not rejected outright, since
+    # this endpoint has no scan card to show the user a refusal on.
+    isbn_pair = isbn_svc.canonical_isbn_pair(isbn) if isbn else None
+    if isbn and isbn_pair is None:
+        logger.warning(
+            "%s: %r is not a valid ISBN — stored without one",
+            f"Hardcover add-to-shelf ({title})", isbn,
         )
+    isbn_clean, isbn10 = isbn_pair or (None, None)
+
+    value_error = None
+    with get_db() as db:
+        try:
+            item_id = insert_item(
+                db,
+                title=title,
+                authors=data.get("authors"),
+                isbn=isbn_clean,
+                isbn10=isbn10,
+                media_type="book",
+                publisher=data.get("publisher"),
+                publish_year=data.get("year"),
+                page_count=data.get("pages"),
+                description=data.get("description"),
+                series_name=data.get("series_name"),
+                series_position=data.get("series_position"),
+                reading_status="want_to_read",
+                source="hardcover",
+                owned=0,
+                hardcover_book_id=hc_book_id,
+            )
+        except ItemValueError as e:
+            value_error = str(e)
+
+    if value_error:
+        return {"ok": False, "message": value_error}
 
     # Download cover
     if cover_url:
@@ -455,14 +471,10 @@ def _build_hc_id_updates(book: dict) -> dict:
 
 
 def _apply_updates(db, item_id: int, updates: dict):
-    """Apply a dict of field updates to an item."""
+    """Apply a dict of field updates to an item, through the value funnel."""
     if not updates:
         return
-    set_clause = ", ".join(f"{k} = ?" for k in updates)
-    db.execute(
-        f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-        list(updates.values()) + [item_id],
-    )
+    update_item_fields(db, item_id, updates)
 
 
 def _cover_job(item_id: int, book: dict) -> dict:
@@ -495,12 +507,17 @@ def _import_single_book_metadata(book: dict, overwrite: bool, title_index: dict)
                 _apply_updates(db, existing["id"], updates)
                 return ("updated", _cover_job(existing["id"], book))
 
-        # New item — insert
-        isbn = book.get("isbn")
-        isbn10 = book.get("isbn10")
-        if isbn and not isbn10:
-            from app.services.isbn import isbn13_to_isbn10
-            isbn10 = isbn13_to_isbn10(isbn)
+        # New item — insert. A Hardcover ISBN is a provider value: pre-clean
+        # it per #54 rather than passing it to the funnel raw, which would
+        # refuse to insert the whole book over a bad check digit.
+        raw_isbn = book.get("isbn")
+        isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
+        if raw_isbn and isbn_pair is None:
+            logger.warning(
+                "%s: %r is not a valid ISBN — stored without one",
+                f"Hardcover import ({book.get('title')})", raw_isbn,
+            )
+        isbn, isbn10 = isbn_pair or (None, None)
 
         is_owned = 0 if book.get("reading_status") == "want_to_read" else 1
 

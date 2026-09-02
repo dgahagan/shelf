@@ -37,8 +37,9 @@ Options:
   title-only lookup for one can match a novel of the same name.
 - **To-read → wishlist** — rows with a to-read status arrive unowned.
 
-Errors are reported per row (missing title, over-long fields); the rest of
-the file still imports.
+Errors are reported per row (missing title, over-long fields, an ISBN whose
+check digit doesn't add up, a media type Shelf doesn't know); the rest of
+the file still imports. An ISBN-10 in the file stores both forms.
 
 ## Goodreads & StoryGraph
 
@@ -70,6 +71,12 @@ requests to Open Library.
 
 An archive from a newer Shelf than yours is refused with a clear message —
 upgrade first.
+
+A row whose ISBN isn't valid — an archive exported before Shelf stopped
+storing Audiobookshelf ASINs as ISBNs will carry some — is imported
+**without** its ISBN and listed in the import's report, so nothing is
+silently dropped. A row with a media type or platform Shelf doesn't know is
+refused and named in the same report; the rest of the archive still applies.
 
 ## Database backup & restore
 

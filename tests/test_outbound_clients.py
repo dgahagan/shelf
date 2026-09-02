@@ -48,10 +48,10 @@ class TestOpenLibraryUsesSharedLimiter:
             calls.append(("request", request.url.host))
             return httpx.Response(200, json={"title": "Some Book"})
 
-        respx.get("https://openlibrary.org/isbn/9780000000000.json").mock(side_effect=responder)
+        respx.get("https://openlibrary.org/isbn/9780000000019.json").mock(side_effect=responder)
 
         async with httpx.AsyncClient() as client:
-            await openlibrary.lookup("9780000000000", client)
+            await openlibrary.lookup("9780000000019", client)
 
         assert calls == [
             ("acquire", "openlibrary.org"),
@@ -109,7 +109,7 @@ class TestDnbUsesSharedLimiter:
         respx.get("https://services.dnb.de/sru/dnb").mock(side_effect=responder)
 
         async with httpx.AsyncClient() as client:
-            await dnb.lookup("9783000000000", client)
+            await dnb.lookup("9780000000156", client)
 
         assert calls == [
             ("acquire", "services.dnb.de"),
@@ -131,10 +131,10 @@ class TestIsbndbUsesSharedLimiter:
             calls.append(("request", request.url.host))
             return httpx.Response(200, json={"book": {"title": "T", "authors": [], "msrp": "9.99"}})
 
-        respx.get("https://api2.isbndb.com/book/9780000000000").mock(side_effect=responder)
+        respx.get("https://api2.isbndb.com/book/9780000000019").mock(side_effect=responder)
 
         async with httpx.AsyncClient() as client:
-            result = await isbndb.lookup_price("9780000000000", "key", client, {})
+            result = await isbndb.lookup_price("9780000000019", "key", client, {})
 
         assert calls == [
             ("acquire", "api2.isbndb.com"),
@@ -153,9 +153,9 @@ class TestIsbndbUsesSharedLimiter:
                 raise AssertionError("cache hit must not reach the network")
 
         cache = {
-            "9780000000000": {"data": {"title": "Cached"}, "fetched_at": time.time()},
+            "9780000000019": {"data": {"title": "Cached"}, "fetched_at": time.time()},
         }
-        result = await isbndb.lookup_price("9780000000000", "key", ExplodingClient(), cache)
+        result = await isbndb.lookup_price("9780000000019", "key", ExplodingClient(), cache)
 
         assert result == {"title": "Cached"}
         acquire_mock.assert_not_called()
@@ -204,33 +204,33 @@ class TestGooglebooksOutcomes:
         fake_fetch.return_value = StubResponse(
             200, json_data={"items": [{"volumeInfo": {"title": "Some Book"}}]}
         )
-        result = await googlebooks.lookup("9780000000000", object())
+        result = await googlebooks.lookup("9780000000019", object())
         assert result.outcome == "found"
         assert result.payload["title"] == "Some Book"
 
     async def test_a_200_with_no_items_is_no_match(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"items": []})
-        result = await googlebooks.lookup("9780000000000", object())
+        result = await googlebooks.lookup("9780000000019", object())
         assert result.outcome == "no_match"
 
     async def test_a_429_is_rate_limited(self, fake_fetch):
         fake_fetch.return_value = StubResponse(429)
-        result = await googlebooks.lookup("9780000000000", object())
+        result = await googlebooks.lookup("9780000000019", object())
         assert result.outcome == "rate_limited"
 
     async def test_a_transport_failure_is_transport_failed(self, fake_fetch):
         fake_fetch.side_effect = httpx.ReadError("boom")
-        result = await googlebooks.lookup("9780000000000", object())
+        result = await googlebooks.lookup("9780000000019", object())
         assert result.outcome == "transport_failed"
 
     async def test_a_400_with_key_is_rejected(self, fake_fetch):
         fake_fetch.return_value = StubResponse(400)
-        result = await googlebooks.lookup("9780000000000", object(), api_key="a-key")
+        result = await googlebooks.lookup("9780000000019", object(), api_key="a-key")
         assert result.outcome == "rejected"
 
     async def test_a_400_without_key_is_no_match(self, fake_fetch):
         fake_fetch.return_value = StubResponse(400)
-        result = await googlebooks.lookup("9780000000000", object())
+        result = await googlebooks.lookup("9780000000019", object())
         assert result.outcome == "no_match"
 
 
@@ -272,11 +272,11 @@ class TestOpenLibraryOutcomes:
 
     @respx.mock
     async def test_a_200_hit_is_found(self):
-        respx.get("https://openlibrary.org/isbn/9780000000001.json").mock(
+        respx.get("https://openlibrary.org/isbn/9780000000026.json").mock(
             return_value=httpx.Response(200, json={"title": "Some Book"})
         )
         async with httpx.AsyncClient() as client:
-            result = await openlibrary.lookup("9780000000001", client)
+            result = await openlibrary.lookup("9780000000026", client)
         assert result.outcome == "found"
         assert result.payload["title"] == "Some Book"
 
@@ -291,20 +291,20 @@ class TestOpenLibraryOutcomes:
 
     @respx.mock
     async def test_a_429_is_rate_limited(self):
-        respx.get("https://openlibrary.org/isbn/9780000000003.json").mock(
+        respx.get("https://openlibrary.org/isbn/9780000000033.json").mock(
             return_value=httpx.Response(429)
         )
         async with httpx.AsyncClient() as client:
-            result = await openlibrary.lookup("9780000000003", client)
+            result = await openlibrary.lookup("9780000000033", client)
         assert result.outcome == "rate_limited"
 
     @respx.mock
     async def test_a_transport_failure_is_transport_failed(self):
-        respx.get("https://openlibrary.org/isbn/9780000000004.json").mock(
+        respx.get("https://openlibrary.org/isbn/9780000000057.json").mock(
             side_effect=httpx.ConnectError("boom")
         )
         async with httpx.AsyncClient() as client:
-            result = await openlibrary.lookup("9780000000004", client)
+            result = await openlibrary.lookup("9780000000057", client)
         assert result.outcome == "transport_failed"
 
 
@@ -315,11 +315,11 @@ class TestOpenLibraryOutcomes:
         wraps its cascade legs, so a 200 carrying a non-JSON body (a proxy or
         captive-portal page) would have 500'd the scan instead of falling
         through to Hardcover and Google Books."""
-        respx.get("https://openlibrary.org/isbn/9780000000005.json").mock(
+        respx.get("https://openlibrary.org/isbn/9780000000064.json").mock(
             return_value=httpx.Response(200, text="<html>not json</html>")
         )
         async with httpx.AsyncClient() as client:
-            result = await openlibrary.lookup("9780000000005", client)
+            result = await openlibrary.lookup("9780000000064", client)
         assert result.outcome == "no_match"
 
     @respx.mock
@@ -327,7 +327,7 @@ class TestOpenLibraryOutcomes:
         """The author/description chain is a second and third request. A dead
         socket there must NOT be laundered into "no such book" (G47) — the
         edition is already in hand, so the hit stands minus those fields."""
-        respx.get("https://openlibrary.org/isbn/9780000000006.json").mock(
+        respx.get("https://openlibrary.org/isbn/9780000000071.json").mock(
             return_value=httpx.Response(
                 200, json={"title": "Half A Book", "works": [{"key": "/works/OL1W"}]}
             )
@@ -336,7 +336,7 @@ class TestOpenLibraryOutcomes:
             side_effect=httpx.ConnectError("boom")
         )
         async with httpx.AsyncClient() as client:
-            result = await openlibrary.lookup("9780000000006", client)
+            result = await openlibrary.lookup("9780000000071", client)
         assert result.outcome == "found"
         assert result.payload["title"] == "Half A Book"
         assert "authors" not in result.payload
@@ -363,21 +363,21 @@ class TestDnbOutcomes:
             return_value=httpx.Response(200, text=_fixture("dnb_sru_nohit.xml"))
         )
         async with httpx.AsyncClient() as client:
-            result = await dnb.lookup("9783000000000", client)
+            result = await dnb.lookup("9780000000156", client)
         assert result.outcome == "no_match"
 
     @respx.mock
     async def test_a_429_is_rate_limited(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(return_value=httpx.Response(429))
         async with httpx.AsyncClient() as client:
-            result = await dnb.lookup("9783000000000", client)
+            result = await dnb.lookup("9780000000156", client)
         assert result.outcome == "rate_limited"
 
     @respx.mock
     async def test_a_transport_failure_is_transport_failed(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(side_effect=httpx.ConnectError("boom"))
         async with httpx.AsyncClient() as client:
-            result = await dnb.lookup("9783000000000", client)
+            result = await dnb.lookup("9780000000156", client)
         assert result.outcome == "transport_failed"
 
 
@@ -498,7 +498,7 @@ class TestHardcoverLookupByIsbnRateLimit:
 
         respx.post("https://api.hardcover.app/v1/graphql").mock(side_effect=responder)
         async with httpx.AsyncClient() as client:
-            result = await hardcover.lookup_by_isbn("9780000000000", client, token="tok")
+            result = await hardcover.lookup_by_isbn("9780000000019", client, token="tok")
         assert result.outcome == "rate_limited"
         # No retry: only one request was made.
         assert respx.calls.call_count == 1
@@ -513,6 +513,6 @@ class TestHardcoverLookupByIsbnRateLimit:
 
         respx.post("https://api.hardcover.app/v1/graphql").mock(side_effect=responder)
         async with httpx.AsyncClient() as client:
-            result = await hardcover.lookup_by_isbn("9780000000000", client, token="tok")
+            result = await hardcover.lookup_by_isbn("9780000000019", client, token="tok")
         assert result.outcome == "rate_limited"
         assert respx.calls.call_count == 2

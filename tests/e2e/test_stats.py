@@ -39,7 +39,7 @@ def test_stats_dashboard_reflects_real_collection_and_links_back_to_item(
         server["data_dir"],
         title="Smoke Read Book",
         media_type="book",
-        isbn="9780907000109",
+        isbn="9789070001094",
         authors="Smoke Test Author",
         owned=1,
         location_id=location_id,

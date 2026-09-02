@@ -316,11 +316,100 @@ class TestStorygraphImport:
 
 class TestGenericStillWorks:
     def test_generic_format_reported(self, admin_client):
-        csv_content = "title,authors,isbn\nSome Book,Someone,9780000000111"
+        csv_content = "title,authors,isbn\nSome Book,Someone,9780000001115"
         data = _post_csv(admin_client, csv_content).json()
         assert data["format"] == "generic"
         assert data["imported"] == 1
         assert data["covers_queued"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Value-funnel boundary on /api/import/csv (#54, T5)
+# ---------------------------------------------------------------------------
+
+
+class TestCsvValueFunnel:
+    """import_csv routes every insert/update through item_write's funnel —
+    a bad value reports on the row it came from and the next row still
+    imports, rather than 500ing the whole upload."""
+
+    def test_invalid_isbn_row_reports_and_next_row_still_imports(self, admin_client, db):
+        csv_content = (
+            "title,authors,isbn,media_type\n"
+            "Bad ISBN Book,Author One,9780441172710,book\n"
+            "Good Book,Author Two,9780441013593,book\n"
+        )
+        data = _post_csv(admin_client, csv_content).json()
+        assert data["imported"] == 1
+        assert data["errors"] == ["Row 2: Invalid ISBN: 9780441172710"]
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Bad ISBN Book'"
+        ).fetchone()["c"] == 0
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Good Book'"
+        ).fetchone()["c"] == 1
+
+    def test_error_count_is_the_true_total_not_the_capped_list(self, admin_client):
+        """`errors` is capped at 20 for the wire; the UI lists those but shows
+        `error_count`, so a 30-bad-row import cannot report "20"
+        (test-drive Observation 2)."""
+        # Distinct codes: rows sharing an ISBN are deduped within the file, so
+        # thirty copies of one bad ISBN would report a single error. Filtered
+        # through the validator rather than hand-picked — a candidate that
+        # happens to carry a good check digit would import and skew the count.
+        from app.services.isbn import canonical_isbn_pair
+        bad, n = [], 0
+        while len(bad) < 30:
+            cand = f"978144017{n:04d}"
+            if canonical_isbn_pair(cand) is None:
+                bad.append(cand)
+            n += 1
+        rows = "".join(f"Bad Row {i},Author,{isbn},book\n" for i, isbn in enumerate(bad))
+        data = _post_csv(admin_client, "title,authors,isbn,media_type\n" + rows).json()
+        assert data["imported"] == 0
+        assert len(data["errors"]) == 20
+        assert data["error_count"] == 30
+
+    def test_unknown_media_type_row_reports(self, admin_client, db):
+        csv_content = "title,authors,isbn,media_type\nWidget Book,Author,9780441013593,widget\n"
+        data = _post_csv(admin_client, csv_content).json()
+        assert data["imported"] == 0
+        assert any("widget" in e for e in data["errors"])
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Widget Book'"
+        ).fetchone()["c"] == 0
+
+    def test_isbn10_row_stores_canonical_pair(self, admin_client, db):
+        csv_content = "title,authors,isbn,media_type\nTen Digit,Author,054792822X,book\n"
+        data = _post_csv(admin_client, csv_content).json()
+        assert data["imported"] == 1
+        item = db.execute(
+            "SELECT isbn, isbn10 FROM items WHERE title = 'Ten Digit'"
+        ).fetchone()
+        assert item["isbn"] == "9780547928227"
+        assert item["isbn10"] == "054792822X"
+
+    def test_reading_tracker_update_applies_to_read_wishlist(self, admin_client, db):
+        """The COALESCE-shaped update path — mode=update on an existing
+        row — must still apply the to_read_wishlist option through the
+        funnel's update_item_fields, not raw SQL (#54)."""
+        from tests.conftest import _insert_item
+
+        _insert_item(db, title="Hyperion", isbn="9780553283686", media_type="book", owned=1)
+        db.execute("COMMIT")
+
+        csv_content = GOODREADS_HEADER + "\n" + _gr_row(
+            title="Hyperion", isbn13="9780553283686", isbn10="0553283685",
+            shelf="to-read", date_read="")
+        data = _post_csv(admin_client, csv_content, mode="update",
+                         to_read_wishlist="1").json()
+        assert data["imported"] == 1
+
+        item = db.execute(
+            "SELECT reading_status, owned FROM items WHERE isbn = '9780553283686'"
+        ).fetchone()
+        assert item["reading_status"] == "want_to_read"
+        assert item["owned"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -395,6 +484,36 @@ class TestCoverEnrichment:
                                (item_id,)).fetchone()
         assert row["isbn"] == "9780515147018"
         assert row["isbn10"] == "051514701X"  # derived from the ISBN-13
+        assert row["cover_path"] == f"covers/{item_id}.jpg"
+
+    @pytest.mark.asyncio
+    async def test_enrich_recovered_isbn_with_a_bad_digit_is_not_stored(self, db):
+        """A provider's ISBN is pre-cleaned: dropped on failure, never
+        refused — the cover still downloads from the search's cover_url (#54)."""
+        from tests.conftest import _insert_item
+        from app.routers import items_common
+
+        item_id = _insert_item(db, title="The Gray Man", authors="Mark Greaney",
+                               isbn=None)
+        db.execute("COMMIT")
+
+        search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
+                          "isbn": "9780441172710", "cover_url": "https://covers.example/1.jpg",
+                          "publish_year": 2009, "publisher": None, "page_count": None}]
+        with patch("app.routers.items.openlibrary.search_by_title_author",
+                   new=AsyncMock(return_value=search_result)), \
+             patch("app.routers.items.covers.download_cover",
+                   new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
+            await items_common.resolve_missing_cover(item_id, None)
+            dl.assert_awaited_once()
+            assert dl.await_args.args[2] == "https://covers.example/1.jpg"
+
+        from app.database import get_db
+        with get_db() as conn:
+            row = conn.execute("SELECT isbn, isbn10, cover_path FROM items WHERE id = ?",
+                               (item_id,)).fetchone()
+        assert row["isbn"] is None
+        assert row["isbn10"] is None
         assert row["cover_path"] == f"covers/{item_id}.jpg"
 
     @pytest.mark.asyncio
@@ -555,15 +674,15 @@ class TestEnrichImportCoversQueues:
         monkeypatch.delenv("SHELF_DISABLE_COVER_ENRICH", raising=False)
         csv_content = (
             "title,authors,isbn,media_type\n"
-            "Some Book,Someone,9780000000111,book\n"
-            "Some DVD,,9780000000222,dvd"
+            "Some Book,Someone,9780000001115,book\n"
+            "Some DVD,,9780000002228,dvd"
         )
         with patch("app.routers.items_common._enrich_import_covers", new=AsyncMock()) as enrich:
             data = _post_csv(admin_client, csv_content, enrich_covers="1").json()
 
         assert data["covers_queued"] == 1
         book_id = db.execute(
-            "SELECT id FROM items WHERE isbn = '9780000000111'"
+            "SELECT id FROM items WHERE isbn = '9780000001115'"
         ).fetchone()["id"]
         enrich.assert_called_once_with([book_id])
 

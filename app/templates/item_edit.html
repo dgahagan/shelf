@@ -6,6 +6,39 @@
 
     <h1 class="text-2xl font-bold mb-6">Edit Item</h1>
 
+    {# The save refused a value (#54). Nothing on the form was saved; the row's
+       stored values render below. Copy is keyed on the funnel's error code —
+       the router sends the code, never a string (G58). Unknown code: nothing. #}
+    {% if error == "invalid_isbn" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That ISBN's check digit doesn't add up — correct it or clear the field. Nothing else you typed was saved.
+    </div>
+    {% elif error == "unknown_media_type" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That media type isn't one Shelf knows — pick one from the list. Nothing was saved.
+    </div>
+    {% elif error == "unknown_location" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That location no longer exists — pick another, or none. Nothing was saved.
+    </div>
+    {% elif error == "unknown_platform" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That game platform isn't in your platform list — pick one, or add it under Settings first. Nothing was saved.
+    </div>
+    {% elif error == "invalid_reading_status" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That reading status isn't one of Want to Read, Reading or Read. Nothing was saved.
+    </div>
+    {% elif error == "invalid_owned" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        Owned must be on or off. Nothing was saved.
+    </div>
+    {% elif error == "invalid_number" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        A number field (year, pages, minutes, series #, value) had something that isn't a number. Nothing was saved.
+    </div>
+    {% endif %}
+
     <form action="/api/items/{{ item.id }}" method="post" enctype="multipart/form-data" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
         <input type="hidden" name="from" value="{{ back.key }}">
 

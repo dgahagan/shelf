@@ -101,10 +101,16 @@
             return r.json();
         }).then(function (data) {
             var handled = {};
+            var unreadable = 0;
             (data.results || []).forEach(function (res) {
                 handled[normalizeCode(res.isbn)] = true;
-                // Make freshly wishlisted books match on an immediate re-scan
-                if (res.status === 'wishlisted' || res.status === 'added_bare' || res.status === 'duplicate') {
+                if (res.status === 'unreadable') unreadable++;
+                // Make freshly wishlisted books match on an immediate re-scan.
+                // 'unreadable' is included so re-scanning the same bad barcode
+                // matches the row the server just made instead of queueing a
+                // second one — there is no ISBN on it to dedupe against.
+                if (res.status === 'wishlisted' || res.status === 'added_bare' ||
+                    res.status === 'duplicate' || res.status === 'unreadable') {
                     index[normalizeCode(res.isbn)] = {
                         title: res.title || ('ISBN ' + res.isbn),
                         authors: null,
@@ -113,8 +119,22 @@
                 }
             });
             setQueue(getQueue().filter(function (e) { return !handled[normalizeCode(e.isbn)]; }));
+            showSyncResult(unreadable);
             updateStatus();
         }).catch(function () { renderQueue(); });
+    }
+
+    // A barcode that failed its check digit is still saved, as a titled
+    // wishlist row with no ISBN. Say so: the queue block that would otherwise
+    // carry the news hides itself the moment the flush empties it.
+    function showSyncResult(unreadable) {
+        var el = $('sync-result');
+        if (!el) return;
+        if (!unreadable) { el.classList.add('hidden'); el.textContent = ''; return; }
+        el.textContent = unreadable === 1
+            ? "1 barcode didn't scan cleanly — saved to your wishlist to fix later."
+            : unreadable + " barcodes didn't scan cleanly — saved to your wishlist to fix later.";
+        el.classList.remove('hidden');
     }
 
     function renderQueue() {

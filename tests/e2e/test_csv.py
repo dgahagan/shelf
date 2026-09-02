@@ -20,7 +20,7 @@ def _get_token_cookie(live_server, browser, setup_admin) -> str:
 
 def test_csv_export(live_server, browser, setup_admin):
     """GET /api/export/csv returns a CSV file containing seeded items."""
-    insert_item(live_server["data_dir"], title="Export Test Book", media_type="book", isbn="9780000111222")
+    insert_item(live_server["data_dir"], title="Export Test Book", media_type="book", isbn="9780001112223")
 
     token = _get_token_cookie(live_server, browser, setup_admin)
     req = urllib.request.Request(
@@ -41,7 +41,7 @@ def test_csv_export(live_server, browser, setup_admin):
 def test_csv_import(live_server, authed_page):
     """Uploading a CSV file via the settings page imports items."""
     # Build a minimal CSV
-    csv_content = "title,media_type,isbn\nImported Book,book,9780000222333\n"
+    csv_content = "title,media_type,isbn\nImported Book,book,9780002223331\n"
 
     authed_page.goto(f"{live_server['url']}/settings")
     authed_page.wait_for_load_state("networkidle")
@@ -96,9 +96,9 @@ def test_goodreads_import_via_ui(live_server, authed_page):
         "Private Notes,Read Count,Owned Copies"
     )
     rows = [
-        '1,GR Read Book,Ann Author,"Author, Ann",,"=""""","=""9780900000011""",'
+        '1,GR Read Book,Ann Author,"Author, Ann",,"=""""","=""9789000000111""",'
         '5,4.2,Ace,Paperback,300,2005,1999,2023/08/15,2023/01/02,,,read,,,,1,0',
-        '2,GR Wishlist Book,Bob Writer,"Writer, Bob",,"=""""","=""9780900000028""",'
+        '2,GR Wishlist Book,Bob Writer,"Writer, Bob",,"=""""","=""9789000000289""",'
         '0,4.0,Bantam,Hardcover,500,1990,1989,,2023/01/02,,,to-read,,,,0,0',
     ]
     csv_content = header + "\n" + "\n".join(rows) + "\n"

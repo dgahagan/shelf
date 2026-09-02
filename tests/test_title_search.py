@@ -336,7 +336,8 @@ class TestAutoNeverReachesTheDatabase:
             data={"title": "Smuggled In", "isbn": "9780306406157", "media_type": "auto"},
         )
         assert resp.status_code == 200
-        assert "Unrecognised media type" in resp.text
+        # The route's own guard is gone; this is the funnel refusing (#54).
+        assert "Unknown media type" in resp.text
         assert db.execute(
             "SELECT COUNT(*) c FROM items WHERE title = 'Smuggled In'"
         ).fetchone()["c"] == 0

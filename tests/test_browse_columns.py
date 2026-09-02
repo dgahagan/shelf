@@ -180,12 +180,12 @@ class TestHeaderCellAgreement:
 
     def test_header_and_every_row_match_registry_order(self, admin_client, db):
         rich = _insert_item(
-            db, title="Rich Item", isbn="9780000009001", media_type="book",
+            db, title="Rich Item", isbn="9780000090010", media_type="book",
             manual_value=42.50, estimated_value=10.00, series_name="The Chronicles",
             series_position=2, publisher="Acme Books", publish_year=2001,
             page_count=350, language="eng", platform="PC", upc="012345678905",
         )
-        bare = _insert_item(db, title="Bare Item", isbn="9780000009002", media_type="book")
+        bare = _insert_item(db, title="Bare Item", isbn="9780000090027", media_type="book")
         db.commit()
 
         seeded = {rich, bare}
@@ -258,10 +258,10 @@ class TestValueRendering:
     ):
         currency = get_currency()
         valued = _insert_item(
-            db, title="Valued Item", isbn="9780000009101", media_type="book",
+            db, title="Valued Item", isbn="9780000091017", media_type="book",
             manual_value=42.50, estimated_value=10.00,
         )
-        unvalued = _insert_item(db, title="Unvalued Item", isbn="9780000009102", media_type="book")
+        unvalued = _insert_item(db, title="Unvalued Item", isbn="9780000091024", media_type="book")
         db.commit()
 
         row_count = db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"]

@@ -203,7 +203,7 @@ def test_blocked_borrower_delete_shows_the_settings_banner(live_server, authed_p
     name = "E2E Blocked Borrower"
     _add_borrower(authed_page, live_server, name)
 
-    item_id = insert_item(live_server["data_dir"], title="E2E Lent Book", isbn="9780000009299")
+    item_id = insert_item(live_server["data_dir"], title="E2E Lent Book", isbn="9780000092991")
     conn = sqlite3.connect(str(live_server["data_dir"] / "shelf.db"))
     try:
         borrower_id = conn.execute(

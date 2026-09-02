@@ -146,7 +146,7 @@ def test_item_edit_save(live_server, authed_page):
         live_server["data_dir"],
         title="Old Title",
         media_type="book",
-        isbn="9780000001234",
+        isbn="9780000012340",
     )
     authed_page.goto(f"{live_server['url']}/item/{item_id}/edit")
     authed_page.wait_for_load_state("networkidle")
@@ -167,7 +167,7 @@ def test_manual_value_overrides_estimate_then_falls_back(live_server, authed_pag
         live_server["data_dir"],
         title="Priced Book",
         media_type="book",
-        isbn="9780000005678",
+        isbn="9780000056788",
         estimated_value=20.00,
     )
 
@@ -256,7 +256,7 @@ def test_reading_history_survives_status_toggle(live_server, authed_page):
         live_server["data_dir"],
         title="Reread Across A Toggle",
         media_type="book",
-        isbn="9780000009123",
+        isbn="9780000091239",
     )
     insert_reading_log(live_server["data_dir"], item_id, count=2)
 
@@ -292,7 +292,7 @@ def test_fractional_series_position_round_trips_in_browser(live_server, authed_p
         live_server["data_dir"],
         title="Novella At Two And A Quarter",
         media_type="book",
-        isbn="9780000009124",
+        isbn="9780000091246",
         series_name="Quarter Saga",
         series_position=2.25,
     )
@@ -324,7 +324,7 @@ def test_cover_picker_opens_on_item_that_already_has_a_cover(live_server, authed
         live_server,
         title="Already Has A Cover",
         media_type="book",
-        isbn="9780000009200",
+        isbn="9780000092007",
     )
     handled, offenders = _stub_cover_search(authed_page, item_id, with_current=True)
 
@@ -369,7 +369,7 @@ def test_cover_picker_remove_cover(live_server, authed_page):
         live_server,
         title="Cover To Remove",
         media_type="book",
-        isbn="9780000009201",
+        isbn="9780000092014",
     )
     _stub_cover_search(authed_page, item_id, with_current=True)
 

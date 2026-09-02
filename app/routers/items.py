@@ -14,13 +14,15 @@ from app.auth import require_role
 
 logger = logging.getLogger(__name__)
 from app.config import MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE
-from app.database import (get_db, get_setting, get_game_platforms, gc_orphaned_series_meta,
+from app.database import (get_db, get_setting, gc_orphaned_series_meta,
                           get_reading_history)
 from app.routers.series import MAX_SERIES_NAME
 from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS  # re-exported for pages.py
 from app.services import isbn as isbn_svc
-from app.services.item_write import insert_item
+from app.services.item_write import (ItemValueError, insert_item, update_item_fields,
+                                     update_items_fields, validate_item_fields,
+                                     validated_location_id)
 from app.services import openlibrary, googlebooks, hardcover, covers, national
 from app.services import detect
 from app.services import cover_queue
@@ -192,9 +194,20 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
 
     old_location = item.get("location_name") or "No location"
 
+    # A deleted location used to be a foreign-key 500 here (#54).
+    value_error = None
     with get_db() as db:
-        db.execute("UPDATE items SET location_id = ? WHERE id = ?", (location_id, item["id"]))
+        try:
+            update_item_fields(db, item["id"], {"location_id": location_id})
+        except ItemValueError as e:
+            value_error = str(e)
         new_loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
+    if value_error:
+        items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "move")
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": raw, "message": value_error},
+        )
 
     new_name = new_loc["name"] if new_loc else "Unknown"
     items_common._log_scan(raw, item.get("media_type", ""), "moved", item["id"], "move")
@@ -237,8 +250,18 @@ def _scan_mode_inventory(request, templates, item: dict | None, location_id: int
     else:
         old_location = item.get("location_name") or "No location"
         # Update location to where it actually is
+        value_error = None
         with get_db() as db:
-            db.execute("UPDATE items SET location_id = ? WHERE id = ?", (location_id, item["id"]))
+            try:
+                update_item_fields(db, item["id"], {"location_id": location_id})
+            except ItemValueError as e:
+                value_error = str(e)
+        if value_error:
+            items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "inventory")
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "error", "isbn": raw, "message": value_error},
+            )
         items_common._log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
@@ -272,10 +295,9 @@ def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
     """Handle quick rate mode: mark item as read/completed."""
     from datetime import date
     with get_db() as db:
-        db.execute(
-            "UPDATE items SET reading_status = 'read', date_finished = ? WHERE id = ?",
-            (date.today().isoformat(), item["id"]),
-        )
+        update_item_fields(db, item["id"], {
+            "reading_status": "read", "date_finished": date.today().isoformat(),
+        })
 
     items_common._log_scan(raw, item.get("media_type", ""), "marked_read", item["id"], "quick_rate")
     resp = templates.TemplateResponse(
@@ -331,14 +353,19 @@ async def scan_isbn(
     if barcode_type == "upc":
         return await items_common._scan_upc(request, templates, raw, media_type, location_id, platform or None, mode=mode)
 
-    # Normalize ISBN
+    # Normalize the ISBN, then check its digit — before any provider call, so
+    # a mistyped ISBN never costs a lookup (#54). `to_isbn13` stays permissive
+    # for the lookup modes above (an old row with a bad ISBN is still found);
+    # the *add* boundary is where `canonical_isbn_pair` applies.
     isbn13 = isbn_svc.to_isbn13(raw)
-    if not isbn13:
+    pair = isbn_svc.canonical_isbn_pair(isbn13) if isbn13 else None
+    if pair is None:
         items_common._log_scan(isbn, media_type, "error", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
         )
+    isbn13 = pair[0]
 
     # §1 — the barcode outranks the dropdown when it is certain. A 978/979
     # prefix is certain, so a stale "DVD" or "Video Game" in the picker is
@@ -369,10 +396,23 @@ async def scan_isbn(
             {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
         )
 
-    # Get optional metadata-provider credentials.
+    # Get optional metadata-provider credentials — and refuse a stale location
+    # id here rather than after the cascade: the funnel would raise on the
+    # save, but not before the lookup had been paid for.
+    location_error = None
     with get_db() as db:
+        try:
+            location_id = validated_location_id(db, location_id)
+        except ItemValueError as e:
+            location_error = str(e)
         hc_token = get_setting(db, "hardcover_token") or None
         google_api_key = get_setting(db, "google_books_api_key") or None
+    if location_error:
+        items_common._log_scan(isbn13, media_type, "error", mode=mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn13, "message": location_error},
+        )
 
     logger.info("Scanning ISBN %s (type=%s, mode=%s)", isbn13, media_type, mode)
     # No try/except around this block any more: every leg returns
@@ -426,7 +466,7 @@ async def scan_isbn(
         # Wishlist mode: set owned = 0
         if mode == "wishlist":
             with get_db() as db:
-                db.execute("UPDATE items SET owned = 0 WHERE id = ?", (item_id,))
+                update_item_fields(db, item_id, {"owned": 0})
 
         # Queue the cover instead of downloading it in-request. The
         # hints are the exact three inputs the download used to take, so
@@ -482,18 +522,6 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
     isbn = form.get("isbn", "").strip()
     media_type = form.get("media_type", "book")
 
-    # Guard 3 of 3. The scan not-found card re-emits its media type into a
-    # hidden field (`fragments/scan_result.html`), so whatever that card can
-    # carry arrives here and goes straight to `insert_item` with nothing in
-    # between. Same helper as the other two boundaries — see its comment in
-    # items_common for why there is exactly one.
-    if not items_common.is_valid_media_type(media_type):
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": isbn,
-             "message": "Unrecognised media type — pick one and try again"},
-        )
-
     # A UPC belongs in items.upc, never in items.isbn (#20). to_isbn13()
     # will happily zero-pad a 12-digit UPC-A into something ISBN-shaped, so
     # every manually-added disc and game used to be filed in the wrong
@@ -503,11 +531,19 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
     barcode_type = upc_svc.detect_barcode_type(isbn) if isbn else "unknown"
     if barcode_type == "upc":
         upc_code = upc_svc.normalize_upc(isbn)
-        isbn13 = isbn10 = None
+        isbn13 = None
     else:
         upc_code = None
-        isbn13 = isbn_svc.to_isbn13(isbn) if isbn else None
-        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if isbn13 else None
+        # The check digit, before anything else runs (#54). The funnel would
+        # refuse it too; refusing here keeps the card's wording and keys the
+        # duplicate check on a real ISBN. The funnel derives isbn10.
+        pair = isbn_svc.canonical_isbn_pair(isbn) if isbn else None
+        if isbn and pair is None:
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
+            )
+        isbn13 = pair[0] if pair else None
 
     pub_year_raw = (form.get("publish_year") or "").strip()
     if pub_year_raw:
@@ -537,17 +573,11 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         except (TypeError, ValueError):
             location_id = None
 
+    # Media type, platform and location are the funnel's to check (#54):
+    # `insert_item` raises `ItemValueError` and the card carries its message.
+    # Rendered after the block so nothing runs under the write.
+    value_error = None
     with get_db() as db:
-        if platform and platform not in get_game_platforms(db):
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "error", "isbn": isbn,
-                 "message": "Unrecognised game platform — pick one and try again"},
-            )
-        if location_id is not None:
-            loc_row = db.execute("SELECT id FROM locations WHERE id = ?", (location_id,)).fetchone()
-            if not loc_row:
-                location_id = None
         existing = _find_duplicate_item(db, isbn13, upc_code, media_type)
         if existing is None:
             try:
@@ -556,7 +586,6 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
                     title=title,
                     authors=form.get("authors"),
                     isbn=isbn13,
-                    isbn10=isbn10,
                     upc=upc_code,
                     media_type=media_type,
                     publisher=form.get("publisher"),
@@ -567,6 +596,8 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
                     language=language,
                     source="manual",
                 )
+            except ItemValueError as e:
+                value_error = str(e)
             except sqlite3.IntegrityError:
                 # Lost a race with a concurrent add, or the barcode is on a row
                 # filed before the #20 re-file migration. Either way the user
@@ -574,6 +605,12 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
                 existing = _find_duplicate_item(db, isbn13, upc_code, media_type)
                 if existing is None:
                     raise
+
+    if value_error:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": isbn, "message": value_error},
+        )
 
     if existing:
         code = isbn13 or upc_code or ""
@@ -782,7 +819,6 @@ async def bulk_update(request: Request, _=Depends(require_role("admin"))):
             return {"ok": False, "message": "Series name cannot be empty"}
 
     placeholders = ",".join("?" for _ in item_ids)
-    set_clause = ", ".join(f"{k} = ?" for k in filtered)
 
     with get_db() as db:
         old_series_names = []
@@ -794,10 +830,10 @@ async def bulk_update(request: Request, _=Depends(require_role("admin"))):
                 ).fetchall()
             ]
 
-        db.execute(
-            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id IN ({placeholders})",
-            list(filtered.values()) + item_ids,
-        )
+        try:
+            update_items_fields(db, item_ids, filtered)
+        except ItemValueError as e:
+            return {"ok": False, "message": str(e)}
 
         if old_series_names:
             gc_orphaned_series_meta(db, *old_series_names)
@@ -829,13 +865,31 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
             other = db.execute("SELECT * FROM items WHERE id = ?", (mid,)).fetchone()
             if not other:
                 continue
-            for field in _MERGE_FILLABLE:
-                if not primary[field] and other[field]:
-                    db.execute(f"UPDATE items SET {field} = ? WHERE id = ?", (other[field], keep_id))
+            fill = {f: other[f] for f in _MERGE_FILLABLE if not primary[f] and other[f]}
+            if fill:
+                # Validate *before* the DELETE: a merge must not delete a row
+                # whose values it failed to copy (#54). The write itself
+                # comes after the delete, because a filled isbn is still on
+                # the other row until then and UNIQUE(isbn, media_type)
+                # would refuse the copy.
+                try:
+                    fill = validate_item_fields(db, fill)
+                except ItemValueError as e:
+                    # Name the row: the loop stops on the first bad one, and a
+                    # multi-row merge otherwise reports a value with no way to
+                    # tell which item carried it.
+                    return {
+                        "ok": False,
+                        "message": f"Cannot merge \"{other['title']}\" (#{mid}): {e}",
+                        "item_id": mid,
+                    }
 
             db.execute("UPDATE scan_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
             db.execute("UPDATE reading_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
             db.execute("DELETE FROM items WHERE id = ?", (mid,))
+            if fill:
+                update_item_fields(db, keep_id, fill)
+                primary = db.execute("SELECT * FROM items WHERE id = ?", (keep_id,)).fetchone()
 
     return {"ok": True, "merged": len(merge_ids)}
 
@@ -845,24 +899,38 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
     form = await request.form()
     back_key = nav.back_target(form.get("from"))["key"]
     redirect_url = f"/item/{item_id}" + (f"?from={back_key}" if back_key else "")
+    from fastapi.responses import RedirectResponse
+    # The edit form's error surface: back to the form with `?error=<code>`,
+    # rendered as a banner by the template (copy lives there, keyed on the
+    # code — G58). Nothing is saved on any refusal.
+    edit_url = f"/item/{item_id}/edit" + (f"?from={back_key}" if back_key else "")
+
+    def _refused(code):
+        return RedirectResponse(url=f"{edit_url}{'&' if '?' in edit_url else '?'}error={code}",
+                                status_code=303)
+
     fields = {}
-    for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
-                "publish_year", "page_count", "description", "series_name",
-                "series_position", "narrator", "duration_mins", "location_id", "notes",
-                "reading_status", "date_started", "date_finished", "owned", "platform",
-                "manual_value", "language"):
-        val = form.get(key)
-        if val is not None:
-            if val == "" and key != "owned":
-                fields[key] = None
-            elif key in ("publish_year", "page_count", "duration_mins", "location_id"):
-                fields[key] = int(val) if val else None
-            elif key in ("series_position", "manual_value"):
-                fields[key] = float(val) if val else None
-            elif key == "owned":
-                fields[key] = int(val) if val else 0
-            else:
-                fields[key] = val
+    try:
+        for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
+                    "publish_year", "page_count", "description", "series_name",
+                    "series_position", "narrator", "duration_mins", "location_id", "notes",
+                    "reading_status", "date_started", "date_finished", "owned", "platform",
+                    "manual_value", "language"):
+            val = form.get(key)
+            if val is not None:
+                if val == "" and key != "owned":
+                    fields[key] = None
+                elif key in ("publish_year", "page_count", "duration_mins", "location_id"):
+                    fields[key] = int(val) if val else None
+                elif key in ("series_position", "manual_value"):
+                    fields[key] = float(val) if val else None
+                elif key == "owned":
+                    fields[key] = int(val) if val else 0
+                else:
+                    fields[key] = val
+    except (TypeError, ValueError):
+        # A non-numeric year/count/value used to be a 500.
+        return _refused("invalid_number")
 
     # Handle cover upload
     cover_file = form.get("cover")
@@ -874,11 +942,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                 fields["cover_path"] = cover_path
 
     if not fields:
-        from fastapi.responses import RedirectResponse
         return RedirectResponse(url=redirect_url, status_code=303)
-
-    set_clause = ", ".join(f"{k} = ?" for k in fields)
-    values = list(fields.values()) + [item_id]
 
     with get_db() as db:
         old_series_name = None
@@ -888,10 +952,12 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
             ).fetchone()
             old_series_name = row["series_name"] if row else None
 
-        db.execute(
-            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-            values,
-        )
+        # The form posts `isbn` every time, so an edit that changes it now
+        # rewrites isbn10 too — #54's second half.
+        try:
+            update_item_fields(db, item_id, fields)
+        except ItemValueError as e:
+            return _refused(e.code)
 
         # Guarded: `fields` only carries series_name when the form submitted it
         # (a cover-only or partial POST omits it entirely).
@@ -900,7 +966,6 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
             if old_series_name.strip().casefold() != (new_series_name or "").strip().casefold():
                 gc_orphaned_series_meta(db, old_series_name)
 
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url=redirect_url, status_code=303)
 
 
@@ -908,10 +973,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
 async def set_reading_status(request: Request, item_id: int, status: str = Form(""), _=Depends(require_role("viewer"))):
     """Quick-toggle reading status from detail or browse page."""
     templates = request.app.state.templates
-    valid = ("want_to_read", "reading", "read", "")
-    if status not in valid:
-        status = ""
-
+    # `""` is the clear action; anything else is the funnel's to judge (#54).
     reading_status = status or None
     now_date = None
 
@@ -940,11 +1002,12 @@ async def set_reading_status(request: Request, item_id: int, status: str = Form(
             updates["date_started"] = None
             updates["date_finished"] = None
 
-        set_clause = ", ".join(f"{k} = ?" for k in updates)
-        db.execute(
-            f"UPDATE items SET {set_clause}, updated_at = datetime('now') WHERE id = ?",
-            list(updates.values()) + [item_id],
-        )
+        try:
+            update_item_fields(db, item_id, updates)
+        except ItemValueError as e:
+            # An HTMX fragment endpoint: no fragment to render, so the
+            # message is the body.
+            return HTMLResponse(str(e), status_code=400)
 
         item = db.execute(
             "SELECT i.*, l.name as location_name FROM items i "

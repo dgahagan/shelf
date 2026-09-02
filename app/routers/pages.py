@@ -292,6 +292,7 @@ async def item_edit(
     request: Request,
     item_id: int,
     from_: str = Query("", alias="from"),
+    error: str | None = Query(None),
     _=Depends(require_role("editor")),
 ):
     back = nav.back_target(from_)
@@ -306,7 +307,8 @@ async def item_edit(
     return request.app.state.templates.TemplateResponse(
         request,
         "item_edit.html",
-        {"item": item, "back": back, "media_types": MEDIA_TYPES, "game_platforms": game_platforms, "locations": locations},
+        {"item": item, "back": back, "media_types": MEDIA_TYPES, "game_platforms": game_platforms,
+         "locations": locations, "error": error},
     )
 
 

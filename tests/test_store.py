@@ -174,7 +174,7 @@ class TestStoreQueue:
         monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "store-google-key")
         lookup = AsyncMock(return_value=(None, None, {}, False))
         with patch("app.routers.items_common._lookup_metadata", new=lookup):
-            admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
+            admin_client.post("/api/store/queue", json={"isbns": ["9789000000111"]})
 
         assert lookup.await_args.kwargs["google_api_key"] == "store-google-key"
 
@@ -193,7 +193,7 @@ class TestStoreQueue:
     def test_bare_add_when_nothing_found(self, admin_client, db):
         with patch("app.routers.items_common._lookup_metadata",
                    new=AsyncMock(return_value=(None, None, {}, False))):
-            resp = admin_client.post("/api/store/queue", json={"isbns": ["9780900000011"]})
+            resp = admin_client.post("/api/store/queue", json={"isbns": ["9789000000111"]})
         assert resp.json()["results"][0]["status"] == "added_bare"
 
     def test_duplicate_reported(self, admin_client, db):
@@ -212,7 +212,49 @@ class TestStoreQueue:
 
     def test_invalid_isbn(self, admin_client):
         resp = admin_client.post("/api/store/queue", json={"isbns": ["not-an-isbn"]})
-        assert resp.json()["results"][0]["status"] == "invalid"
+        assert resp.json()["results"][0]["status"] == "unreadable"
+
+    def test_bad_check_digit_is_kept_as_an_unreadable_row(self, admin_client, db):
+        """A well-formed but checksum-invalid ISBN-13 never reaches `items.isbn`
+        (#54) — but the scan itself survives. The client drops any flushed code
+        from its queue, so refusing without writing loses the scan outright
+        (test-drive Observation 1)."""
+        resp = admin_client.post("/api/store/queue", json={"isbns": ["9780441172710"]})
+        result = resp.json()["results"][0]
+        assert result["status"] == "unreadable"
+
+        row = db.execute(
+            "SELECT title, isbn, owned, source FROM items WHERE id = ?",
+            (result["item_id"],),
+        ).fetchone()
+        assert row["title"] == "Unreadable barcode — 9780441172710"
+        assert row["isbn"] is None
+        assert row["owned"] == 0
+        assert row["source"] == "store_queue"
+
+    def test_unreadable_code_is_bounded_before_it_becomes_a_title(self, admin_client, db):
+        resp = admin_client.post("/api/store/queue", json={"isbns": ["9" * 500]})
+        result = resp.json()["results"][0]
+        assert result["status"] == "unreadable"
+        title = db.execute(
+            "SELECT title FROM items WHERE id = ?", (result["item_id"],)
+        ).fetchone()["title"]
+        assert title == "Unreadable barcode — " + "9" * 32
+
+    def test_bare_add_stores_canonical_pair_for_isbn10_input(self, admin_client, db):
+        """A valid but unrecognized ISBN-10 falls to the bare-add path; the
+        funnel derives both halves of the pair from the ISBN-13 alone."""
+        with patch("app.routers.items_common._lookup_metadata",
+                   new=AsyncMock(return_value=(None, None, {}, False))):
+            resp = admin_client.post("/api/store/queue", json={"isbns": ["054792822X"]})
+        assert resp.json()["results"][0]["status"] == "added_bare"
+
+        item = db.execute(
+            "SELECT isbn, isbn10 FROM items WHERE isbn = '9780547928227'"
+        ).fetchone()
+        assert item is not None
+        assert item["isbn"] == "9780547928227"
+        assert item["isbn10"] == "054792822X"
 
     def test_batch_deduped_and_capped(self, admin_client):
         isbns = ["junk"] * 10 + [f"junk{i}" for i in range(60)]

@@ -57,6 +57,17 @@ says — the provider answered and genuinely had nothing.
 self-published book, a burned CD, a box set. Fill what you know; you can
 attach a cover by upload or cover search afterwards from the item page.
 
+What you type is checked before it's stored: an ISBN whose check digit
+doesn't add up, a location that no longer exists, or a game platform that
+isn't in your list each answer with an error card and nothing is added. An
+ISBN-10 is fine — Shelf stores it alongside the ISBN-13 it implies.
+
+A typed or scanned ISBN in **Add** mode is check-digit validated *before*
+any lookup, so a mistyped digit costs nothing and says "Invalid ISBN"
+straight away. The lookup modes (lend, return, move, inventory, lookup,
+quick-rate) are not that strict on purpose: an old record whose stored ISBN
+isn't valid is still found when you scan it.
+
 From an existing item's page, **Add a copy** pre-fills a new form from it —
 handy for a second edition or a duplicate copy you want as its own record.
 

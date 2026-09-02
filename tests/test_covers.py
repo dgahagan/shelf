@@ -11,7 +11,7 @@ class TestCoverSearchQuery:
     def test_query_overrides_stored_title(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Stored Title", isbn="9780900003001")
+        item_id = _insert_item(db, title="Stored Title", isbn="9789000030019")
         db.commit()
 
         search = AsyncMock(return_value=[])
@@ -28,7 +28,7 @@ class TestCoverSearchQuery:
     def test_blank_query_falls_back_to_stored_title(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Stored Title", isbn="9780900003002")
+        item_id = _insert_item(db, title="Stored Title", isbn="9789000030026")
         db.commit()
 
         search = AsyncMock(return_value=[])
@@ -47,7 +47,7 @@ class TestCoverSelectFailure:
     def test_failed_select_rerenders_gallery_and_keeps_error_toast(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Stored Title", isbn="9780900003003")
+        item_id = _insert_item(db, title="Stored Title", isbn="9789000030033")
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
@@ -91,7 +91,7 @@ class TestCoverSelectFailure:
         from app.main import app as fastapi_app
         from app.services import covers
 
-        item_id = _insert_item(db, title="Stored Title", isbn="9780900003005")
+        item_id = _insert_item(db, title="Stored Title", isbn="9789000030057")
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
@@ -124,7 +124,7 @@ class TestCoverSelectFailure:
     def test_failed_select_candidate_buttons_carry_hx_target(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Stored Title", isbn="9780900003006")
+        item_id = _insert_item(db, title="Stored Title", isbn="9789000030064")
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
@@ -185,7 +185,7 @@ class TestCoverUpload:
         assert (app.config.COVERS_DIR / f"{item_id}.jpg").exists()
 
     def test_valid_upload_stamps_updated_at(self, editor_client, db):
-        item_id = _insert_item(db, title="Stamp Me", isbn="9780900004005")
+        item_id = _insert_item(db, title="Stamp Me", isbn="9789000040056")
         db.execute("UPDATE items SET updated_at = '2000-01-01 00:00:00' WHERE id = ?", (item_id,))
         db.commit()
 
@@ -197,7 +197,7 @@ class TestCoverUpload:
     def test_undersize_file_is_refused_and_writes_nothing(self, editor_client, db):
         import app.config
 
-        item_id = _insert_item(db, title="Too Small", isbn="9780900004002")
+        item_id = _insert_item(db, title="Too Small", isbn="9789000040025")
         db.commit()
 
         resp = self._post(editor_client, item_id, self._jpeg(50))
@@ -215,7 +215,7 @@ class TestCoverUpload:
     def test_non_image_is_refused_and_writes_nothing(self, editor_client, db):
         import app.config
 
-        item_id = _insert_item(db, title="Not An Image", isbn="9780900004003")
+        item_id = _insert_item(db, title="Not An Image", isbn="9789000040032")
         db.commit()
 
         resp = self._post(
@@ -234,7 +234,7 @@ class TestCoverUpload:
         import app.config
         from app.services import covers
 
-        item_id = _insert_item(db, title="Too Big", isbn="9780900004004")
+        item_id = _insert_item(db, title="Too Big", isbn="9789000040049")
         db.commit()
 
         blob = b"\xff\xd8\xff" + b"\x00" * (covers.MAX_COVER_SIZE - 2)
@@ -252,7 +252,7 @@ class TestCoverUpload:
     def test_rejected_upload_leaves_an_existing_cover_alone(self, editor_client, db):
         import app.config
 
-        item_id = _insert_item(db, title="Keep My Cover", isbn="9780900004006")
+        item_id = _insert_item(db, title="Keep My Cover", isbn="9789000040063")
         db.execute(
             "UPDATE items SET cover_path = ? WHERE id = ?",
             (f"covers/{item_id}.jpg", item_id),
@@ -272,7 +272,7 @@ class TestCoverUpload:
         assert self._post(editor_client, 999999, self._jpeg()).status_code == 404
 
     def test_viewer_forbidden(self, viewer_client, db):
-        item_id = _insert_item(db, title="Viewer Upload", isbn="9780900004007")
+        item_id = _insert_item(db, title="Viewer Upload", isbn="9789000040070")
         db.commit()
         resp = self._post(viewer_client, item_id, self._jpeg())
         assert resp.status_code in (401, 403)
@@ -280,7 +280,7 @@ class TestCoverUpload:
 
 class TestCoverRemove:
     def test_remove_clears_the_column(self, editor_client, db):
-        item_id = _insert_item(db, title="Remove Me", isbn="9780900005001")
+        item_id = _insert_item(db, title="Remove Me", isbn="9789000050017")
         db.execute(
             "UPDATE items SET cover_path = ?, updated_at = '2000-01-01 00:00:00' WHERE id = ?",
             (f"covers/{item_id}.jpg", item_id),
@@ -301,7 +301,7 @@ class TestCoverRemove:
     def test_remove_leaves_the_file_on_disk(self, editor_client, db):
         import app.config
 
-        item_id = _insert_item(db, title="Keep The File", isbn="9780900005002")
+        item_id = _insert_item(db, title="Keep The File", isbn="9789000050024")
         db.execute(
             "UPDATE items SET cover_path = ? WHERE id = ?",
             (f"covers/{item_id}.jpg", item_id),
@@ -318,7 +318,7 @@ class TestCoverRemove:
         assert editor_client.post("/api/items/999999/cover-remove").status_code == 404
 
     def test_viewer_forbidden(self, viewer_client, db):
-        item_id = _insert_item(db, title="Viewer Remove", isbn="9780900005003")
+        item_id = _insert_item(db, title="Viewer Remove", isbn="9789000050031")
         db.commit()
         resp = viewer_client.post(f"/api/items/{item_id}/cover-remove")
         assert resp.status_code in (401, 403)
@@ -335,7 +335,7 @@ class TestPickerReachability:
         # control group and #cover-candidates lived inside the no-cover arm,
         # so an item that already had a cover could never re-pick one.
         item_id = _insert_item(
-            db, title="Has Cover", isbn="9780900006001", cover_path="covers/x.jpg",
+            db, title="Has Cover", isbn="9789000060016", cover_path="covers/x.jpg",
         )
         db.commit()
 
@@ -345,7 +345,7 @@ class TestPickerReachability:
         assert 'id="cover-candidates"' in html
 
     def test_picker_controls_present_without_a_cover(self, editor_client, db):
-        item_id = _insert_item(db, title="No Cover", isbn="9780900006002")
+        item_id = _insert_item(db, title="No Cover", isbn="9789000060023")
         db.commit()
 
         html = editor_client.get(f"/item/{item_id}").text
@@ -356,7 +356,7 @@ class TestPickerReachability:
 
     def test_retry_isbn_absent_once_a_cover_exists(self, editor_client, db):
         item_id = _insert_item(
-            db, title="Has Cover Too", isbn="9780900006003", cover_path="covers/y.jpg",
+            db, title="Has Cover Too", isbn="9789000060030", cover_path="covers/y.jpg",
         )
         db.commit()
 
@@ -366,7 +366,7 @@ class TestPickerReachability:
 
     def test_viewer_gets_no_picker_and_no_cover_mutation_endpoints(self, viewer_client, db):
         item_id = _insert_item(
-            db, title="Viewer Sees Nothing", isbn="9780900006004", cover_path="covers/z.jpg",
+            db, title="Viewer Sees Nothing", isbn="9789000060047", cover_path="covers/z.jpg",
         )
         db.commit()
 
@@ -400,7 +400,7 @@ class TestPickerReachability:
         from app.services import covers
 
         item_id = _insert_item(
-            db, title="Wiring Item", isbn="9780900006006", cover_path="covers/existing2.jpg",
+            db, title="Wiring Item", isbn="9789000060061", cover_path="covers/existing2.jpg",
         )
         db.commit()
 
@@ -440,7 +440,7 @@ class TestPickerReachability:
         markup-level half: the input's own `value` attribute."""
         from app.services import covers
 
-        item_id = _insert_item(db, title="Stored Title", isbn="9780900006007")
+        item_id = _insert_item(db, title="Stored Title", isbn="9789000060078")
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
@@ -472,7 +472,7 @@ class TestTheRouteKnowsWhatTheItemIs:
     def test_a_dvd_search_passes_the_items_media_type(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="The Matrix", isbn="9780900007001", media_type="dvd")
+        item_id = _insert_item(db, title="The Matrix", isbn="9789000070015", media_type="dvd")
         db.commit()
 
         search = AsyncMock(return_value=provider_result.found("openlibrary", []))
@@ -512,7 +512,7 @@ class TestTheRouteKnowsWhatTheItemIs:
         leave this path blind to media type and silently show book results."""
         from app.services import covers
 
-        item_id = _insert_item(db, title="Alien", isbn="9780900007003", media_type="dvd")
+        item_id = _insert_item(db, title="Alien", isbn="9789000070039", media_type="dvd")
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
@@ -531,7 +531,7 @@ class TestTheRouteKnowsWhatTheItemIs:
     def test_a_dvd_gets_the_tmdb_key_in_creds(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Heat", isbn="9780900007004", media_type="dvd")
+        item_id = _insert_item(db, title="Heat", isbn="9789000070046", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
 
@@ -545,7 +545,7 @@ class TestTheRouteKnowsWhatTheItemIs:
     def test_a_video_game_gets_both_igdb_keys_in_creds(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Doom", isbn="9780900007005", media_type="video_game")
+        item_id = _insert_item(db, title="Doom", isbn="9789000070053", media_type="video_game")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
         db.commit()
@@ -562,7 +562,7 @@ class TestTheRouteKnowsWhatTheItemIs:
     def test_a_book_gets_no_credentials_at_all(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Dune", isbn="9780900007006")
+        item_id = _insert_item(db, title="Dune", isbn="9789000070060")
         db.commit()
 
         search = AsyncMock(return_value=provider_result.found("openlibrary", []))
@@ -577,7 +577,7 @@ class TestTheRouteKnowsWhatTheItemIs:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Dune", isbn="9780900007007")
+        item_id = _insert_item(db, title="Dune", isbn="9789000070077")
         db.commit()
         monkeypatch.setenv("GOOGLE_BOOKS_API_KEY", "env-google-key")
         search = AsyncMock(return_value=provider_result.found("openlibrary", []))
@@ -599,7 +599,7 @@ class TestTheUnconfiguredProviderNote:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Tron", isbn="9780900008001", media_type="dvd")
+        item_id = _insert_item(db, title="Tron", isbn="9789000080014", media_type="dvd")
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
@@ -617,7 +617,7 @@ class TestTheUnconfiguredProviderNote:
         would otherwise be told to add a key it has already set."""
         from app.services import covers
 
-        item_id = _insert_item(db, title="Tron", isbn="9780900008002", media_type="dvd")
+        item_id = _insert_item(db, title="Tron", isbn="9789000080021", media_type="dvd")
         db.commit()
         monkeypatch.setenv("TMDB_API_KEY", "from-the-environment")
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
@@ -634,7 +634,7 @@ class TestTheUnconfiguredProviderNote:
         credential does not satisfy the other."""
         from app.services import covers
 
-        item_id = _insert_item(db, title="Doom", isbn="9780900008003", media_type="video_game")
+        item_id = _insert_item(db, title="Doom", isbn="9789000080038", media_type="video_game")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
@@ -651,7 +651,7 @@ class TestTheUnconfiguredProviderNote:
         """G49, operand two — the half a one-sided gate silently passes."""
         from app.services import covers
 
-        item_id = _insert_item(db, title="Doom", isbn="9780900008004", media_type="video_game")
+        item_id = _insert_item(db, title="Doom", isbn="9789000080045", media_type="video_game")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
@@ -665,7 +665,7 @@ class TestTheUnconfiguredProviderNote:
     def test_both_igdb_fields_set_leaves_no_note(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Doom", isbn="9780900008005", media_type="video_game")
+        item_id = _insert_item(db, title="Doom", isbn="9789000080052", media_type="video_game")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_secret", "secret"))
         db.commit()
@@ -680,7 +680,7 @@ class TestTheUnconfiguredProviderNote:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Tron", isbn="9780900008006", media_type="dvd")
+        item_id = _insert_item(db, title="Tron", isbn="9789000080069", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "   "))
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
@@ -696,7 +696,7 @@ class TestTheUnconfiguredProviderNote:
         applies — this is the distinction the whole note exists to draw."""
         from app.services import covers
 
-        item_id = _insert_item(db, title="Tron", isbn="9780900008007", media_type="dvd")
+        item_id = _insert_item(db, title="Tron", isbn="9789000080076", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
@@ -708,7 +708,7 @@ class TestTheUnconfiguredProviderNote:
     def test_a_book_never_gets_a_note(self, editor_client, db, monkeypatch):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Dune", isbn="9780900008008")
+        item_id = _insert_item(db, title="Dune", isbn="9789000080083")
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
@@ -751,7 +751,7 @@ class TestTheSearchNoteRendersInTheFragment:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Tron", isbn="9780900009001", media_type="dvd")
+        item_id = _insert_item(db, title="Tron", isbn="9789000090013", media_type="dvd")
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
@@ -767,7 +767,7 @@ class TestTheSearchNoteRendersInTheFragment:
         from app.services import covers
 
         item_id = _insert_item(
-            db, title="Doom", isbn="9780900009002", media_type="video_game"
+            db, title="Doom", isbn="9789000090020", media_type="video_game"
         )
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("igdb_client_id", "cid"))
         db.commit()
@@ -784,7 +784,7 @@ class TestTheSearchNoteRendersInTheFragment:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Heat", isbn="9780900009003", media_type="dvd")
+        item_id = _insert_item(db, title="Heat", isbn="9789000090037", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
@@ -800,7 +800,7 @@ class TestTheSearchNoteRendersInTheFragment:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Dune", isbn="9780900009004")
+        item_id = _insert_item(db, title="Dune", isbn="9789000090044")
         db.commit()
         monkeypatch.setattr(covers, "search_covers", AsyncMock(return_value=provider_result.found("openlibrary", [])))
 
@@ -814,7 +814,7 @@ class TestTheSearchNoteRendersInTheFragment:
     ):
         from app.services import covers
 
-        item_id = _insert_item(db, title="Alien", isbn="9780900009005", media_type="dvd")
+        item_id = _insert_item(db, title="Alien", isbn="9789000090051", media_type="dvd")
         db.execute("INSERT INTO settings (key, value) VALUES (?, ?)", ("tmdb_api_key", "a-key"))
         db.commit()
         candidate = {
@@ -854,7 +854,7 @@ class TestTheProviderOutcomeRendersInThePicker:
     ):
         from app.services import covers
 
-        item_id = self._dvd(db, "9780900009001")
+        item_id = self._dvd(db, "9789000090013")
         monkeypatch.setattr(
             covers, "search_covers",
             AsyncMock(return_value=provider_result.rejected("tmdb", status=401)),
@@ -874,7 +874,7 @@ class TestTheProviderOutcomeRendersInThePicker:
     ):
         from app.services import covers
 
-        item_id = self._dvd(db, "9780900009002")
+        item_id = self._dvd(db, "9789000090020")
         monkeypatch.setattr(
             covers, "search_covers",
             AsyncMock(return_value=provider_result.rate_limited("tmdb", status=429)),
@@ -891,7 +891,7 @@ class TestTheProviderOutcomeRendersInThePicker:
     ):
         from app.services import covers
 
-        item_id = self._dvd(db, "9780900009003")
+        item_id = self._dvd(db, "9789000090037")
         monkeypatch.setattr(
             covers, "search_covers",
             AsyncMock(return_value=provider_result.transport_failed("tmdb")),
@@ -909,7 +909,7 @@ class TestTheProviderOutcomeRendersInThePicker:
         "No covers found" line is not said twice in two vocabularies."""
         from app.services import covers
 
-        item_id = self._dvd(db, "9780900009004")
+        item_id = self._dvd(db, "9789000090044")
         monkeypatch.setattr(
             covers, "search_covers",
             AsyncMock(return_value=provider_result.found("tmdb", [])),
@@ -928,7 +928,7 @@ class TestTheProviderOutcomeRendersInThePicker:
         from app.services import covers
 
         item_id = _insert_item(
-            db, title="Tron", isbn="9780900009005", media_type="dvd"
+            db, title="Tron", isbn="9789000090051", media_type="dvd"
         )
         db.commit()  # deliberately no tmdb_api_key row
         monkeypatch.setattr(

@@ -6,6 +6,7 @@ import httpx
 
 from app.services import outbound, provider_result
 from app.services.isbn import isbn13_to_isbn10
+from app.services.item_write import update_item_fields
 
 logger = logging.getLogger(__name__)
 
@@ -576,10 +577,7 @@ async def sync_reading_statuses(token: str) -> dict:
             shelf_reading = item["reading_status"]
 
             if hc_reading and hc_reading != shelf_reading:
-                db.execute(
-                    "UPDATE items SET reading_status = ?, updated_at = datetime('now') WHERE id = ?",
-                    (hc_reading, item["id"]),
-                )
+                update_item_fields(db, item["id"], {"reading_status": hc_reading})
                 updated += 1
             else:
                 unchanged += 1

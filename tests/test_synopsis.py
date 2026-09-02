@@ -175,7 +175,7 @@ class TestFetchSynopsisEndpoint:
 
     @respx.mock
     def test_not_found_reports_failure(self, admin_client, db):
-        item_id = _insert_item(db, title="Obscure", isbn="9780000000018", authors="Nobody")
+        item_id = _insert_item(db, title="Obscure", isbn="9780000000187", authors="Nobody")
         db.execute("COMMIT")
         respx.get(GB_URL).mock(return_value=httpx.Response(200, json={}))
         respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": []}))
@@ -201,7 +201,7 @@ class TestBackfillStream:
     @respx.mock
     def test_backfills_missing_only(self, admin_client, db):
         needs = _insert_item(db, title="Dune", isbn="9780441013593", authors="Frank Herbert")
-        _insert_item(db, title="Has Desc", isbn="9780000000025", description="already set")
+        _insert_item(db, title="Has Desc", isbn="9780000000262", description="already set")
         _insert_item(db, title="A Game", isbn=None, media_type="game")
         db.execute("COMMIT")
         respx.get(GB_URL).mock(return_value=httpx.Response(200, json=_gb_volume()))

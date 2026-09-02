@@ -30,9 +30,9 @@ def _insert_series_meta(data_dir: Path, name: str, **kwargs) -> None:
 
 
 def test_series_page_groups_and_flags_gaps(live_server, authed_page):
-    insert_item(live_server["data_dir"], title="Series Vol 1", isbn="9780902000011",
+    insert_item(live_server["data_dir"], title="Series Vol 1", isbn="9789020000115",
                 series_name="E2E Saga", series_position=1)
-    insert_item(live_server["data_dir"], title="Series Vol 3", isbn="9780902000028",
+    insert_item(live_server["data_dir"], title="Series Vol 3", isbn="9789020000283",
                 series_name="E2E Saga", series_position=3)
 
     authed_page.goto(f"{live_server['url']}/series")
@@ -47,7 +47,7 @@ def test_series_page_groups_and_flags_gaps(live_server, authed_page):
 
 def test_series_synopsis_edit_persists(live_server, authed_page):
     """Issue #6: a synopsis added inline on /series survives a reload."""
-    insert_item(live_server["data_dir"], title="Synopsis Vol 1", isbn="9780902000035",
+    insert_item(live_server["data_dir"], title="Synopsis Vol 1", isbn="9789020000351",
                 series_name="Synopsis Saga", series_position=1)
 
     authed_page.goto(f"{live_server['url']}/series")
@@ -68,7 +68,7 @@ def test_series_synopsis_edit_persists(live_server, authed_page):
 
 def test_series_synopsis_fetch_button_hidden_without_hardcover(live_server, authed_page):
     """The Hardcover fetch affordance only appears when a token is configured."""
-    insert_item(live_server["data_dir"], title="NoHC Vol 1", isbn="9780902000042",
+    insert_item(live_server["data_dir"], title="NoHC Vol 1", isbn="9789020000429",
                 series_name="NoHC Saga", series_position=1)
     authed_page.goto(f"{live_server['url']}/series")
     authed_page.wait_for_load_state("networkidle")
@@ -78,9 +78,9 @@ def test_series_synopsis_fetch_button_hidden_without_hardcover(live_server, auth
 def test_series_rename_regroups(live_server, authed_page):
     """Renaming a series reloads the page with books regrouped under the new
     name; the actions menu is available without Hardcover."""
-    insert_item(live_server["data_dir"], title="Alpha Vol 1", isbn="9780902000059",
+    insert_item(live_server["data_dir"], title="Alpha Vol 1", isbn="9789020000597",
                 series_name="Alpha Saga", series_position=1)
-    insert_item(live_server["data_dir"], title="Alpha Vol 2", isbn="9780902000066",
+    insert_item(live_server["data_dir"], title="Alpha Vol 2", isbn="9789020000665",
                 series_name="Alpha Saga", series_position=2)
 
     authed_page.goto(f"{live_server['url']}/series")
@@ -108,9 +108,9 @@ def test_series_rename_regroups(live_server, authed_page):
 def test_series_remove_all_disbands(live_server, authed_page):
     """Remove all books disbands the series but keeps the books in the
     library — they should still show up on /browse."""
-    insert_item(live_server["data_dir"], title="Disband Vol 1", isbn="9780902000073",
+    insert_item(live_server["data_dir"], title="Disband Vol 1", isbn="9789020000733",
                 series_name="Disband Saga", series_position=1)
-    insert_item(live_server["data_dir"], title="Disband Vol 2", isbn="9780902000080",
+    insert_item(live_server["data_dir"], title="Disband Vol 2", isbn="9789020000801",
                 series_name="Disband Saga", series_position=2)
 
     authed_page.goto(f"{live_server['url']}/series")
@@ -143,9 +143,9 @@ def test_series_mark_complete_badge_and_filter(live_server, authed_page):
     no-op because the handler read this.$el (the clicked chip button)
     instead of this.$root (the seriesFilter root containing the cards).
     """
-    insert_item(live_server["data_dir"], title="Finished Vol 1", isbn="9780902000097",
+    insert_item(live_server["data_dir"], title="Finished Vol 1", isbn="9789020000979",
                 series_name="Finished Trilogy", series_position=1)
-    insert_item(live_server["data_dir"], title="Ongoing Vol 1", isbn="9780902000103",
+    insert_item(live_server["data_dir"], title="Ongoing Vol 1", isbn="9789020001037",
                 series_name="Ongoing Trilogy", series_position=1)
 
     authed_page.goto(f"{live_server['url']}/series")
@@ -190,7 +190,7 @@ def test_series_stored_hardcover_check_survives_reload(live_server, authed_page)
     every load — not just right after the check button runs — which is the
     reload-survival property the feature added. Seeded directly since a
     live Hardcover call isn't available in this offline suite."""
-    insert_item(live_server["data_dir"], title="Checked Vol 1", isbn="9780902000110",
+    insert_item(live_server["data_dir"], title="Checked Vol 1", isbn="9789020001105",
                 series_name="Checked Saga", series_position=1)
     _insert_series_meta(live_server["data_dir"], "Checked Saga",
                          hc_total=5, hc_missing=2, hc_checked_at="2026-08-01T12:00:00")
@@ -225,9 +225,9 @@ def test_series_unassigned_block_lists_seriesless_books(live_server, authed_page
     digit/letter title the suite seeds) so membership is cap-independent.
     """
     insert_item(live_server["data_dir"], title="000 E2E Unassigned Book",
-                isbn="9780902000127")
+                isbn="9789020001273")
     insert_item(live_server["data_dir"], title="E2E Unassigned Disc",
-                isbn="9780902000134", media_type="dvd")
+                isbn="9789020001341", media_type="dvd")
 
     authed_page.goto(f"{live_server['url']}/series")
     authed_page.wait_for_load_state("networkidle")
@@ -260,10 +260,10 @@ def test_series_unassigned_block_hidden_by_completeness_chips(live_server, authe
     under All only — the unknown-counts-as-incomplete rule must not file it
     under Incomplete. The real series card keeps its existing behaviour."""
     insert_item(live_server["data_dir"], title="000 E2E Chip Loose Book",
-                isbn="9780902000141")
+                isbn="9789020001419")
     # Chips only render when series_list is non-empty.
     insert_item(live_server["data_dir"], title="Chip Saga Vol 1",
-                isbn="9780902000158", series_name="E2E Chip Saga", series_position=1)
+                isbn="9789020001587", series_name="E2E Chip Saga", series_position=1)
 
     authed_page.goto(f"{live_server['url']}/series")
     authed_page.wait_for_load_state("networkidle")

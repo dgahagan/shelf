@@ -27,14 +27,14 @@ from fastapi import Request
 
 from app import browse_filters
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES
-from app.database import get_db, get_game_platforms, get_setting
+from app.database import get_db, get_setting
 from app.services import covers, detect, googlebooks, hardcover, national, openlibrary, provider_result
 from app.services import cover_queue
 from app.services import authors as authors_svc
 from app.services import igdb, scan_outcome, tmdb, upcitemdb
 from app.services import upc as upc_svc
 from app.services import isbn as isbn_svc
-from app.services.item_write import insert_item
+from app.services.item_write import ItemValueError, insert_item, update_item_fields
 
 logger = logging.getLogger(__name__)
 
@@ -209,10 +209,8 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
 
 def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | None,
                source: str, hc_ids: dict) -> int:
-    """Insert a new item from scan metadata. Returns the new item ID."""
-    isbn10 = metadata.get("isbn10") or isbn_svc.isbn13_to_isbn10(isbn13)
-    loc_id = location_id if location_id and location_id > 0 else None
-
+    """Insert from scan metadata; `isbn13` is boundary-validated by every
+    caller, and the funnel derives `isbn10`. Returns the new item ID."""
     with get_db() as db:
         return insert_item(
             db,
@@ -220,7 +218,6 @@ def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | 
             subtitle=metadata.get("subtitle"),
             authors=metadata.get("authors"),
             isbn=isbn13,
-            isbn10=isbn10,
             media_type=media_type,
             publisher=metadata.get("publisher"),
             publish_year=metadata.get("publish_year"),
@@ -228,7 +225,7 @@ def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | 
             description=metadata.get("description"),
             series_name=metadata.get("series_name"),
             series_position=metadata.get("series_position"),
-            location_id=loc_id,
+            location_id=location_id,
             source=source,
             language=metadata.get("language"),
             hardcover_book_id=hc_ids.get("hardcover_book_id"),
@@ -319,19 +316,18 @@ async def resolve_missing_cover(
         found_isbn, cover_url = await _search_isbn_for_item(
             row["title"], row["authors"], client)
         if found_isbn and not row["isbn"]:
-            isbn13 = isbn_svc.to_isbn13(found_isbn) or found_isbn
-            isbn10 = isbn_svc.isbn13_to_isbn10(isbn13) if len(isbn13) == 13 else None
-            with get_db() as db:
-                taken = db.execute(
-                    "SELECT id FROM items WHERE isbn = ? AND id != ?",
-                    (isbn13, item_id),
-                ).fetchone()
-                if not taken:
-                    db.execute(
-                        "UPDATE items SET isbn = ?, isbn10 = ?, "
-                        "updated_at = datetime('now') WHERE id = ?",
-                        (isbn13, isbn10, item_id),
-                    )
+            # A provider's ISBN: pre-cleaned, dropped on failure (#54). The
+            # `taken` check stays — UNIQUE(isbn, media_type) would raise.
+            pair = isbn_svc.canonical_isbn_pair(found_isbn)
+            if pair is None:
+                logger.info("Recovered ISBN %r for item %s is not a valid ISBN — not stored",
+                            found_isbn, item_id)
+            else:
+                with get_db() as db:
+                    taken = db.execute("SELECT id FROM items WHERE isbn = ? AND id != ?",
+                                       (pair[0], item_id)).fetchone()
+                    if not taken:
+                        update_item_fields(db, item_id, {"isbn": pair[0]})
         if cover_url:
             cover_path = await covers.download_cover(
                 item_id, None, cover_url, None, client)
@@ -392,24 +388,13 @@ def _log_scan(isbn: str, media_type: str, result: str, item_id: int | None = Non
             )
 
 
-# The one media-type value guard, shared by every route that can be handed a
-# `media_type` from outside. There is deliberately only one: `insert_item`
-# validates field *names* and not values (`item_write.py`), and the column is
-# a bare `media_type TEXT NOT NULL DEFAULT 'book'` with no `CHECK`
-# (`database.py`), so nothing below the routes will catch a junk value. Two
-# copies of a check like this is how the third boundary gets missed.
-#
-# `auto` is the value this exists for — it is a scan-form option, never a
-# stored type — but the guard is written against `MEDIA_TYPES` membership
-# rather than against the string "auto", so a typo or a tampered form is
-# caught by the same line.
-#
-# Scope, stated so a later reader does not over-trust it: this guards the four
-# boundaries `auto` can actually reach — /api/scan, /api/title-search,
-# /api/books/add and /api/items/manual. CSV import (`items_csv.py`) and
-# archive import (`archive.py`) also hand `insert_item` an unvalidated
-# media_type; that is real, pre-existing, and out of scope here because no
-# `auto` value can arrive through either.
+# Values are the funnel's job: `item_write.validate_item_fields` refuses an
+# unknown media_type on every insert and update, including CSV and archive
+# import. This helper survives for the two boundaries that do provider work
+# *before* the insert and must refuse `auto` (a scan-form option, never a
+# stored type) before the lookup is paid for — `/api/title-search` and
+# `/api/books/add`. Written against `MEDIA_TYPES` membership rather than the
+# string "auto", so a tampered form is caught by the same line.
 def is_valid_media_type(value: str | None) -> bool:
     return value in MEDIA_TYPES
 
@@ -645,7 +630,6 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             "publish_year": None, "cover_url": None,
         }
 
-    loc_id = location_id if location_id and location_id > 0 else None
     # --- Duplicate check, part 2 of 2: media_type-keyed, under the write lock.
     #
     # `G18` — this is a guard-then-write route. The barcode-alone pre-check at
@@ -657,6 +641,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # `add_manual_item` (`items.py`, `TestIntegrityErrorGuard`).
     existing = None
     item_id = None
+    value_error = None
     with get_db() as db:
         db.execute("BEGIN IMMEDIATE")
         existing = _find_upc_row(db, upc_key, media_type)
@@ -668,13 +653,15 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
                     description=metadata.get("description"),
                     media_type=media_type,
                     publish_year=metadata.get("publish_year"),
-                    location_id=loc_id,
+                    location_id=location_id,
                     upc=upc_key,
                     source=source,
                     # Was a follow-up UPDATE in a second transaction; owned is
                     # an item-creation field, so it belongs in the insert.
                     owned=0 if mode == "wishlist" else 1,
                 )
+            except ItemValueError as e:  # a stale location (#54)
+                value_error = str(e)
             except sqlite3.IntegrityError:
                 existing = _find_upc_row(db, upc_key, media_type)
                 if existing is None:
@@ -682,6 +669,12 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
 
     # _log_scan opens its own connection, so it must run outside the write
     # transaction above or it blocks on the lock that block still holds.
+    if value_error:
+        _log_scan(upc_norm, media_type, "error", None, mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": upc_norm, "message": value_error},
+        )
     if existing:
         _log_scan(upc_norm, media_type, "duplicate", existing["id"], mode)
         return templates.TemplateResponse(
@@ -816,7 +809,6 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     enrich_status = scan_outcome.enrich_status(igdb_result)
 
     # Save item — with IGDB metadata if found, otherwise the cleaned UPC title
-    loc_id = location_id if location_id and location_id > 0 else None
     source = "igdb" if metadata else "upc"
     game_title = metadata["title"] if metadata else queries[0]
 
@@ -826,12 +818,11 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     upc_key = upc_svc.normalize_upc(upc_norm)
     existing = None
     item_id = None
+    value_error = None
     with get_db() as db:
         db.execute("BEGIN IMMEDIATE")
         existing = _find_upc_row(db, upc_key, "video_game")
         if existing is None:
-            valid_platforms = get_game_platforms(db)
-            platform_val = platform if platform and platform in valid_platforms else None
             try:
                 item_id = insert_item(
                     db,
@@ -841,18 +832,26 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
                     publisher=metadata.get("publisher") if metadata else None,
                     publish_year=metadata.get("publish_year") if metadata else None,
                     series_name=metadata.get("series_name") if metadata else None,
-                    platform=platform_val,
-                    location_id=loc_id,
+                    platform=platform,
+                    location_id=location_id,
                     upc=upc_key,
                     source=source,
                     owned=0 if mode == "wishlist" else 1,
                 )
+            except ItemValueError as e:  # unknown platform or stale location (#54)
+                value_error = str(e)
             except sqlite3.IntegrityError:
                 existing = _find_upc_row(db, upc_key, "video_game")
                 if existing is None:
                     raise
 
     # Outside the write transaction — _log_scan opens its own connection.
+    if value_error:
+        _log_scan(upc_norm, "video_game", "error", None, mode)
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": upc_norm, "message": value_error},
+        )
     if existing:
         _log_scan(upc_norm, "video_game", "duplicate", existing["id"], mode)
         return templates.TemplateResponse(

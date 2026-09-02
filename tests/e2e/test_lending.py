@@ -43,7 +43,7 @@ def test_item_page_lend_then_return_full_journey(live_server, authed_page):
     item_id = insert_item(
         live_server["data_dir"],
         title="E2E Lending Journey",
-        isbn="9780907000017",
+        isbn="9789070000172",
     )
     base = live_server["url"]
 
@@ -97,12 +97,12 @@ def test_viewer_sees_read_only_product_ui_without_editor_mutations(
     lent_item_id = insert_item(
         live_server["data_dir"],
         title="E2E Viewer Lent Item",
-        isbn="9780907000024",
+        isbn="9789070000240",
     )
     available_item_id = insert_item(
         live_server["data_dir"],
         title="E2E Viewer Available Item",
-        isbn="9780907000031",
+        isbn="9789070000318",
         series_name="E2E Viewer Saga",
         series_position=1,
     )

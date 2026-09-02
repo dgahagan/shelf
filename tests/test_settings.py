@@ -145,7 +145,7 @@ class TestDeleteConfirmations:
 
     def test_borrower_with_returned_loans_shows_the_count(self, admin_client, db):
         bid = _insert_borrower(db, "Hana")
-        item_id = _insert_item(db, title="Counted", isbn="9780000000201")
+        item_id = _insert_item(db, title="Counted", isbn="9780000002013")
         self._seed_checkout(db, item_id, bid, returned=True)
         self._seed_checkout(db, item_id, bid, returned=True)
         db.commit()
@@ -166,7 +166,7 @@ class TestDeleteConfirmations:
         """Mixed state: the dialog fires before the server's active-loan guard,
         so an open loan must not be described as a past record."""
         bid = _insert_borrower(db, "Jonas")
-        item_id = _insert_item(db, title="Mixed", isbn="9780000000202")
+        item_id = _insert_item(db, title="Mixed", isbn="9780000002020")
         self._seed_checkout(db, item_id, bid, returned=True)
         self._seed_checkout(db, item_id, bid, returned=False)
         db.commit()
@@ -178,7 +178,7 @@ class TestDeleteConfirmations:
 
     def test_active_only_borrower_shows_plain_message(self, admin_client, db):
         bid = _insert_borrower(db, "Kira")
-        item_id = _insert_item(db, title="OpenLoan", isbn="9780000000203")
+        item_id = _insert_item(db, title="OpenLoan", isbn="9780000002037")
         self._seed_checkout(db, item_id, bid, returned=False)
         db.commit()
         html = admin_client.get("/settings").text
@@ -251,9 +251,9 @@ class TestCoverQueueStatusLine:
         assert "2 gave up since startup" in html
 
     def test_missing_covers_count_reflects_seeded_rows(self, admin_client, db):
-        _insert_item(db, title="No Cover One", isbn="9780000000301")
-        _insert_item(db, title="No Cover Two", isbn="9780000000302")
-        _insert_item(db, title="Has Cover", isbn="9780000000303", cover_path="/covers/x.jpg")
+        _insert_item(db, title="No Cover One", isbn="9780000003010")
+        _insert_item(db, title="No Cover Two", isbn="9780000003027")
+        _insert_item(db, title="Has Cover", isbn="9780000003034", cover_path="/covers/x.jpg")
         db.commit()
         cover_queue.enqueue(1)
         html = admin_client.get("/settings").text

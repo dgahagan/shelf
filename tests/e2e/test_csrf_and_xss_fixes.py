@@ -44,7 +44,7 @@ def test_display_name_change_succeeds(live_server, authed_page):
 
 def test_bulk_delete_succeeds(live_server, authed_page):
     """Browse bulk delete — raw fetch() DELETE needs the CSRF header."""
-    insert_item(live_server["data_dir"], title="Bulk Target", isbn="9780000000201")
+    insert_item(live_server["data_dir"], title="Bulk Target", isbn="9780000002013")
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
@@ -79,7 +79,7 @@ def test_bulk_delete_succeeds(live_server, authed_page):
 def test_loaned_badge_borrower_name_is_not_executed(live_server, authed_page):
     """A hostile borrower name must render as text, never execute as JS."""
     payload = "'+alert(document.domain)+'"
-    item_id = insert_item(live_server["data_dir"], title="Lent Book", isbn="9780000000202")
+    item_id = insert_item(live_server["data_dir"], title="Lent Book", isbn="9780000002020")
     _lend_item_to(live_server["data_dir"], item_id, payload)
 
     dialogs = []

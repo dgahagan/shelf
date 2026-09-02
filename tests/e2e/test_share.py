@@ -8,7 +8,7 @@ pytestmark = pytest.mark.e2e
 
 
 def test_share_link_full_lifecycle(live_server, browser, authed_page):
-    insert_item(live_server["data_dir"], title="Share Me", isbn="9780905000019", owned=0)
+    insert_item(live_server["data_dir"], title="Share Me", isbn="9789050000192", owned=0)
 
     # Create a wishlist link on the settings Data tab
     authed_page.goto(f"{live_server['url']}/settings")

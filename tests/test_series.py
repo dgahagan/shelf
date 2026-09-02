@@ -33,11 +33,11 @@ class TestFindGaps:
 
 class TestSeriesPage:
     def _seed(self, db):
-        _insert_item(db, title="Dune", isbn="9780900000301", series_name="Dune Saga", series_position=1)
-        _insert_item(db, title="Dune Messiah", isbn="9780900000318", series_name="Dune Saga", series_position=2)
-        _insert_item(db, title="God Emperor", isbn="9780900000325", series_name="Dune Saga", series_position=4)
-        _insert_item(db, title="Hobbit", isbn="9780900000332", series_name="Middle Earth", series_position=1)
-        _insert_item(db, title="No Series", isbn="9780900000349")
+        _insert_item(db, title="Dune", isbn="9789000003013", series_name="Dune Saga", series_position=1)
+        _insert_item(db, title="Dune Messiah", isbn="9789000003181", series_name="Dune Saga", series_position=2)
+        _insert_item(db, title="God Emperor", isbn="9789000003259", series_name="Dune Saga", series_position=4)
+        _insert_item(db, title="Hobbit", isbn="9789000003327", series_name="Middle Earth", series_position=1)
+        _insert_item(db, title="No Series", isbn="9789000003495")
         db.execute("COMMIT")
 
     def test_groups_and_orders(self, admin_client, db):
@@ -59,7 +59,7 @@ class TestSeriesPage:
         assert "#3" in html
 
     def test_wishlist_items_badged(self, admin_client, db):
-        _insert_item(db, title="Want It", isbn="9780900000356", series_name="Solo", series_position=1, owned=0)
+        _insert_item(db, title="Want It", isbn="9789000003563", series_name="Solo", series_position=1, owned=0)
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert "Solo" in html
@@ -75,12 +75,12 @@ class TestSeriesPage:
 
 class TestUnassignedBlock:
     def test_unassigned_block_books_only(self, admin_client, db):
-        _insert_item(db, title="Loose Book", isbn="9780900001001", media_type="book")
-        _insert_item(db, title="Loose Comic", isbn="9780900001002", media_type="comic")
-        _insert_item(db, title="Loose Kids Book", isbn="9780900001003", media_type="kids_book")
-        _insert_item(db, title="Loose DVD", isbn="9780900001004", media_type="dvd")
-        _insert_item(db, title="Loose CD", isbn="9780900001005", media_type="cd")
-        _insert_item(db, title="Loose Game", isbn="9780900001006", media_type="video_game")
+        _insert_item(db, title="Loose Book", isbn="9789000010011", media_type="book")
+        _insert_item(db, title="Loose Comic", isbn="9789000010028", media_type="comic")
+        _insert_item(db, title="Loose Kids Book", isbn="9789000010035", media_type="kids_book")
+        _insert_item(db, title="Loose DVD", isbn="9789000010042", media_type="dvd")
+        _insert_item(db, title="Loose CD", isbn="9789000010059", media_type="cd")
+        _insert_item(db, title="Loose Game", isbn="9789000010066", media_type="video_game")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert 'data-testid="unassigned-card"' in html
@@ -95,14 +95,14 @@ class TestUnassignedBlock:
         assert "Loose Game" not in html
 
     def test_item_with_series_not_in_unassigned(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900001010", series_name="Dune Saga", series_position=1)
+        _insert_item(db, title="Dune", isbn="9789000010103", series_name="Dune Saga", series_position=1)
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert html.count('data-testid="series-card"') == 1
         assert 'data-testid="unassigned-card"' not in html
 
     def test_whitespace_series_name_counts_as_unassigned(self, admin_client, db):
-        _insert_item(db, title="Blank Series Name", isbn="9780900001011", series_name="   ")
+        _insert_item(db, title="Blank Series Name", isbn="9789000010110", series_name="   ")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert 'data-testid="unassigned-card"' in html
@@ -131,22 +131,22 @@ class TestUnassignedBlock:
     def test_unassigned_count_omits_showing_when_not_capped(self, admin_client, db):
         """Below the cap the strip is the whole set, so the count line must not
         imply a remainder."""
-        _insert_item(db, title="Lonely Book", isbn="9780900001060")
+        _insert_item(db, title="Lonely Book", isbn="9789000010608")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert "1 book with no series" in html
         assert "showing" not in html[html.index('data-testid="unassigned-card"'):]
 
     def test_series_header_counts_real_series_only(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900001020", series_name="Dune Saga", series_position=1)
-        _insert_item(db, title="Hobbit", isbn="9780900001021", series_name="Middle Earth", series_position=1)
-        _insert_item(db, title="No Series", isbn="9780900001022")
+        _insert_item(db, title="Dune", isbn="9789000010202", series_name="Dune Saga", series_position=1)
+        _insert_item(db, title="Hobbit", isbn="9789000010219", series_name="Middle Earth", series_position=1)
+        _insert_item(db, title="No Series", isbn="9789000010226")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert 'Series <span class="text-shelf-muted text-lg font-normal">(2)</span>' in html
 
     def test_unassigned_block_renders_with_zero_series(self, admin_client, db):
-        _insert_item(db, title="Only Loose Book", isbn="9780900001030")
+        _insert_item(db, title="Only Loose Book", isbn="9789000010301")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert "No series yet" in html
@@ -155,7 +155,7 @@ class TestUnassignedBlock:
 
     def test_unassigned_block_has_no_series_controls(self, admin_client, db):
         db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
-        _insert_item(db, title="Only Loose Book", isbn="9780900001040")
+        _insert_item(db, title="Only Loose Book", isbn="9789000010400")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert 'data-testid="unassigned-card"' in html
@@ -173,8 +173,8 @@ class TestUnassignedBlock:
         assert '<option value="Unassigned">' not in html
 
     def test_real_series_named_unassigned_coexists(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900001050", series_name="Unassigned", series_position=1)
-        _insert_item(db, title="Loose Book", isbn="9780900001051")
+        _insert_item(db, title="Dune", isbn="9789000010509", series_name="Unassigned", series_position=1)
+        _insert_item(db, title="Loose Book", isbn="9789000010516")
         db.execute("COMMIT")
         html = admin_client.get("/series").text
         assert html.count('data-testid="series-card"') == 1
@@ -184,9 +184,9 @@ class TestUnassignedBlock:
 
 class TestSeriesCheck:
     def _seed(self, db):
-        _insert_item(db, title="Dune", isbn="9780900000301", series_name="Dune Saga",
+        _insert_item(db, title="Dune", isbn="9789000003013", series_name="Dune Saga",
                      series_position=1, hardcover_book_id=101)
-        _insert_item(db, title="Dune Messiah", isbn="9780900000318", series_name="Dune Saga",
+        _insert_item(db, title="Dune Messiah", isbn="9789000003181", series_name="Dune Saga",
                      series_position=2, owned=0)  # matched by title, wishlisted
         db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
         db.execute("COMMIT")
@@ -237,7 +237,7 @@ class TestSeriesCheckPersistence:
     behavior lives in TestSeriesCheck above."""
 
     def _seed(self, db):
-        _insert_item(db, title="Dune", isbn="9780900000901", series_name="Dune Saga",
+        _insert_item(db, title="Dune", isbn="9789000009015", series_name="Dune Saga",
                      series_position=1, hardcover_book_id=101)
         db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
         db.execute("COMMIT")
@@ -340,7 +340,7 @@ class TestSeriesComplete:
         ).fetchone()
 
     def test_sets_and_clears_flag(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000910", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000009107", series_name="Dune Saga")
         db.execute("COMMIT")
 
         resp = self._complete(admin_client, "Dune Saga", "1")
@@ -381,7 +381,7 @@ class TestSeriesComplete:
         assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
 
     def test_invalid_value_rejected(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000912", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000009121", series_name="Dune Saga")
         db.execute("COMMIT")
 
         data = self._complete(admin_client, "Dune Saga", "yes").json()
@@ -389,7 +389,7 @@ class TestSeriesComplete:
         assert db.execute("SELECT COUNT(*) as c FROM series_meta").fetchone()["c"] == 0
 
     def test_viewer_forbidden(self, viewer_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000913", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000009138", series_name="Dune Saga")
         db.execute("COMMIT")
 
         resp = self._complete(viewer_client, "Dune Saga", "1")
@@ -402,9 +402,9 @@ class TestSeriesPageMetaContext:
     (T7) — same casefold-matching join, extended to the new columns."""
 
     def test_context_carries_new_fields_for_decorated_series(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000920", series_name="Dune Saga",
+        _insert_item(db, title="Dune", isbn="9789000009206", series_name="Dune Saga",
                      series_position=1)
-        _insert_item(db, title="Hobbit", isbn="9780900000921", series_name="Middle Earth",
+        _insert_item(db, title="Hobbit", isbn="9789000009213", series_name="Middle Earth",
                      series_position=1)
         db.execute(
             "INSERT INTO series_meta (name, complete, hc_total, hc_missing, hc_checked_at) "
@@ -446,8 +446,8 @@ class TestSeriesPageCompletenessRendering:
     """
 
     def test_card_carries_completeness_data_attributes(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000930", series_name="Dune Saga")
-        _insert_item(db, title="Hobbit", isbn="9780900000931", series_name="Middle Earth")
+        _insert_item(db, title="Dune", isbn="9789000009305", series_name="Dune Saga")
+        _insert_item(db, title="Hobbit", isbn="9789000009312", series_name="Middle Earth")
         db.execute(
             "INSERT INTO series_meta (name, complete, hc_total, hc_missing, hc_checked_at) "
             "VALUES ('Dune Saga', 1, 3, 0, '2026-08-01 00:00:00')"
@@ -467,7 +467,7 @@ class TestSeriesPageCompletenessRendering:
         assert html.count('data-complete=""') == 1
 
     def test_filter_chips_render_with_series(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000932", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000009329", series_name="Dune Saga")
         db.execute("COMMIT")
 
         html = admin_client.get("/series").text
@@ -608,7 +608,7 @@ class TestSeriesDescription:
         # Template rendering of the description is a separate (not-yet-done)
         # piece of work, so assert on the context passed to series.html
         # rather than on rendered HTML text.
-        _insert_item(db, title="Dune", isbn="9780900000501", series_name="Dune Saga", series_position=1)
+        _insert_item(db, title="Dune", isbn="9789000005017", series_name="Dune Saga", series_position=1)
         _insert_item(db, title="Hobbit", isbn="9780900000508", series_name="Middle Earth", series_position=1)
         db.execute("COMMIT")
         resp = self._set_description(admin_client, "Dune Saga", "A desert planet saga.")
@@ -631,7 +631,7 @@ class TestSeriesDescription:
         assert by_name["Middle Earth"]["description"] is None
 
     def test_upsert_overwrites_and_keeps_source(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000502", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000005024", series_name="Dune Saga")
         db.execute("COMMIT")
         self._set_description(admin_client, "Dune Saga", "First version")
         resp = self._set_description(admin_client, "Dune Saga", "Second version")
@@ -720,7 +720,7 @@ class TestSeriesDescription:
     def test_clearing_the_last_field_still_deletes_the_row(self, admin_client, db):
         """Marked complete, then unmarked, then synopsis cleared — nothing is
         left, so the row goes."""
-        _insert_item(db, title="Dune", isbn="9780900000521", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000005215", series_name="Dune Saga")
         db.execute("COMMIT")
         self._set_description(admin_client, "Dune Saga", "Something")
         admin_client.post("/api/series/Dune%20Saga/complete", data={"complete": "1"})
@@ -764,12 +764,12 @@ class TestSeriesRename:
         ).fetchone()
 
     def test_moves_every_item_and_only_that_series(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000701", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000007011", series_name="Dune Saga")
         # Differently-cased rows belong to the same series (NOCASE) and move too.
-        _insert_item(db, title="Dune Messiah", isbn="9780900000702", series_name="dune saga")
+        _insert_item(db, title="Dune Messiah", isbn="9789000007028", series_name="dune saga")
         # A similarly-named series is a different series and must not move.
-        _insert_item(db, title="Sandworms", isbn="9780900000703", series_name="Dune Saga Extras")
-        _insert_item(db, title="Loner", isbn="9780900000704")
+        _insert_item(db, title="Sandworms", isbn="9789000007035", series_name="Dune Saga Extras")
+        _insert_item(db, title="Loner", isbn="9789000007042")
         db.execute("COMMIT")
 
         data = self._rename(admin_client, "Dune Saga", "Dune Chronicles").json()
@@ -786,7 +786,7 @@ class TestSeriesRename:
         ]
 
     def test_carries_the_series_meta_row(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000705", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000007059", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga", "A desert planet saga.", source="hardcover")
 
         assert self._rename(admin_client, "Dune Saga", "Dune Chronicles").json()["ok"] is True
@@ -798,7 +798,7 @@ class TestSeriesRename:
 
     def test_merge_keeps_destination_description(self, admin_client, db):
         _insert_item(db, title="Hyperion", isbn="9780900000706", series_name="Hyperion Cantos")
-        _insert_item(db, title="Endymion", isbn="9780900000707", series_name="Cantos Dupe")
+        _insert_item(db, title="Endymion", isbn="9789000007073", series_name="Cantos Dupe")
         self._seed_meta(db, "Hyperion Cantos", "The good synopsis.")
         self._seed_meta(db, "Cantos Dupe", "The stale synopsis.")
 
@@ -815,8 +815,8 @@ class TestSeriesRename:
         assert self._meta(db, "Hyperion Cantos")["description"] == "The good synopsis."
 
     def test_merge_moves_description_when_destination_has_none(self, admin_client, db):
-        _insert_item(db, title="Hyperion", isbn="9780900000708", series_name="Hyperion Cantos")
-        _insert_item(db, title="Endymion", isbn="9780900000709", series_name="Cantos Dupe")
+        _insert_item(db, title="Hyperion", isbn="9789000007080", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9789000007097", series_name="Cantos Dupe")
         self._seed_meta(db, "Cantos Dupe", "The only synopsis.", source="hardcover")
 
         assert self._rename(admin_client, "Cantos Dupe", "Hyperion Cantos").json()["merged"] is True
@@ -847,7 +847,7 @@ class TestSeriesRename:
         ).fetchone()
 
     def test_plain_rename_carries_completeness_and_check(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000801", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000008018", series_name="Dune Saga")
         self._seed_completeness(db, "Dune Saga", complete=1, hc_total=6,
                                 hc_missing=2, hc_checked_at="2026-08-01 10:00:00")
 
@@ -863,8 +863,8 @@ class TestSeriesRename:
         assert moved["hc_checked_at"] == "2026-08-01 10:00:00"
 
     def test_merge_keeps_destination_completeness(self, admin_client, db):
-        _insert_item(db, title="Hyperion", isbn="9780900000802", series_name="Hyperion Cantos")
-        _insert_item(db, title="Endymion", isbn="9780900000803", series_name="Cantos Dupe")
+        _insert_item(db, title="Hyperion", isbn="9789000008025", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9789000008032", series_name="Cantos Dupe")
         self._seed_completeness(db, "Hyperion Cantos", complete=1, hc_total=4,
                                 hc_missing=0, hc_checked_at="2026-08-02 10:00:00")
         self._seed_completeness(db, "Cantos Dupe", complete=None, hc_total=99,
@@ -880,7 +880,7 @@ class TestSeriesRename:
         assert kept["hc_checked_at"] == "2026-08-02 10:00:00"
 
     def test_merge_moves_completeness_when_destination_has_none(self, admin_client, db):
-        _insert_item(db, title="Hyperion", isbn="9780900000804", series_name="Hyperion Cantos")
+        _insert_item(db, title="Hyperion", isbn="9789000008049", series_name="Hyperion Cantos")
         _insert_item(db, title="Endymion", isbn="9780900000805", series_name="Cantos Dupe")
         self._seed_completeness(db, "Cantos Dupe", complete=1, hc_total=4,
                                 hc_missing=1, hc_checked_at="2026-08-03 10:00:00")
@@ -897,8 +897,8 @@ class TestSeriesRename:
         """Destination has a synopsis but no check; source has a check but no
         synopsis. Each group resolves on its own — neither write clobbers the
         other, which is exactly what the separate upserts exist to guarantee."""
-        _insert_item(db, title="Hyperion", isbn="9780900000806", series_name="Hyperion Cantos")
-        _insert_item(db, title="Endymion", isbn="9780900000807", series_name="Cantos Dupe")
+        _insert_item(db, title="Hyperion", isbn="9789000008063", series_name="Hyperion Cantos")
+        _insert_item(db, title="Endymion", isbn="9789000008070", series_name="Cantos Dupe")
         self._seed_meta(db, "Hyperion Cantos", "The destination synopsis.")
         self._seed_completeness(db, "Cantos Dupe", complete=1, hc_total=7,
                                 hc_missing=3, hc_checked_at="2026-08-04 10:00:00")
@@ -914,9 +914,9 @@ class TestSeriesRename:
     def test_merge_keeps_positions_as_is(self, admin_client, db):
         """Merging deliberately does not renumber — duplicate #1s are fine and
         the existing gap detection surfaces them."""
-        _insert_item(db, title="Hyperion", isbn="9780900000710",
+        _insert_item(db, title="Hyperion", isbn="9789000007103",
                      series_name="Hyperion Cantos", series_position=1)
-        _insert_item(db, title="Endymion", isbn="9780900000711",
+        _insert_item(db, title="Endymion", isbn="9789000007110",
                      series_name="Cantos Dupe", series_position=1)
         db.execute("COMMIT")
 
@@ -929,7 +929,7 @@ class TestSeriesRename:
         assert positions == [1, 1]
 
     def test_case_only_rename_rejected(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000712", series_name="dune saga")
+        _insert_item(db, title="Dune", isbn="9789000007127", series_name="dune saga")
         db.execute("COMMIT")
 
         data = self._rename(admin_client, "dune saga", "Dune Saga").json()
@@ -946,7 +946,7 @@ class TestSeriesRename:
         assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] == "Dune Saga"
 
     def test_over_length_new_name_rejected(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000714", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000007141", series_name="Dune Saga")
         db.execute("COMMIT")
 
         data = self._rename(admin_client, "Dune Saga", "x" * 1001).json()
@@ -960,7 +960,7 @@ class TestSeriesRename:
         assert data["message"] == "Series not found"
 
     def test_name_with_slash_round_trips(self, admin_client, db):
-        _insert_item(db, title="Crossover", isbn="9780900000715", series_name="Foo / Bar")
+        _insert_item(db, title="Crossover", isbn="9789000007158", series_name="Foo / Bar")
         self._seed_meta(db, "Foo / Bar", "Crossover series.")
 
         data = self._rename(admin_client, "Foo / Bar", "Baz / Qux").json()
@@ -970,7 +970,7 @@ class TestSeriesRename:
         assert self._meta(db, "Baz / Qux")["description"] == "Crossover series."
 
     def test_viewer_forbidden(self, viewer_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000716", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000007165", series_name="Dune Saga")
         db.execute("COMMIT")
 
         resp = self._rename(viewer_client, "Dune Saga", "Dune Chronicles")
@@ -1009,11 +1009,11 @@ class TestSeriesRemoveAll:
         )
 
     def test_clears_every_item_and_only_that_series(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000801", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000008018", series_name="Dune Saga")
         # Differently-cased rows belong to the same series (NOCASE) and clear too.
-        _insert_item(db, title="Dune Messiah", isbn="9780900000802", series_name="dune saga")
+        _insert_item(db, title="Dune Messiah", isbn="9789000008025", series_name="dune saga")
         # A similarly-named series is a different series and must not clear.
-        _insert_item(db, title="Sandworms", isbn="9780900000803", series_name="Dune Saga Extras")
+        _insert_item(db, title="Sandworms", isbn="9789000008032", series_name="Dune Saga Extras")
         db.execute("COMMIT")
 
         data = self._remove_all(admin_client, "Dune Saga").json()
@@ -1027,7 +1027,7 @@ class TestSeriesRemoveAll:
         ]
 
     def test_gcs_the_series_meta_row(self, admin_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000804", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000008049", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga", "A desert planet saga.", source="hardcover")
 
         assert self._remove_all(admin_client, "Dune Saga").json()["ok"] is True
@@ -1048,7 +1048,7 @@ class TestSeriesRemoveAll:
         assert row["series_name"] is None
 
     def test_name_with_slash_round_trips(self, admin_client, db):
-        _insert_item(db, title="Crossover", isbn="9780900000806", series_name="Foo / Bar")
+        _insert_item(db, title="Crossover", isbn="9789000008063", series_name="Foo / Bar")
         db.execute("COMMIT")
 
         data = self._remove_all(admin_client, "Foo / Bar").json()
@@ -1057,7 +1057,7 @@ class TestSeriesRemoveAll:
         assert db.execute("SELECT series_name FROM items").fetchone()["series_name"] is None
 
     def test_viewer_forbidden(self, viewer_client, db):
-        _insert_item(db, title="Dune", isbn="9780900000807", series_name="Dune Saga")
+        _insert_item(db, title="Dune", isbn="9789000008070", series_name="Dune Saga")
         db.execute("COMMIT")
 
         resp = self._remove_all(viewer_client, "Dune Saga")
@@ -1309,7 +1309,7 @@ class TestSeriesMetaOrphanGC:
     # -- single-item edit path (update_item) --------------------------------
 
     def test_rename_last_item_of_series_removes_orphaned_row(self, admin_client, db):
-        item_id = _insert_item(db, title="Dune", isbn="9780900000601", series_name="Dune Saga")
+        item_id = _insert_item(db, title="Dune", isbn="9789000006014", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga")
 
         resp = admin_client.post(f"/api/items/{item_id}", data={"series_name": "New Series"})
@@ -1317,8 +1317,8 @@ class TestSeriesMetaOrphanGC:
         assert self._count(db, "Dune Saga") == 0
 
     def test_rename_one_of_several_keeps_row(self, admin_client, db):
-        item1 = _insert_item(db, title="Dune", isbn="9780900000602", series_name="Dune Saga")
-        _insert_item(db, title="Dune Messiah", isbn="9780900000603", series_name="Dune Saga")
+        item1 = _insert_item(db, title="Dune", isbn="9789000006021", series_name="Dune Saga")
+        _insert_item(db, title="Dune Messiah", isbn="9789000006038", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga")
 
         resp = admin_client.post(f"/api/items/{item1}", data={"series_name": "Other Series"})
@@ -1326,7 +1326,7 @@ class TestSeriesMetaOrphanGC:
         assert self._count(db, "Dune Saga") == 1
 
     def test_rename_item_without_series_does_not_error(self, admin_client, db):
-        item_id = _insert_item(db, title="No Series Yet", isbn="9780900000604")
+        item_id = _insert_item(db, title="No Series Yet", isbn="9789000006045")
         db.execute("COMMIT")
 
         resp = admin_client.post(f"/api/items/{item_id}", data={"series_name": "New Series"})
@@ -1336,7 +1336,7 @@ class TestSeriesMetaOrphanGC:
     def test_partial_update_without_series_field_does_not_error(self, admin_client, db):
         """A POST that omits series_name entirely (partial edit, cover-only
         upload) must not touch the GC path — `fields` has no series_name key."""
-        item_id = _insert_item(db, title="Partial Update", isbn="9780900000610",
+        item_id = _insert_item(db, title="Partial Update", isbn="9789000006106",
                                series_name="Kept Series")
         self._seed_meta(db, "Kept Series")
 
@@ -1349,9 +1349,9 @@ class TestSeriesMetaOrphanGC:
 
     def test_nocase_still_referenced_row_not_deleted(self, admin_client, db):
         # meta row and items use different casing of the same series name
-        item1 = _insert_item(db, title="Leviathan Wakes", isbn="9780900000605",
+        item1 = _insert_item(db, title="Leviathan Wakes", isbn="9789000006052",
                               series_name="the expanse")
-        _insert_item(db, title="Caliban's War", isbn="9780900000606",
+        _insert_item(db, title="Caliban's War", isbn="9789000006069",
                      series_name="THE EXPANSE")
         self._seed_meta(db, "The Expanse")
 
@@ -1365,7 +1365,7 @@ class TestSeriesMetaOrphanGC:
 
     def test_bulk_move_all_items_removes_orphaned_row(self, admin_client, db):
         item1 = _insert_item(db, title="Dune", isbn="9780900000607", series_name="Dune Saga")
-        item2 = _insert_item(db, title="Dune Messiah", isbn="9780900000608", series_name="Dune Saga")
+        item2 = _insert_item(db, title="Dune Messiah", isbn="9789000006083", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga")
 
         resp = admin_client.post(
@@ -1376,7 +1376,7 @@ class TestSeriesMetaOrphanGC:
         assert self._count(db, "Dune Saga") == 0
 
     def test_bulk_clear_removes_orphaned_row(self, admin_client, db):
-        item_id = _insert_item(db, title="Dune", isbn="9780900000609", series_name="Dune Saga")
+        item_id = _insert_item(db, title="Dune", isbn="9789000006090", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga")
 
         resp = admin_client.post(
@@ -1387,8 +1387,8 @@ class TestSeriesMetaOrphanGC:
         assert self._count(db, "Dune Saga") == 0
 
     def test_bulk_move_some_items_keeps_row(self, admin_client, db):
-        item1 = _insert_item(db, title="Dune", isbn="9780900000610", series_name="Dune Saga")
-        _insert_item(db, title="Dune Messiah", isbn="9780900000611", series_name="Dune Saga")
+        item1 = _insert_item(db, title="Dune", isbn="9789000006106", series_name="Dune Saga")
+        _insert_item(db, title="Dune Messiah", isbn="9789000006113", series_name="Dune Saga")
         self._seed_meta(db, "Dune Saga")
 
         resp = admin_client.post(

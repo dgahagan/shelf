@@ -103,7 +103,9 @@ bar appears with actions:
 - **Set series** (or clear it)
 
 Editors and admins only. Bulk actions are immediate and not undoable — filter
-carefully first.
+carefully first. A bulk action whose target no longer exists — a location
+deleted from another tab while the bar was open, say — is refused with a
+message and changes nothing.
 
 ## Selecting across pages
 

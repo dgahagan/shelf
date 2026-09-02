@@ -14,7 +14,7 @@ def _create_link(admin_client, scope="wishlist", label="Test Link"):
 
 class TestShareLinkLifecycle:
     def test_create_and_view(self, admin_client, client, db):
-        _insert_item(db, title="Wish Book", isbn="9780904000011", owned=0)
+        _insert_item(db, title="Wish Book", isbn="9789040000119", owned=0)
         db.execute("COMMIT")
         link = _create_link(admin_client)
         assert len(link["token"]) >= 20  # token_urlsafe(16)
@@ -73,8 +73,8 @@ class TestShareLinkLifecycle:
 
 class TestShareScoping:
     def test_wishlist_scope_excludes_owned(self, admin_client, client, db):
-        _insert_item(db, title="Owned Thing", isbn="9780904000028", owned=1)
-        _insert_item(db, title="Wished Thing", isbn="9780904000035", owned=0)
+        _insert_item(db, title="Owned Thing", isbn="9789040000287", owned=1)
+        _insert_item(db, title="Wished Thing", isbn="9789040000355", owned=0)
         db.execute("COMMIT")
         link = _create_link(admin_client, scope="wishlist")
         client.cookies.clear()
@@ -83,8 +83,8 @@ class TestShareScoping:
         assert "Owned Thing" not in html
 
     def test_collection_scope_excludes_wishlist(self, admin_client, client, db):
-        _insert_item(db, title="Owned Thing", isbn="9780904000028", owned=1)
-        _insert_item(db, title="Wished Thing", isbn="9780904000035", owned=0)
+        _insert_item(db, title="Owned Thing", isbn="9789040000287", owned=1)
+        _insert_item(db, title="Wished Thing", isbn="9789040000355", owned=0)
         db.execute("COMMIT")
         link = _create_link(admin_client, scope="collection")
         client.cookies.clear()
@@ -98,7 +98,7 @@ class TestShareDataExposure:
         """The share page must not leak location, borrower, value, notes, or ISBN."""
         loc_id = _insert_location(db, name="SecretRoom")
         item_id = _insert_item(
-            db, title="Exposed Book", isbn="9780904000042", owned=1,
+            db, title="Exposed Book", isbn="9789040000423", owned=1,
             location_id=loc_id, notes="private-note-text", estimated_value=99.99,
         )
         borrower_id = _insert_borrower(db, name="SecretBorrower")
@@ -112,7 +112,7 @@ class TestShareDataExposure:
 
         assert "Exposed Book" in html
         for leaked in ("SecretRoom", "SecretBorrower", "private-note-text",
-                       "99.99", "9780904000042"):
+                       "99.99", "9789040000423"):
             assert leaked not in html, f"share page leaked: {leaked}"
 
     def test_settings_page_lists_links(self, admin_client):

@@ -52,6 +52,11 @@ far more often than by a human. Keep it that way:
   so a source edit landing mid-run makes the result unattributable — you can no longer tell a
   pre-existing failure from one you just caused, which is exactly what a baseline run exists to
   establish. Stash or wait; docs and other files nothing under test imports are fair game.
+  **Not under a headless run.** A pipeline stage (`plan-pipeline.sh`, `post-run-pipeline.sh`
+  — anything driven by `claude -p`) gets no completion notification: ending the turn ends the
+  process. There, run probes and test commands in the **foreground** and wait for the output.
+  Measured 2026-09-01: `/impl-plan` backgrounded a pytest probe, ended its turn "until the
+  notice arrives", exited 0 after 11 min with no plan written.
 - **`make checks-fast` in the loop, `make checks` before a release.** The full target runs
   `pip-audit` over the network and writes dated reports into `reports/`.
 - **Prefer the `gh` CLI over the `github` MCP tools here.** The release procedure in

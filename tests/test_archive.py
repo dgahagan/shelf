@@ -57,6 +57,7 @@ def _seed_full_library(db):
         subtitle="",
         authors="Frank Herbert",
         isbn="9780441013593",
+        isbn10="0441013597",
         media_type="book",
         publisher="Ace",
         series_name="Dune Saga",
@@ -171,7 +172,7 @@ class TestBuildArchive:
         assert "password" not in combined
 
     def test_cover_missing_file_exports_cleanly(self, db):
-        item_id = _insert_item(db, title="Ghost Cover", isbn="9780000000099")
+        item_id = _insert_item(db, title="Ghost Cover", isbn="9780000000996")
         db.execute(
             "UPDATE items SET cover_path = ? WHERE id = ?",
             (f"covers/{item_id}.jpg", item_id),
@@ -199,7 +200,7 @@ class TestBuildArchive:
         assert library["items"] == []
 
     def test_overwrites_previous_tmp_archive(self, db):
-        _insert_item(db, title="First", isbn="9780000000001")
+        _insert_item(db, title="First", isbn="9780000000026")
         db.execute("COMMIT")
         path1 = build_archive(db)
         size1 = path1.stat().st_size
@@ -572,6 +573,7 @@ class TestRoundTripFreshInstance:
             title="Dune",
             authors="Frank Herbert",
             isbn="9780441013593",
+            isbn10="0441013597",
             media_type="book",
             location_id=loc_id,
         )
@@ -904,13 +906,13 @@ class TestMergeCaseInsensitiveNameReuse:
 
 class TestMergeReportCounts:
     def test_counts_match_actions(self, db, tmp_path):
-        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        _insert_item(db, title="Skip Me", isbn="9780000000125")
         db.execute("COMMIT")
 
         library = {
             "items": [
-                {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
-                {"id": 2, "title": "Brand New", "isbn": "9780000000030", "media_type": "book"},
+                {"id": 1, "title": "Skip Me", "isbn": "9780000000125", "media_type": "book"},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000309", "media_type": "book"},
                 {"id": 3, "title": "", "isbn": "9780000000040", "media_type": "book"},
             ],
         }
@@ -1063,7 +1065,7 @@ class TestPlanPurity:
                 {"id": 1, "title": "Dune", "authors": "Frank Herbert",
                  "isbn": "9780441013593", "media_type": "book", "cover": "covers/1.jpg",
                  "location": "Brand New Room", "tags": ["brand-new-tag"]},
-                {"id": 2, "title": "Brand New", "isbn": "9780000000030",
+                {"id": 2, "title": "Brand New", "isbn": "9780000000309",
                  "media_type": "book", "cover": "covers/2.jpg",
                  "location": "Another New Room", "tags": ["another-tag"]},
                 {"id": 3, "title": "  ", "isbn": "9780000000040", "media_type": "book"},
@@ -1145,7 +1147,7 @@ class TestPlanVerdicts:
              "media_type": "comic"},                                  # fuzzy miss
             {"id": 2, "title": "Local Zine", "authors": "Some Author",
              "media_type": "ebook"},                                  # media_type differs
-            {"id": 3, "title": "Elsewhere", "isbn": "9780000000030",
+            {"id": 3, "title": "Elsewhere", "isbn": "9780000000309",
              "media_type": "book"},                                   # isbn miss
         ]}
         plan = _plan(db, tmp_path, library, mode="update")
@@ -1154,13 +1156,13 @@ class TestPlanVerdicts:
         assert plan["summary"]["by_basis"] == {"isbn": 0, "title_authors": 0}
 
     def test_mixed_matrix_counts(self, db, tmp_path):
-        _insert_item(db, title="By Isbn", isbn="9780000000010")
+        _insert_item(db, title="By Isbn", isbn="9780000000125")
         _insert_item(db, title="By Title", authors="A", isbn=None, media_type="book")
         db.execute("COMMIT")
         library = {"items": [
-            {"id": 1, "title": "By Isbn", "isbn": "9780000000010", "media_type": "book"},
+            {"id": 1, "title": "By Isbn", "isbn": "9780000000125", "media_type": "book"},
             {"id": 2, "title": "By Title", "authors": "A", "media_type": "book"},
-            {"id": 3, "title": "New One", "isbn": "9780000000099", "media_type": "book"},
+            {"id": 3, "title": "New One", "isbn": "9780000000996", "media_type": "book"},
         ]}
         for mode, verdict in (("skip", "skip"), ("update", "update")):
             plan = _plan(db, tmp_path, library, mode=mode, name=f"{mode}.zip")
@@ -1172,7 +1174,7 @@ class TestPlanVerdicts:
 
 class TestPlanCoverActions:
     def test_create_with_cover_installs(self, db, tmp_path):
-        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000125",
                               "media_type": "book", "cover": "covers/1.jpg"}]}
         plan = _plan(db, tmp_path, library, [("covers/1.jpg", _JPEG)])
         assert _by_ref(plan)[1]["cover"] == "install"
@@ -1180,14 +1182,14 @@ class TestPlanCoverActions:
         assert plan["summary"]["covers_replace"] == 0
 
     def test_no_cover_entry_is_none(self, db, tmp_path):
-        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000125",
                               "media_type": "book"}]}
         plan = _plan(db, tmp_path, library)
         assert _by_ref(plan)[1]["cover"] == "none"
         assert plan["summary"]["covers_install"] == 0
 
     def test_cover_declared_but_absent_from_zip_is_none(self, db, tmp_path):
-        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000125",
                               "media_type": "book", "cover": "covers/1.jpg"}]}
         plan = _plan(db, tmp_path, library)  # no cover entries written
         assert _by_ref(plan)[1]["cover"] == "none"
@@ -1267,9 +1269,9 @@ class TestPlanWouldCreate:
 
     def test_names_are_deduped_across_items(self, db, tmp_path):
         library = {"items": [
-            {"id": 1, "title": "One", "isbn": "9780000000010", "media_type": "book",
+            {"id": 1, "title": "One", "isbn": "9780000000125", "media_type": "book",
              "location": "Attic", "tags": ["shared"]},
-            {"id": 2, "title": "Two", "isbn": "9780000000020", "media_type": "book",
+            {"id": 2, "title": "Two", "isbn": "9780000000217", "media_type": "book",
              "location": "ATTIC", "tags": ["SHARED"]},
         ]}
         plan = _plan(db, tmp_path, library)
@@ -1310,11 +1312,11 @@ class TestPlanDuplicateDedupeKeys:
 
 class TestPlanSummary:
     def test_counts_reconcile_with_item_records(self, db, tmp_path):
-        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        _insert_item(db, title="Skip Me", isbn="9780000000125")
         db.execute("COMMIT")
         library = {"items": [
-            {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
-            {"id": 2, "title": "Brand New", "isbn": "9780000000030", "media_type": "book"},
+            {"id": 1, "title": "Skip Me", "isbn": "9780000000125", "media_type": "book"},
+            {"id": 2, "title": "Brand New", "isbn": "9780000000309", "media_type": "book"},
             {"id": 3, "title": "", "isbn": "9780000000040", "media_type": "book"},
         ]}
         plan = _plan(db, tmp_path, library)
@@ -1326,12 +1328,12 @@ class TestPlanSummary:
         assert sum(s["by_basis"].values()) == s["skip"] + s["update"]
 
     def test_reading_log_and_checkouts_count_created_items_only(self, db, tmp_path):
-        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        _insert_item(db, title="Skip Me", isbn="9780000000125")
         db.execute("COMMIT")
         library = {
             "items": [
-                {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
-                {"id": 2, "title": "Brand New", "isbn": "9780000000030", "media_type": "book"},
+                {"id": 1, "title": "Skip Me", "isbn": "9780000000125", "media_type": "book"},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000309", "media_type": "book"},
             ],
             "reading_log": [
                 {"item_id": 1, "status": "read"},      # attaches to a skip — lands nowhere
@@ -1380,14 +1382,14 @@ class TestPlanSummary:
     def test_plan_matches_what_the_merge_then_does(self, db, tmp_path):
         """The plan is only worth showing if apply agrees with it. Plan a
         mixed archive, run the merge, and check the verdict counts line up."""
-        _insert_item(db, title="Skip Me", isbn="9780000000010")
+        _insert_item(db, title="Skip Me", isbn="9780000000125")
         db.execute("COMMIT")
         library = {
             "items": [
-                {"id": 1, "title": "Skip Me", "isbn": "9780000000010", "media_type": "book"},
-                {"id": 2, "title": "Brand New", "isbn": "9780000000030",
+                {"id": 1, "title": "Skip Me", "isbn": "9780000000125", "media_type": "book"},
+                {"id": 2, "title": "Brand New", "isbn": "9780000000309",
                  "media_type": "book", "cover": "covers/2.jpg"},
-                {"id": 3, "title": "Also New", "isbn": "9780000000050", "media_type": "book"},
+                {"id": 3, "title": "Also New", "isbn": "9780000000507", "media_type": "book"},
             ],
         }
         p = _write_zip(tmp_path / "a.zip", [("covers/2.jpg", _JPEG)],
@@ -1426,7 +1428,7 @@ def _zip_for(tmp_path, library, entries=(), name="a.zip"):
 
 class TestApplyPlanReportShape:
     def test_report_is_the_v1_report_plus_the_new_keys(self, db, tmp_path):
-        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000010",
+        library = {"items": [{"id": 1, "title": "New", "isbn": "9780000000125",
                               "media_type": "book"}]}
         _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
         assert report == {
@@ -1450,13 +1452,69 @@ class TestApplyPlanReportShape:
                           (existing_id,)).fetchone()["publisher"] == "Ace"
 
 
+class TestApplyPlanValuePreclean:
+    """The archive import's own value-stage boundary (#54 T6): an ISBN is a
+    provider value pulled straight from the exporting instance's own
+    items.isbn, so a bad one is pre-cleaned and dropped, never refused — a
+    "recovery" that silently drops a whole row over one bad field is exactly
+    the trap G27 warns an archive restore must not fall into. media_type and
+    platform stay refused per row, unchanged from before this task."""
+
+    def test_bad_isbn_is_dropped_but_the_row_is_still_created(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "ASIN Book", "isbn": "B00EXAMPLE",
+                              "media_type": "book"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
+
+        assert report["imported"] == 1
+        assert any("ASIN Book" in e and "B00EXAMPLE" in e for e in report["errors"])
+        row = db.execute(
+            "SELECT isbn, isbn10 FROM items WHERE title = ?", ("ASIN Book",)
+        ).fetchone()
+        assert row["isbn"] is None
+        assert row["isbn10"] is None
+
+    def test_a_valid_isbn_still_imports_normally_with_no_error(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "Real Book", "isbn": "9780441013593",
+                              "media_type": "book"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+        row = db.execute(
+            "SELECT isbn, isbn10 FROM items WHERE title = ?", ("Real Book",)
+        ).fetchone()
+        assert row["isbn"] == "9780441013593"
+        assert row["isbn10"] == "0441013597"
+
+    def test_unknown_media_type_is_refused_per_row(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "Widget", "media_type": "widget"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
+
+        assert report["imported"] == 0
+        assert any("Widget" in e for e in report["errors"])
+        assert db.execute(
+            "SELECT COUNT(*) AS c FROM items WHERE title = 'Widget'"
+        ).fetchone()["c"] == 0
+
+    def test_unknown_platform_is_refused_per_row(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "Odd Game", "media_type": "video_game",
+                              "platform": "not-a-real-platform"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
+
+        assert report["imported"] == 0
+        assert any("Odd Game" in e for e in report["errors"])
+        assert db.execute(
+            "SELECT COUNT(*) AS c FROM items WHERE title = 'Odd Game'"
+        ).fetchone()["c"] == 0
+
+
 class TestApplyPlanSelection:
     def _mixed_library(self):
         return {
             "items": [
-                {"id": 1, "title": "Already Here", "isbn": "9780000000010",
+                {"id": 1, "title": "Already Here", "isbn": "9780000000125",
                  "media_type": "book", "publisher": "Updated Press"},
-                {"id": 2, "title": "Brand New", "isbn": "9780000000030",
+                {"id": 2, "title": "Brand New", "isbn": "9780000000309",
                  "media_type": "book", "cover": "covers/2.jpg"},
             ],
             "reading_log": [{"item_id": 2, "status": "read"},
@@ -1466,7 +1524,7 @@ class TestApplyPlanSelection:
         }
 
     def _seed_match(self, db):
-        item_id = _insert_item(db, title="Already Here", isbn="9780000000010")
+        item_id = _insert_item(db, title="Already Here", isbn="9780000000125")
         db.execute("COMMIT")
         return item_id
 
@@ -1589,8 +1647,8 @@ class TestApplyPlanSelection:
 
 class TestApplyPlanCoverSemantics:
     def test_gap_is_filled_but_existing_cover_is_kept(self, db, tmp_path):
-        gap_id = _insert_item(db, title="No Cover", isbn="9780000000010")
-        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000020")
+        gap_id = _insert_item(db, title="No Cover", isbn="9780000000125")
+        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000217")
         config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
         old_bytes = b"\xff\xd8\xff\xe0" + b"OLD" * 100
         (config.COVERS_DIR / f"{kept_id}.jpg").write_bytes(old_bytes)
@@ -1599,9 +1657,9 @@ class TestApplyPlanCoverSemantics:
         db.execute("COMMIT")
 
         library = {"items": [
-            {"id": 1, "title": "No Cover", "isbn": "9780000000010",
+            {"id": 1, "title": "No Cover", "isbn": "9780000000125",
              "media_type": "book", "cover": "covers/1.jpg"},
-            {"id": 2, "title": "Has Cover", "isbn": "9780000000020",
+            {"id": 2, "title": "Has Cover", "isbn": "9780000000217",
              "media_type": "book", "cover": "covers/2.jpg"},
         ]}
         new_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
@@ -1616,7 +1674,7 @@ class TestApplyPlanCoverSemantics:
         assert (config.COVERS_DIR / f"{kept_id}.jpg").read_bytes() == old_bytes
 
     def test_replace_covers_opt_in_counts_separately(self, db, tmp_path):
-        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000020")
+        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000217")
         config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
         (config.COVERS_DIR / f"{kept_id}.jpg").write_bytes(b"\xff\xd8\xff\xe0" + b"OLD" * 100)
         db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
@@ -1624,7 +1682,7 @@ class TestApplyPlanCoverSemantics:
         db.execute("COMMIT")
 
         new_bytes = b"\xff\xd8\xff\xe0" + b"NEW" * 100
-        library = {"items": [{"id": 2, "title": "Has Cover", "isbn": "9780000000020",
+        library = {"items": [{"id": 2, "title": "Has Cover", "isbn": "9780000000217",
                               "media_type": "book", "cover": "covers/2.jpg"}]}
         path = _zip_for(tmp_path, library, [("covers/2.jpg", new_bytes)])
         _plan, report = _plan_and_apply(db, path, mode="update",
@@ -1636,7 +1694,7 @@ class TestApplyPlanCoverSemantics:
         assert (config.COVERS_DIR / f"{kept_id}.jpg").read_bytes() == new_bytes
 
     def test_plan_cover_counts_predict_the_apply(self, db, tmp_path):
-        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000020")
+        kept_id = _insert_item(db, title="Has Cover", isbn="9780000000217")
         config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
         (config.COVERS_DIR / f"{kept_id}.jpg").write_bytes(_JPEG)
         db.execute("UPDATE items SET cover_path = ? WHERE id = ?",
@@ -1644,9 +1702,9 @@ class TestApplyPlanCoverSemantics:
         db.execute("COMMIT")
 
         library = {"items": [
-            {"id": 1, "title": "Brand New", "isbn": "9780000000010",
+            {"id": 1, "title": "Brand New", "isbn": "9780000000125",
              "media_type": "book", "cover": "covers/1.jpg"},
-            {"id": 2, "title": "Has Cover", "isbn": "9780000000020",
+            {"id": 2, "title": "Has Cover", "isbn": "9780000000217",
              "media_type": "book", "cover": "covers/2.jpg"},
         ]}
         path = _zip_for(tmp_path, library, [("covers/1.jpg", _JPEG),
@@ -1661,13 +1719,13 @@ class TestApplyPlanCoverSemantics:
 class TestApplyPlanDrift:
     def test_item_that_appeared_between_plan_and_apply_is_skipped(self, db, tmp_path):
         library = {"items": [
-            {"id": 1, "title": "Raced", "isbn": "9780000000010", "media_type": "book"},
-            {"id": 2, "title": "Untouched", "isbn": "9780000000020", "media_type": "book"},
+            {"id": 1, "title": "Raced", "isbn": "9780000000125", "media_type": "book"},
+            {"id": 2, "title": "Untouched", "isbn": "9780000000217", "media_type": "book"},
         ]}
         path = _zip_for(tmp_path, library)
 
         def race(db):
-            _insert_item(db, title="Raced", isbn="9780000000010")
+            _insert_item(db, title="Raced", isbn="9780000000125")
             db.execute("COMMIT")
 
         _plan, report = _plan_and_apply(db, path, mode="skip", mutate=race)
@@ -1683,9 +1741,9 @@ class TestApplyPlanDrift:
         assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 2
 
     def test_item_that_disappeared_between_plan_and_apply_is_drift(self, db, tmp_path):
-        existing_id = _insert_item(db, title="Vanishing", isbn="9780000000010")
+        existing_id = _insert_item(db, title="Vanishing", isbn="9780000000125")
         db.execute("COMMIT")
-        library = {"items": [{"id": 1, "title": "Vanishing", "isbn": "9780000000010",
+        library = {"items": [{"id": 1, "title": "Vanishing", "isbn": "9780000000125",
                               "media_type": "book"}]}
         path = _zip_for(tmp_path, library)
 
@@ -1703,12 +1761,12 @@ class TestApplyPlanDrift:
         assert db.execute("SELECT COUNT(*) c FROM items").fetchone()["c"] == 0
 
     def test_drift_is_not_counted_as_deselection(self, db, tmp_path):
-        library = {"items": [{"id": 1, "title": "Raced", "isbn": "9780000000010",
+        library = {"items": [{"id": 1, "title": "Raced", "isbn": "9780000000125",
                               "media_type": "book"}]}
         path = _zip_for(tmp_path, library)
 
         def race(db):
-            _insert_item(db, title="Raced", isbn="9780000000010")
+            _insert_item(db, title="Raced", isbn="9780000000125")
             db.execute("COMMIT")
 
         _plan, report = _plan_and_apply(db, path, mode="skip", mutate=race)
@@ -2055,3 +2113,25 @@ class TestLegacyEndpointReplaceCovers:
         assert report["updated"] == 1
         assert report["covers_installed"] == 1
         assert (config.COVERS_DIR / f"{existing_id}.jpg").read_bytes() == new_bytes
+
+
+
+class TestPlanAndApplyAgreeOnABadIsbn:
+    def test_bad_isbn_row_matching_an_isbnless_row_plans_and_applies_as_update(self, db, tmp_path):
+        """plan_archive and apply_plan pre-clean the ISBN the same way, so a
+        row whose ISBN fails the check digit dedupes by title in *both*
+        stages — otherwise plan says `create`, apply says `update`, and the
+        row lands in `drifted` instead of being applied."""
+        existing_id = _insert_item(db, title="Dune", authors="Frank Herbert", isbn=None)
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "authors": "Frank Herbert",
+                              "isbn": "B00EXAMPLE", "media_type": "book",
+                              "publisher": "Ace"}]}
+        plan, report = _plan_and_apply(db, _zip_for(tmp_path, library), mode="update")
+        assert plan["items"][0]["verdict"] == "update"
+        assert report["drifted"] == 0
+        assert report["updated"] == 1
+        row = db.execute("SELECT isbn, publisher FROM items WHERE id = ?", (existing_id,)).fetchone()
+        assert row["isbn"] is None
+        assert row["publisher"] == "Ace"
+        assert any("B00EXAMPLE" in e for e in report["errors"])

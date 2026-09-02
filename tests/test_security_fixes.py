@@ -313,7 +313,7 @@ class TestScanLogRetention:
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode, created_at) "
             "VALUES (?, ?, ?, ?, datetime('now', '-91 days'))",
-            ("9780000000001", "book", "added", "add"),
+            ("9780000000026", "book", "added", "add"),
         )
         db.commit()
 
@@ -339,16 +339,16 @@ class TestScanLogRetention:
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode, created_at) "
             "VALUES (?, ?, ?, ?, datetime('now', '-10 days'))",
-            ("9780000000099", "book", "added", "add"),
+            ("9780000000996", "book", "added", "add"),
         )
         db.commit()
 
         monkeypatch.setattr(items_common, "_scan_log_last_prune", float("-inf"))
-        items_common._log_scan("9780000000100", "book", "added", mode="add")
+        items_common._log_scan("9780000001009", "book", "added", mode="add")
 
         with get_db() as check_db:
             recent = check_db.execute(
-                "SELECT COUNT(*) FROM scan_log WHERE isbn = '9780000000099'"
+                "SELECT COUNT(*) FROM scan_log WHERE isbn = '9780000000996'"
             ).fetchone()[0]
         assert recent == 1
 
@@ -359,28 +359,28 @@ class TestScanLogRetention:
         db.execute(
             "INSERT INTO scan_log (isbn, media_type, result, mode, created_at) "
             "VALUES (?, ?, ?, ?, datetime('now', '-91 days'))",
-            ("9780000000050", "book", "added", "add"),
+            ("9780000000507", "book", "added", "add"),
         )
         db.commit()
 
         # First call: prune runs (last_prune = 0)
         monkeypatch.setattr(items_common, "_scan_log_last_prune", 0.0)
-        items_common._log_scan("9780000000051", "book", "added", mode="add")
+        items_common._log_scan("9780000000514", "book", "added", mode="add")
 
         # Re-insert the old row to simulate it coming back
         with get_db() as reinsert_db:
             reinsert_db.execute(
                 "INSERT INTO scan_log (isbn, media_type, result, mode, created_at) "
                 "VALUES (?, ?, ?, ?, datetime('now', '-91 days'))",
-                ("9780000000052", "book", "added", "add"),
+                ("9780000000521", "book", "added", "add"),
             )
 
         # Second call immediately after: prune should be skipped (interval not elapsed)
-        items_common._log_scan("9780000000053", "book", "added", mode="add")
+        items_common._log_scan("9780000000538", "book", "added", mode="add")
 
         with get_db() as check_db:
             still_old = check_db.execute(
-                "SELECT COUNT(*) FROM scan_log WHERE isbn = '9780000000052'"
+                "SELECT COUNT(*) FROM scan_log WHERE isbn = '9780000000521'"
             ).fetchone()[0]
         # The old entry should still be there — prune was skipped
         assert still_old == 1
@@ -398,7 +398,7 @@ class TestCSVFieldLengthCaps:
             "authors": "Author Name",
             "publisher": "Publisher",
             "series_name": "Series",
-            "isbn": "9780000001234",
+            "isbn": "9780000012340",
             "media_type": "book",
         }
         fields.update(overrides)
@@ -455,7 +455,7 @@ class TestCSVFieldLengthCaps:
 
     def test_at_limit_fields_import_successfully(self, admin_client):
         """Exactly 1000 characters should be accepted."""
-        csv_content = self._make_csv(authors="A" * 1000, isbn="9780000001235")
+        csv_content = self._make_csv(authors="A" * 1000, isbn="9780000012357")
         resp = admin_client.post(
             "/api/import/csv",
             files={"file": ("test.csv", io.BytesIO(csv_content.encode()), "text/csv")},
