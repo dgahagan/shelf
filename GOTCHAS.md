@@ -3219,6 +3219,48 @@ grep -rn '"added":\|"ok": True' tests/e2e/ | head
 - **Status:** documented. Not a lint candidate — whether a given fixture
   *should* carry a new field depends on what that test is for.
 
+## G79 — A docs task edits the section the change is "about" and leaves the rest of the page contradicting it
+
+- **Rule:** After changing behaviour a page documents, re-read that page **end
+  to end** — its opening paragraph and its step-by-step walkthrough, not only
+  the section whose heading matches the change. Then grep the whole docs set
+  for the *other* copies of the same claim.
+- **Why:** a docs task is written against the feature, so it finds the section
+  named after the feature. The intro and the walkthrough describe the same
+  behaviour in passing, under headings that name something else, and they are
+  the two parts a user actually reads. Plan `intake-media-lookup`'s docs task
+  (`2d61c33`) correctly rewrote `docs/user-guide/photo-intake.md`'s
+  **Limitations** section to describe the new TMDb/IGDB lookup and the
+  `declined` state — and left the page's own intro (`:6-8`) and its step-4
+  **Confirm** walkthrough (`:58-66`) still saying the Done panel's only failure
+  state is "found no metadata at all". The page shipped **contradicting
+  itself**, through the design's `## Docs impact`, the impl plan's docs task,
+  the plan review, the diff review and the full gate — none of which read a
+  Markdown page for internal consistency.
+- **The duplicate-copy half:** the same release left `DOCKERHUB_README.md`
+  untouched, whose Features bullet and provider table are hand-maintained
+  copies of `README.md`'s. `README.md` itself carries the Photo Intake bullet
+  **twice** (Why Shelf? and Scanning and Metadata); only the first was updated.
+  Grepping for the *claim* rather than editing the page you thought of is what
+  catches these.
+- **Evidence:** caught at `/release` step 4b for 0.31.0 (2026-09-03) by the
+  delegated docs survey, which was asked to report what every page in the map
+  currently says rather than to check the pages the changelog named. Seven
+  pages needed edits; two of them (`photo-intake.md`, `DOCKERHUB_README.md`)
+  were pages the branch had already been asked to handle. Fixed in `76c7c31`.
+- **Verify:** for the page the change is about, read it whole. For the claim,
+  sweep the set — a distinctive phrase from the old behaviour, not the feature
+  name:
+
+```bash
+grep -rniE 'no metadata|title-only|books-only' README.md DOCKERHUB_README.md docs/
+```
+
+- **Status:** documented. Not a lint candidate — no checker can tell a stale
+  claim from a correctly scoped one. The countermeasure is the survey-then-
+  decide split in `/release` step 4b: one pass reports what every page says,
+  a second decides what each should say.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

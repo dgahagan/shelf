@@ -6,6 +6,14 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- UPC-A check digits are validated with the standard weighting (odd positions
+  x3, even positions x1). The weights were reversed, so valid retail barcodes
+  such as `036000291452` and `078073003501` were rejected. Contributed by
+  [@martialartistslife](https://github.com/martialartistslife) in
+  [#82](https://github.com/dgahagan/shelf/pull/82)
+
 ## [0.31.0] - 2026-09-03
 
 Photo Intake could read a DVD or a game off a shelf photo, but it could not look

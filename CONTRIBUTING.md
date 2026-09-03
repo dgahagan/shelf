@@ -8,9 +8,11 @@ Here's what that means in practice:
   `docker compose logs shelf`).
 - **Feature requests are welcome** — no promises. The roadmap follows what my
   own library needs first, but user reports regularly shape it.
-- **Pull requests are considered**, but there's no SLA on review. For anything
-  bigger than a small fix, open an issue first so we can talk about the
-  approach before you invest time.
+- **Pull requests are considered**, and every open PR now gets a decision at
+  each release — merged, or a comment saying what it is waiting on, or a
+  comment saying why it is closed. That is a decision, not a review queue: it
+  may still be "not yet". For anything bigger than a small fix, open an issue
+  first so we can talk about the approach before you invest time.
 - **Docs fixes are always welcome** — the user guide lives in
   [`docs/`](docs/README.md); a typo PR needs no issue.
 
@@ -30,6 +32,40 @@ make dev                  # docker compose up -d --build
 Full details — running, testing, project layout, the rules that bite — are in
 [docs/development.md](docs/development.md) and
 [docs/architecture.md](docs/architecture.md).
+
+## How PRs get merged here — please read this one
+
+Shelf releases fast, sometimes **three times in a day**, and each release lands
+on GitHub as one squashed commit that rewrites 20 or more files. That has a
+consequence you did not cause and cannot see from the outside:
+
+**A PR that sits for a few days will conflict, and the conflict is usually not
+about your code.** It is your branch point being overwritten. When that happens
+GitHub also cannot build a merge commit, so CI stops running and the PR looks
+untested as well as stale. Neither is a judgement about the work.
+
+What actually helps:
+
+- **Branch from current `main`, and rebase rather than merge** if you are asked
+  to. `git fetch origin && git rebase origin/main`.
+- **One concern per PR.** A focused 40-line PR gets merged the same day. A
+  roll-up of seven unrelated fixes cannot be reviewed as a unit, and if any one
+  piece is wrong the whole thing waits — and by then it has conflicted.
+- **Check it is not already fixed.** `main` moves faster than the release notes
+  suggest. `git log --oneline -20` and a quick search for the symptom costs a
+  minute and has saved whole PRs from being written against bugs fixed weeks
+  earlier.
+- **Claim an issue before you build.** Comment on it, or open one. I do a lot of
+  work in private branches, and the only way you can know something is already
+  in flight is if I tell you — so ask, and I will.
+- **If the behaviour looks wrong, ask before changing it.** Some of what looks
+  like a bug is deliberate, and the reasoning often lives in a code comment
+  rather than the docs. One recent example: an unreadable barcode deliberately
+  creates a placeholder row instead of being rejected, because the offline
+  scanner drops a flushed code from its queue and rejecting it would silently
+  lose a scan someone made in a shop. Worth a question first.
+
+None of this applies to typo and docs fixes. Send those straight in.
 
 ## Before you submit
 
@@ -55,6 +91,12 @@ Notes:
 - `MIGRATIONS` in `app/database.py` is append-only — never edit or reorder an
   existing entry.
 - No CDN references — all JS and CSS is vendored in `static/`.
+- **Some files are generated — never hand-edit them.** `static/css/app.css` and
+  the `SW_VERSION` constant in `static/sw.js` come from `make css`; the
+  test-count badges in `README.md` come from `make badges`. Run the target and
+  commit the result. If you rebase, regenerate these rather than replaying your
+  old hunk — the service-worker stamp is a digest over the whole precache set,
+  so a replayed stamp fails `make check-sw-version`.
 - `GOTCHAS.md` lists the project's known traps; skim the headings before
   touching migrations, Alpine components, covers or the service worker.
 
