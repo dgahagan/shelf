@@ -66,7 +66,8 @@ See [Troubleshooting](../troubleshooting.md#a-scan-added-only-a-title).
 [IGDB](https://www.igdb.com) via Twitch developer credentials — free.
 
 **Adds:** video-game metadata, cover art, platform and series on UPC scan;
-title search for retro cartridges.
+title search for retro cartridges; and the title lookup a Photo Intake row
+typed Video Game runs when you confirm it.
 
 **Setup:** [dev.twitch.tv/console](https://dev.twitch.tv/console) → Register
 Your Application (category "Application Integration", any redirect URL) →
@@ -76,7 +77,8 @@ copy Client ID and generate a Client Secret → paste both.
 
 [themoviedb.org](https://www.themoviedb.org) — free API key.
 
-**Adds:** film metadata and posters from UPC scans, movie title search.
+**Adds:** film metadata and posters from UPC scans, movie title search, and
+the title lookup a Photo Intake row typed DVD runs when you confirm it.
 
 **Setup:** TMDb account → Settings → API → request access → paste **either**
 credential the API page shows: the 32-character **API Key (v3 auth)** or the

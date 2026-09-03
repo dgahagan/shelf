@@ -6,9 +6,11 @@ catalog itself, Browse, Stats, lending and Store Mode's scan verdicts all work
 offline. Nothing phones home.
 
 **Is my data sent anywhere?**
-Only the ISBN/UPC being looked up goes to metadata providers. Photo Intake
-sends the photo to whichever vision provider you configured — choose Ollama
-for fully local. Share links are served by *your* server.
+Only the ISBN/UPC being looked up goes to metadata providers — plus the title,
+where that is all Shelf has: a title search, or a Photo Intake row typed DVD or
+Video Game, whose title goes to TMDb or IGDB when you confirm it. Photo Intake
+also sends the photo to whichever vision provider you configured — choose
+Ollama for fully local. Share links are served by *your* server.
 
 **Do I need any API keys?**
 No. Books, covers, DVD titles (via UPC Item DB) and everything else core work

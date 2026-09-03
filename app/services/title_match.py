@@ -22,6 +22,7 @@ Two properties are fixed by the design and must not be relaxed:
 
 import difflib
 import re
+import unicodedata
 
 # A trailing "(...)" or a ": subtitle" tail — series/edition decoration that
 # one side may carry and the other may not.
@@ -94,5 +95,53 @@ def titles_agree(row_title: str, catalog_title: str | None) -> bool:
             return False
 
         return difflib.SequenceMatcher(None, a, b).ratio() >= SIMILARITY
+    except Exception:  # pragma: no cover - fail closed on anything unexpected
+        return False
+
+
+# Roman numerals up to xii, mapped to their arabic form so "Modern Warfare II"
+# and "Modern Warfare 2" normalize identically. Whole-token only.
+_ROMAN = {
+    "i": "1", "ii": "2", "iii": "3", "iv": "4", "v": "5", "vi": "6",
+    "vii": "7", "viii": "8", "ix": "9", "x": "10", "xi": "11", "xii": "12",
+}
+
+
+def _fold(s: str) -> str:
+    """Drop combining diacritics (NFKD decompose, then strip combiners)."""
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)
+    )
+
+
+def titles_match_exactly(row_title: str, catalog_title: str | None) -> bool:
+    """True when the catalogue title is the row title, exactly, after folding.
+
+    This is the **retail** guard for the TMDb/IGDB lookups intake runs on
+    rows typed as DVD or Video Game — it is variant E' from the design's
+    probe, measured against 31 retail pairs. It deliberately does **not**
+    call `_strip_decoration`: every relaxation that keeps that strip also
+    keeps the two false accepts the guard exists to prevent — 'Dune' reads
+    as a match for *Dune: Part Two* once decoration is stripped (raw ratio
+    0.47), and 'ALIEN' matches *Aliens* at 0.91, over threshold. Both must
+    stay rejected, so this compares titles whole: casefolded, punctuation
+    and diacritics dropped, and roman numerals mapped to arabic, but with
+    no notion of a "bare" title underneath the decorated one.
+
+    `titles_agree` above is the **book** guard and is deliberately left
+    untouched — it still strips decoration, because a printed-ISBN lookup's
+    failure mode (a false reject) is cheaper than intake's (a wrong film
+    accepted into a bulk-confirmed batch with no per-row card to catch it).
+    """
+    try:
+        if not isinstance(row_title, str) or not isinstance(catalog_title, str):
+            return False
+
+        def norm(title: str) -> str:
+            normalized = _normalize(_fold(title))
+            return " ".join(_ROMAN.get(tok, tok) for tok in normalized.split())
+
+        a, b = norm(row_title), norm(catalog_title)
+        return bool(a) and bool(b) and a == b
     except Exception:  # pragma: no cover - fail closed on anything unexpected
         return False

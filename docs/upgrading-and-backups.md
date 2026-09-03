@@ -26,6 +26,18 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.31.0
+
+Photo Intake now looks up rows you type DVD or Video Game, on TMDb and IGDB.
+The lookup runs **at the moment you confirm**, so rows you confirmed before
+this release are not revisited — they keep the bare title they were filed with,
+for the same reason the 0.17.1 note below gives. Delete and re-import the ones
+you want filled in.
+
+Nothing to set: it uses the TMDb and IGDB credentials you may already have for
+barcode scanning. Without them those rows are filed under their title exactly
+as before.
+
 ### After upgrading to 0.30.0
 
 The JWT signing key moves out of the database. On the first start it is written

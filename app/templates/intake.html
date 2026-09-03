@@ -231,8 +231,13 @@
         <div class="space-y-1 text-sm">
             {# single root element per x-for row — the vendored CSP build renders
                firstElementChild only #}
+            {# a.lookup: "matched" renders nothing (today's row), "declined" and
+               "not_attempted" each get their own notice span — a.matched alone
+               can no longer tell them apart (G65 checked: this is the only
+               added[]-row arm in the file; skipped[] rows are a separate
+               x-for below and carry no lookup field at all). #}
             <template x-for="a in (result ? result.added : [])" :key="'a' + a.id">
-                <p data-testid="intake-added-row"><a :href="'/item/' + a.id" class="text-shelf-accent2 hover:text-shelf-accent" x-text="a.title"></a><span x-show="!a.matched" x-cloak data-testid="intake-no-metadata" class="text-xs text-shelf-muted ml-1">&mdash; no metadata found, added title only</span></p>
+                <p data-testid="intake-added-row"><a :href="'/item/' + a.id" class="text-shelf-accent2 hover:text-shelf-accent" x-text="a.title"></a><span x-show="a.lookup === 'declined'" x-cloak data-testid="intake-lookup-declined" class="text-xs text-shelf-muted ml-1">&mdash; title didn't match the catalogue, added title only &mdash; fix it on the item page</span><span x-show="a.lookup === 'not_attempted'" x-cloak data-testid="intake-no-metadata" class="text-xs text-shelf-muted ml-1">&mdash; no metadata found, added title only</span></p>
             </template>
             <template x-for="(s, i) in (result ? result.skipped : [])" :key="'s' + i">
                 <p class="text-shelf-muted"><span x-text="s.title"></span> <span class="text-xs">(<span x-text="s.reason"></span>)</span></p>

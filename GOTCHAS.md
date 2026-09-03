@@ -442,6 +442,21 @@ PY
   a plan review caught it, the impl plan had filed G18 as "not triggered, no
   migration". **Whenever a fix removes a constraint that was implicitly
   serializing something, re-ask what was holding the invariant.**
+  Third instance, found but **not fixed**: the Antigravity diff review of
+  `feat/intake-media-lookup` (2026-09-03) read the shape correctly in
+  `_confirm_one` (`app/routers/intake.py`) — step 1's title guard runs in its
+  own `with get_db()` block that closes before the insert, and steps 4a/4 share
+  the insert's block but never issue `BEGIN IMMEDIATE`, so all three guards
+  read outside the write lock. It is **pre-existing**, not introduced by that
+  branch: the reviewer attributed the race to the new step 4a and closed
+  `REJECT` on that basis, and triage reversed the attribution — 4a *narrows*
+  the window, because before it a lookup-resolved title got no dupe check at
+  all and a duplicate landed unconditionally rather than only under a race.
+  Deferred to [#83](https://github.com/dgahagan/shelf/issues/83) as a change to
+  the route's transaction discipline. **A guard that is new is not thereby the
+  guard that created the hazard** — check whether the shape predates it before
+  rating the finding, and check whether the new code made the window wider or
+  narrower.
 - **Verify:** both regression tests must still pass — the migration one drives
   a second runner to completion inside the first runner's snapshot read, and
   the route one probes from inside the guard that a rival writer is already
@@ -2635,10 +2650,15 @@ grep -rn "netloc" app/services/*.py app/routers/*.py
 ## G67 — When your change adds lines to a module at its size cap
 
 - **Rule:** `tests/test_module_sizes.py` caps ten files, and
-  `app/routers/items_common.py` sits one line under its cap of 900 (899 as of
-  `a8e97a5`, 2026-09-02, after issue #54's T4 was scoped to net ≤ 0 lines and
-  landed at −1). The **next** two lines added to it fail the gate. Before scoping work that touches
-  it, read `LIMITS` in that test and check the headroom you actually have —
+  `app/routers/items_common.py` sits nine lines under its cap of 900 (**891 as
+  of `7a1b5ec`, 2026-09-03**, when plan `intake-media-lookup`'s T2 moved
+  `UPC_METADATA_PROVIDERS` and `search_one_game` out to
+  `app/services/title_lookup.py` under a hard net-negative budget; it was 899
+  as of `a8e97a5`, 2026-09-02, and 900 before that). **Do not read that
+  headroom as comfort** — it was bought once, by a task scoped to buy it, and
+  the file has been at or within one line of the cap twice. Before scoping work
+  that touches it, read `LIMITS` in that test and check the headroom you
+  actually have —
   and when there is none, plan the extraction as part of the task rather than
   discovering it when the suite goes red. The cap's own instruction says where
   the lines should go: *"move domain logic to `app/services/`"*.
@@ -3074,6 +3094,130 @@ by the existing Open Library and Amazon rungs like everything else.
   states the covers cascade is unchanged so a reader does not go looking.
 - **Status:** documented. Not a lint candidate — no grep can tell an
   identifier from a credential in a URL path.
+
+## G76 — Redacting your own log line does not close the leak if a library logs the same URL
+
+`notify._target` was written with care: it strips the path, the query and the
+userinfo, and logs the exception's *type* rather than its string. One line
+below it in the same container log, `httpx` logged the whole URL of the same
+request — username, password and topic path — because `httpx` logs every
+request that receives a response at INFO. The careful line and the leaking
+line sat adjacent.
+
+- **The redaction control was working, and covered the wrong half.**
+  `RedactQueryFilter` was installed on the `httpx` logger and had run: it
+  blanked `token=` to `***` in the very line that carried the credential in
+  its path. A filter over a URL can only reach the part it can name, and ntfy
+  and Discord both carry their secret in the **path**, where no filter can
+  know which segment is the secret. `https://ntfy.sh/secret-topic` has no
+  userinfo at all and the topic *is* the password.
+- **The success path leaked more than the failure path.** `httpx` logs on
+  every request that gets a response, so a *working* authenticated topic wrote
+  its credential on every send, while a notification that failed to connect
+  logged nothing from `httpx`. Testing the error path — the intuitive thing to
+  test for a redaction fix — sees the safe case.
+- **What to check whenever you redact a log line:** who else logs this same
+  request. Enumerate the loggers, not the call sites. Shelf's own handler is
+  attached to the `app` logger and not to the root, which is why the leaking
+  record never reached `log_entries` and the database — a containment that was
+  luck rather than design, and is the only reason this was a stdout problem
+  rather than a backup problem.
+- **The fix is the logger's level, not another filter.** `httpx` has exactly
+  two log call sites, both `logger.info`, and emits nothing at warning or
+  error, so raising that logger to WARNING drops the leaking line and nothing
+  else. The filter stays installed as defence in depth. Accepted cost: `docker
+  logs` no longer carries a line per outbound request. If that trace is wanted
+  back, re-add it in `outbound.py`, which already knows the host.
+- **Evidence:** `0b1d1c0` / plan `signing-key-keyfile` (2026-09-03). Found by
+  `/test-drive` on the live instance, **after** a cross-vendor `--diff` review
+  had already read the same code and passed it: the review saw `notify.py` and
+  judged the redaction correct, which it was. Only a running container shows
+  what a *second* logger writes beside it. `SECURITY.md` and
+  `docs/architecture.md` had already been edited by this same plan to claim
+  the leak was closed, so the docs were false for four commits.
+- **Verify:** no logger below the app's own emits a URL.
+
+```bash
+grep -rn "getLogger" app/main.py app/log_handler.py
+docker logs shelf-dev 2>&1 | grep -iE "https?://[^ ]*@|HTTP Request:"
+```
+
+  The second command must return nothing after a scan and a **Send test** on
+  the Lending card.
+- **Status:** documented. Not a lint candidate — a third-party logger's level
+  is not something a grep over `app/` can see.
+
+## G77 — When a refactor routes an existing call through a new helper
+
+- **Rule:** Diff the **call**, not the shape around it. "Behaviour-preserving
+  refactor" and the code sample a plan hands you are two separate claims, and
+  the sample is the one that can be wrong. Before replacing a call site, read
+  the original's argument list and confirm the replacement passes the same set.
+  **An argument being in scope is not evidence it was being passed.**
+- **Why:** the change is invisible to a green gate. Plan `intake-media-lookup`'s
+  T2 was to route both UPC metadata ladders through a new
+  `title_lookup.lookup_by_title`, and its work text wrote
+  `platform=platform` into the game ladder's lambda. `platform` *is* a
+  parameter of `_scan_upc_game` and reads as obviously correct — but the
+  `search_one_game` being replaced called
+  `igdb.search_games(query, igdb_id, igdb_secret, client, limit=1)` and never
+  forwarded it; `platform` was read only by the insert further down.
+  `igdb.search_games` appends `where platforms = (…)` whenever the slug is in
+  `PLATFORM_IDS`, so the sample would have added a platform filter to a search
+  that has never had one, turning hits into misses on the UPC scan path. **No
+  test covers that filter**, and the task's own acceptance — *"the `rejected`
+  and `.found` arms stay byte-identical"* — would have been satisfied while
+  behaviour moved underneath it.
+- **The tell:** a task that calls itself behaviour-preserving *and* hands you
+  new keyword arguments is contradicting itself. Believe the adjective, check
+  the sample.
+- **Evidence:** `7a1b5ec` (2026-09-03, plan `intake-media-lookup` T2).
+  Resolved by not forwarding it, with the reason in a two-line comment at the
+  call site so the next reader does not "fix" the omission.
+- **Verify:** judgement. When a task says behaviour-preserving, read the
+  original call and compare argument lists — not the surrounding structure:
+
+```bash
+git show main:app/routers/<file>.py | grep -n -A 6 "<the call being replaced>"
+```
+
+- **Status:** documented. Not a lint candidate — only the plan knows which
+  calls it meant to preserve.
+
+## G78 — When you add a field to a response that a hand-written test fixture also models
+
+- **Rule:** Grep the E2E fixtures for hand-written copies of that response
+  shape and decide, per copy, whether it carries the new field. A fixture
+  written before the field existed keeps passing, and any template arm keyed on
+  that field renders **nothing** — `x-show="a.lookup === 'declined'"` against an
+  `undefined` is `false`, not an error.
+- **Why:** the loss is coverage, not a failure, so nothing reports it. Plan
+  `intake-media-lookup`'s T6 added two `x-show` arms keyed on a new `lookup`
+  field in `/api/intake/confirm`'s `added[]` entries. Two of the three E2E
+  confirm round-trips fulfil `CONFIRM_OK` (`tests/e2e/test_intake.py:898`), a
+  hand-written dict that predates the field, and neither asserts a marker — so
+  both stayed green and **no E2E test renders either new arm**. The suite
+  reported 210 passed while the new UI state had never been drawn once.
+- **The distinction from G65**, which is the adjacent trap: G65 asks whether
+  the arm sits in a **branch** the render can reach. This asks whether anything
+  in the suite ever supplies the **data** that switches it on. An arm can be in
+  exactly the right branch and still never render, and the two failures look
+  identical from the outside — a green suite and a blank space.
+- **Evidence:** `1c417b3` (2026-09-03, plan `intake-media-lookup` T6). Left as
+  it stands **deliberately** — that design routes render confirmation to the
+  test drive and forbids editing the E2E suite — but recorded so the next
+  reader does not mistake a green E2E run for evidence about the new arm.
+- **Verify:** after adding a response field the UI keys on, read every
+  hand-written response literal in the E2E suite:
+
+```bash
+grep -rn '"added":\|"ok": True' tests/e2e/ | head
+```
+
+  Each one either carries the new field or is a deliberate omission; there is
+  no third answer.
+- **Status:** documented. Not a lint candidate — whether a given fixture
+  *should* carry a new field depends on what that test is for.
 
 ## Graveyard
 

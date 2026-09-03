@@ -58,6 +58,9 @@ RAW_UPDATE_ALLOWLIST: dict[str, set[str]] = {
     },
     "app/routers/store.py": {"cover_path = ?"},
     "app/routers/items_catalog.py": {"cover_path = ?"},
+    # Photo-intake confirm downloads a disc/game cover directly rather than
+    # through the cover queue, which stays book-only (G29).
+    "app/routers/intake.py": {"cover_path = ?"},
     "app/routers/hardcover.py": {
         "cover_path = ?",
         # IDs Hardcover assigns after a sync match, not user input.

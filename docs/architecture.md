@@ -403,8 +403,27 @@ merged and de-duplicated → the user edits → `/confirm` validates the target
 location first (`services/write_targets.py`, shared with any writer that
 takes a location id — a stale id is refused before settings, providers or
 inserts are touched, never surfaced as a foreign-key failure), then runs each
-row through the metadata pipeline and enqueues covers. Photos are never
-stored.
+row through the metadata pipeline. Photos are never stored.
+
+What that pipeline is depends on the row's media type. The book family goes to
+Open Library on title and author and is handed to the cover queue. A row typed
+DVD or Video Game goes instead through `services/title_lookup.py`, the
+media-typed metadata adapter, to TMDb or IGDB — asked for a single result, and
+trusted only when `title_match.titles_match_exactly` accepts it. That guard is
+deliberately stricter than the book path's `titles_agree`, which strips a
+`": subtitle"` tail and would therefore accept *Dune* for *Dune: Part Two*.
+A row whose lookup was declined is reported as such, distinctly from one that
+was never eligible. Anything else (a CD, for want of a music provider) is
+filed title-only with no outbound request at all.
+
+**Invariant: non-book rows are enriched by a direct provider lookup and a
+direct cover download, and they bypass the cover queue by design.** The queue's
+`resolve_missing_cover` falls back to a title search, which accepts the first
+Open Library hit for an item with no authors and then stores the ISBN it found
+— that once wrote a novel's cover *and* its ISBN onto a cover-less DVD row.
+`cover_queue.COVER_REQUEUE_MEDIA_TYPES` is what keeps non-book rows out, and
+widening it is the mistake this invariant exists to prevent; the disc and game
+covers are fetched straight through `covers._download_to_item` instead.
 
 ## Background tasks
 

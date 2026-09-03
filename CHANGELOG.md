@@ -6,6 +6,43 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-09-03
+
+Photo Intake could read a DVD or a game off a shelf photo, but it could not look
+one up. Setting a row's type to DVD or Video Game did exactly one thing — it kept
+the row out of the book catalogue — so the item landed carrying its title and
+nothing else: no year, no description, no cover. This release gives those two
+types the lookup the book rows have always had, and it makes the Done panel say
+which of the two ways a row can come back empty actually happened.
+
+The lookup runs at the moment you confirm, so rows you confirmed before this
+release keep the fields they were filed with — nothing is rewritten in place.
+Delete and re-scan the ones you want filled in.
+
+### Added
+
+- **Photo Intake looks up discs and games.** Setting a row to DVD or Video Game
+  used to do one thing: keep it out of the book catalogue. The row was filed
+  under its title with no year, no description and no cover, and the limitation
+  was stated outright in v0.15.0. It is now lifted for those two types — the row
+  is looked up on TMDb or IGDB when you confirm, and a hit fills in the year,
+  description, series and cover art. CDs are unchanged; there is still no music
+  metadata provider.
+- **A declined lookup says so.** The Done panel could previously only say a row
+  found no metadata, which conflated *we asked and refused the answer* with
+  *there was nobody to ask*. Those are now separate, and a declined row points
+  you at the item page to fix it.
+
+### Changed
+
+- **The disc and game title match is exact, on purpose.** A spine has to match
+  the catalogue once case, punctuation and accents are set aside — `MAD MAX FURY
+  ROAD` matches *Mad Max: Fury Road* — but a near miss is refused rather than
+  guessed at, so a wrong film is never filed against your row. Measured against
+  31 retail titles, the looser guard the book path uses would have accepted
+  *Dune* for *Dune: Part Two*. Titles where the spine drops a franchise name
+  (*No Way Home*) are declined and marked rather than matched.
+
 ## [0.30.0] - 2026-09-03
 
 Shelf kept the key that signs your login sessions in the database, in plain
@@ -2706,6 +2743,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.31.0]: https://github.com/dgahagan/shelf/releases/tag/v0.31.0
 [0.30.0]: https://github.com/dgahagan/shelf/releases/tag/v0.30.0
 [0.29.0]: https://github.com/dgahagan/shelf/releases/tag/v0.29.0
 [0.28.0]: https://github.com/dgahagan/shelf/releases/tag/v0.28.0

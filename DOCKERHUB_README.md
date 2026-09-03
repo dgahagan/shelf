@@ -106,7 +106,7 @@ key material.
 ### Scanning and Cataloging
 - **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs, on iPhone and iPad as well as Android (EAN-13, EAN-8, UPC-A, UPC-E)
 - **USB/Bluetooth scanner support** — works with any scanner that sends Enter after the barcode
-- **Photo intake** — bulk-add books from a photo of your shelves; a vision model (Anthropic API, any OpenAI-compatible endpoint, or fully local Ollama) reads the spines and you confirm before import
+- **Photo intake** — bulk-add from a photo of your shelves; a vision model (Anthropic API, any OpenAI-compatible endpoint, or fully local Ollama) reads the spines and you confirm before import. Rows typed DVD or Video Game are looked up on TMDb or IGDB at confirm, on an exact title match
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, Google Books, and more
 - **Cover art pipeline** — automatically fetches covers from multiple sources with manual upload fallback
@@ -159,8 +159,8 @@ Shelf works fully out of the box with no API keys. These optional integrations a
 |---------|-------------|-------|
 | [Hardcover](https://hardcover.app) | Reading status sync, richer metadata, series gap checks, Discover page | Yes |
 | [Audiobookshelf](https://www.audiobookshelf.org) | Sync selected audiobook libraries, link physical + digital formats | Yes |
-| [IGDB](https://dev.twitch.tv/console) (Twitch) | Video game metadata, cover art, platform info | Yes |
-| [TMDb](https://www.themoviedb.org) | DVD/Blu-ray metadata from UPC barcodes | Yes |
+| [IGDB](https://dev.twitch.tv/console) (Twitch) | Video game metadata, cover art, platform info — on UPC scan, title search, and Photo Intake confirm | Yes |
+| [TMDb](https://www.themoviedb.org) | DVD/Blu-ray metadata — from UPC barcodes, title search, and Photo Intake confirm | Yes |
 | [ISBNdb](https://isbndb.com) | Collection valuation with market prices | Paid |
 | [Anthropic](https://console.anthropic.com) | Photo Intake spine recognition (best accuracy) | Pay-per-use |
 | [OpenAI-compatible](https://platform.openai.com) | Photo Intake via any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, vLLM, LM Studio…) | Pay-per-use / free |

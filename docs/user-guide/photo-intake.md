@@ -3,9 +3,11 @@
 Photograph books — on a shelf, in a stack, or laid face-up. A vision model
 reads the spines it can read and **recognizes** the covers it can't; you
 review the list and import. Rows the model recognized rather than read are
-marked so you can give them a second look. Confirmed rows are looked up by
-the printed ISBN when one was in frame, otherwise by title and author, and
-the Done panel tells you which rows found no metadata at all.
+marked so you can give them a second look. Confirmed rows are then looked up:
+books by the printed ISBN when one was in frame, otherwise by title and
+author; rows you typed **DVD** or **Video Game** on TMDb or IGDB by title. The
+Done panel tells you which rows found no metadata and, separately, which ones
+a lookup declined.
 
 ## Setup
 
@@ -58,9 +60,12 @@ The **Photo Intake** nav tab appears once a provider is saved.
 4. **Confirm.** A row with a valid ISBN goes through the full ISBN lookup —
    the same cascade as scanning a barcode, so publisher, language, series
    and description come with it. A row without one falls back to the title +
-   author search (an author-match guard rejects wrong editions). Either way
-   covers are fetched in the background, and the Done panel flags any row
-   that was added with no metadata match. **Add books to** above the list
+   author search (an author-match guard rejects wrong editions). A row typed
+   **DVD** or **Video Game** goes to TMDb or IGDB instead, and is matched on
+   title alone — exactly, never approximately (see [Limitations](#limitations)).
+   Covers are fetched in the background whichever path ran, and the Done panel
+   flags rows added with no metadata match separately from rows a lookup
+   declined. **Add books to** above the list
    picks the location every row lands in (or none). If that location was
    deleted while the page was open, Confirm refuses before any lookup runs
    and says so — nothing is half-imported.
@@ -114,8 +119,16 @@ sparse one at the same resolution. Ollama is free regardless.
   byline to anchor itself; wholly textless art may be skipped.
 - Local models recognize noticeably fewer covers than cloud ones, and
   mis-recognize more.
-- Discs and games get classified, not looked up — setting a row to DVD keeps
-  it out of the book catalogue, but there is no TMDb/IGDB lookup from intake
-  rows yet.
+- Discs and games are looked up, but only on an **exact** title match. Setting
+  a row to DVD or Video Game sends it to TMDb or IGDB when you confirm, and a
+  hit fills in the year, description and cover. The spine title has to match
+  the catalogue exactly once case, punctuation and accents are set aside —
+  `MAD MAX FURY ROAD` matches *Mad Max: Fury Road*, but `NO WAY HOME` does not
+  match *Spider-Man: No Way Home*, because the spine left the franchise name
+  off. A row the lookup declined is **marked as declined** in the Done panel
+  and filed under its own title, so you can fix it on the item page. This is
+  deliberate: a near-match would file a confidently wrong film, and you would
+  have no per-row card to catch it in a bulk confirm.
+- CDs are still title-only — there is no music metadata provider yet.
 - Handwriting, foreign scripts and heavily stylised spines are where models
   still fail; expect to fix a few rows.

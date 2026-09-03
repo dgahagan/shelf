@@ -31,7 +31,7 @@ from app.database import get_db, get_setting
 from app.services import covers, detect, googlebooks, hardcover, national, openlibrary, provider_result
 from app.services import cover_queue
 from app.services import authors as authors_svc
-from app.services import igdb, scan_outcome, tmdb, upcitemdb
+from app.services import igdb, scan_outcome, title_lookup, tmdb, upcitemdb
 from app.services import upc as upc_svc
 from app.services import isbn as isbn_svc
 from app.services.item_write import ItemValueError, insert_item, update_item_fields
@@ -399,15 +399,8 @@ def is_valid_media_type(value: str | None) -> bool:
     return value in MEDIA_TYPES
 
 
-# Which provider the UPC scan path asks for *metadata*, by resolved media type.
-# Deliberately not covers.MEDIA_TYPE_PROVIDERS: that map's fall-through sends
-# an unrecognised type to the book cover search, which is a working fallback
-# for covers and a lie for metadata. Written so a future MEDIA_TYPES member
-# gets the honest "no provider" answer by default rather than a film search.
-UPC_METADATA_PROVIDERS: dict[str, str] = {
-    "dvd": "tmdb",
-    "video_game": "igdb",
-}
+# Re-exported from `services/title_lookup.py`, which carries the reasoning.
+UPC_METADATA_PROVIDERS = title_lookup.UPC_METADATA_PROVIDERS
 
 
 def _find_upc_row(db, upc_key: str, media_type: str):
@@ -562,7 +555,9 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         # outage reads as "no TMDb match"; the error card is the product lookup's.
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             tmdb_result, _matched = await _first_hit(
-                queries, lambda q: tmdb.lookup_by_title(q, tmdb_key, client)
+                queries,
+                lambda q: title_lookup.lookup_by_title(
+                    q, "dvd", client, creds={"tmdb_api_key": tmdb_key}),
             )
             if tmdb_result.outcome == "rejected":
                 # The item is still filed, title-only, as before.
@@ -779,17 +774,14 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     igdb_result = provider_result.no_credential("igdb")
     if igdb_id and igdb_secret:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            # `search_games` answers a record whose payload is a *list* (G45);
-            # the ladder deals in single dicts, so unwrap `[0]` here rather
-            # than letting a list reach the save tail. The outcome rides along
-            # untouched, so a rejection still stops the ladder.
-            async def search_one_game(query):
-                result = await igdb.search_games(
-                    query, igdb_id, igdb_secret, client, limit=1,
-                )
-                return result.with_payload(result.payload[0]) if result.found else result
-
-            igdb_result, _matched = await _first_hit(queries, search_one_game)
+            # IGDB's list payload is unwrapped inside the helper now (G45).
+            # `platform` stays unforwarded: this ladder never filtered on it.
+            igdb_result, _matched = await _first_hit(
+                queries,
+                lambda q: title_lookup.lookup_by_title(
+                    q, "video_game", client,
+                    creds={"igdb_client_id": igdb_id, "igdb_client_secret": igdb_secret}),
+            )
             if igdb_result.outcome == "rejected":
                 logger.warning(
                     "IGDB rejected the configured credentials for UPC %s — filing title only",

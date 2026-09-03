@@ -125,7 +125,16 @@ Games carry a **platform** (from your list under Settings → Library → Game
 Platforms), publisher, series and IGDB cover. The same title on two
 platforms is two items.
 
+A game reaches IGDB two ways: a UPC scan, or a [Photo Intake](photo-intake.md)
+row you typed Video Game, looked up by title when you confirm. The intake path
+matches on title alone, so it takes an exact match only and marks the row
+**declined** rather than guess — platform is not part of that match, so a
+multi-platform title may need the platform set by hand afterwards.
+
 ## DVDs / Blu-rays
 
-Looked up by UPC through TMDb: title, year, poster. Shelf doesn't distinguish
-DVD from Blu-ray — it's one type; use a tag if you care.
+Looked up through TMDb — title, year, poster — either by UPC scan or from a
+[Photo Intake](photo-intake.md) row you typed DVD, matched by title when you
+confirm. The intake path takes an exact title match only and marks the row
+**declined** rather than file a confidently wrong film. Shelf doesn't
+distinguish DVD from Blu-ray — it's one type; use a tag if you care.
