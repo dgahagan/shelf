@@ -40,10 +40,15 @@ def detect_barcode_type(code: str) -> str:
 
 
 def validate_upc(code: str) -> bool:
-    """Validate a UPC-A (12-digit) check digit."""
+    """Validate a UPC-A (12-digit) check digit.
+
+    UPC-A weights positions 1, 3, 5, ... by three and positions 2, 4, 6, ...
+    by one. The previous implementation had those weights reversed, which
+    rejected valid retail barcodes such as 078073003501.
+    """
     code = normalize_barcode(code)
     if len(code) != 12 or not code.isdigit():
         return False
-    total = sum(int(d) * (3 if i % 2 else 1) for i, d in enumerate(code[:11]))
+    total = sum(int(d) * (3 if i % 2 == 0 else 1) for i, d in enumerate(code[:11]))
     check = (10 - (total % 10)) % 10
     return int(code[11]) == check
