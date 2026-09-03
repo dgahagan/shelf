@@ -98,11 +98,17 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> provider_result.Provid
     # (G47). The edition is already a hit — a failed enrichment costs fields,
     # not the result.
     try:
-        author = await _resolve_author(data, client)
+        # The work record backs both the author chain and the description, so
+        # fetch it once and share it. Two requests for the same document cost
+        # a round trip plus a rate limiter gate on every ISBN add.
+        work_key = _work_key(data)
+        work = await _fetch_work(work_key, client) if work_key else None
+
+        author = await _resolve_author(data, work, client)
         if author:
             result["authors"] = author
 
-        desc = await _resolve_description(data, client)
+        desc = _work_description(work)
         if desc:
             result["description"] = desc
     except Exception:
@@ -111,9 +117,36 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> provider_result.Provid
     return provider_result.found("openlibrary", result, status=resp.status_code)
 
 
-async def _resolve_author(edition_data: dict, client: httpx.AsyncClient) -> str | None:
+def _work_key(edition_data: dict) -> str | None:
+    """The key of the edition's primary work (e.g. '/works/OL27448W'), if any."""
     works = edition_data.get("works", [])
-    if not works:
+    if not works or not isinstance(works[0], dict):
+        return None
+    return works[0].get("key")
+
+
+async def _fetch_work(work_key: str, client: httpx.AsyncClient) -> dict | None:
+    """Fetch a work record (e.g. '/works/OL27448W'). Returns the JSON or None."""
+    await _rate_limit()
+    resp = await client.get(
+        f"https://openlibrary.org{work_key}.json",
+        headers={"User-Agent": USER_AGENT},
+        follow_redirects=True,
+    )
+    if resp.status_code != 200:
+        return None
+    return resp.json()
+
+
+async def _resolve_author(edition_data: dict, work: dict | None,
+                          client: httpx.AsyncClient) -> str | None:
+    """Resolve an author name from the already-fetched work record.
+
+    An edition with no work of its own falls back to its own author list; a
+    work we failed to fetch simply yields no author, leaving the rest of the
+    hit intact.
+    """
+    if _work_key(edition_data) is None:
         # Some editions have authors directly
         authors = edition_data.get("authors", [])
         if authors and isinstance(authors[0], dict):
@@ -122,16 +155,9 @@ async def _resolve_author(edition_data: dict, client: httpx.AsyncClient) -> str 
                 return await _fetch_author_name(akey, client)
         return None
 
-    await _rate_limit()
-    work_resp = await client.get(
-        f"https://openlibrary.org{works[0]['key']}.json",
-        headers={"User-Agent": USER_AGENT},
-        follow_redirects=True,
-    )
-    if work_resp.status_code != 200:
+    if not work:
         return None
 
-    work = work_resp.json()
     authors = work.get("authors", [])
     if not authors:
         return None
@@ -159,31 +185,20 @@ async def _fetch_author_name(author_key: str, client: httpx.AsyncClient) -> str 
     return resp.json().get("name")
 
 
-async def _resolve_description(edition_data: dict, client: httpx.AsyncClient) -> str | None:
-    works = edition_data.get("works", [])
-    if not works:
+def _work_description(work: dict | None) -> str | None:
+    """Pull the description out of a work record, which Open Library returns
+    either as a plain string or as a {type, value} object."""
+    if not work:
         return None
-
-    # We may have already fetched the work in _resolve_author, but keeping it
-    # simple — the rate limiter handles it
-    return await get_work_description(works[0]["key"], client)
+    desc = work.get("description")
+    if isinstance(desc, dict):
+        return desc.get("value")
+    return desc
 
 
 async def get_work_description(work_key: str, client: httpx.AsyncClient) -> str | None:
     """Fetch a work record (e.g. '/works/OL27448W') and return its description."""
-    await _rate_limit()
-    resp = await client.get(
-        f"https://openlibrary.org{work_key}.json",
-        headers={"User-Agent": USER_AGENT},
-        follow_redirects=True,
-    )
-    if resp.status_code != 200:
-        return None
-
-    desc = resp.json().get("description")
-    if isinstance(desc, dict):
-        return desc.get("value")
-    return desc
+    return _work_description(await _fetch_work(work_key, client))
 
 
 _SEARCH_FIELDS = ("key,title,author_name,first_publish_year,publisher,cover_i,isbn,"

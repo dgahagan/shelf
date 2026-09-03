@@ -342,6 +342,56 @@ class TestOpenLibraryOutcomes:
         assert "authors" not in result.payload
         assert "description" not in result.payload
 
+    @respx.mock
+    async def test_the_work_is_fetched_once_for_author_and_description(self):
+        """The work record backs both the author chain and the description.
+        Fetching it once per resolver made every ISBN add pay an extra round
+        trip plus an extra rate limiter gate for a document already in hand."""
+        respx.get("https://openlibrary.org/isbn/9780000000088.json").mock(
+            return_value=httpx.Response(200, json={
+                "title": "Whole A Book", "works": [{"key": "/works/OL2W"}],
+            })
+        )
+        work = respx.get("https://openlibrary.org/works/OL2W.json").mock(
+            return_value=httpx.Response(200, json={
+                "authors": [{"author": {"key": "/authors/OL3A"}}],
+                "description": "A blurb.",
+            })
+        )
+        respx.get("https://openlibrary.org/authors/OL3A.json").mock(
+            return_value=httpx.Response(200, json={"name": "Some Author"})
+        )
+        async with httpx.AsyncClient() as client:
+            result = await openlibrary.lookup("9780000000088", client)
+
+        assert work.call_count == 1
+        assert result.payload["authors"] == "Some Author"
+        assert result.payload["description"] == "A blurb."
+        # edition + work + author, and nothing more
+        assert len(respx.calls) == 3
+
+    @respx.mock
+    async def test_an_edition_with_no_work_asks_for_no_work(self):
+        """The other side of sharing one fetch: an edition carrying its own
+        authors still resolves them without a work request at all."""
+        respx.get("https://openlibrary.org/isbn/9780000000095.json").mock(
+            return_value=httpx.Response(200, json={
+                "title": "Workless", "authors": [{"key": "/authors/OL3A"}],
+            })
+        )
+        work = respx.get("https://openlibrary.org/works/OL2W.json").mock(
+            return_value=httpx.Response(200, json={"description": "Unused."})
+        )
+        respx.get("https://openlibrary.org/authors/OL3A.json").mock(
+            return_value=httpx.Response(200, json={"name": "Some Author"})
+        )
+        async with httpx.AsyncClient() as client:
+            result = await openlibrary.lookup("9780000000095", client)
+
+        assert work.call_count == 0
+        assert result.payload["authors"] == "Some Author"
+        assert "description" not in result.payload
+
 
 class TestDnbOutcomes:
     """T2 — `lookup` now returns a `ProviderResult` instead of a bare
