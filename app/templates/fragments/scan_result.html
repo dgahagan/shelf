@@ -1,4 +1,43 @@
-{% if status == 'not_found' %}
+{% if status == 'legacy_ambiguous' %}
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4"
+     data-scan-status="{{ status }}">
+    <div class="flex items-start gap-3">
+        <div class="flex-1 min-w-0">
+            <p class="font-medium" data-scan-title>Which book is this?</p>
+            <p class="text-sm text-shelf-muted mt-1" data-scan-detail>
+                Older book barcode matches more than one book. Choose the exact title printed on this copy; Shelf will remember this barcode.
+            </p>
+        </div>
+        <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
+              data-scan-badge>choose</span>
+    </div>
+
+    <div class="space-y-2 mt-4">
+        {% for candidate in legacy_candidates %}
+        <form hx-post="/api/scan" hx-target="closest .scan-result" hx-swap="outerHTML">
+            <input type="hidden" name="isbn" value="{{ isbn }}">
+            <input type="hidden" name="legacy_confirm_isbn13" value="{{ candidate.isbn13 }}">
+            <input type="hidden" name="media_type" value="{{ media_type }}">
+            <input type="hidden" name="mode" value="{{ mode }}">
+            {% if location_id %}<input type="hidden" name="location_id" value="{{ location_id }}">{% endif %}
+            {% if platform %}<input type="hidden" name="platform" value="{{ platform }}">{% endif %}
+            {% if borrower_id %}<input type="hidden" name="borrower_id" value="{{ borrower_id }}">{% endif %}
+            <button type="submit"
+                    class="w-full text-left bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:border-shelf-accent hover:bg-shelf-hover transition-colors">
+                <span class="block font-medium text-shelf-text">{{ candidate.title }}</span>
+                {% if candidate.authors %}
+                <span class="block text-sm text-shelf-muted mt-0.5">{{ candidate.authors }}</span>
+                {% endif %}
+                <span class="block text-xs text-shelf-muted mt-1">ISBN {{ candidate.isbn10 or candidate.isbn13 }}</span>
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+
+    <p class="text-xs text-shelf-muted mt-3">If none matches, scan the printed ISBN instead.</p>
+</div>
+
+{% elif status == 'not_found' %}
 <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4"
      data-scan-status="{{ status }}" x-data="manualAddForm">
     <div class="flex items-center gap-4 mb-3">
@@ -162,7 +201,7 @@
 
 {% else %}
 <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4"
-     data-scan-status="{{ status }}">
+     data-scan-status="{{ status }}"{% if inventory_confirmation %} data-scan-inventory-confirmed="true"{% endif %}>
     {# Cover image or placeholder #}
     {% if cover_pending %}
     {# Scan queues its cover, so the card renders first and this polls it in. #}
