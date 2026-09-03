@@ -190,9 +190,13 @@ class TestDetectBarcodeType:
 class TestValidateUpc:
     def test_valid_upc(self):
         assert validate_upc("012345678905") is True
+        assert validate_upc("036000291452") is True
+        assert validate_upc("078073003501") is True
 
     def test_invalid_check_digit(self):
         assert validate_upc("012345678900") is False
+        assert validate_upc("036000291453") is False
+        assert validate_upc("078073003502") is False
 
     def test_wrong_length(self):
         assert validate_upc("12345") is False
