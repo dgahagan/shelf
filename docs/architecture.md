@@ -589,9 +589,37 @@ bcrypt with a constant-cost login path (an unknown username costs the same
 as a wrong password, so timing does not enumerate accounts), short-lived
 sliding JWTs, per-IP rate limiting, encrypted secrets,
 write-only credential fields, allow-listed image hosts for cover downloads,
-`noindex` + unguessable tokens on share links. Outbound request URLs are logged
-at INFO, so a filter on the `httpx` logger blanks the value of any
-credential-named query parameter first — TMDb v3 authentication requires its key
-in the query string, so the transport alone cannot keep it out of the log. Where
-a provider accepts a header instead, Shelf uses one and stays out of that blind
-spot entirely: the optional Google Books key travels only in `X-Goog-Api-Key`. See [SECURITY.md](../SECURITY.md).
+`noindex` + unguessable tokens on share links.
+
+**The database holds no key material.** The credential-encryption key
+(`data/encryption.key`, or `SHELF_ENCRYPTION_KEY`) and the session-signing key
+(`data/signing.key`, or `SECRET_KEY`) are both files in the data directory or
+environment variables, so a database backup is ciphertext plus bcrypt password
+hashes and nothing that opens either. The signing key lived in the `settings`
+table until 0.30; the accessor relocates it to the key file on the first start
+after upgrading, preserving the *value* — sessions survive, and
+`migrate_sensitive_settings`, which opens pre-July legacy ciphertext with that
+key, keeps working. A data directory that cannot be written keeps the old row
+and warns, because a security improvement must not become an availability
+outage. A stored credential that no longer opens under the current key logs one
+warning naming the setting and reads as unset, rather than reaching a provider
+as ciphertext.
+
+**Outbound request URLs are not logged.** `httpx` logs the whole URL of every
+request at INFO, and a filter over that line can blank a credential-named query
+value but cannot save a secret carried in the **path** — which is exactly where
+ntfy and Discord webhooks carry theirs. So the `httpx` logger is raised to
+WARNING in `main.py`, which drops the line entirely; `httpx` has two log call
+sites and both are `logger.info`, so nothing else is lost with it. Shelf's own
+lines are what remain, and they are written to be safe: a failed notification
+names the target's scheme and host only, and logs the exception's *type* rather
+than the exception, whose string form carries the request URL.
+
+`RedactQueryFilter` stays installed on the `httpx` logger as defence in depth
+rather than as the primary control — it strips a URL's userinfo unconditionally
+and blanks credential-named query values, so anything that logger does emit is
+already clean. Where a provider accepts a credential in a header, Shelf uses one
+and stays out of the question entirely: the optional Google Books key travels
+only in `X-Goog-Api-Key`, and TMDb v3, which requires its key in the query
+string, is the reason the query half of that filter exists at all.
+See [SECURITY.md](../SECURITY.md).

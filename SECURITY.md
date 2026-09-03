@@ -26,10 +26,18 @@ it weren't:
 - Login takes the same time whether or not the username exists, so a failed
   attempt does not reveal which accounts are real
 - Role-based access control (admin / editor / viewer)
-- Third-party API credentials encrypted at rest (key kept outside the DB, so
-  database backups contain ciphertext only) and write-only in the UI
-- Credential values redacted from request logs, so container logs can be shared
-  when reporting a bug
+- Third-party API credentials encrypted at rest and write-only in the UI
+- **No key material is stored in the database.** Both keys — the one that
+  encrypts stored credentials and the one that signs login sessions — live as
+  0600 files in the data directory, or in the environment. A database backup
+  therefore contains ciphertext and password hashes, and nothing that opens
+  either
+- Outbound request URLs are not logged, so container logs can be shared when
+  reporting a bug. An ntfy or Discord webhook carries its secret in the URL
+  path, where blanking query values cannot reach it, so Shelf does not log the
+  URL at all: the HTTP client's per-request line is silenced, and a failed
+  notification names only the target's scheme and host. Any URL that does reach
+  a log has its userinfo stripped and its credential-named query values blanked
 - Optional passphrase-encrypted (AES) backup downloads
 - HTTPS by default (self-signed certs generated on first run)
 - Container runs as a non-root user

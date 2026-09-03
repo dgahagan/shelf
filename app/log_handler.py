@@ -66,24 +66,40 @@ REDACT_QUERY_KEYS = {
 
 
 def _redact_url(text: str) -> str:
-    """Blank credential-valued query parameters in a URL string.
+    """Strip a URL's userinfo and blank its credential-valued query parameters.
 
     Structural (urlparse/parse_qsl/urlencode), never a regex over the formatted
     message: a regex over prose cannot tell a query value from the rest of the
     line. Returns `text` unchanged when there is nothing to redact, so URLs
-    without a credential key are byte-identical afterwards.
+    without either are byte-identical afterwards.
+
+    Userinfo goes unconditionally — there is no such thing as a non-secret
+    `user:pass@`, and ntfy documents `https://user:pass@host/topic` for an
+    authenticated topic.
     """
     parts = urlparse(text)
-    if not parts.query:
+
+    netloc = parts.netloc
+    if "@" in netloc:
+        # Sliced at the last "@" rather than rebuilt from `hostname` and `port`:
+        # `.port` raises ValueError on a non-numeric one and this runs inside a
+        # logging filter, and the slice keeps IPv6 brackets and the host's
+        # original spelling byte-for-byte.
+        netloc = netloc.rpartition("@")[2]
+
+    query = parts.query
+    if query:
+        pairs = parse_qsl(query, keep_blank_values=True)
+        if any(k.lower() in REDACT_QUERY_KEYS for k, _ in pairs):
+            redacted = [
+                (k, "***" if k.lower() in REDACT_QUERY_KEYS else v) for k, v in pairs
+            ]
+            # safe="*" keeps the placeholder readable rather than %2A%2A%2A.
+            query = urlencode(redacted, safe="*")
+
+    if netloc == parts.netloc and query == parts.query:
         return text
-    pairs = parse_qsl(parts.query, keep_blank_values=True)
-    if not any(k.lower() in REDACT_QUERY_KEYS for k, _ in pairs):
-        return text
-    redacted = [
-        (k, "***" if k.lower() in REDACT_QUERY_KEYS else v) for k, v in pairs
-    ]
-    # safe="*" so the placeholder stays readable rather than becoming %2A%2A%2A.
-    return urlunparse(parts._replace(query=urlencode(redacted, safe="*")))
+    return urlunparse(parts._replace(netloc=netloc, query=query))
 
 
 def _redact_arg(value):

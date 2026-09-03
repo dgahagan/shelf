@@ -410,7 +410,7 @@ def get_setting(db, key: str) -> str:
     row = db.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
     raw = row["value"] if row else None
     if raw and key in SENSITIVE_KEYS:
-        raw = decrypt_value(raw, get_encryption_key())
+        raw = decrypt_value(raw, get_encryption_key(), key_name=key)
     return get_setting_value(key, raw)
 
 
@@ -427,7 +427,7 @@ def get_all_settings(db) -> dict[str, str]:
     for r in rows:
         val = r["value"]
         if val and r["key"] in SENSITIVE_KEYS:
-            val = decrypt_value(val, secret)
+            val = decrypt_value(val, secret, key_name=r["key"])
         settings[r["key"]] = val
     return {k: get_setting_value(k, v) for k, v in settings.items()}
 

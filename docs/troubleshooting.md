@@ -3,6 +3,12 @@
 First stop for anything odd: **Logs** in the nav (admin) or
 `docker compose logs -f shelf`.
 
+Since 0.30.0 the container log no longer carries a line per outbound request.
+That line held the whole request URL, and an authenticated ntfy topic keeps its
+password in that URL, so the trace and the secret were the same line and both
+had to go. Shelf's own log lines are unaffected; a failed lookup or
+notification still names what it was talking to, by scheme and host.
+
 ## Browser says the connection isn't private
 
 Expected on first run — Shelf's certificate is self-signed. Click through,
@@ -72,6 +78,10 @@ has a barcode for this).
 - A "Not found" card naming a rejected Hardcover or Google Books key means
   the credential, not the barcode, needs fixing — see [A scan added only a
   title](#a-scan-added-only-a-title).
+- If *every* provider went quiet at once and the cards say no key is
+  configured, the keys are probably intact and unreadable — see [Every stored
+  API key stopped working at
+  once](#every-stored-api-key-stopped-working-at-once).
 
 ## Metadata came back wrong or sparse
 
@@ -260,6 +270,31 @@ Passwords are bcrypt hashes. Generate one —
 `python3 -c "import bcrypt; print(bcrypt.hashpw(b'newpass', bcrypt.gensalt()).decode())"`
 — and `UPDATE` your user's hash column with it. Restart. (Take a copy of
 `shelf.db` first.)
+
+## Every stored API key stopped working at once
+
+Since 0.30.0 this is a diagnosable failure rather than a silent one. Stored
+credentials are encrypted with `data/encryption.key`; if that file is replaced,
+lost, or restored from a different instance, the ciphertext no longer opens.
+Shelf now logs one warning per setting naming the setting —
+
+```
+settings[tmdb_api_key]: stored ciphertext does not open under the current
+encryption key — re-enter the credential in Settings
+```
+
+— and the credential reads as **unset**, so the scan card says no key is
+configured rather than that the provider rejected one. Re-enter each affected
+key in Settings → Integrations; nothing else is lost, and no other data is
+affected.
+
+Before 0.30.0 the raw ciphertext was sent to the provider as though it were
+your key, so this looked exactly like a revoked credential with nothing in the
+log to search for. If several providers failed on the same day and none of the
+keys had actually been revoked, that was this.
+
+Keep `encryption.key` with any copy of `data/` you intend to restore from — see
+[Upgrading & backups](upgrading-and-backups.md).
 
 ## Overdue reminders never arrive
 

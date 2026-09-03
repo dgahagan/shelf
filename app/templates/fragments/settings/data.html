@@ -259,6 +259,7 @@
                     </button>
                 </form>
                 <p class="text-xs text-shelf-muted mt-1">Downloads a copy of the SQLite database. With a passphrase, the file is AES-encrypted (.db.enc) — safe to store off-site, but unrecoverable without the passphrase.</p>
+                <p class="text-xs text-shelf-muted mt-1">Without a passphrase the file is your database as-is: items, users’ password hashes, encrypted credentials and the recent application log — but no key material, so stored credentials stay unreadable without <code>encryption.key</code>.</p>
             </div>
             <div class="border-t border-shelf-border pt-4">
                 <form @submit.prevent="doRestore">

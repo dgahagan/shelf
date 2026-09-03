@@ -85,11 +85,15 @@ data/
   certs/          — self-signed TLS certificate, generated on first start
   encryption.key  — key for API credentials stored in the DB
                     (unless SHELF_ENCRYPTION_KEY is set)
+  signing.key     — signs login sessions (unless SECRET_KEY is set)
 ```
 
 Back it up by copying the directory, or use Settings → Data → Backup &
-Restore. Keep `encryption.key` out of anything you share — without it, stored
-API credentials are unreadable ciphertext, which is the point.
+Restore. Keep both key files out of anything you share. Without
+`encryption.key`, stored API credentials are unreadable ciphertext, which is
+the point; without `signing.key`, nobody can mint a session token for your
+instance. The database holds neither — that is why a database backup is safe
+in a way a copy of this directory is not.
 
 ## Changing the port
 

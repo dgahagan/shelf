@@ -147,3 +147,65 @@ def test_the_filter_is_installed_on_the_httpx_logger():
         isinstance(f, RedactQueryFilter)
         for f in logging.getLogger("httpx").filters
     )
+
+class TestUserinfoIsStripped:
+    """A URL's userinfo is a credential in every case, so it never survives.
+
+    Found by `/test-drive` (Observation 1): ntfy documents
+    `https://user:pass@host/topic` for an authenticated topic and httpx honours
+    URL userinfo, so the query filter above ran, blanked `token=`, and printed
+    the password beside it.
+    """
+
+    def test_userinfo_is_stripped_from_a_string_url(self):
+        record = _httpx_record("https://NTFYUSER:NTFYPASS@ntfy.example/topic")
+        RedactQueryFilter().filter(record)
+        message = record.getMessage()
+        assert "NTFYUSER" not in message
+        assert "NTFYPASS" not in message
+        assert "https://ntfy.example/topic" in message
+
+    def test_userinfo_is_stripped_from_an_httpx_url(self):
+        record = _httpx_record(httpx.URL("https://u:p@ntfy.example:8443/topic"))
+        RedactQueryFilter().filter(record)
+        message = record.getMessage()
+        assert "u:p@" not in message
+        assert "https://ntfy.example:8443/topic" in message
+
+    def test_userinfo_and_a_credential_query_are_both_handled(self):
+        record = _httpx_record("https://u:SECRET@example.test/x?token=abc&page=2")
+        RedactQueryFilter().filter(record)
+        message = record.getMessage()
+        assert "SECRET" not in message
+        assert "abc" not in message
+        assert "token=***&page=2" in message
+
+    def test_a_username_with_no_password_is_stripped_too(self):
+        record = _httpx_record("https://apitoken@example.test/x")
+        RedactQueryFilter().filter(record)
+        assert "apitoken" not in record.getMessage()
+
+    def test_a_url_without_userinfo_is_still_byte_identical(self):
+        # The "unchanged → hand back the original object" contract must survive
+        # the userinfo pass, or every provider URL gets reformatted.
+        url = httpx.URL("https://api.upcitemdb.com/prod/trial/lookup?upc=085391163121")
+        record = _httpx_record(url)
+        before = record.getMessage()
+        RedactQueryFilter().filter(record)
+        assert record.getMessage() == before
+        assert record.args[1] is url
+
+
+class TestHttpxRequestLogIsSilenced:
+    """httpx's own per-request INFO line is the sink `notify._target` cannot reach.
+
+    `notify.py` logs `scheme://host` and httpx logs the whole URL for the same
+    request, so the redaction there was undone one line later. httpx has exactly
+    two log call sites (`_client.py`, both `logger.info`) and emits nothing at
+    warning or error, so raising its level silences the leak and loses nothing.
+    """
+
+    def test_the_httpx_logger_is_raised_to_warning(self):
+        import app.main  # noqa: F401  — importing installs the logging config
+
+        assert logging.getLogger("httpx").level == logging.WARNING

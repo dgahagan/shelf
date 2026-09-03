@@ -74,6 +74,9 @@ def _isolated_db(tmp_path, monkeypatch):
     # Reset cached encryption key — each test's key file lives in its own tmp dir
     import app.crypto as crypto_mod
     monkeypatch.setattr(crypto_mod, "_cached_encryption_key", None)
+    # decrypt_value warns once per setting key per process; without this reset
+    # the first test to see an undecryptable value silences every later one.
+    monkeypatch.setattr(crypto_mod, "_warned_undecryptable", set())
 
     # Reset the nav settings cache — it would otherwise carry one test's
     # integration config (and hidden-tab set) into the next test's nav.

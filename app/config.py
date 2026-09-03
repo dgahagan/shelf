@@ -157,7 +157,7 @@ HTTP_TIMEOUT = 15  # seconds for external API calls
 DEFAULT_PAGE_SIZE = 60
 
 # Auth
-SECRET_KEY = os.environ.get("SECRET_KEY", "")  # auto-generated and stored in DB if empty
+SECRET_KEY = os.environ.get("SECRET_KEY", "")  # auto-generated into DATA_DIR/signing.key if empty
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRY_SECONDS = 7 * 24 * 3600  # 7 days
 

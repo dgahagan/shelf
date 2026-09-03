@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-2463%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-2494%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![E2E tests](https://img.shields.io/badge/e2e%20tests-210%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
@@ -83,7 +83,7 @@ CERT_SAN=IP:192.168.1.100,DNS:shelf,DNS:localhost
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CERT_SAN` | `DNS:shelf,DNS:localhost` | TLS certificate Subject Alternative Names |
-| `SECRET_KEY` | *(auto-generated)* | JWT signing key (auto-generated and stored in DB if not set) |
+| `SECRET_KEY` | *(auto-generated)* | JWT signing key. If unset, generated at `data/signing.key` (0600) on first start; an existing key from before 0.30 is moved there from the database on the first start after upgrading, so sessions survive. Set it explicitly to run several instances against one database |
 | `SHELF_ENCRYPTION_KEY` | *(auto-generated)* | Encryption key for stored API credentials. Auto-generated at `data/encryption.key` if not set — never stored in the DB, so backups contain ciphertext only. Set it (e.g. `openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
 
 ### Data
@@ -96,8 +96,13 @@ data/
   covers/         — cached cover images
   certs/          — auto-generated TLS certificates
   encryption.key  — key for credentials stored in the DB (unless
-                    SHELF_ENCRYPTION_KEY is set); keep it out of shared copies
+                    SHELF_ENCRYPTION_KEY is set)
+  signing.key     — signs login sessions (unless SECRET_KEY is set)
 ```
+
+Keep both key files out of shared copies. The database holds no key material,
+so a database backup is ciphertext without anything that opens it — but a copy
+of this whole directory carries the keys next to the data they protect.
 
 ## Features
 

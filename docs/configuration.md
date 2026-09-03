@@ -15,7 +15,7 @@ Set these in your `.env` file next to `docker-compose.yml`, or with `-e` on
 | `CERT_SAN` | `DNS:shelf,DNS:localhost` | Subject Alternative Names for the self-signed certificate. Comma-separated `DNS:<name>` and `IP:<addr>` entries. Add your server's LAN IP and any hostname you'll type in the browser. Only read when the certificate is first generated — delete `data/certs/` to regenerate |
 | `SHELF_PORT` | `18888` | Port the app listens on *inside* the container. Usually leave it and change the Compose port mapping instead |
 | `SHELF_TRUST_PROXY` | *(unset)* | Set to `1` **only** when a reverse proxy in front of Shelf overwrites `X-Forwarded-For` / `CF-Connecting-IP`. Without a proxy this lets clients spoof their IP past login rate limiting |
-| `SECRET_KEY` | *(auto)* | JWT signing key. Auto-generated and stored in the database if unset. Set it explicitly if you run several instances against one database |
+| `SECRET_KEY` | *(auto)* | JWT signing key. If unset, generated at `data/signing.key` (0600) on first start; an existing key from before 0.30 is moved there from the database on the first start after upgrading, so sessions survive. Set it explicitly to run several instances against one database |
 | `SHELF_ENCRYPTION_KEY` | *(auto)* | Key for API credentials stored in the database. If unset, generated at `data/encryption.key`. Set it (`openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
 | `DATA_DIR` | `/data` | Where the database, covers and certs live. Only relevant outside Docker |
 | `SHELF_DISABLE_RATE_LIMIT` | *(unset)* | Turns off per-IP rate limiting. For tests and local development only |

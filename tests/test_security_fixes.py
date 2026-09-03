@@ -517,10 +517,14 @@ class TestRestoreSecretKeyPreserved:
         monkeypatch.setattr("app.routers.settings.DATABASE_PATH", config.DATABASE_PATH)
 
         from app.database import get_db
+        import app.auth as auth_mod
+        from app.auth import get_secret_key
+
+        # Since 0.30 the signing key is a key file, not a settings row, so the
+        # property this test guards is read through the accessor: the key file
+        # is untouched by a restore, and the *value* survives it.
+        key_before = get_secret_key()
         with get_db() as db:
-            key_before = db.execute(
-                "SELECT value FROM settings WHERE key = 'secret_key'"
-            ).fetchone()["value"]
             tv_before = db.execute(
                 "SELECT token_version FROM users WHERE username = 'admin'"
             ).fetchone()["token_version"]
@@ -535,16 +539,21 @@ class TestRestoreSecretKeyPreserved:
         data = resp.json()
         assert data["ok"] is True, data
 
+        monkeypatch.setattr(auth_mod, "_cached_secret_key", None)
+        key_after = get_secret_key()
         with get_db() as db:
-            key_after = db.execute(
-                "SELECT value FROM settings WHERE key = 'secret_key'"
-            ).fetchone()["value"]
             tv_after = db.execute(
                 "SELECT token_version FROM users WHERE username = 'admin'"
             ).fetchone()["token_version"]
+            secret_row = db.execute(
+                "SELECT 1 FROM settings WHERE key = 'secret_key'"
+            ).fetchone()
 
         assert key_after == key_before  # rotation would orphan encrypted settings
         assert tv_after == tv_before + 1  # all sessions invalidated
+        # A restored backup may carry the pre-0.30 row; the post-restore
+        # startup step prunes it, so no key material survives in the database.
+        assert secret_row is None
 
 # ---------------------------------------------------------------------------
 # Restore rejects views and virtual tables (ported from dbe47c3)

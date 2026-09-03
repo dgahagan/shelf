@@ -6,6 +6,72 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-09-03
+
+Shelf kept the key that signs your login sessions in the database, in plain
+text, in a row anyone could read. Every database backup carried it, so a backup
+file was not just a copy of your collection — it was enough to mint a valid
+session token for any account, including the admin. Changing your password did
+not help. This release takes that key out of the database, and then takes the
+other secrets out of the logs, because the logs are written to the database too
+and ride along in the same backup.
+
+There is nothing to do and nothing to set. On the first start after upgrading,
+the existing key is **moved** to a file — the value is preserved, so nobody is
+signed out and every stored credential stays readable. See
+[GHSA-8rv4-m3cc-j9v3](https://github.com/dgahagan/shelf/security/advisories/GHSA-8rv4-m3cc-j9v3),
+published with this release.
+
+### Security
+
+- **The JWT signing key is no longer stored in the database.** It is now a
+  `0600` file in the data directory (`data/signing.key`), resolved the same way
+  the credential-encryption key already was: `SECRET_KEY` if set, else the key
+  file, else generated. An existing key is moved there on the first start after
+  upgrading rather than regenerated, so nobody is signed out and stored
+  credentials stay readable. If the data directory cannot be written, Shelf
+  keeps using the key exactly as before and logs a warning naming the reason —
+  the hardening is skipped, never the login. The database now holds no key
+  material at all, so a database backup is ciphertext and password hashes with
+  nothing in it that opens either.
+
+- **A credential that will not decrypt now says so instead of being sent as if
+  it were the credential.** A stored API key that does not open under the
+  current encryption key logs one warning naming the setting, and reads as
+  unset. It previously returned the raw ciphertext, which went to the provider
+  as though it were your key — so a replaced or lost `encryption.key` looked
+  exactly like a revoked API key, with nothing in the log to search for. If you
+  see this, re-enter the affected credential in Settings.
+
+- **A failed notification no longer logs the webhook URL.** Only the target's
+  scheme and host are logged, because an ntfy topic URL and a Discord webhook
+  both carry their secret in the URL *path* — and those log lines are written
+  to the database and ride along in every backup.
+
+- **Outbound request URLs are no longer written to the container log at all.**
+  The HTTP client logged the whole URL of every request it completed, which put
+  an authenticated ntfy topic — username, password and topic path — into the log
+  on every *successful* notification, undoing the redaction on the line above
+  it. Any URL that still reaches a log now has its userinfo stripped as well as
+  its credential-named query values blanked. Container logs are shareable again.
+
+- **`make check-secrets` now scans Markdown files.** Documentation was excluded
+  from the scan, and it is a more likely place for a pasted key to land than
+  source is.
+
+### Changed
+
+- **`docker logs` no longer carries a line per outbound request.** This is the
+  cost of the leak fix above and it is deliberate: the per-request trace and the
+  credential were the same line, and no filter can know which segment of a
+  provider's URL path is the secret. Retries are still logged at debug level.
+
+**Deliberately not in this release:** neither key is rotated, and there is no
+command to rotate one — the relocation preserves the existing value on purpose,
+because regenerating it would sign everyone out and orphan every stored
+credential. Restoring a backup taken before 0.30 puts the old row back; the
+next start removes it again, so a restore needs no special handling.
+
 ## [0.29.0] - 2026-09-02
 
 Scanning an Italian book gave you the least of what is known about it. Open
@@ -2640,6 +2706,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.30.0]: https://github.com/dgahagan/shelf/releases/tag/v0.30.0
 [0.29.0]: https://github.com/dgahagan/shelf/releases/tag/v0.29.0
 [0.28.0]: https://github.com/dgahagan/shelf/releases/tag/v0.28.0
 [0.27.2]: https://github.com/dgahagan/shelf/releases/tag/v0.27.2

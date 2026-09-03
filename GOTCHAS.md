@@ -1036,9 +1036,41 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     the mutation instead of asserting, then delete it. Otherwise "red on N
     assertions" is a claim nobody checked.
 
+  Two more, both found on `feat/signing-key-keyfile` (2026-09-03), and both
+  about the *pin* rather than the code under it:
+  - **`assert` aborts, so the order of assertions inside one pin decides what
+    the mutation teaches you.** The webhook-redaction pin asserted
+    `"ConnectError" in message` before the three secret-absence assertions.
+    Reverting `type(e).__name__` back to `e` leaks the whole URL *and* drops
+    the class name, so the test does go red — on the missing class name, three
+    lines above the leak. The failure output then reads like a cosmetic
+    problem, and the obvious "fix" is to log the class name beside `e`, which
+    keeps the leak and turns the suite green. **Put the assertion that carries
+    the consequence first.** In a redaction pin that means the negative
+    assertions — what must *not* be in the output — before the positive ones
+    that say it is still useful. Reordered, the same mutation fails on
+    `PATHSECRETabc not in message`, which nobody can misread. The
+    corollary sits beside the multi-signal item above: that one is about
+    assertions the abort never reaches, this one is about which one it reaches
+    *first*.
+  - **A stateless patch cannot stand in for a function called twice in one
+    flow for two different jobs.** `get_secret_key` calls `_read_keyfile` once
+    to ask "is there a usable key file?" and again to verify what it just
+    wrote. A pin for the verify-mismatch branch patched it with
+    `lambda name: KEY + "x"` — which also answers the *first* call, so the
+    accessor took the key-file path, the relocation never ran, and the test
+    asserted against a state the code had not entered. The patch has to be
+    stateful (count the calls, answer `None` then the corrupted value). Before
+    patching a helper for one branch, grep how many times the flow calls it:
+    this is the entry's "which branch does your pin land in" moved one call
+    earlier, into the stub itself.
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
+  `dedaa87` and `51745df` (2026-09-03, plan `signing-key-keyfile`) are the two
+  additions above — the first caught in orchestrator review of a subagent's
+  diff, the second while writing the pin.
 - **Verify:** judgement, not a grep — this one cannot be linted. When
   reviewing such a test, ask what implementation change would make it fail.
 - **Status:** documented. Not a lint candidate.
@@ -2559,16 +2591,36 @@ grep -n "^{% if status\|^{% elif status\|enrich_status == '" \
     `covers._tmdb_candidates`, reached after `search_movies` already answered
     `found` with the same key, so a credential it could report as rejected was
     reported one call earlier.
+  - **The contract that named the wrong field.** `notify._target`'s docstring
+    promised `scheme://netloc` "safe to log", and the design plan above it
+    said "scheme and host". Those are not the same string: `netloc` carries
+    `user:pass@`, and ntfy documents `https://user:pass@host/topic` for
+    authenticated topics, so an operator using one had the credential written
+    to `log_entries` — inside `shelf.db` and every backup — on both warning
+    paths. The two redaction pins were green throughout: they used a URL with
+    no userinfo, so the gate agreed with the docstring rather than with the
+    design. **Never recompose a loggable URL from `netloc`; use `hostname`,
+    plus `port` when you need it.** The port read is its own trap — `.port`
+    raises `ValueError` on a non-numeric or out-of-range port, and `_target`
+    is called from inside an `except httpx.HTTPError` arm, so a read outside
+    the existing `try` turns a redaction fix into a broken "returns False"
+    contract.
 - **Evidence:** 2026-08-29, plan `issue-49-search-outcomes` — `ad12f51` (the
   parse handler and its two pins, one per contract) and `169fb3d` (the
   `search_posters` sentence). Both were caught in orchestrator review of the
   task diff, not by the suite: the gate was green with the false docstrings in
   place, because no test asked for a malformed body and no test reads prose.
+  2026-09-03, plan `signing-key-keyfile` — the `netloc` half was caught by the
+  `--diff` review leg (copilot F1/F2) *after* the branch was complete, and the
+  slip originated in the impl plan's own "Decisions" section, which wrote
+  `netloc` where the design said "host". A contract stated twice in two
+  vocabularies is a contract with a seam in it.
 - **Verify:** the claim and the code still agree — every client that says
   "never raises" wraps its parse, not just its request:
 
 ```bash
 grep -rn "[Nn]ever raises" app/services/*.py
+grep -rn "netloc" app/services/*.py app/routers/*.py
 ```
 
   For each hit, read the function's body to the end: a `resp.json()` or a
@@ -2985,6 +3037,43 @@ grep -rnE '= (results|items|records|briefRecords|docs|hits)\[0\]' app/services/*
 - **Status:** documented. Not a lint candidate — whether a list is "candidates"
   or "the answer" is a property of the upstream API, not of this repo's source.
 
+
+## G75 — A provider's own cover URL can carry someone else's credential
+
+A metadata record often ships an image URL alongside the bibliographic
+fields, and the obvious move is to feed it straight into the cover pipeline.
+Check what is *in* the URL first.
+
+SBN's `briefRecords[].copertina` looks like a plain cover link:
+
+```
+http://covers.librarything.com/devkey/fd11eebee79ccfcfe2f17d34a92e1011/small/isbn/9788842092995
+```
+
+That path segment is a **LibraryThing developer key issued to ICCU**, exposed
+because the endpoint was reverse-engineered from their mobile app. Using it
+would mean Shelf issuing requests against a third party's credential — billed
+to them, revocable without notice, and not ours to spend. The design dropped
+the rung: **SBN contributes no cover source**, and Italian books are covered
+by the existing Open Library and Amazon rungs like everything else.
+
+- **The trap is that it works.** Nothing fails, no test goes red, and covers
+  arrive — until the key is rotated, or its owner notices the traffic. This
+  reached an issue comment as a shipped promise before the design caught it
+  (#55, corrected on close).
+- **What to check on any new provider's image URL:** an opaque path segment
+  that is not an identifier you sent, a `key=`/`devkey`/`apikey` parameter, or
+  a host belonging to neither the provider nor the work. Any of the three
+  means the URL is not yours to call.
+- **Where this bites next:** the other national library catalogues (BnF, BNE,
+  KB, Libris, Finna, NB, BN, NDL, NLI). Several front the same commercial cover
+  services. Ask the question once per provider rather than assuming SBN was
+  special.
+- **Evidence:** `bfce266` / plan `issue-55-sbn-provider` (2026-09-02).
+  `app/services/sbn.py` parses `copertina` nowhere; `docs/architecture.md`
+  states the covers cascade is unchanged so a reader does not go looking.
+- **Status:** documented. Not a lint candidate — no grep can tell an
+  identifier from a credential in a URL path.
 
 ## Graveyard
 

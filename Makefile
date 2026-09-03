@@ -95,10 +95,13 @@ check-licenses:
 # `indexOf('csrf_token=') === 0` (a quote boundary) no longer trip it, while an
 # actual pasted key still does. Case-insensitive: the original recipe was
 # not, so a literal in an API_TOKEN or SECRET constant walked straight past.
+# Markdown is scanned too: a pasted key lands in a README or a docs page more
+# readily than in source. The tests/ exclusion stays because fixtures need
+# fake-looking token values.
 check-secrets:
 	@echo "Scanning tracked files for hardcoded secrets..."
 	@if git grep -niE '(password|secret|token|api_key)\s*=\s*["'"'"'][A-Za-z0-9_./+-]{8,}["'"'"']' \
-		-- ':!*.md' ':!tests/' ':!requirements*.txt'; then \
+		-- ':!tests/' ':!requirements*.txt'; then \
 		echo "ERROR: hardcoded secret literal(s) above. Move them to .env or the encrypted settings table."; \
 		exit 1; \
 	else \

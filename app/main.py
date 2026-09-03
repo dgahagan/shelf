@@ -16,10 +16,16 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
-# httpx logs every outbound request URL at INFO. TMDb v3 authentication puts
-# the API key in the query string, so redact credential values before they
-# reach the container log or the in-app log viewer.
+# httpx logs every outbound request URL at INFO — the whole URL, so a filter
+# can blank a credential-named query value but cannot save a secret carried in
+# the path. ntfy and Discord webhooks put theirs there, which made this line
+# print what `notify._target` had just gone to the trouble of withholding.
+# httpx has exactly two log call sites (`_client.py`, both `logger.info`) and
+# emits nothing at warning or error, so raising its level drops that line and
+# nothing else. The filter stays as defence in depth: it strips userinfo and
+# blanks credential query values on anything httpx does still emit.
 from app.log_handler import RedactQueryFilter, SQLiteHandler
+logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpx").addFilter(RedactQueryFilter())
 
 # Add SQLite handler so logs are viewable in the web UI
@@ -350,7 +356,9 @@ async def _periodic_loan_reminders():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
-    # Initialize secret key on startup
+    # Resolve the signing key (env -> DATA_DIR/signing.key -> relocate a legacy
+    # settings row) BEFORE migrate_sensitive_settings, which opens pre-July
+    # legacy ciphertext with it. Do not reorder these two.
     from app.auth import get_secret_key
     get_secret_key()
     # Move sensitive settings off the legacy JWT-derived encryption key.

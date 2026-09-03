@@ -49,10 +49,16 @@ class TestKeySource:
 
     def test_key_differs_from_jwt_secret_and_not_in_db(self, db):
         key = get_encryption_key()
-        assert key != get_secret_key()
+        signing_key = get_secret_key()
+        assert key != signing_key
         rows = db.execute("SELECT key, value FROM settings").fetchall()
         for r in rows:
             assert r["value"] != key, f"encryption key leaked into settings[{r['key']}]"
+            # Since 0.30 the database holds no key material at all
+            assert r["value"] != signing_key, f"signing key leaked into settings[{r['key']}]"
+        assert db.execute(
+            "SELECT 1 FROM settings WHERE key = 'secret_key'"
+        ).fetchone() is None
 
 
 class TestMigration:
@@ -128,12 +134,85 @@ class TestEndToEnd:
             assert "s3cret-token" not in stored
             assert get_setting(conn, "abs_token") == "s3cret-token"
 
-        # Ciphertext must NOT be decryptable via the JWT secret (key separation)
+        # Ciphertext must NOT be decryptable via the JWT secret (key separation).
+        # A well-formed token that will not open returns empty — never the
+        # ciphertext, which a provider client would send as the credential.
         from app.crypto import decrypt_value
-        assert decrypt_value(stored, get_secret_key()) == stored  # fallthrough, not plaintext
+        assert decrypt_value(stored, get_secret_key()) == ""
 
     def test_backup_download_does_not_contain_key(self, admin_client):
         get_encryption_key()  # ensure the key file exists
         resp = admin_client.get("/api/settings/backup")
         assert resp.status_code == 200
         assert get_encryption_key().encode() not in resp.content
+        # The signing key was never checked here before 0.30, and this line
+        # fails on the pre-relocation code: the row's 64 hex characters appear
+        # verbatim in the VACUUM INTO bytes (G31 — the sibling above looked
+        # like coverage of both keys and only ever covered one).
+        assert get_secret_key().encode() not in resp.content
+
+
+class TestDecryptFailureIsLoud:
+    """A key mismatch must be distinguishable from legacy plaintext.
+
+    Before this, ``decrypt_value`` caught every exception and returned its
+    input, so a replaced encryption key handed raw ciphertext to every
+    provider client at ``debug`` level — an operator saw integrations stop
+    working with nothing in the log to search for.
+    """
+
+    def test_undecryptable_value_warns_by_name_and_reads_as_unset(self, db, caplog):
+        foreign_ct = encrypt_value("someone-elses-token", "some-other-key")
+        _set_raw(db, "hardcover_token", foreign_ct)
+        db.commit()
+
+        with caplog.at_level("WARNING", logger="app.crypto"):
+            assert get_setting(db, "hardcover_token") == ""
+
+        records = [r for r in caplog.records if r.name == "app.crypto"]
+        assert len(records) == 1
+        assert "hardcover_token" in records[0].getMessage()
+        # The value must never reach the log, in any form
+        for r in caplog.records:
+            assert foreign_ct not in r.getMessage()
+            assert "gAAAAA" not in r.getMessage()
+
+    def test_warns_once_per_key_per_process(self, db, caplog):
+        _set_raw(db, "hardcover_token", encrypt_value("a", "some-other-key"))
+        _set_raw(db, "isbndb_api_key", encrypt_value("b", "some-other-key"))
+        db.commit()
+
+        with caplog.at_level("WARNING", logger="app.crypto"):
+            get_setting(db, "hardcover_token")
+            get_setting(db, "hardcover_token")  # second read: no second record
+            get_setting(db, "isbndb_api_key")  # a different key: its own record
+
+        messages = [r.getMessage() for r in caplog.records if r.name == "app.crypto"]
+        assert len(messages) == 2
+        assert sum("hardcover_token" in m for m in messages) == 1
+        assert sum("isbndb_api_key" in m for m in messages) == 1
+
+    def test_legacy_plaintext_returns_unchanged_and_silently(self, db, caplog):
+        _set_raw(db, "isbndb_api_key", "plain-api-key")
+        db.commit()
+
+        with caplog.at_level("WARNING", logger="app.crypto"):
+            assert get_setting(db, "isbndb_api_key") == "plain-api-key"
+
+        assert [r for r in caplog.records if r.name == "app.crypto"] == []
+
+    def test_get_all_settings_takes_the_same_two_arms(self, db, caplog):
+        _set_raw(db, "hardcover_token", encrypt_value("x", "some-other-key"))
+        _set_raw(db, "isbndb_api_key", "plain-api-key")
+        db.commit()
+
+        from app.database import get_all_settings
+
+        with caplog.at_level("WARNING", logger="app.crypto"):
+            settings = get_all_settings(db)
+
+        assert settings["hardcover_token"] == ""
+        assert settings["isbndb_api_key"] == "plain-api-key"
+        messages = [r.getMessage() for r in caplog.records if r.name == "app.crypto"]
+        assert len(messages) == 1
+        assert "hardcover_token" in messages[0]

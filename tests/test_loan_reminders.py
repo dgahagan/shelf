@@ -71,6 +71,114 @@ class TestNotifyService:
         assert await send_notification("", "T", "M", "ntfy") is False
         assert await send_notification("https://x.example", "T", "M", "carrier-pigeon") is False
 
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_non_2xx_log_redacts_path_and_query(self, caplog):
+        from app.services.notify import send_notification
+        url = "https://discord.example/api/webhooks/1234567890/PATHSECRETabc?token=QUERYSECRET"
+        respx.post(url).mock(return_value=httpx.Response(500))
+        with caplog.at_level("WARNING", logger="app.services.notify"):
+            ok = await send_notification(url, "T", "M", "ntfy")
+        assert ok is False
+        assert len(caplog.records) == 1
+        message = caplog.records[0].getMessage()
+        assert "discord.example" in message
+        assert "500" in message
+        assert "PATHSECRETabc" not in message
+        assert "QUERYSECRET" not in message
+        assert "/api/webhooks/" not in message
+        assert url not in message
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_connection_error_log_redacts_path_and_query(self, caplog):
+        from app.services.notify import send_notification
+        url = "https://discord.example/api/webhooks/1234567890/PATHSECRETabc?token=QUERYSECRET"
+        respx.post(url).mock(
+            side_effect=httpx.ConnectError(
+                f"[Errno 111] Connection refused while connecting to {url}",
+                request=httpx.Request("POST", url),
+            )
+        )
+        with caplog.at_level("WARNING", logger="app.services.notify"):
+            ok = await send_notification(url, "T", "M", "ntfy")
+        assert ok is False
+        assert len(caplog.records) == 1
+        message = caplog.records[0].getMessage()
+        # Secrets first, deliberately: reverting `type(e).__name__` to `e` must
+        # redden this test on the *leak*, not on the missing class name. A pin
+        # that fails on the cosmetic claim invites the wrong fix (G31).
+        assert "PATHSECRETabc" not in message
+        assert "QUERYSECRET" not in message
+        assert "/api/webhooks/" not in message
+        assert url not in message
+        assert "discord.example" in message
+        assert "ConnectError" in message
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_non_2xx_log_redacts_basic_auth_credentials(self, caplog):
+        """ntfy documents `https://user:pass@host/topic` for authenticated topics,
+        and httpx honours URL userinfo. `netloc` carries it; `hostname` does not."""
+        from app.services.notify import send_notification
+        url = "https://USERSECRET:PASSSECRET@ntfy.example/topic"
+        respx.post("https://ntfy.example/topic").mock(return_value=httpx.Response(500))
+        with caplog.at_level("WARNING", logger="app.services.notify"):
+            ok = await send_notification(url, "T", "M", "ntfy")
+        assert ok is False
+        assert len(caplog.records) == 1
+        message = caplog.records[0].getMessage()
+        assert "USERSECRET" not in message
+        assert "PASSSECRET" not in message
+        assert "@" not in message
+        assert "ntfy.example" in message
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_connection_error_log_redacts_basic_auth_credentials(self, caplog):
+        from app.services.notify import send_notification
+        url = "https://USERSECRET:PASSSECRET@ntfy.example/topic"
+        respx.post("https://ntfy.example/topic").mock(
+            side_effect=httpx.ConnectError(
+                "[Errno 111] Connection refused",
+                request=httpx.Request("POST", url),
+            )
+        )
+        with caplog.at_level("WARNING", logger="app.services.notify"):
+            ok = await send_notification(url, "T", "M", "ntfy")
+        assert ok is False
+        assert len(caplog.records) == 1
+        message = caplog.records[0].getMessage()
+        assert "USERSECRET" not in message
+        assert "PASSSECRET" not in message
+        assert "@" not in message
+        assert "ntfy.example" in message
+
+    def test_target_falls_back_when_the_url_will_not_parse(self):
+        """The docstring's contract covers every exit path, this one too (G66)."""
+        from app.services.notify import _target
+
+        assert _target("http://[::1") == "<unparseable url>"
+        assert _target("https://discord.example/a/b?c=d") == "https://discord.example"
+
+    def test_target_drops_userinfo_and_keeps_a_nondefault_port(self):
+        """`netloc` is not loggable: it carries `user:pass@`. `hostname` is."""
+        from app.services.notify import _target
+
+        assert _target("https://u:p@discord.example/a") == "https://discord.example"
+        assert _target("https://u@discord.example/a") == "https://discord.example"
+        assert _target("https://u:p@ntfy.example:8443/t") == "https://ntfy.example:8443"
+        assert _target("https://ntfy.example:8443/t") == "https://ntfy.example:8443"
+
+    def test_target_falls_back_on_a_port_that_will_not_parse(self):
+        """`parts.port` raises ValueError on a non-numeric or out-of-range port,
+        and `_target` is called from inside the `except httpx.HTTPError` arm —
+        a raise here would break send_notification's "returns False" contract."""
+        from app.services.notify import _target
+
+        assert _target("https://host:abc/x") == "<unparseable url>"
+        assert _target("https://host:99999/x") == "<unparseable url>"
+
 
 # ---------------------------------------------------------------------------
 # Overdue computation (via /api/checkouts/overdue)
