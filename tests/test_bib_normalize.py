@@ -10,6 +10,7 @@ from app.services.bib_normalize import (
     leading_int,
     nfc,
     split_publication,
+    split_title,
     strip_responsibility,
 )
 
@@ -110,6 +111,76 @@ class TestStripResponsibility:
         assert strip_responsibility("") == ""
 
 
+# --- split_title ---
+#
+# G31: this class must redden under two mutations of split_title, each
+# pinned by a distinct row below.
+#   1. partition(" : ") -> rpartition(" : ") must fail
+#      test_two_colons_splits_at_first, since that row's expected split only
+#      happens at the *first* ' : ' — rpartition would instead cut at the
+#      second, leaving it inside the title half.
+#   2. deleting the `strip_responsibility(s)` call (partitioning `s` itself)
+#      must fail test_worked_example, since that row's " / Gino Roncaglia"
+#      responsibility statement would otherwise survive inside the subtitle.
+
+
+class TestSplitTitle:
+    def test_worked_example(self):
+        # The SBN `titolo` field: title, subtitle and statement-of-
+        # responsibility in one ISBD string. Proves the responsibility
+        # statement is dropped *before* the ' : ' split, not after.
+        title = (
+            "La quarta rivoluzione : sei lezioni sul futuro del libro / "
+            "Gino Roncaglia"
+        )
+        assert split_title(title) == (
+            "La quarta rivoluzione",
+            "sei lezioni sul futuro del libro",
+        )
+
+    def test_no_colon_no_slash_unchanged(self):
+        assert split_title("Il nome della rosa") == ("Il nome della rosa", None)
+
+    def test_slash_no_colon_strips_responsibility_only(self):
+        assert split_title("Il nome della rosa / Umberto Eco") == (
+            "Il nome della rosa",
+            None,
+        )
+
+    def test_two_colons_splits_at_first(self):
+        # If this cut at the last ' : ' instead (like split_publication
+        # does for its imprint), the subtitle would come back as "sotto
+        # titolo" only, with "altro : sotto titolo" folded into the title.
+        assert split_title("Titolo : sottotitolo : altro dettaglio") == (
+            "Titolo",
+            "sottotitolo : altro dettaglio",
+        )
+
+    def test_empty_string(self):
+        assert split_title("") == ("", None)
+
+    def test_nfd_input_comes_back_nfc(self):
+        nfd = unicodedata.normalize(
+            "NFD", "Köhlmeier : eine Einführung / Michael Köhlmeier"
+        )
+        title, subtitle = split_title(nfd)
+        assert title == "Köhlmeier"
+        assert subtitle == "eine Einführung"
+        assert unicodedata.is_normalized("NFC", title)
+        assert unicodedata.is_normalized("NFC", subtitle)
+
+    def test_whitespace_only_subtitle_is_none_not_empty_string(self):
+        # strip_responsibility right-strips via nfc() before this function
+        # ever partitions, so the trailing "    " here is gone before ' : '
+        # is searched for -- the string collapses to "Titolo :" (no space
+        # after the colon), which no longer contains the exact 3-char ' : '
+        # delimiter at all. That makes this the *no-delimiter* branch, not
+        # the partitioned-then-empty one -- but it still pins the outward
+        # contract this row is named for: subtitle comes back None, never
+        # "", even though its would-be content was pure whitespace.
+        assert split_title("Titolo :    ") == ("Titolo :", None)
+
+
 # --- split_publication ---
 
 
@@ -139,6 +210,15 @@ class TestSplitPublication:
 
     def test_empty_string(self):
         assert split_publication("") == (None, None)
+
+    def test_strips_copyright_glyph(self):
+        # ISBN 9788832970944 (Danielewski, "Casa di foglie") — measured live
+        # from SBN's `pubblicazione` field, which carries a trailing "©"
+        # before the year on this Italian imprint.
+        assert split_publication("Roma : 66thand2nd, ©2019") == (
+            "66thand2nd",
+            2019,
+        )
 
 
 # --- first_year ---

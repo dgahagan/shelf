@@ -21,11 +21,20 @@ from types import ModuleType
 # is what callers already reach for: intake.py, openlibrary.py, googlebooks.py.
 from app.services.bib_normalize import MARC_TO_ISO639_1, to_iso639_1  # noqa: F401
 
-from app.services import dnb
+from app.services import dnb, sbn
 
 # ISBN-13 prefix (unhyphenated, longest-match wins) -> provider module.
+#
+# 97888/97912 are 5-digit keys, not 4 — app/database.py:118-127 (migration 23,
+# "Backfill language from ISBN registration group") already keys these same
+# two prefixes to 'it' at 5 digits, beside 5-digit 97884/97885/97887 and
+# 4-digit 9783/9782. A 4-digit "9788" key here would also swallow 978-84
+# (Spain), 978-85 (Brazil) and 978-80 (Czech/Slovak), routing their ISBNs to
+# an Italian catalogue that answers numFound: 0 for all three.
 PREFIX_PROVIDERS: dict[str, ModuleType] = {
     "9783": dnb,  # 978-3: German-language registration group
+    "97888": sbn,  # 978-88: Italian registration group
+    "97912": sbn,  # 979-12: Italian registration group (no ISBN-10 equivalent)
 }
 
 

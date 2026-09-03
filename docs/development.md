@@ -171,7 +171,7 @@ app/
                    share, tags, valuation, sync (ABS), hardcover, checkouts, locations,
                    platforms, archive, settings, auth_routes, pages
   services/        external clients + domain logic: openlibrary, hardcover, googlebooks,
-                   dnb/national + bib_normalize, igdb, tmdb, isbndb, upc, covers +
+                   dnb/sbn/national + bib_normalize, igdb, tmdb, isbndb, upc, covers +
                    cover_queue, vision + tiling, audiobookshelf, archive,
                    reading_imports, notify, outbound
   templates/       Jinja2 pages + fragments/ for HTMX swaps

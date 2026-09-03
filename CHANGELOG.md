@@ -6,6 +6,66 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-09-02
+
+Scanning an Italian book gave you the least of what is known about it. Open
+Library's coverage of Italian publishing is thin, so a 978-88 barcode often
+came back with a bare title and no publisher, no year and no author — or with
+no match at all — even though the book is fully catalogued in Italy's own
+national library network. This release sends those ISBNs there first, the same
+way German ISBNs have gone to the Deutsche Nationalbibliothek since 0.11.
+
+Nothing changes for books already in your collection. There is no migration and
+no setting to turn on; the new source runs the next time you scan an Italian
+ISBN.
+
+### Added
+
+- **SBN as a national metadata source for Italian ISBNs.** An ISBN in the
+  978-88 or 979-12 registration group is now looked up in the Servizio
+  Bibliotecario Nazionale, the Italian national library network run by ICCU,
+  before the general cascade. Title and subtitle are split out of SBN's single
+  ISBD title string, the author is stored in display order, and publisher, year
+  and language come from the record. No key is needed and there is nothing to
+  configure. The scan card and the item page both read `via sbn`, so you can
+  see where a row came from. If SBN has no record, the scan falls through to
+  Open Library and Google Books exactly as before. Requested in
+  [#55](https://github.com/dgahagan/shelf/issues/55) by
+  [@alibiss](https://github.com/alibiss), who also identified the endpoint and
+  supplied a sample payload.
+- **Only a record carrying the exact ISBN you scanned is used.** SBN often
+  returns several related records for one query — other editions, other
+  printings. Shelf takes only a record whose own ISBN matches the one you
+  scanned, preferring one that names an author; anything else falls through to
+  Open Library rather than filing a different edition's publisher and year.
+- **A book SBN records in two languages is left without a language, not
+  guessed.** A bilingual edition — a Greek text with an Italian translation,
+  say — carries two language codes, and Shelf files neither rather than
+  choosing one for you. You can set it yourself on the item page.
+
+### Fixed
+
+- A copyright glyph on an imprint is no longer kept as part of the publisher
+  name: `Roma : 66thand2nd, ©2019` stored the publisher as `66thand2nd, ©`.
+  Copyright-marked imprints are routine in Italian records, so this surfaced
+  with the SBN source above.
+
+### Known limitations
+
+- **SBN writes an elided Italian article with a space after it**, and Shelf
+  stores the title exactly as catalogued — so a book prints *L'enigma del
+  faraone* on its cover but files as `L' enigma del faraone`, and searching
+  Browse for `L'enigma` finds nothing. Searching for any later word
+  (`enigma del faraone`) finds it. This is SBN's cataloguing convention rather
+  than a parsing error, and normalising it is a change to the shared
+  bibliographic normaliser that will come with its own release.
+- **Classical authors arrive in SBN's Latin authority form** — `Homerus` for
+  Omero, `Thucydides` for Tucidide. This is the same trade the Deutsche
+  Nationalbibliothek source makes: the authority heading is the only field that
+  reliably holds the author rather than a translator or an illustrator.
+- **979-12 books still get no cover from the Amazon fallback**, which is
+  restricted to 978- ISBNs. Open Library covers them where it has them.
+
 ## [0.28.0] - 2026-09-02
 
 Until this release, every way of getting an item into Shelf checked its values
@@ -2580,6 +2640,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.29.0]: https://github.com/dgahagan/shelf/releases/tag/v0.29.0
 [0.28.0]: https://github.com/dgahagan/shelf/releases/tag/v0.28.0
 [0.27.2]: https://github.com/dgahagan/shelf/releases/tag/v0.27.2
 [0.27.1]: https://github.com/dgahagan/shelf/releases/tag/v0.27.1

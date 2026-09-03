@@ -136,6 +136,7 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "covers.openlibrary.org": 3.0,
     "services.dnb.de": 1.0,  # DNB SRU catalog — good citizenship
     "portal.dnb.de": 1.0,  # DNB cover host, same citizenship
+    "opac.sbn.it": 1.0,  # SBN publishes no rate limit; matches DNB, a comparable national library
     "api.hardcover.app": 1.0,  # 60/min API limit
     "api2.isbndb.com": 3.0,  # was isbndb's own 3s post-request sleep
     "www.googleapis.com": 0.25,  # Google Books quota is per-day; light pacing only

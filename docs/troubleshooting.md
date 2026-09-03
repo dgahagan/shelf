@@ -57,7 +57,14 @@ has a barcode for this).
   connectivity"**, a UPC **"Metadata lookup failed — check connectivity"**.
   Every book source reaches that card: Hardcover, Google Books and the DNB
   catalog used to turn an unreachable network into a plain "not found", so a
-  Shelf that was simply offline reported the books as unknown.
+  Shelf that was simply offline reported the books as unknown. The SBN
+  catalog, which answers Italian ISBNs, reaches it too.
+- **Italian books quietly stop enriching** — titles still file, but with no
+  author, publisher or year, and the lookup falls back to Open Library. The
+  SBN endpoint is undocumented and reverse-engineered, so ICCU can move or
+  retire it without notice. Nothing is broken and nothing is lost: an
+  unreachable or unreadable SBN answers "not found" and the ordinary cascade
+  takes over. The fix is a Shelf update, not anything you can configure.
 - If several barcodes in a row come back empty, the provider's daily quota
   may be spent rather than the records missing — see [A scan comes back empty
   and the log says a provider asked for a long
@@ -79,6 +86,28 @@ stored as part of the text. New lookups on 0.27.2+ store clean text. Rows
 stored earlier are not rewritten: open **Edit** and retype the title or
 author to clear them. The same release stops a translation listing its
 author twice.
+
+**An Italian title begins `L' ` and a search for it finds nothing.** SBN
+catalogues an elided Italian article with a space after the apostrophe, so
+*L'enigma del faraone* is stored as `L' enigma del faraone` and a Browse
+search for `L'enigma` misses it. Search on any later word — `enigma del
+faraone` — or retype the title in **Edit**. Shelf files what the catalogue
+holds rather than second-guessing it; normalising this is a change to the
+shared bibliographic normaliser and will come in its own release.
+
+**An Italian classic lists its author in Latin.** SBN's authority headings use
+the Latin form, so *Omero* files as `Homerus` and *Tucidide* as `Thucydides`.
+This is deliberate, and DNB makes the same trade: the authority heading is the
+only field that reliably holds the author rather than the translator or the
+illustrator. Retype it in **Edit** if you prefer the vernacular name.
+
+**An Italian book filed with no language at all.** Where SBN records two
+languages for one edition — a Greek text with an Italian translation, say —
+Shelf files neither rather than choosing one. Set it in **Edit**.
+
+**A 979-12 book has no cover.** The Amazon cover fallback takes only ISBNs
+beginning 978, so a 979-12 book can be covered only by Open Library. **Find
+cover** searches by title and often turns one up.
 
 **DVDs and games that filed a bare title — no synopsis, no year, no cover —
 were a bug, not a missing key.** TMDb rejected the credential type the setup

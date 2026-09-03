@@ -1,0 +1,103 @@
+{
+    "numFound": 1,
+    "start": 0,
+    "rows": 20,
+    "briefRecords": [
+        {
+            "progressivoId": 0,
+            "codiceIdentificativo": "IT\\ICCU\\MOD\\1568634",
+            "isbn": "978-88-420-9299-5",
+            "autorePrincipale": "Roncaglia, Gino <1960-    >",
+            "copertina": "http://covers.librarything.com/devkey/fd11eebee79ccfcfe2f17d34a92e1011/small/isbn/9788842092995",
+            "titolo": "La quarta rivoluzione : sei lezioni sul futuro del libro / Gino Roncaglia",
+            "pubblicazione": "Roma : GLF editori Laterza, 2010",
+            "livello": "Monografia",
+            "tipo": "Testo a stampa",
+            "numeri": [],
+            "note": [],
+            "nomi": [],
+            "luogoNormalizzato": [],
+            "localizzazioni": [],
+            "citazioni": []
+        }
+    ],
+    "facetRecords": [
+        {
+            "facetName": "level",
+            "facetLabel": "Livello bibliografico",
+            "facetValues": [
+                [
+                    "Monografia",
+                    "m",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "tiporec",
+            "facetLabel": "Tipo di documento",
+            "facetValues": [
+                [
+                    "Testo a stampa",
+                    "a",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "nomef",
+            "facetLabel": "Autore",
+            "facetValues": [
+                [
+                    "roncaglia, gino <1960-    >",
+                    "roncaglia, gino <1960-    >",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "soggettof",
+            "facetLabel": "Soggetto",
+            "facetValues": [
+                [
+                    "ipertesti",
+                    "ipertesti",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "luogof",
+            "facetLabel": "Luogo",
+            "facetValues": [
+                [
+                    "roma",
+                    "roma",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "lingua",
+            "facetLabel": "Lingua",
+            "facetValues": [
+                [
+                    "italiano",
+                    "ita",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "paese",
+            "facetLabel": "Paese",
+            "facetValues": [
+                [
+                    "italia",
+                    "it",
+                    "1"
+                ]
+            ]
+        }
+    ]
+}

@@ -57,6 +57,7 @@ PROVIDER_LABELS = {
     "hardcover": "Hardcover",
     "google": "Google Books",
     "dnb": "DNB",
+    "sbn": "SBN",
     "tmdb": "TMDb",
     "igdb": "IGDB",
     "upcitemdb": "UPC Item DB",

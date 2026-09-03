@@ -111,8 +111,10 @@ perfectly idle Shelf. A key gives you a quota of your own.
 
 You will notice this only where Google Books is actually reached, which is
 less often than it sounds. It is the **last** book source tried on an ISBN
-scan — behind the Deutsche Nationalbibliothek for 978-3 ISBNs, Open Library,
-and Hardcover — so it answers for the books the others missed. It also backs
+scan — behind the national bibliographies (the Deutsche Nationalbibliothek for
+978-3 ISBNs, the Servizio Bibliotecario Nazionale for Italian 978-88 and
+979-12 ones), Open Library, and Hardcover — so it answers for the books the
+others missed. It also backs
 synopsis lookups and book cover search. If Open Library is answering your
 scans, a key will change nothing you can see; if you regularly scan books
 that come back thin, or you run bulk operations like the synopsis backfill or
@@ -158,8 +160,9 @@ same idea: an ntfy topic or JSON webhook URL for the overdue-loan digest. See
 
 ## Always-on sources (no key)
 
-Open Library, Google Books (anonymous by default), Amazon cover images, UPC Item DB, and
-the Deutsche Nationalbibliothek for German ISBNs. Apart from credentials you
+Open Library, Google Books (anonymous by default), Amazon cover images, UPC Item DB,
+the Deutsche Nationalbibliothek for German ISBNs, and the Servizio
+Bibliotecario Nazionale for Italian ones. Apart from credentials you
 explicitly configure, lookups send only the ISBN or UPC — never your account,
 collection or personal data. Requests to every provider are paced to its
 published rate limit. UPC Item DB's free tier is

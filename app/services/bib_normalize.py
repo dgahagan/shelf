@@ -20,8 +20,9 @@ import unicodedata
 _DATE_QUALIFIER = re.compile(r"\s*[<(][^<>()]*\d{3,4}[^<>()]*[>)]")
 
 # Trailing punctuation/whitespace stripped off a publisher name after cutting
-# an ISBD imprint segment at its year.
-_PUBLISHER_TRIM = " \t\n\r[](),;:."
+# an ISBD imprint segment at its year. "©" (U+00A9) is routine on Italian
+# imprints (SBN's `pubblicazione`, e.g. "66thand2nd, ©2019") and must go too.
+_PUBLISHER_TRIM = " \t\n\r[](),;:.©"
 
 # MARC non-sorting markers. DNB brackets the article of a title and the
 # particle of a name in C1 control characters — U+0098 START OF STRING and
@@ -77,6 +78,33 @@ def strip_responsibility(title: str) -> str:
         return ""
     idx = title.find(" / ")
     return nfc(title if idx == -1 else title[:idx])
+
+
+def split_title(s: str) -> tuple[str, str | None]:
+    """Split one ISBD flat-JSON title string (e.g. SBN's `titolo`, "La quarta
+    rivoluzione : sei lezioni sul futuro del libro / Gino Roncaglia") into
+    (title, subtitle).
+
+    SBN hands over title, subtitle and statement-of-responsibility all in one
+    string, unlike DNB's MARC 245 `$a`/`$b`, which already arrive as separate
+    subfields. Algorithm: run `strip_responsibility` first to drop everything
+    from the first ' / ' (this is also where NFC comes from — see `nfc` — so
+    this function builds no string outside that call), then partition what's
+    left on the *first* ' : '. That is deliberately the opposite of
+    `split_publication`, which cuts an imprint at its *last* ' : ' (place :
+    publisher); here the first ' : ' is the one separating title from
+    subtitle. Returns (title, None) when there is no ' : ', and ("", None)
+    for empty/falsy input. A subtitle that is empty or whitespace-only after
+    stripping comes back as None, never "".
+    """
+    if not s:
+        return ("", None)
+    stripped = strip_responsibility(s)
+    title, sep, subtitle = stripped.partition(" : ")
+    if not sep:
+        return (title.strip(), None)
+    subtitle = subtitle.strip()
+    return (title.strip(), subtitle or None)
 
 
 def first_year(s: str) -> int | None:

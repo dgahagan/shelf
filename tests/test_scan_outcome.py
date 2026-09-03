@@ -167,6 +167,7 @@ class TestProviderLabel:
         """The identifiers are display-free by design; this is where they get a name."""
         assert provider_label(pr.rejected("google", status=400)) == "Google Books"
         assert provider_label(pr.rejected("openlibrary", status=401)) == "Open Library"
+        assert provider_label(pr.found("sbn", {"title": "Test"})) == "SBN"
 
     def test_a_cascade_wide_identifier_has_none(self):
         """`combine` only stamps its own name on an empty cascade, which names nobody."""

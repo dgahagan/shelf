@@ -544,7 +544,7 @@ grep -n "create_task(items_common._enrich_import_covers" app/routers/intake.py
   `app.services.item_write.insert_item`. See the Graveyard. The id is kept
   because existing plan and review documents cite it.
 
-## G26 — When parsing MARC21 records from a national-bibliography source
+## G26 — When parsing records from a national-bibliography source (MARC21 or flat JSON)
 
 - **Rule:** Two normalizations are mandatory, or the data is subtly wrong:
   (1) MARC21-xml text arrives as **decomposed (NFD) Unicode** — "Köhlmeier"
@@ -585,6 +585,32 @@ python -m pytest tests/test_dnb.py -q                # translator-exclusion asse
   on a correct tree. A new provider that builds its strings through
   `bib_normalize` gets NFC for free — the trap left is a provider that reads
   a payload field *without* going through it.)
+
+- **Updated 2026-09-02** (`bfce266`, plan `issue-55-sbn-provider`): the first
+  **flat-JSON** provider, SBN, met all three clauses in its own dialect, which
+  is why the heading no longer says MARC21. What the format changes and what
+  it does not:
+  - **The relator trap survives the format change.** SBN has no `$4`/`$e`
+    relators, but its `nomef` facet reads exactly like a richer author list
+    and is not one — for ISBN 9791221200454 it holds `turconi, stefano`, the
+    *illustrator*, beside the author. Authors come from `autorePrincipale`
+    alone. Whatever the format, ask of any name-bearing field whether the
+    source promised you **authors** or merely **names**.
+  - **A facet is an aggregate, not a per-record field.** SBN's `lingua` facet
+    is computed over every record the query matched, not over the record you
+    selected, so reading it for a multi-record response attributes one book's
+    language to another. Read an aggregate only when it is unambiguous (here:
+    exactly one value) and leave the field unset otherwise.
+  - **NFC is free only if you route through `bib_normalize`** — unchanged, and
+    the reason `sbn.py` builds every stored string with `split_title` /
+    `invert_name` / `split_publication` / `to_iso639_1` and reads nothing off
+    the payload directly.
+  - **An identifier's formatting is not consistent within one response.** For
+    that same ISBN, the two records carrying the queried ISBN spell it
+    unhyphenated while the two carrying a different one spell it hyphenated.
+    Normalize before comparing; a `==` against the raw field is right for half
+    a payload and wrong for the other half. See **G74**, which is where the
+    comparison itself belongs.
 
 - **Status:** documented.
 
@@ -2852,6 +2878,113 @@ grep -rn "canonical_isbn_pair" app/services/audiobookshelf.py app/routers/hardco
   call site in `app/services/` that passes `isbn=` without a
   `canonical_isbn_pair` in the same function" is greppable and would catch
   the next sync adapter.
+
+## G73 — When a new refusal meets a client that has already discarded its copy
+
+- **Rule:** Before adding a validation refusal to a route, ask **who still
+  holds the input if you say no**. If the caller drops its local copy on
+  your response — an offline queue, an optimistic UI, a form that clears —
+  a bare refusal is not a refusal, it is data loss. Either keep the input
+  server-side in a recoverable shape, or return something the client is
+  required to render before it discards.
+- **Why:** `#54`'s funnel made `/api/store/queue` reject a barcode whose
+  check digit fails. `static/js/store.js` marks **every** returned result as
+  handled and filters the `localStorage` queue by that map, and there was no
+  rendering for the `invalid` status at all — so a misread scan left no item,
+  no `scan_log` row, no message, and no queue entry. Store Mode is used
+  standing in a shop with no signal; the queue *was* the only record. The
+  route's own docstring promised "a queued scan is never lost", and the
+  change quietly broke that promise while every test stayed green: the unit
+  suite asserted the route's response, not what the client did with it.
+- **What makes it invisible:** the refusal is correct in isolation. The bug
+  lives in the seam between a server that now says no and a client written
+  when the answer was always yes. Nothing in the diff of either file looks
+  wrong; you have to read them together. A checksum refusal is also exactly
+  the case a *misread* produces, so the new failure mode is common, not rare
+  — five rows in a real 1057-item collection carry ISBNs this rule rejects.
+- **The general test:** grep the client for the statuses the route can now
+  return. A status the server emits and the client has no branch for is the
+  whole bug.
+- **Found by:** the live pass, not the gate. `make test` and `make test-e2e`
+  both passed on the broken commit; `/test-drive` flushed a real two-code
+  queue and read `localStorage` afterwards (`qa-issue-54-item-value-funnel.md`,
+  Observation 1). This is the argument for driving an offline/optimistic
+  surface by hand whenever its server contract changes.
+- **Evidence:** `887169e` (2026-09-02) — the route now saves the code as
+  `Unreadable barcode — <code>` with `isbn` NULL, returns `unreadable`, logs
+  the scan, and `store.js` renders a `#sync-result` count **outside**
+  `#queue-section`, which hides itself the moment the flush drains the queue.
+  Pinned by `tests/test_store.py`. Same shape, opposite call: the *provider*
+  paths in `G72` drop rather than refuse, for this reason.
+- **Status:** documented. Partially greppable — a route returning a status
+  string with no matching branch in the JS that calls it — but the general
+  rule needs judgement about who holds the input.
+
+## G74 — When a lookup endpoint answers with a *list* of records
+
+- **Rule:** A search endpoint returns what it considers **related** to your
+  query, not the answer to it. Before mapping fields, decide — and write down
+  — which record you are entitled to, and answer "no match" when none
+  qualifies. `results[0]` is a guess that looks correct in every
+  single-record fixture.
+- **Why:** the defect is invisible at exactly the sample size a fixture has.
+  Of ten real Italian ISBNs swept against SBN, eight returned one record and
+  would have passed a naive `briefRecords[0]` implementation. The other two
+  are the whole entry: for ISBN 9791221200454 the first record carries **no
+  author** and the year 2025, the exact-ISBN record one along carries
+  "Stevenson, Steve" and 2022, and two further records answer a **different
+  ISBN entirely** (978-88-418-6255-1, years 2010 and 2015). Taking `[0]` files
+  an Italian book with no author and a year three out — silently, with a green
+  suite.
+- **The escalation that makes it worse:** a national provider answers *first*
+  in the cascade and short-circuits it, so it is claiming authority. A
+  confidently wrong publisher and year is worse for the user than the thinner
+  record they would have got from Open Library, because nothing tells them to
+  look. Prefer `no_match` and let the cascade run.
+- **Two ways the pin fails to catch it**, both worth writing into the test:
+  - **Asserting the request instead of the stored fields.** A test that checks
+    the query URL passes against every candidate record, including the wrong
+    one. Assert `authors` and `publish_year`, not the params (this is **G45**'s
+    "assert the stored fields" one layer out, and **G31**'s "which branch does
+    your pin land in").
+  - **A single-record fixture.** Commit a real multi-record payload, and one
+    whose records *all* carry a different identifier than the one queried —
+    that second fixture is what proves the filter answers `no_match` rather
+    than storing a related edition.
+- **Compare identifiers normalized**, not raw: SBN spells the identifier both
+  hyphenated and unhyphenated **within one response** (G26).
+- **Evidence:** `bfce266` (2026-09-02, plan `issue-55-sbn-provider`).
+  `sbn._select_record` keeps only exact-ISBN records, takes the first with a
+  non-empty author, else the first, else `None`. Pinned by
+  `tests/test_sbn.py::TestSbnLookup::test_multi_record_picks_the_exact_isbn_author_bearing_record`
+  and `...::test_records_all_carrying_another_isbn_are_no_match`; mutating the
+  selector to `records[0]` reddens both. The issue's own proposal and the reply
+  posted on it both specified `briefRecords[0]`, so this was the *default*
+  reading of the payload, not an unlikely slip. `dnb.lookup` solves the same
+  problem differently — it loops until a record has a usable title — because
+  MARC records for one ISBN are editions of one book; choose per source rather
+  than copying either.
+- **Verify:** every client that picks one record out of a provider's result
+  list has decided which one it is entitled to. Read each hit and check for a
+  filter or a loop condition above it, not a bare index:
+
+```bash
+grep -rnE '= (results|items|records|briefRecords|docs|hits)\[0\]' app/services/*.py
+```
+
+  Four hits are expected as of 2026-09-02 and are **not** this entry firing:
+  `tmdb.py:85` (`movie = results[0]`), `covers.py:300` (`hit = results[0]`),
+  `upcitemdb.py:170` (`item = items[0]`) and `googlebooks.py:65`
+  (`info = items[0]...`). Each indexes a **relevance-ranked search** or an
+  **exact-identifier query**, where the first element is what the provider
+  means by "the answer". SBN's `briefRecords` is neither — it is "records we
+  consider related to your query" — and that is the distinction to establish
+  for any new source before writing the mapping. A fifth hit means a client
+  made the choice without stating it.
+
+- **Status:** documented. Not a lint candidate — whether a list is "candidates"
+  or "the answer" is a property of the upstream API, not of this repo's source.
+
 
 ## Graveyard
 

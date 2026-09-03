@@ -1,0 +1,152 @@
+{
+    "numFound": 4,
+    "start": 0,
+    "rows": 20,
+    "briefRecords": [
+        {
+            "progressivoId": 0,
+            "codiceIdentificativo": "IT\\ICCU\\RL1\\0126624",
+            "isbn": "9791221200454",
+            "copertina": "http://covers.librarything.com/devkey/fd11eebee79ccfcfe2f17d34a92e1011/small/isbn/9791221200454",
+            "titolo": "L' enigma del faraone / Sir Steve Stevenson [i. e. Mario Pasqualotto] ; illustrazioni di Stefano Turconi",
+            "pubblicazione": "Milano : DeAgostini, 2025",
+            "livello": "Monografia",
+            "tipo": "Testo a stampa",
+            "numeri": [],
+            "note": [],
+            "nomi": [],
+            "luogoNormalizzato": [],
+            "localizzazioni": [],
+            "citazioni": []
+        },
+        {
+            "progressivoId": 1,
+            "codiceIdentificativo": "IT\\ICCU\\URB\\0969723",
+            "isbn": "9791221200454",
+            "autorePrincipale": "Stevenson, Steve",
+            "copertina": "http://covers.librarything.com/devkey/fd11eebee79ccfcfe2f17d34a92e1011/small/isbn/9791221200454",
+            "titolo": "L' enigma del faraone / sir Steve Stevenson [i.e. Mario Pasqualotto] ; illustrazioni di Stefano Turconi",
+            "pubblicazione": "Novara : De Agostini, 2022",
+            "livello": "Monografia",
+            "tipo": "Testo a stampa",
+            "numeri": [],
+            "note": [],
+            "nomi": [],
+            "luogoNormalizzato": [],
+            "localizzazioni": [],
+            "citazioni": []
+        },
+        {
+            "progressivoId": 2,
+            "codiceIdentificativo": "IT\\ICCU\\PAR\\1193621",
+            "isbn": "978-88-418-6255-1",
+            "autorePrincipale": "Stevenson, Steve",
+            "copertina": "http://covers.librarything.com/devkey/fd11eebee79ccfcfe2f17d34a92e1011/small/isbn/9788841862551",
+            "titolo": "L' enigma del faraone / Steve Stevenson [i.e. Mario Pasqualotto] ; illustrazioni di Stefano Turconi",
+            "pubblicazione": "Novara : De Agostini, [2010]",
+            "livello": "Monografia",
+            "tipo": "Testo a stampa",
+            "numeri": [],
+            "note": [],
+            "nomi": [],
+            "luogoNormalizzato": [],
+            "localizzazioni": [],
+            "citazioni": []
+        },
+        {
+            "progressivoId": 3,
+            "codiceIdentificativo": "IT\\ICCU\\LZ1\\0001460",
+            "isbn": "978-88-418-6255-1",
+            "autorePrincipale": "Stevenson, Steve",
+            "copertina": "http://covers.librarything.com/devkey/fd11eebee79ccfcfe2f17d34a92e1011/small/isbn/9788841862551",
+            "titolo": "L' enigma del faraone / sir Steve Stevenson [i.e. Mario Pasqualotto] ; illustrazioni di Stefano Turconi",
+            "pubblicazione": "Novara : De Agostini, 2015",
+            "livello": "Monografia",
+            "tipo": "Testo a stampa",
+            "numeri": [],
+            "note": [],
+            "nomi": [],
+            "luogoNormalizzato": [],
+            "localizzazioni": [],
+            "citazioni": []
+        }
+    ],
+    "facetRecords": [
+        {
+            "facetName": "level",
+            "facetLabel": "Livello bibliografico",
+            "facetValues": [
+                [
+                    "Monografia",
+                    "m",
+                    "4"
+                ]
+            ]
+        },
+        {
+            "facetName": "tiporec",
+            "facetLabel": "Tipo di documento",
+            "facetValues": [
+                [
+                    "Testo a stampa",
+                    "a",
+                    "4"
+                ]
+            ]
+        },
+        {
+            "facetName": "nomef",
+            "facetLabel": "Autore",
+            "facetValues": [
+                [
+                    "stevenson, steve",
+                    "stevenson, steve",
+                    "4"
+                ],
+                [
+                    "turconi, stefano",
+                    "turconi, stefano",
+                    "4"
+                ]
+            ]
+        },
+        {
+            "facetName": "luogof",
+            "facetLabel": "Luogo",
+            "facetValues": [
+                [
+                    "novara",
+                    "novara",
+                    "3"
+                ],
+                [
+                    "milano",
+                    "milano",
+                    "1"
+                ]
+            ]
+        },
+        {
+            "facetName": "lingua",
+            "facetLabel": "Lingua",
+            "facetValues": [
+                [
+                    "italiano",
+                    "ita",
+                    "4"
+                ]
+            ]
+        },
+        {
+            "facetName": "paese",
+            "facetLabel": "Paese",
+            "facetValues": [
+                [
+                    "italia",
+                    "it",
+                    "4"
+                ]
+            ]
+        }
+    ]
+}
