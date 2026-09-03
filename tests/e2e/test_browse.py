@@ -82,3 +82,65 @@ def test_browse_url_state_preserved(live_server, authed_page):
     authed_page.goto(f"{live_server['url']}/browse?mt=book")
     authed_page.wait_for_load_state("networkidle")
     assert "mt=book" in authed_page.url or authed_page.locator("body").is_visible()
+
+
+def _seed_many(data_dir, prefix: str, count: int) -> None:
+    """Bulk-insert `count` items in one connection (insert_item is per-row)."""
+    import sqlite3
+
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        conn.executemany(
+            "INSERT INTO items (title, media_type, source, owned) VALUES (?, 'book', 'test', 1)",
+            [(f"{prefix} {i:03d}",) for i in range(count)],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _scroll_until_loaded(page, max_rounds: int = 12) -> None:
+    """Scroll to the bottom until the load-more sentinel is gone."""
+    for _ in range(max_rounds):
+        if page.locator("#load-more").count() == 0:
+            return
+        page.mouse.wheel(0, 20000)
+        page.wait_for_timeout(600)
+
+
+@pytest.mark.parametrize("view_mode", ["grid", "list"])
+def test_browse_infinite_scroll_matches_view_mode(live_server, authed_page, view_mode):
+    """Infinite scroll appends fragments matching the active view mode.
+
+    Regression: the load-more URL did not carry the client-side view mode, so
+    in list view every appended page came back as grid cards, which landed
+    outside the table as unstyled markup and stalled pagination.
+    """
+    _seed_many(live_server["data_dir"], f"Scroll {view_mode}", 130)
+
+    authed_page.set_viewport_size({"width": 390, "height": 844})
+    authed_page.goto(f"{live_server['url']}/browse")
+    authed_page.evaluate(f"localStorage.setItem('shelf-view', '{view_mode}')")
+    authed_page.reload()
+    authed_page.wait_for_load_state("networkidle")
+
+    _scroll_until_loaded(authed_page)
+
+    cards = authed_page.locator("a[data-item-id]")
+    rows = authed_page.locator("tr[data-item-id]")
+    if view_mode == "grid":
+        assert cards.count() >= 130, f"only {cards.count()} cards loaded"
+        assert rows.count() == 0, "list rows leaked into grid view"
+        # Every card belongs to the grid container.
+        assert authed_page.evaluate(
+            "document.querySelectorAll('a[data-item-id]:not(.cover-grid > a)').length"
+        ) == 0
+    else:
+        assert rows.count() >= 130, f"only {rows.count()} rows loaded"
+        assert cards.count() == 0, "grid cards leaked into list view"
+        # Every row is inside the table body, not hoisted out by the parser.
+        assert authed_page.evaluate(
+            "document.querySelectorAll('tr[data-item-id]:not(tbody > tr)').length"
+        ) == 0
+
+    assert authed_page.locator("#load-more").count() == 0, "pagination stalled"

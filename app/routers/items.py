@@ -801,8 +801,9 @@ async def search_items(
     if tag:
         from urllib.parse import quote
         qs_parts.append(f"tag={quote(tag)}")
-    if view:
-        qs_parts.append(f"view={view}")
+    # NOTE: `view` is deliberately NOT baked into the URL — the load-more
+    # element sends it via hx-include="[name='view']" so the fragment always
+    # matches the view mode currently rendered on the client.
     qs_parts.append(f"page={page + 1}")
     load_more_url = "/api/search?" + "&".join(qs_parts)
 

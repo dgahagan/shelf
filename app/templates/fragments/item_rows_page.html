@@ -2,9 +2,9 @@
 {% include "fragments/item_row.html" %}
 {% endfor %}
 {% if has_more is defined and has_more %}
-<tr id="load-more" class="col-span-full">
-    <td colspan="7" class="text-center py-4"
-        hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML">
+<tr id="load-more" hx-get="{{ load_more_url }}" hx-trigger="revealed"
+    hx-swap="outerHTML" hx-include="[name='view']">
+    <td colspan="7" class="text-center py-4">
         <div class="inline-block w-6 h-6 border-2 border-shelf-border border-t-shelf-accent rounded-full animate-spin"></div>
     </td>
 </tr>
