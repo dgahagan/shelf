@@ -545,6 +545,31 @@ async def scan_isbn(
                 legacy_source = resolution.source
                 legacy_hc_ids = resolution.hc_ids or {}
                 legacy_cascade = resolution.cascade
+                # Remember an automatic resolution too, not only a chosen one.
+                # `found` already means one candidate verified positively and
+                # every other returned an ordinary miss — a candidate that
+                # could not be checked yields `inconclusive` instead, which
+                # never reaches here. That is the same evidence a title choice
+                # records, minus the choosing.
+                #
+                # Without this, `resolve` re-runs on every scan of an
+                # unambiguous legacy barcode, and it deliberately cannot
+                # short-circuit: it has to see every candidate to rule out
+                # ambiguity, so each scan costs a full metadata cascade per
+                # candidate. In inventory mode that is per book, per sweep.
+                #
+                # The trade is that a candidate which misses today because a
+                # provider lacks it, but gains a record later, stays ruled out
+                # for this barcode. `_get_confirmed_legacy_mapping` re-checks
+                # the stored ISBN against the current candidate set but does
+                # not re-verify it, so recovering that case means clearing the
+                # row.
+                _save_confirmed_legacy_mapping(raw, legacy_isbn13)
+                logger.info(
+                    "Remembered automatic legacy UPC+5 resolution %s -> %s",
+                    legacy_book.mapping_key(raw),
+                    legacy_isbn13,
+                )
             else:
                 items_common._log_scan(raw, "book", "error", mode=mode)
                 return templates.TemplateResponse(

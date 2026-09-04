@@ -416,3 +416,112 @@ class TestLegacyBookExistingModes:
         assert "Confirmed at Shelf A" in confirmed.text
         assert 'data-scan-inventory-confirmed="true"' in confirmed.text
         assert f'href="/item/{item_id}"' in confirmed.text
+
+
+class TestLegacyAutomaticResolutionIsRemembered:
+    """An unambiguous legacy barcode must not re-verify on every scan.
+
+    `resolve` cannot short-circuit — it has to check every candidate to rule
+    out ambiguity — so each unremembered scan costs a full metadata cascade
+    per candidate.
+    """
+
+    @staticmethod
+    def _unique_lookup():
+        """Only the 0590 candidate exists; the 0439 one is a clean miss."""
+
+        async def lookup(isbn13, *a, **k):
+            if isbn13 == KRISTY_ISBN13:
+                return _found(isbn13, "Kristy and the Mother's Day Surprise")
+            return None, "manual", {}, provider_result.no_match("openlibrary")
+
+        return AsyncMock(side_effect=lookup)
+
+    def test_a_unique_resolution_is_stored_after_the_first_scan(
+        self, editor_client, db
+    ):
+        lookup_mock = self._unique_lookup()
+        with patch("app.routers.items_common._lookup_metadata", new=lookup_mock), \
+             patch("app.routers.items.cover_queue.enqueue"):
+            resp = editor_client.post(
+                "/api/scan", data={"isbn": KRISTY_UPC5, "mode": "add"}
+            )
+
+        assert resp.status_code == 200
+        row = db.execute(
+            "SELECT barcode, isbn13 FROM legacy_book_mappings"
+        ).fetchone()
+        assert row["barcode"] == KRISTY_UPC5
+        assert row["isbn13"] == KRISTY_ISBN13
+
+    def test_the_second_scan_costs_no_candidate_verification(
+        self, editor_client, db
+    ):
+        lookup_mock = self._unique_lookup()
+        with patch("app.routers.items_common._lookup_metadata", new=lookup_mock), \
+             patch("app.routers.items.cover_queue.enqueue"):
+            editor_client.post("/api/scan", data={"isbn": KRISTY_UPC5, "mode": "add"})
+            first = lookup_mock.await_count
+            # Both candidates checked: ambiguity cannot be ruled out otherwise.
+            assert first == 2
+
+            editor_client.post(
+                "/api/scan", data={"isbn": KRISTY_UPC5, "mode": "lookup"}
+            )
+
+        # The learned mapping resolves identity, so lookup mode reaches the
+        # owned row without re-verifying either candidate.
+        assert lookup_mock.await_count == first
+
+    def test_the_zero_padded_form_shares_the_remembered_identity(
+        self, editor_client, db
+    ):
+        lookup_mock = self._unique_lookup()
+        with patch("app.routers.items_common._lookup_metadata", new=lookup_mock), \
+             patch("app.routers.items.cover_queue.enqueue"):
+            editor_client.post("/api/scan", data={"isbn": KRISTY_UPC5, "mode": "add"})
+            after_first = lookup_mock.await_count
+
+            editor_client.post(
+                "/api/scan", data={"isbn": KRISTY_EAN13_PLUS5, "mode": "lookup"}
+            )
+
+        assert lookup_mock.await_count == after_first
+        assert db.execute(
+            "SELECT COUNT(*) AS c FROM legacy_book_mappings"
+        ).fetchone()["c"] == 1
+
+    def test_an_inconclusive_scan_is_never_remembered(self, editor_client, db):
+        """A candidate that could not be checked must not be ruled out."""
+
+        async def lookup(isbn13, *a, **k):
+            if isbn13 == KRISTY_ISBN13:
+                return _found(isbn13, "Kristy and the Mother's Day Surprise")
+            return None, "manual", {}, provider_result.transport_failed("openlibrary")
+
+        with patch(
+            "app.routers.items_common._lookup_metadata",
+            new=AsyncMock(side_effect=lookup),
+        ):
+            resp = editor_client.post(
+                "/api/scan", data={"isbn": KRISTY_UPC5, "mode": "add"}
+            )
+
+        assert 'data-scan-status="error"' in resp.text
+        assert db.execute(
+            "SELECT COUNT(*) AS c FROM legacy_book_mappings"
+        ).fetchone()["c"] == 0
+
+    def test_a_not_found_scan_is_never_remembered(self, editor_client, db):
+        async def lookup(isbn13, *a, **k):
+            return None, "manual", {}, provider_result.no_match("openlibrary")
+
+        with patch(
+            "app.routers.items_common._lookup_metadata",
+            new=AsyncMock(side_effect=lookup),
+        ):
+            editor_client.post("/api/scan", data={"isbn": KRISTY_UPC5, "mode": "add"})
+
+        assert db.execute(
+            "SELECT COUNT(*) AS c FROM legacy_book_mappings"
+        ).fetchone()["c"] == 0
