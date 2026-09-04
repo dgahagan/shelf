@@ -7,6 +7,7 @@ import pytest
 
 from app.database import MIGRATIONS, _run_migrations
 from app.services import provider_result
+from app.services import isbn as isbn_svc
 from app.services import upc as upc_svc
 from app.services import legacy_book
 
@@ -161,3 +162,31 @@ def test_mapping_migration_upgrades_a_database_that_has_only_previous_versions(d
     assert {
         row[1] for row in db.execute("PRAGMA table_info(legacy_book_mappings)")
     } == {"barcode", "isbn13", "confirmed_at"}
+
+
+def test_both_isbn10_check_digit_derivations_are_the_shared_one():
+    """One copy of the modulus-11 arithmetic, reached from both directions.
+
+    `isbn13_to_isbn10` derives the character from an ISBN-13 body and
+    `legacy_book` derives it from a publisher prefix plus a price-point
+    supplement. #82 was a check-digit bug caused by duplicated weighting, so
+    a second private copy is the specific regression this pins against.
+    """
+    # An X check digit is the case a naive `str(check)` gets wrong.
+    assert isbn_svc.isbn10_check_digit("059043506") == "X"
+    assert isbn_svc.isbn10_check_digit("043943506") == "4"
+
+    for isbn13 in (KRISTY_ISBN13, KRISTY_OTHER_ISBN13):
+        isbn10 = isbn_svc.isbn13_to_isbn10(isbn13)
+        assert isbn10 is not None
+        assert isbn10[-1] == isbn_svc.isbn10_check_digit(isbn10[:9])
+        assert isbn_svc.validate_isbn10(isbn10)
+
+    # legacy_book must reach the same characters through its own path.
+    assert legacy_book.isbn13_candidates(KRISTY_UPC5) == (
+        KRISTY_ISBN13,
+        KRISTY_OTHER_ISBN13,
+    )
+    assert not hasattr(legacy_book, "_isbn10_check_digit"), (
+        "legacy_book must not reintroduce a private check-digit copy"
+    )

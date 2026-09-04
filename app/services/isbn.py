@@ -60,14 +60,26 @@ def validate_isbn13(s: str) -> bool:
     return total % 10 == 0
 
 
+def isbn10_check_digit(body9: str) -> str:
+    """Return the ISBN-10 check character for nine numeric body digits.
+
+    Modulus 11 over descending weights 10..2, where a remainder of 10 is
+    written ``X``. Shared so there is exactly one copy of this arithmetic:
+    ``isbn13_to_isbn10`` derives it from an ISBN-13 body and
+    ``services/legacy_book`` derives it from a publisher prefix plus a
+    price-point supplement. UPC-A had the same weighting duplicated with the
+    factors reversed, which is what #82 had to fix.
+    """
+    total = sum(int(d) * (10 - i) for i, d in enumerate(body9))
+    check = (11 - (total % 11)) % 11
+    return "X" if check == 10 else str(check)
+
+
 def isbn13_to_isbn10(isbn13: str) -> str | None:
     if len(isbn13) != 13 or not isbn13.startswith("978"):
         return None
     body = isbn13[3:12]
-    total = sum(int(d) * (10 - i) for i, d in enumerate(body))
-    check = (11 - (total % 11)) % 11
-    check_char = "X" if check == 10 else str(check)
-    return body + check_char
+    return body + isbn10_check_digit(body)
 
 
 def canonical_isbn_pair(raw: str) -> tuple[str, str | None] | None:

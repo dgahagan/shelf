@@ -104,14 +104,6 @@ def mapping_key(raw: str) -> str | None:
     return None if barcode is None else barcode.upc + barcode.supplement
 
 
-def _isbn10_check_digit(body9: str) -> str:
-    """Return the ISBN-10 check character for nine numeric body digits."""
-
-    total = sum(int(digit) * (10 - index) for index, digit in enumerate(body9))
-    check = (11 - (total % 11)) % 11
-    return "X" if check == 10 else str(check)
-
-
 def isbn13_candidates(raw: str) -> tuple[str, ...]:
     """Generate only checksum-valid ISBN-13 candidates implied by ``raw``."""
 
@@ -124,7 +116,7 @@ def isbn13_candidates(raw: str) -> tuple[str, ...]:
         body9 = prefix + barcode.supplement
         if len(body9) != 9 or not body9.isdigit():
             continue
-        isbn10 = body9 + _isbn10_check_digit(body9)
+        isbn10 = body9 + isbn_svc.isbn10_check_digit(body9)
         if not isbn_svc.validate_isbn10(isbn10):
             continue
         isbn13 = isbn_svc.isbn10_to_isbn13(isbn10)
