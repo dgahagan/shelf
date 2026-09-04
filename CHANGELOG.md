@@ -6,6 +6,32 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-09-04
+
+Some books never had an ISBN barcode. Before Bookland EAN, Scholastic and others
+printed an ordinary retail UPC plus a five-digit supplement — and the UPC alone
+names a publisher and a price band, not a title, so scanning one filed whatever
+product happened to share that code. This release teaches Shelf to read those
+barcodes properly: it works out which ISBNs the supplement could mean, checks
+each one, and asks you which book is in your hand when more than one is real
+rather than guessing. A release carrying contributions from
+[@martialartistslife](https://github.com/martialartistslife) and
+[@mattbasta](https://github.com/mattbasta).
+
+### Added
+
+- **Legacy Scholastic price-point book barcodes can be scanned.** Before
+  Bookland EAN, some Scholastic books carried a shared UPC-A identifying a
+  publisher and price band, with the title carried in a five-digit supplement
+  — so the UPC alone cannot name a book. Shelf now generates only the
+  checksum-valid ISBN candidates that barcode implies and verifies each one
+  through the normal metadata cascade. A single verified match files itself; two
+  verified matches stop and ask which book is in your hand, and that choice is
+  remembered for the next scan. A provider being unreachable is never treated
+  as "no such book". Contributed by
+  [@martialartistslife](https://github.com/martialartistslife) in
+  [#88](https://github.com/dgahagan/shelf/pull/88)
+
 ### Changed
 
 - **Adding a book by ISBN makes one fewer Open Library request.** The work
@@ -14,18 +40,20 @@ All notable changes to Shelf are documented here. The format follows
   rate limiter gate apart. Open Library edition and work requests routinely
   take a second or more each, so scanning now settles noticeably sooner. The
   result is unchanged, including a failed work or author request still
-  returning the edition it already had.
+  returning the edition it already had. Contributed by
+  [@mattbasta](https://github.com/mattbasta) in
+  [#85](https://github.com/dgahagan/shelf/pull/85)
 
 ### Fixed
 
-- UPC-A check digits are validated with the standard weighting (odd positions
-  x3, even positions x1). The weights were reversed, so valid retail barcodes
-  such as `036000291452` and `078073003501` were rejected. Contributed by
+- **UPC-A check digits are validated with the standard weighting** (odd
+  positions x3, even positions x1). The weights were reversed, which rejected
+  valid retail barcodes such as `036000291452` and `078073003501`. Nothing in
+  the app called this validator before now, so no scan was affected — but the
+  legacy book barcode support above is its first consumer, and it needs the
+  answer to be right. Contributed by
   [@martialartistslife](https://github.com/martialartistslife) in
   [#82](https://github.com/dgahagan/shelf/pull/82)
-- Legacy Scholastic UPC-A plus five-digit price-point book barcodes can be
-  verified against ISBN candidates, with ambiguous scans remembered only after
-  an explicit title choice.
 
 ## [0.31.0] - 2026-09-03
 
@@ -2764,6 +2792,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.32.0]: https://github.com/dgahagan/shelf/releases/tag/v0.32.0
 [0.31.0]: https://github.com/dgahagan/shelf/releases/tag/v0.31.0
 [0.30.0]: https://github.com/dgahagan/shelf/releases/tag/v0.30.0
 [0.29.0]: https://github.com/dgahagan/shelf/releases/tag/v0.29.0

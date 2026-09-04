@@ -89,8 +89,31 @@ doesn't get you throttled.
 
 A 978/979 prefix is an ISBN, and that is certain — so a book scanned while the
 dropdown still says "DVD" is filed as a book anyway, and the card tells you it
-overrode you. The reverse holds too: a non-ISBN barcode is certainly not a
-book, so a disc scanned under "Book" is not filed as one.
+overrode you. The reverse mostly holds too: a non-ISBN barcode is almost
+certainly not a book, so a disc scanned under "Book" is not filed as one. The
+one documented exception is the legacy price-point barcode below.
+
+### Legacy price-point book barcodes
+
+Before Bookland EAN, some books — Scholastic paperbacks in particular — carried
+an ordinary UPC-A plus a five-digit supplement. The UPC identifies a publisher
+and a price band shared by many titles; only the supplement says *which* book.
+Treating that UPC as a normal product barcode would file the wrong book.
+
+When Shelf recognizes one of these, it works out the small set of ISBNs the
+supplement could mean and looks each one up:
+
+- **One match** — the book is filed, exactly as an ISBN scan would.
+- **Two matches** — Shelf stops and shows both so you can pick the book in your
+  hand. It will not guess. Your choice is remembered, so the next copy of that
+  barcode files itself.
+- **A provider was unreachable** — Shelf says it could not verify the scan
+  rather than reporting "not found", because an unanswered lookup is not the
+  same as a book that does not exist.
+
+Only barcodes whose publisher prefix has been confirmed are treated this way;
+anything else falls through to the ordinary UPC path. If a scan will not
+resolve, scanning the printed ISBN on the copyright page always works.
 
 For a UPC there is no certain prefix, so Shelf reads the product record it
 already fetched — the platform, format, medium or audio wording in the retail

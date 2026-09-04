@@ -39,7 +39,9 @@ Main tables: `items` (everything — books, discs, games; ~36 columns incl.
 `borrowers` + `checkouts`, `tags` + `item_tags`, `series_meta` (Hardcover
 completeness), `reading_log`, `users`, `settings` (k/v, secrets encrypted),
 `share_links`, `scan_log`, `game_platforms`, `valuation_history`,
-`cover_queue`.
+`cover_queue`, `legacy_book_mappings` (a confirmed legacy price-point
+barcode -> ISBN-13 choice, constrained in the schema to a 17-digit barcode
+and a 978/979 ISBN).
 
 Secrets in `settings` are encrypted with a key kept *outside* the database
 (`data/encryption.key` or `SHELF_ENCRYPTION_KEY`), so a DB backup contains
