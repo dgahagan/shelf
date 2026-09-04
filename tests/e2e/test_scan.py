@@ -60,6 +60,37 @@ def test_scan_page_has_isbn_input(live_server, authed_page):
     expect(isbn_input).to_be_visible()
 
 
+def test_confirmed_legacy_inventory_result_is_added_to_scanned_ids(
+    live_server, authed_page
+):
+    """An HTMX ambiguity choice must count the confirmed item for missing checks."""
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    state = authed_page.evaluate(
+        """() => {
+            const root = document.querySelector('[x-data="scanPage"]');
+            const data = Alpine.$data(root);
+            data.mode = 'inventory';
+            const card = document.createElement('div');
+            card.className = 'scan-result';
+            card.setAttribute('data-scan-inventory-confirmed', 'true');
+            card.innerHTML = '<a href="/item/42">Confirmed book</a>';
+            document.getElementById('scan-results').prepend(card);
+            document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', {
+                detail: {target: card}
+            }));
+            return {
+                ids: data.inventoryScannedIds,
+                marker: card.hasAttribute('data-scan-inventory-confirmed')
+            };
+        }"""
+    )
+
+    assert state == {"ids": [42], "marker": False}
+    assert_page_clean(authed_page)
+
+
 def test_scan_mode_switching(live_server, authed_page):
     """Clicking a mode button updates the heading text."""
     authed_page.goto(f"{live_server['url']}/scan")
@@ -1224,7 +1255,7 @@ def test_a_typed_duplicate_scan_raises_exactly_one_warning_toast(
 # paragraph inside the not_found arm's manual-add form — a hidden element
 # that still yields a (blank) textContent (`G51`).
 #
-# This section pins the fix across the router's full 15-status vocabulary,
+# This section pins the fix across the router's full 16-status vocabulary,
 # not just the one status that shipped broken, so a future status — or a
 # regressed data-scan-* attribute on an existing one — fails here instead of
 # reaching a user as a blank toast.
@@ -1257,6 +1288,8 @@ def _render_status_card(status, **overrides):
         "locations": [],
         "search_langs": SEARCH_LANGS,
         "preview_cover": None,
+        "legacy_candidates": [],
+        "mode": "add",
     }
     ctx.update(overrides)
     env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
@@ -1282,6 +1315,13 @@ _STATUS_CASES = {
     "marked_read": dict(title="Dune", item_id=7, message="Marked as read"),
     "already_checked_out": dict(title="Dune", item_id=7, message="Already lent to Bea"),
     "not_checked_out": dict(title="Dune", item_id=7, message="Not currently checked out"),
+    "legacy_ambiguous": dict(
+        legacy_candidates=[
+            {"isbn13": "9780000000026", "isbn10": "0000000002", "title": "Dune", "authors": "Frank Herbert"}
+        ],
+        message="Older book barcode matches more than one book",
+        mode="add",
+    ),
     "not_owned": dict(message="Not in your collection"),
     "not_found": dict(message="No metadata found for this barcode", media_type="book"),
     "error": dict(message="Invalid ISBN"),
@@ -1321,12 +1361,13 @@ _TOAST_MUST_CONTAIN = {
     "not_owned": "025192107801",
     "not_found": "025192107801",
     "error": "Invalid ISBN",
+    "legacy_ambiguous": "Which book is this?",
 }
 
 assert set(_STATUS_CASES) == _OK_STATUSES | {
     "duplicate", "already_checked_out", "not_checked_out",
-    "not_owned", "not_found", "error",
-}, "status table drifted from the 15-status vocabulary"
+    "not_owned", "not_found", "error", "legacy_ambiguous",
+}, "status table drifted from the 16-status vocabulary"
 assert set(_TOAST_MUST_CONTAIN) == set(_STATUS_CASES), (
     "every status case needs the text its toast must carry"
 )
@@ -1336,7 +1377,7 @@ assert set(_TOAST_MUST_CONTAIN) == set(_STATUS_CASES), (
 def test_every_scan_status_toasts_non_empty_text(live_server, authed_page, status):
     """The pin: every status in the router's vocabulary toasts *something*.
 
-    Parametrised over the full 15-status table so a future status — or a
+    Parametrised over the full 16-status table so a future status — or a
     regressed data-scan-* attribute on an existing one — fails here instead
     of shipping a blank toast."""
     authed_page.goto(f"{live_server['url']}/scan")

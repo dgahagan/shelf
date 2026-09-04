@@ -24,7 +24,9 @@ var SCAN_OK_STATUSES = [
     'added', 'wishlisted', 'returned', 'confirmed', 'marked_read',
     'checked_out', 'moved', 'found', 'relocated'
 ];
-var SCAN_WARN_STATUSES = ['duplicate', 'already_checked_out', 'not_checked_out'];
+var SCAN_WARN_STATUSES = [
+    'duplicate', 'already_checked_out', 'not_checked_out', 'legacy_ambiguous'
+];
 
 function scanCardOutcome(root) {
     if (!root) return null;

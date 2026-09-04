@@ -23,6 +23,9 @@ All notable changes to Shelf are documented here. The format follows
   such as `036000291452` and `078073003501` were rejected. Contributed by
   [@martialartistslife](https://github.com/martialartistslife) in
   [#82](https://github.com/dgahagan/shelf/pull/82)
+- Legacy Scholastic UPC-A plus five-digit price-point book barcodes can be
+  verified against ISBN candidates, with ambiguous scans remembered only after
+  an explicit title choice.
 
 ## [0.31.0] - 2026-09-03
 
