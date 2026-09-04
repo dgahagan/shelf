@@ -50,6 +50,7 @@ New here? Start with **[Installation](installation.md)**, then
 | [Architecture](architecture.md) | Request path, middleware, data model, metadata pipeline, background jobs |
 | [Contributing](../CONTRIBUTING.md) | How to report bugs and send changes |
 | [Security policy](../SECURITY.md) | Reporting vulnerabilities; hardening posture |
+| [Roadmap](roadmap.md) | Where Shelf is likely to go next, by theme — direction, not a schedule |
 | [Changelog](../CHANGELOG.md) | What changed in each release |
 | [Code of conduct](../CODE_OF_CONDUCT.md) | Expected behaviour in project spaces |
 

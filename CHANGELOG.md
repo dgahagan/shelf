@@ -6,6 +6,14 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **A public roadmap.** [`docs/roadmap.md`](docs/roadmap.md) groups what Shelf
+  is likely to grow next into eight themes, with no dates and no ordering — it
+  is direction, not a schedule. It also lists the last five releases, and says
+  where to suggest something. Feature requests that fit get folded into a group
+  rather than sitting unanswered.
+
 ## [0.32.0] - 2026-09-04
 
 Some books never had an ISBN barcode. Before Bookland EAN, Scholastic and others

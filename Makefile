@@ -17,7 +17,7 @@ PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests \
-        badges check-badges \
+        badges check-badges check-roadmap \
         checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
@@ -128,8 +128,14 @@ badges:
 check-badges:
 	python scripts/stamp_test_badges.py --check
 
+# docs/roadmap.md is a projection of the private .devdocs/ROADMAP.md; the map in
+# .devdocs ties them together. Skips itself in a public clone, where .devdocs
+# (a symlink into the private repo) does not exist.
+check-roadmap:
+	python scripts/check_roadmap_map.py
+
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-alpine check-sw-version check-tests check-badges
+checks-fast: check-secrets check-csrf check-alpine check-sw-version check-tests check-badges check-roadmap
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.
