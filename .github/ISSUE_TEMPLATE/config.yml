@@ -3,6 +3,9 @@ contact_links:
   - name: Documentation
     url: https://github.com/dgahagan/shelf/tree/main/docs#readme
     about: Installation, configuration, user guide, FAQ and troubleshooting.
+  - name: Roadmap
+    url: https://github.com/dgahagan/shelf/blob/main/docs/roadmap.md
+    about: Where Shelf is likely to go next — your idea may already be planned.
   - name: Security vulnerability
     url: https://github.com/dgahagan/shelf/security/advisories/new
     about: Please report security issues privately, not as public issues.

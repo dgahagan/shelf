@@ -6,8 +6,10 @@ Here's what that means in practice:
 - **Bug reports are very welcome.** Please use the issue templates and include
   your version, browser, and any relevant logs (Settings → Logs, or
   `docker compose logs shelf`).
-- **Feature requests are welcome** — no promises. The roadmap follows what my
-  own library needs first, but user reports regularly shape it.
+- **Feature requests are welcome** — no promises. The
+  [roadmap](docs/roadmap.md) follows what my own library needs first, but user
+  reports regularly shape it, and requests that fit get folded into a group
+  there. It carries no dates and no ordering on purpose.
 - **Pull requests are considered**, and every open PR now gets a decision at
   each release — merged, or a comment saying what it is waiting on, or a
   comment saying why it is closed. That is a decision, not a review queue: it
