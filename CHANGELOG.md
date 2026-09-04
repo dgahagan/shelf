@@ -6,6 +6,16 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Adding a book by ISBN makes one fewer Open Library request.** The work
+  record backs both the author chain and the description, and each resolver
+  was fetching it separately — the same document twice, a round trip and a
+  rate limiter gate apart. Open Library edition and work requests routinely
+  take a second or more each, so scanning now settles noticeably sooner. The
+  result is unchanged, including a failed work or author request still
+  returning the edition it already had.
+
 ### Fixed
 
 - UPC-A check digits are validated with the standard weighting (odd positions
