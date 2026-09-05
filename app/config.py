@@ -165,6 +165,7 @@ JWT_EXPIRY_SECONDS = 7 * 24 * 3600  # 7 days
 # Map: settings key -> env var name
 SECRET_ENV_VARS = {
     "abs_url": "ABS_URL",
+    "abs_public_url": "ABS_PUBLIC_URL",
     "abs_token": "ABS_TOKEN",
     "hardcover_token": "HARDCOVER_TOKEN",
     "google_books_api_key": "GOOGLE_BOOKS_API_KEY",

@@ -38,6 +38,17 @@ URL and token, **Test**, then choose which libraries to include. Set an
 interval for automatic sync or run it by hand. Items removed from ABS can be
 cleaned up from the same card.
 
+**If Shelf reaches ABS at a different address than your browser does, fill in
+the Browser URL.** Shelf commonly talks to Audiobookshelf over a Docker network
+or a LAN hostname — `http://audiobookshelf:80` — while you open it through a
+reverse proxy at `https://audiobooks.example.com`. The **Listen on
+Audiobookshelf** and **Read on Audiobookshelf** links on an item page are built
+from the URL you configured, so with only the internal address set they point
+somewhere your browser cannot follow. The optional **Browser URL** field is used
+for those links and nothing else — sync, library discovery and cleanup keep
+using the Audiobookshelf URL above it. Leave it blank and the links behave
+exactly as before.
+
 **Repeat syncs are cheap and safe to run.** An item whose metadata has not
 changed since the last sync is left alone — not rewritten, and its cover is
 not downloaded again — and the summary on the card counts it under

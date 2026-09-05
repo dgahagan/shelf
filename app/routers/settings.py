@@ -11,12 +11,14 @@ from app.crypto import SENSITIVE_KEYS, encrypt_value, get_encryption_key
 from app.currency import CURRENCIES, invalidate_cache as invalidate_currency_cache
 from app.database import get_db, get_setting
 from app.nav import HIDEABLE_KEYS, invalidate_cache as invalidate_nav_cache
+from app.services import audiobookshelf
 from app.services.national import SEARCH_LANGS
 
 router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
 
 _INTEGRATION_KEYS = (
     "abs_url",
+    "abs_public_url",
     "abs_token",
     "isbndb_api_key",
     "tmdb_api_key",
@@ -53,12 +55,20 @@ async def update_settings(request: Request):
     (previously handled by echoing every credential as a hidden input).
     """
     form = await request.form()
+    # Validated before the transaction opens: a bad browser URL must leave the
+    # whole submission untouched, not write the other fields and reject one.
+    if "abs_public_url" in form:
+        public_url = (form.get("abs_public_url") or "").strip().rstrip("/")
+        if public_url and audiobookshelf.validate_url(public_url):
+            return RedirectResponse(
+                url="/settings?abs_public_url_error=invalid", status_code=303
+            )
     with get_db() as db:
         for key in _INTEGRATION_KEYS:
             if key not in form:
                 continue
             value = (form.get(key) or "").strip()
-            if key == "abs_url":
+            if key in ("abs_url", "abs_public_url"):
                 value = value.rstrip("/")
             _upsert_setting(db, key, value, cleared=form.get(f"clear_{key}") == "on")
     invalidate_nav_cache()  # hardcover_token gates the Discover tab

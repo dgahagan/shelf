@@ -31,6 +31,7 @@ priority** over anything stored:
 | `HARDCOVER_TOKEN` | Hardcover API token |
 | `GOOGLE_BOOKS_API_KEY` | Optional Google Books API key; anonymous lookups remain available when unset |
 | `ABS_URL`, `ABS_TOKEN` | Audiobookshelf server URL and API token |
+| `ABS_PUBLIC_URL` | Optional browser-facing Audiobookshelf URL, for **Listen** / **Read** links only. Set it when `ABS_URL` is an internal Docker or LAN address |
 | `ISBNDB_API_KEY` | ISBNdb key (valuation) |
 | `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray metadata **and** DVD cover search) — either the 32-character v3 API Key or the v4 Read Access Token |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video game metadata **and** game cover search — both fields are required) |
@@ -43,9 +44,12 @@ with two differences worth knowing:
 
 - **The Settings field stays blank.** Shelf never echoes a *secret* back into the
   page, whether it came from the database or the environment. Blank does not mean
-  unset — leave it blank and the environment value keeps working. (`ABS_URL` is
-  the exception: a server URL is not a secret, so the Audiobookshelf URL field
-  shows the value in use.)
+  unset — leave it blank and the environment value keeps working. (`ABS_URL` and
+  `ABS_PUBLIC_URL` are a partial exception: a server URL is not a secret, so
+  those fields show the value in use **when one was saved through the form**. A
+  value supplied only by the environment still renders the field blank, while
+  remaining in force — so if the field is empty but Audiobookshelf links work,
+  the variable is what is driving them.)
 - **Shelf cannot remove it.** The "Remove saved key" checkbox only deletes the
   stored row, and the environment variable still takes priority afterwards. To
   change or remove an env-supplied credential, change it in your environment and
@@ -76,7 +80,7 @@ lives:
 
 | Card | Options |
 |---|---|
-| **Audiobookshelf Sync** | Server URL + API token, **Test**, per-library include/exclude, sync interval, manual sync |
+| **Audiobookshelf Sync** | Server URL, optional browser URL, API token, **Test**, per-library include/exclude, sync interval, manual sync |
 | **Hardcover** | API token, import your Hardcover library, reading-status sync direction and schedule, export to Hardcover |
 | **Collection Valuation** | ISBNdb API key, valuate all / test key |
 | **Google Books** | Optional API key, **Test Key**. Authenticates the Google Books requests Shelf already makes; keyless access stays enabled without it |

@@ -1,5 +1,6 @@
 import json
 import logging
+from urllib.parse import urlparse
 
 import httpx
 
@@ -10,6 +11,24 @@ from app.services.item_write import ItemValueError, update_item_fields
 from app.services import isbn as isbn_svc
 
 logger = logging.getLogger(__name__)
+
+
+def validate_url(url: str) -> str | None:
+    """Validate an Audiobookshelf URL's scheme and hostname.
+
+    Returns an error message, or None when the URL is usable. Lives here rather
+    than in a router because both the sync router (the API endpoint) and the
+    settings router (the browser-facing endpoint) validate the same shape.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return "URL must use http:// or https://"
+        if not parsed.hostname:
+            return "Invalid URL"
+    except Exception:
+        return "Invalid URL"
+    return None
 
 
 def get_excluded_libraries() -> set[str]:
@@ -315,9 +334,18 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
     return stats
 
 
-def get_playback_url(abs_url: str, abs_id: str) -> str:
-    """Construct the Audiobookshelf web player URL."""
-    return f"{abs_url}/item/{abs_id}"
+def get_playback_url(abs_url: str, abs_id: str, public_url: str | None = None) -> str:
+    """Construct the browser-facing Audiobookshelf item URL.
+
+    ``abs_url`` stays the API/sync endpoint. ``public_url`` is the optional
+    ``abs_public_url`` setting, for deployments where Shelf reaches
+    Audiobookshelf over an internal Docker/LAN address while the user's browser
+    reaches it through a reverse proxy. Blank falls back to ``abs_url``, which
+    is the pre-existing behaviour. Both are read by the caller — this stays a
+    pure string builder because one caller maps it over every linked item.
+    """
+    base_url = (public_url or abs_url).rstrip("/")
+    return f"{base_url}/item/{abs_id}"
 
 
 def _normalize_title(title: str) -> str:

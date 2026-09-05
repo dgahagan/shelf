@@ -1,7 +1,6 @@
 import asyncio
 import json
 import logging
-from urllib.parse import urlparse
 
 import httpx
 from fastapi import APIRouter, Depends, Request, Form
@@ -16,17 +15,9 @@ from app.services import audiobookshelf
 logger = logging.getLogger(__name__)
 
 
-def _validate_abs_url(url: str) -> str | None:
-    """Validate ABS URL scheme and hostname."""
-    try:
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            return "URL must use http:// or https://"
-        if not parsed.hostname:
-            return "Invalid URL"
-    except Exception:
-        return "Invalid URL"
-    return None
+# The validator lives with the ABS service: the settings router validates the
+# browser-facing URL against the same shape.
+_validate_abs_url = audiobookshelf.validate_url
 
 router = APIRouter(prefix="/api/sync", dependencies=[Depends(require_role("admin"))])
 

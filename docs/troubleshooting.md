@@ -313,6 +313,25 @@ Keep `encryption.key` with any copy of `data/` you intend to restore from — se
 - Env-var overrides (`HARDCOVER_TOKEN`, `ABS_TOKEN`) beat what's stored —
   if you changed the key in Settings and nothing changed, check your `.env`.
 
+## The Listen / Read on Audiobookshelf link goes nowhere
+
+The item page shows the button, but clicking it lands on a page that will not
+load — a timeout, or a name your browser cannot resolve.
+
+Shelf is reaching Audiobookshelf at an address your browser cannot. That is
+normal when Shelf runs in Docker and talks to ABS over the container network
+(`http://audiobookshelf:80`) or a LAN hostname, while you open Audiobookshelf
+through a reverse proxy on a public name.
+
+Fill in **Browser URL** under Settings → Integrations → Audiobookshelf Sync with
+the address *you* type into your browser. It is used for these links and nothing
+else — sync, library discovery and cleanup keep using the Audiobookshelf URL
+above it. `ABS_PUBLIC_URL` does the same from the environment.
+
+If the field looks empty but the links already work, an `ABS_PUBLIC_URL` in your
+environment is driving them: an env-only value renders the field blank while
+staying in force.
+
 ## A scan comes back empty and the log says a provider asked for a long wait
 
 A barcode scan returns quickly with no metadata ("Not found"), or a cover

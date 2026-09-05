@@ -40,6 +40,21 @@
                 <input type="url" id="abs_url" name="abs_url" x-model="absUrl" value="{{ settings.get('abs_url', '') }}" placeholder="http://localhost:13378"
                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
             </div>
+            {# Optional browser-facing root. The URL above may be an internal
+               Docker/LAN address that the user's browser cannot reach. #}
+            <div>
+                <label for="abs_public_url" class="block text-sm font-medium text-shelf-muted mb-1">Browser URL <span class="text-shelf-muted font-normal">(optional)</span></label>
+                {% if request.query_params.get('abs_public_url_error') == 'invalid' %}
+                <p class="mb-1.5 text-xs text-shelf-error" data-testid="abs-public-url-error">
+                    Browser URL must be a valid http:// or https:// URL.
+                </p>
+                {% endif %}
+                <input type="url" id="abs_public_url" name="abs_public_url" value="{{ settings.get('abs_public_url', '') }}" placeholder="https://audiobooks.example.com"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <p class="mt-1 text-xs text-shelf-muted">
+                    Used only for <span class="text-shelf-text">Listen</span> and <span class="text-shelf-text">Read on Audiobookshelf</span> links. Set it when Shelf reaches Audiobookshelf over a Docker or LAN address but your browser uses a reverse-proxy domain. Leave blank to use the URL above.
+                </p>
+            </div>
             <div>
                 <label for="abs_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
                 <div class="flex gap-2">

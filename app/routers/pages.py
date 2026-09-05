@@ -213,13 +213,17 @@ async def item_detail(
         abs_url = None
         linked_abs_items = []
         abs_url_val = get_setting(db, "abs_url")
+        # The browser-facing root, read once here rather than inside
+        # get_playback_url: the comprehension below calls it per linked item,
+        # and a lookup there would open a nested connection each time.
+        abs_public_url_val = get_setting(db, "abs_public_url")
         if abs_url_val:
             from app.services.audiobookshelf import get_playback_url
             if item["abs_id"]:
-                abs_url = get_playback_url(abs_url_val, item["abs_id"])
+                abs_url = get_playback_url(abs_url_val, item["abs_id"], abs_public_url_val)
             linked_abs_items = [
                 {"id": li["id"], "media_type": li["media_type"],
-                 "abs_url": get_playback_url(abs_url_val, li["abs_id"])}
+                 "abs_url": get_playback_url(abs_url_val, li["abs_id"], abs_public_url_val)}
                 for li in linked_items if li["abs_id"]
             ]
 

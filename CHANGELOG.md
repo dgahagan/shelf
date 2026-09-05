@@ -6,6 +6,32 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.34.0] - 2026-09-05
+
+Shelf and your browser do not always reach Audiobookshelf at the same address.
+Shelf commonly talks to it over a Docker network or a LAN hostname, while you
+open Audiobookshelf through a reverse proxy on a public name. The **Listen on
+Audiobookshelf** and **Read on Audiobookshelf** links on an item page were
+built from the address Shelf uses for its own API calls, so in those setups
+they pointed somewhere your browser could not follow. There is now a second,
+optional URL for the links alone.
+
+This release is the work of [@sudo-rpaisley](https://github.com/sudo-rpaisley).
+
+### Added
+
+- **An optional browser URL for Audiobookshelf links.** Shelf often reaches
+  Audiobookshelf over a Docker network or a LAN hostname while your browser
+  reaches the same server through a reverse proxy. The **Listen on
+  Audiobookshelf** and **Read on Audiobookshelf** links on an item page were
+  built from that internal address, so they opened somewhere the browser could
+  not follow. Settings → Integrations → Audiobookshelf Sync now has a **Browser
+  URL** field, used for those links and nothing else — sync, library discovery
+  and cleanup keep using the Audiobookshelf URL above it. Leave it blank and
+  nothing changes. It can also be supplied as `ABS_PUBLIC_URL`. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#80](https://github.com/dgahagan/shelf/pull/80)
+
 ## [0.33.1] - 2026-09-05
 
 Adding the same item twice at the same moment could file it twice. Every place
@@ -2857,6 +2883,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.34.0]: https://github.com/dgahagan/shelf/releases/tag/v0.34.0
 [0.33.1]: https://github.com/dgahagan/shelf/releases/tag/v0.33.1
 [0.33.0]: https://github.com/dgahagan/shelf/releases/tag/v0.33.0
 [0.32.0]: https://github.com/dgahagan/shelf/releases/tag/v0.32.0
