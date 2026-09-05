@@ -13,6 +13,7 @@ from app.routers import hardcover as hc_router
 from app.services import hardcover as hc_svc
 from app.services.item_write import InvalidIsbn, READING_STATUSES
 from tests.conftest import _insert_item
+from tests.test_intake import _install_lock_probe
 
 ASIN = "B00EXAMPLE"
 
@@ -70,6 +71,127 @@ class TestAddToShelfIsbnPreclean:
         assert resp.status_code == 200
         assert resp.json() == {"ok": False, "message": "forced for the test"}
         assert db.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"] == 0
+
+
+class TestAddToShelfDuplicateGuards:
+    """T4/issue #83: the two duplicate guards now read under the write lock
+    instead of a separate pre-check block. Confirm the observable outcome
+    is unchanged for each arm, and that the two arms together still catch
+    the duplicate rather than one arm's None overwriting the other's hit."""
+
+    def test_hardcover_book_id_arm_reports_duplicate_without_inserting(self, editor_client, db):
+        existing_id = _insert_item(
+            db, title="Existing Book", isbn=None, hardcover_book_id=555,
+        )
+        db.execute("COMMIT")
+
+        resp = editor_client.post(
+            "/api/hardcover/add-to-shelf",
+            json={"title": "Existing Book", "hardcover_book_id": 555},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "ok": False, "message": "Already in your library", "item_id": existing_id,
+        }
+        assert db.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"] == 1
+
+    def test_isbn_arm_reports_duplicate_without_inserting(self, editor_client, db):
+        existing_id = _insert_item(
+            db, title="Existing Book", isbn="9780441013593", hardcover_book_id=None,
+        )
+        db.execute("COMMIT")
+
+        resp = editor_client.post(
+            "/api/hardcover/add-to-shelf",
+            json={"title": "Existing Book", "isbn": "9780441013593"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "ok": False, "message": "Already in your library", "item_id": existing_id,
+        }
+        assert db.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"] == 1
+
+    def test_hardcover_book_id_hit_is_not_overwritten_by_a_non_matching_isbn(
+        self, editor_client, db,
+    ):
+        """G31 pin: a request can carry a matching hardcover_book_id *and*
+        an isbn that matches nothing in the library. The hardcover_book_id
+        arm's hit must survive — a bare second `if isbn:` would overwrite
+        `existing` with the isbn arm's None and let the insert through.
+        Neither of the two tests above covers this: each seeds and sends
+        only one field."""
+        existing_id = _insert_item(
+            db, title="Existing Book", isbn="9780000000026", hardcover_book_id=555,
+        )
+        db.execute("COMMIT")
+
+        resp = editor_client.post(
+            "/api/hardcover/add-to-shelf",
+            json={
+                "title": "Existing Book", "hardcover_book_id": 555,
+                "isbn": "9780441013593",
+            },
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "ok": False, "message": "Already in your library", "item_id": existing_id,
+        }
+        assert db.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"] == 1
+
+    def test_a_missing_hardcover_book_id_still_falls_through_to_the_isbn_arm(
+        self, editor_client, db,
+    ):
+        """The two arms fall through, and must keep doing so. A book added by
+        barcode scan carries an isbn and no hardcover_book_id; adding it again
+        from Hardcover search sends both fields, so the id arm misses and the
+        isbn arm is what recognises it. Writing the second arm as `elif`
+        instead of `if not existing` skips it here, and the request reaches
+        the insert where UNIQUE(isbn, media_type) raises an uncaught
+        IntegrityError — a 500 where this body belongs. `main` returns the
+        duplicate body for this request; so must the locked version."""
+        existing_id = _insert_item(
+            db, title="Scanned Book", isbn="9780441013593", hardcover_book_id=None,
+        )
+        db.execute("COMMIT")
+
+        resp = editor_client.post(
+            "/api/hardcover/add-to-shelf",
+            json={"title": "Scanned Book", "hardcover_book_id": 777,
+                  "isbn": "9780441013593"},
+        )
+
+        assert resp.status_code == 200
+        assert resp.json() == {
+            "ok": False, "message": "Already in your library", "item_id": existing_id,
+        }
+        assert db.execute("SELECT COUNT(*) AS c FROM items").fetchone()["c"] == 1
+
+    def test_guards_read_under_the_write_lock(self, editor_client, db, monkeypatch):
+        """G18: a rival writer must not be able to take the write lock while
+        the hardcover_book_id guard is being read — see `_install_lock_probe`
+        in tests/test_intake.py for the mechanics."""
+        probe_results = []
+
+        def predicate(sql):
+            return "hardcover_book_id = ?" in sql
+
+        _install_lock_probe(monkeypatch, hc_router, predicate, probe_results)
+
+        resp = editor_client.post(
+            "/api/hardcover/add-to-shelf",
+            json={"title": "Lockable Book", "hardcover_book_id": 999},
+        )
+
+        assert resp.status_code == 200
+        assert probe_results, "the guard query never ran — the probe did not fire"
+        assert probe_results[-1].startswith("locked"), (
+            f"a rival writer could take the write lock while add_hardcover_to_shelf's "
+            f"duplicate guard was being read (got {probe_results[-1]!r}) — the route "
+            "is missing its BEGIN IMMEDIATE, or takes it after the guard SELECT (G18)"
+        )
 
 
 class TestImportMetadataIsbnPreclean:

@@ -88,17 +88,6 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
     isbn = data.get("isbn")
     hc_book_id = data.get("hardcover_book_id")
 
-    # Check duplicate
-    with get_db() as db:
-        if hc_book_id:
-            existing = db.execute("SELECT id FROM items WHERE hardcover_book_id = ?", (hc_book_id,)).fetchone()
-            if existing:
-                return {"ok": False, "message": "Already in your library", "item_id": existing["id"]}
-        if isbn:
-            existing = db.execute("SELECT id FROM items WHERE isbn = ?", (isbn,)).fetchone()
-            if existing:
-                return {"ok": False, "message": "Already in your library", "item_id": existing["id"]}
-
     # Download cover
     cover_path = None
     cover_url = data.get("cover_url")
@@ -106,6 +95,13 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
     # A Hardcover ISBN is a provider value: pre-cleaned per #54 rather than
     # refused — a bad check digit is dropped, not rejected outright, since
     # this endpoint has no scan card to show the user a refusal on.
+    #
+    # This pre-clean (and its logger.warning below) stays here, above the
+    # write-lock block, rather than moving down to sit next to the insert.
+    # SQLiteHandler opens its own connection to write log_entries, so a log
+    # call made from inside a BEGIN IMMEDIATE block blocks on the lock that
+    # same block holds and waits out SQLite's 5s busy timeout (G3). The guard
+    # moves down to the insert; the insert never moves up to the log call.
     isbn_pair = isbn_svc.canonical_isbn_pair(isbn) if isbn else None
     if isbn and isbn_pair is None:
         logger.warning(
@@ -114,30 +110,64 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
         )
     isbn_clean, isbn10 = isbn_pair or (None, None)
 
+    # --- Duplicate check, under the write lock (G18).
+    #
+    # This used to be a standalone pre-check block, read before the insert
+    # block ever took the lock — a rival Add click had the whole gap between
+    # the two blocks to commit the same hardcover_book_id or isbn row. BEGIN
+    # IMMEDIATE must be this block's first statement, above the guard
+    # queries, so the check and the insert see one consistent state.
+    #
+    # The isbn arm is guarded on `not existing`, not a bare `if`: a request
+    # can carry a matching hardcover_book_id *and* a non-matching isbn, and a
+    # bare second `if` would overwrite the first arm's hit with the second
+    # arm's None — inserting exactly the duplicate this guard exists to stop.
+    #
+    # It is `if not existing`, though, and NOT `elif`. The two arms fall
+    # through today: a hardcover_book_id that misses still lets the isbn arm
+    # run, which is how a book added by barcode scan (isbn, no
+    # hardcover_book_id) is recognised when it is added again from Hardcover
+    # search (both fields sent, the id missing). An `elif` skips that arm and
+    # the request reaches the insert, where `UNIQUE(isbn, media_type)` raises
+    # an uncaught IntegrityError — a 500 where the duplicate body belongs.
+    existing = None
+    item_id = None
     value_error = None
     with get_db() as db:
-        try:
-            item_id = insert_item(
-                db,
-                title=title,
-                authors=data.get("authors"),
-                isbn=isbn_clean,
-                isbn10=isbn10,
-                media_type="book",
-                publisher=data.get("publisher"),
-                publish_year=data.get("year"),
-                page_count=data.get("pages"),
-                description=data.get("description"),
-                series_name=data.get("series_name"),
-                series_position=data.get("series_position"),
-                reading_status="want_to_read",
-                source="hardcover",
-                owned=0,
-                hardcover_book_id=hc_book_id,
-            )
-        except ItemValueError as e:
-            value_error = str(e)
+        db.execute("BEGIN IMMEDIATE")
+        if hc_book_id:
+            existing = db.execute(
+                "SELECT id FROM items WHERE hardcover_book_id = ?", (hc_book_id,)
+            ).fetchone()
+        if not existing and isbn:
+            existing = db.execute(
+                "SELECT id FROM items WHERE isbn = ?", (isbn,)
+            ).fetchone()
+        if existing is None:
+            try:
+                item_id = insert_item(
+                    db,
+                    title=title,
+                    authors=data.get("authors"),
+                    isbn=isbn_clean,
+                    isbn10=isbn10,
+                    media_type="book",
+                    publisher=data.get("publisher"),
+                    publish_year=data.get("year"),
+                    page_count=data.get("pages"),
+                    description=data.get("description"),
+                    series_name=data.get("series_name"),
+                    series_position=data.get("series_position"),
+                    reading_status="want_to_read",
+                    source="hardcover",
+                    owned=0,
+                    hardcover_book_id=hc_book_id,
+                )
+            except ItemValueError as e:
+                value_error = str(e)
 
+    if existing:
+        return {"ok": False, "message": "Already in your library", "item_id": existing["id"]}
     if value_error:
         return {"ok": False, "message": value_error}
 

@@ -1805,6 +1805,263 @@ class TestTheResolvedTitleIsReChecked:
             "SELECT COUNT(*) c FROM items WHERE media_type = 'dvd'").fetchone()["c"] == 1
 
 
+def _install_lock_probe(monkeypatch, module, predicate, probe_results):
+    """Wrap `module.get_db` so a rival writer probes the lock at guard time.
+
+    The shape of `tests/test_checkouts.py::
+    test_delete_borrower_guard_reads_under_write_lock`. Every statement passes
+    through to the real connection; when one matches `predicate`, a second
+    connection opened with `timeout=0` tries `BEGIN IMMEDIATE` and records
+    whether it got the write lock. "acquired" means the guard was reading
+    outside the lock. `module` is the module that *imports* `get_db` by name —
+    all three routers do, so patching the using module reaches every call site
+    in it (G37).
+    """
+    import sqlite3
+    from contextlib import contextmanager
+
+    import app.config
+
+    real_get_db = module.get_db
+
+    class LockProbingConnection:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+        def execute(self, sql, *args, **kwargs):
+            result = self._conn.execute(sql, *args, **kwargs)
+            if predicate(sql):
+                rival = sqlite3.connect(str(app.config.DATABASE_PATH), timeout=0)
+                try:
+                    rival.execute("BEGIN IMMEDIATE")
+                    probe_results.append("acquired")
+                    rival.rollback()
+                except sqlite3.OperationalError as exc:
+                    probe_results.append(f"locked: {exc}")
+                finally:
+                    rival.close()
+            return result
+
+    @contextmanager
+    def probing_get_db():
+        with real_get_db() as conn:
+            yield LockProbingConnection(conn)
+
+    monkeypatch.setattr(module, "get_db", probing_get_db)
+
+
+class TestConfirmGuardsReadUnderTheWriteLock:
+    """G18: each of confirm's three deciding guards reads under the lock.
+
+    `get_db()` hands back sqlite3's deferred isolation, which opens no
+    transaction for a bare SELECT, so without `BEGIN IMMEDIATE` as the insert
+    block's first statement the lock is taken at the INSERT and a rival can
+    commit the same row in the window. One case per guard query, because the
+    three run under different conditions and a single probe would only ever
+    exercise whichever fires first.
+
+    Two of these cases replace *interleaving* pins the design asked for. A
+    rival-committed-during-the-lookup pin for the resolved-title and
+    weak-path-ISBN guards would pass with `BEGIN IMMEDIATE` removed — both
+    already read inside the insert block, so a rival that committed before the
+    block opened is visible to a bare SELECT just as it is to a locked one.
+    That is the G31 failure ("a pin that passes both ways is worse than no
+    pin"); the probe is what actually goes red. The unchanged-title race *is*
+    pinned, in `TestConfirmRaces`.
+    """
+
+    @pytest.mark.parametrize("case", ["unchanged_title", "resolved_title", "weak_path_isbn"])
+    @respx.mock
+    def test_each_deciding_guard_reads_under_the_write_lock(
+        self, case, admin_client, db, monkeypatch,
+    ):
+        import app.routers.intake as intake_mod
+
+        probe_results = []
+
+        if case == "unchanged_title":
+            # The step-1 query, which runs twice: once as the unlocked
+            # pre-check and once as the locked re-check.
+            def predicate(sql):
+                return "IFNULL(authors" in sql
+
+            respx.get(OL_SEARCH_URL).mock(
+                return_value=httpx.Response(200, json={"docs": []}))
+            payload = {"title": "Lockable Zine", "authors": "A Person"}
+        elif case == "resolved_title":
+            # The 4a query: title + media_type, no authors scope.
+            def predicate(sql):
+                return "title = ?" in sql and "IFNULL" not in sql
+
+            from app.services import provider_result
+
+            respx.get(OL_SEARCH_URL).mock(
+                return_value=httpx.Response(200, json={"docs": []}))
+            _stub_tmdb(monkeypatch, provider_result.found("tmdb", FILM_META))
+            _set_provider_creds(monkeypatch)
+            payload = {"title": "MAD MAX FURY ROAD", "media_type": "dvd"}
+        else:
+            # The step-4 query, on an ISBN that came from the weak-path lookup.
+            def predicate(sql):
+                return "isbn = ?" in sql
+
+            respx.get(OL_SEARCH_URL).mock(return_value=httpx.Response(200, json={"docs": [{
+                "title": "Dune", "author_name": ["Frank Herbert"], "isbn": [ISBN13],
+            }]}))
+            payload = {"title": "Dune", "authors": "Frank Herbert"}
+
+        _install_lock_probe(monkeypatch, intake_mod, predicate, probe_results)
+
+        resp = admin_client.post("/api/intake/confirm", json={"books": [payload]})
+        assert resp.status_code == 200
+
+        assert probe_results, f"[{case}] the guard query never ran — the probe did not fire"
+        if case == "unchanged_title":
+            # Step 1 is *deliberately* outside the lock: it is a pre-check that
+            # saves two paced outbound calls and decides nothing. Pin that too,
+            # or a probe that only ever fired on the locked connection could be
+            # "fixed" by making it pass on the pre-check instead (G31).
+            assert probe_results[0] == "acquired", (
+                "step 1's pre-check took the write lock — it must not; holding "
+                "it across the outbound lookups stalls every other writer "
+                f"(got {probe_results[0]!r})"
+            )
+            assert len(probe_results) == 2, (
+                "the step-1 query must run exactly twice — once unlocked as the "
+                f"pre-check, once under the lock as the re-check (got {probe_results!r})"
+            )
+        assert probe_results[-1].startswith("locked"), (
+            f"[{case}] a rival writer could take the write lock while a deciding "
+            f"guard was being read (got {probe_results[-1]!r}) — the route is "
+            "missing its BEGIN IMMEDIATE, or takes it after the guard SELECT (G18)"
+        )
+
+
+def _install_blind_once(monkeypatch, module, predicate):
+    """Wrap `module.get_db` so the *first* statement matching `predicate`,
+    across any connection the module opens, comes back with an empty
+    result — once. Every later statement, including one that matches the
+    same predicate, passes straight through to the real connection.
+
+    Blinds the query, not the route: `module` is the module that imports
+    `get_db` by name (G37), so patching it here reaches every `get_db()`
+    call site inside it — the same shape as `_install_lock_probe` above.
+    Models a race tighter than the write lock: the guard reads empty even
+    though a rival row already sits there, so the second defensive layer
+    (the `except sqlite3.IntegrityError:` handler) is what has to catch it.
+    """
+    from contextlib import contextmanager
+
+    real_get_db = module.get_db
+    state = {"blinded": False}
+
+    class _EmptyCursor:
+        def fetchone(self):
+            return None
+
+        def fetchall(self):
+            return []
+
+    class BlindingConnection:
+        def __init__(self, conn):
+            self._conn = conn
+
+        def __getattr__(self, name):
+            return getattr(self._conn, name)
+
+        def execute(self, sql, *args, **kwargs):
+            if not state["blinded"] and predicate(sql):
+                state["blinded"] = True
+                return _EmptyCursor()
+            return self._conn.execute(sql, *args, **kwargs)
+
+    @contextmanager
+    def blinding_get_db():
+        with real_get_db() as conn:
+            yield BlindingConnection(conn)
+
+    monkeypatch.setattr(module, "get_db", blinding_get_db)
+
+
+class TestConfirmRaces:
+    """Two of intake's defenses against a rival writer need their own pin
+    (G31 — "a duplicated handler needs one pin each"): the unconditional
+    title re-check T1 added inside the locked block (4-pre), and the weak
+    insert path's own copy of the `IntegrityError` classification. Both
+    would pass against the pre-T1 shape if written as plain interleaving
+    pins on the *other* two guards (resolved-title, weak-path ISBN) — those
+    already read inside the insert block, so a rival that committed before
+    the block opened is visible to a bare SELECT just as to a locked one.
+    That case is covered by `TestConfirmGuardsReadUnderTheWriteLock`'s probe
+    instead.
+    """
+
+    @respx.mock
+    def test_rival_title_committed_during_the_lookup_is_still_caught(
+        self, admin_client, db, monkeypatch,
+    ):
+        """Step 1's pre-check passes before the rival commits — T1's
+        unconditional re-check inside the locked block is what catches it.
+        Without that re-check this goes red with two rows (mutation check)."""
+        from app.services import openlibrary
+        from tests.conftest import _insert_item as insert
+
+        async def fake_search(title, author, client, *, lang="en"):
+            from app.database import get_db
+            with get_db() as rival:
+                insert(rival, title="Dune", authors="Frank Herbert",
+                       isbn=None, media_type="book")
+            return []
+
+        monkeypatch.setattr(openlibrary, "search_by_title_author", fake_search)
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "authors": "Frank Herbert", "media_type": "book"}],
+        })
+
+        data = resp.json()
+        assert data["added"] == []
+        assert data["skipped"][0]["reason"] == "already in library"
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE title = 'Dune'").fetchone()["c"] == 1
+
+    @respx.mock
+    def test_weak_path_isbn_guard_blinded_once_still_classifies_the_integrity_error(
+        self, admin_client, db, monkeypatch,
+    ):
+        """Layer 2: the strong path's `IntegrityError` classification
+        (`_save_item`) is pinned at :1170; this pins the weak insert path's
+        own copy, in this block's `except sqlite3.IntegrityError:` handler.
+        Blind the query, not the route — `_confirm_one` and the router run
+        for real throughout."""
+        import app.routers.intake as intake_mod
+        from app.services import openlibrary
+        from tests.conftest import _insert_item as insert
+
+        insert(db, title="Dune (rival)", isbn=ISBN13, media_type="book")
+        db.execute("COMMIT")  # G48 — committed before the request
+
+        async def fake_search(title, author, client, *, lang="en"):
+            return [{"title": "Dune", "authors": "Frank Herbert", "isbn": ISBN13,
+                      "languages": []}]
+
+        monkeypatch.setattr(openlibrary, "search_by_title_author", fake_search)
+        _install_blind_once(monkeypatch, intake_mod, lambda sql: "isbn = ?" in sql)
+
+        resp = admin_client.post("/api/intake/confirm", json={
+            "books": [{"title": "Dune", "authors": "Frank Herbert", "media_type": "book"}],
+        })
+
+        data = resp.json()
+        assert data["added"] == []
+        assert data["skipped"][0]["reason"] == "ISBN already in library"
+        assert db.execute(
+            "SELECT COUNT(*) c FROM items WHERE isbn = ?", (ISBN13,)).fetchone()["c"] == 1
+
+
 class TestBooksAreUnchanged:
     @respx.mock
     def test_an_enriched_book_reports_matched(self, admin_client, db, monkeypatch):

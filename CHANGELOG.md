@@ -6,6 +6,34 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.33.1] - 2026-09-05
+
+Adding the same item twice at the same moment could file it twice. Every place
+Shelf adds something after first checking whether you already own it — Photo
+Intake's confirm, *Add* on a video-game or DVD search result, *Add to shelf* on
+a Hardcover result — did the check and the write as two separate steps, with a
+gap in between. Two confirmations of the same photo, a double-clicked *Add*, or
+a retried request could both pass the check and both insert. Titles were the
+exposed case: an ISBN or a barcode already had a database constraint behind it
+that caught the second write, but a title had nothing.
+
+### Fixed
+
+- **A duplicate is now reported instead of filed.** Photo Intake's confirm,
+  *Add* on a video-game or DVD search result, and *Add to shelf* on a Hardcover
+  result each take the database's write lock before they check, so the second
+  request sees the first one's row and reports "already in library" rather than
+  adding a second copy. Nothing changes about a single, ordinary add.
+  ([#83](https://github.com/dgahagan/shelf/issues/83))
+
+Photo Intake still checks once, quickly, *before* it looks a book up online —
+that check only skips the lookup for something you plainly own, and it no
+longer decides anything on its own. Deliberately not done: no uniqueness rule
+was added on title. Two editions of one book — a hardcover and a paperback,
+different ISBNs — are legitimately separate rows, and a rule against them would
+break scanning, manual entry, CSV import and archive import for anyone who owns
+both.
+
 ## [0.33.0] - 2026-09-05
 
 Importing a CSV was quietly lying to you in two directions. If a row carried an
@@ -2829,6 +2857,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.33.1]: https://github.com/dgahagan/shelf/releases/tag/v0.33.1
 [0.33.0]: https://github.com/dgahagan/shelf/releases/tag/v0.33.0
 [0.32.0]: https://github.com/dgahagan/shelf/releases/tag/v0.32.0
 [0.31.0]: https://github.com/dgahagan/shelf/releases/tag/v0.31.0

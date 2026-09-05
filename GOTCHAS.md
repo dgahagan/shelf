@@ -67,7 +67,24 @@ into subagent prompts).
   tracebacks, and dropped log records on a real pre-0.5.0 DB upgrade.
   Surfaced only in the manual pass on a real database — unit fixtures build
   fresh DBs and never exercised the path.
+- **And a G3 violation made through `logger.*` reddens nothing.**
+  `SQLiteHandler.emit` wraps its own write in `except Exception:
+  self.handleError(record)` (`app/log_handler.py:22-33`), so the busy timeout is
+  caught inside the handler and the request completes normally. The cost is five
+  seconds and a dropped log record, not a failing test — which is why the trap
+  survived in four routes until someone went looking. Measured on
+  `feat/issue-83-dupe-guards-under-lock` (2026-09-05): moving
+  `hardcover.py`'s `logger.warning` inside the locked block took two tests from
+  ~0.5s to **11.21s** and both still passed. **A `_log_scan` inside the block
+  behaves differently** — `items_common._log_scan` writes `scan_log` on its own
+  connection with no `try`, so it raises `sqlite3.OperationalError: database is
+  locked` after ~6.3s and the test does go red (measured the same day, T3's
+  mutation on the game and DVD adds). So when you mutation-check a G3 claim:
+  expect red from a bare second connection, and expect a **stopwatch** from
+  anything routed through `logging`. If your only pin is "the test still
+  passes", you have not checked G3 at all.
 - **Evidence:** `7f4c645` (2026-08-18, found in the 0.5.0 manual pass).
+  The logging-is-silent half: `af6b7a7` and `6def115` (2026-09-05, issue #83).
 - **Verify:** on a scratch DB, a `log_entries` insert on a second connection
   while a write transaction is open must still wait out the busy timeout
   (~5s) and fail — "no lock" means the contention behavior changed and this
@@ -457,14 +474,35 @@ PY
   guard that created the hazard** — check whether the shape predates it before
   rating the finding, and check whether the new code made the window wider or
   narrower.
-- **Verify:** both regression tests must still pass — the migration one drives
-  a second runner to completion inside the first runner's snapshot read, and
-  the route one probes from inside the guard that a rival writer is already
+  **Fourth instance, and the one that says how far the shape spreads:** issue
+  #83, fixed 2026-09-05 across `feat/issue-83-dupe-guards-under-lock`. The
+  survey that plan ran found the same guard-in-one-block, insert-in-another
+  shape in **four** routes, not the one the issue named — photo intake's
+  confirm (`intake.py`), the game and DVD adds (`items_catalog.py`) and the
+  Hardcover add-to-shelf (`hardcover.py`). Three of them had no constraint
+  behind the key at all, so the transaction was the whole of the defence.
+  **When one instance of this shape turns up, grep for the rest before
+  scoping the fix** — `git grep -n "with get_db"` per router and look for two
+  blocks with a decision between them; the cost of the fourth site was the same
+  idiom a fourth time, and the cost of finding it late would have been a second
+  plan.
+  **The second thing that instance taught: no test had to fail.** None of the
+  three sibling routes had *any* duplicate-outcome test — only rejection-case
+  boundary tests — so the guards could have been moved anywhere, or broken
+  outright, with a green suite. A lock probe pins *where* the guard reads; it
+  says nothing about what the route answers. Add the outcome test too, or the
+  probe is the only thing standing between the route and a silent regression.
+- **Verify:** all four regression tests must still pass — the migration one
+  drives a second runner to completion inside the first runner's snapshot read,
+  and the route ones probe from inside the guard that a rival writer is already
   locked out:
 
 ```bash
 python -m pytest tests/test_items.py -k overlapping_runners -q
 python -m pytest tests/test_checkouts.py -k guard_reads_under_write_lock -q
+python -m pytest tests/test_intake.py -k under_the_write_lock -q
+python -m pytest tests/test_catalogue_add_boundaries.py tests/test_hardcover_isbn_funnel.py \
+  -k write_lock -q
 ```
 
 - **Status:** documented.
@@ -3316,6 +3354,63 @@ grep -n "check-badges\|stamp_test_badges" Makefile
 - **Status:** documented. Not a lint candidate — `make check-badges` already
   catches the drift; what no checker can see is a *plan* assigning the
   restamp to the wrong task.
+
+## G81 — When early-returning guards become arms that set a shared variable
+
+- **Rule:** Converting `if A: … return X` / `if B: … return X` into one block
+  that sets a carried-out `existing` changes the control flow **twice**, and
+  the two changes pull in opposite directions. The second arm must not
+  overwrite the first arm's hit (`if not existing and B:`), and it must still
+  *run* when the first arm missed (`if`, **never** `elif`). Write the guard
+  as `if not existing and B:` and pin **both** halves — one test per wrong
+  spelling, because neither wrong spelling fails the other's test.
+- **Why:** early `return`s hide two behaviours inside one shape. A `return`
+  ends the request, so the second `if` reads as "only reached when the first
+  found nothing" — it is simultaneously an exclusion *and* a fall-through, and
+  a refactor to a shared variable has to reproduce both on purpose. Fix one and
+  you break the other:
+  - **A bare second `if`** loses the exclusion: arm B's `None` overwrites arm
+    A's hit, and the route inserts the duplicate it was guarding against.
+  - **`elif`** loses the fall-through: arm B never runs when arm A was tried
+    and missed, so a request carrying a *missing* A-key and a *matching*
+    B-key sails past the guard.
+- **This is the trap that ate a review and its own fix.** On issue #83's plan,
+  a cross-vendor plan review (Antigravity/gemini, filed blocker `gemini-R1`)
+  correctly caught the overwrite in the plan's task text before any code
+  existed, and proposed `elif not existing and isbn:`. Triage confirmed it, the
+  plan was amended, and the amendment introduced the mirror defect: on
+  `main`, `add_hardcover_to_shelf` checked `hardcover_book_id` and then **fell
+  through** to `isbn`, which is how a barcode-scanned row (an ISBN, no
+  `hardcover_book_id`) is recognised when the same book is added again from
+  Hardcover search — both fields sent, the id missing. Under `elif` that
+  request reached the insert and raised an uncaught
+  `UNIQUE(isbn, media_type)` IntegrityError: a **500** where the duplicate
+  body belongs. Caught at `/run-plan` only because the reviewer's rationale
+  ("a hit from the first arm survives a miss from the second") was checked
+  against the original control flow rather than transcribed.
+- **The tell:** a proposed one-word fix to a control-flow keyword. `elif`,
+  `and`, `or` and an early `return` all encode a *pair* of decisions; a review
+  finding that names one of them has, by construction, said nothing about the
+  other. Read the original for both.
+- **Evidence:** `af6b7a7` (2026-09-05, issue #83 T4). Five tests on the route,
+  two of which exist only for this: the two-arm overwrite case (seed an
+  A-match, send A **and** a non-matching B) and the fall-through case (seed a
+  B-match with no A, send a *missing* A **and** the matching B). Mutation-
+  checked both ways — a bare `if` reddens only the first, `elif` reddens only
+  the second, and the single-arm tests stay green under both.
+- **Verify:** judgement, but the shape is greppable — a guard block whose arms
+  assign a shared name rather than returning:
+
+```bash
+git grep -n "elif not existing\|elif existing" -- app/routers/
+git grep -n -B 2 "if existing is None:" -- app/routers/
+```
+
+  Every hit: check what the pre-refactor code did when the first arm *missed*.
+
+- **Status:** documented. Not a lint candidate — only the original code knows
+  which arms were meant to fall through, and after the refactor that
+  information exists nowhere but its own tests.
 
 ## Graveyard
 

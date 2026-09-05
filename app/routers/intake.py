@@ -148,6 +148,24 @@ def _isbn_taken(isbn13: str, media_type: str) -> bool:
         ).fetchone() is not None
 
 
+def _title_taken(db, title: str, authors: str, media_type: str) -> bool:
+    """True when (title, authors, media_type) is already in the library.
+
+    Takes the caller's connection, unlike `_isbn_taken`, and the difference is
+    deliberate. `_isbn_taken` exists to classify an IntegrityError raised by
+    `_save_item`, which manages a connection of its own, so it opens one too.
+    This one is called twice on two different terms: once by the unlocked
+    pre-check at step 1, and once by the re-check inside the insert block,
+    which *must* run on that block's connection or the write lock buys nothing
+    (G18). Declared once so the two cannot drift.
+    """
+    return db.execute(
+        "SELECT id FROM items WHERE title = ? COLLATE NOCASE "
+        "AND IFNULL(authors, '') = ? COLLATE NOCASE AND media_type = ?",
+        (title, authors, media_type),
+    ).fetchone() is not None
+
+
 async def _confirm_one(
     book: IntakeBook, client: httpx.AsyncClient, search_lang: str, preferred_marc: str,
     location_id: int | None, owned: bool, hc_token: str | None,
@@ -163,15 +181,20 @@ async def _confirm_one(
     title = book.title.strip()
     media_type = book.media_type
 
-    # 1. Title+authors dupe check, scoped to media type.
+    # 1. Title+authors pre-check, scoped to media type — and *only* a
+    # pre-check. It exists to spare a plainly-owned row the two paced outbound
+    # lookups below (steps 2 and 3); a photo of thirty owned books would
+    # otherwise spend thirty provider calls to learn nothing. It runs on its
+    # own connection, outside the write lock, deliberately: taking the lock
+    # here would hold SQLite's single writer across up to HTTP_TIMEOUT of
+    # network I/O, and the logger.warning calls in that window are the G3 trap.
+    # **It decides nothing.** The re-check inside the insert block below runs
+    # the same query under BEGIN IMMEDIATE and is the guard that decides
+    # (G18). Do not collapse this into that one as a duplicate, and do not
+    # promote it back into the decision.
     with get_db() as db:
-        dupe = db.execute(
-            "SELECT id FROM items WHERE title = ? COLLATE NOCASE "
-            "AND IFNULL(authors, '') = ? COLLATE NOCASE AND media_type = ?",
-            (title, book.authors or "", media_type),
-        ).fetchone()
-    if dupe:
-        return "skipped", {"title": title, "reason": "already in library"}, None
+        if _title_taken(db, title, book.authors or "", media_type):
+            return "skipped", {"title": title, "reason": "already in library"}, None
 
     # 2. A printed ISBN, if one survives re-validation, buys the full scan
     # cascade. The client value is re-cleaned server-side — the review field
@@ -319,6 +342,27 @@ async def _confirm_one(
             isbn13 = pair[0]
 
     with get_db() as db:
+        # G18. The write lock is taken here, as the block's *first* statement,
+        # above every guard query below. get_db() hands back sqlite3's deferred
+        # isolation, which opens no transaction for a bare SELECT — without
+        # this line the lock would be taken at the INSERT and a rival writer
+        # could commit the same row in between, which is exactly what the three
+        # guards below exist to prevent. Nothing that opens a second connection
+        # or writes a log record may run inside this block: it would wait out
+        # SQLite's 5s busy timeout against the lock this block holds and fail
+        # (G3). That is why step 1 stays above the lookups and why the cover
+        # download at 5b stays below the block.
+        db.execute("BEGIN IMMEDIATE")
+
+        # 4-pre. Step 1's pre-check decided nothing, and it read before the
+        # lock existed. Re-run it here, unconditionally, on the row's own
+        # *read* title — a rival that committed during the lookup window is
+        # visible to this query and was not visible to that one. This is the
+        # guard that decides.
+        if _title_taken(db, book.title.strip(), book.authors or "", media_type):
+            return "skipped", {
+                "title": book.title.strip(), "reason": "already in library"}, None
+
         # 4a. The dupe check at step 1 ran on the row's *read* title. A lookup
         # that resolved 'SPIDER-MAN 2' to *Marvel's Spider-Man 2* has moved the
         # target, so re-run it on the resolved title before inserting. Scoped

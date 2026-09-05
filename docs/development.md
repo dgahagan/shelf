@@ -145,6 +145,16 @@ provoke an error needs an explicit suppression contract designed first.
   `app/services/item_write.py`. Call it inside an existing `with get_db()`
   block. Adding a column to `items` no longer means auditing a dozen insert
   sites.
+- **A route that decides on a `SELECT` guards and writes in one
+  transaction.** `db.execute("BEGIN IMMEDIATE")` goes first in the block,
+  above the guard query — a bare `SELECT` opens no transaction, so guarding in
+  one block and inserting in another takes the write lock only at the INSERT
+  and a rival can commit in the window (`GOTCHAS.md` G18). Nothing that opens
+  a second connection or writes a log record may run inside that block; carry
+  the outcome out (`existing`, `item_id`, `value_error`) and act on it after
+  the block closes (G3). A pre-check placed *before* an outbound lookup is
+  allowed to read unlocked, because it only saves a paced request — it must
+  decide nothing.
 - **Item routes live in four modules** — `items.py` (scan, CRUD, search,
   bulk ops), `items_covers.py`, `items_csv.py` and `items_catalog.py` —
   sharing helpers from `items_common.py`. Import that as a *module* and call

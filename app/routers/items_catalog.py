@@ -109,44 +109,54 @@ async def add_game_from_search(
     # pre-map the sentinel here (#54).
     loc_id = location_id
 
+    # --- Duplicate check, under the write lock (G18).
+    #
+    # This used to be a standalone pre-check block, read before the insert
+    # block ever took the lock — a rival Add click had the whole IGDB
+    # round-trip above to commit the same (title, platform) row in between.
+    # BEGIN IMMEDIATE must be this block's first statement, above the guard
+    # query, so the check and the insert see one consistent state.
+    existing = None
+    item_id = None
+    value_error = None
     with get_db() as db:
-        # Check duplicate by title + platform
+        db.execute("BEGIN IMMEDIATE")
         existing = db.execute(
             "SELECT id, title FROM items WHERE title = ? AND media_type = 'video_game' AND platform = ?",
             (metadata["title"], platform_val),
         ).fetchone()
+        if existing is None:
+            # location_id is the funnel's to check (#54): insert_item raises
+            # ItemValueError and the card carries its message. Rendered after
+            # the block so nothing runs under the write.
+            try:
+                item_id = insert_item(
+                    db,
+                    title=metadata["title"],
+                    description=metadata.get("description"),
+                    media_type="video_game",
+                    publisher=metadata.get("publisher"),
+                    publish_year=metadata.get("publish_year"),
+                    series_name=metadata.get("series_name"),
+                    platform=platform_val,
+                    location_id=loc_id,
+                    source="igdb",
+                )
+            except ItemValueError as e:
+                value_error = str(e)
+
+    # _log_scan opens its own connection, so it must run outside the write
+    # transaction above or it blocks on the lock that block still holds.
+    if value_error:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": "", "message": value_error},
+        )
     if existing:
         items_common._log_scan("", "video_game", "duplicate", existing["id"])
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    # location_id is the funnel's to check (#54): insert_item raises
-    # ItemValueError and the card carries its message. Rendered after the
-    # block so nothing runs under the write.
-    value_error = None
-    with get_db() as db:
-        try:
-            item_id = insert_item(
-                db,
-                title=metadata["title"],
-                description=metadata.get("description"),
-                media_type="video_game",
-                publisher=metadata.get("publisher"),
-                publish_year=metadata.get("publish_year"),
-                series_name=metadata.get("series_name"),
-                platform=platform_val,
-                location_id=loc_id,
-                source="igdb",
-            )
-        except ItemValueError as e:
-            value_error = str(e)
-
-    if value_error:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": "", "message": value_error},
         )
 
     # Download cover
@@ -394,41 +404,51 @@ async def add_dvd_from_search(
     # pre-map the sentinel here (#54).
     loc_id = location_id
 
-    # Check duplicate by title
+    # --- Duplicate check, under the write lock (G18).
+    #
+    # This used to be a standalone pre-check block, read before the insert
+    # block ever took the lock — a rival Add click had the whole window
+    # above to commit the same title row in between. BEGIN IMMEDIATE must be
+    # this block's first statement, above the guard query, so the check and
+    # the insert see one consistent state.
+    existing = None
+    item_id = None
+    value_error = None
     with get_db() as db:
+        db.execute("BEGIN IMMEDIATE")
         existing = db.execute(
             "SELECT id, title FROM items WHERE title = ? AND media_type = 'dvd'",
             (title,),
         ).fetchone()
+        if existing is None:
+            # location_id is the funnel's to check (#54): insert_item raises
+            # ItemValueError and the card carries its message. Rendered after
+            # the block so nothing runs under the write.
+            try:
+                item_id = insert_item(
+                    db,
+                    title=title,
+                    description=description or None,
+                    media_type="dvd",
+                    publish_year=year,
+                    location_id=loc_id,
+                    source="tmdb",
+                )
+            except ItemValueError as e:
+                value_error = str(e)
+
+    # _log_scan opens its own connection, so it must run outside the write
+    # transaction above or it blocks on the lock that block still holds.
+    if value_error:
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": "", "message": value_error},
+        )
     if existing:
         items_common._log_scan("", "dvd", "duplicate", existing["id"])
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "duplicate", "isbn": "", "title": existing["title"], "item_id": existing["id"]},
-        )
-
-    # location_id is the funnel's to check (#54): insert_item raises
-    # ItemValueError and the card carries its message. Rendered after the
-    # block so nothing runs under the write.
-    value_error = None
-    with get_db() as db:
-        try:
-            item_id = insert_item(
-                db,
-                title=title,
-                description=description or None,
-                media_type="dvd",
-                publish_year=year,
-                location_id=loc_id,
-                source="tmdb",
-            )
-        except ItemValueError as e:
-            value_error = str(e)
-
-    if value_error:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": "", "message": value_error},
         )
 
     # Download cover

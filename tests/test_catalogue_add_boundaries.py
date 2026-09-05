@@ -3,7 +3,8 @@
 from unittest.mock import AsyncMock
 
 from app.routers import items_catalog
-from tests.conftest import _insert_location
+from tests.conftest import _insert_item, _insert_location
+from tests.test_intake import _install_lock_probe
 
 
 def _item_count(db, *, title=None, media_type=None):
@@ -103,3 +104,108 @@ def test_dvd_add_rejects_a_deleted_location_without_inserting(editor_client, db)
     assert "data-scan-error" in response.text
     assert f"Location {loc_id} not found" in response.text
     assert _item_count(db, media_type="dvd") == 0
+
+
+def test_game_add_reports_duplicate_without_inserting_a_second_row(editor_client, db, monkeypatch):
+    """T3/issue #83: the guard now reads under the write lock instead of a
+    separate pre-check block. Confirm the observable outcome is unchanged —
+    a duplicate (title, platform) still renders as `status="duplicate"`
+    naming the existing row, and no second row lands."""
+    monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
+    existing_id = _insert_item(
+        db, title="Existing Game", isbn=None, media_type="video_game", platform="switch",
+    )
+    db.execute("COMMIT")
+
+    monkeypatch.setattr(
+        items_catalog.igdb, "lookup_game",
+        AsyncMock(return_value={
+            "title": "Existing Game", "description": None, "publisher": None,
+            "publish_year": None, "series_name": None, "cover_url": None,
+        }),
+    )
+
+    response = editor_client.post(
+        "/api/games/add",
+        data={"igdb_id": "123", "platform": "switch"},
+    )
+
+    assert response.status_code == 200
+    assert "Already in collection" in response.text
+    assert f'/item/{existing_id}"' in response.text
+    assert _item_count(db, media_type="video_game") == 1
+
+
+def test_dvd_add_reports_duplicate_without_inserting_a_second_row(editor_client, db):
+    """T3/issue #83: same as the game case, for /api/dvds/add's title guard."""
+    existing_id = _insert_item(
+        db, title="Existing DVD", isbn=None, media_type="dvd",
+    )
+    db.execute("COMMIT")
+
+    response = editor_client.post(
+        "/api/dvds/add",
+        data={"title": "Existing DVD"},
+    )
+
+    assert response.status_code == 200
+    assert "Already in collection" in response.text
+    assert f'/item/{existing_id}"' in response.text
+    assert _item_count(db, media_type="dvd") == 1
+
+
+def test_game_add_guard_reads_under_the_write_lock(editor_client, db, monkeypatch):
+    """G18: a rival writer must not be able to take the write lock while the
+    (title, platform) guard is being read — see `_install_lock_probe` in
+    tests/test_intake.py for the mechanics."""
+    monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
+    monkeypatch.setattr(
+        items_catalog.igdb, "lookup_game",
+        AsyncMock(return_value={
+            "title": "Lockable Game", "description": None, "publisher": None,
+            "publish_year": None, "series_name": None, "cover_url": None,
+        }),
+    )
+
+    probe_results = []
+
+    def predicate(sql):
+        return "media_type = 'video_game'" in sql
+
+    _install_lock_probe(monkeypatch, items_catalog, predicate, probe_results)
+
+    response = editor_client.post(
+        "/api/games/add",
+        data={"igdb_id": "123", "platform": "switch"},
+    )
+
+    assert response.status_code == 200
+    assert probe_results, "the guard query never ran — the probe did not fire"
+    assert probe_results[-1].startswith("locked"), (
+        f"a rival writer could take the write lock while add_game_from_search's "
+        f"duplicate guard was being read (got {probe_results[-1]!r}) — the route "
+        "is missing its BEGIN IMMEDIATE, or takes it after the guard SELECT (G18)"
+    )
+
+
+def test_dvd_add_guard_reads_under_the_write_lock(editor_client, db, monkeypatch):
+    """G18: same as the game case, for /api/dvds/add's title guard."""
+    probe_results = []
+
+    def predicate(sql):
+        return "media_type = 'dvd'" in sql
+
+    _install_lock_probe(monkeypatch, items_catalog, predicate, probe_results)
+
+    response = editor_client.post(
+        "/api/dvds/add",
+        data={"title": "Lockable DVD"},
+    )
+
+    assert response.status_code == 200
+    assert probe_results, "the guard query never ran — the probe did not fire"
+    assert probe_results[-1].startswith("locked"), (
+        f"a rival writer could take the write lock while add_dvd_from_search's "
+        f"duplicate guard was being read (got {probe_results[-1]!r}) — the route "
+        "is missing its BEGIN IMMEDIATE, or takes it after the guard SELECT (G18)"
+    )

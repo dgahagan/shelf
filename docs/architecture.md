@@ -569,6 +569,32 @@ configured game platform; `reading_status` is one of `want_to_read`,
 `reading`, `read`; `owned` is 0 or 1. A field an update does not carry is not
 validated, so touching `notes` never reads `isbn`.
 
+**When a route decides on a `SELECT`, the transaction is the third.** Every
+add path that reads a duplicate guard and then inserts on the answer runs both
+inside one `BEGIN IMMEDIATE` transaction, taken as the first statement of the
+block — photo intake's confirm, the UPC scan flow, the game, DVD and Hardcover
+adds, the borrower delete. `get_db()` hands back sqlite3's deferred isolation,
+which opens no transaction for a bare `SELECT`, so a route that guards in one
+block and inserts in another takes its write lock only at the INSERT, and
+anything a rival committed in the window is acted on blind: two overlapping
+photo confirmations, or a double-clicked *Add*, both pass the guard and both
+insert. The ISBN and UPC paths are additionally fail-safe by constraint —
+`UNIQUE(isbn, media_type)` and `UNIQUE(upc, media_type)` — and classify the
+`IntegrityError` back into the duplicate answer; the title-keyed paths have no
+constraint behind them, so the transaction is the whole of their defence
+(`GOTCHAS.md` G18).
+
+Two rules follow from it. **A pre-check that runs before an outbound lookup
+decides nothing** — photo intake and the UPC scan both query before their
+provider calls, purely to skip a paced request on a plainly-owned row, and the
+locked re-check below is what decides; holding the write lock across that
+network I/O would stall every other writer for up to `HTTP_TIMEOUT`. And
+**nothing that opens a second connection runs inside the block**: the scan-log
+write and the template render happen after it closes, because a second
+connection blocks on the lock the block still holds until SQLite's busy timeout
+(`GOTCHAS.md` G3). The block carries its outcome out — `existing`, `item_id`,
+`value_error` — and the caller acts on it afterwards.
+
 A failed rule raises a typed subclass of `ItemValueError` (a `ValueError`,
 defined in `services/write_targets.py` so the pre-existing
 `UnknownLocationError` can sit under it): `InvalidIsbn`, `UnknownMediaType`,
