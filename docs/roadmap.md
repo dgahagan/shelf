@@ -114,11 +114,11 @@ The last five releases. Full detail in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.33.1](https://github.com/dgahagan/shelf/releases/tag/v0.33.1) | Adding the same item twice at once reports the duplicate instead of filing it twice |
 | [0.33.0](https://github.com/dgahagan/shelf/releases/tag/v0.33.0) | CSV import recognises a book it already holds whatever form the ISBN is written in, and refuses an import mode it does not know instead of overwriting |
 | [0.32.0](https://github.com/dgahagan/shelf/releases/tag/v0.32.0) | Legacy Scholastic price-point book barcodes scan properly instead of filing whatever product shares the code |
 | [0.31.0](https://github.com/dgahagan/shelf/releases/tag/v0.31.0) | Photo Intake looks up DVDs and video games, not just books |
 | [0.30.0](https://github.com/dgahagan/shelf/releases/tag/v0.30.0) | The session signing key moved out of the database, so a backup is no longer enough to mint a login |
-| [0.29.0](https://github.com/dgahagan/shelf/releases/tag/v0.29.0) | Italian ISBNs route to Italy's national library network, the way German ones already did |
 
 ---
 
