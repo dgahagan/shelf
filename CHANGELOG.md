@@ -6,6 +6,18 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-09-05
+
+Importing a CSV was quietly lying to you in two directions. If a row carried an
+ISBN-10 — or a hyphenated one — for a book already on your shelves, Shelf did
+not recognise it as the same book: the import stopped on a raw database error
+instead of reporting a skip, and in update mode the refresh you asked for never
+ran. Worse, if the import mode was anything other than the two Shelf knows, it
+did not refuse the file — it fell through and *updated*, overwriting metadata on
+every matched row. Both are fixed. This release also publishes a roadmap, so the
+answer to "is this planned?" is a page rather than a guess. Carrying two fixes
+first reported by [@sudo-rpaisley](https://github.com/sudo-rpaisley).
+
 ### Added
 
 - **A public roadmap.** [`docs/roadmap.md`](docs/roadmap.md) groups what Shelf
@@ -13,6 +25,23 @@ All notable changes to Shelf are documented here. The format follows
   is direction, not a schedule. It also lists the last five releases, and says
   where to suggest something. Feature requests that fit get folded into a group
   rather than sitting unanswered.
+
+### Fixed
+
+- **CSV import now matches an ISBN in either form.** The duplicate check
+  compared the raw value from the file, so an ISBN-10 row — or a hyphenated
+  one — never matched the ISBN-13 twin already in your library. It failed with
+  a raw `UNIQUE constraint failed` error instead of reporting a skip, and in
+  update mode the refresh never ran. Matching is now on the canonical ISBN-13,
+  and it also finds older rows that still hold an ISBN-10. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#70](https://github.com/dgahagan/shelf/pull/70)
+- **CSV import refuses an unrecognised mode instead of updating.** Any value
+  other than `skip` or `update` fell through into the update branch, so a
+  typo'd mode overwrote metadata on every matched row. It is now rejected
+  whole, before the file is read, and nothing is written. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#70](https://github.com/dgahagan/shelf/pull/70)
 
 ## [0.32.0] - 2026-09-04
 
@@ -2800,6 +2829,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.33.0]: https://github.com/dgahagan/shelf/releases/tag/v0.33.0
 [0.32.0]: https://github.com/dgahagan/shelf/releases/tag/v0.32.0
 [0.31.0]: https://github.com/dgahagan/shelf/releases/tag/v0.31.0
 [0.30.0]: https://github.com/dgahagan/shelf/releases/tag/v0.30.0

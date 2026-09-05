@@ -159,3 +159,164 @@ class TestUpdateMode:
             "SELECT publisher FROM items WHERE title = 'Some Game'"
         ).fetchone()
         assert row["publisher"] == "Namco"
+
+
+class TestIsbnFormMatching:
+    """A CSV row is matched by its canonical ISBN-13, regardless of whether
+    the row (or the library row) holds the ISBN-10 or ISBN-13 form, or a
+    hyphenated one."""
+
+    ISBN13 = "9780441172719"
+    ISBN10 = "0441172717"
+
+    def test_isbn10_row_matches_isbn13_twin_skip_mode(self, admin_client, db):
+        _insert_item(db, title="Dune Messiah", isbn=self.ISBN13, media_type="book")
+        db.execute("COMMIT")
+        before = _count(db)
+
+        csv = f"title,authors,isbn,media_type\nDune Messiah,,{self.ISBN10},book\n"
+        result = _import(admin_client, csv, mode="skip")
+
+        assert _count(db) == before
+        assert result["skipped"] == 1 and result["imported"] == 0
+        assert not any("UNIQUE constraint" in e for e in result["errors"])
+
+    def test_isbn10_row_matches_isbn13_twin_update_mode(self, admin_client, db):
+        _insert_item(db, title="Dune Messiah", isbn=self.ISBN13, media_type="book",
+                     publisher=None)
+        db.execute("COMMIT")
+        before = _count(db)
+
+        csv = (
+            f"title,authors,isbn,media_type,publisher\n"
+            f"Dune Messiah,,{self.ISBN10},book,Ace Books\n"
+        )
+        result = _import(admin_client, csv, mode="update")
+
+        assert _count(db) == before
+        assert result["imported"] == 1 and result["skipped"] == 0
+        assert not any("UNIQUE constraint" in e for e in result["errors"])
+        row = db.execute(
+            "SELECT publisher FROM items WHERE title = 'Dune Messiah'"
+        ).fetchone()
+        assert row["publisher"] == "Ace Books"
+
+    def test_hyphenated_isbn_matches_unhyphenated_twin(self, admin_client, db):
+        _insert_item(db, title="Dune Messiah", isbn=self.ISBN13, media_type="book")
+        db.execute("COMMIT")
+        before = _count(db)
+
+        hyphenated = "978-0-441-17271-9"
+        csv = f"title,authors,isbn,media_type\nDune Messiah,,{hyphenated},book\n"
+        result = _import(admin_client, csv, mode="skip")
+
+        assert _count(db) == before
+        assert result["skipped"] == 1 and result["imported"] == 0
+
+    def test_legacy_isbn10_in_isbn_column_matched_by_isbn13_csv_row(self, admin_client, db):
+        """A row seeded directly (bypassing the funnel) can hold an ISBN-10
+        in `isbn` with `isbn10` NULL — a real state for pre-0.28.0 rows."""
+        _insert_item(db, title="Dune Messiah", isbn=self.ISBN10, media_type="book")
+        db.execute("COMMIT")
+        before = _count(db)
+
+        csv = f"title,authors,isbn,media_type\nDune Messiah,,{self.ISBN13},book\n"
+        result = _import(admin_client, csv, mode="skip")
+
+        assert _count(db) == before
+        assert result["skipped"] == 1 and result["imported"] == 0
+
+    def test_two_forms_of_one_isbn_in_one_file_dedupe_against_each_other(self, admin_client, db):
+        before = _count(db)
+        csv = (
+            "title,authors,isbn,media_type\n"
+            f"Dune Messiah,,{self.ISBN10},book\n"
+            f"Dune Messiah,,{self.ISBN13},book\n"
+        )
+        result = _import(admin_client, csv, mode="skip")
+
+        assert _count(db) == before + 1
+        assert result["imported"] == 1 and result["skipped"] == 1
+
+    def test_bad_checksum_isbn_reports_invalid_isbn_and_next_row_still_imports(self, admin_client, db):
+        before = _count(db)
+        csv = (
+            "title,authors,isbn,media_type\n"
+            "Bad Checksum Book,,9999999999999,book\n"
+            "Good Row,,,book\n"
+        )
+        result = _import(admin_client, csv, mode="skip")
+
+        assert _count(db) == before + 1
+        assert result["imported"] == 1
+        assert len(result["errors"]) == 1
+        assert "Invalid ISBN" in result["errors"][0]
+        row = db.execute(
+            "SELECT id FROM items WHERE title = 'Good Row'"
+        ).fetchone()
+        assert row is not None
+
+
+class TestUnknownMode:
+    """An unrecognized mode must be rejected before the file is even read —
+    no rows inserted, updated, or skipped-and-counted; the seeded row must
+    come back byte-identical."""
+
+    def test_wrong_case_mode_is_rejected(self, admin_client, db):
+        _insert_item(db, title="Some Game", isbn=None, media_type="video_game",
+                     publisher="Original Publisher")
+        db.execute("COMMIT")
+        before = _count(db)
+
+        csv = "title,authors,isbn,media_type,publisher\nSome Game,,,video_game,Namco\n"
+        result = _import(admin_client, csv, mode="Skip")
+
+        assert result.get("error")
+        assert result["imported"] == 0
+        assert result["skipped"] == 0
+        assert _count(db) == before
+        row = db.execute(
+            "SELECT publisher FROM items WHERE title = 'Some Game'"
+        ).fetchone()
+        assert row["publisher"] == "Original Publisher"
+
+    def test_unrecognized_mode_name_is_rejected(self, admin_client, db):
+        _insert_item(db, title="Some Game", isbn=None, media_type="video_game",
+                     publisher="Original Publisher")
+        db.execute("COMMIT")
+        before = _count(db)
+
+        csv = "title,authors,isbn,media_type,publisher\nSome Game,,,video_game,Namco\n"
+        result = _import(admin_client, csv, mode="merge")
+
+        assert result.get("error")
+        assert result["imported"] == 0
+        assert result["skipped"] == 0
+        assert _count(db) == before
+        row = db.execute(
+            "SELECT publisher FROM items WHERE title = 'Some Game'"
+        ).fetchone()
+        assert row["publisher"] == "Original Publisher"
+
+    def test_omitted_mode_defaults_to_skip(self, admin_client, db):
+        _insert_item(db, title="Some Game", isbn=None, media_type="video_game",
+                     publisher="Original Publisher")
+        db.execute("COMMIT")
+        before = _count(db)
+
+        csv = "title,authors,isbn,media_type,publisher\nSome Game,,,video_game,Namco\n"
+        resp = admin_client.post(
+            "/api/import/csv",
+            files={"file": ("export.csv", io.BytesIO(csv.encode()), "text/csv")},
+        )
+        assert resp.status_code == 200
+        result = resp.json()
+
+        assert not result.get("error")
+        assert result["imported"] == 0
+        assert result["skipped"] == 1
+        assert _count(db) == before
+        row = db.execute(
+            "SELECT publisher FROM items WHERE title = 'Some Game'"
+        ).fetchone()
+        assert row["publisher"] == "Original Publisher"

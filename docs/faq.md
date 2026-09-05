@@ -58,7 +58,8 @@ tracking and per-household libraries are planned.
 
 **Can I import from Goodreads / StoryGraph / LibraryThing / Libib?**
 Goodreads and StoryGraph today (upload the export as-is). LibraryThing and
-Libib are planned. Anything else: CSV with at least a `title` column.
+Libib are on the [roadmap](roadmap.md). Anything else: CSV with at least a
+`title` column.
 
 **How do I move Shelf to another machine?**
 Copy the `data/` directory — or export a portable archive and import it on

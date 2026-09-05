@@ -72,7 +72,14 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     from app.services import reading_imports
 
     form = await request.form()
-    mode = form.get("mode", "skip")  # skip or update
+    mode = form.get("mode", "skip")  # skip or update; anything else is rejected below
+    if mode not in ("skip", "update"):
+        return {
+            "error": f"Unknown import mode '{mode}' (use skip or update)",
+            "imported": 0,
+            "skipped": 0,
+            "errors": [],
+        }
     to_read_wishlist = form.get("to_read_wishlist") in ("1", "true", "on")
     enrich_covers = form.get("enrich_covers") in ("1", "true", "on")
     csv_file = form.get("file")
@@ -140,18 +147,40 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                 # all, so re-importing Shelf's own export silently created a
                 # second copy of each. Fall back to title+authors+media_type.
                 #
+                # The in-file and DB key is the row's canonical ISBN-13, not
+                # the raw CSV value: every row the write funnel has written
+                # since 0.28.0 stores the canonical ISBN-13 in `isbn`, but a
+                # CSV row can carry the ISBN-10 form (or a hyphenated one) of
+                # the same book, and a legacy row (never migrated) can still
+                # hold an ISBN-10 in `isbn`. The DB lookup checks both the
+                # canonical ISBN-13 and ISBN-10 against `isbn` so either form
+                # on either side matches, instead of falling through to
+                # insert_item and tripping the UNIQUE(isbn, media_type)
+                # constraint. `isbn10` is None for a 979 ISBN; IN never
+                # matches NULL, so no special case is needed.
+                #
                 # The fallback deliberately only matches rows that *also* lack
                 # an ISBN: a CSV row with no ISBN should not collapse onto a
                 # different edition of the same title that does have one.
                 # Comparison is done in SQL so both sides go through the same
                 # collation.
                 authors_val = norm["authors"] or ""
-                if isbn_val:
-                    file_key = ("isbn", isbn_val, media)
+                isbn_pair = isbn_svc.canonical_isbn_pair(isbn_val) if isbn_val else None
+                if isbn_pair:
+                    isbn13, isbn10 = isbn_pair
+                    file_key = ("isbn", isbn13, media)
                     existing = db.execute(
-                        "SELECT id FROM items WHERE isbn = ? AND media_type = ?",
-                        (isbn_val, media),
+                        "SELECT id FROM items WHERE media_type = ? AND isbn IN (?, ?)",
+                        (media, isbn13, isbn10),
                     ).fetchone()
+                elif isbn_val:
+                    # Non-empty but not a valid ISBN (bad checksum, a
+                    # StoryGraph UID, ...). Skip dedup and the in-file key
+                    # entirely — insert_item will raise InvalidIsbn, which the
+                    # handler below turns into the row's error message. Do not
+                    # duplicate that check here.
+                    file_key = None
+                    existing = None
                 else:
                     file_key = ("title", title.strip().lower(), authors_val.strip().lower(), media)
                     existing = db.execute(
@@ -162,10 +191,11 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                         (title, authors_val, media),
                     ).fetchone()
 
-                if file_key in seen_in_file:
-                    skipped += 1
-                    continue
-                seen_in_file.add(file_key)
+                if file_key is not None:
+                    if file_key in seen_in_file:
+                        skipped += 1
+                        continue
+                    seen_in_file.add(file_key)
 
                 if existing:
                     if mode == "skip":

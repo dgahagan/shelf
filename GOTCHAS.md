@@ -2892,6 +2892,27 @@ EOF
   under the next invariant, or a new negative pin that needs adding to the
   exclusion.
 
+  **Three standing hits are deliberate and are not failures** (re-checked
+  2026-09-04): `9788400000000`, `9788500000000` and `9788000000000` in
+  `tests/test_national.py:31,35,39`. They exist to pin that the Spanish,
+  Brazilian and Czech/Slovak registration groups are *not* routed to SBN —
+  the literal is read for its 978-84 / 978-85 / 978-80 prefix and nothing
+  else, and `provider_for` never validates a check digit. This is the entry's
+  own "a prefix is load-bearing, choose the replacement per test" case, and
+  none of the three reaches a write path. Leave them.
+
+- **A checksum-bearing literal in a *plan* is not a checked value either.**
+  The `csv-import-boundaries` impl plan (2026-09-04) told its builder to
+  "use checksum-valid pairs (e.g. `0441172717` / `9780441172710`)" — and
+  that second literal is this file's canonical *invalid* probe, quoted two
+  paragraphs up. `0441172717` canonicalises to `9780441172719`;
+  `canonical_isbn_pair("9780441172710")` returns `None`, so every dedup
+  assertion built on it would have exercised the invalid-ISBN branch while
+  reading as a match test. The builder caught it only because the task text
+  also said to verify any pair before relying on it. Plans are prose, and no
+  gate reads them: run `canonical_isbn_pair` over an ISBN a plan hands you
+  before you type it into a test.
+
 - **Status:** documented. Lint candidate — the Verify block above is the
   lint; it needs only an opt-out marker for negative pins to become a
   `make check-*` target. Revisit trigger: an invalid literal reaching a
@@ -3260,6 +3281,41 @@ grep -rniE 'no metadata|title-only|books-only' README.md DOCKERHUB_README.md doc
   claim from a correctly scoped one. The countermeasure is the survey-then-
   decide split in `/release` step 4b: one pass reports what every page says,
   a second decides what each should say.
+
+## G80 — The README test-count badge is part of *every* task's gate, not the docs task's
+
+- **Rule:** Any task that adds or deletes tests runs `make badges` and commits
+  the restamped `README.md` **in its own commit**. A plan may not park the
+  restamp in a later docs task.
+- **Why:** `make badges` looks like a release-time cosmetic, so plans schedule
+  it with the other generated-file chores. But the check has a *test*
+  (`test_readme_badges_are_current`) and that test runs inside `make test`,
+  which is the first line of the verification gate after every task. So the
+  moment a task adds a test, that task's own gate goes red on a file the task
+  was never scoped to touch, and the builder either edits out of scope or
+  reports a red gate. Neither is the plan's intent.
+- **Evidence:** plan `csv-import-boundaries` (2026-09-04) assigned `make
+  badges` to its docs task T3 and named only `app/routers/items_csv.py` and
+  `tests/test_csv_roundtrip.py` in T1 and T2. Both builders hit the badge
+  failure and both restamped `README.md` anyway (`a97b4a4` 2587→2590,
+  `aea6d92` 2590→2596); by the time T3 ran, `make badges` reported "already
+  current" and the docs task's own acceptance line was dead. The plan's
+  reasoning was explicit and explicitly wrong — "T1/T2 added tests;
+  `make check-badges` is in `checks-fast`" — true, and irrelevant, because
+  `make test` gets there first.
+- **The planning fix:** a task that adds tests lists `README.md` in its files
+  and `make badges` in its work. The docs task restamps only if it is the
+  first task to change the count.
+- **Verify:** the badge check is inside the unit suite, not only the lint —
+
+```bash
+grep -rn "badges_are_current" tests/
+grep -n "check-badges\|stamp_test_badges" Makefile
+```
+
+- **Status:** documented. Not a lint candidate — `make check-badges` already
+  catches the drift; what no checker can see is a *plan* assigning the
+  restamp to the wrong task.
 
 ## Graveyard
 
