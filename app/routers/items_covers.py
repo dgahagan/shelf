@@ -18,7 +18,7 @@ from app.auth import require_role
 from app.config import COVERS_DIR, HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.routers import items_common
-from app.services import covers, cover_queue, openlibrary, scan_outcome
+from app.services import covers, cover_queue, manual_cover, openlibrary, scan_outcome
 from app.services import isbn as isbn_svc
 
 logger = logging.getLogger(__name__)
@@ -224,6 +224,39 @@ async def cover_select(
     )
     resp.headers["HX-Trigger"] = items_common._toast_header("Failed to download cover", "error")
     return resp
+
+
+@router.post("/items/{item_id}/cover-url")
+async def cover_from_url(
+    item_id: int,
+    url: str = Form(...),
+    _=Depends(require_role("editor")),
+):
+    """Use a user-pasted public HTTPS image as an item's cover."""
+    with get_db() as db:
+        item = db.execute("SELECT id FROM items WHERE id = ?", (item_id,)).fetchone()
+    if not item:
+        return HTMLResponse("Not found", status_code=404)
+
+    cover_path = await manual_cover.download(item_id, url)
+    if not cover_path:
+        resp = HTMLResponse("")
+        resp.headers["HX-Trigger"] = items_common._toast_header(
+            "Could not use that cover URL — use a public HTTPS JPEG, PNG, GIF or WebP under 10 MB",
+            "error",
+        )
+        return resp
+
+    with get_db() as db:
+        db.execute(
+            "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+            (cover_path, item_id),
+        )
+    resp = HTMLResponse("")
+    resp.headers["HX-Trigger"] = items_common._toast_header("Cover updated")
+    resp.headers["HX-Redirect"] = f"/item/{item_id}"
+    return resp
+
 
 @router.post("/items/{item_id}/cover-upload")
 async def cover_upload(request: Request, item_id: int, _=Depends(require_role("editor"))):
