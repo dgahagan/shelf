@@ -170,6 +170,14 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
         SELECT i.id, 1, i.location_id, 1 FROM items i
         WHERE i.owned = 1 AND i.location_id IS NOT NULL
           AND NOT EXISTS (SELECT 1 FROM item_copies c WHERE c.item_id = i.id)"""),
+    (27, "Add parent relationship to locations",
+     "ALTER TABLE locations ADD COLUMN parent_id INTEGER REFERENCES locations(id) ON DELETE RESTRICT"),
+    (28, "Add node label to locations",
+     "ALTER TABLE locations ADD COLUMN label TEXT DEFAULT NULL"),
+    (29, "Backfill flat locations as hierarchy roots",
+     "UPDATE locations SET label = name WHERE label IS NULL"),
+    (30, "Index hierarchical location children",
+     "CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_id, sort_order)"),
 )
 
 MIGRATION_TABLES = """
