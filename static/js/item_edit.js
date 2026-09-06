@@ -19,6 +19,74 @@ function coverDrop() {
     };
 }
 
+function isbnCamera() {
+    return {
+        cameraActive: false,
+        scanner: false,
+        isZxingFallback: false,
+        accepted: false,
+        status: 'Point the camera at a 978 or 979 ISBN barcode.',
+
+        async startCamera() {
+            if (this.cameraActive) return;
+            this.cameraActive = true;
+            this.accepted = false;
+            this.status = 'Starting camera…';
+
+            try {
+                await this.$nextTick();
+                this.scanner = window.createBarcodeScanner({
+                    html5ElId: 'edit-isbn-camera-reader',
+                    videoEl: 'edit-isbn-zxing-video',
+                    html5Config: { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
+                    onDecode: (decodedText) => this.acceptDecoded(decodedText)
+                });
+                this.isZxingFallback = this.scanner.engine === 'zxing';
+                await this.$nextTick();
+                await this.scanner.start();
+                this.status = 'Point the camera at a 978 or 979 ISBN barcode.';
+            } catch (err) {
+                if (this.scanner) await this.scanner.stop();
+                this.scanner = false;
+                this.cameraActive = false;
+                this.isZxingFallback = false;
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    showToast('Camera requires HTTPS. Access Shelf via https:// and accept the certificate.', 'error');
+                } else {
+                    showToast('Camera access denied. Check browser permissions for this site.', 'error');
+                }
+            }
+        },
+
+        async stopCamera() {
+            if (this.scanner) await this.scanner.stop();
+            this.scanner = false;
+            this.cameraActive = false;
+            this.isZxingFallback = false;
+        },
+
+        acceptDecoded(decodedText) {
+            if (this.accepted) return;
+            var digits = String(decodedText || '').replace(/\D/g, '');
+            if (digits.length !== 13 || (digits.slice(0, 3) !== '978' && digits.slice(0, 3) !== '979')) {
+                this.status = 'That barcode is not a 978/979 ISBN. Try again.';
+                return;
+            }
+
+            var input = document.getElementById('isbn');
+            if (!input) return;
+            this.accepted = true;
+            input.value = digits;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            this.stopCamera().then(function () {
+                input.focus();
+                input.select();
+            });
+        }
+    };
+}
+
 function updateEditSectionVisibility(root) {
     var mediaSelect = root.querySelector('#media_type');
     if (!mediaSelect) return;
@@ -43,7 +111,8 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// CSP build has no global fallback — register so x-data="coverDrop" resolves.
+// CSP build has no global fallback — register so x-data components resolve.
 document.addEventListener('alpine:init', function () {
     Alpine.data('coverDrop', coverDrop);
+    Alpine.data('isbnCamera', isbnCamera);
 });
