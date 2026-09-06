@@ -319,13 +319,13 @@ async def iter_rom_candidates(
 
         if not rows:
             break
+        if emitted == 0:
+            raise RomMError("RomM pagination made no progress")
         offset += len(rows)
         if expected_total is not None and offset >= expected_total:
             break
         if len(rows) < PAGE_SIZE and expected_total is None:
             break
-        if emitted == 0:
-            raise RomMError("RomM pagination made no progress")
 
 
 def browser_rom_url(romm_url: str, romm_id: str, *, public_url: str | None = None) -> str:
