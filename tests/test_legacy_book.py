@@ -138,8 +138,14 @@ def test_resolver_does_not_swallow_cancellation():
 
 
 def test_mapping_table_exists_in_a_fresh_database_and_migration_24_is_append_only(db):
-    latest = max(version for version, _, _ in MIGRATIONS)
-    assert latest == 24
+    versions = [version for version, _, _ in MIGRATIONS]
+    assert versions == sorted(versions)
+    assert 24 in versions
+
+    version, description, sql = next(m for m in MIGRATIONS if m[0] == 24)
+    assert version == 24
+    assert description == "Add confirmed legacy book barcode mappings"
+    assert "CREATE TABLE IF NOT EXISTS legacy_book_mappings" in sql
 
     columns = {
         row[1] for row in db.execute("PRAGMA table_info(legacy_book_mappings)")

@@ -147,6 +147,29 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
                   AND isbn13 NOT GLOB '*[^0-9]*'
                   AND substr(isbn13, 1, 3) IN ('978', '979'))
         )"""),
+    (25, "Add first-class physical copies",
+     """CREATE TABLE IF NOT EXISTS item_copies (
+            id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id            INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+            copy_number        INTEGER NOT NULL,
+            location_id        INTEGER REFERENCES locations(id) ON DELETE SET NULL,
+            condition          TEXT,
+            notes              TEXT,
+            acquired_date      TEXT,
+            acquisition_source TEXT,
+            acquisition_price  REAL CHECK(acquisition_price IS NULL OR acquisition_price >= 0),
+            provenance         TEXT,
+            copy_barcode       TEXT UNIQUE,
+            is_primary         INTEGER NOT NULL DEFAULT 0 CHECK(is_primary IN (0, 1)),
+            created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+            UNIQUE(item_id, copy_number)
+        )"""),
+    (26, "Backfill primary copies from legacy locations",
+     """INSERT INTO item_copies (item_id, copy_number, location_id, is_primary)
+        SELECT i.id, 1, i.location_id, 1 FROM items i
+        WHERE i.owned = 1 AND i.location_id IS NOT NULL
+          AND NOT EXISTS (SELECT 1 FROM item_copies c WHERE c.item_id = i.id)"""),
 )
 
 MIGRATION_TABLES = """
@@ -195,6 +218,28 @@ CREATE TABLE IF NOT EXISTS checkouts (
 );
 CREATE INDEX IF NOT EXISTS idx_checkouts_item ON checkouts(item_id);
 CREATE INDEX IF NOT EXISTS idx_checkouts_borrower ON checkouts(borrower_id);
+
+CREATE TABLE IF NOT EXISTS item_copies (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id            INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    copy_number        INTEGER NOT NULL,
+    location_id        INTEGER REFERENCES locations(id) ON DELETE SET NULL,
+    condition          TEXT,
+    notes              TEXT,
+    acquired_date      TEXT,
+    acquisition_source TEXT,
+    acquisition_price  REAL CHECK(acquisition_price IS NULL OR acquisition_price >= 0),
+    provenance         TEXT,
+    copy_barcode       TEXT UNIQUE,
+    is_primary         INTEGER NOT NULL DEFAULT 0 CHECK(is_primary IN (0, 1)),
+    created_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at         TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(item_id, copy_number)
+);
+CREATE INDEX IF NOT EXISTS idx_item_copies_item ON item_copies(item_id, copy_number);
+CREATE INDEX IF NOT EXISTS idx_item_copies_location ON item_copies(location_id, item_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_item_copies_one_primary
+    ON item_copies(item_id) WHERE is_primary = 1;
 
 CREATE INDEX IF NOT EXISTS idx_items_upc ON items(upc);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_items_upc_type ON items(upc, media_type) WHERE upc IS NOT NULL;
@@ -308,7 +353,7 @@ def _is_benign_migration_error(version: int, exc: sqlite3.OperationalError) -> b
     match = re.search(r"no such table: (?:\w+\.)?(\w+)", msg)
     if match:
         # G1: every MIGRATION_TABLES CREATE bakes in the columns its ALTERs
-        # add, and it runs after the migration loop — so for the tables it
+        # add, and it runs after the MIGRATIONS loop — so for the tables it
         # manages the ALTER is redundant by design and recording the version
         # is correct. A table it will not create is a typo or a removed
         # table; recording that would make the divergence permanent.

@@ -33,6 +33,13 @@ Hardcover ids, the `location_id = NULL` cascades, name-keyed series writes)
 still use a raw `UPDATE items SET`; `tests/test_item_write.py` allowlists
 those and fails on any other.
 
+`items.location_id` is also the compatibility seam for first-class physical
+copies (#97). When a normal item write supplies that field, the write funnel
+mirrors it into the item's primary copy after the item statement succeeds.
+A null location never invents a copy, and secondary copies are never moved by
+the legacy field. This keeps every existing add/edit/import surface working
+while copy-specific UI can be introduced separately.
+
 A field that is not present is not validated: an update that touches only
 `notes` never reads `isbn`. Callers that hold a *provider's* value (an
 Audiobookshelf ASIN, a Hardcover edition ISBN) pre-clean it with
@@ -51,6 +58,7 @@ from typing import Any, Iterable, Mapping
 from app.config import MEDIA_TYPES
 from app.database import get_game_platforms
 from app.services import isbn as isbn_svc
+from app.services import item_copies
 from app.services.write_targets import (  # noqa: F401 — re-exported
     ItemValueError,
     UnknownLocationError,
@@ -271,14 +279,19 @@ def insert_item(db, fields: Mapping[str, Any] | None = None, **kwargs) -> int:
         f"INSERT INTO items ({', '.join(names)}) VALUES ({placeholders})",
         [values[n] for n in names],
     )
-    return cursor.lastrowid
+    item_id = cursor.lastrowid
+    if "location_id" in values:
+        item_copies.sync_primary_location(db, item_id, values["location_id"])
+    return item_id
 
 
 def _execute_update(db, fields: Mapping[str, Any], where: str,
-                    where_params: list[Any], who: str) -> None:
+                    where_params: list[Any], who: str) -> dict[str, Any]:
     """Validate names and values, then run the one UPDATE this module holds.
 
     `updated_at` is always stamped, so an empty `fields` is a bare touch.
+    Returns the normalised values so compatibility projections can use exactly
+    what was written rather than re-parsing the caller's raw input.
     """
     values = dict(fields)
     values.pop("updated_at", None)
@@ -290,6 +303,7 @@ def _execute_update(db, fields: Mapping[str, Any], where: str,
         f"UPDATE items SET {', '.join(assignments)} WHERE {where}",
         [*(values[n] for n in values), *where_params],
     )
+    return values
 
 
 def update_item_fields(db, item_id: int, fields: Mapping[str, Any]) -> None:
@@ -299,7 +313,11 @@ def update_item_fields(db, item_id: int, fields: Mapping[str, Any]) -> None:
     `created_at`); always stamps `updated_at`. Raises `ItemValueError` on a
     bad value, `ValueError` on a bad name.
     """
-    _execute_update(db, fields, "id = ?", [item_id], "update_item_fields")
+    values = _execute_update(db, fields, "id = ?", [item_id], "update_item_fields")
+    if "location_id" in values and db.execute(
+        "SELECT 1 FROM items WHERE id = ?", (item_id,)
+    ).fetchone():
+        item_copies.sync_primary_location(db, item_id, values["location_id"])
 
 
 def update_items_fields(db, item_ids: Iterable[int],
@@ -309,4 +327,12 @@ def update_items_fields(db, item_ids: Iterable[int],
     if not ids:
         return
     marks = ", ".join("?" for _ in ids)
-    _execute_update(db, fields, f"id IN ({marks})", ids, "update_items_fields")
+    values = _execute_update(db, fields, f"id IN ({marks})", ids, "update_items_fields")
+    if "location_id" in values:
+        existing_ids = [
+            row["id"] for row in db.execute(
+                f"SELECT id FROM items WHERE id IN ({marks})", ids
+            ).fetchall()
+        ]
+        for item_id in existing_ids:
+            item_copies.sync_primary_location(db, item_id, values["location_id"])
