@@ -29,7 +29,7 @@
 
         function setStatus(message, ok) {
             status.textContent = message || '';
-            status.className = 'text-xs min-h-5 ' + (ok === true ? 'text-shelf-success' : ok === false ? 'text-shelf-error' : 'text-shelf-muted');
+            status.className = 'text-xs h-5 ' + (ok === true ? 'text-shelf-success' : ok === false ? 'text-shelf-error' : 'text-shelf-muted');
         }
 
         async function loadStatus() {
