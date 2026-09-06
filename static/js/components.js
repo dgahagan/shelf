@@ -67,3 +67,10 @@ document.addEventListener('alpine:init', function () {
     });
 
 });
+
+if (/^\/item\/\d+$/.test(window.location.pathname)) {
+    const script = document.createElement('script');
+    script.src = '/static/js/romm-item.js';
+    script.defer = true;
+    document.head.appendChild(script);
+}
