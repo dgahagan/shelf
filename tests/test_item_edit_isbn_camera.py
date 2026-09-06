@@ -11,9 +11,10 @@ def test_item_edit_isbn_camera_uses_rendered_ui_and_shared_scanner():
     source = (ROOT / "static/js/item_edit.js").read_text(encoding="utf-8")
 
     # The scanner UI belongs to the server-rendered edit template rather than
-    # being assembled imperatively in JavaScript.
+    # being assembled imperatively in JavaScript. Keep the existing shared
+    # field macro so the edit form's save contract remains unchanged.
     assert 'x-data="isbnCamera"' in template
-    assert 'id="isbn" name="isbn"' in template
+    assert 'field("isbn", "ISBN", item.isbn, placeholder="ISBN-13")' in template
     assert 'id="edit-isbn-camera-reader"' in template
     assert 'id="edit-isbn-zxing-video"' in template
     assert "document.createElement" not in source
