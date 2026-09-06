@@ -13,13 +13,14 @@ MEDIA_TYPES = {
     "dvd": "DVD / Blu-ray",
     "cd": "CD",
     "comic": "Comic / Graphic Novel",
+    "manga": "Manga",
     "video_game": "Video Game",
 }
 
 # The book family: media types that are read, carry ISBNs, and belong to a
 # series. Everything else in MEDIA_TYPES (dvd, cd, video_game) is a disc or a
 # cartridge. Declared here, beside the types themselves.
-BOOK_MEDIA_TYPES = frozenset({"book", "kids_book", "audiobook", "ebook", "comic"})
+BOOK_MEDIA_TYPES = frozenset({"book", "kids_book", "audiobook", "ebook", "comic", "manga"})
 
 # Seed data — runtime platform list comes from game_platforms table
 GAME_PLATFORMS = {
