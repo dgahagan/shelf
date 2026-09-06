@@ -1,10 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ item.title }} — Shelf{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto">
+<div class="max-w-4xl mx-auto" data-item-edit-sections>
     <a href="/item/{{ item.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; Back to item</a>
 
-    <h1 class="text-2xl font-bold mb-6">Edit Item</h1>
+    <div class="flex items-center justify-between gap-4 mb-6">
+        <div>
+            <p class="text-xs uppercase tracking-wider text-shelf-muted">Edit item</p>
+            <h1 class="text-2xl font-bold mt-1">{{ item.title }}</h1>
+        </div>
+        <span class="text-xs uppercase tracking-wider text-shelf-muted">{{ media_types.get(item.media_type, item.media_type) }}</span>
+    </div>
 
     {# The save refused a value (#54). Nothing on the form was saved; the row's
        stored values render below. Copy is keyed on the funnel's error code —
@@ -39,7 +45,16 @@
     </div>
     {% endif %}
 
-    <form action="/api/items/{{ item.id }}" method="post" enctype="multipart/form-data" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+    <nav aria-label="Edit sections" data-testid="edit-section-nav" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+        <a href="#edit-general" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">General</a>
+        <a href="#edit-artwork" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Artwork</a>
+        <a href="#edit-series" data-section-nav="series" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Series</a>
+        <a href="#edit-identifiers" data-section-nav="identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Identifiers</a>
+        <a href="#edit-location" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Location</a>
+        <a href="#edit-media" data-section-nav="media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Media Details</a>
+    </nav>
+
+    <form id="item-edit-form" action="/api/items/{{ item.id }}" method="post" enctype="multipart/form-data" class="space-y-4">
         <input type="hidden" name="from" value="{{ back.key }}">
 
         {% macro field(name, label, value, type="text", placeholder="", step="") %}
@@ -50,141 +65,182 @@
         </div>
         {% endmacro %}
 
-        {{ field("title", "Title", item.title) }}
-        {{ field("subtitle", "Subtitle", item.subtitle) }}
-        {{ field("authors", "Authors", item.authors) }}
-        {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
+        <section id="edit-general" data-testid="edit-section-general" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">General</h2>
+                <p class="text-sm text-shelf-muted mt-1">Core catalogue metadata and reading details.</p>
+            </div>
 
-        <div>
-            <label for="media_type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
-            <select id="media_type" name="media_type"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                {% for key, label in media_types.items() %}
-                <option value="{{ key }}" {% if item.media_type == key %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
+            {{ field("title", "Title", item.title) }}
+            {{ field("subtitle", "Subtitle", item.subtitle) }}
+            {{ field("authors", "Authors", item.authors) }}
 
-        <div>
-            <label for="location_id" class="block text-sm font-medium text-shelf-muted mb-1">Location</label>
-            <select id="location_id" name="location_id"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">None</option>
-                {% for loc in locations %}
-                <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
+            <div>
+                <label for="media_type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
+                <select id="media_type" name="media_type"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    {% for key, label in media_types.items() %}
+                    <option value="{{ key }}" {% if item.media_type == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-        <!-- Owned / Wishlist -->
-        <div>
-            <label class="flex items-center gap-2 text-sm cursor-pointer">
-                <input type="hidden" name="owned" value="0">
-                <input type="checkbox" name="owned" value="1" {% if item.owned %}checked{% endif %}
-                       class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                <span class="font-medium text-shelf-muted">I own this item</span>
-            </label>
-            <p class="text-xs text-shelf-muted mt-1 ml-6">Uncheck for wishlist items you don't physically have yet</p>
-        </div>
+            <div class="grid grid-cols-2 gap-4">
+                {{ field("publisher", "Publisher", item.publisher) }}
+                {{ field("publish_year", "Year", item.publish_year, type="number") }}
+            </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            {{ field("publisher", "Publisher", item.publisher) }}
-            {{ field("publish_year", "Year", item.publish_year, type="number") }}
-        </div>
+            <div data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.language else 'false' }}">
+                <label for="language" class="block text-sm font-medium text-shelf-muted mb-1">Language</label>
+                <select id="language" name="language"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">Unknown</option>
+                    {% for code, label in search_langs.items() %}
+                    <option value="{{ code }}" {% if item.language == code %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                    {% if item.language and item.language not in search_langs %}
+                    <option value="{{ item.language }}" selected>{{ item.language }}</option>
+                    {% endif %}
+                </select>
+            </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {{ field("page_count", "Pages", item.page_count, type="number") }}
-            {{ field("series_name", "Series", item.series_name) }}
-            {{ field("series_position", "Series #", item.series_position, type="number", step="any") }}
-        </div>
+            <div data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.reading_status or item.date_started or item.date_finished else 'false' }}" class="space-y-4">
+                <div>
+                    <label for="reading_status" class="block text-sm font-medium text-shelf-muted mb-1">Reading Status</label>
+                    <select id="reading_status" name="reading_status"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        <option value="">None</option>
+                        <option value="want_to_read" {% if item.reading_status == 'want_to_read' %}selected{% endif %}>Want to Read</option>
+                        <option value="reading" {% if item.reading_status == 'reading' %}selected{% endif %}>Reading</option>
+                        <option value="read" {% if item.reading_status == 'read' %}selected{% endif %}>Read</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    {{ field("date_started", "Date Started", item.date_started, type="date") }}
+                    {{ field("date_finished", "Date Finished", item.date_finished, type="date") }}
+                </div>
+            </div>
 
-        <div>
-            <label for="language" class="block text-sm font-medium text-shelf-muted mb-1">Language</label>
-            <select id="language" name="language"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">Unknown</option>
-                {% for code, label in search_langs.items() %}
-                <option value="{{ code }}" {% if item.language == code %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-                {% if item.language and item.language not in search_langs %}
-                <option value="{{ item.language }}" selected>{{ item.language }}</option>
-                {% endif %}
-            </select>
-        </div>
+            <div>
+                <label for="description" class="block text-sm font-medium text-shelf-muted mb-1">Description</label>
+                <textarea id="description" name="description" rows="4"
+                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.description or '' }}</textarea>
+            </div>
 
-        <div>
-            <label for="manual_value" class="block text-sm font-medium text-shelf-muted mb-1">Value ({{ currency().symbol }})</label>
-            <input type="number" id="manual_value" name="manual_value" value="{{ item.manual_value if item.manual_value is not none else '' }}" step="0.01" min="0"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
-            <p class="text-xs text-shelf-muted mt-1">Overrides the ISBNdb estimate everywhere it's shown{% if item.estimated_value %} &mdash; ISBNdb estimate: {{ item.estimated_value|money }}{% endif %}</p>
-        </div>
+            <div>
+                <label for="notes" class="block text-sm font-medium text-shelf-muted mb-1">Notes</label>
+                <textarea id="notes" name="notes" rows="3"
+                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.notes or '' }}</textarea>
+            </div>
+        </section>
 
-        <div>
-            <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
-            <select id="platform" name="platform"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">None</option>
-                {% for key, label in game_platforms.items() %}
-                <option value="{{ key }}" {% if item.platform == key %}selected{% endif %}>{{ label }}</option>
-                {% endfor %}
-            </select>
-        </div>
+        <section id="edit-artwork" data-testid="edit-section-artwork" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">Artwork</h2>
+                <p class="text-sm text-shelf-muted mt-1">Preview the current cover or upload a replacement.</p>
+            </div>
 
-        <div class="grid grid-cols-2 gap-4">
-            {{ field("narrator", "Narrator", item.narrator) }}
-            {{ field("duration_mins", "Duration (min)", item.duration_mins, type="number") }}
-        </div>
-
-        <!-- Reading Status -->
-        <div>
-            <label for="reading_status" class="block text-sm font-medium text-shelf-muted mb-1">Reading Status</label>
-            <select id="reading_status" name="reading_status"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
-                <option value="">None</option>
-                <option value="want_to_read" {% if item.reading_status == 'want_to_read' %}selected{% endif %}>Want to Read</option>
-                <option value="reading" {% if item.reading_status == 'reading' %}selected{% endif %}>Reading</option>
-                <option value="read" {% if item.reading_status == 'read' %}selected{% endif %}>Read</option>
-            </select>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-            {{ field("date_started", "Date Started", item.date_started, type="date") }}
-            {{ field("date_finished", "Date Finished", item.date_finished, type="date") }}
-        </div>
-
-        <div>
-            <label for="description" class="block text-sm font-medium text-shelf-muted mb-1">Description</label>
-            <textarea id="description" name="description" rows="3"
-                      class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.description or '' }}</textarea>
-        </div>
-
-        <div>
-            <label for="notes" class="block text-sm font-medium text-shelf-muted mb-1">Notes</label>
-            <textarea id="notes" name="notes" rows="2"
-                      class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.notes or '' }}</textarea>
-        </div>
-
-        <div x-data="coverDrop">
-            <label class="block text-sm font-medium text-shelf-muted mb-1">Cover Image</label>
-            <div class="flex items-center gap-4">
-                {% if item.cover_path %}
-                <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded" alt="">
-                {% else %}
-                <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded" alt="" style="display:none">
-                <div x-show="!preview" class="w-16 h-24 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">None</div>
-                {% endif %}
-                <div class="flex-1">
-                    <div @dragover.prevent="dragging = true" @dragleave="dragging = false"
-                         @drop.prevent="handleDrop($event)"
-                         :class="dragging ? 'border-shelf-accent bg-shelf-accent/10' : 'border-shelf-border'"
-                         class="border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
-                         @click="$refs.coverInput.click()">
-                        <input type="file" name="cover" accept="image/*" x-ref="coverInput" @change="handleFile($event)"
-                               class="hidden">
-                        <p class="text-sm text-shelf-muted">Drop an image here or click to browse</p>
+            <div x-data="coverDrop">
+                <div class="flex items-center gap-4">
+                    {% if item.cover_path %}
+                    <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded" alt="Current cover">
+                    {% else %}
+                    <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded" alt="Cover preview" style="display:none">
+                    <div x-show="!preview" class="w-16 h-24 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">None</div>
+                    {% endif %}
+                    <div class="flex-1">
+                        <div @dragover.prevent="dragging = true" @dragleave="dragging = false"
+                             @drop.prevent="handleDrop($event)"
+                             :class="dragging ? 'border-shelf-accent bg-shelf-accent/10' : 'border-shelf-border'"
+                             class="border-2 border-dashed rounded-lg p-4 text-center transition-colors cursor-pointer"
+                             @click="$refs.coverInput.click()">
+                            <input type="file" name="cover" accept="image/*" x-ref="coverInput" @change="handleFile($event)"
+                                   class="hidden">
+                            <p class="text-sm text-shelf-muted">Drop an image here or click to browse</p>
+                        </div>
+                        <p class="text-xs text-shelf-muted mt-1">The replacement is applied when you save the item.</p>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
+
+        <section id="edit-series" data-testid="edit-section-series" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">Series</h2>
+                <p class="text-sm text-shelf-muted mt-1">Series membership, position and page count.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {{ field("series_name", "Series", item.series_name) }}
+                {{ field("series_position", "Series #", item.series_position, type="number", step="any") }}
+                {{ field("page_count", "Pages", item.page_count, type="number") }}
+            </div>
+        </section>
+
+        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">Identifiers</h2>
+                <p class="text-sm text-shelf-muted mt-1">Identifiers printed on this edition.</p>
+            </div>
+            {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
+        </section>
+
+        <section id="edit-location" data-testid="edit-section-location" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">Location</h2>
+                <p class="text-sm text-shelf-muted mt-1">Ownership, physical location and collection value.</p>
+            </div>
+
+            <div>
+                <label for="location_id" class="block text-sm font-medium text-shelf-muted mb-1">Location</label>
+                <select id="location_id" name="location_id"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">None</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="hidden" name="owned" value="0">
+                    <input type="checkbox" name="owned" value="1" {% if item.owned %}checked{% endif %}
+                           class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    <span class="font-medium text-shelf-muted">I own this item</span>
+                </label>
+                <p class="text-xs text-shelf-muted mt-1 ml-6">Uncheck for wishlist items you don't physically have yet</p>
+            </div>
+
+            <div>
+                <label for="manual_value" class="block text-sm font-medium text-shelf-muted mb-1">Value ({{ currency().symbol }})</label>
+                <input type="number" id="manual_value" name="manual_value" value="{{ item.manual_value if item.manual_value is not none else '' }}" step="0.01" min="0"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                <p class="text-xs text-shelf-muted mt-1">Overrides the ISBNdb estimate everywhere it's shown{% if item.estimated_value %} &mdash; ISBNdb estimate: {{ item.estimated_value|money }}{% endif %}</p>
+            </div>
+        </section>
+
+        <section id="edit-media" data-testid="edit-section-media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+            <div>
+                <h2 class="text-lg font-semibold">Media Details</h2>
+                <p class="text-sm text-shelf-muted mt-1">Fields specific to the selected media type.</p>
+            </div>
+
+            <div data-media-types="video_game" data-always-visible="{{ 'true' if item.platform else 'false' }}">
+                <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
+                <select id="platform" name="platform"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    <option value="">None</option>
+                    {% for key, label in game_platforms.items() %}
+                    <option value="{{ key }}" {% if item.platform == key %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div data-media-types="audiobook" data-always-visible="{{ 'true' if item.narrator or item.duration_mins is not none else 'false' }}" class="grid grid-cols-2 gap-4">
+                {{ field("narrator", "Narrator", item.narrator) }}
+                {{ field("duration_mins", "Duration (min)", item.duration_mins, type="number") }}
+            </div>
+        </section>
 
         <div class="flex gap-3 pt-2">
             <button type="submit" data-testid="save-btn" class="px-6 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
