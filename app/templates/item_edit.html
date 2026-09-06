@@ -33,7 +33,7 @@
     </div>
     {% elif error == "unknown_platform" %}
     <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
-        That game platform isn't in your platform list — pick one, or add it under Settings first. Nothing was saved.
+        That game platform isn't in your platform list — pick one from the list. Nothing was saved.
     </div>
     {% elif error == "invalid_reading_status" %}
     <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
@@ -185,17 +185,11 @@
                 <h2 class="text-lg font-semibold">Identifiers</h2>
                 <p class="text-sm text-shelf-muted mt-1">Identifiers printed on this edition.</p>
             </div>
-            <div>
-                <label for="isbn" class="block text-sm font-medium text-shelf-muted mb-1">ISBN</label>
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" id="isbn" name="isbn" value="{{ item.isbn if item.isbn is not none else '' }}" placeholder="ISBN-13"
-                           class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
-                    <button type="button" @click="startCamera()"
-                            class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors">
-                        Scan ISBN
-                    </button>
-                </div>
-            </div>
+            {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
+            <button type="button" @click="startCamera()"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors">
+                Scan ISBN
+            </button>
 
             <div x-show="cameraActive" style="display:none"
                  class="fixed inset-0 z-50 bg-black/80 p-4 flex items-center justify-center">
