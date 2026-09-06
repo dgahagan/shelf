@@ -7,8 +7,8 @@ its home.
 
 - **Cover**, with **Find cover** (search by title, or type your own query,
   and pick a candidate — your current cover is shown first, marked
-  *Current*, for comparison), **Upload** your own image, or **Remove
-  cover**. These work on an item that already has a cover, not just a
+  *Current*, for comparison), **Upload** your own image, paste a link
+  under **Use image from URL**, or **Remove cover**. These work on an item that already has a cover, not just a
   cover-less one; **Retry cover** (re-running the automatic chain) only
   shows up when a cover is missing, since it would have nothing to do
   otherwise.
@@ -57,7 +57,16 @@ its home.
 ## Editing
 
 **Edit** opens the full form: every field above plus notes, a manual value,
-and the cover upload. Changing the ISBN does *not* re-fetch metadata
+and the cover upload. It is organised into six sections — **General**,
+**Artwork**, **Series**, **Identifiers**, **Location** and **Media
+Details** — with a row of links at the top to jump straight to one.
+
+Sections that do not apply to the item's media type are hidden: a video game
+does not show Series or ISBN, an audiobook shows narrator and duration, and
+changing the **Media type** dropdown updates what is shown straight away.
+Anything the item *already* has a value for stays visible even when its
+media type would normally hide it, so an existing value is never put out of
+reach — and nothing is dropped on save either way. Changing the ISBN does *not* re-fetch metadata
 automatically — use **Retry cover** / **Fetch synopsis** afterwards, or
 delete and rescan if the record was wrong from the start.
 
@@ -93,6 +102,16 @@ the source. While the picker is open, though, the candidate tiles *are*
 remote thumbnails fetched live from the source you're searching — only the
 one you select gets downloaded and saved locally. Upload accepts JPEG /
 PNG / GIF / WebP.
+
+**Use image from URL** takes a public HTTPS link to an image in those same
+four formats, under 10 MB. Shelf fetches it once and saves its own copy
+alongside every other cover — the page never hot-links to the address you
+gave. Links over plain HTTP, links carrying a username and password, and
+links that resolve to a private or internal address are refused, so this
+cannot be used to make Shelf fetch something from inside your network. If
+the fetch fails for any of those reasons the existing cover is left alone
+and the notice reads *"Could not use that cover URL — use a public HTTPS
+JPEG, PNG, GIF or WebP under 10 MB"*.
 
 ## Reading status vs. Hardcover
 

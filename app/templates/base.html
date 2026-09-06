@@ -9,6 +9,29 @@
     <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
     <link rel="stylesheet" href="/static/css/app.css">
     <script src="/static/vendor/htmx-2.0.4.min.js"></script>
+    <!--
+      Script order below is load-bearing, and `make check-alpine` enforces it.
+
+      component-load-guard.js is first because it wraps Alpine.data from an
+      alpine:init listener, and listener order is registration order — loaded
+      second it would record nothing that ran before it, and it is what turns a
+      lost component script into one message naming the file.
+
+      The four components*.js files are classic scripts on purpose. Alpine is
+      the only tag here that may be deferred, and it must stay last: deferred
+      scripts run after parsing, so a registering script given `defer` (or
+      `async`) would execute after Alpine had already fired alpine:init, and
+      every x-data root it owns would resolve to nothing — a whole page of
+      "Undefined variable" errors, one per binding, and a guard installed too
+      late to report them.
+
+      Alpine's `defer` is required, not merely permitted, and the lint checks
+      that half too. This build has no readyState or DOMContentLoaded handling
+      — it walks the DOM the moment it executes — so without `defer` it runs
+      from here with <body> unparsed, finds no x-data root, and leaves the
+      whole page unbound.
+    -->
+    <script src="/static/js/component-load-guard.js"></script>
     <script src="/static/js/components.js"></script>
     <script src="/static/js/components-library.js"></script>
     <script src="/static/js/components-item.js"></script>

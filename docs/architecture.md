@@ -206,7 +206,8 @@ cannot answer differently on a shorter phrasing of the same request, and a
 host that just timed out costs another round trip per retry.
 
 **Covers** (`services/covers.py`) cascade: Open Library → Hardcover → DNB →
-Amazon → Google Books → IGDB, with manual upload and a search picker. Game
+Amazon → Google Books → IGDB, with manual upload, a pasted image URL
+(`services/manual_cover.py`) and a search picker. Game
 and film artwork does not run the cascade — IGDB and TMDb each supply one URL
 with the metadata, downloaded directly through the same allow-list and
 post-redirect re-check. Misses are retried by a background **cover queue**
@@ -222,7 +223,23 @@ and the two must not be conflated: the cascade is untouched by the picker's
 dispatch. `MEDIA_TYPE_PROVIDERS` and `CREDENTIAL_KEYS` in `covers.py` are the
 one declaration of which media type reaches which service and what credential
 it needs; the routes derive their "provider not configured" message from
-`required_credentials()` rather than keeping a second list. Every provider
+`required_credentials()` rather than keeping a second list.
+
+**A pasted cover URL is the one outbound fetch that does not go through
+`outbound.py`, deliberately** (`services/manual_cover.py`, added 0.35.0). The
+host is user-supplied, so there is no published rate limit to pace against and
+no allow-list entry to match; what it needs instead is SSRF containment, which
+the paced clients have no reason to carry. It resolves the hostname itself off
+the event loop, requires **every** returned address to be globally routable —
+a mixed public/private answer is rejected outright rather than filtered, which
+is what closes DNS rebinding — then pins the validated IP for the connection
+while keeping the original hostname for the Host header and SNI. Redirects are
+followed by hand, at most five, each hop re-resolved and re-validated as a
+fresh target. HTTPS only; embedded credentials rejected; the size cap is
+enforced twice, against `Content-Length` and again while streaming; and the
+bytes must pass the same magic-byte sniff as an upload. Every failure returns
+the same `None` and the same user-facing message, so the route cannot be used
+as a probe of what is reachable from the server. Every provider
 returns URL strings only — nothing fetches an image — so each candidate still
 reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 
@@ -447,6 +464,34 @@ must be simple, which is why the lint exists. Tailwind compiled locally to
 `static/css/app.css` and committed. Camera scanning uses a shared engine
 (`static/js/scanner-engine.js`) choosing ZXing on iOS Safari and
 html5-qrcode elsewhere.
+
+**The script load order is a stated invariant, and `make check-alpine`
+enforces it.** Eight files under `static/js/` register Alpine components; every
+one of them is a **classic** script, and Alpine's own tag is the only one that
+carries `defer`. That is not an accident of authorship. Deferred scripts run
+after parsing, so a registering script given `defer` or `async` would execute
+*after* Alpine had already fired `alpine:init` — and because the CSP build
+resolves `x-data="name"` against the `Alpine.data` registry with no global
+fallback, every binding in that component's root would then throw
+`Undefined variable`. One lost script, a page of errors, and nothing to say
+which. The lint asserts three things: no registering script is deferred or
+async, Alpine's tag comes after every registering script in the same `<head>`,
+and `static/js/component-load-guard.js` comes before every one of them.
+
+**A component script that does not execute now announces itself.** The guard is
+loaded first in both shells (`base.html` and the standalone `setup.html`),
+records every registration by wrapping `Alpine.data` from the first
+`alpine:init` listener, then reconciles the live `[x-data]` roots against what
+it recorded — for the whole document at `alpine:initialized`, and for the swap
+target on `htmx:afterSwap`, since two components (`hcResultCard`,
+`manualAddForm`) have no root on any page until HTMX delivers one. What it
+cannot resolve becomes **one `console.error` per lost script**, naming the file
+and — for the four page-scoped components, which alone declare a matching
+top-level function — whether that script executed at all. The reader gets one
+toast asking them to reload; a reload almost always fixes it, because the
+failure is per-navigation. It is deliberately its own file: a guard inside
+`components.js` could not report the loss of `components.js`, which on
+`setup.html` is the entire page.
 
 **Browse's filter set is declared in `app/browse_filters.py`.** Each filter
 states its SQL condition, its querystring behaviour and how it presents in the

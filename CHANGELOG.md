@@ -6,6 +6,56 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.35.0] - 2026-09-06
+
+When a page's script fails to arrive — a flaky network, a stale cache, a proxy
+that drops one file — the page still renders, but nothing on it works. Buttons
+do nothing, filters do nothing, and Shelf said nothing at all: the only
+evidence was dozens of errors in a browser console nobody has open. This
+release makes that failure announce itself. It also adds a way to set a cover
+from a link you already have, and reorganises the item edit form, which had
+grown into one long undifferentiated column.
+
+Two of the three changes here are the work of
+[@sudo-rpaisley](https://github.com/sudo-rpaisley).
+
+### Added
+
+- **Shelf now tells you when a page didn't load fully.** If a page's script
+  fails to execute, a red notice appears — *"This page did not load fully —
+  reload it."* — instead of the page looking normal while quietly doing
+  nothing. The browser console gets one message naming the exact file that
+  went missing and what it failed to register, in place of the dozens of
+  separate errors the same fault used to produce. A reload almost always
+  fixes it, since the failure happens per page load. Shelf deliberately does
+  **not** retry the script for you: a silent retry would hide the very signal
+  worth seeing, and the reload you would do anyway is more reliable.
+- **Set a cover from an image URL.** *Find cover* now has a **Use image from
+  URL** field beside the upload control, for when you already have a link to
+  the right image. Shelf downloads it and keeps its own local copy — the page
+  never hot-links to someone else's server. Public HTTPS links only, to a
+  JPEG, PNG, GIF or WebP under 10 MB; links to private or internal addresses
+  are refused. This is a real fix for the covers the automatic sources cannot
+  find at all, such as a 979-12 ISBN or a DVD with no TMDb match. Contributed
+  by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#93](https://github.com/dgahagan/shelf/pull/93)
+
+### Changed
+
+- **The item edit form is now organised into sections.** Editing an item used
+  to mean scrolling one long column of every field Shelf has, whether or not
+  it applied. The form is now six labelled sections — General, Artwork,
+  Series, Identifiers, Location, Media Details — with a row of links at the
+  top to jump between them, and the heading shows the item's title and media
+  type rather than just "Edit Item". Sections that do not apply to the media
+  type are hidden: a video game no longer shows Series and ISBN fields, an
+  audiobook shows narrator and duration. **Nothing is hidden out of reach** —
+  if an item already has a value in a field its media type would normally
+  hide, that section stays visible so you can still see and edit it. No field
+  was removed or renamed, and saving works exactly as before. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#96](https://github.com/dgahagan/shelf/pull/96)
+
 ## [0.34.0] - 2026-09-05
 
 Shelf and your browser do not always reach Audiobookshelf at the same address.
@@ -2883,6 +2933,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.35.0]: https://github.com/dgahagan/shelf/releases/tag/v0.35.0
 [0.34.0]: https://github.com/dgahagan/shelf/releases/tag/v0.34.0
 [0.33.1]: https://github.com/dgahagan/shelf/releases/tag/v0.33.1
 [0.33.0]: https://github.com/dgahagan/shelf/releases/tag/v0.33.0

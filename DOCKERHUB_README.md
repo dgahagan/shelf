@@ -109,7 +109,7 @@ key material.
 - **Photo intake** — bulk-add from a photo of your shelves; a vision model (Anthropic API, any OpenAI-compatible endpoint, or fully local Ollama) reads the spines and you confirm before import. Rows typed DVD or Video Game are looked up on TMDb or IGDB at confirm, on an exact title match
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
 - **Cascading metadata lookup** — Open Library, Hardcover, Google Books, and more
-- **Cover art pipeline** — automatically fetches covers from multiple sources with manual upload fallback
+- **Cover art pipeline** — automatically fetches covers from multiple sources, with manual upload or a pasted image URL as a fallback
 - **Store Mode (offline PWA)** — scan in a bookstore with no signal and get an instant Owned / On wishlist / Not in library verdict; unknown books queue on-device and land on your wishlist when back online
 
 ### 8 Scan Modes

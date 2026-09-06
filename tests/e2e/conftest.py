@@ -14,6 +14,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import pytest
 from playwright.sync_api import sync_playwright
@@ -265,6 +266,13 @@ def browser(playwright_instance):
 
 _PAGE_ERRORS_ATTR = "_shelf_page_errors"
 _ALPINE_WARNINGS_ATTR = "_shelf_alpine_warnings"
+# T4 (alpine-component-load-failure): two more recorders, read only on the
+# path where assert_page_clean() is about to raise — see _diagnostics_block
+# below. Kept as separate lists (rather than folded into the two above) so a
+# test can clear exactly the noise it caused (e.g. a login redirect) without
+# touching the pageerror/warning lists that are the actual subject under test.
+_REQUEST_FAILURES_ATTR = "_shelf_request_failures"
+_RESPONSE_ERRORS_ATTR = "_shelf_response_errors"
 
 
 def attach_page_guard(pg):
@@ -275,17 +283,224 @@ def attach_page_guard(pg):
     """
     errors: list[str] = []
     warnings: list[str] = []
+    request_failures: list[str] = []
+    response_errors: list[str] = []
 
     def _on_console(msg):
         text = msg.text
         if "Alpine Expression Error" in text:
             warnings.append(text)
 
+    # Each entry is (url, display line). The url is kept separately because
+    # _diagnostics_block() TRIGGERS on `.js` only, and re-parsing a URL back
+    # out of a formatted line is exactly the fragility that would let the
+    # trigger widen again by accident.
+    def _on_request_failed(request):
+        # Never raise: a listener exception inside Playwright's event loop
+        # would be worse than the missing diagnostic.
+        try:
+            request_failures.append(
+                (request.url,
+                 f"{request.method} {request.url} — {request.failure}")
+            )
+        except Exception:
+            pass
+
+    def _on_response(response):
+        try:
+            status = response.status
+            if (200 <= status < 300) or status == 304:
+                return
+            response_errors.append((response.url, f"{status} {response.url}"))
+        except Exception:
+            pass
+
     pg.on("pageerror", lambda err: errors.append(str(err)))
     pg.on("console", _on_console)
+    pg.on("requestfailed", _on_request_failed)
+    pg.on("response", _on_response)
     setattr(pg, _PAGE_ERRORS_ATTR, errors)
     setattr(pg, _ALPINE_WARNINGS_ATTR, warnings)
+    setattr(pg, _REQUEST_FAILURES_ATTR, request_failures)
+    setattr(pg, _RESPONSE_ERRORS_ATTR, response_errors)
     return pg
+
+
+# Read once, only from _diagnostics_block(), only on the path about to raise.
+# Builds the component-registration verdict from T1's two read-only globals
+# (static/js/component-load-guard.js) rather than restating the declaration
+# here. An earlier revision of this plan probed all 29 declared names on
+# `window`; 25 of them are anonymous Alpine.data factories that are never
+# globals on *any* page, so that made this block's "something to say" test
+# true on every healthy page. The fix is the `present` filter below: a
+# declared name counts only when its owning script tag is actually in
+# document.scripts, and `typeof window[name]` is read only for the four
+# page-scoped names (browsePage, scanPage, intakePage, coverDrop).
+_DIAGNOSTICS_JS = """
+() => {
+    var scripts = [];
+    try {
+        var tags = document.scripts;
+        for (var i = 0; i < tags.length; i++) {
+            scripts.push({
+                src: tags[i].src,
+                defer: !!tags[i].defer,
+                async: !!tags[i].async
+            });
+        }
+    } catch (e) {}
+
+    var jsResources = [];
+    try {
+        var entries = performance.getEntriesByType('resource');
+        for (var j = 0; j < entries.length; j++) {
+            var r = entries[j];
+            if (!r.name || r.name.indexOf('.js') === -1) continue;
+            jsResources.push({
+                name: r.name,
+                responseStatus: (typeof r.responseStatus === 'number') ? r.responseStatus : null,
+                duration: r.duration
+            });
+        }
+    } catch (e) {}
+
+    var components;
+    try {
+        if (typeof window.__shelfComponentScripts === 'undefined' ||
+            typeof window.__shelfRecordedComponents === 'undefined') {
+            components = { missingGlobals: true };
+        } else {
+            var declared = window.__shelfComponentScripts;
+            var recorded = window.__shelfRecordedComponents;
+            var present = {};
+            for (var k = 0; k < scripts.length; k++) {
+                var src = scripts[k].src || '';
+                var base = src.split('/').pop().split('?')[0];
+                if (base) present[base] = true;
+            }
+            var pageScoped = {
+                browsePage: true, scanPage: true, intakePage: true, coverDrop: true
+            };
+            var failing = [];
+            var names = Object.keys(declared);
+            for (var m = 0; m < names.length; m++) {
+                var name = names[m];
+                var script = declared[name];
+                if (!present[script]) continue;
+                if (recorded.indexOf(name) !== -1) continue;
+                var entry = { name: name, script: script };
+                if (pageScoped[name]) {
+                    try { entry.typeofWindow = typeof window[name]; }
+                    catch (e) { entry.typeofWindow = 'unknown'; }
+                }
+                failing.push(entry);
+            }
+            components = { missingGlobals: false, failing: failing };
+        }
+    } catch (e) {
+        components = { error: String(e) };
+    }
+
+    return { scripts: scripts, jsResources: jsResources, components: components };
+}
+"""
+
+
+def _is_js_url(url) -> bool:
+    """A script URL — the only kind of request or response failure this block
+    exists to explain. Query strings and fragments are ignored, so a cache-
+    busted `.js?v=3` still counts."""
+    try:
+        return urlsplit(url).path.endswith(".js")
+    except Exception:
+        return False
+
+
+def _diagnostics_block(pg):
+    """Extra context for a failing assert_page_clean(), gathered only here —
+    never on the passing path. Returns "" when there is nothing beyond the
+    base message to say: a failed or non-2xx/304 `.js` request, a present
+    script whose component is missing from the recorded set, or an absent
+    guard global. Otherwise assert_page_clean()'s message must be
+    byte-identical to what it was before this block existed.
+
+    The `.js` narrowing is the trigger, not the output. A page that took a
+    404 cover and then failed for an unrelated reason must get the message it
+    got before this block existed — but once a lost script HAS fired the
+    block, the other requests are context worth printing.
+    """
+    request_failures = getattr(pg, _REQUEST_FAILURES_ATTR, [])
+    response_errors = getattr(pg, _RESPONSE_ERRORS_ATTR, [])
+    js_request_failures = any(_is_js_url(u) for u, _ in request_failures)
+    js_response_errors = any(_is_js_url(u) for u, _ in response_errors)
+
+    try:
+        state = pg.evaluate(_DIAGNOSTICS_JS)
+    except Exception as e:
+        # A page that has navigated or closed must not turn an assertion
+        # into an error of its own.
+        return f"\n\ndiagnostics unavailable: {e}"
+
+    components = state.get("components") or {}
+    missing_globals = components.get("missingGlobals")
+    comp_error = components.get("error")
+    failing = components.get("failing", [])
+
+    if not (js_request_failures or js_response_errors
+            or missing_globals or comp_error or failing):
+        return ""
+
+    lines = ["", "", "Diagnostics:"]
+
+    if request_failures:
+        lines.append("Failed requests:")
+        lines.extend(f"  - {f}" for _, f in request_failures)
+
+    if response_errors:
+        lines.append("Non-2xx/304 responses:")
+        lines.extend(f"  - {r}" for _, r in response_errors)
+
+    if comp_error:
+        lines.append(f"component verdict unavailable: {comp_error}")
+    elif missing_globals:
+        lines.append(
+            "component load guard globals are absent "
+            "(__shelfComponentScripts / __shelfRecordedComponents) — "
+            "static/js/component-load-guard.js may not have run"
+        )
+    elif failing:
+        lines.append("Components whose script loaded but did not register:")
+        for entry in failing:
+            piece = f"  - {entry['name']} ({entry['script']})"
+            if "typeofWindow" in entry:
+                piece += (
+                    f' — typeof window.{entry["name"]} is '
+                    f'"{entry["typeofWindow"]}"'
+                )
+            lines.append(piece)
+
+    scripts = state.get("scripts") or []
+    if scripts:
+        lines.append("")
+        lines.append("document.scripts:")
+        for s in scripts:
+            attrs = [a for a, v in (("defer", s.get("defer")), ("async", s.get("async"))) if v]
+            suffix = f" [{', '.join(attrs)}]" if attrs else ""
+            lines.append(f"  - {s.get('src')}{suffix}")
+
+    js_resources = state.get("jsResources") or []
+    if js_resources:
+        lines.append("")
+        lines.append(".js resource timing:")
+        for r in js_resources:
+            status = r.get("responseStatus")
+            status_str = status if status is not None else "unknown"
+            duration = r.get("duration") or 0
+            lines.append(
+                f"  - {r.get('name')} status={status_str} duration={duration:.1f}ms"
+            )
+
+    return "\n".join(lines)
 
 
 def assert_page_clean(pg):
@@ -308,9 +523,9 @@ def assert_page_clean(pg):
     if warnings:
         detail += "\n\nAlpine expression warnings (these name the failing expression):\n"
         detail += "\n".join(f"  - {w}" for w in warnings)
-    raise AssertionError(
-        f"{len(errors)} uncaught page error(s) on {pg.url}:\n{detail}"
-    )
+    message = f"{len(errors)} uncaught page error(s) on {pg.url}:\n{detail}"
+    message += _diagnostics_block(pg)
+    raise AssertionError(message)
 
 
 def _run_setup_wizard(browser, base_url: str) -> dict:

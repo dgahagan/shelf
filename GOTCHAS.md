@@ -1042,6 +1042,20 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     commit the fix first and let `git checkout` mean what the recipe assumes,
     or `cp` the fixed file aside before the first mutation and restore from
     that copy. A plan that writes the recipe should say which.
+    **It happened again on `feat/alpine-component-load-failure` (2026-09-06),
+    to an orchestrator that had read this bullet the same session.** T3's
+    mutation check moved `base.html`'s Alpine tag, and the restore was
+    `git checkout -- shelf/app/templates/base.html` — which took the whole
+    `<head>` comment that task had just written, because the comment was
+    working-tree-only. The lint stayed green either way, so nothing announced
+    it; it was noticed by eye in the next diff. Like **G63**, this rule
+    survives being known and does not survive being convenient, and for the
+    same reason: `git checkout` is the shorter command. **The habit with a
+    default is `cp <file> /tmp/<file>.bak` before the first mutation, every
+    time** — correct whether or not the fix is committed, so there is no
+    judgement call left to get wrong. In the same session the *committed* case
+    (T2's guard file) and the *uncommitted* case (T3's template) sat one task
+    apart, which is exactly the discrimination not worth making under pressure.
 
   One more, found while orchestrating `feat/issue-50-blank-scan-toast`
   (2026-08-28) — the "fallback branch absorbs it" bullet again, but the
@@ -3411,6 +3425,45 @@ git grep -n -B 2 "if existing is None:" -- app/routers/
 - **Status:** documented. Not a lint candidate — only the original code knows
   which arms were meant to fall through, and after the refactor that
   information exists nowhere but its own tests.
+
+## G82 — When a test asserts how many toasts a page raised
+
+- **Rule:** Do not count them in the DOM. `showToast` deletes its own element
+  after 3000ms (`static/js/app.js`), so any read of `#toast-container` is a
+  read of *what has not been removed yet*, not of what was raised. Record the
+  appends instead: a `MutationObserver` installed through
+  `page.add_init_script` **before the first navigation**, filtered on the
+  toast text you actually mean.
+- **Why:** the failure is silent in the direction that matters. A page that
+  raised two toasts a tick apart and a page that raised none both read **0**
+  once the timers have run, so a "at most one toast" pin passes on the page it
+  was written to catch. Two further traps sit on top of it:
+  - **`#toast-container` is a shared channel.** `app.js` raises its own toasts
+    for real scan and intake outcomes, so a raw append count on a page that
+    also drives one of those actions over-counts — measured 3 where 1 was
+    meant, on the `/scan` arm. Filter added nodes on the exact copy string.
+  - **Attach the observer to `document`, not to the container.** A
+    `requestAnimationFrame` poll waiting for `#toast-container` to exist loses
+    the toast on a light page: on `/browse` the component-load guard's own
+    `notify()` beat the first animation frame, so the observer attached after
+    the append and reported 0 — while heavier pages happened to pass, which is
+    the worst shape of flake. `document` exists the instant an init script
+    runs; observe it with `subtree: true`.
+- **Evidence:** `e277f92` (2026-09-06, plan `alpine-component-load-failure`
+  T2), whose contract is "one toast per page however many scripts were lost
+  and however many swaps landed" — unprovable by DOM presence. Both traps
+  above were hit while writing it, in that order.
+- **Verify:** the self-removal is still what makes a presence check unsound —
+  a hit here means the trap is live:
+
+```bash
+grep -n "el.remove()" static/js/app.js
+grep -n "__guardToastAppends" tests/e2e/test_component_load_guard.py
+```
+
+- **Status:** documented. Not a lint candidate — a checker cannot tell a
+  presence assertion that means "is one visible now" (legitimate) from one
+  that means "how many were raised" (unsound).
 
 ## Graveyard
 

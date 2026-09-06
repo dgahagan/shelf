@@ -233,6 +233,165 @@ def check_xdata_registrations(root: Path = TEMPLATES) -> list:
 
 
 # ---------------------------------------------------------------------------
+# Script load order — the arrangement that makes every registration land
+# before Alpine walks the tree, and keeps the component-load guard first.
+#
+# A registering script given `defer` would execute *after* Alpine's own
+# deferred tag on the same page, so its Alpine.data() call would arrive after
+# `alpine:init` had already fired and every x-data root in it would resolve to
+# nothing — a whole page of "Undefined variable" errors, one per binding. The
+# guard in static/js/component-load-guard.js reports exactly that, but only if
+# it is parsed first: it installs a recording wrapper on Alpine.data from an
+# `alpine:init` listener, and listener order is registration order.
+#
+# G53 — this check greps raw template text for `<script`, `defer` and `async`,
+# so it strips HTML *and* Jinja comments first. base.html's own <head> comment
+# describes this rule and necessarily names the words it forbids.
+# ---------------------------------------------------------------------------
+
+GUARD_SCRIPT = "component-load-guard.js"
+
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
+_HEAD_BLOCK = re.compile(r"<head\b[^>]*>(.*?)</head>", re.I | re.S)
+_SCRIPT_TAG = re.compile(r"<script\b([^>]*)>", re.I)
+_SRC_ATTR = re.compile(r"""\bsrc\s*=\s*["']([^"']+)["']""", re.I)
+# Bare boolean attributes. Tested against the tag's attributes with the src
+# value removed, so a filename containing the word cannot trip them, and
+# matched independently of attribute order.
+_DEFER_ATTR = re.compile(r"\bdefer\b", re.I)
+_ASYNC_ATTR = re.compile(r"\basync\b", re.I)
+
+
+def _strip_comments(src: str) -> str:
+    """Blank both comment forms, preserving line numbers."""
+    blank = lambda m: "\n" * m.group(0).count("\n")   # noqa: E731
+    return _HTML_COMMENT.sub(blank, _JINJA_COMMENT.sub(blank, src))
+
+
+def registering_scripts(js_dir: Path = None) -> set:
+    """Basenames under static/js/ that call Alpine.data()."""
+    js_dir = js_dir or JS_DIR
+    return {
+        path.name
+        for path in sorted(js_dir.glob("**/*.js"))
+        if _ALPINE_DATA_REG.search(path.read_text())
+    }
+
+
+def _script_srcs(block: str, offset: int) -> list:
+    """(src, absolute-start, attrs) for every <script src=...> in `block`.
+
+    `attrs` is the raw attribute text with the src value blanked, so a
+    filename containing "defer" or "async" cannot be mistaken for the bare
+    boolean attribute.
+    """
+    out = []
+    for m in _SCRIPT_TAG.finditer(block):
+        src_m = _SRC_ATTR.search(m.group(1))
+        if src_m:
+            out.append((src_m.group(1), offset + m.start(),
+                        _SRC_ATTR.sub(" ", m.group(1))))
+    return out
+
+
+def check_script_load_order(root: Path = TEMPLATES, js_dir: Path = None) -> list:
+    registering = registering_scripts(js_dir)
+    violations = []
+    for path in sorted(root.glob("**/*.html")):
+        try:
+            display = path.relative_to(ROOT)
+        except ValueError:
+            display = path.relative_to(root)
+        src = _strip_comments(path.read_text())
+
+        def line_of(pos):
+            return src.count("\n", 0, pos) + 1
+
+        # 1 — a registering script may never be deferred or async, anywhere.
+        for m in _SCRIPT_TAG.finditer(src):
+            attrs = m.group(1)
+            src_m = _SRC_ATTR.search(attrs)
+            if not src_m or src_m.group(1).rsplit("/", 1)[-1] not in registering:
+                continue
+            bare = _SRC_ATTR.sub(" ", attrs)
+            for pattern, word in ((_DEFER_ATTR, "defer"), (_ASYNC_ATTR, "async")):
+                if pattern.search(bare):
+                    violations.append(
+                        f"{display}:{line_of(m.start())}: "
+                        f"{src_m.group(1)} calls Alpine.data() and is loaded "
+                        f"with `{word}` — it would then execute after Alpine's "
+                        "own deferred tag, so alpine:init has already fired and "
+                        "every x-data root it owns resolves to nothing. Load a "
+                        "registering script as a classic script."
+                    )
+
+        # 2 and 3 — ordering, per <head> that loads any registering script.
+        for head_m in _HEAD_BLOCK.finditer(src):
+            seq = _script_srcs(head_m.group(1), head_m.start(1))
+            reg = [(s, p) for s, p, _ in seq
+                   if s.rsplit("/", 1)[-1] in registering]
+            if not reg:
+                continue
+            first_reg, last_reg = reg[0], reg[-1]
+
+            for s, pos, attrs in seq:
+                if not s.rsplit("/", 1)[-1].startswith("alpinejs"):
+                    continue
+                if pos < last_reg[1]:
+                    violations.append(
+                        f"{display}:{line_of(pos)}: Alpine's tag is loaded "
+                        f"before {last_reg[0]}, which registers components. "
+                        "Alpine must come last in the <head>, or it fires "
+                        "alpine:init before that script has run."
+                    )
+                # The mirror of rule 1, and the half that was missing: the
+                # registering scripts must be classic, and Alpine's own tag
+                # must be deferred. The vendored CSP build has no readyState
+                # or DOMContentLoaded handling at all — it walks the DOM the
+                # moment it executes. Loaded from the <head> without `defer`
+                # it therefore runs while <body> is still unparsed, finds no
+                # x-data root, and every binding on the page resolves to
+                # nothing. `async` is no substitute: it drops the ordering
+                # this whole block exists to enforce.
+                if _ASYNC_ATTR.search(attrs):
+                    violations.append(
+                        f"{display}:{line_of(pos)}: {s} is loaded with "
+                        "`async`, so it may execute before the scripts above "
+                        "it have registered their components. Alpine's tag "
+                        "must carry `defer`, not `async`."
+                    )
+                elif not _DEFER_ATTR.search(attrs):
+                    violations.append(
+                        f"{display}:{line_of(pos)}: {s} is loaded without "
+                        "`defer`. This build starts as soon as it executes, "
+                        "so from the <head> it would walk a document whose "
+                        "<body> has not been parsed, find no x-data root, "
+                        "and leave every binding on the page unresolved. "
+                        "Load Alpine with `defer`, last in the <head>."
+                    )
+
+            guard = [(s, p) for s, p, _ in seq
+                     if s.rsplit("/", 1)[-1] == GUARD_SCRIPT]
+            if not guard:
+                violations.append(
+                    f"{display}:{line_of(head_m.start())}: this <head> loads "
+                    f"{first_reg[0]}, which registers components, but no "
+                    f"{GUARD_SCRIPT}. Without it a lost component script takes "
+                    "the page down with nothing to say."
+                )
+            for s, pos in guard:
+                if pos > first_reg[1]:
+                    violations.append(
+                        f"{display}:{line_of(pos)}: {GUARD_SCRIPT} is loaded "
+                        f"after {first_reg[0]}. It installs its recording "
+                        "wrapper from an alpine:init listener, and listener "
+                        "order is registration order — loaded second it "
+                        "records nothing that ran before it."
+                    )
+    return violations
+
+
+# ---------------------------------------------------------------------------
 # G2 — $el / $root are bound at call time, not captured. After an await the
 # component may have re-rendered, so the reference is stale or detached.
 # ---------------------------------------------------------------------------
@@ -278,6 +437,7 @@ def main() -> int:
     violations = (
         find_violations()
         + check_xdata_registrations()
+        + check_script_load_order()
         + check_magics_after_await()
     )
     if violations:
@@ -286,7 +446,7 @@ def main() -> int:
             print(f"  {v}")
         return 1
     print("Alpine CSP lint: expressions CSP-safe, every x-data registered "
-          "(G4), no $el/$root after an await (G2).")
+          "(G4), script load order intact, no $el/$root after an await (G2).")
     return 0
 
 

@@ -117,7 +117,8 @@ Shelf files neither rather than choosing one. Set it in **Edit**.
 
 **A 979-12 book has no cover.** The Amazon cover fallback takes only ISBNs
 beginning 978, so a 979-12 book can be covered only by Open Library. **Find
-cover** searches by title and often turns one up.
+cover** searches by title and often turns one up. If it does not, **Use image
+from URL** takes a public HTTPS link to an image you found yourself.
 
 **DVDs and games that filed a bare title — no synopsis, no year, no cover —
 were a bug, not a missing key.** TMDb rejected the credential type the setup
@@ -220,6 +221,10 @@ usually means one of three things:
 For a book the picker is unchanged: it always combines the item's stored
 author with your query, so a wrong author on the record finds nothing whatever
 you type.
+
+When none of the above turns up an image, **Use image from URL** sets the
+cover from a public HTTPS link directly — the one route that does not depend
+on a provider having the record at all.
 
 ## Photo Intake finds nothing / garbage
 
@@ -358,6 +363,22 @@ rate-limited carries "A metadata source is rate-limiting us right now — this
 may not be a genuine miss." The log line still names *which* host, which the
 card deliberately does not — a book lookup consults up to four sources and any
 subset can be starved at once.
+
+## "This page did not load fully — reload it."
+
+One of the page's script files did not arrive, so part of the page is inert:
+buttons that do nothing, panels stuck open, a search box that does not search.
+Nothing is wrong with your data.
+
+**Reload the page.** The failure happens per navigation and a reload almost
+always clears it.
+
+If it keeps coming back, open the browser console (F12 → Console) and look for
+the line beginning `[shelf] component load failure:`. That line names the exact
+script file that was lost and whether it ran at all — include it verbatim when
+you report the problem, along with anything the network tab shows for that
+file. Without it there is nothing to go on: the page cannot tell the difference
+between a script that never arrived and one that arrived too late.
 
 ## Rate-limited (HTTP 429) in the UI
 

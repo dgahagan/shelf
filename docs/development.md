@@ -119,8 +119,23 @@ fixtures (CSRF pre-seeded, rate limiting off) and `db` for direct SQL. See
 E2E tests fail on a **dirty browser**: every Playwright page is watched for
 uncaught errors, and a test that leaves one behind fails at teardown even when
 its own assertions passed. The failure quotes Alpine's expression text, which
-usually names the culprit outright. There is no opt-out — a test that must
-provoke an error needs an explicit suppression contract designed first.
+usually names the culprit outright — and, when there is something to say, the
+failed requests, non-2xx `.js` responses and component-registration state that
+explain *why* the page broke. On a healthy page that block is absent and the
+message is unchanged.
+
+There is still no general opt-out, but there is now **one sanctioned
+suppression contract**, and `tests/e2e/test_component_load_guard.py` is both
+its definition and its only user. It applies to a test whose *subject is the
+error* — one that deliberately breaks a script load to prove the app reports
+it. The sequence is fixed: build the page inline with
+`attach_page_guard(ctx.new_page())`, assert the expected error signature
+yourself, clear the recorder lists on the Page, then call `assert_page_clean`
+before the context closes. Clearing is not evasion — the errors are what the
+test just asserted, and the trailing check still proves nothing *unexpected*
+rode along. Any other test that wants to provoke an error needs its own
+contract designed first; do not copy this one to silence an inconvenient
+failure.
 
 ## Rules that bite
 
@@ -134,6 +149,13 @@ provoke an error needs an explicit suppression contract designed first.
   check-alpine` enforces both, though it only sees the statically obvious guard
   shapes — a plain identifier dereferenced two levels deep or called as a
   method.
+- **The script load order in `<head>` is load-bearing**, and `make
+  check-alpine` enforces it too. A script under `static/js/` that calls
+  `Alpine.data()` is a **classic** script — never `defer`, never `async`;
+  `component-load-guard.js` comes **first**, ahead of every registering script;
+  and Alpine's own tag is the only deferred one and comes **last**. Disturb any
+  of the three and the affected page throws `Undefined variable` once per
+  binding, with the guard installed too late to say which file was lost.
 - **Raw `fetch()` must send `X-CSRF-Token`.** `make check-csrf` enforces;
   HTMX is configured globally in `base.html`.
 - **`MIGRATIONS` in `app/database.py` is append-only.** Never edit or

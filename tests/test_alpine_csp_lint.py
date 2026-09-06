@@ -98,3 +98,247 @@ def test_lint_allows_safe_guard_forms(tmp_path):
     )
     violations = check_alpine_csp.find_violations(tmp_path)
     assert not violations, "\n" + "\n".join(violations)
+
+
+# ---------------------------------------------------------------------------
+# Script load order — a registering script must be classic, the guard must be
+# first, and Alpine must be last. See the <head> comment in base.html.
+# ---------------------------------------------------------------------------
+
+_ALPINE_TAG = '<script defer src="/static/vendor/alpinejs-csp-3.15.9.min.js"></script>\n'
+_GUARD_TAG = '<script src="/static/js/component-load-guard.js"></script>\n'
+
+
+def _fake_tree(tmp_path, head_scripts, body="", extra_js=None):
+    """A templates/ dir and a static/js/ dir the check can be pointed at.
+
+    `components.js` is the registering script in every case; the guard file is
+    written too so `registering_scripts()` sees a realistic set (it must not
+    count the guard itself — the guard reads Alpine.data, it never calls it).
+    """
+    templates = tmp_path / "templates"
+    templates.mkdir()
+    js = tmp_path / "js"
+    js.mkdir()
+    (js / "components.js").write_text("Alpine.data('navMenu', function () { return {} });\n")
+    (js / "component-load-guard.js").write_text(
+        "var original = window.Alpine.data;\n"
+        "window.Alpine.data = function (name) { return original.apply(this, arguments); };\n"
+    )
+    for name, text in (extra_js or {}).items():
+        (js / name).write_text(text)
+    (templates / "t.html").write_text(
+        "<html>\n<head>\n" + head_scripts + "</head>\n<body>\n" + body + "</body>\n</html>\n"
+    )
+    return templates, js
+
+
+def test_real_tree_load_order_is_intact():
+    assert not check_alpine_csp.check_script_load_order()
+
+
+def test_load_order_rejects_deferred_registering_script(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script defer src="/static/js/components.js"></script>\n'
+        + _ALPINE_TAG,
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("`defer`" in v for v in violations), violations
+
+
+def test_load_order_rejects_async_registering_script(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script src="/static/js/components.js" async></script>\n'
+        + _ALPINE_TAG,
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("`async`" in v for v in violations), violations
+
+
+def test_load_order_rejects_alpine_above_a_registering_script(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + _ALPINE_TAG
+        + '<script src="/static/js/components.js"></script>\n',
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("Alpine must come last" in v for v in violations), violations
+
+
+def test_load_order_rejects_guard_below_a_registering_script(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        '<script src="/static/js/components.js"></script>\n'
+        + _GUARD_TAG
+        + _ALPINE_TAG,
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("records nothing that ran before it" in v for v in violations), violations
+
+
+def test_load_order_rejects_a_head_with_no_guard_at_all(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        '<script src="/static/js/components.js"></script>\n' + _ALPINE_TAG,
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("but no component-load-guard.js" in v for v in violations), violations
+
+
+def test_load_order_accepts_the_correct_arrangement(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script src="/static/js/components.js"></script>\n'
+        + _ALPINE_TAG,
+    )
+    assert not check_alpine_csp.check_script_load_order(templates, js)
+
+
+def test_load_order_tolerates_attribute_order_and_whitespace(tmp_path):
+    """`defer` before `src` and `defer` after `src` are the same tag; so is
+    one broken across lines. A check that only recognised one form would pass
+    the other silently."""
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script\n    defer\n    src="/static/js/components.js"\n    type="text/javascript"></script>\n'
+        + _ALPINE_TAG,
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("`defer`" in v for v in violations), violations
+
+
+def test_load_order_ignores_defer_named_only_inside_a_comment(tmp_path):
+    """GOTCHAS G53: this check greps raw template text, and base.html's own
+    <head> comment necessarily explains the rule using the words it forbids.
+    An HTML comment (and a Jinja one) must be stripped before scanning, or the
+    good comment becomes the false positive that gets the guard weakened."""
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + "<!-- components.js must never carry defer or async — see G4. -->\n"
+        + "{# the same claim again, as a Jinja comment: defer would break it #}\n"
+        + '<script src="/static/js/components.js"></script>\n'
+        + _ALPINE_TAG,
+    )
+    assert not check_alpine_csp.check_script_load_order(templates, js)
+
+
+def test_load_order_ignores_a_head_that_registers_nothing(tmp_path):
+    """store.html has its own <head> with a deferred store.js in it, and
+    store.js registers no component — such a head needs no guard tag and its
+    deferred script is not a violation."""
+    templates, js = _fake_tree(
+        tmp_path,
+        '<script defer src="/static/js/store.js"></script>\n',
+        extra_js={"store.js": "// no Alpine.data() here\n"},
+    )
+    assert not check_alpine_csp.check_script_load_order(templates, js)
+
+
+def test_load_order_does_not_read_a_filename_as_a_boolean_attribute(tmp_path):
+    """A src whose *filename* contains the word must not read as the bare
+    attribute — the check strips the src value before testing."""
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script src="/static/js/defer-async.js"></script>\n'
+        + '<script src="/static/js/components.js"></script>\n'
+        + _ALPINE_TAG,
+        extra_js={"defer-async.js": "Alpine.data('x', function () { return {} });\n"},
+    )
+    assert not check_alpine_csp.check_script_load_order(templates, js)
+
+
+# ---------------------------------------------------------------------------
+# The mirror of the rules above: the registering scripts must be classic, and
+# Alpine's own tag must be deferred. Filed as a major on the diff review of
+# feat/alpine-component-load-failure — the lint enforced the first half and
+# printed "script load order intact" for the second, so stripping `defer`
+# from base.html passed green.
+# ---------------------------------------------------------------------------
+
+
+def test_load_order_rejects_alpine_without_defer(tmp_path):
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script src="/static/js/components.js"></script>\n'
+        + '<script src="/static/vendor/alpinejs-csp-3.15.9.min.js"></script>\n',
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("without `defer`" in v for v in violations), violations
+
+
+def test_load_order_rejects_async_alpine(tmp_path):
+    """`async` is not a substitute for `defer` here: it drops the ordering the
+    rest of this block exists to enforce, so it gets its own message rather
+    than falling through to the missing-`defer` one."""
+    templates, js = _fake_tree(
+        tmp_path,
+        _GUARD_TAG
+        + '<script src="/static/js/components.js"></script>\n'
+        + '<script async src="/static/vendor/alpinejs-csp-3.15.9.min.js"></script>\n',
+    )
+    violations = check_alpine_csp.check_script_load_order(templates, js)
+    assert any("`defer`, not `async`" in v for v in violations), violations
+    assert not any("without `defer`" in v for v in violations), violations
+
+
+def _mutate_real_template(tmp_path, name, before, after):
+    """Copy the SHIPPED app/templates/ tree, strip one attribute from one tag,
+    and lint the copy. A tmp_path fixture proves the rule; only the real tree
+    proves the rule is pointed at the file it is supposed to protect."""
+    import shutil
+
+    dest = tmp_path / "templates"
+    shutil.copytree(check_alpine_csp.TEMPLATES, dest)
+    target = dest / name
+    text = target.read_text()
+    assert before in text, f"{name} no longer contains {before!r}"
+    target.write_text(text.replace(before, after, 1))
+    return check_alpine_csp.check_script_load_order(dest)
+
+
+_ALPINE_SRC = "/static/vendor/alpinejs-csp-3.15.9.min.js"
+
+
+def test_real_base_html_without_defer_is_caught(tmp_path):
+    violations = _mutate_real_template(
+        tmp_path,
+        "base.html",
+        f'<script defer src="{_ALPINE_SRC}">',
+        f'<script src="{_ALPINE_SRC}">',
+    )
+    assert any("base.html" in v and "without `defer`" in v for v in violations), violations
+
+
+def test_real_setup_html_without_defer_is_caught(tmp_path):
+    """setup.html has its own <head> — the one page that does not extend
+    base.html, and so the one a base.html-only rule would miss."""
+    violations = _mutate_real_template(
+        tmp_path,
+        "setup.html",
+        f'<script defer src="{_ALPINE_SRC}">',
+        f'<script src="{_ALPINE_SRC}">',
+    )
+    assert any("setup.html" in v and "without `defer`" in v for v in violations), violations
+
+
+def test_main_reports_a_load_order_violation_and_exits_non_zero(capsys, monkeypatch):
+    """The rules above are all exercised through check_script_load_order()
+    directly. This is the one that proves main() calls it at all — delete the
+    line from main() and every other test here still passes."""
+    sentinel = "SENTINEL load-order violation"
+    monkeypatch.setattr(
+        check_alpine_csp, "check_script_load_order", lambda *a, **k: [sentinel]
+    )
+    rc = check_alpine_csp.main()
+    assert rc == 1
+    assert sentinel in capsys.readouterr().out
