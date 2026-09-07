@@ -6,6 +6,14 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Manual cover URLs are now available directly in Edit → Artwork.** Paste a
+  public HTTPS image URL and choose **Use URL** to apply it immediately through
+  Shelf's existing SSRF-safe manual-cover downloader. The action stays on the
+  edit page, so unsaved metadata is not discarded; normal file uploads and
+  other item edits still wait for **Save Changes**.
+
 ## [0.36.0] - 2026-09-07
 
 Shelf's locations were one flat list. *Office*, *Bookcase 1* and *Shelf 3* sat

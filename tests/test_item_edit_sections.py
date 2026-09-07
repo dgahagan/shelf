@@ -42,3 +42,13 @@ def test_item_edit_is_sectioned_without_changing_the_save_contract():
     assert 'data-media-types="video_game audiobook"' in template
     assert "updateEditSectionVisibility" in script
     assert "mediaSelect.addEventListener('change'" in script
+
+    # Artwork exposes the existing safe manual-cover URL route directly from
+    # Edit without nesting another form inside the item-save form. The HTMX
+    # action applies only the cover and deliberately stays on the edit page so
+    # unsaved metadata remains in the DOM.
+    assert 'id="edit-cover-url"' in template
+    assert 'data-testid="edit-cover-url-submit"' in template
+    assert 'hx-post="/api/items/{{ item.id }}/cover-url"' in template
+    assert 'hx-include="#edit-cover-url"' in template
+    assert 'hx-vals=\'{"return_to":"edit"}\'' in template

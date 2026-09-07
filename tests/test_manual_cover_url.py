@@ -161,3 +161,30 @@ def test_redirect_target_is_validated_as_a_new_hop(monkeypatch):
         "https://covers.example.test/start.jpg",
         "https://127.0.0.1/private.jpg",
     ]
+
+
+def test_manual_url_from_edit_preserves_unsaved_edit_page(editor_client, db, monkeypatch):
+    from app.services import manual_cover
+
+    item_id = _insert_item(db, title="Edit manual cover", isbn="9780900011005")
+    db.commit()
+    monkeypatch.setattr(
+        manual_cover,
+        "download",
+        AsyncMock(return_value=f"covers/{item_id}.jpg"),
+    )
+
+    resp = editor_client.post(
+        f"/api/items/{item_id}/cover-url",
+        data={
+            "url": "https://images.example.test/edit-cover.jpg",
+            "return_to": "edit",
+        },
+    )
+
+    assert resp.status_code == 200
+    assert "HX-Redirect" not in resp.headers
+    assert "Cover updated" in resp.headers.get("HX-Trigger", "")
+    row = db.execute("SELECT cover_path FROM items WHERE id = ?", (item_id,)).fetchone()
+    assert row["cover_path"] == f"covers/{item_id}.jpg"
+

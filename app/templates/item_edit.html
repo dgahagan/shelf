@@ -141,7 +141,7 @@
         <section id="edit-artwork" data-testid="edit-section-artwork" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
             <div>
                 <h2 class="text-lg font-semibold">Artwork</h2>
-                <p class="text-sm text-shelf-muted mt-1">Preview the current cover or upload a replacement.</p>
+                <p class="text-sm text-shelf-muted mt-1">Preview the current cover, upload a replacement, or use a public image URL.</p>
             </div>
 
             <div x-data="coverDrop">
@@ -165,6 +165,25 @@
                         <p class="text-xs text-shelf-muted mt-1">The replacement is applied when you save the item.</p>
                     </div>
                 </div>
+            </div>
+
+            <div class="border-t border-shelf-border pt-4 space-y-2">
+                <label for="edit-cover-url" class="block text-sm font-medium text-shelf-muted">Cover image URL</label>
+                <div class="flex flex-col sm:flex-row gap-2">
+                    <input type="url" id="edit-cover-url" name="url" inputmode="url" autocomplete="url"
+                           placeholder="https://example.com/cover.jpg"
+                           class="min-w-0 flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+                    <button type="button" data-testid="edit-cover-url-submit"
+                            hx-post="/api/items/{{ item.id }}/cover-url"
+                            hx-include="#edit-cover-url"
+                            hx-vals='{"return_to":"edit"}'
+                            hx-swap="none"
+                            hx-disabled-elt="this, #edit-cover-url"
+                            class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors whitespace-nowrap">
+                        Use URL
+                    </button>
+                </div>
+                <p class="text-xs text-shelf-muted">Public HTTPS image links only. Use URL applies the cover immediately; your other edits are still saved with Save Changes.</p>
             </div>
         </section>
 

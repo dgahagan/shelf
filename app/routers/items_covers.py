@@ -230,6 +230,7 @@ async def cover_select(
 async def cover_from_url(
     item_id: int,
     url: str = Form(...),
+    return_to: str | None = Form(None),
     _=Depends(require_role("editor")),
 ):
     """Use a user-pasted public HTTPS image as an item's cover."""
@@ -254,7 +255,8 @@ async def cover_from_url(
         )
     resp = HTMLResponse("")
     resp.headers["HX-Trigger"] = items_common._toast_header("Cover updated")
-    resp.headers["HX-Redirect"] = f"/item/{item_id}"
+    if return_to != "edit":
+        resp.headers["HX-Redirect"] = f"/item/{item_id}"
     return resp
 
 
