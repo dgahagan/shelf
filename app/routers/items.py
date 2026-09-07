@@ -1208,7 +1208,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
     if "upc" in fields:
         valid_upc, canonical_upc = upc_svc.canonical_retail_barcode(fields["upc"])
         if not valid_upc:
-            return HTMLResponse("Invalid UPC / EAN barcode", status_code=400)
+            return _refused("invalid_upc")
         fields["upc"] = canonical_upc
 
     # Handle cover upload
@@ -1247,9 +1247,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                 (fields["upc"], effective_media_type, item_id),
             ).fetchone()
             if conflict:
-                return HTMLResponse(
-                    "Update conflicts with existing catalogue data", status_code=409
-                )
+                return _refused("upc_conflict")
 
         # The form posts `isbn` every time, so an edit that changes it now
         # rewrites isbn10 too — #54's second half.
@@ -1260,9 +1258,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
         except sqlite3.IntegrityError:
             # Close the race between the explicit duplicate lookup and write.
             if "upc" in fields:
-                return HTMLResponse(
-                    "Update conflicts with existing catalogue data", status_code=409
-                )
+                return _refused("upc_conflict")
             raise
 
         # Guarded: `fields` only carries series_name when the form submitted it
@@ -1591,6 +1587,5 @@ async def test_igdb_key(request: Request, _=Depends(require_role("admin"))):
         return {"ok": False, "message": "Both Client ID and Client Secret are required"}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         return await igdb.test_credentials(client_id, client_secret, client)
-
 
 
