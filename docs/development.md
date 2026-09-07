@@ -137,6 +137,27 @@ rode along. Any other test that wants to provoke an error needs its own
 contract designed first; do not copy this one to silence an inconvenient
 failure.
 
+**Never wait with `wait_for_load_state("networkidle")` after a click.** It does
+not wait for what you mean: Playwright resolves it immediately when the page has
+already reached the state, and right after a click it usually has, because the
+request the click starts may not have been issued yet. So the wait returns at
+once and the assertion races whatever the click began. Arm the waiter **before**
+the click, and pick it by **what the following assertion reads** — not by what
+the click fires:
+
+| the assertion reads | the waiter |
+|---|---|
+| nothing in flight (the click makes no request) | delete the wait; `expect(...)` auto-retries |
+| the new document | `with page.expect_navigation(): click()` |
+| the response, or the DB behind it | `with page.expect_response(<predicate>): click()` |
+| a swapped HTMX fragment | `with page.expect_response(lambda r: "/api/search" in r.url): click()` |
+
+`make check-tests` enforces this with an allowance of zero. `wait_for_load_state`
+after a `goto()` is the documented use and stays legal — only the adjacency to a
+click or a press is not. **G83** in `GOTCHAS.md` carries the reasoning, including
+why `wait_for_url` is not the fix for a handler that redirects back to the URL
+it posted from.
+
 ## Rules that bite
 
 - **Strict CSP.** No inline `<script>`, no `eval`, no CDNs. All JS/CSS lives
@@ -209,7 +230,7 @@ app/
   templates/       Jinja2 pages + fragments/ for HTMX swaps
 static/            vendored JS/CSS, Alpine components, service worker, Tailwind output
 tests/             unit/integration; tests/e2e/ Playwright
-scripts/           lint scripts (CSRF, Alpine CSP), intake eval
+scripts/           lint scripts (CSRF, Alpine CSP, test conventions), intake eval
 Makefile, Dockerfile, entrypoint.sh, docker-compose.yml (dev defaults)
 ```
 

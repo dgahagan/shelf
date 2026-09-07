@@ -101,7 +101,6 @@ def _open_data_tab(page, live_server):
     page.goto(f"{live_server['url']}/settings")
     page.wait_for_load_state("networkidle")
     page.locator("button:has-text('Data')").click()
-    page.wait_for_load_state("networkidle")
 
 
 def _result_text(page) -> str:

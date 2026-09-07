@@ -6,6 +6,81 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.36.0] - 2026-09-07
+
+Shelf's locations were one flat list. *Office*, *Bookcase 1* and *Shelf 3* sat
+side by side as unrelated names, with no way to say that the shelf is in the
+bookcase and the bookcase is in the office. The only way to be precise was to
+type the whole path into a single name and then keep every one of them
+consistent by hand. Separately, a catalogue entry *was* the object: one row,
+one location, so if you owned two copies of a book there was nowhere to say
+that the second one is the paperback in the spare room. This release pulls
+those apart — a location can now sit inside another location, and Shelf has
+somewhere to record an individual physical copy. It also puts the barcode
+scanner on the item edit page, where you are already standing when you notice
+an ISBN is wrong.
+
+Every user-visible change here is the work of
+[@sudo-rpaisley](https://github.com/sudo-rpaisley).
+
+### Added
+
+- **Locations can sit inside other locations.** Settings → Library → Locations
+  now has an **Inside** picker on both the create form and every existing row,
+  so you can build *Living Room / Bookcase / Shelf 1* instead of inventing one
+  long name for it. Nesting is as deep as you need and no level is compulsory —
+  there is no fixed room/bookcase/shelf shape to fill in. The same label can
+  appear under different parents, so *Shelf 1* in the living room is a
+  different place from *Shelf 1* in the bedroom. Renaming or moving a location
+  rewrites the full path of everything beneath it in one step, so items keep
+  pointing at the same place. Shelf refuses to put a location inside itself or
+  inside one of its own descendants, and refuses to delete a location that
+  still has children — move or delete the children first. Everywhere a
+  location is *displayed* — the item page, Browse, CSV export, the archive —
+  it shows the unambiguous full path. Your existing locations are unchanged
+  and become top-level entries. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#99](https://github.com/dgahagan/shelf/pull/99)
+  ([#98](https://github.com/dgahagan/shelf/issues/98))
+- **Shelf now distinguishes a catalogue entry from the physical copies of
+  it.** A new record holds what belongs to the object rather than to the
+  edition: condition, when and where you acquired it, what you paid,
+  provenance, a copy note, your own accession barcode, and its location. One
+  item can carry several. **This release is the storage layer only** — there
+  is no per-copy screen yet, and nothing in the interface looks different. It
+  is listed here because it changes what is in your database on upgrade, not
+  because there is a new button to press. The item's own **Location** field
+  keeps working exactly as it always has and now drives that item's primary
+  copy: set it and the primary copy moves with it, clear it and the primary
+  copy stays but loses its location. Additional copies are never moved by that
+  field. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#99](https://github.com/dgahagan/shelf/pull/99)
+  ([#97](https://github.com/dgahagan/shelf/issues/97))
+- **Scan an ISBN straight into the item edit form.** The **Identifiers**
+  section of an item's edit page has a **Scan ISBN** button that opens the
+  camera, the same scanner the Scan page uses, with the same fallback engine
+  when a browser cannot drive the first one. It accepts a 13-digit 978 or 979
+  barcode and says so plainly when you point it at something else — a DVD's
+  UPC will not be silently filed as an ISBN. A successful scan **fills the
+  field and selects it; it does not save.** You still press Save, and you can
+  still see and correct what it read. If the camera is unavailable Shelf says
+  which problem it is: permission denied, or a page not served over HTTPS.
+  Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#94](https://github.com/dgahagan/shelf/pull/94)
+  ([#92](https://github.com/dgahagan/shelf/issues/92))
+
+**On upgrade**, Shelf runs six migrations, and one of them writes rows: every
+item that is marked owned **and** already has a location gets one primary
+physical copy created for it. Items with no location get nothing. That
+restraint is deliberate — keying the backfill on *owned* alone, as the
+original suggestion had it, would have manufactured a phantom physical copy
+for every wishlist-shaped or unplaced row in the collection. On one test
+database of 1,092 items that would have been 1,012 copies that do not exist.
+Your existing flat locations are turned into top-level nodes of the new tree
+and are otherwise untouched. As always, back up `data/shelf.db` before
+upgrading.
+
 ## [0.35.0] - 2026-09-06
 
 When a page's script fails to arrive — a flaky network, a stale cache, a proxy
@@ -2933,6 +3008,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.36.0]: https://github.com/dgahagan/shelf/releases/tag/v0.36.0
 [0.35.0]: https://github.com/dgahagan/shelf/releases/tag/v0.35.0
 [0.34.0]: https://github.com/dgahagan/shelf/releases/tag/v0.34.0
 [0.33.1]: https://github.com/dgahagan/shelf/releases/tag/v0.33.1

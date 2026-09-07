@@ -104,7 +104,7 @@ key material.
 ## Features
 
 ### Scanning and Cataloging
-- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs, on iPhone and iPad as well as Android (EAN-13, EAN-8, UPC-A, UPC-E)
+- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs, on iPhone and iPad as well as Android (EAN-13, EAN-8, UPC-A, UPC-E). Also available from an item's edit form, for correcting a single wrong ISBN
 - **USB/Bluetooth scanner support** — works with any scanner that sends Enter after the barcode
 - **Photo intake** — bulk-add from a photo of your shelves; a vision model (Anthropic API, any OpenAI-compatible endpoint, or fully local Ollama) reads the spines and you confirm before import. Rows typed DVD or Video Game are looked up on TMDb or IGDB at confirm, on an exact title match
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
@@ -135,7 +135,7 @@ key material.
 - Reading tracking — want-to-read, reading, and read with start/finish dates
 - Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover; series synopses, plus rename/merge/disband from the series card
 - Stats dashboard — books read per year, collection growth, top authors, and value-over-time charts
-- Locations — organize by room, shelf, or any system you like
+- Locations — organize by room, shelf, or any system you like, and nest them: a shelf inside a bookcase inside a room
 - Checkout system — lend to borrowers and track who has what, with overdue badges and an optional daily reminder digest (ntfy/webhook)
 - Wishlist — mark items as unowned alongside your catalog
 - Public share links — read-only wishlist or collection pages for gift ideas, revocable anytime

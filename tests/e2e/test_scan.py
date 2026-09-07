@@ -102,8 +102,10 @@ def test_scan_mode_switching(live_server, authed_page):
     assert mode_buttons.count() >= 2, f"Expected >=2 mode buttons, got {mode_buttons.count()}"
 
     # Click the second mode button and verify the page didn't crash
-    mode_buttons.nth(1).click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_response(
+        lambda r: "/api/recent-scans" in r.url and r.ok
+    ):
+        mode_buttons.nth(1).click()
     assert authed_page.locator("body").is_visible()
 
 
@@ -182,8 +184,8 @@ def test_manual_add_copy_from_picker(live_server, authed_page):
 
     new_link = authed_page.locator("a", has_text="Copied Movie").first
     expect(new_link).to_be_visible(timeout=10_000)
-    new_link.click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_navigation():
+        new_link.click()
 
     expect(authed_page.locator("body")).to_contain_text("Copied Movie")
     expect(authed_page.locator("body")).to_contain_text("Jane Doe")
@@ -1162,8 +1164,8 @@ def _open_scan_in_mode(pg, live_server, mode_label: str):
     pg.wait_for_load_state("networkidle")
     button = pg.get_by_role("button", name=mode_label, exact=True)
     expect(button).to_be_visible(timeout=5_000)
-    button.click()
-    pg.wait_for_load_state("networkidle")
+    with pg.expect_response(lambda r: "/api/recent-scans" in r.url and r.ok):
+        button.click()
 
 
 def test_a_typed_move_scan_raises_exactly_one_toast_naming_the_destination(

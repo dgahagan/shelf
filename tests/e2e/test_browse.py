@@ -44,8 +44,8 @@ def test_browse_search(live_server, authed_page):
     # Two search inputs exist (mobile hidden, desktop visible) — use the visible one
     search = authed_page.locator("input[name=q]:visible").first
     search.fill("Foundation")
-    search.press("Enter")
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_response(lambda r: "/api/search" in r.url):
+        search.press("Enter")
 
     expect(authed_page.locator("body")).to_contain_text("Foundation")
 
@@ -70,13 +70,13 @@ def test_browse_grid_list_toggle(live_server, authed_page):
     authed_page.wait_for_load_state("networkidle")
 
     # Click the list-view toggle button
-    authed_page.locator("[data-testid='view-list']").click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_response(lambda r: "/api/search" in r.url):
+        authed_page.locator("[data-testid='view-list']").click()
     assert authed_page.locator("body").is_visible()
 
     # Click back to grid view
-    authed_page.locator("[data-testid='view-grid']").click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_response(lambda r: "/api/search" in r.url):
+        authed_page.locator("[data-testid='view-grid']").click()
     assert authed_page.locator("body").is_visible()
 
 
@@ -144,8 +144,8 @@ def test_browse_search_survives_other_filter_change_on_narrow_viewport(live_serv
 
     search = authed_page.locator("input[name=q]:visible").first
     search.fill("Narrow Foundation")
-    search.press("Enter")
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_response(lambda r: "/api/search" in r.url):
+        search.press("Enter")
 
     grid = authed_page.locator("#item-grid")
     expect(grid).to_contain_text("Narrow Foundation")

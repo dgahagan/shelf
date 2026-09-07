@@ -53,7 +53,6 @@ def test_stats_page_loads(live_server, authed_page):
 def _open_users_tab(page, live_server):
     page.goto(f"{live_server['url']}/settings")
     page.get_by_role("button", name="Users").click()
-    page.wait_for_load_state("networkidle")
 
 
 def test_add_user_succeeds(live_server, authed_page):
@@ -123,8 +122,8 @@ def _add_borrower(page, live_server, name):
     page.goto(f"{live_server['url']}/settings")
     page.wait_for_load_state("networkidle")
     page.fill('input[placeholder="Add borrower..."]', name)
-    page.locator('form[action="/api/borrowers"] button[type="submit"]').click()
-    page.wait_for_load_state("networkidle")
+    with page.expect_navigation():
+        page.locator('form[action="/api/borrowers"] button[type="submit"]').click()
     expect(_remove_button(page, name)).to_be_visible()
 
 
@@ -132,8 +131,8 @@ def _add_location(page, live_server, name):
     page.goto(f"{live_server['url']}/settings")
     page.wait_for_load_state("networkidle")
     page.fill('input[placeholder="New location name..."]', name)
-    page.locator('form[action="/api/locations"] button[type="submit"]').click()
-    page.wait_for_load_state("networkidle")
+    with page.expect_navigation():
+        page.locator('form[action="/api/locations"] button[type="submit"]').click()
     expect(_remove_button(page, name)).to_be_visible()
 
 
@@ -152,13 +151,15 @@ def test_borrower_delete_confirm_dismiss_keeps_the_borrower(live_server, authed_
     messages = []
     authed_page.once("dialog", _recording_handler(messages, "dismiss"))
     _remove_button(authed_page, name).click()
-    authed_page.wait_for_load_state("networkidle")
+
+    # The dismissal cancels the submit, so the row must still be there — this
+    # is the deadline the recorded-dialog assertion below needs.
+    expect(_remove_button(authed_page, name)).to_be_visible()
 
     assert messages == [f"Remove borrower '{name}'?"], (
         "no confirmation dialog fired — the inline handler is dead under the "
         "CSP and the data-confirm listener did not replace it"
     )
-    expect(_remove_button(authed_page, name)).to_be_visible()
 
 
 def test_borrower_delete_confirm_accept_removes_the_borrower(live_server, authed_page):
@@ -168,8 +169,8 @@ def test_borrower_delete_confirm_accept_removes_the_borrower(live_server, authed
 
     messages = []
     authed_page.once("dialog", _recording_handler(messages, "accept"))
-    _remove_button(authed_page, name).click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_navigation():
+        _remove_button(authed_page, name).click()
 
     assert messages == [f"Remove borrower '{name}'?"]
     # Reload so this is the server's answer, not a stale DOM.
@@ -189,8 +190,8 @@ def test_location_delete_uses_the_same_delegated_confirm(live_server, authed_pag
 
     messages = []
     authed_page.once("dialog", _recording_handler(messages, "accept"))
-    _remove_button(authed_page, name).click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_navigation():
+        _remove_button(authed_page, name).click()
 
     assert messages == [f"Delete location '{name}'?"]
     authed_page.goto(f"{live_server['url']}/settings")
@@ -223,8 +224,8 @@ def test_blocked_borrower_delete_shows_the_settings_banner(live_server, authed_p
 
     messages = []
     authed_page.once("dialog", _recording_handler(messages, "accept"))
-    _remove_button(authed_page, name).click()
-    authed_page.wait_for_load_state("networkidle")
+    with authed_page.expect_navigation():
+        _remove_button(authed_page, name).click()
 
     # The confirm still counts zero past loans — the open loan is not a past one.
     assert messages == [f"Remove borrower '{name}'?"]

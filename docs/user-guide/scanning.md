@@ -71,6 +71,11 @@ isn't valid is still found when you scan it.
 From an existing item's page, **Add a copy** pre-fills a new form from it —
 handy for a second edition or a duplicate copy you want as its own record.
 
+The Scan tab is not the only place a camera scan happens. An item's **edit**
+form has a **Scan ISBN** button in its Identifiers section, for fixing one
+wrong ISBN without starting a scan session — see
+[Items](items.md#editing). It fills the field and leaves the saving to you.
+
 ## What happens after a scan
 
 Each scan lands in **Recent scans** with its cover, title and what was done

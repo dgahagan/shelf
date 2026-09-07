@@ -86,7 +86,6 @@ def test_viewer_sees_read_only_product_ui_without_editor_mutations(
     # Create a real Viewer through the same admin UI a household would use.
     authed_page.goto(f"{base}/settings")
     authed_page.get_by_role("button", name="Users").click()
-    authed_page.wait_for_load_state("networkidle")
     authed_page.fill('input[placeholder="Username"]', username)
     authed_page.fill('input[placeholder="Password (min 8 chars)"]', password)
     authed_page.locator('select[x-model="newRole"]').select_option("viewer")

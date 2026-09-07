@@ -26,7 +26,7 @@ make check-alpine          # lint: templates stay compatible with Alpine CSP bui
 make check-sw-version      # lint: SW_VERSION matches the precache digest (generated, never hand-edited)
 make badges                # restamp README's test-count badges (generated — run after adding/deleting tests)
 make check-badges          # lint: README test-count badges match what pytest collects
-make check-tests           # lint: test conventions — app.main import isolation, CSP-safe waits, page guards
+make check-tests           # lint: test conventions — app.main import isolation, CSP-safe waits, page guards, no networkidle wait after a click
 make checks-fast           # instant offline lints (secrets, csrf, alpine, sw-version, tests, badges) — the inner-loop target
 make checks                # everything, incl. network pip-audit + licenses — before a release
 make dev / dev-down / dev-logs   # docker compose up/down/logs

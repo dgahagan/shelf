@@ -99,8 +99,8 @@ def test_hidden_tab_route_still_serves(live_server, nav_page):
     nav_page.wait_for_load_state("networkidle")
     form = nav_page.locator('form[action="/api/settings/nav"]')
     form.locator("input[name=stats]").uncheck()
-    form.locator('button[type=submit]').click()
-    nav_page.wait_for_load_state("networkidle")
+    with nav_page.expect_navigation():
+        form.locator('button[type=submit]').click()
 
     nav_page.goto(f"{base}/browse")
     nav_page.wait_for_load_state("networkidle")
@@ -121,8 +121,8 @@ def test_navigation_card_round_trips(live_server, nav_page):
     expect(series_cb).to_be_checked()
 
     series_cb.uncheck()
-    form.locator('button[type=submit]').click()
-    nav_page.wait_for_load_state("networkidle")
+    with nav_page.expect_navigation():
+        form.locator('button[type=submit]').click()
 
     nav_page.goto(f"{base}/browse")
     nav_page.wait_for_load_state("networkidle")
@@ -136,8 +136,8 @@ def test_navigation_card_round_trips(live_server, nav_page):
 
     # ...and re-checking it restores the tab.
     form.locator("input[name=series]").check()
-    form.locator('button[type=submit]').click()
-    nav_page.wait_for_load_state("networkidle")
+    with nav_page.expect_navigation():
+        form.locator('button[type=submit]').click()
 
     nav_page.goto(f"{base}/browse")
     nav_page.wait_for_load_state("networkidle")

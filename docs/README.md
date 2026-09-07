@@ -26,6 +26,7 @@ New here? Start with **[Installation](installation.md)**, then
 | [Photo Intake](user-guide/photo-intake.md) | Bulk-add from a shelf photo: vision backends, tiling, cost, reviewing results |
 | [Browse & search](user-guide/browse-and-search.md) | Filters, views, sorting, tags, bulk editing |
 | [Items](user-guide/items.md) | The item page, editing, covers, synopses, reading status, locations, merging |
+| [Locations](user-guide/locations.md) | Nested locations: creating, moving, renaming and deleting them, and what a full path means |
 | [Series](user-guide/series.md) | Series page, gaps, Hardcover completeness checks, rename/merge/disband |
 | [Lending](user-guide/lending.md) | Borrowers, Lend/Return modes, overdue tracking, reminder notifications |
 | [Wishlist & Store Mode](user-guide/wishlist-and-store-mode.md) | Building a wishlist; the offline bookstore PWA |
@@ -48,6 +49,7 @@ New here? Start with **[Installation](installation.md)**, then
 |---|---|
 | [Development](development.md) | Running from source, tests, lints, the Makefile, project layout |
 | [Architecture](architecture.md) | Request path, middleware, data model, metadata pipeline, background jobs |
+| [Physical copies](item-copies.md) | The `item_copies` model, and how the item's own location field still drives the primary copy |
 | [Contributing](../CONTRIBUTING.md) | How to report bugs and send changes |
 | [Security policy](../SECURITY.md) | Reporting vulnerabilities; hardening posture |
 | [Roadmap](roadmap.md) | Where Shelf is likely to go next, by theme — direction, not a schedule |

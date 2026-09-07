@@ -60,7 +60,7 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 Full docs live in [`docs/`](docs/README.md):
 
 - [Installation](docs/installation.md) · [Configuration](docs/configuration.md) · [HTTPS & reverse proxy](docs/https-and-reverse-proxy.md) · [Upgrading & backups](docs/upgrading-and-backups.md)
-- **User guide:** [Getting started](docs/user-guide/getting-started.md) · [Scanning](docs/user-guide/scanning.md) · [Photo Intake](docs/user-guide/photo-intake.md) · [Browse](docs/user-guide/browse-and-search.md) · [Items](docs/user-guide/items.md) · [Series](docs/user-guide/series.md) · [Lending](docs/user-guide/lending.md) · [Wishlist & Store Mode](docs/user-guide/wishlist-and-store-mode.md) · [Sharing](docs/user-guide/sharing.md) · [Stats & valuation](docs/user-guide/stats-and-valuation.md) · [Import & export](docs/user-guide/import-and-export.md) · [Integrations](docs/user-guide/integrations.md) · [Users & roles](docs/user-guide/users-and-roles.md)
+- **User guide:** [Getting started](docs/user-guide/getting-started.md) · [Scanning](docs/user-guide/scanning.md) · [Photo Intake](docs/user-guide/photo-intake.md) · [Browse](docs/user-guide/browse-and-search.md) · [Items](docs/user-guide/items.md) · [Locations](docs/user-guide/locations.md) · [Series](docs/user-guide/series.md) · [Lending](docs/user-guide/lending.md) · [Wishlist & Store Mode](docs/user-guide/wishlist-and-store-mode.md) · [Sharing](docs/user-guide/sharing.md) · [Stats & valuation](docs/user-guide/stats-and-valuation.md) · [Import & export](docs/user-guide/import-and-export.md) · [Integrations](docs/user-guide/integrations.md) · [Users & roles](docs/user-guide/users-and-roles.md)
 - [FAQ](docs/faq.md) · [Troubleshooting](docs/troubleshooting.md) · [Development](docs/development.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md)
 
 ## Quick Start
@@ -107,7 +107,7 @@ of this whole directory carries the keys next to the data they protect.
 ## Features
 
 ### Scanning and Metadata
-- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs
+- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs, from the Scan tab or from an item's edit form when you need to correct one ISBN
 - **8 scan modes** — Add, Wishlist, Lend, Return, Move, Inventory, Lookup, and Quick Rate
 - **Media-type detection** — the barcode outranks the scan form's dropdown when it is certain; Auto reads the barcode and decides. It reads platform, format, medium and audio wording out of the retail title, and the product category behind it, so a music CD and a PC CD-ROM game are each filed as themselves rather than guessed at against a film database
 - **Photo intake** — bulk-add from a photo of your shelves using a vision model, snapped with the phone or webcam or uploaded. Rows typed DVD or Video Game are looked up on TMDb or IGDB at confirm, on an exact title match (see [Photo Intake](#photo-intake))
@@ -176,7 +176,7 @@ each option before anything is sent.
 - **Custom tags** — free-form tags (`signed`, `first-edition`, whatever you like) as chips on the item page, with a tag filter on Browse
 - **Synopses** — item descriptions fetched automatically on add, plus a one-click backfill for your existing catalog (Open Library, Google Books, Hardcover)
 - **Stats dashboard** — books read per year, collection growth, top authors, and value-over-time charts (server-rendered SVG, no JS)
-- **Locations** — organize by room, shelf, or any system you like
+- **Locations** — organize by room, shelf, or any system you like, and nest them: a shelf inside a bookcase inside a room. Rename or move a location and everything beneath it follows. See [Locations](docs/user-guide/locations.md)
 - **Game platforms** — customizable list of platforms, add your own for niche or retro systems
 - **Checkout system** — lend to borrowers with the Lend scan mode, filter by "Lent Out" in browse
 - **Loan reminders** — overdue loans get a red badge, and an optional daily digest (ntfy or webhook) nags you about them; configure under Settings → Library → Lending

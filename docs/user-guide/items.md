@@ -47,7 +47,8 @@ its home.
   dates. Viewers can set this too; it's the one thing they can change. It
   appears on books, kids' books, audiobooks, ebooks and comics — discs and
   games don't carry one.
-- **Location** and **owned / wishlist** flag.
+- **Location** and **owned / wishlist** flag. Locations can be nested, and an
+  item shows the full path — see [Locations](locations.md).
 - **Tags** — add or remove chips inline.
 - **Loan state** — who has it and since when, with check-in right there.
 - **Value** — ISBNdb list price if valued, or a manual value you enter.
@@ -69,6 +70,15 @@ media type would normally hide it, so an existing value is never put out of
 reach — and nothing is dropped on save either way. Changing the ISBN does *not* re-fetch metadata
 automatically — use **Retry cover** / **Fetch synopsis** afterwards, or
 delete and rescan if the record was wrong from the start.
+
+The **Identifiers** section has a **Scan ISBN** button. It opens the same
+camera scanner the Scan tab uses, with the same per-device decoder, and is the
+quick way to correct a wrong ISBN with the book in your hand. It accepts a
+13-digit 978 or 979 barcode only, and says so rather than filing a DVD's UPC
+as an ISBN. A read **fills the field and selects it — it does not save**, so
+you can see what it got before you commit. If the camera cannot start, the
+toast says which problem it is: permission denied, or a page not served over
+HTTPS.
 
 The ISBN is checked when you save. An ISBN whose check digit doesn't add up
 is refused with a banner at the top of the form, and **nothing else on the

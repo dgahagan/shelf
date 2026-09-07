@@ -527,6 +527,8 @@ python -m pytest tests/test_catalogue_add_boundaries.py tests/test_hardcover_isb
   failing where it is written. Poll from Python with `page.evaluate` in a
   loop. Exactly one call site is exempt: the service-worker wait, which has to
   run in the page.
+- **Sibling:** **G83** governs *what* to wait for after a click, where this
+  governs *how* to poll page state under the CSP. Same script enforces both.
 - **Status:** linted — `make check-tests`.
 
 ## G22 — When comparing an author name against a metadata source's author
@@ -1132,12 +1134,45 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     this is the entry's "which branch does your pin land in" moved one call
     earlier, into the stub itself.
 
+  Two more, both found while proving the class waiters on
+  `feat/e2e-wait-discipline` (2026-09-06), and both about the **instrument**
+  rather than the pin:
+  - **`expect()` auto-retries, so it rescues the broken shape.** Proving a
+    Playwright waiter real means measuring what is true *at the instant the
+    waiter returns*. Every `expect(...)` assertion polls to its own deadline,
+    so a probe written with one reports green against the broken waiter and
+    tells you nothing — the retry did the waiting the waiter failed to do. Read
+    the DOM, the URL or the DB **directly** at that instant; keep `expect()` in
+    the shipped test, where the retry is a feature, and out of the mutation
+    check, where it is a blindfold. Measured at class D: read through
+    `expect()`, both shapes green; read `#item-grid` directly, the old shape
+    returns in 10 ms with the pre-swap grid.
+  - **Induce the latency on the side of the race you are testing.** The obvious
+    knob — a `page.route` handler that sleeps before continuing — delays the
+    **response**, and the request is already in flight by then, so
+    `wait_for_load_state("networkidle")` observes it and waits. That leaves the
+    broken shape **green** and looks like a passing proof. The defect was about
+    the **issuance** ("the request the click starts may not have been issued
+    yet"), so the delay has to go there: wrap `window.fetch` *and*
+    `XMLHttpRequest.send` in an init script. Class C read green under the
+    response delay (1.548 s, correct result) and red under the issuance delay
+    (29 ms, wrong result) — same site, same test, opposite verdicts. Ask which
+    edge of the race your instrument actually moves.
+  - A corollary worth stating once: **an assertion that cannot fail cannot be
+    mutation-checked at all.** `test_item_delete`'s post-delete tail is an
+    `if/else` whose branches are `assert True` and
+    `assert body.inner_text() != ""`. No waiter, however broken, reddens it. If
+    a mutation check comes back green, read the assertion before you trust the
+    code — it may not be asserting anything.
+
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
-  `dedaa87` and `51745df` (2026-09-03, plan `signing-key-keyfile`) are the two
-  additions above — the first caught in orchestrator review of a subagent's
-  diff, the second while writing the pin.
+  `dedaa87` and `51745df` (2026-09-03, plan `signing-key-keyfile`) are two of
+  the additions above — the first caught in orchestrator review of a subagent's
+  diff, the second while writing the pin. The instrument pair is from
+  `feat/e2e-wait-discipline` (2026-09-06); raw output in that plan's probes
+  folder, and **G83** is the rule they were proving.
 - **Verify:** judgement, not a grep — this one cannot be linted. When
   reviewing such a test, ask what implementation change would make it fail.
 - **Status:** documented. Not a lint candidate.
@@ -3464,6 +3499,94 @@ grep -n "__guardToastAppends" tests/e2e/test_component_load_guard.py
 - **Status:** documented. Not a lint candidate — a checker cannot tell a
   presence assertion that means "is one visible now" (legitimate) from one
   that means "how many were raised" (unsound).
+
+## G83 — When an E2E test waits after a click
+
+- **Rule:** `element.click()` then `page.wait_for_load_state("networkidle")`
+  does not wait for what the test means. Playwright resolves
+  `wait_for_load_state` immediately when the page has already reached the
+  state, and right after a click it usually has — because the request the
+  click starts may not have been **issued** yet. So the wait returns at once
+  and the assertion races whatever the click began. Arm the waiter **before**
+  the click, and pick it by **what the following assertion reads**, never by
+  what the click fires:
+
+  | the assertion reads | the waiter |
+  |---|---|
+  | nothing in flight — the click makes no request | delete the wait; the `expect(...)` calls after it auto-retry |
+  | the new document | `with page.expect_navigation(): click()` |
+  | the response, or the DB behind it | `with page.expect_response(<predicate>): click()` |
+  | a swapped HTMX fragment | `with page.expect_response(lambda r: "/api/search" in r.url): click()` |
+
+  A `networkidle` wait after a `goto()` is the documented use — 166 of the 191
+  in the suite — and stays legal. Only the adjacency to a click or a press is
+  not. Sibling of **G21**, which governs *how* to poll page state under the
+  CSP where this governs *what to wait for* after a click; the same script
+  enforces both.
+
+- **Why:** three things make this survive review.
+  - **`wait_for_url` is not the fix, and it looks like one.** Eight of the
+    twelve class-B sites POST from `/settings` to a handler that redirects
+    **back to `/settings`**. The page is already at that URL, so
+    `wait_for_url(".../settings")` matches the *current* document and returns
+    immediately — the same defect one layer along. `expect_navigation` waits
+    for a navigation *event*.
+  - **Mechanism and assertion disagree, at two sites out of twenty-five.**
+    `test_bulk_actions.py` fires an Alpine `fetch` *and* a `location.reload()`,
+    but its assertion reads the **database**, so the response is the whole
+    contract and the reload is irrelevant. `test_item_crud.py` fires HTMX, but
+    the DELETE answers 200 with a body and the navigation is a *second*,
+    JS-driven step (`static/js/app.js:206`), and its assertion reads
+    `page.url` — so it needs `expect_navigation`, not `expect_response`.
+    Classifying by mechanism gets both of these wrong.
+  - **A wrapper helper would re-introduce the bug.** `click_and_wait(...)`
+    reads as "click, then wait", which is exactly the defect written to look
+    like the fix; and taking the class as an argument leaves the decision at
+    every call site anyway, one indirection further from the assertion it
+    protects. The rule is what is shared — this entry and
+    `docs/development.md` — not a function.
+
+- **Evidence:** two flakes found by accident on unrelated branches before
+  anyone went looking: `tests/e2e/test_bulk_actions.py` (fixed inside community
+  PR #79, later closed unmerged, so the fix never reached `main`) and
+  `tests/e2e/test_csv.py::test_csv_import` (`dbcac66`, which also cut that
+  file's runtime from **36s to 6.7s**, because the old path paid a timeout on
+  every green run). Swept branch-wide on `feat/e2e-wait-discipline`
+  (2026-09-06): **25 sites across 11 files**, and the suite's total E2E wall
+  clock fell 541s → 534s with `test_settings.py` alone dropping 17.4s → 13.3s.
+
+  Per-class latency proofs, delay 1500 ms, one representative site each:
+  - **C, D and E are red on the old shape and green on the new.** Sharpest is
+    E: `networkidle` *did* wait the full 1.544s for the delayed DELETE, and
+    `page.url` was **still** `/item/1` — the JS navigation had not run. Waiting
+    for the response is not enough however patiently you wait for it. C's old
+    shape returns in **29 ms** with the row unmoved; D's in ~10 ms with the
+    **pre-swap** grid still on screen.
+  - **B is redundant post-click cleanup, not a race repair** — green both
+    ways. Playwright 1.52 (`requirements-dev.txt:8`) documents `click()` as
+    waiting for a navigation it *directly initiates*, and the measured
+    baseline click alone spans 1.560s against the 1500 ms delay. The pre-armed
+    `expect_navigation` keeps the intended event visible in the test; it does
+    not repair a race that a plain form submit has.
+  - **A's proof is the inverse**: `page.on("request")` across the settings tab
+    click records `[]`, so there is genuinely nothing to wait for.
+
+  **Two traps in proving this, both hit while doing it.** First, delay the
+  **issuance**, not the response, or you are not testing the race: a
+  `page.route` handler that sleeps leaves the request already in flight, so
+  `networkidle` observes it and the old shape passes — which is how class C
+  read green under the first instrument. Second, do not measure through
+  `expect()`: it auto-retries and will rescue the broken shape, reporting green
+  for the wrong reason. Read the DOM or the DB directly at the instant the
+  waiter returns.
+
+- **Verify:**
+
+```bash
+make check-tests
+```
+
+- **Status:** linted — `make check-tests`.
 
 ## Graveyard
 

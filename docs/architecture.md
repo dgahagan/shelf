@@ -35,13 +35,42 @@ so an interrupted upgrade replays safely.
 
 Main tables: `items` (everything — books, discs, games; ~36 columns incl.
 `media_type`, `owned`, `reading_status`, `series_name`/`position`,
-`location_id`, value columns, language, external ids), `locations`,
-`borrowers` + `checkouts`, `tags` + `item_tags`, `series_meta` (Hardcover
+`location_id`, value columns, language, external ids), `item_copies`,
+`locations`, `borrowers` + `checkouts`, `tags` + `item_tags`, `series_meta` (Hardcover
 completeness), `reading_log`, `users`, `settings` (k/v, secrets encrypted),
 `share_links`, `scan_log`, `game_platforms`, `valuation_history`,
 `cover_queue`, `legacy_book_mappings` (a confirmed legacy price-point
 barcode -> ISBN-13 choice, constrained in the schema to a 17-digit barcode
 and a 978/979 ISBN).
+
+**`locations` is a tree, stored denormalised.** `label` is the node's own name
+and `parent_id` its parent (`ON DELETE RESTRICT`, so a node with children
+cannot be deleted out from under them); `name` holds the full path —
+`Living Room / Bookcase / Shelf 1` — and stays `UNIQUE`. The denormalised path
+is deliberate: every existing reader of a location (the item page, Browse's
+filter, CSV export, the archive, the scan card's Move and Inventory modes)
+keeps working on `name` alone without learning the hierarchy. The cost is that
+a rename or a re-parent must rewrite every descendant's `name`, which
+`app/services/locations.py` does in one transaction, and which is also where
+the two structural refusals live — a cycle (a node moved under its own
+descendant) and a delete with children. Read the row's `label` when you want
+the node, `name` when you want to show a place.
+
+**`item_copies` separates the catalogue entry from the physical object.** An
+item may have zero, one or many copies, each carrying what belongs to the
+object rather than to the edition: `condition`, `acquired_date`,
+`acquisition_source`, `acquisition_price`, `provenance`, `notes`, a
+`copy_barcode` (unique across the collection) and its own `location_id`
+(`ON DELETE SET NULL`). `(item_id, copy_number)` is unique and a partial
+unique index allows at most one `is_primary = 1` row per item; deleting an item
+cascades to its copies. **`items.location_id` is the compatibility seam** and
+remains the only location surface in the UI: `item_write.py` mirrors a written
+`location_id` into that item's primary copy (creating it if needed), a null
+never invents a copy, and secondary copies are never moved by the legacy field
+— see `app/services/item_copies.py` and `docs/item-copies.md`. The upgrade
+backfill creates a primary copy only for an item that is *both* owned and
+already located; `owned` alone is not treated as evidence that a row is
+physical.
 
 Secrets in `settings` are encrypted with a key kept *outside* the database
 (`data/encryption.key` or `SHELF_ENCRYPTION_KEY`), so a DB backup contains
@@ -598,7 +627,10 @@ the game/DVD/book adds, archive import — goes through
 the live table rather than carrying its own copy, raises on an unknown field
 instead of dropping it, and leaves unset columns to their `SCHEMA` defaults.
 Callers pass their own connection so the insert and any follow-up writes share
-one transaction.
+one transaction. It is also where the physical-copy projection happens: a write
+that carries `location_id` calls `item_copies.sync_primary_location()` on the
+same connection, so every add and edit surface keeps an item's primary copy in
+step without any of them knowing copies exist.
 
 Field names were the first invariant; **values are the second.** The same
 module holds the one value stage, `validate_item_fields()`, and every write

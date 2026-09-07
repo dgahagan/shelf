@@ -235,8 +235,13 @@ def test_item_delete(live_server, authed_page):
     delete_btn = authed_page.locator(
         "button:has-text('Delete'), a:has-text('Delete'), [hx-delete], [data-testid='delete-btn']"
     ).first
-    delete_btn.click()
-    authed_page.wait_for_load_state("networkidle")
+    # The DELETE answers 200 with a body, not a redirect (app/routers/items.py),
+    # and the navigation is a *second*, JS-driven step: data-after-request=
+    # "goto-browse" on the button sends app.js to /browse once the swap lands.
+    # The assertion below reads page.url, so the waiter is the navigation —
+    # waiting for the HTMX response would return before app.js had run.
+    with authed_page.expect_navigation():
+        delete_btn.click()
 
     assert messages == ["Delete 'Book To Delete'?"]
 

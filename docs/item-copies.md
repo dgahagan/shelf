@@ -25,6 +25,8 @@ copy, `(item_id, copy_number)` is unique, and `copy_barcode` is unique across
 the collection. Deleting an item cascades to its copies; deleting a location
 sets copy locations to `NULL`.
 
-Hierarchical locations are intentionally a separate follow-up (upstream issue
-#98). The copy table references the existing `locations` row so that hierarchy
-can evolve without changing the catalogue/copy boundary.
+The copy table references the existing `locations` row rather than storing a
+place of its own, so the location hierarchy that shipped alongside it in 0.36.0
+(upstream issue #98) evolved without changing the catalogue/copy boundary at
+all. A copy points at a location node; what that node is *inside* is the
+location tree's business — see `app/services/locations.py`.

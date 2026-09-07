@@ -2,11 +2,13 @@
 """Tripwire lint: test-suite conventions that a green run cannot enforce.
 
 Each check below graduated from a GOTCHAS.md entry whose Verify line was
-already a grep. Three separate traps, one thing in common: **the suite passes
+already a grep. Four separate traps, one thing in common: **the suite passes
 either way**. A test that imports `app.main` at module level poisons other
 tests' isolation; a `wait_for_function` call is refused by the CSP and shows up
 as a timeout somewhere else; an unguarded Playwright page reports nothing at
-all, which is precisely the failure the guard exists to end.
+all, which is precisely the failure the guard exists to end; a `networkidle`
+wait placed right after a `.click(`/`.press(` races the assertion instead of
+the response it meant to wait for.
 
 Run directly (exit 1 on violations) or via tests/test_test_conventions.py.
 """
@@ -95,10 +97,67 @@ def check_new_pages_are_guarded():
     return bad
 
 
+_BARE_CLOSE_TOKENS = {")", "):", "),", ")):"}
+
+
+def _nearest_preceding_code_line(lines, index):
+    """Scan backwards from `index` (0-based) for the nearest real code line.
+
+    Skips blank lines, comments, and bare closing parens — none of those are
+    where the click that triggered a wait would be written.
+    """
+    for i in range(index - 1, -1, -1):
+        _, line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("#"):
+            continue
+        if stripped in _BARE_CLOSE_TOKENS:
+            continue
+        return line
+    return None
+
+
+def check_no_wait_after_click():
+    """G83 — a `networkidle` wait right after a click races the assertion.
+
+    `networkidle` after `goto()` is the documented use and is left alone. The
+    trap is `.click(`/`.press(` immediately (modulo blanks, comments, and a
+    bare closing paren) followed by `wait_for_load_state(..., "networkidle")`
+    — the wait resolves on whatever the page happens to be doing, not on the
+    response the click triggered, so the assertion after it races that
+    response instead of waiting for it.
+    """
+    hits = []
+    for path in sorted((TESTS / "e2e").rglob("*.py")):
+        lines = _lines(path)
+        for i, (num, line) in enumerate(lines):
+            if "wait_for_load_state(" not in line or "networkidle" not in line:
+                continue
+            if line.lstrip().startswith("#"):
+                continue
+            preceding = _nearest_preceding_code_line(lines, i)
+            if preceding and (".click(" in preceding or ".press(" in preceding):
+                hits.append(f"{path.relative_to(ROOT)}:{num}: {line.strip()}")
+    if not hits:
+        return []
+    return [
+        f"{len(hits)} networkidle wait(s) sitting right after a click/press — "
+        "delete the wait if the click makes no request at all; "
+        "`with page.expect_navigation(): click()` when the assertion reads "
+        "the new document; `with page.expect_response(<predicate>): click()` "
+        "when it reads the response or the DB behind it, e.g. matching "
+        "\"/api/search\" when it reads a swapped HTMX fragment — and arm the "
+        "context manager *before* the click, that is the whole point (G83):"
+    ] + [f"  {h}" for h in hits]
+
+
 CHECKS = (
     ("module-level app.main import (G14)", check_no_module_level_app_import),
     ("wait_for_function under CSP (G21)", check_no_wait_for_function),
     ("unguarded Playwright pages (G44)", check_new_pages_are_guarded),
+    ("networkidle wait after a click (G83)", check_no_wait_after_click),
 )
 
 
@@ -120,7 +179,8 @@ def main() -> int:
             print(v)
         return 1
     print(f"Test-convention lint: {len(CHECKS)} checks pass "
-          "(G14 app-import isolation, G21 CSP waits, G44 page guards).")
+          "(G14 app-import isolation, G21 CSP waits, G44 page guards, "
+          "G83 no wait-after-click).")
     return 0
 
 

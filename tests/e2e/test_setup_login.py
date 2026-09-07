@@ -57,8 +57,8 @@ def test_login_invalid_credentials(live_server, browser, setup_admin):
         pg.goto(f"{live_server['url']}/login")
         pg.fill("input[name=username]", setup_admin["username"])
         pg.fill("input[name=password]", "wrongpassword")
-        pg.click("button[type=submit]")
-        pg.wait_for_load_state("networkidle")
+        with pg.expect_navigation():
+            pg.click("button[type=submit]")
         expect(pg).to_have_url(f"{live_server['url']}/login")
         expect(pg.locator("body")).to_contain_text("Invalid")
         assert_page_clean(pg)

@@ -48,7 +48,6 @@ def test_csv_import(live_server, authed_page):
 
     # CSV import is on the "Data" tab — click it first
     authed_page.locator("button:has-text('Data')").click()
-    authed_page.wait_for_load_state("networkidle")
 
     # CSV import file input
     file_input = authed_page.locator("input[type=file][accept='.csv']")

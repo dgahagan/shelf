@@ -62,11 +62,14 @@ def test_bulk_move_apply_moves_selected_list_item(live_server, authed_page):
     # the button by its own guard instead.
     apply_button = authed_page.locator('button[x-show="bulkLocationVal"]')
     expect(apply_button).to_be_visible()
-    apply_button.click()
+    # The assertion below reads the database, not the page, so the POST
+    # response is the whole contract — the reload that follows it is
+    # irrelevant to this test.
+    with authed_page.expect_response(
+        lambda r: "/api/items/bulk-update" in r.url and r.request.method == "POST"
+    ):
+        apply_button.click()
 
-    # A successful bulk update reloads Browse.  Wait for that reload before
-    # checking the database so this test cannot race the POST request.
-    authed_page.wait_for_load_state("networkidle")
     assert _location_id(live_server["data_dir"], item_id) == location_id
 
 

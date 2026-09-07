@@ -26,6 +26,27 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.36.0
+
+Six migrations run, and one of them **writes rows**. Every item that is marked
+owned **and** already has a location gets one primary physical-copy record
+created for it, holding that location. Items with no location get nothing — the
+backfill deliberately does not treat *owned* on its own as proof that something
+is a physical object, because on a collection with many unplaced rows that
+would manufacture a copy for each of them. Nothing in the interface looks
+different: there is no per-copy screen yet, and an item's own **Location**
+field keeps working as before and now moves that item's primary copy with it.
+See [Physical copies](item-copies.md).
+
+Your existing locations become top-level nodes of the new location tree, with
+their names unchanged. You can now nest them — see
+[Locations](user-guide/locations.md) — and once you do, a location that still
+has children cannot be deleted until its children are moved or deleted.
+
+Nothing to set, and nothing to do. As with any upgrade, take a backup of
+`data/shelf.db` first; a database that has run these migrations will not load
+in an older image.
+
 ### After upgrading to 0.31.0
 
 Photo Intake now looks up rows you type DVD or Video Game, on TMDb and IGDB.
