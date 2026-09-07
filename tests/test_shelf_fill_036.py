@@ -1,0 +1,86 @@
+from app.routers import shelf_fill
+from app.services import locations as location_svc
+
+
+def _item(db, *, title="Filed book", owned=1, isbn=None):
+    cur = db.execute(
+        "INSERT INTO items (title, media_type, owned, isbn) VALUES (?, 'book', ?, ?)",
+        (title, owned, isbn),
+    )
+    return cur.lastrowid
+
+
+def test_place_item_creates_primary_copy_at_exact_hierarchical_location(db):
+    room = location_svc.create_location(db, "Living Room")
+    shelf = location_svc.create_location(db, "Shelf 1", parent_id=room)
+    item_id = _item(db)
+
+    result = shelf_fill._place_item(db, item_id, shelf)
+
+    item = db.execute("SELECT owned, location_id FROM items WHERE id = ?", (item_id,)).fetchone()
+    copy = db.execute(
+        "SELECT location_id, is_primary FROM item_copies WHERE item_id = ?", (item_id,)
+    ).fetchone()
+    assert item["location_id"] == shelf
+    assert copy["location_id"] == shelf
+    assert copy["is_primary"] == 1
+    assert result["location_name"] == "Living Room / Shelf 1"
+
+
+def test_place_item_promotes_wishlist_to_owned(db):
+    shelf = location_svc.create_location(db, "Shelf")
+    item_id = _item(db, owned=0)
+
+    result = shelf_fill._place_item(db, item_id, shelf)
+
+    item = db.execute("SELECT owned FROM items WHERE id = ?", (item_id,)).fetchone()
+    assert item["owned"] == 1
+    assert result["was_wishlist"] is True
+
+
+def test_copy_barcode_moves_exact_secondary_without_moving_primary(db):
+    first = location_svc.create_location(db, "Shelf A")
+    second = location_svc.create_location(db, "Shelf B")
+    target = location_svc.create_location(db, "Shelf C")
+    item_id = _item(db)
+    db.execute(
+        "INSERT INTO item_copies (item_id, copy_number, location_id, copy_barcode, is_primary) "
+        "VALUES (?, 1, ?, 'COPY-1', 1)", (item_id, first),
+    )
+    secondary_id = db.execute(
+        "INSERT INTO item_copies (item_id, copy_number, location_id, copy_barcode, is_primary) "
+        "VALUES (?, 2, ?, 'COPY-2', 0)", (item_id, second),
+    ).lastrowid
+    db.execute("UPDATE items SET location_id = ? WHERE id = ?", (first, item_id))
+
+    exact = shelf_fill._copy_by_barcode(db, "COPY-2")
+    result = shelf_fill._place_exact_copy(db, exact, target)
+
+    primary = db.execute(
+        "SELECT location_id FROM item_copies WHERE item_id = ? AND is_primary = 1", (item_id,)
+    ).fetchone()
+    secondary = db.execute(
+        "SELECT location_id FROM item_copies WHERE id = ?", (secondary_id,)
+    ).fetchone()
+    item = db.execute("SELECT location_id FROM items WHERE id = ?", (item_id,)).fetchone()
+    assert primary["location_id"] == first
+    assert item["location_id"] == first
+    assert secondary["location_id"] == target
+    assert result["copy_number"] == 2
+
+
+def test_shelf_fill_page_lists_nested_locations(admin_client, db):
+    room = location_svc.create_location(db, "Bedroom")
+    location_svc.create_location(db, "Bookcase", parent_id=room)
+
+    response = admin_client.get("/shelf-fill")
+
+    assert response.status_code == 200
+    assert "Shelf Fill" in response.text
+    assert "Bedroom" in response.text
+    assert "Bookcase" in response.text
+
+
+def test_viewer_cannot_open_shelf_fill(viewer_client):
+    response = viewer_client.get("/shelf-fill", follow_redirects=False)
+    assert response.status_code in (302, 303, 403)
