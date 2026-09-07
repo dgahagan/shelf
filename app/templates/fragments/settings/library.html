@@ -85,26 +85,71 @@
     <!-- Locations -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-4">Locations</h2>
+        <p class="text-sm text-shelf-muted mb-4">Locations can be nested to whatever depth your collection needs, for example Living Room → Bookcase 1 → Shelf 3. A parent can also be used as a location itself.</p>
+
+        {% set location_error = request.query_params.get('location_error') %}
+        {% if location_error in ('parent_missing', 'invalid_parent', 'has_children') %}
+        <div data-testid="location-tree-error-banner"
+             class="bg-shelf-bg text-shelf-error border border-shelf-border rounded-lg px-4 py-2 text-sm mb-4">
+            {% if location_error == 'parent_missing' %}The selected parent location no longer exists.{% endif %}
+            {% if location_error == 'invalid_parent' %}A location cannot be moved inside itself or one of its children.{% endif %}
+            {% if location_error == 'has_children' %}Move or remove this location's child locations before deleting it.{% endif %}
+        </div>
+        {% endif %}
 
         {% if locations %}
         <div class="space-y-2 mb-4">
             {% for loc in locations %}
-            <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-2">
-                <span>{{ loc.name }}</span>
-                <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline"
-                      data-confirm="Delete location '{{ loc.name }}'?">
-                    <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
-                        Remove
-                    </button>
-                </form>
+            <div class="bg-shelf-bg rounded-lg px-4 py-2" data-testid="location-row-{{ loc.id }}">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span>{{ loc.name }}</span>
+                    <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline"
+                          data-confirm="Delete location '{{ loc.name }}'?">
+                        <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
+                            Remove
+                        </button>
+                    </form>
+                </div>
+                <details>
+                    <summary class="text-shelf-muted text-sm">Edit</summary>
+                    <form action="/api/locations/{{ loc.id }}/update" method="post" class="space-y-2">
+                        <div>
+                            <label for="location-name-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Name</label>
+                            <input id="location-name-{{ loc.id }}" type="text" name="name" value="{{ loc.label or loc.name }}" required
+                                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        </div>
+                        <div>
+                            <label for="location-parent-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Inside</label>
+                            <select id="location-parent-{{ loc.id }}" name="parent_id"
+                                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                                <option value="">Top level</option>
+                                {% for parent in locations %}
+                                {% if parent.id != loc.id %}
+                                <option value="{{ parent.id }}" {% if loc.parent_id == parent.id %}selected{% endif %}>{{ parent.name }}</option>
+                                {% endif %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                            Save location
+                        </button>
+                    </form>
+                </details>
             </div>
             {% endfor %}
         </div>
         {% endif %}
 
-        <form action="/api/locations" method="post" class="flex gap-2">
+        <form action="/api/locations" method="post" class="space-y-2">
             <input type="text" name="name" placeholder="New location name..." required
-                   class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+            <select name="parent_id"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <option value="">Top level</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}">Inside {{ loc.name }}</option>
+                {% endfor %}
+            </select>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Add
             </button>
