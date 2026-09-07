@@ -72,6 +72,9 @@ def test_copy_barcode_moves_exact_secondary_without_moving_primary(db):
 def test_shelf_fill_page_lists_nested_locations(admin_client, db):
     room = location_svc.create_location(db, "Bedroom")
     location_svc.create_location(db, "Bookcase", parent_id=room)
+    # The TestClient serves requests through a separate DB connection, so make
+    # the setup visible before exercising the page route.
+    db.commit()
 
     response = admin_client.get("/shelf-fill")
 
