@@ -31,6 +31,35 @@ def _copy_by_barcode(db, raw: str):
     return dict(row) if row else None
 
 
+def _has_position_order(db) -> bool:
+    """True when the optional physical shelf-ordering follow-up is installed."""
+    return any(
+        row["name"] == "position_order"
+        for row in db.execute("PRAGMA table_info(item_copies)").fetchall()
+    )
+
+
+def _append_copy_position(db, copy_id: int | None, location_id: int) -> int | None:
+    """Append one copy to the selected shelf when ordering support exists.
+
+    Shelf Fill remains independently usable on plain 0.36.0: older schemas do
+    not have ``position_order`` and simply skip this compatibility hook.
+    """
+    if copy_id is None or not _has_position_order(db):
+        return None
+    next_position = db.execute(
+        "SELECT COALESCE(MAX(position_order), 0) + 1 AS n FROM item_copies "
+        "WHERE location_id = ? AND id != ?",
+        (location_id, copy_id),
+    ).fetchone()["n"]
+    db.execute(
+        "UPDATE item_copies SET position_order = ?, updated_at = datetime('now') "
+        "WHERE id = ? AND location_id = ?",
+        (next_position, copy_id, location_id),
+    )
+    return next_position
+
+
 def _place_item(db, item_id: int, location_id: int) -> dict:
     location = _location(db, location_id)
     item = db.execute(
@@ -50,6 +79,9 @@ def _place_item(db, item_id: int, location_id: int) -> dict:
         "SELECT id, copy_number FROM item_copies "
         "WHERE item_id = ? AND is_primary = 1", (item_id,),
     ).fetchone()
+    position_order = _append_copy_position(
+        db, primary["id"] if primary else None, location_id
+    )
     return {
         "item_id": item["id"],
         "title": item["title"],
@@ -58,6 +90,7 @@ def _place_item(db, item_id: int, location_id: int) -> dict:
         "cover_path": item["cover_path"],
         "copy_id": primary["id"] if primary else None,
         "copy_number": primary["copy_number"] if primary else None,
+        "position_order": position_order,
         "location_name": location["name"],
         "was_wishlist": not bool(item["owned"]),
     }
@@ -72,6 +105,7 @@ def _place_exact_copy(db, copy: dict, location_id: int) -> dict:
         "UPDATE item_copies SET location_id = ?, updated_at = datetime('now') "
         "WHERE id = ?", (location_id, copy["copy_id"]),
     )
+    position_order = _append_copy_position(db, copy["copy_id"], location_id)
     item = db.execute(
         "SELECT id, title, authors, media_type, cover_path, owned "
         "FROM items WHERE id = ?", (copy["item_id"],),
@@ -87,6 +121,7 @@ def _place_exact_copy(db, copy: dict, location_id: int) -> dict:
         "cover_path": item["cover_path"],
         "copy_id": copy["copy_id"],
         "copy_number": copy["copy_number"],
+        "position_order": position_order,
         "location_name": location["name"],
         "was_wishlist": was_wishlist,
     }
