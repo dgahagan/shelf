@@ -10,20 +10,30 @@ def _item(db, *, title="Filed book", owned=1, isbn=None):
     return cur.lastrowid
 
 
-def test_place_item_creates_primary_copy_at_exact_hierarchical_location(db):
+def test_place_item_creates_primary_copy_and_appends_when_ordering_exists(db):
     room = location_svc.create_location(db, "Living Room")
     shelf = location_svc.create_location(db, "Shelf 1", parent_id=room)
-    item_id = _item(db)
+    first_item = _item(db, title="First")
+    second_item = _item(db, title="Second")
 
-    result = shelf_fill._place_item(db, item_id, shelf)
+    # Simulate the optional physical-ordering follow-up without making Shelf
+    # Fill depend on it: plain 0.36 schemas simply skip this compatibility hook.
+    db.execute("ALTER TABLE item_copies ADD COLUMN position_order INTEGER DEFAULT NULL")
 
-    item = db.execute("SELECT owned, location_id FROM items WHERE id = ?", (item_id,)).fetchone()
-    copy = db.execute(
-        "SELECT location_id, is_primary FROM item_copies WHERE item_id = ?", (item_id,)
-    ).fetchone()
+    first = shelf_fill._place_item(db, first_item, shelf)
+    result = shelf_fill._place_item(db, second_item, shelf)
+
+    item = db.execute("SELECT owned, location_id FROM items WHERE id = ?", (second_item,)).fetchone()
+    copies = db.execute(
+        "SELECT item_id, location_id, is_primary, position_order FROM item_copies "
+        "WHERE location_id = ? ORDER BY position_order", (shelf,)
+    ).fetchall()
     assert item["location_id"] == shelf
-    assert copy["location_id"] == shelf
-    assert copy["is_primary"] == 1
+    assert [row["item_id"] for row in copies] == [first_item, second_item]
+    assert [row["position_order"] for row in copies] == [1, 2]
+    assert all(row["is_primary"] == 1 for row in copies)
+    assert first["position_order"] == 1
+    assert result["position_order"] == 2
     assert result["location_name"] == "Living Room / Shelf 1"
 
 
