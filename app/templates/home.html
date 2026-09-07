@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Home — Shelf{% endblock %}
+{% block content %}
+<div>
+    <div class="flex flex-wrap items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold">Home</h1>
+            <p class="text-sm text-shelf-muted mt-1">A quick view of your collection. Use Browse when you want to search, filter or organise it.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <a href="/browse" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">Browse collection</a>
+            {% if user and user.role in ('admin', 'editor') %}
+            <a href="/scan" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">Scan item</a>
+            {% endif %}
+            <a href="/stats" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">Statistics</a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8" data-testid="home-summary">
+        <a href="/browse" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+            <p class="text-shelf-muted text-sm">Catalogue</p>
+            <p class="text-3xl font-bold">{{ total_count }}</p>
+        </a>
+        <a href="/browse?owned=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+            <p class="text-shelf-muted text-sm">Owned</p>
+            <p class="text-3xl font-bold">{{ owned_count }}</p>
+        </a>
+        <a href="/browse?owned=0" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+            <p class="text-shelf-muted text-sm">Wishlist</p>
+            <p class="text-3xl font-bold">{{ wishlist_count }}</p>
+        </a>
+        <a href="/browse?lent=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+            <p class="text-shelf-muted text-sm">Lent out</p>
+            <p class="text-3xl font-bold">{{ lent_out_count }}</p>
+        </a>
+        <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+            <p class="text-shelf-muted text-sm">Missing covers</p>
+            <p class="text-3xl font-bold">{{ missing_cover_count }}</p>
+        </div>
+        <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+            <p class="text-shelf-muted text-sm">Media types</p>
+            <p class="text-3xl font-bold">{{ media_types|length }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <section class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+            <div class="flex items-center justify-between gap-4 mb-4">
+                <h2 class="text-lg font-semibold">Collection mix</h2>
+                <a href="/browse" class="text-sm text-shelf-accent2 hover:text-shelf-accent">Browse all</a>
+            </div>
+            {% if media_types %}
+            <div class="space-y-3" data-testid="home-media-types">
+                {% for row in media_types %}
+                <a href="/browse?media_type={{ row.media_type }}" class="block">
+                    <div class="flex justify-between text-sm mb-1">
+                        <span>{{ media_type_labels.get(row.media_type, row.media_type) }}</span>
+                        <span class="text-shelf-muted">{{ row.item_count }}</span>
+                    </div>
+                    <div class="w-full bg-shelf-bg rounded-full h-2">
+                        <div class="bg-shelf-accent rounded-full h-2" style="width: {{ (row.item_count / total_count * 100) if total_count else 0 }}%"></div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-sm text-shelf-muted">Your collection is empty.</p>
+            {% endif %}
+        </section>
+
+        <section class="bg-shelf-card border border-shelf-border rounded-lg p-5">
+            <h2 class="text-lg font-semibold mb-4">Useful places</h2>
+            <div class="space-y-3">
+                <a href="/browse" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
+                    <p class="font-medium">Browse</p>
+                    <p class="text-xs text-shelf-muted mt-1">Search, filter, sort and bulk-edit the full catalogue.</p>
+                </a>
+                <a href="/series" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
+                    <p class="font-medium">Series</p>
+                    <p class="text-xs text-shelf-muted mt-1">See runs, gaps and completeness without crowding Browse.</p>
+                </a>
+                <a href="/stats" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
+                    <p class="font-medium">Statistics</p>
+                    <p class="text-xs text-shelf-muted mt-1">Open the deeper collection dashboard and charts.</p>
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <section>
+        <div class="flex items-center justify-between gap-4 mb-4">
+            <div>
+                <h2 class="text-lg font-semibold">Recently added</h2>
+                <p class="text-xs text-shelf-muted mt-1">The latest items to enter your catalogue.</p>
+            </div>
+            <a href="/browse?sort=newest" class="text-sm text-shelf-accent2 hover:text-shelf-accent">See more</a>
+        </div>
+
+        {% if recent_items %}
+        <div class="cover-grid" data-testid="home-recent-items">
+            {% for item in recent_items %}
+            <a href="/item/{{ item.id }}" class="group relative">
+                <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg">
+                    {% if not item.owned %}
+                    <div class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shadow">Wishlist</div>
+                    {% endif %}
+                    {% if item.cover_path %}
+                    <img src="/{{ item.cover_path }}" alt="{{ item.title }}" loading="lazy">
+                    {% else %}
+                    <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-br from-shelf-card to-shelf-hover">
+                        <p class="text-shelf-text text-sm font-medium leading-tight mb-1">{{ item.title[:60] }}</p>
+                        {% if item.authors %}<p class="text-shelf-muted text-xs">{{ item.authors[:40] }}</p>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mt-2">
+                    <p class="text-sm font-medium truncate">{{ item.title }}</p>
+                    <p class="text-xs text-shelf-muted truncate">{% if item.authors %}{{ item.authors }} · {% endif %}{{ media_type_labels.get(item.media_type, item.media_type) }}</p>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-shelf-card border border-shelf-border rounded-lg p-5 text-sm text-shelf-muted">
+            No items yet. {% if user and user.role in ('admin', 'editor') %}<a href="/scan" class="text-shelf-accent2 hover:text-shelf-accent">Start scanning</a>.{% endif %}
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
