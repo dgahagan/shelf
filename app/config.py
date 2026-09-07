@@ -11,15 +11,30 @@ MEDIA_TYPES = {
     "audiobook": "Audiobook",
     "ebook": "eBook",
     "dvd": "DVD / Blu-ray",
+    "vinyl": "Vinyl",
+    "cassette": "Cassette",
     "cd": "CD",
+    "digital_music": "Digital Music",
+    "music_other": "Other Music Format",
     "comic": "Comic / Graphic Novel",
     "video_game": "Video Game",
 }
 
 # The book family: media types that are read, carry ISBNs, and belong to a
-# series. Everything else in MEDIA_TYPES (dvd, cd, video_game) is a disc or a
-# cartridge. Declared here, beside the types themselves.
+# series. Everything else is deliberately outside this family.
 BOOK_MEDIA_TYPES = frozenset({"book", "kids_book", "audiobook", "ebook", "comic"})
+
+# Music is a first-class media family. Keep this declaration beside
+# MEDIA_TYPES so routes/templates/services can share one membership test.
+# `cd` is the existing upstream CD type; adding music does not create a
+# second incompatible CD identity.
+MUSIC_MEDIA_TYPES = frozenset({
+    "vinyl",
+    "cassette",
+    "cd",
+    "digital_music",
+    "music_other",
+})
 
 # Seed data — runtime platform list comes from game_platforms table
 GAME_PLATFORMS = {
@@ -143,6 +158,13 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
     "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
     "api.themoviedb.org": 0.1,  # no hard per-second cap
+    # MusicBrainz asks ordinary clients to stay at or below one request per
+    # second. Give the limiter a little margin instead of sitting exactly on
+    # the boundary; musicbrainz.py also sends an identifying User-Agent.
+    "musicbrainz.org": 1.05,
+    # Cover Art Archive is separate from MusicBrainz. Artwork requests are
+    # not latency critical, so pace them conservatively too.
+    "coverartarchive.org": 1.0,
     # EXPLORER (the keyless trial tier this client uses) allows 6 lookups per
     # minute and 100 per day; faster than the burst rate is declined with 429
     # (https://www.upcitemdb.com/wp/docs/main/development/api-rate-limits/).
