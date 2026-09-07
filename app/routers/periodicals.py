@@ -38,38 +38,29 @@ def _issue_year(issue_date: str | None) -> int | None:
 
 
 def find_periodical_item(raw: str) -> dict | None:
-    """Resolve a stored issue by full 977 identity without guessing.
+    """Resolve a stored issue only from a full 977 + supplement identity.
 
-    A carrier-only camera scan is accepted only when exactly one stored issue
-    uses that carrier. Once two issues share it, a supplement is required to
-    identify one concrete issue.
+    A 977 carrier identifies the publication, not one concrete issue. A
+    carrier-only scan must therefore never resolve to an existing issue even
+    when only one issue currently uses that carrier: doing so would make the
+    next issue a false duplicate. The add-on is required at this identity
+    boundary.
     """
     serial = periodicals.parse_barcode(raw)
-    if serial is None:
+    if serial is None or not serial.supplement:
         return None
 
     with get_db() as db:
         periodical_records.ensure_schema(db)
-        if serial.supplement:
-            rows = db.execute(
-                """SELECT i.*, l.name AS location_name
-                   FROM periodical_issues pi
-                   JOIN items i ON i.id = pi.item_id
-                   LEFT JOIN locations l ON l.id = i.location_id
-                   WHERE pi.barcode_ean = ? AND pi.barcode_supplement = ?
-                   ORDER BY i.id LIMIT 2""",
-                (serial.ean13, serial.supplement),
-            ).fetchall()
-        else:
-            rows = db.execute(
-                """SELECT i.*, l.name AS location_name
-                   FROM periodical_issues pi
-                   JOIN items i ON i.id = pi.item_id
-                   LEFT JOIN locations l ON l.id = i.location_id
-                   WHERE pi.barcode_ean = ?
-                   ORDER BY i.id LIMIT 2""",
-                (serial.ean13,),
-            ).fetchall()
+        rows = db.execute(
+            """SELECT i.*, l.name AS location_name
+               FROM periodical_issues pi
+               JOIN items i ON i.id = pi.item_id
+               LEFT JOIN locations l ON l.id = i.location_id
+               WHERE pi.barcode_ean = ? AND pi.barcode_supplement = ?
+               ORDER BY i.id LIMIT 2""",
+            (serial.ean13, serial.supplement),
+        ).fetchall()
     return dict(rows[0]) if len(rows) == 1 else None
 
 
