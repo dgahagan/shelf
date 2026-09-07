@@ -502,9 +502,10 @@ def test_browse_sort_restored_in_new_session(live_server, authed_page):
     value but fired the request with htmx.trigger, which is unreliable at init
     time. The dropdown showed the saved sort while the rows stayed in the
     server's default newest-first order. Both must now agree."""
-    # 'Zza' / 'Zzb' keep both items on page 1 under title_desc, and they stay on
-    # page 1 under the default order too — so a single pairwise comparison is
-    # valid under either ordering.
+    # The default newest sort intentionally has no tie-break for rows inserted
+    # in the same second. Rather than assuming one undefined order, observe the
+    # probe pair and choose the alphabetical sort that reverses it. The test
+    # then remains meaningful whichever tie order SQLite happened to return.
     insert_item(live_server["data_dir"], title="Zza Sortprobe Alpha", media_type="book", isbn="9780009990113")
     insert_item(live_server["data_dir"], title="Zzb Sortprobe Beta", media_type="book", isbn="9780009990120")
 
@@ -512,24 +513,20 @@ def test_browse_sort_restored_in_new_session(live_server, authed_page):
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
 
-    # Baseline: the unsorted default. Asserted via the control and URL rather
-    # than row order, because 'newest' ties on created_at for rows inserted in
-    # the same second and the tie-break is not defined.
     grid = authed_page.locator("#item-grid")
     expect(authed_page.locator("select[name=sort]")).to_have_value("newest")
     assert "sort=" not in authed_page.url
     default_text = grid.inner_text()
     default_alpha_first = default_text.index("Zza Sortprobe Alpha") < default_text.index("Zzb Sortprobe Beta")
 
-    # title_desc is deterministic (Z->A) and, on this data, the opposite of
-    # whatever the default produced — so a stale default order is detectable.
-    authed_page.locator("select[name=sort]").select_option("title_desc")
-    expect(authed_page).to_have_url(re.compile(r"sort=title_desc"))
+    sort_value = "title_desc" if default_alpha_first else "title_asc"
+    first_title = "Zzb Sortprobe Beta" if sort_value == "title_desc" else "Zza Sortprobe Alpha"
+    second_title = "Zza Sortprobe Alpha" if sort_value == "title_desc" else "Zzb Sortprobe Beta"
+
+    authed_page.locator("select[name=sort]").select_option(sort_value)
+    expect(authed_page).to_have_url(re.compile(rf"sort={sort_value}"))
     text = grid.inner_text()
-    assert text.index("Zzb Sortprobe Beta") < text.index("Zza Sortprobe Alpha")
-    assert default_alpha_first, (
-        "test needs the default order to differ from title_desc to be meaningful"
-    )
+    assert text.index(first_title) < text.index(second_title)
 
     # Simulate a new tab: sessionStorage (the filter querystring) is per-tab and
     # starts empty, while localStorage (the sort preference) persists. This is
@@ -539,12 +536,12 @@ def test_browse_sort_restored_in_new_session(live_server, authed_page):
     authed_page.wait_for_load_state("networkidle")
 
     # Control repopulated...
-    expect(authed_page.locator("select[name=sort]")).to_have_value("title_desc")
+    expect(authed_page.locator("select[name=sort]")).to_have_value(sort_value)
     # ...and, the actual regression, applied to the rows.
-    expect(authed_page).to_have_url(re.compile(r"sort=title_desc"))
+    expect(authed_page).to_have_url(re.compile(rf"sort={sort_value}"))
     text = authed_page.locator("#item-grid").inner_text()
-    assert text.index("Zzb Sortprobe Beta") < text.index("Zza Sortprobe Alpha"), (
-        "sort control shows title_desc but rows came back in the server's default order"
+    assert text.index(first_title) < text.index(second_title), (
+        f"sort control shows {sort_value} but rows came back in the server's default order"
     )
 
 
