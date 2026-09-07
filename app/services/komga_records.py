@@ -2,9 +2,10 @@
 
 Shelf's catalogue item describes the work/edition. Komga is a digital holding
 of that item, while physical copies are represented separately by the physical
-copy model. Consequently this layer adds Manga as a content type but stores
-Komga identity in its own relation rather than inventing ``digital_comic`` and
-``digital_manga`` media types.
+copy model. Komga's Comic/Manga library classification is retained on the
+provider record; when Shelf has no first-class Manga media type, Manga maps to
+Comic rather than making an integration silently extend the global media-type
+contract.
 
 The table is local to this validation slice so it does not consume an upstream
 migration number while other schema proposals are in flight. A final upstream
@@ -16,6 +17,7 @@ from __future__ import annotations
 import sqlite3
 from typing import Any
 
+from app.config import MEDIA_TYPES
 from app.services import isbn as isbn_svc
 from app.services.item_write import insert_item, update_item_fields
 
@@ -65,6 +67,19 @@ def _kind(candidate: dict[str, Any]) -> str:
     if kind not in KOMGA_KINDS:
         raise KomgaPersistenceError("Komga library must be classified as Comic or Manga")
     return kind
+
+
+def _shelf_media_type(kind: str) -> str:
+    """Project a Komga library kind onto Shelf's current media-type contract.
+
+    Manga is an integration-level library classification whether or not Shelf
+    has a first-class Manga type. If that product decision lands separately,
+    the mapping starts using it automatically; otherwise Manga remains a Comic
+    catalogue item while the provider record keeps ``kind='manga'``.
+    """
+    if kind == "manga" and "manga" in MEDIA_TYPES:
+        return "manga"
+    return "comic"
 
 
 def _existing_record(db, komga_id: str):
@@ -131,27 +146,34 @@ def _fill_missing_fields(db, item_id: int, candidate: dict[str, Any]) -> None:
         update_item_fields(db, item_id, fields)
 
 
-def _reclassify_owned_record(db, existing, media_type: str) -> None:
-    """Allow explicit Comic/Manga changes only for Komga-created catalogue rows."""
-    if existing["kind"] == media_type:
-        return
-    if existing["source"] != "komga":
-        raise KomgaPersistenceError(
-            "This Komga holding is attached to a manually catalogued item; "
-            "change its Comic/Manga type explicitly in Shelf before re-syncing"
+def _reclassify_owned_record(db, existing, kind: str, media_type: str) -> None:
+    """Apply a library-kind change without conflating it with Shelf's type.
+
+    A Comic↔Manga change may only require changing the provider record when
+    Shelf currently maps both kinds to ``comic``. If the corresponding Shelf
+    media type really changes, only a Komga-created catalogue row is safe to
+    reclassify automatically.
+    """
+    if existing["media_type"] != media_type:
+        if existing["source"] != "komga":
+            raise KomgaPersistenceError(
+                "This Komga holding is attached to a manually catalogued item; "
+                "change its Comic/Manga type explicitly in Shelf before re-syncing"
+            )
+        try:
+            update_item_fields(db, existing["item_id"], {"media_type": media_type})
+        except sqlite3.IntegrityError as exc:
+            raise KomgaPersistenceError(
+                "Changing this Komga library between Comic and Manga would collide "
+                "with an existing Shelf edition"
+            ) from exc
+
+    if existing["kind"] != kind:
+        db.execute(
+            "UPDATE komga_records SET kind = ?, updated_at = datetime('now') "
+            "WHERE komga_id = ?",
+            (kind, existing["komga_id"]),
         )
-    try:
-        update_item_fields(db, existing["item_id"], {"media_type": media_type})
-    except sqlite3.IntegrityError as exc:
-        raise KomgaPersistenceError(
-            "Changing this Komga library between Comic and Manga would collide "
-            "with an existing Shelf edition"
-        ) from exc
-    db.execute(
-        "UPDATE komga_records SET kind = ?, updated_at = datetime('now') "
-        "WHERE komga_id = ?",
-        (media_type, existing["komga_id"]),
-    )
 
 
 def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
@@ -160,7 +182,7 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
     Identity rules are intentionally conservative:
 
     * an existing ``komga_id`` always updates the item it already owns;
-    * otherwise an exact ISBN match of the same content type is adopted;
+    * otherwise an exact ISBN match of the same Shelf media type is adopted;
     * title/series similarity is never enough to adopt an existing item;
     * a new item is created when no strong identifier exists.
 
@@ -175,13 +197,14 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
     if not komga_id or not library_id or not title:
         raise KomgaPersistenceError("Komga candidate is missing id, library or title")
 
-    media_type = _kind(candidate)
+    kind = _kind(candidate)
+    media_type = _shelf_media_type(kind)
     fields = _provider_fields(candidate, media_type)
     isbn = fields["isbn"]
 
     existing = _existing_record(db, komga_id)
     if existing is not None:
-        _reclassify_owned_record(db, existing, media_type)
+        _reclassify_owned_record(db, existing, kind, media_type)
         item_id = existing["item_id"]
         if existing["source"] == "komga":
             update_item_fields(db, item_id, _refresh_fields(fields))
@@ -193,7 +216,7 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
             (
                 library_id,
                 _clean(candidate.get("komga_series_id")),
-                media_type,
+                kind,
                 komga_id,
             ),
         )
@@ -236,7 +259,7 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
             item_id,
             library_id,
             _clean(candidate.get("komga_series_id")),
-            media_type,
+            kind,
         ),
     )
     return {
