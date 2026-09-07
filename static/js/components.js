@@ -67,3 +67,12 @@ document.addEventListener('alpine:init', function () {
     });
 
 });
+
+// Keep the service-specific item-detail code out of this shared component file.
+// The tiny loader is global because base.html already loads components.js.
+if (/^\/item\/\d+$/.test(window.location.pathname)) {
+    const script = document.createElement('script');
+    script.src = '/static/js/komga-item.js';
+    script.defer = true;
+    document.head.appendChild(script);
+}
