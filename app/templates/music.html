@@ -63,7 +63,10 @@
                     {% if user and user.role in ('admin', 'editor') %}
                     <form method="post" action="/api/music/add" class="space-y-2">
                         <input type="hidden" name="release_id" value="{{ release.musicbrainz_release_id }}">
-                        <select name="media_type" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm">
+                        <select name="media_type" required class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm">
+                            {% if not release.shelf_media_type %}
+                            <option value="" selected disabled>Choose format</option>
+                            {% endif %}
                             {% for key, label in music_media_types.items() %}
                             <option value="{{ key }}" {% if key == release.shelf_media_type %}selected{% endif %}>{{ label }}</option>
                             {% endfor %}
