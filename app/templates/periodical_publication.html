@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ publication.title }} — Periodicals — Shelf{% endblock %}
+{% block content %}
+<div>
+    <div class="mb-4"><a href="/periodicals" class="text-sm text-shelf-muted hover:text-shelf-text">&larr; Back to periodicals</a></div>
+
+    <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 mb-6">
+        <p class="text-xs text-shelf-muted">Publication</p>
+        <h1 class="text-2xl font-bold mt-1">{{ publication.title }}</h1>
+        <div class="flex flex-wrap gap-3 text-sm text-shelf-muted mt-2">
+            {% if publication.issn %}<span>ISSN {{ publication.issn }}</span>{% endif %}
+            {% if publication.publisher %}<span>{{ publication.publisher }}</span>{% endif %}
+            {% if publication.language %}<span>{{ publication.language }}</span>{% endif %}
+        </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-4 mb-3">
+        <h2 class="text-lg font-semibold">Issues</h2>
+        <span class="text-sm text-shelf-muted">{{ issues|length }}</span>
+    </div>
+
+    {% if issues %}
+    <div class="space-y-2">
+        {% for issue in issues %}
+        <a href="/item/{{ issue.item_id }}" class="block bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="font-medium">{{ issue.title }}</p>
+                    <p class="text-xs text-shelf-muted mt-1">
+                        {% if issue.volume %}Vol. {{ issue.volume }}{% endif %}
+                        {% if issue.issue_number %}{% if issue.volume %} · {% endif %}No. {{ issue.issue_number }}{% endif %}
+                        {% if issue.cover_date_label %}{% if issue.volume or issue.issue_number %} · {% endif %}{{ issue.cover_date_label }}{% elif issue.issue_date %}{% if issue.volume or issue.issue_number %} · {% endif %}{{ issue.issue_date }}{% endif %}
+                        {% if issue.barcode_supplement %} · add-on {{ issue.barcode_supplement }}{% endif %}
+                    </p>
+                </div>
+                <span class="text-sm text-shelf-muted">View</span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 text-sm text-shelf-muted">No issues are attached to this publication.</div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,51 @@
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4" data-scan-status="periodical_confirm">
+    <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+            <p class="text-xs text-shelf-muted">Periodical found</p>
+            <h3 class="font-semibold mt-1">{{ candidate.publication_title or 'Publication title needed' }}</h3>
+            <p class="text-xs text-shelf-muted mt-1">ISSN {{ candidate.issn }} · {{ candidate.barcode_ean }}{% if candidate.barcode_supplement %} + {{ candidate.barcode_supplement }}{% endif %}</p>
+        </div>
+        <span class="text-xs px-2 py-1 bg-shelf-hover rounded text-shelf-muted">Magazine</span>
+    </div>
+
+    {% if notice %}
+    <div class="mb-3 rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2 text-xs text-shelf-warning">{{ notice }}</div>
+    {% endif %}
+
+    <p class="text-sm text-shelf-muted mb-4">The barcode identifies the publication, but its add-on is publisher-specific. Confirm the issue details instead of letting Shelf guess what the supplement means.</p>
+
+    <form method="post" action="/api/periodicals/confirm" class="space-y-3">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="raw_barcode" value="{{ raw_barcode }}">
+        <input type="hidden" name="publisher" value="{{ candidate.publisher or '' }}">
+        <input type="hidden" name="language" value="{{ candidate.language or '' }}">
+        <input type="hidden" name="location_id" value="{{ location_id or '' }}">
+        <input type="hidden" name="mode" value="{{ mode }}">
+
+        <div>
+            <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-publication-title">Publication</label>
+            <input id="periodical-publication-title" name="publication_title" required value="{{ candidate.publication_title or '' }}" placeholder="Publication title" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+        </div>
+
+        <div class="space-y-3">
+            <div>
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-volume">Volume</label>
+                <input id="periodical-volume" name="volume" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-number">Issue number</label>
+                <input id="periodical-issue-number" name="issue_number" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-date">Issue date</label>
+                <input id="periodical-issue-date" name="issue_date" type="date" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-cover-date">Cover date / label</label>
+                <input id="periodical-cover-date" name="cover_date_label" placeholder="September 2026, Summer Special…" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            </div>
+        </div>
+
+        <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm">Add confirmed issue</button>
+    </form>
+</div>
