@@ -23,7 +23,7 @@ def _candidate(**overrides):
     return value
 
 
-def test_new_manga_candidate_creates_catalogue_item_and_holding(db):
+def test_new_manga_candidate_keeps_kind_and_maps_to_current_shelf_type(db):
     result = komga_records.persist_candidate(db, _candidate())
 
     item = db.execute("SELECT * FROM items WHERE id = ?", (result["item_id"],)).fetchone()
@@ -33,7 +33,7 @@ def test_new_manga_candidate_creates_catalogue_item_and_holding(db):
 
     assert result["action"] == "created"
     assert result["adopted"] is False
-    assert item["media_type"] == "manga"
+    assert item["media_type"] == "comic"
     assert item["source"] == "komga"
     assert item["location_id"] is None
     assert item["isbn"] == "9781974700523"
@@ -48,7 +48,7 @@ def test_exact_isbn_match_adopts_existing_catalogue_item_without_changing_source
         {
             "title": "My preferred title",
             "isbn": "9781974700523",
-            "media_type": "manga",
+            "media_type": "comic",
             "source": "manual",
             "description": "My own description",
         },
@@ -63,6 +63,7 @@ def test_exact_isbn_match_adopts_existing_catalogue_item_without_changing_source
     assert row["source"] == "manual"
     assert row["authors"] == "Example Author"
     assert komga_records.records_for_item(db, existing_id)[0]["komga_id"] == "book-1"
+    assert komga_records.records_for_item(db, existing_id)[0]["kind"] == "manga"
 
 
 def test_isbn10_from_provider_matches_existing_canonical_isbn13(db):
@@ -101,7 +102,7 @@ def test_title_only_match_is_not_silently_adopted(db):
         db,
         {
             "title": "Same Title",
-            "media_type": "manga",
+            "media_type": "comic",
             "source": "manual",
         },
     )
@@ -138,7 +139,7 @@ def test_resync_updates_komga_created_item_without_erasing_omitted_metadata(db):
     assert holding["library_id"] == "library-2"
 
 
-def test_explicit_library_reclassification_updates_komga_created_item(db):
+def test_explicit_library_reclassification_updates_provider_kind(db):
     result = komga_records.persist_candidate(db, _candidate())
     updated = komga_records.persist_candidate(
         db,
@@ -152,23 +153,32 @@ def test_explicit_library_reclassification_updates_komga_created_item(db):
     assert holding["kind"] == "comic"
 
 
-def test_reclassification_never_silently_changes_manual_item(db):
+def test_separate_manga_media_type_is_used_if_it_lands(monkeypatch):
+    monkeypatch.setitem(komga_records.MEDIA_TYPES, "manga", "Manga")
+    assert komga_records._shelf_media_type("manga") == "manga"
+
+
+def test_reclassification_never_silently_changes_manual_item(db, monkeypatch):
     existing_id = insert_item(
         db,
         {
-            "title": "Manual Manga",
+            "title": "Manual Comic",
             "isbn": "9781974700523",
-            "media_type": "manga",
+            "media_type": "comic",
             "source": "manual",
         },
     )
-    komga_records.persist_candidate(db, _candidate())
+    komga_records.persist_candidate(db, _candidate(library_kind="comic"))
 
+    # Simulate the separate product-level Manga contribution having landed.
+    # A provider reclassification would now imply changing Shelf's type, which
+    # remains a user-owned decision for a manually catalogued item.
+    monkeypatch.setitem(komga_records.MEDIA_TYPES, "manga", "Manga")
     with pytest.raises(komga_records.KomgaPersistenceError, match="manually catalogued"):
-        komga_records.persist_candidate(db, _candidate(library_kind="comic"))
+        komga_records.persist_candidate(db, _candidate(library_kind="manga"))
 
     row = db.execute("SELECT media_type FROM items WHERE id = ?", (existing_id,)).fetchone()
-    assert row["media_type"] == "manga"
+    assert row["media_type"] == "comic"
 
 
 def test_detaching_komga_holding_keeps_catalogue_item(db):
