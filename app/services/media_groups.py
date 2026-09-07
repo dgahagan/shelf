@@ -115,18 +115,20 @@ def search_candidates(db, item_id: int, query: str, *, limit: int = 20):
     """Find catalogue items not already in this item's related-media group."""
     if not db.execute("SELECT 1 FROM items WHERE id = ?", (item_id,)).fetchone():
         return []
-    excluded = set(related_ids(db, item_id, include_self=True))
+    excluded = sorted(related_ids(db, item_id, include_self=True))
     q = (query or "").strip()
     if not q:
         return []
     like = f"%{q}%"
+    placeholders = ",".join("?" for _ in excluded)
     rows = db.execute(
-        """SELECT * FROM items
-           WHERE title LIKE ? COLLATE NOCASE
-              OR authors LIKE ? COLLATE NOCASE
-              OR series_name LIKE ? COLLATE NOCASE
-           ORDER BY title COLLATE NOCASE, media_type, id
-           LIMIT 100""",
-        (like, like, like),
+        f"""SELECT * FROM items
+            WHERE (title LIKE ? COLLATE NOCASE
+               OR authors LIKE ? COLLATE NOCASE
+               OR series_name LIKE ? COLLATE NOCASE)
+              AND id NOT IN ({placeholders})
+            ORDER BY title COLLATE NOCASE, media_type, id
+            LIMIT ?""",
+        (like, like, like, *excluded, limit),
     ).fetchall()
-    return [row for row in rows if row["id"] not in excluded][:limit]
+    return rows
