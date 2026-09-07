@@ -1,6 +1,7 @@
 """Upstream-facing tests for Shelf's first-class music foundation."""
 
 from app.config import MEDIA_TYPES, MUSIC_MEDIA_TYPES
+from app.routers import music
 from app.services import music_catalog, musicbrainz
 from app.services.item_write import insert_item
 
@@ -52,11 +53,15 @@ _SAMPLE_RELEASE = {
 
 
 def test_music_media_family_reuses_existing_cd_type():
-    assert MUSIC_MEDIA_TYPES == {
-        "vinyl", "cassette", "cd", "digital_music", "music_other"
-    }
+    assert MUSIC_MEDIA_TYPES == {"vinyl", "cassette", "cd", "digital_music"}
     assert MUSIC_MEDIA_TYPES <= MEDIA_TYPES.keys()
+    assert "music_other" not in MEDIA_TYPES
     assert MEDIA_TYPES["cd"] == "CD"
+
+
+def test_unknown_musicbrainz_format_requires_user_choice():
+    release = {"format_summary": "MiniDisc", "media": [{"format": "MiniDisc"}]}
+    assert music._infer_media_type(release) is None
 
 
 def test_music_schema_is_idempotent_and_keeps_track_numbers_as_text(db):
