@@ -33,7 +33,8 @@ def test_display_name_change_succeeds(live_server, authed_page):
     """Account modal display-name save — raw fetch() with FormData needs the CSRF header."""
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
-    authed_page.click("button:has-text('E2E Admin')")
+    authed_page.get_by_test_id("account-menu-button").click()
+    authed_page.get_by_test_id("account-menu-profile").click()
     name_input = authed_page.locator("input[x-model='displayName']")
     expect(name_input).to_be_visible()
     name_input.fill("E2E Admin")  # same value back — exercises the endpoint

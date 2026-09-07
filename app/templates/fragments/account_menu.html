@@ -1,0 +1,103 @@
+<div class="relative" x-data="accountMenu" @keydown.escape.window="closeAll()">
+    <button type="button" @click="toggle()" @click.outside="close()"
+            data-testid="account-menu-button" :aria-expanded="open"
+            class="flex items-center gap-2 text-shelf-muted hover:text-white text-sm transition-colors">
+        <span class="hidden sm:inline">{{ user.display_name or user.username }}</span>
+        <span class="bg-shelf-hover text-shelf-muted text-xs uppercase px-1.5 py-0.5 rounded hidden sm:inline">{{ user.role }}</span>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7-7z"/></svg>
+    </button>
+
+    <div x-show="open" x-cloak data-testid="account-menu-panel"
+         class="absolute right-0 top-full mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg shadow-xl py-1 z-50">
+        <button type="button" @click="openAccount()" data-testid="account-menu-profile"
+                class="block w-full text-left px-4 py-2 text-sm text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
+            Account
+        </button>
+        {% if user.role == 'admin' %}
+        <a href="/settings" data-testid="account-menu-settings" data-nav-tab="settings" data-nav-menu-tab="settings"
+           class="block px-4 py-2 text-sm {% if request.url.path == '/settings' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+            Settings
+        </a>
+        {% endif %}
+        <form method="POST" action="/logout">
+            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
+                Logout
+            </button>
+        </form>
+    </div>
+
+    <!-- Account Modal -->
+    <div x-show="showAccount" x-cloak @click.self="closeAccount()"
+         class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center">
+        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
+             data-display-name="{{ user.display_name or user.username }}"
+             x-data="accountModal">
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-lg font-bold">Account</h3>
+                <button type="button" @click="closeAccount()" class="text-shelf-muted hover:text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <div class="flex gap-1 mb-5 border-b border-shelf-border">
+                <button type="button" @click="tab = 'profile'" :class="tab === 'profile' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
+                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Profile</button>
+                <button type="button" @click="tab = 'password'" :class="tab === 'password' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
+                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Password</button>
+            </div>
+
+            <div x-show="tab === 'profile'" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">Username</label>
+                    <input type="text" value="{{ user.username }}" disabled
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-muted cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">Display Name</label>
+                    <input x-model="displayName" type="text"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">Role</label>
+                    <input type="text" value="{{ user.role|capitalize }}" disabled
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-muted cursor-not-allowed">
+                </div>
+                <template x-if="nameResult">
+                    <p :class="nameResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="nameResult.message"></p>
+                </template>
+                <button type="button" @click="saveName()" :disabled="nameSaving || !displayName.trim()"
+                        class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
+                    Save
+                </button>
+            </div>
+
+            <div x-show="tab === 'password'" class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">Current Password</label>
+                    <input x-model="current" type="password"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">New Password</label>
+                    <input x-model="newPw" type="password"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                    <p x-show="tooShort" class="text-shelf-error text-xs mt-1">Must be at least 8 characters</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">Confirm New Password</label>
+                    <input x-model="confirm" type="password"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
+                           :class="mismatch ? 'border-shelf-error' : ''">
+                    <p x-show="mismatch" class="text-shelf-error text-xs mt-1">Passwords do not match</p>
+                </div>
+                <template x-if="pwResult">
+                    <p :class="pwResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="pwResult.message"></p>
+                </template>
+                <button type="button" @click="savePw()" :disabled="!current || !newPw || mismatch || tooShort || pwSaving"
+                        class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
+                    Change Password
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
