@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from app.database import get_db
@@ -66,6 +68,7 @@ async def test_full_sync_honours_platform_exclusions_and_keeps_game_digital(db, 
     monkeypatch.setattr(romm_sync, "_ingest_cover", no_cover)
 
     progress = []
+
     async def callback(current, total, title, status):
         progress.append((current, total, title, status))
 
@@ -97,8 +100,18 @@ def test_romm_cover_target_never_leaves_configured_server():
     assert romm_sync._cover_target("https://romm.example", "https://evil.example/cover.jpg") is None
 
 
-def test_romm_router_is_mounted_on_main_pages_router():
-    from app.routers import pages
-    paths = {route.path for route in pages.router.routes}
+def test_romm_router_is_registered_explicitly_on_app():
+    from app.main import app
+
+    paths = {route.path for route in app.routes}
     assert "/api/romm/status" in paths
     assert "/api/romm/items/{item_id}/action" in paths
+
+
+def test_romm_item_script_is_loaded_only_from_item_detail_template():
+    template = Path("app/templates/item_detail.html").read_text()
+    components = Path("static/js/components.js").read_text()
+
+    assert '<script src="/static/js/romm-item.js"></script>' in template
+    assert "romm-item.js" not in components
+    assert "document.createElement('script')" not in components
