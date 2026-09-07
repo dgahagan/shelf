@@ -30,10 +30,16 @@ def test_admin_settings_entry_lives_in_account_menu(admin_client):
     assert 'data-nav-tab="settings"' in html
 
 
-def test_viewer_account_menu_does_not_offer_admin_settings(viewer_client):
-    html = viewer_client.get("/browse").text
-    assert 'data-testid="account-menu-button"' in html
-    assert 'data-testid="account-menu-settings"' not in html
+def test_non_admin_account_menus_do_not_offer_admin_settings(editor_client, viewer_client):
+    for client in (editor_client, viewer_client):
+        html = client.get("/browse").text
+        assert 'data-testid="account-menu-button"' in html
+        assert 'data-testid="account-menu-settings"' not in html
+        # This mirrors the existing server contract: /settings itself has
+        # always required the admin role, so moving the link does not tighten
+        # editor/viewer access as a side effect of the layout change.
+        response = client.get("/settings", follow_redirects=False)
+        assert response.status_code in (302, 303, 401, 403)
 
 
 def test_settings_is_not_rendered_in_primary_nav(admin_client):
