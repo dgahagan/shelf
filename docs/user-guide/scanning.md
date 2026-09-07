@@ -148,8 +148,8 @@ names music CDs, but when the record names **neither**, the dropdown is what
 says it — and the choice stands.
 
 Books further divide into book, kids book, audiobook, eBook, comic / graphic
-novel — the barcode cannot tell those apart, so they stay yours to pick.
-Change the type on the item page or in bulk from Browse.
+novel and Manga — the barcode cannot tell those apart, so they stay yours to
+pick. Change the type on the item page or in bulk from Browse.
 
 Whatever it decides, the card says so: *"Title names the Nintendo Switch
 platform — filed as Video Game."* or *"ISBN barcodes are books — overriding

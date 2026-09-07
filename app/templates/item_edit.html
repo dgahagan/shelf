@@ -52,8 +52,8 @@
     <nav aria-label="Edit sections" data-testid="edit-section-nav" class="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
         <a href="#edit-general" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">General</a>
         <a href="#edit-artwork" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Artwork</a>
-        <a href="#edit-series" data-section-nav="series" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Series</a>
-        <a href="#edit-identifiers" data-section-nav="identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Identifiers</a>
+        <a href="#edit-series" data-section-nav="series" data-media-types="book kids_book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Series</a>
+        <a href="#edit-identifiers" data-section-nav="identifiers" data-media-types="book kids_book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Identifiers</a>
         <a href="#edit-location" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Location</a>
         <a href="#edit-media" data-section-nav="media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Media Details</a>
     </nav>
@@ -94,7 +94,7 @@
                 {{ field("publish_year", "Year", item.publish_year, type="number") }}
             </div>
 
-            <div data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.language else 'false' }}">
+            <div data-media-types="book kids_book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.language else 'false' }}">
                 <label for="language" class="block text-sm font-medium text-shelf-muted mb-1">Language</label>
                 <select id="language" name="language"
                         class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
@@ -108,7 +108,7 @@
                 </select>
             </div>
 
-            <div data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.reading_status or item.date_started or item.date_finished else 'false' }}" class="space-y-4">
+            <div data-media-types="book kids_book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.reading_status or item.date_started or item.date_finished else 'false' }}" class="space-y-4">
                 <div>
                     <label for="reading_status" class="block text-sm font-medium text-shelf-muted mb-1">Reading Status</label>
                     <select id="reading_status" name="reading_status"
@@ -168,7 +168,7 @@
             </div>
         </section>
 
-        <section id="edit-series" data-testid="edit-section-series" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+        <section id="edit-series" data-testid="edit-section-series" data-media-types="book kids_book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
             <div>
                 <h2 class="text-lg font-semibold">Series</h2>
                 <p class="text-sm text-shelf-muted mt-1">Series membership, position and page count.</p>
@@ -180,7 +180,7 @@
             </div>
         </section>
 
-        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4" x-data="isbnCamera">
+        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4" x-data="isbnCamera">
             <div>
                 <h2 class="text-lg font-semibold">Identifiers</h2>
                 <p class="text-sm text-shelf-muted mt-1">Identifiers printed on this edition.</p>

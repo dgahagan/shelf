@@ -57,7 +57,7 @@ Filter chips along the top, all combinable:
 | Filter | Values |
 |---|---|
 | **Search** | Free text over title, author, ISBN, series, publisher |
-| **Type** | Book, kids book, audiobook, eBook, DVD / Blu-ray, CD, comic, video game |
+| **Type** | Book, kids book, audiobook, eBook, DVD / Blu-ray, CD, comic, Manga, video game |
 | **Location** | Any location, or "no location" |
 | **Reading status** | Want to read, reading, read, none |
 | **Owned** | Owned / wishlist |

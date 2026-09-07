@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.auth import require_role
-from app.config import HTTP_TIMEOUT, MEDIA_TYPES
+from app.config import BOOK_MEDIA_TYPES, HTTP_TIMEOUT, MEDIA_TYPES
 from app.database import get_db, get_game_platforms, get_setting
 from app.routers import items_common
 from app.services import covers, igdb, openlibrary, scan_outcome, tmdb
@@ -181,8 +181,6 @@ async def add_game_from_search(
     )
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {metadata['title'][:50]}")
     return resp
-
-BOOK_MEDIA_TYPES = {"book", "kids_book", "audiobook", "ebook", "comic"}
 
 @router.get("/title-search")
 async def title_search(
