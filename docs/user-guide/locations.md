@@ -32,3 +32,19 @@ Deleting a leaf location clears that location from items that used it. When the 
 ## Compatibility
 
 Shelf continues to keep an unambiguous full path in the existing `locations.name` field. This lets older catalogue, browse and export code display `Living Room / Shelf 1` without needing to understand the hierarchy immediately, while the new `label` and `parent_id` fields hold the real tree structure.
+
+## Arrange a physical shelf
+
+Each location can have an explicit order for the physical copies stored directly
+there. In **Settings → Library → Locations**, choose **Arrange** beside a room,
+bookcase or shelf. Editors can drag copies into their real left-to-right (or
+top-to-bottom) order and save it.
+
+Shelf can also auto-order that location by title, creator, series position,
+release date/year or periodical issue. When optional Periodicals or Music
+metadata is installed, the richer issue/release dates are used automatically;
+otherwise the core catalogue fields provide the fallback order.
+
+Ordering is copy-specific, so two copies of the same title can sit next to each
+other and retain distinct positions.
+
