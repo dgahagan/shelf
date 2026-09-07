@@ -23,6 +23,14 @@
     <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
         That ISBN's check digit doesn't add up — correct it or clear the field. Nothing else you typed was saved.
     </div>
+    {% elif error == "invalid_upc" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That UPC / EAN isn't a valid retail barcode — correct it or clear the field. Nothing was saved.
+    </div>
+    {% elif error == "upc_conflict" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        That UPC / EAN is already assigned to another item of this media type. Nothing was saved.
+    </div>
     {% elif error == "unknown_media_type" %}
     <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
         That media type isn't one Shelf knows — pick one from the list. Nothing was saved.
@@ -137,7 +145,6 @@
                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.notes or '' }}</textarea>
             </div>
         </section>
-
         <section id="edit-artwork" data-testid="edit-section-artwork" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
             <div>
                 <h2 class="text-lg font-semibold">Artwork</h2>
