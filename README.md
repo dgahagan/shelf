@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-2681%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-225%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-2677%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-224%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -49,7 +49,7 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 
 | Valuation Report | Browse (Tag Filter) |
 |------------------|---------------------|
-| ![Valuation Report](screenshots/valuation-report-print.png) | ![Tag Filter](screenshots/browse-tag-filter.png) |
+| ![Valuation Report](screenshots/valuation-report.png) | ![Tag Filter](screenshots/browse-tag-filter.png) |
 
 | Photo Intake | Series |
 |--------------|--------|
@@ -187,37 +187,183 @@ each option before anything is sent.
 - **Valuation report** — location-grouped, print-ready report of your collection's list-price value for insurance documentation ([print view](screenshots/valuation-report-print.png)); prices via ISBNdb
 - **Display currency** — pick from 20 currencies under Settings → Collection and every value surface follows. This is formatting, not conversion: Shelf never converts amounts between currencies, so the figure ISBNdb returns is the figure shown
 - **CSV import/export** — bulk operations and backups
-- **Portable archive** — export your whole collection as a single zip (items, tags, locations, users, settings, borrowers, lending history, series metadata, reading history, covers) and restore it on another Shelf install
-- **Full offline PWA** — after your first online visit, the entire browse grid is cached locally. Add books while disconnected — scans are queued and auto-sync when connectivity returns
+- **Portable archive** — export your whole collection as a single zip (items, tags, locations, series, reading log, checkouts, **and your cover art**) and merge it back into any Shelf instance without refetching a single cover. No credentials or instance-specific data are included, so it's the safe way to move servers or hand your library to someone else — unlike a database backup, which carries password hashes and encrypted API keys but no covers at all. Importing previews first: you see how many items are new, how many are already yours, how each duplicate was matched (exactly on ISBN, or heuristically on title and author), and you can leave parts of the archive out before anything is written
+- **Goodreads & StoryGraph migration** — upload your library export as-is; the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically
+- **Store Mode (offline PWA)** — scan barcodes in a bookstore with no signal and get an instant Owned / On wishlist / Not in library verdict; unknown books queue on-device and are added to your wishlist automatically when you're back online (see [Store Mode](#store-mode-offline-pwa))
 
-### Multi-User & Sharing
-- **Three roles** — Admin, Editor, Viewer. Admins manage users and settings; Editors can add/edit/delete items and locations; Viewers browse and track reading status
-- **Per-user reading status** — each user's want-to-read / reading / read progress is independent; a book can be "read" for one person and "want to read" for another
-- **Display names** — show a friendly name instead of a login username
-- **Personalised stats** — reading stats reflect the current user's history
-- **Share links** — create public read-only links to your wishlist or full collection; each link can be revoked independently
+### Integrations
+- **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
+- **[Audiobookshelf](https://www.audiobookshelf.org)** — sync selected libraries from your Audiobookshelf server, link physical + digital formats, and jump straight to an item in ABS from its Shelf page
+- **[IGDB](https://www.igdb.com)** — video game metadata, cover art, and platform info via Twitch developer credentials (free)
+- **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
 
-### Lending & Notifications
-- Track borrowers and checkouts with due dates
-- **Overdue badges** — items past their due date are highlighted in Browse
-- **Daily digest** — optional ntfy or webhook notification summarising overdue loans; set a custom number of days before undated loans count as overdue
-- Check items back in by scanning their barcode
+### Store Mode (Offline PWA)
+
+<p align="center">
+  <img src="screenshots/store-mode.gif" width="420" alt="Store Mode demo — three ISBNs checked in turn, returning Owned, On wishlist, and Not in library with the unknown book queued for sync">
+</p>
+
+<p align="center"><em>Standing in the shop: scan, and know instantly whether you already own it.</em></p>
+
+Open **Store** in the nav (or visit `/store`), and Shelf caches your library's
+ISBNs on the device. From then on, scanning a barcode answers instantly from
+the local cache — even with zero signal in a bookstore basement. Books you
+scan that aren't in your library are queued on-device and added to your
+wishlist (with metadata and cover) the next time you're online.
+
+To install it as an app, use your browser's "Add to Home Screen" while on the
+store page. **One requirement:** service workers (the offline machinery) only
+run on an origin your phone trusts. Options, from simplest to cleanest:
+
+1. **Trust the self-signed cert on your phone** — download the cert from your
+   Shelf server and install it (Android: Settings → Security → Install a
+   certificate → CA certificate; iOS: install the profile, then enable full
+   trust under Settings → General → About → Certificate Trust Settings).
+2. **VPN home** (WireGuard/OpenVPN/Tailscale) — the offline cache still does
+   the work in the store; the VPN is only needed when syncing.
+3. **A real certificate** — reverse proxy with Let's Encrypt, or
+   `tailscale cert` for a ts.net HTTPS name. Set `SHELF_TRUST_PROXY=1` if a
+   proxy sits in front.
+
+Note that `localhost` is always trusted, so store mode works out of the box
+for local development.
+
+### Sharing
+
+Create public read-only links under Settings → Data → Sharing — a **wishlist
+link** for gift ideas or a **collection link** for browsing. Anyone with the
+URL sees titles, authors, covers, and series only (never locations, loans,
+values, notes, or ISBNs). Links are unguessable 128-bit tokens, rate-limited,
+marked `noindex`, and revocable at any time.
+
+### Administration
+- **Role-based access** — admin, editor, and viewer roles
+- **Web log viewer** — monitor auth events, sync activity, and errors from the browser
+- **HTTPS** — self-signed TLS certificates generated on first run
+- **Backup/restore** — database backup and restore from the settings page, with optional passphrase-encrypted (AES) backup downloads that are safe to store off-site
+- **Hardened by default** — strict Content-Security-Policy (no `unsafe-inline`/`unsafe-eval`, no CDNs), CSRF protection on all mutating requests, write-only API credentials in Settings, encrypted credential storage
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Python 3.12, FastAPI, SQLite (WAL mode) |
+| Frontend | Jinja2, HTMX, Alpine.js, Tailwind CSS |
+| Auth | bcrypt, JWT in HTTP-only secure cookies |
+| Container | Docker, non-root user, self-signed HTTPS |
+
+## Roles
+
+| Role | Can do |
+|------|--------|
+| **Admin** | Everything: settings, users, locations, sync, bulk ops, logs |
+| **Editor** | Add/edit/delete items, scan (all modes), covers (find/upload/paste URL/remove), checkout/checkin, import/export |
+| **Viewer** | Browse, search, reading status, export CSV, view stats |
+
+## Metadata Sources
+
+Shelf queries free, public APIs to look up book and game information — no API keys needed for core book functionality:
+
+| Source | What it provides | API key required? |
+|--------|-----------------|-------------------|
+| [Deutsche Nationalbibliothek](https://portal.dnb.de) | German (978-3) ISBNs, consulted before the rest: title, author, publisher, year, language; cover art | No |
+| [Servizio Bibliotecario Nazionale](https://opac.sbn.it) | Italian (978-88, 979-12) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, language | No |
+| [Open Library](https://openlibrary.org) | Title, author, description, cover art, publish info, title search | No |
+| [Google Books](https://books.google.com) | Fallback metadata and cover art | No (optional key supported) |
+| [Amazon Images](https://www.amazon.com) | Fallback cover art via ISBN | No |
+| [UPC Item DB](https://www.upcitemdb.com) | Title lookup from UPC barcodes (games, DVDs) | No |
+
+Metadata lookups send only the ISBN or UPC to these services. No personal data, account info, or collection details are transmitted.
+
+## Optional API Keys
+
+Configure in Settings to unlock additional features:
+
+| Service | Enables | Link |
+|---------|---------|------|
+| **Hardcover** | Reading status sync, richer metadata, import/export, Discover page | [hardcover.app](https://hardcover.app) |
+| **Google Books** | Optional credentialed metadata, synopsis, and cover requests; anonymous access remains available | [Google Books API](https://developers.google.com/books) |
+| **IGDB** (Twitch) | Video game metadata, cover art, and platform info — on UPC scan, title search, and Photo Intake confirm | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
+| **ISBNdb** | Collection valuation with market prices | [isbndb.com](https://isbndb.com) |
+| **TMDb** | DVD/Blu-ray metadata — on UPC scan, title search, and Photo Intake confirm | [themoviedb.org](https://www.themoviedb.org) |
+| **Anthropic** | Photo Intake — reads spines and recognizes covers (best accuracy) | [console.anthropic.com](https://console.anthropic.com) |
+| **OpenAI-compatible** | Photo Intake via any OpenAI Chat Completions endpoint (OpenAI, OpenRouter, vLLM, LM Studio…) | [platform.openai.com](https://platform.openai.com) |
+| **Ollama** | Photo Intake with a fully local vision model — no key needed | [ollama.com](https://ollama.com) |
 
 ## Development
 
-```bash
-pip install -r requirements-dev.txt
-npm install
-playwright install chromium
+See [docs/development.md](docs/development.md) for the full guide and [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. The essentials:
 
-make test       # unit + integration
-make test-e2e   # Playwright E2E
-make checks     # dependency audit, licenses, secrets scan, CSRF/Alpine checks
-make qa         # everything + review/security/test audit reports
+```bash
+# Rebuild after code changes
+docker compose build && docker compose up -d
+
+# View logs
+docker compose logs -f shelf
+
+# Access the database
+sqlite3 data/shelf.db
+
+# Rebuild the Tailwind stylesheet after changing templates or static/js
+# (all JS/CSS is vendored locally — no CDNs; requires node/npx)
+make css
 ```
 
-See [docs/development.md](docs/development.md) for the full guide.
+### QA Pipeline
+
+Shelf ships with a `Makefile` that orchestrates a two-pass local QA workflow — no CI/CD required.
+
+**One-time setup:**
+
+```bash
+pip install -r requirements-dev.txt
+make install-playwright   # downloads headless Chromium
+```
+
+**Common targets:**
+
+| Target | What it does |
+|--------|-------------|
+| `make test` | Unit and integration tests (pytest, excludes E2E) |
+| `make test-e2e` | Playwright E2E browser tests against a live local server |
+| `make test-all` | Both of the above |
+| `make check-deps` | `pip-audit` vulnerability scan of `requirements.txt` |
+| `make check-licenses` | License compliance report |
+| `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
+| `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |
+| `make check-alpine` | Verify templates stay compatible with the Alpine CSP build, and that the script load order in `<head>` is intact |
+| `make check-sw-version` | Verify the service worker's cache version matches what it caches |
+| `make check-tests` | Lint the test suite's own conventions |
+| `make checks` | All of the checks above |
+| `make report-review` | Code review report via Claude agent |
+| `make report-security` | Security audit report via Claude agent |
+| `make report-test` | Test coverage audit report via Claude agent |
+| `make reports` | All three reports |
+| `make qa` | Full Pass 1: `test-all` → `checks` → `reports` |
+| `make fix` | Pass 2a: interactive Claude session reads reports and applies fixes |
+| `make verify` | Pass 2b: re-run all tests after fixes |
+| `make release-check` | Alias for `make qa` |
+| `make install-hooks` | Install a pre-push git hook that runs `make test-all` |
+
+**Typical pre-release workflow:**
+
+```bash
+make qa          # run tests, checks, and generate reports
+# review reports/CODE_REVIEW_*.md, SECURITY_AUDIT_*.md, TEST_AUDIT_*.md
+make fix         # Claude reads reports and applies fixes interactively
+make verify      # confirm all tests still pass
+```
+
+Reports land in `reports/` with today's date (e.g. `reports/CODE_REVIEW_2026-03-27.md`) and are gitignored — they're regenerated each QA cycle, so keep a copy elsewhere if you want to compare against a previous run.
+
+Report targets default to `claude-sonnet-4-6`. Override with `MODEL=` for a deeper pre-release audit:
+
+```bash
+make reports MODEL=claude-opus-4-6
+```
 
 ## License
 
-GNU AGPL v3.0 — see [LICENSE](LICENSE).
+[AGPL-3.0](LICENSE) — free to use, self-host, and modify. If you offer a
+modified version of Shelf as a network service, you must make your changes
+available under the same license.
