@@ -24,8 +24,14 @@ def _year(value: str | None) -> int | None:
     return int(text[:4]) if len(text) >= 4 and text[:4].isdigit() else None
 
 
-def _infer_media_type(release: dict) -> str:
-    """Map MusicBrainz medium formats onto Shelf's music media family."""
+def _infer_media_type(release: dict) -> str | None:
+    """Map recognised MusicBrainz medium formats onto Shelf's music family.
+
+    Unknown formats deliberately stay unset so the add screen asks the user
+    instead of exposing a permanent catch-all media type or guessing CD.
+    Exact provider format strings are still retained in ``music_media`` and
+    ``music_releases.format_summary``.
+    """
     formats = [
         str(m.get("format") or "").casefold()
         for m in release.get("media") or []
@@ -44,7 +50,7 @@ def _infer_media_type(release: dict) -> str:
             return "cd"
         if "digital" in fmt:
             return "digital_music"
-    return "music_other"
+    return None
 
 
 def _provider_error(result) -> str | None:
@@ -136,7 +142,9 @@ async def music_page(
             for release in results:
                 media_type = _infer_media_type(release)
                 release["shelf_media_type"] = media_type
-                release["shelf_media_label"] = MEDIA_TYPES[media_type]
+                release["shelf_media_label"] = (
+                    MEDIA_TYPES[media_type] if media_type else "Choose format"
+                )
         else:
             error = _provider_error(result)
 
@@ -190,7 +198,9 @@ async def add_music_release(
 
     release = result.payload
     if media_type not in MUSIC_MEDIA_TYPES:
-        media_type = _infer_media_type(release)
+        media_type = _infer_media_type(release) or ""
+    if not media_type:
+        return HTMLResponse("Choose a music format before adding this release", status_code=400)
 
     provider_barcode = upc_svc.normalize_upc(release.get("barcode") or "") or None
     publish_year = _year(release.get("release_date")) or _year(
