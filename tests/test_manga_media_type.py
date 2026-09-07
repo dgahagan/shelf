@@ -2,7 +2,7 @@
 
 from app.config import BOOK_MEDIA_TYPES, MEDIA_TYPES
 from app.routers import items_catalog, series
-from app.services import cover_queue, detect
+from app.services import cover_queue, detect, synopsis
 
 
 def test_manga_is_a_first_class_book_family_media_type():
@@ -12,6 +12,11 @@ def test_manga_is_a_first_class_book_family_media_type():
     assert set(series.UNASSIGNED_MEDIA_TYPES) == BOOK_MEDIA_TYPES
     assert detect._BOOK_FAMILY_HINTS == BOOK_MEDIA_TYPES
     assert "manga" in cover_queue.COVER_REQUEUE_MEDIA_TYPES
+
+
+def test_manga_does_not_enable_generic_synopsis_backfill():
+    """Treat Manga like Comic for synopsis until provider coverage justifies it."""
+    assert "manga" not in synopsis.BOOK_MEDIA_TYPES
 
 
 def test_isbn_scan_preserves_an_explicit_manga_choice():
