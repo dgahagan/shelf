@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Edit {{ item.title }} — Shelf{% endblock %}
+{% block head %}
+<script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+<script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
+{% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto" data-item-edit-sections>
     <a href="/item/{{ item.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; Back to item</a>
@@ -176,12 +180,35 @@
             </div>
         </section>
 
-        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4" x-data="isbnCamera">
             <div>
                 <h2 class="text-lg font-semibold">Identifiers</h2>
                 <p class="text-sm text-shelf-muted mt-1">Identifiers printed on this edition.</p>
             </div>
             {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
+            <button type="button" @click="startCamera()"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors">
+                Scan ISBN
+            </button>
+
+            <div x-show="cameraActive" style="display:none"
+                 class="fixed inset-0 z-50 bg-black/80 p-4 flex items-center justify-center">
+                <div class="w-full max-w-md bg-shelf-card rounded-xl border border-shelf-border p-4">
+                    <div class="flex items-center justify-between gap-3 mb-3">
+                        <h3 class="text-lg font-semibold">Scan ISBN</h3>
+                        <button type="button" @click="stopCamera()" aria-label="Close scanner"
+                                class="text-shelf-muted hover:text-shelf-text text-2xl leading-none">&times;</button>
+                    </div>
+                    <div id="edit-isbn-camera-reader"
+                         class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                         x-show="!isZxingFallback"></div>
+                    <div class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                         x-show="isZxingFallback" style="display:none">
+                        <video id="edit-isbn-zxing-video" class="w-full" autoplay muted playsinline></video>
+                    </div>
+                    <p class="text-xs text-shelf-muted text-center mt-2" x-text="status"></p>
+                </div>
+            </div>
         </section>
 
         <section id="edit-location" data-testid="edit-section-location" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
@@ -253,5 +280,6 @@
     </form>
 </div>
 
+<script src="/static/js/scanner-engine.js"></script>
 <script src="/static/js/item_edit.js"></script>
 {% endblock %}
