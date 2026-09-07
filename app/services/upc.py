@@ -52,3 +52,37 @@ def validate_upc(code: str) -> bool:
     total = sum(int(d) * (3 if i % 2 == 0 else 1) for i, d in enumerate(code[:11]))
     check = (10 - (total % 10)) % 10
     return int(code[11]) == check
+
+
+
+def validate_ean13(code: str) -> bool:
+    """Validate a 13-digit EAN check digit."""
+    code = normalize_barcode(code)
+    if len(code) != 13 or not code.isdigit():
+        return False
+    total = sum(
+        int(digit) * (3 if index % 2 else 1)
+        for index, digit in enumerate(code[:12])
+    )
+    return (10 - (total % 10)) % 10 == int(code[-1])
+
+
+def canonical_retail_barcode(value: str | None) -> tuple[bool, str | None]:
+    """Validate an editable UPC-A/EAN-13 and return EAN-13 storage form.
+
+    Empty input clears the field. Bookland 978/979 carriers belong to the
+    ISBN field and are deliberately refused here.
+    """
+    raw = str(value or "").strip()
+    if not raw:
+        return True, None
+    code = normalize_barcode(raw)
+    if len(code) == 12:
+        if not validate_upc(code):
+            return False, None
+        return True, normalize_upc(code)
+    if len(code) == 13:
+        if code.startswith(("978", "979")) or not validate_ean13(code):
+            return False, None
+        return True, code
+    return False, None

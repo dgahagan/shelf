@@ -1182,7 +1182,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
 
     fields = {}
     try:
-        for key in ("title", "subtitle", "authors", "isbn", "media_type", "publisher",
+        for key in ("title", "subtitle", "authors", "isbn", "upc", "media_type", "publisher",
                     "publish_year", "page_count", "description", "series_name",
                     "series_position", "narrator", "duration_mins", "location_id", "notes",
                     "reading_status", "date_started", "date_finished", "owned", "platform",
@@ -1202,6 +1202,14 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
     except (TypeError, ValueError):
         # A non-numeric year/count/value used to be a 500.
         return _refused("invalid_number")
+
+    # Retail barcodes are normal edit fields, but their storage identity is
+    # canonical EAN-13. Bookland 978/979 carriers remain ISBN-only.
+    if "upc" in fields:
+        valid_upc, canonical_upc = upc_svc.canonical_retail_barcode(fields["upc"])
+        if not valid_upc:
+            return HTMLResponse("Invalid UPC / EAN barcode", status_code=400)
+        fields["upc"] = canonical_upc
 
     # Handle cover upload
     cover_file = form.get("cover")
@@ -1223,12 +1231,39 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
             ).fetchone()
             old_series_name = row["series_name"] if row else None
 
+        # Keep the same duplicate identity rule used by normal scan/add:
+        # a retail barcode may repeat across media types, never within one.
+        if fields.get("upc"):
+            effective_media_type = fields.get("media_type")
+            if effective_media_type is None:
+                current = db.execute(
+                    "SELECT media_type FROM items WHERE id = ?", (item_id,)
+                ).fetchone()
+                if not current:
+                    return HTMLResponse("Not found", status_code=404)
+                effective_media_type = current["media_type"]
+            conflict = db.execute(
+                "SELECT id FROM items WHERE upc = ? AND media_type = ? AND id != ? LIMIT 1",
+                (fields["upc"], effective_media_type, item_id),
+            ).fetchone()
+            if conflict:
+                return HTMLResponse(
+                    "Update conflicts with existing catalogue data", status_code=409
+                )
+
         # The form posts `isbn` every time, so an edit that changes it now
         # rewrites isbn10 too — #54's second half.
         try:
             update_item_fields(db, item_id, fields)
         except ItemValueError as e:
             return _refused(e.code)
+        except sqlite3.IntegrityError:
+            # Close the race between the explicit duplicate lookup and write.
+            if "upc" in fields:
+                return HTMLResponse(
+                    "Update conflicts with existing catalogue data", status_code=409
+                )
+            raise
 
         # Guarded: `fields` only carries series_name when the form submitted it
         # (a cover-only or partial POST omits it entirely).

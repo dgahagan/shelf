@@ -53,7 +53,7 @@
         <a href="#edit-general" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">General</a>
         <a href="#edit-artwork" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Artwork</a>
         <a href="#edit-series" data-section-nav="series" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Series</a>
-        <a href="#edit-identifiers" data-section-nav="identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Identifiers</a>
+        <a href="#edit-identifiers" data-section-nav="identifiers" data-media-types="book kids_book audiobook ebook comic dvd cd video_game" data-always-visible="{{ 'true' if item.isbn or item.upc else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Identifiers</a>
         <a href="#edit-location" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Location</a>
         <a href="#edit-media" data-section-nav="media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Media Details</a>
     </nav>
@@ -180,33 +180,62 @@
             </div>
         </section>
 
-        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4" x-data="isbnCamera">
+        <section id="edit-identifiers" data-testid="edit-section-identifiers" data-media-types="book kids_book audiobook ebook comic dvd cd video_game" data-always-visible="{{ 'true' if item.isbn or item.upc else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
             <div>
                 <h2 class="text-lg font-semibold">Identifiers</h2>
                 <p class="text-sm text-shelf-muted mt-1">Identifiers printed on this edition.</p>
             </div>
-            {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
-            <button type="button" @click="startCamera()"
-                    class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors">
-                Scan ISBN
-            </button>
+            <div data-media-types="book kids_book audiobook ebook comic" data-always-visible="{{ 'true' if item.isbn else 'false' }}" x-data="isbnCamera" class="space-y-4">
+                {{ field("isbn", "ISBN", item.isbn, placeholder="ISBN-13") }}
+                <button type="button" @click="startCamera()"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors">
+                    Scan ISBN
+                </button>
 
-            <div x-show="cameraActive" style="display:none"
-                 class="fixed inset-0 z-50 bg-black/80 p-4 flex items-center justify-center">
-                <div class="w-full max-w-md bg-shelf-card rounded-xl border border-shelf-border p-4">
-                    <div class="flex items-center justify-between gap-3 mb-3">
-                        <h3 class="text-lg font-semibold">Scan ISBN</h3>
-                        <button type="button" @click="stopCamera()" aria-label="Close scanner"
-                                class="text-shelf-muted hover:text-shelf-text text-2xl leading-none">&times;</button>
+                <div x-show="cameraActive" style="display:none"
+                     class="fixed inset-0 z-50 bg-black/80 p-4 flex items-center justify-center">
+                    <div class="w-full max-w-md bg-shelf-card rounded-xl border border-shelf-border p-4">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <h3 class="text-lg font-semibold">Scan ISBN</h3>
+                            <button type="button" @click="stopCamera()" aria-label="Close scanner"
+                                    class="text-shelf-muted hover:text-shelf-text text-2xl leading-none">&times;</button>
+                        </div>
+                        <div id="edit-isbn-camera-reader"
+                             class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                             x-show="!isZxingFallback"></div>
+                        <div class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                             x-show="isZxingFallback" style="display:none">
+                            <video id="edit-isbn-zxing-video" class="w-full" autoplay muted playsinline></video>
+                        </div>
+                        <p class="text-xs text-shelf-muted text-center mt-2" x-text="status"></p>
                     </div>
-                    <div id="edit-isbn-camera-reader"
-                         class="rounded-xl overflow-hidden border border-shelf-border bg-black"
-                         x-show="!isZxingFallback"></div>
-                    <div class="rounded-xl overflow-hidden border border-shelf-border bg-black"
-                         x-show="isZxingFallback" style="display:none">
-                        <video id="edit-isbn-zxing-video" class="w-full" autoplay muted playsinline></video>
+                </div>
+            </div>
+
+            <div data-upc-editor data-media-types="dvd cd comic video_game" data-always-visible="{{ 'true' if item.upc else 'false' }}" x-data="upcCamera" class="space-y-4">
+                {{ field("upc", "UPC / EAN", item.upc, placeholder="UPC-A or EAN-13") }}
+                <button type="button" @click="startCamera()"
+                        class="px-4 py-2 bg-shelf-hover text-shelf-text border border-shelf-border rounded-lg text-sm hover:border-shelf-accent/50 transition-colors">
+                    Scan UPC / EAN
+                </button>
+
+                <div x-show="cameraActive" style="display:none"
+                     class="fixed inset-0 z-50 bg-black/80 p-4 flex items-center justify-center">
+                    <div class="w-full max-w-md bg-shelf-card rounded-xl border border-shelf-border p-4">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <h3 class="text-lg font-semibold">Scan UPC / EAN</h3>
+                            <button type="button" @click="stopCamera()" aria-label="Close scanner"
+                                    class="text-shelf-muted hover:text-shelf-text text-2xl leading-none">&times;</button>
+                        </div>
+                        <div id="edit-upc-camera-reader"
+                             class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                             x-show="!isZxingFallback"></div>
+                        <div class="rounded-xl overflow-hidden border border-shelf-border bg-black"
+                             x-show="isZxingFallback" style="display:none">
+                            <video id="edit-upc-zxing-video" class="w-full" autoplay muted playsinline></video>
+                        </div>
+                        <p class="text-xs text-shelf-muted text-center mt-2" x-text="status"></p>
                     </div>
-                    <p class="text-xs text-shelf-muted text-center mt-2" x-text="status"></p>
                 </div>
             </div>
         </section>

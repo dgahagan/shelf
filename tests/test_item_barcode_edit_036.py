@@ -28,6 +28,7 @@ def test_editable_upc_accepts_valid_non_book_ean_and_rejects_isbn():
 
 def test_barcode_context_exposes_existing_upc(editor_client, db):
     item_id = _item(db, upc=EAN_13)
+    db.commit()
     response = editor_client.get(f"/api/items/{item_id}/barcode-context")
     assert response.status_code == 200
     assert response.json()["upc"] == EAN_13
@@ -35,6 +36,7 @@ def test_barcode_context_exposes_existing_upc(editor_client, db):
 
 def test_item_edit_can_save_upc_without_metadata_lookup(editor_client, db):
     item_id = _item(db)
+    db.commit()
     response = editor_client.post(
         f"/api/items/{item_id}",
         data={"upc": UPC_A},
@@ -48,6 +50,7 @@ def test_item_edit_can_save_upc_without_metadata_lookup(editor_client, db):
 def test_item_edit_refuses_same_upc_on_same_media_type(editor_client, db):
     _item(db, title="Existing", upc=EAN_13)
     item_id = _item(db, title="Other")
+    db.commit()
     response = editor_client.post(
         f"/api/items/{item_id}",
         data={"media_type": "dvd", "upc": EAN_13},
@@ -59,12 +62,20 @@ def test_item_edit_refuses_same_upc_on_same_media_type(editor_client, db):
 
 
 def test_upc_camera_is_scan_only_and_reuses_shared_engine():
+    template = Path("app/templates/item_edit.html").read_text()
     source = Path("static/js/item_edit.js").read_text()
+    assert "data-upc-editor" in template
+    assert 'x-data="upcCamera"' in template
+    assert 'field("upc", "UPC / EAN", item.upc' in template
+    assert 'id="edit-upc-camera-reader"' in template
+    assert 'id="edit-upc-zxing-video"' in template
     assert "window.createBarcodeScanner" in source
     assert "edit-upc-camera-reader" in source
     assert "input.value = canonical" in source
+    assert "document.createElement" not in source
+    assert "fetch(" not in source
     # The camera handler must not submit or call a metadata route. Saving stays
     # the user's explicit action on the existing item-edit form.
-    camera_tail = source.split("function installUpcEditor", 1)[1]
+    camera_tail = source.split("function upcCamera", 1)[1]
     assert ".submit()" not in camera_tail
     assert "/api/scan" not in camera_tail
