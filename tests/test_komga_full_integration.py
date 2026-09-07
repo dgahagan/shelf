@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -107,9 +108,18 @@ def test_item_action_uses_browser_url_and_stable_komga_identity(db):
     assert komga_sync.item_action(result["item_id"]) == "https://komga.example/book/book-123"
 
 
-def test_komga_router_is_mounted_on_main_pages_router():
-    from app.routers import pages
+def test_komga_router_is_registered_explicitly_on_app():
+    from app.main import app
 
-    paths = {route.path for route in pages.router.routes}
+    paths = {route.path for route in app.routes}
     assert "/api/komga/status" in paths
     assert "/api/komga/items/{item_id}/action" in paths
+
+
+def test_komga_item_script_is_loaded_only_from_item_detail_template():
+    template = Path("app/templates/item_detail.html").read_text()
+    components = Path("static/js/components.js").read_text()
+
+    assert '<script src="/static/js/komga-item.js"></script>' in template
+    assert "komga-item.js" not in components
+    assert "document.createElement('script')" not in components
