@@ -164,7 +164,7 @@ async def _next_ready_job(queue: asyncio.Queue) -> Job:
     precisely during an outage, when fresh scans are still arriving.
 
     Rotating alone would busy-spin once *every* queued job is deferred, so
-after a full pass with nothing ready we sleep to the earliest deadline.
+    after a full pass with nothing ready we sleep to the earliest deadline.
     """
     checked = 0
     total = None
