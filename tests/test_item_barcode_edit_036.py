@@ -39,6 +39,20 @@ def test_item_edit_can_save_upc_without_metadata_lookup(editor_client, db):
     assert row["upc"] == "0" + UPC_A
 
 
+def test_item_edit_refuses_invalid_upc_on_edit_form(editor_client, db):
+    item_id = _item(db)
+    db.commit()
+    response = editor_client.post(
+        f"/api/items/{item_id}",
+        data={"upc": "4006381333932"},
+        follow_redirects=False,
+    )
+    assert response.status_code in (302, 303)
+    assert "error=invalid_upc" in response.headers["location"]
+    row = db.execute("SELECT upc FROM items WHERE id = ?", (item_id,)).fetchone()
+    assert row["upc"] is None
+
+
 def test_item_edit_refuses_same_upc_on_same_media_type(editor_client, db):
     _item(db, title="Existing", upc_value=EAN_13)
     item_id = _item(db, title="Other")
@@ -48,11 +62,16 @@ def test_item_edit_refuses_same_upc_on_same_media_type(editor_client, db):
         data={"media_type": "dvd", "upc": EAN_13},
         follow_redirects=False,
     )
-    assert response.status_code in (302, 303, 409)
-    if response.status_code in (302, 303):
-        assert "error=upc_conflict" in response.headers["location"]
+    assert response.status_code in (302, 303)
+    assert "error=upc_conflict" in response.headers["location"]
     row = db.execute("SELECT upc FROM items WHERE id = ?", (item_id,)).fetchone()
     assert row["upc"] is None
+
+
+def test_upc_error_banners_are_rendered_by_item_edit_template():
+    template = Path("app/templates/item_edit.html").read_text()
+    assert 'error == "invalid_upc"' in template
+    assert 'error == "upc_conflict"' in template
 
 
 def test_upc_camera_is_scan_only_and_reuses_shared_engine():
