@@ -47,7 +47,7 @@ from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
 from app.currency import CURRENCIES, format_money, get_currency
 from app.services.national import SEARCH_LANGS
 from app.database import init_db, get_db
-from app.routers import pages, items, item_barcode_edit, items_covers, items_csv, items_catalog, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive
+from app.routers import pages, items, items_covers, items_csv, items_catalog, locations, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive
 from app.routers import auth_routes
 
 
@@ -491,7 +491,6 @@ async def health():
 app.include_router(auth_routes.router)
 app.include_router(pages.router)
 app.include_router(items.router)
-app.include_router(item_barcode_edit.router)
 # items.py was split by feature area (Lever 5); all four share the /api prefix.
 app.include_router(items_covers.router)
 app.include_router(items_csv.router)
