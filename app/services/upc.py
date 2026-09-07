@@ -54,7 +54,6 @@ def validate_upc(code: str) -> bool:
     return int(code[11]) == check
 
 
-
 def validate_ean13(code: str) -> bool:
     """Validate a 13-digit EAN check digit."""
     code = normalize_barcode(code)
