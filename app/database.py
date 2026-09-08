@@ -348,6 +348,21 @@ CREATE INDEX IF NOT EXISTS idx_romm_records_item
     ON romm_records(item_id);
 CREATE INDEX IF NOT EXISTS idx_romm_records_platform
     ON romm_records(platform_id);
+
+-- Komga digital comic/manga availability (#101)
+CREATE TABLE IF NOT EXISTS komga_records (
+    komga_id       TEXT PRIMARY KEY,
+    item_id        INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    library_id     TEXT NOT NULL,
+    series_id      TEXT,
+    kind           TEXT NOT NULL CHECK(kind IN ('comic', 'manga')),
+    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_komga_records_item
+    ON komga_records(item_id);
+CREATE INDEX IF NOT EXISTS idx_komga_records_library
+    ON komga_records(library_id, kind);
 """
 
 

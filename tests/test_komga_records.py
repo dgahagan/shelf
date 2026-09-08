@@ -33,7 +33,10 @@ def test_new_manga_candidate_keeps_kind_and_maps_to_current_shelf_type(db):
 
     assert result["action"] == "created"
     assert result["adopted"] is False
-    assert item["media_type"] == "comic"
+    # #105 added `manga` to MEDIA_TYPES, so _shelf_media_type now projects a
+    # manga library onto it rather than falling back to `comic`. The provider
+    # record still keeps its own kind, which is the separation this tests.
+    assert item["media_type"] == "manga"
     assert item["source"] == "komga"
     assert item["location_id"] is None
     assert item["isbn"] == "9781974700523"
@@ -48,7 +51,7 @@ def test_exact_isbn_match_adopts_existing_catalogue_item_without_changing_source
         {
             "title": "My preferred title",
             "isbn": "9781974700523",
-            "media_type": "comic",
+            "media_type": "manga",
             "source": "manual",
             "description": "My own description",
         },

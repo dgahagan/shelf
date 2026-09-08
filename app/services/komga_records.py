@@ -23,29 +23,9 @@ from app.services.item_write import insert_item, update_item_fields
 
 KOMGA_KINDS = frozenset({"comic", "manga"})
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS komga_records (
-    komga_id       TEXT PRIMARY KEY,
-    item_id        INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    library_id     TEXT NOT NULL,
-    series_id      TEXT,
-    kind           TEXT NOT NULL CHECK(kind IN ('comic', 'manga')),
-    created_at     TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_komga_records_item
-    ON komga_records(item_id);
-CREATE INDEX IF NOT EXISTS idx_komga_records_library
-    ON komga_records(library_id, kind);
-"""
-
 
 class KomgaPersistenceError(ValueError):
     """A candidate cannot be safely represented in Shelf."""
-
-
-def ensure_schema(db) -> None:
-    db.executescript(_SCHEMA)
 
 
 def _clean(value: Any) -> str | None:
@@ -83,7 +63,6 @@ def _shelf_media_type(kind: str) -> str:
 
 
 def _existing_record(db, komga_id: str):
-    ensure_schema(db)
     return db.execute(
         "SELECT kr.*, i.source, i.media_type FROM komga_records kr "
         "JOIN items i ON i.id = kr.item_id WHERE kr.komga_id = ?",
@@ -149,9 +128,10 @@ def _fill_missing_fields(db, item_id: int, candidate: dict[str, Any]) -> None:
 def _reclassify_owned_record(db, existing, kind: str, media_type: str) -> None:
     """Apply a library-kind change without conflating it with Shelf's type.
 
-    A Comic↔Manga change may only require changing the provider record when
-    Shelf currently maps both kinds to ``comic``. If the corresponding Shelf
-    media type really changes, only a Komga-created catalogue row is safe to
+    A Comic↔Manga change may only require changing the provider record, when
+    both kinds project onto the same Shelf media type. Since #105 added
+    ``manga`` to MEDIA_TYPES they usually do not, so the Shelf media type
+    really changes — and only a Komga-created catalogue row is safe to
     reclassify automatically.
     """
     if existing["media_type"] != media_type:
@@ -190,7 +170,6 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
     descriptive fields and never changes that row's source. When updating a
     row originally created by Komga, provider metadata may be refreshed.
     """
-    ensure_schema(db)
     komga_id = _clean(candidate.get("komga_id"))
     library_id = _clean(candidate.get("komga_library_id"))
     title = _clean(candidate.get("title"))
@@ -271,7 +250,6 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
 
 def records_for_item(db, item_id: int) -> list[dict[str, Any]]:
     """Return every Komga holding attached to an item."""
-    ensure_schema(db)
     rows = db.execute(
         "SELECT komga_id, library_id, series_id, kind FROM komga_records "
         "WHERE item_id = ? ORDER BY library_id, komga_id",
@@ -282,5 +260,4 @@ def records_for_item(db, item_id: int) -> list[dict[str, Any]]:
 
 def detach_record(db, komga_id: str) -> None:
     """Forget a Komga holding without deleting the catalogue item itself."""
-    ensure_schema(db)
     db.execute("DELETE FROM komga_records WHERE komga_id = ?", (str(komga_id),))
