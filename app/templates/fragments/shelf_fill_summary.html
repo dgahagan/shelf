@@ -1,0 +1,19 @@
+{# The selected shelf's current contents. Loaded when the location changes and
+   swapped out-of-band after every scan, so the count and the next position stay
+   true without the page reloading. #}
+<div id="shelf-fill-summary" class="text-xs text-shelf-muted mt-3"{% if render_oob_summary %} hx-swap-oob="true"{% endif %}>
+    {% if error %}
+    <span class="text-shelf-error">{{ error }}</span>
+    {% elif summary %}
+    <span data-testid="shelf-fill-summary-counts">
+        {% if summary.total == 0 %}
+        Empty shelf — the next scan goes to position 1.
+        {% else %}
+        <strong class="text-shelf-text">{{ summary.total }}</strong> item{{ '' if summary.total == 1 else 's' }} on this shelf{% if summary.next_position %} · next scan goes to position <strong class="text-shelf-text">{{ summary.next_position }}</strong>{% endif %}{% if summary.placed < summary.total %} · {{ summary.total - summary.placed }} not yet ordered{% endif %}
+        {% endif %}
+    </span>
+    {% if summary.next_position and summary.total %}
+    <a href="/locations/{{ location_id }}/arrange" class="ml-2 text-shelf-accent2 hover:text-shelf-accent">Arrange</a>
+    {% endif %}
+    {% endif %}
+</div>

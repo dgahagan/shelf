@@ -35,6 +35,9 @@ Shelf continues to keep an unambiguous full path in the existing `locations.name
 
 ## Arrange a physical shelf
 
+Positions are assigned as you scan in [Shelf Fill](shelf-fill.md); this page is
+where you change them afterwards.
+
 Each location can have an explicit order for the physical copies stored directly
 there. In **Settings → Library → Locations**, choose **Arrange** beside a room,
 bookcase or shelf. Editors can drag copies into their real left-to-right (or

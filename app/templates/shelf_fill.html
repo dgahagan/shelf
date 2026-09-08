@@ -7,7 +7,7 @@
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="shelfFillPage">
     <h1 class="text-2xl font-bold mb-1">Shelf Fill</h1>
-    <p class="text-sm text-shelf-muted mb-6">Choose the physical shelf once, then scan items in place. Existing items move immediately; new items use Shelf's normal metadata lookup before being placed.</p>
+    <p class="text-sm text-shelf-muted mb-6">Choose the physical shelf once, then scan items onto it in the order they sit there — each scan takes the next position on that shelf. Pick a different shelf and its numbering starts again. Items already catalogued move without a fresh metadata lookup; unknown barcodes go through Shelf's normal Add pipeline first. Reorder any shelf later on its <span class="text-shelf-text">Arrange</span> page.</p>
 
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -15,6 +15,8 @@
                 <label for="shelf-fill-location" class="block text-sm font-medium text-shelf-muted mb-1">Shelf location</label>
                 <select id="shelf-fill-location" name="location_id" form="shelf-fill-form"
                         x-model="location" @change="persistLocation()"
+                        hx-get="/api/shelf-fill/summary" hx-trigger="change"
+                        hx-target="#shelf-fill-summary" hx-swap="outerHTML"
                         class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
                     <option value="">Choose a location…</option>
                     {% for loc in locations %}
@@ -42,6 +44,7 @@
             </div>
         </div>
         <p x-show="!location" class="text-xs text-shelf-warning mt-3" style="display:none">Choose a physical location before scanning.</p>
+        {% include "fragments/shelf_fill_summary.html" %}
     </div>
 
     <div class="mb-6">

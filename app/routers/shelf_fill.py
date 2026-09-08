@@ -91,6 +91,7 @@ def _place_item(db, item_id: int, location_id: int) -> dict:
         "copy_id": primary["id"] if primary else None,
         "copy_number": primary["copy_number"] if primary else None,
         "position_order": position_order,
+        "location_id": location["id"],
         "location_name": location["name"],
         "was_wishlist": not bool(item["owned"]),
     }
@@ -122,16 +123,50 @@ def _place_exact_copy(db, copy: dict, location_id: int) -> dict:
         "copy_id": copy["copy_id"],
         "copy_number": copy["copy_number"],
         "position_order": position_order,
+        "location_id": location["id"],
         "location_name": location["name"],
         "was_wishlist": was_wishlist,
     }
 
 
+def _shelf_summary(db, location_id: int) -> dict:
+    """What is on this shelf, for the picker and for each scan's OOB refresh.
+
+    `placed` counts copies that carry a position, which is what "filling" this
+    shelf has put there in order; `total` counts every copy sitting at the
+    location, including ones placed before ordering existed or moved here by
+    Scan's Move mode, which have a null `position_order` and sort last on the
+    Arrange page. Reporting only one number would misdescribe a shelf that has
+    both.
+    """
+    row = db.execute(
+        "SELECT COUNT(*) AS total, "
+        "COUNT(position_order) AS placed, "
+        "COALESCE(MAX(position_order), 0) AS last_position "
+        "FROM item_copies WHERE location_id = ?",
+        (location_id,),
+    ).fetchone() if _has_position_order(db) else None
+    if row is None:
+        total = db.execute(
+            "SELECT COUNT(*) AS total FROM item_copies WHERE location_id = ?",
+            (location_id,),
+        ).fetchone()["total"]
+        return {"total": total, "placed": 0, "next_position": None}
+    return {
+        "total": row["total"],
+        "placed": row["placed"],
+        "next_position": row["last_position"] + 1,
+    }
+
+
 def _render_result(request: Request, placed: dict, *, newly_added: bool = False):
+    with get_db() as db:
+        summary = _shelf_summary(db, placed["location_id"])
     return request.app.state.templates.TemplateResponse(
         request,
         "fragments/shelf_fill_result.html",
-        {**placed, "newly_added": newly_added},
+        {**placed, "newly_added": newly_added, "summary": summary,
+         "render_oob_summary": True},
     )
 
 
@@ -156,6 +191,38 @@ async def shelf_fill_page(request: Request, _=Depends(require_role("editor"))):
             "media_types": MEDIA_TYPES,
             "game_platforms": game_platforms,
         },
+    )
+
+
+@router.get("/api/shelf-fill/summary")
+async def shelf_fill_summary(
+    request: Request,
+    location_id: int = 0,
+    _=Depends(require_role("editor")),
+):
+    """What is already on the shelf you just picked, before you scan anything.
+
+    The position a scan assigns is per-location, so "next: 6" is the answer to
+    the question the page could not previously answer: where does the next
+    thing I scan actually go.
+    """
+    if location_id <= 0:
+        return request.app.state.templates.TemplateResponse(
+            request, "fragments/shelf_fill_summary.html", {"summary": None},
+        )
+    with get_db() as db:
+        try:
+            location = _location(db, location_id)
+        except ValueError as exc:
+            return request.app.state.templates.TemplateResponse(
+                request, "fragments/shelf_fill_summary.html",
+                {"summary": None, "error": str(exc)},
+            )
+        summary = _shelf_summary(db, location_id)
+    return request.app.state.templates.TemplateResponse(
+        request, "fragments/shelf_fill_summary.html",
+        {"summary": summary, "location_name": location["name"],
+         "location_id": location_id},
     )
 
 

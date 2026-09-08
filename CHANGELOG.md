@@ -6,6 +6,29 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.37.2] - 2026-09-08
+
+Shelf Fill has always numbered the items you scan onto a shelf, and never told
+you. The position was written to the database and shown only if you later opened
+that location's Arrange page, so the one thing separating Shelf Fill from the
+Scan tab's Move mode was invisible while you used it. It is on screen now.
+
+### Fixed
+
+- **Shelf Fill shows the position each scan takes.** Every filed item's card now
+  carries its place on the shelf — `#1`, `#2`, `#3` — assigned in the order you
+  scan. Positions belong to the shelf, so filling shelf 1 of one bookcase and
+  then shelf 2 of another numbers each from 1.
+- **The shelf you picked now says what is already on it.** Choosing a location
+  reports how many items are there and which position the next scan will take,
+  with a link straight to that shelf's Arrange page. Items that arrived without
+  a position — put there before ordering existed, or moved there by the Scan
+  tab — are counted separately, because they sort last on Arrange and saying
+  otherwise would misdescribe the shelf.
+- **The page explains the workflow.** The description said only that items are
+  placed; it now says that scans take consecutive positions, that a different
+  shelf starts its own numbering, and that any shelf can be reordered later.
+
 ## [0.37.1] - 2026-09-08
 
 Four pages that 0.37.0 added could not be reached from anywhere in Shelf. Home,
@@ -3160,6 +3183,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.37.2]: https://github.com/dgahagan/shelf/releases/tag/v0.37.2
 [0.37.1]: https://github.com/dgahagan/shelf/releases/tag/v0.37.1
 [0.37.0]: https://github.com/dgahagan/shelf/releases/tag/v0.37.0
 [0.36.0]: https://github.com/dgahagan/shelf/releases/tag/v0.36.0

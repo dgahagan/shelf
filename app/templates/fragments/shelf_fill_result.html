@@ -13,5 +13,13 @@
             at {{ location_name }}{% if copy_number and copy_number > 1 %} · copy {{ copy_number }}{% endif %}
         </p>
     </div>
+    {% if position_order %}
+    {# The position is what makes this Shelf Fill rather than Scan's Move mode:
+       it is per-location and assigned in scan order. It was written to the
+       database from the first release and shown only on the Arrange page. #}
+    <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-hover text-shelf-muted font-mono"
+          data-testid="shelf-fill-position" title="Position on this shelf">#{{ position_order }}</span>
+    {% endif %}
     <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-success/20 text-shelf-success" data-scan-badge>shelved</span>
 </div>
+{% include "fragments/shelf_fill_summary.html" %}

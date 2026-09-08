@@ -27,7 +27,7 @@ The mode is sticky — set it once and scan a pile.
 | **Wishlist** | Same lookup, but the item is added as *not owned* — your wish list |
 | **Lend** | Pick a borrower first; each scan checks that item out to them. Optional due date |
 | **Return** | Each scan checks the item back in, whoever had it |
-| **Move** | Pick a location first; each scan relocates the item there |
+| **Move** | Pick a location first; each scan relocates the item there. To work along a shelf putting things away in order, use [Shelf Fill](shelf-fill.md) instead — it keeps the shelf selected and numbers each scan's position |
 | **Inventory** | Pick a location; scan everything physically present; then **Check for missing** lists items Shelf thinks are there but you didn't scan |
 | **Lookup** | Read-only: tells you whether the item is in your library (and where, and whether it's lent out). Changes nothing |
 | **Quick Rate** | Marks the item as read / finished with today's date |
