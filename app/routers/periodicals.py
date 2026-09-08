@@ -51,7 +51,6 @@ def find_periodical_item(raw: str) -> dict | None:
         return None
 
     with get_db() as db:
-        periodical_records.ensure_schema(db)
         rows = db.execute(
             """SELECT i.*, l.name AS location_name
                FROM periodical_issues pi
@@ -196,7 +195,6 @@ async def confirm_periodical_issue(
 @router.get("/periodicals")
 async def periodicals_page(request: Request, _=Depends(require_role("viewer"))):
     with get_db() as db:
-        periodical_records.ensure_schema(db)
         publications = db.execute(
             """SELECT p.*, COUNT(pi.item_id) AS issue_count
                FROM periodical_publications p
@@ -216,7 +214,6 @@ async def publication_page(
     _=Depends(require_role("viewer")),
 ):
     with get_db() as db:
-        periodical_records.ensure_schema(db)
         publication = db.execute(
             "SELECT * FROM periodical_publications WHERE id = ?", (publication_id,)
         ).fetchone()

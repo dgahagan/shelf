@@ -363,6 +363,36 @@ CREATE INDEX IF NOT EXISTS idx_komga_records_item
     ON komga_records(item_id);
 CREATE INDEX IF NOT EXISTS idx_komga_records_library
     ON komga_records(library_id, kind);
+
+-- Periodical publications and issues (#106)
+CREATE TABLE IF NOT EXISTS periodical_publications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+    issn        TEXT UNIQUE COLLATE NOCASE,
+    publisher   TEXT,
+    language    TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_periodical_publications_title
+    ON periodical_publications(title COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS periodical_issues (
+    item_id             INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    publication_id      INTEGER NOT NULL REFERENCES periodical_publications(id) ON DELETE CASCADE,
+    volume              TEXT,
+    issue_number        TEXT,
+    issue_date          TEXT,
+    barcode_ean         TEXT,
+    barcode_supplement  TEXT,
+    cover_date_label    TEXT,
+    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_periodical_issues_publication
+    ON periodical_issues(publication_id, issue_date, issue_number);
+CREATE INDEX IF NOT EXISTS idx_periodical_issues_barcode
+    ON periodical_issues(barcode_ean, barcode_supplement);
 """
 
 

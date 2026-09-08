@@ -14,42 +14,6 @@ from __future__ import annotations
 import re
 
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS periodical_publications (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    title       TEXT NOT NULL,
-    issn        TEXT UNIQUE COLLATE NOCASE,
-    publisher   TEXT,
-    language    TEXT,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_periodical_publications_title
-    ON periodical_publications(title COLLATE NOCASE);
-
-CREATE TABLE IF NOT EXISTS periodical_issues (
-    item_id             INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
-    publication_id      INTEGER NOT NULL REFERENCES periodical_publications(id) ON DELETE CASCADE,
-    volume              TEXT,
-    issue_number        TEXT,
-    issue_date          TEXT,
-    barcode_ean         TEXT,
-    barcode_supplement  TEXT,
-    cover_date_label    TEXT,
-    created_at          TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at          TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_periodical_issues_publication
-    ON periodical_issues(publication_id, issue_date, issue_number);
-CREATE INDEX IF NOT EXISTS idx_periodical_issues_barcode
-    ON periodical_issues(barcode_ean, barcode_supplement);
-"""
-
-
-def ensure_schema(db) -> None:
-    db.executescript(_SCHEMA)
-
-
 def normalise_issn(value: str | None) -> str | None:
     raw = re.sub(r"[^0-9X]", "", (value or "").upper())
     if len(raw) != 8:
@@ -71,7 +35,6 @@ def upsert_publication(
     the conservative fallback so scanning another issue does not create a new
     publication every time.
     """
-    ensure_schema(db)
     title = (title or "").strip()
     if not title:
         raise ValueError("Periodical title is required")
@@ -121,7 +84,6 @@ def link_issue(
     cover_date_label: str | None = None,
 ) -> None:
     """Attach concrete issue identity to an existing Shelf item."""
-    ensure_schema(db)
     if not db.execute("SELECT 1 FROM items WHERE id = ?", (item_id,)).fetchone():
         raise ValueError("Item not found")
     if not db.execute(
@@ -169,7 +131,6 @@ def find_duplicate_issue(
     publication + volume + issue number, then publication + issue date. The
     977 serial variant is intentionally not treated as an issue number.
     """
-    ensure_schema(db)
     ean = (barcode_ean or "").strip() or None
     supplement = (barcode_supplement or "").strip() or None
     if ean and supplement:
@@ -207,7 +168,6 @@ def find_duplicate_issue(
 
 def issues_for_publication(db, publication_id: int) -> list[dict]:
     """Return concrete issues newest first, with catalogue item metadata."""
-    ensure_schema(db)
     rows = db.execute(
         "SELECT pi.*, i.title, i.cover_path, i.owned, i.publish_year "
         "FROM periodical_issues pi JOIN items i ON i.id = pi.item_id "

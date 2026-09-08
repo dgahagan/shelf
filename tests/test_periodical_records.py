@@ -14,9 +14,11 @@ def test_magazine_is_a_first_class_periodical_media_type():
     assert MEDIA_TYPES["magazine"] == "Magazine"
 
 
-def test_periodical_schema_is_idempotent(db):
-    periodical_records.ensure_schema(db)
-    periodical_records.ensure_schema(db)
+def test_periodical_tables_come_from_migration_tables(db):
+    """MIGRATION_TABLES creates both tables, and replaying it is harmless."""
+    from app.database import MIGRATION_TABLES
+
+    db.executescript(MIGRATION_TABLES)
     names = {
         row["name"]
         for row in db.execute("SELECT name FROM sqlite_master WHERE type = 'table'").fetchall()
