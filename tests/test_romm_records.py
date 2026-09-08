@@ -127,7 +127,6 @@ def test_existing_romm_identity_attached_to_manual_item_is_not_taken_over(db):
             "source": "manual",
         },
     )
-    romm_records.ensure_schema(db)
     db.execute(
         "INSERT INTO romm_records (romm_id, item_id, platform_id) VALUES ('101', ?, '1')",
         (item_id,),

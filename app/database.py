@@ -335,6 +335,19 @@ CREATE TABLE IF NOT EXISTS legacy_book_mappings (
           AND isbn13 NOT GLOB '*[^0-9]*'
           AND substr(isbn13, 1, 3) IN ('978', '979'))
 );
+
+-- RomM digital-game availability (#100)
+CREATE TABLE IF NOT EXISTS romm_records (
+    romm_id         TEXT PRIMARY KEY,
+    item_id         INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    platform_id     TEXT NOT NULL,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_romm_records_item
+    ON romm_records(item_id);
+CREATE INDEX IF NOT EXISTS idx_romm_records_platform
+    ON romm_records(platform_id);
 """
 
 

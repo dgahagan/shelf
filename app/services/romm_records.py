@@ -16,27 +16,9 @@ from typing import Any
 
 from app.services.item_write import insert_item, update_item_fields
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS romm_records (
-    romm_id         TEXT PRIMARY KEY,
-    item_id         INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    platform_id     TEXT NOT NULL,
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
-);
-CREATE INDEX IF NOT EXISTS idx_romm_records_item
-    ON romm_records(item_id);
-CREATE INDEX IF NOT EXISTS idx_romm_records_platform
-    ON romm_records(platform_id);
-"""
-
 
 class RomMPersistenceError(ValueError):
     """A RomM candidate cannot be represented safely."""
-
-
-def ensure_schema(db) -> None:
-    db.executescript(_SCHEMA)
 
 
 def _clean(value: Any) -> str | None:
@@ -61,7 +43,6 @@ def ensure_platform(db, slug: str, name: str | None = None) -> str:
 
 
 def _existing_record(db, romm_id: str):
-    ensure_schema(db)
     return db.execute(
         "SELECT rr.*, i.source FROM romm_records rr "
         "JOIN items i ON i.id = rr.item_id WHERE rr.romm_id = ?",
@@ -96,7 +77,6 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
     similarity is deliberately not used to adopt a pre-existing Shelf game.
     That avoids silently turning a cartridge/disc into a service-backed item.
     """
-    ensure_schema(db)
     romm_id = _clean(candidate.get("romm_id"))
     romm_platform_id = _clean(candidate.get("romm_platform_id"))
     title = _clean(candidate.get("title"))
@@ -142,7 +122,6 @@ def persist_candidate(db, candidate: dict[str, Any]) -> dict[str, Any]:
 
 def records_for_item(db, item_id: int) -> list[dict[str, Any]]:
     """Return RomM digital holdings attached to one catalogue item."""
-    ensure_schema(db)
     rows = db.execute(
         "SELECT romm_id, platform_id FROM romm_records "
         "WHERE item_id = ? ORDER BY romm_id",
@@ -153,5 +132,4 @@ def records_for_item(db, item_id: int) -> list[dict[str, Any]]:
 
 def detach_record(db, romm_id: str) -> None:
     """Forget the RomM holding without deleting the catalogue item."""
-    ensure_schema(db)
     db.execute("DELETE FROM romm_records WHERE romm_id = ?", (str(romm_id),))
