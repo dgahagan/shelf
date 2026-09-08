@@ -71,12 +71,17 @@ def test_issue_order_uses_periodical_metadata_when_available(db):
     location_id = _location(db)
     later = _copy(db, location_id, "Magazine later", year=2026)
     earlier = _copy(db, location_id, "Magazine earlier", year=2026)
-    db.execute(
-        "CREATE TABLE periodical_issues (item_id INTEGER PRIMARY KEY, issue_date TEXT, issue_number TEXT)"
-    )
     later_item = db.execute("SELECT item_id FROM item_copies WHERE id = ?", (later,)).fetchone()["item_id"]
     earlier_item = db.execute("SELECT item_id FROM item_copies WHERE id = ?", (earlier,)).fetchone()["item_id"]
-    db.execute("INSERT INTO periodical_issues VALUES (?, '2026-06-01', '6')", (later_item,))
-    db.execute("INSERT INTO periodical_issues VALUES (?, '2026-05-01', '5')", (earlier_item,))
+    # periodical_issues is real since #106; issues hang off a publication.
+    publication_id = db.execute(
+        "INSERT INTO periodical_publications (title) VALUES ('Monthly') RETURNING id"
+    ).fetchone()["id"]
+    db.execute(
+        "INSERT INTO periodical_issues (item_id, publication_id, issue_date, issue_number) "
+        "VALUES (?, ?, '2026-06-01', '6')", (later_item, publication_id))
+    db.execute(
+        "INSERT INTO periodical_issues (item_id, publication_id, issue_date, issue_number) "
+        "VALUES (?, ?, '2026-05-01', '5')", (earlier_item, publication_id))
 
     assert location_order.auto_order_copies(db, location_id, "issue") == [earlier, later]

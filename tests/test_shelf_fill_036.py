@@ -16,10 +16,6 @@ def test_place_item_creates_primary_copy_and_appends_when_ordering_exists(db):
     first_item = _item(db, title="First")
     second_item = _item(db, title="Second")
 
-    # Simulate the optional physical-ordering follow-up without making Shelf
-    # Fill depend on it: plain 0.36 schemas simply skip this compatibility hook.
-    db.execute("ALTER TABLE item_copies ADD COLUMN position_order INTEGER DEFAULT NULL")
-
     first = shelf_fill._place_item(db, first_item, shelf)
     result = shelf_fill._place_item(db, second_item, shelf)
 
