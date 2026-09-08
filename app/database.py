@@ -393,6 +393,69 @@ CREATE INDEX IF NOT EXISTS idx_periodical_issues_publication
     ON periodical_issues(publication_id, issue_date, issue_number);
 CREATE INDEX IF NOT EXISTS idx_periodical_issues_barcode
     ON periodical_issues(barcode_ean, barcode_supplement);
+
+-- Music releases, media, tracks and identifiers (#109)
+CREATE TABLE IF NOT EXISTS music_releases (
+    item_id                       INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
+    artist_credit                 TEXT,
+    musicbrainz_release_id        TEXT UNIQUE,
+    musicbrainz_release_group_id  TEXT,
+    release_type                  TEXT,
+    release_status                TEXT,
+    release_date                  TEXT,
+    first_release_date            TEXT,
+    country                       TEXT,
+    label                         TEXT,
+    catalog_number                TEXT,
+    packaging                     TEXT,
+    media_count                   INTEGER,
+    format_summary                TEXT,
+    metadata_source               TEXT,
+    metadata_updated_at           TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_music_releases_artist
+    ON music_releases(artist_credit COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS idx_music_releases_group
+    ON music_releases(musicbrainz_release_group_id);
+CREATE INDEX IF NOT EXISTS idx_music_releases_catalog
+    ON music_releases(catalog_number COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS music_media (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id     INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    position    INTEGER NOT NULL,
+    format      TEXT,
+    title       TEXT,
+    track_count INTEGER,
+    UNIQUE(item_id, position)
+);
+CREATE INDEX IF NOT EXISTS idx_music_media_item ON music_media(item_id);
+
+CREATE TABLE IF NOT EXISTS music_tracks (
+    id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+    medium_id                  INTEGER NOT NULL REFERENCES music_media(id) ON DELETE CASCADE,
+    position                   INTEGER NOT NULL,
+    number                     TEXT,
+    title                      TEXT NOT NULL,
+    artist_credit              TEXT,
+    duration_ms                INTEGER,
+    musicbrainz_recording_id   TEXT,
+    UNIQUE(medium_id, position)
+);
+CREATE INDEX IF NOT EXISTS idx_music_tracks_medium ON music_tracks(medium_id);
+CREATE INDEX IF NOT EXISTS idx_music_tracks_recording ON music_tracks(musicbrainz_recording_id);
+
+CREATE TABLE IF NOT EXISTS music_identifiers (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id          INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    identifier_type  TEXT NOT NULL,
+    value            TEXT NOT NULL,
+    description      TEXT,
+    UNIQUE(item_id, identifier_type, value)
+);
+CREATE INDEX IF NOT EXISTS idx_music_identifiers_item ON music_identifiers(item_id);
+CREATE INDEX IF NOT EXISTS idx_music_identifiers_value
+    ON music_identifiers(value COLLATE NOCASE);
 """
 
 

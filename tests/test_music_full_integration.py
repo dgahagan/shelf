@@ -12,7 +12,6 @@ def test_music_family_is_first_class():
         "cassette",
         "cd",
         "digital_music",
-        "music_other",
     }
     assert MUSIC_MEDIA_TYPES <= set(MEDIA_TYPES)
 
@@ -30,7 +29,8 @@ def test_musicbrainz_formats_map_conservatively():
     assert music._infer_media_type({"media": [{"format": "Cassette"}]}) == "cassette"
     assert music._infer_media_type({"media": [{"format": "CD"}]}) == "cd"
     assert music._infer_media_type({"media": [{"format": "Digital Media"}]}) == "digital_music"
-    assert music._infer_media_type({"media": [{"format": "MiniDisc"}]}) == "music_other"
+    # Unrecognised formats stay unset so the add screen asks for the format.
+    assert music._infer_media_type({"media": [{"format": "MiniDisc"}]}) is None
 
 
 def test_music_templates_keep_exact_release_workflow_visible():

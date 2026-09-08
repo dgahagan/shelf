@@ -109,7 +109,6 @@ async def music_page(
 
     placeholders, music_types = _music_types_sql()
     with get_db() as db:
-        music_catalog.ensure_schema(db)
         items = db.execute(
             f"""SELECT i.id, i.title, i.authors, i.media_type, i.cover_path,
                        i.publish_year, mr.format_summary, mr.catalog_number,
@@ -183,7 +182,6 @@ async def add_music_release(
         return RedirectResponse("/music", status_code=303)
 
     with get_db() as db:
-        music_catalog.ensure_schema(db)
         existing = db.execute(
             "SELECT item_id FROM music_releases WHERE musicbrainz_release_id = ?",
             (release_id,),

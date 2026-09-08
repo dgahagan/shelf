@@ -13,81 +13,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 
-_SCHEMA = """
-CREATE TABLE IF NOT EXISTS music_releases (
-    item_id                       INTEGER PRIMARY KEY REFERENCES items(id) ON DELETE CASCADE,
-    artist_credit                 TEXT,
-    musicbrainz_release_id        TEXT UNIQUE,
-    musicbrainz_release_group_id  TEXT,
-    release_type                  TEXT,
-    release_status                TEXT,
-    release_date                  TEXT,
-    first_release_date            TEXT,
-    country                       TEXT,
-    label                         TEXT,
-    catalog_number                TEXT,
-    packaging                     TEXT,
-    media_count                   INTEGER,
-    format_summary                TEXT,
-    metadata_source               TEXT,
-    metadata_updated_at           TEXT
-);
-CREATE INDEX IF NOT EXISTS idx_music_releases_artist
-    ON music_releases(artist_credit COLLATE NOCASE);
-CREATE INDEX IF NOT EXISTS idx_music_releases_group
-    ON music_releases(musicbrainz_release_group_id);
-CREATE INDEX IF NOT EXISTS idx_music_releases_catalog
-    ON music_releases(catalog_number COLLATE NOCASE);
-
-CREATE TABLE IF NOT EXISTS music_media (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id     INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    position    INTEGER NOT NULL,
-    format      TEXT,
-    title       TEXT,
-    track_count INTEGER,
-    UNIQUE(item_id, position)
-);
-CREATE INDEX IF NOT EXISTS idx_music_media_item ON music_media(item_id);
-
-CREATE TABLE IF NOT EXISTS music_tracks (
-    id                         INTEGER PRIMARY KEY AUTOINCREMENT,
-    medium_id                  INTEGER NOT NULL REFERENCES music_media(id) ON DELETE CASCADE,
-    position                   INTEGER NOT NULL,
-    number                     TEXT,
-    title                      TEXT NOT NULL,
-    artist_credit              TEXT,
-    duration_ms                INTEGER,
-    musicbrainz_recording_id   TEXT,
-    UNIQUE(medium_id, position)
-);
-CREATE INDEX IF NOT EXISTS idx_music_tracks_medium ON music_tracks(medium_id);
-CREATE INDEX IF NOT EXISTS idx_music_tracks_recording ON music_tracks(musicbrainz_recording_id);
-
-CREATE TABLE IF NOT EXISTS music_identifiers (
-    id               INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id          INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
-    identifier_type  TEXT NOT NULL,
-    value            TEXT NOT NULL,
-    description      TEXT,
-    UNIQUE(item_id, identifier_type, value)
-);
-CREATE INDEX IF NOT EXISTS idx_music_identifiers_item ON music_identifiers(item_id);
-CREATE INDEX IF NOT EXISTS idx_music_identifiers_value
-    ON music_identifiers(value COLLATE NOCASE);
-"""
-
-
-def ensure_schema(db) -> None:
-    """Install the music catalogue tables idempotently on the caller's DB.
-
-    This first upstream slice owns its schema locally so it can be validated
-    without consuming an upstream migration number before the maintainer has
-    agreed the final music model. A production integration can move these
-    statements into Shelf's normal bootstrap once the shape is accepted.
-    """
-    db.executescript(_SCHEMA)
-
 
 def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -95,7 +20,6 @@ def _now() -> str:
 
 def save_release(db, item_id: int, release: dict) -> None:
     """Upsert release metadata and replace its provider-owned media/track tree."""
-    ensure_schema(db)
     db.execute(
         """
         INSERT INTO music_releases (
@@ -202,7 +126,6 @@ def _link_release_group_siblings(db, item_id: int, release_group_id: str | None)
 
 def get_release(db, item_id: int) -> dict | None:
     """Hydrate one music release including media, tracks and identifiers."""
-    ensure_schema(db)
     row = db.execute(
         "SELECT * FROM music_releases WHERE item_id = ?", (item_id,)
     ).fetchone()
@@ -239,7 +162,6 @@ def get_release(db, item_id: int) -> dict | None:
 def add_identifier(
     db, item_id: int, identifier_type: str, value: str, description: str | None = None
 ) -> None:
-    ensure_schema(db)
     identifier_type = (identifier_type or "").strip()
     value = (value or "").strip()
     if not identifier_type or not value:
@@ -252,7 +174,6 @@ def add_identifier(
 
 
 def remove_identifier(db, item_id: int, identifier_id: int) -> bool:
-    ensure_schema(db)
     cursor = db.execute(
         "DELETE FROM music_identifiers WHERE id = ? AND item_id = ?",
         (identifier_id, item_id),

@@ -64,9 +64,11 @@ def test_unknown_musicbrainz_format_requires_user_choice():
     assert music._infer_media_type(release) is None
 
 
-def test_music_schema_is_idempotent_and_keeps_track_numbers_as_text(db):
-    music_catalog.ensure_schema(db)
-    music_catalog.ensure_schema(db)
+def test_music_tables_come_from_migration_tables_and_keep_track_numbers_as_text(db):
+    """MIGRATION_TABLES creates the music tables; replaying it is harmless."""
+    from app.database import MIGRATION_TABLES
+
+    db.executescript(MIGRATION_TABLES)
 
     names = {
         row["name"]
@@ -177,3 +179,24 @@ def test_same_release_group_links_different_formats(db):
     ).fetchone()
     assert link is not None
     assert link["link_type"] == "format"
+
+
+def test_cover_art_archive_is_declared_with_the_other_cover_domains():
+    """CAA is allow-listed in covers.py, not added by an import side effect.
+
+    #109 shipped a music_covers.register_cover_art_archive() called from
+    app/routers/__init__.py, so importing the router package mutated the
+    cover allow-list. The domain is now declared beside the other twelve.
+    """
+    from app.services import covers
+
+    assert "coverartarchive.org" in covers.ALLOWED_COVER_DOMAINS
+
+
+def test_music_routes_reachable_through_main():
+    """Music survives the move off the package-init composition."""
+    from app.main import app
+
+    paths = {route.path for route in app.routes}
+    assert "/music" in paths
+    assert "/api/music/add" in paths

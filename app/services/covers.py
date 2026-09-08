@@ -23,6 +23,7 @@ ALLOWED_COVER_DOMAINS = {
     "images.igdb.com",
     "image.tmdb.org",  # TMDb posters (tmdb.TMDB_IMAGE_BASE)
     "portal.dnb.de",  # DNB/MVB cover service for German (978-3) ISBNs
+    "coverartarchive.org",  # Cover Art Archive entry point for music releases
 }
 
 # Suffix-matched domains (subdomain rotates): covers.openlibrary.org serves
