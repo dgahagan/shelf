@@ -37,7 +37,7 @@ def _login(browser, base_url, credentials):
     page.fill("input[name=username]", credentials["username"])
     page.fill("input[name=password]", credentials["password"])
     page.click("button[type=submit]")
-    page.wait_for_url(f"{base_url}/browse", timeout=10_000)
+    page.wait_for_url(f"{base_url}/", timeout=10_000)
     return ctx, page
 
 

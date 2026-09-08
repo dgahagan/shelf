@@ -328,7 +328,7 @@ def _walk_pages(live_server, browser, setup_admin, item_id, width):
         page.fill("input[name=username]", setup_admin["username"])
         page.fill("input[name=password]", setup_admin["password"])
         page.click("button[type=submit]")
-        page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+        page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
 
         for label, template, testid in PAGES:
             path = template.format(item_id=item_id)
@@ -462,7 +462,7 @@ def _browse_list_at(live_server, browser, setup_admin, width, selection):
         page.fill("input[name=username]", setup_admin["username"])
         page.fill("input[name=password]", setup_admin["password"])
         page.click("button[type=submit]")
-        page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+        page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
         page.goto(f"{live_server['url']}/browse")
         # G42: the list view lives inside <template x-if="viewMode === 'list'">,
         # so its cells are ATTACHED a tick before they are painted and every

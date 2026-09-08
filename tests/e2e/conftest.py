@@ -547,7 +547,7 @@ def _run_setup_wizard(browser, base_url: str) -> dict:
     page.fill("input[name=password]", ADMIN_PASSWORD)
     page.fill("input[name=password_confirm]", ADMIN_PASSWORD)
     page.click("button[type=submit]")
-    page.wait_for_url(f"{base_url}/browse", timeout=10_000)
+    page.wait_for_url(f"{base_url}/", timeout=10_000)
     assert_page_clean(page)
     ctx.close()
     return {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD, "display_name": ADMIN_DISPLAY}
@@ -570,7 +570,7 @@ def _get_auth_cookies(live_server, browser, credentials: dict) -> dict:
     page.fill("input[name=username]", credentials["username"])
     page.fill("input[name=password]", credentials["password"])
     page.click("button[type=submit]")
-    page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
     cookies = {c["name"]: c["value"] for c in ctx.cookies()}
     assert_page_clean(page)
     ctx.close()
@@ -595,7 +595,7 @@ def authed_page(live_server, browser, setup_admin):
     pg.fill("input[name=username]", setup_admin["username"])
     pg.fill("input[name=password]", setup_admin["password"])
     pg.click("button[type=submit]")
-    pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    pg.wait_for_url(f"{live_server['url']}/", timeout=10_000)
     yield pg
     assert_page_clean(pg)
     ctx.close()

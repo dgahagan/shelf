@@ -85,7 +85,7 @@ def test_stats_dashboard_reflects_real_collection_and_links_back_to_item(
         page.fill("input[name=username]", credentials["username"])
         page.fill("input[name=password]", credentials["password"])
         page.click("button[type=submit]")
-        page.wait_for_url(f"{base}/browse", timeout=10_000)
+        page.wait_for_url(f"{base}/", timeout=10_000)
 
         page.goto(f"{base}/stats")
         page.wait_for_load_state("networkidle")

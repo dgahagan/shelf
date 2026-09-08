@@ -39,7 +39,7 @@ def test_no_csp_violations_on_key_pages(live_server, browser, setup_admin):
     page.fill("input[name=username]", setup_admin["username"])
     page.fill("input[name=password]", setup_admin["password"])
     page.click("button[type=submit]")
-    page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
 
     for path in ["/browse", "/scan", "/settings", "/stats", "/series", f"/item/{item_id}"]:
         page.goto(f"{live_server['url']}{path}")
@@ -60,12 +60,20 @@ def test_js_stack_boots_under_csp(live_server, browser, setup_admin):
     page.fill("input[name=username]", setup_admin["username"])
     page.fill("input[name=password]", setup_admin["password"])
     page.click("button[type=submit]")
-    page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
 
+    # Base-template globals: present on every authenticated page, so Home
+    # (where login now lands) is a fair place to read them.
     assert page.evaluate("typeof window.htmx") == "object"
     assert page.evaluate("typeof window.Alpine") == "object"
     assert page.evaluate("typeof window.csrfToken") == "function"
     assert page.evaluate("typeof window.showToast") == "function"
+
+    # `browsePage` is page-scoped — browse.js only loads on /browse — so it has
+    # to be read there. Asserting it on the landing page passed only for as
+    # long as login happened to land on Browse.
+    page.goto(f"{live_server['url']}/browse")
+    page.wait_for_load_state("networkidle")
     assert page.evaluate("typeof window.browsePage") == "function"
     assert_page_clean(page)
     ctx.close()
@@ -83,7 +91,7 @@ def test_shortcut_help_interacts_without_inline_script_violation(
         page.fill("input[name=username]", setup_admin["username"])
         page.fill("input[name=password]", setup_admin["password"])
         page.click("button[type=submit]")
-        page.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+        page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
 
         trigger = page.locator('button[title="Keyboard shortcuts (?)"]')
         modal = page.locator("#shortcut-modal")

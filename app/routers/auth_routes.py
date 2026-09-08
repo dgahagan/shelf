@@ -30,7 +30,7 @@ router = APIRouter()
 async def login_page(request: Request):
     user = getattr(request.state, "user", None)
     if user:
-        return RedirectResponse(url="/browse", status_code=303)
+        return RedirectResponse(url="/", status_code=303)
     templates = request.app.state.templates
     return templates.TemplateResponse(request, "login.html", {"error": None})
 
@@ -62,7 +62,7 @@ async def login(request: Request, username: str = Form(...), password: str = For
         )
 
     token = create_token(user["id"], user["username"], user["role"], user["display_name"], user["token_version"])
-    response = RedirectResponse(url="/browse", status_code=303)
+    response = RedirectResponse(url="/", status_code=303)
     set_auth_cookie(response, token)
     logger.info("User '%s' logged in from %s", username, get_client_ip(request))
     return response
@@ -132,7 +132,7 @@ async def setup(
         user = db.execute("SELECT id, username, role, display_name, token_version FROM users WHERE username = ?", (username,)).fetchone()
 
     token = create_token(user["id"], user["username"], user["role"], user["display_name"], user["token_version"])
-    response = RedirectResponse(url="/browse", status_code=303)
+    response = RedirectResponse(url="/", status_code=303)
     set_auth_cookie(response, token)
     logger.info("Setup completed: admin user '%s' created", username)
     return response

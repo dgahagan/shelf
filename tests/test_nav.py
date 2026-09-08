@@ -37,13 +37,33 @@ VIEWER = {"id": 3, "username": "viewer", "role": "viewer"}
 
 # --- Registry shape ---------------------------------------------------------
 
-def test_registry_covers_the_nine_tabs():
+def test_registry_covers_the_twelve_tabs():
     assert [t["key"] for t in NAV_TABS] == [
-        "browse", "scan", "intake", "store", "series", "discover",
-        "stats", "settings", "logs",
+        "browse", "scan", "intake", "shelf-fill", "store", "series",
+        "music", "periodicals", "discover", "stats", "settings", "logs",
     ]
     for tab in NAV_TABS:
         assert tab["label"] and tab["path"].startswith("/")
+
+
+def test_only_settings_and_logs_render_in_the_account_menu():
+    """`menu` is what base.html asks instead of naming a key.
+
+    It is the whole reason a tab can move out of the row without either
+    template learning its name, so pin the membership rather than the flag.
+    """
+    assert [t["key"] for t in NAV_TABS if t.get("menu") == "account"] == [
+        "settings", "logs",
+    ]
+    assert all(t.get("menu", "") in ("", "account") for t in NAV_TABS)
+
+
+def test_visible_tabs_carries_the_menu_destination(db):
+    """visible_tabs() is the only thing the templates see."""
+    by_key = {t["key"]: t for t in visible_tabs(ADMIN)}
+    assert by_key["logs"]["menu"] == "account"
+    assert by_key["settings"]["menu"] == "account"
+    assert by_key["browse"]["menu"] == ""
 
 
 def test_browse_and_settings_are_not_hideable():
@@ -73,7 +93,7 @@ def test_admin_sees_settings_and_logs(db):
 
 def test_anonymous_sees_only_ungated_tabs(db):
     keys = _keys(None)
-    assert keys == ["browse", "store", "series", "stats"]
+    assert keys == ["browse", "store", "series", "music", "periodicals", "stats"]
 
 
 # --- Integration requirements ----------------------------------------------
@@ -506,3 +526,101 @@ def test_env_provided_token_counts_as_configured_with_no_argument(db, monkeypatc
     invalidate_cache()
     states = hideable_tab_states()
     assert _state(states, "discover")["available"] is True
+
+
+# --- Reachability: the census that 0.37.0 shipped without ---------------------
+
+def test_every_top_level_page_is_reachable_from_the_nav():
+    """A page nobody can navigate to is a page that does not ship.
+
+    v0.37.0 shipped four such pages — Home, Music, Periodicals and Shelf Fill
+    all rendered correctly at their URL and appeared nowhere in `NAV_TABS`, so
+    every route test passed and no user could reach any of them. Route tests
+    prove a page *renders*; this proves a page can be *found*.
+
+    Parameterised pages (an item, a publication, one location's Arrange) are
+    reached from a listing rather than the nav and are exempt by shape. The
+    rest are named individually, each with the reason it needs no tab — an
+    entry added here is a deliberate decision, which is exactly what was
+    missing.
+    """
+    import os
+    os.environ.setdefault("SHELF_DISABLE_RATE_LIMIT", "1")
+    from app.main import app
+    from app.nav import NAV_TABS
+
+    EXEMPT = {
+        "/": "the brand link in base.html is the Home affordance",
+        "/login": "pre-auth",
+        "/setup": "pre-auth, first run only",
+        "/health": "machine endpoint, not a page",
+        "/sw.js": "service worker asset",
+        "/docs": "FastAPI's own docs UI",
+        "/docs/oauth2-redirect": "FastAPI's own docs UI",
+        "/redoc": "FastAPI's own docs UI",
+        "/openapi.json": "schema, not a page",
+    }
+
+    nav_paths = {t["path"] for t in NAV_TABS}
+    unreachable = []
+    for route in app.routes:
+        path = getattr(route, "path", None)
+        methods = getattr(route, "methods", set()) or set()
+        if not path or "GET" not in methods:
+            continue
+        if path.startswith("/api") or path.startswith("/static"):
+            continue
+        if "{" in path:            # reached from a listing, not the nav
+            continue
+        if path in EXEMPT or path in nav_paths:
+            continue
+        unreachable.append(path)
+
+    assert not unreachable, (
+        "these pages render but nothing links to them — give each a NAV_TABS "
+        f"entry or an EXEMPT reason: {sorted(unreachable)}"
+    )
+
+
+def test_the_brand_link_goes_home(admin_client):
+    """The one link that reaches `/`. If it drifts, Home is unreachable again."""
+    html = admin_client.get("/browse").text
+    assert '<a href="/" class="text-lg font-bold' in html
+
+
+# --- Cross-links into Browse -------------------------------------------------
+
+def test_every_browse_link_uses_a_registered_filter_name():
+    """A `/browse?...` link whose parameter is not a real filter is ignored.
+
+    Silently: `browse_filters.values_from` reads the names it knows and drops
+    the rest, so the page renders fine and shows *everything*. v0.37.0's Home
+    linked its media-type breakdown at `?media_type=` and its lent-out tile at
+    `?lent=`, when the registry names them `media_type_filter` and `lent_out` —
+    both tiles looked right and neither filtered anything.
+
+    `app/browse_filters.py` is the single declaration; this holds every caller
+    to it. `view` is registered `in_url=False` and so is not a legal link
+    parameter either.
+    """
+    import re
+    from pathlib import Path
+    from app.browse_filters import BY_NAME
+
+    linkable = {name for name, f in BY_NAME.items() if f.in_url}
+    roots = [Path("app/templates"), Path("static/js")]
+    bad = []
+    for root in roots:
+        for path in root.rglob("*"):
+            if path.suffix not in (".html", ".js"):
+                continue
+            for m in re.finditer(r"/browse\?([^\"'\s>]+)", path.read_text()):
+                for pair in m.group(1).split("&amp;" if "&amp;" in m.group(1) else "&"):
+                    key = pair.split("=")[0].strip()
+                    if key and key not in linkable:
+                        bad.append(f"{path}: ?{key}=")
+
+    assert not bad, (
+        "these links pass a parameter Browse does not know, so the filter is "
+        f"silently dropped: {sorted(set(bad))}"
+    )

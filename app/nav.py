@@ -14,17 +14,29 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# `menu: "account"` puts a tab in the account dropdown instead of the tab row.
+# It is a rendering destination, not a second kind of tab: role gating, the
+# `requires` check and manual hiding all still run in `visible_tabs`. Declared
+# here so the templates ask the registry rather than testing for a key by name
+# — base.html used to skip `settings` with a hardcoded comparison in two
+# places, which is one place too many the moment a second tab moves.
 NAV_TABS = [
     {"key": "browse", "label": "Browse", "path": "/browse"},
     {"key": "scan", "label": "Scan", "path": "/scan", "roles": ("admin", "editor")},
     {"key": "intake", "label": "Intake", "path": "/intake", "roles": ("admin", "editor"),
      "requires": "vision"},
+    {"key": "shelf-fill", "label": "Shelf Fill", "path": "/shelf-fill",
+     "roles": ("admin", "editor")},
     {"key": "store", "label": "Store", "path": "/store"},
     {"key": "series", "label": "Series", "path": "/series"},
+    {"key": "music", "label": "Music", "path": "/music"},
+    {"key": "periodicals", "label": "Periodicals", "path": "/periodicals"},
     {"key": "discover", "label": "Discover", "path": "/discover", "requires": "hardcover"},
     {"key": "stats", "label": "Stats", "path": "/stats"},
-    {"key": "settings", "label": "Settings", "path": "/settings", "roles": ("admin",)},
-    {"key": "logs", "label": "Logs", "path": "/logs", "roles": ("admin",)},
+    {"key": "settings", "label": "Settings", "path": "/settings", "roles": ("admin",),
+     "menu": "account"},
+    {"key": "logs", "label": "Logs", "path": "/logs", "roles": ("admin",),
+     "menu": "account"},
 ]
 
 # The page that controls visibility must stay reachable, and so must the
@@ -160,7 +172,12 @@ def visible_tabs(user: dict | None) -> list[dict]:
             continue
         if tab["key"] in hidden:
             continue
-        tabs.append({"key": tab["key"], "label": tab["label"], "path": tab["path"]})
+        tabs.append({
+            "key": tab["key"],
+            "label": tab["label"],
+            "path": tab["path"],
+            "menu": tab.get("menu", ""),
+        })
     return tabs
 
 

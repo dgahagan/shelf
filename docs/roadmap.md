@@ -25,6 +25,13 @@ and the rest in its navigation.
 Most of the groups below arrive switched off behind this, which is why it comes
 early.
 
+**A navigation rework goes with it.** The tab bar has grown one tab at a time
+and is now long enough that the next feature makes it worse. The plan is to
+group the tabs by what you are actually doing — the views onto your collection
+in one place, the scanner-and-camera tools in another — rather than keep adding
+to a single row. Turning feature areas off and grouping what is left are two
+halves of the same problem, so they are being designed together.
+
 ## Homelab integration
 
 **Planned.** Shelf should behave like the rest of your stack.

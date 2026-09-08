@@ -147,7 +147,7 @@ def _login(browser, base_url, credentials):
     pg.fill("input[name=username]", credentials["username"])
     pg.fill("input[name=password]", credentials["password"])
     pg.click("button[type=submit]")
-    pg.wait_for_url(f"{base_url}/browse", timeout=10_000)
+    pg.wait_for_url(f"{base_url}/", timeout=10_000)
     return ctx, pg
 
 

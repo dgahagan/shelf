@@ -221,8 +221,9 @@ def _login_with_seeded_storage(browser, live_server, setup_admin, storage):
     be used here: an `add_init_script` has to run before the very first
     navigation, and the page must still go through the real login flow or
     `/browse` just redirects to `/login`. Mirrors `authed_page`'s five-line
-    login sequence. Returns (ctx, page) — the caller owns closing the
-    context, after an `assert_page_clean(page)` at the end of the test body.
+    login sequence, then navigates to /browse. Returns (ctx, page) — the
+    caller owns closing the context, after an `assert_page_clean(page)` at the
+    end of the test body.
     """
     ctx = browser.new_context()
     script = "\n".join(
@@ -235,7 +236,11 @@ def _login_with_seeded_storage(browser, live_server, setup_admin, storage):
     pg.fill("input[name=username]", setup_admin["username"])
     pg.fill("input[name=password]", setup_admin["password"])
     pg.click("button[type=submit]")
-    pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
+    pg.wait_for_url(f"{live_server['url']}/", timeout=10_000)
+    # Login lands on Home since 0.37.1; every caller here is a Browse test, so
+    # the helper still owes them a page on /browse.
+    pg.goto(f"{live_server['url']}/browse")
+    pg.wait_for_load_state("networkidle")
     return ctx, pg
 
 

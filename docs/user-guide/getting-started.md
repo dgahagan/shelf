@@ -17,16 +17,26 @@ The nav bar adapts to what you've configured — tabs for integrations you
 haven't set up stay hidden (Settings → Library → Navigation controls this).
 Out of the box:
 
+Shelf opens on **Home** — a read-only overview of your collection. Click
+**Shelf** in the menu bar to come back to it from anywhere.
+
 | Tab | What it is |
 |---|---|
+| **Home** | Totals, what is lent out, missing covers, media-type mix, recent additions. Not a tab — the **Shelf** link in the menu bar. [Home](home.md) |
 | **Scan** | The workhorse: camera or hardware scanner, eight modes, title search, manual add. [Scanning](scanning.md) |
 | **Browse** | Your catalog — grid or list, filters, search, bulk edit. [Browse & search](browse-and-search.md) |
+| **Shelf Fill** | Keep one shelf selected and scan items onto it (editors and admins). [Shelf Fill](shelf-fill.md) |
 | **Series** | Library grouped by series with gap detection. [Series](series.md) |
+| **Music** | Your releases, and MusicBrainz search to add more. [Music](music.md) |
+| **Periodicals** | Magazine publications and their issues. [Periodicals](periodicals.md) |
 | **Stats** | Charts: read per year, growth, top authors, value over time. [Stats & valuation](stats-and-valuation.md) |
 | **Photo Intake** | Bulk-add from a shelf photo (appears once a vision provider is configured). [Photo Intake](photo-intake.md) |
 | **Store** | Offline bookstore mode. [Wishlist & Store Mode](wishlist-and-store-mode.md) |
 | **Discover** | Hardcover-powered recommendations (appears with a Hardcover token) |
-| **Settings** | Admin only. [Configuration](../configuration.md) |
+| **Settings** | Admin only, in the account menu under your name. [Configuration](../configuration.md) |
+| **Logs** | Admin only, in the account menu beside Settings. [Users & roles](users-and-roles.md#the-log-viewer) |
+
+Tabs you do not want can be hidden under **Settings → Library**.
 
 Press **?** on any page (or the **?** button, bottom left) for the keyboard
 shortcut list; **Escape** closes it.

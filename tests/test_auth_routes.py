@@ -19,7 +19,7 @@ class TestSetupWizard:
             "password_confirm": "password123",
         }, follow_redirects=False)
         assert resp.status_code == 303
-        assert resp.headers["location"] == "/browse"
+        assert resp.headers["location"] == "/"
         # Cookie should be set
         assert "access_token" in resp.cookies
 
@@ -78,7 +78,7 @@ class TestLogin:
             "password": "password123",
         }, follow_redirects=False)
         assert resp.status_code == 303
-        assert resp.headers["location"] == "/browse"
+        assert resp.headers["location"] == "/"
         assert "access_token" in resp.cookies
 
     def test_login_invalid_password(self, client, admin_user):

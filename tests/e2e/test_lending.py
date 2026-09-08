@@ -125,7 +125,7 @@ def test_viewer_sees_read_only_product_ui_without_editor_mutations(
         page.fill("input[name=username]", username)
         page.fill("input[name=password]", password)
         page.click("button[type=submit]")
-        page.wait_for_url(f"{base}/browse", timeout=10_000)
+        page.wait_for_url(f"{base}/", timeout=10_000)
 
         # Viewer navigation exposes read-only product surfaces, not editor/admin tools.
         for key in ("browse", "store", "series", "discover", "stats"):

@@ -33,7 +33,7 @@ def test_setup_wizard_redirects_when_no_users(live_server, browser):
 
 
 def test_login_success(live_server, browser, setup_admin):
-    """Valid credentials redirect to /browse."""
+    """Valid credentials redirect to Home."""
     ctx = browser.new_context()
     pg = attach_page_guard(ctx.new_page())
     try:
@@ -42,8 +42,8 @@ def test_login_success(live_server, browser, setup_admin):
         pg.fill("input[name=username]", setup_admin["username"])
         pg.fill("input[name=password]", setup_admin["password"])
         pg.click("button[type=submit]")
-        pg.wait_for_url(f"{live_server['url']}/browse", timeout=10_000)
-        expect(pg).to_have_url(f"{live_server['url']}/browse")
+        pg.wait_for_url(f"{live_server['url']}/", timeout=10_000)
+        expect(pg).to_have_url(f"{live_server['url']}/")
         assert_page_clean(pg)
     finally:
         ctx.close()

@@ -49,7 +49,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">
                 <div class="flex items-center gap-1">
-                    <a href="/browse" class="text-lg font-bold text-shelf-accent2 tracking-tight mr-6">Shelf</a>
+                    <a href="/" class="text-lg font-bold text-shelf-accent2 tracking-tight mr-6">Shelf</a>
 
                     <!-- Disclosure menu: below lg the full tab row overflows
                          the bar, so it collapses to this. Settings lives under
@@ -64,7 +64,7 @@
                         <div x-show="open" x-cloak data-testid="nav-menu-panel"
                              class="absolute left-0 top-full mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg shadow-xl py-1 z-50">
                             {% for tab in nav_tabs %}
-                            {% if tab.key != 'settings' %}
+                            {% if not tab.menu %}
                             <a href="{{ tab.path }}" data-nav-menu-tab="{{ tab.key }}" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                                 {{ tab.label }}
                             </a>
@@ -75,7 +75,7 @@
 
                     <div class="hidden lg:flex items-center gap-1">
                         {% for tab in nav_tabs %}
-                        {% if tab.key != 'settings' %}
+                        {% if not tab.menu %}
                         <a href="{{ tab.path }}" data-nav-tab="{{ tab.key }}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                             {{ tab.label }}
                         </a>

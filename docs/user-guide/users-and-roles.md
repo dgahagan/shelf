@@ -37,7 +37,8 @@ Login attempts are rate-limited per IP.
 
 ## The log viewer
 
-**Logs** in the nav (admin) tails Shelf's application log in the browser:
+**Logs** — in the account menu under your name, beside Settings (admin) —
+tails Shelf's application log in the browser:
 auth events (logins, failures, role changes), sync runs, metadata and cover
 lookups, errors. Handy for "why didn't that cover load" without touching
 `docker compose logs`.

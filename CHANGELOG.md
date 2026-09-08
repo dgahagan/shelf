@@ -6,6 +6,37 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.37.1] - 2026-09-08
+
+Four pages that 0.37.0 added could not be reached from anywhere in Shelf. Home,
+Music, Periodicals and Shelf Fill all worked if you typed the address, and
+nothing in the navigation linked to any of them — so the release notes described
+a Home overview that nobody opening Shelf would ever see. This release makes
+them reachable. No data is affected and there is no migration.
+
+### Fixed
+
+- **Shelf opens on Home.** Logging in, finishing setup, and clicking **Shelf**
+  in the menu bar all go to the Home overview now; before, all three went
+  straight to Browse and Home had no link anywhere. If you prefer landing on
+  Browse, it is the first tab.
+- **Music, Periodicals and Shelf Fill are in the navigation.** Each was a
+  working page with nothing linking to it. Shelf Fill appears for editors and
+  administrators, matching who is allowed to use it. As with every other tab,
+  you can hide the ones you do not want under **Settings → Library**.
+- **Home's Collection Mix and Lent out tiles now actually filter.** Clicking a
+  media type under Collection Mix — Book, eBook, Audiobook, Kids Book, any of
+  them — took you to Browse showing your *whole* collection rather than that
+  type, and the Lent out tile did the same. Both passed a filter name Browse
+  does not use, so it was dropped without any error. Every other link into
+  Browse in the app was checked and was already correct.
+
+### Changed
+
+- **Logs moved into the account menu**, beside Settings. Both are
+  administrator-only, Settings already lived there, and the tab row had grown
+  long enough that the two of them together were pushing it wide.
+
 ## [0.37.0] - 2026-09-08
 
 Thirteen pull requests from [@sudo-rpaisley](https://github.com/sudo-rpaisley),
@@ -3129,6 +3160,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.37.1]: https://github.com/dgahagan/shelf/releases/tag/v0.37.1
 [0.37.0]: https://github.com/dgahagan/shelf/releases/tag/v0.37.0
 [0.36.0]: https://github.com/dgahagan/shelf/releases/tag/v0.36.0
 [0.35.0]: https://github.com/dgahagan/shelf/releases/tag/v0.35.0

@@ -13,12 +13,17 @@
                 class="block w-full text-left px-4 py-2 text-sm text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
             Account
         </button>
-        {% if user.role == 'admin' %}
-        <a href="/settings" data-testid="account-menu-settings" data-nav-tab="settings" data-nav-menu-tab="settings"
-           class="block px-4 py-2 text-sm {% if request.url.path == '/settings' %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
-            Settings
+        {# Tabs the registry routes here rather than to the tab row — see
+           app/nav.py NAV_TABS `menu`. Role gating, `requires` and manual
+           hiding have already been applied by `visible_tabs`. #}
+        {% for tab in nav_tabs %}
+        {% if tab.menu == 'account' %}
+        <a href="{{ tab.path }}" data-testid="account-menu-{{ tab.key }}" data-nav-tab="{{ tab.key }}" data-nav-menu-tab="{{ tab.key }}"
+           class="block px-4 py-2 text-sm {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+            {{ tab.label }}
         </a>
         {% endif %}
+        {% endfor %}
         <form method="POST" action="/logout">
             <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
                 Logout

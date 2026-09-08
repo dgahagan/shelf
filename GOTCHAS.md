@@ -3713,3 +3713,43 @@ fully covers it, etc.) so future sessions don't re-learn stale rules.
   `MIGRATIONS`. `insert_item` makes a sprung G1 trap noisier — it would raise
   on the path whose table lacks the column instead of failing silently — but it
   cannot prevent it.
+
+## G84 — When you change where a route lands
+
+- **Rule:** changing a redirect target is never a one-line change. Grep for the
+  old path, then sort every hit into **two** piles, because they need opposite
+  fixes:
+
+  | the site | what it means | the fix |
+  |---|---|---|
+  | *waits* for the old path (`wait_for_url`, `to_have_url`, `assert location ==`) | it only wanted "login finished" | point it at the new path |
+  | *relies on being* at the old path — reads a page-scoped global, clicks a control that page owns, asserts on its DOM | it wanted that specific page and got it by luck | **navigate there explicitly**, and leave the assertion alone |
+
+  A grep finds both piles and cannot tell them apart. The second pile is the
+  dangerous one: those tests were passing for a reason that was never written
+  down.
+
+- **Why:** measured on 0.37.1, which moved the post-login landing page from
+  `/browse` to `/`.
+  - **First pass — 217 errors in 102s** (a full run is ~530s). Three
+    `tests/e2e/conftest.py` fixtures wait for `/browse` after submitting the
+    login form, and every other E2E file depends on them, so one stale URL
+    took down the suite at fixture level. A cascade this total is a *fixture*
+    signal, not 217 bugs: read the run time before reading the failures.
+  - **Second pass — 4 failures out of 225,** all in the second pile.
+    `test_js_stack_boots_under_csp` asserted
+    `typeof window.browsePage == "function"` immediately after login;
+    `browsePage` is registered by `browse.js`, which loads only on `/browse`,
+    so it read `undefined` on Home. That assertion had never been testing what
+    it claimed — it passed because login happened to land on Browse.
+    `test_browse.py::_login_with_seeded_storage` returned a page all three of
+    its callers treated as being on Browse, and its docstring said so.
+  - **15 post-login waits across 12 files** is the scale to expect. Find them
+    by requiring `button[type=submit]` within the preceding few lines rather
+    than by matching the URL alone — a hand-written pattern missed five of
+    them, and `test_nav.py:290` is a genuine "Back to collection" click that
+    must *not* be rewritten.
+
+- **The cheaper shape, if you are writing a new login helper:** wait for "not
+  `/login`" rather than for a specific destination. Every helper in this suite
+  hard-codes the landing page, which is why moving it cost twelve files.

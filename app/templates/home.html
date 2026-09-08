@@ -29,7 +29,7 @@
             <p class="text-shelf-muted text-sm">Wishlist</p>
             <p class="text-3xl font-bold">{{ wishlist_count }}</p>
         </a>
-        <a href="/browse?lent=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+        <a href="/browse?lent_out=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
             <p class="text-shelf-muted text-sm">Lent out</p>
             <p class="text-3xl font-bold">{{ lent_out_count }}</p>
         </a>
@@ -52,7 +52,7 @@
             {% if media_types %}
             <div class="space-y-3" data-testid="home-media-types">
                 {% for row in media_types %}
-                <a href="/browse?media_type={{ row.media_type }}" class="block">
+                <a href="/browse?media_type_filter={{ row.media_type }}" class="block">
                     <div class="flex justify-between text-sm mb-1">
                         <span>{{ media_type_labels.get(row.media_type, row.media_type) }}</span>
                         <span class="text-shelf-muted">{{ row.item_count }}</span>
