@@ -11,13 +11,28 @@ from app.database import get_db, get_setting, get_game_platforms, get_reading_hi
 from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
+from app.services.home_dashboard import dashboard_summary
 
 router = APIRouter()
 
 
 @router.get("/")
-async def index():
-    return RedirectResponse(url="/browse")
+async def index(
+    request: Request,
+    _=Depends(require_role("viewer")),
+):
+    """Render a collection overview while leaving Browse for exploration."""
+    with get_db() as db:
+        summary = dashboard_summary(db, recent_limit=8)
+
+    return request.app.state.templates.TemplateResponse(
+        request,
+        "home.html",
+        {
+            **summary,
+            "media_type_labels": MEDIA_TYPES,
+        },
+    )
 
 
 @router.get("/browse")
