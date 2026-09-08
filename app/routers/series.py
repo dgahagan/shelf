@@ -9,6 +9,7 @@ import logging
 from fastapi import APIRouter, Depends, Form, Request
 
 from app.auth import require_role
+from app.config import BOOK_MEDIA_TYPES
 from app.database import gc_orphaned_series_meta, get_db, get_setting
 from app.services import hardcover
 
@@ -21,10 +22,9 @@ router = APIRouter()
 # introducing a second, different limit for the same field.
 MAX_SERIES_NAME = 1000
 
-# Media types that can belong to a series. Deliberately a local literal,
-# not an import of items.BOOK_MEDIA_TYPES / synopsis.BOOK_MEDIA_TYPES (which
-# already disagree about comics) — see docs: issue #31 design plan §1.
-UNASSIGNED_MEDIA_TYPES = ("book", "kids_book", "audiobook", "ebook", "comic")
+# Media types that can belong to a series. Keep this derived from the canonical
+# config declaration so new book-family types cannot silently disappear here.
+UNASSIGNED_MEDIA_TYPES = tuple(sorted(BOOK_MEDIA_TYPES))
 # Covers shown in the Unassigned strip; the heading always shows the true total.
 UNASSIGNED_STRIP_CAP = 12
 

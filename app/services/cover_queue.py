@@ -43,8 +43,9 @@ REQUEUE_WINDOW_HOURS = 48
 # when the item has no authors (`authors.matches(None, …)` is True by
 # design) and then stores the ISBN it found. Sweeping a cover-less DVD or
 # video game through it writes a novel's cover and a book ISBN onto the
-# disc — silently, on every boot. Non-book cover misses stay manual.
-COVER_REQUEUE_MEDIA_TYPES = BOOK_MEDIA_TYPES + ("comic",)
+# disc — silently, on every boot. Comics and Manga share the same safe
+# book-catalogue cover path; non-book cover misses stay manual.
+COVER_REQUEUE_MEDIA_TYPES = BOOK_MEDIA_TYPES + ("comic", "manga")
 
 
 @dataclass

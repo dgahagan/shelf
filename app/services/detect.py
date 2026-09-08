@@ -62,7 +62,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from app.config import MEDIA_TYPES
+from app.config import BOOK_MEDIA_TYPES, MEDIA_TYPES
 
 # How detection reached its verdict. Callers branch on what the answer is
 # *worth*, never on which tier produced it — a tier number is a fact about
@@ -91,10 +91,9 @@ class Detection:
 
 
 # Hints that mean "this is some kind of book" and are honoured as-is when the
-# barcode is an ISBN. Not every MEDIA_TYPES key is book-family — dvd, cd and
-# video_game are physical/digital media, not books, even though they are
-# valid hints on a non-ISBN scan.
-_BOOK_FAMILY_HINTS = frozenset({"book", "kids_book", "audiobook", "ebook", "comic"})
+# barcode is an ISBN. Keep this as the canonical config declaration so adding
+# a book-family media type cannot silently drift scan detection.
+_BOOK_FAMILY_HINTS = BOOK_MEDIA_TYPES
 
 # --- Tier 2: title markers -------------------------------------------------
 #
@@ -407,9 +406,8 @@ def detect_media_type(
     # G57: the question this branch exists to answer is "which MEDIA_TYPES
     # values can detection never produce?", and every one of them must survive
     # a no-signal outcome. Re-asked after the CD arms landed, the answer is
-    # now the book family only — `book`, `kids_book`, `audiobook`, `ebook`,
-    # `comic` — which is exactly `_BOOK_FAMILY_HINTS`, and those are wrong on
-    # a non-ISBN barcode for a different reason (tier 1's).
+    # now the book family, which is exactly `_BOOK_FAMILY_HINTS`, and those
+    # are wrong on a non-ISBN barcode for a different reason (tier 1's).
     if hint is not None and hint not in _BOOK_FAMILY_HINTS:
         return Detection(hint, (
             f"Nothing in the barcode or the product record said otherwise — "
