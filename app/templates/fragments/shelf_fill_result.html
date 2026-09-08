@@ -1,0 +1,17 @@
+<div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4"
+     data-scan-status="moved">
+    {% if cover_path %}
+    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover>
+    {% else %}
+    <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-success text-lg">&check;</div>
+    {% endif %}
+    <div class="flex-1 min-w-0">
+        <p class="font-medium truncate" data-scan-title><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>
+        {% if authors %}<p class="text-sm text-shelf-muted truncate" data-scan-authors>{{ authors }}</p>{% endif %}
+        <p class="text-xs text-shelf-muted" data-scan-detail>
+            {% if newly_added %}Added and shelved{% elif was_wishlist %}Moved from wishlist and shelved{% else %}Shelved{% endif %}
+            at {{ location_name }}{% if copy_number and copy_number > 1 %} · copy {{ copy_number }}{% endif %}
+        </p>
+    </div>
+    <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-success/20 text-shelf-success" data-scan-badge>shelved</span>
+</div>

@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Shelf Fill — Shelf{% endblock %}
+{% block head %}
+<script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+<script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto" x-data="shelfFillPage">
+    <h1 class="text-2xl font-bold mb-1">Shelf Fill</h1>
+    <p class="text-sm text-shelf-muted mb-6">Choose the physical shelf once, then scan items in place. Existing items move immediately; new items use Shelf's normal metadata lookup before being placed.</p>
+
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label for="shelf-fill-location" class="block text-sm font-medium text-shelf-muted mb-1">Shelf location</label>
+                <select id="shelf-fill-location" name="location_id" form="shelf-fill-form"
+                        x-model="location" @change="persistLocation()"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                    <option value="">Choose a location…</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}">{{ '— ' * loc.depth }}{{ loc.label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="shelf-fill-media-type" class="block text-sm font-medium text-shelf-muted mb-1">Media type</label>
+                <select id="shelf-fill-media-type" name="media_type" form="shelf-fill-form"
+                        x-model="mediaType" @change="persistMediaType()"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                    <option value="auto">Auto — detect from barcode</option>
+                    {% for key, label in media_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="shelf-fill-platform" class="block text-sm font-medium text-shelf-muted mb-1">Game platform</label>
+                <select id="shelf-fill-platform" name="platform" form="shelf-fill-form"
+                        x-model="platform" @change="persistPlatform()"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                    <option value="">Any / unknown</option>
+                    {% for key, label in game_platforms.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+        </div>
+        <p x-show="!location" class="text-xs text-shelf-warning mt-3" style="display:none">Choose a physical location before scanning.</p>
+    </div>
+
+    <div class="mb-6">
+        <button @click="toggleCamera()" type="button"
+                :class="cameraActive ? 'bg-shelf-error/20 text-shelf-error border-shelf-error/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-shelf-text hover:border-shelf-accent/50'"
+                class="border rounded-lg px-4 py-2 text-sm transition-colors mb-3">
+            <span x-text="cameraActive ? 'Stop Camera' : 'Scan with Camera'"></span>
+        </button>
+        <div x-show="cameraActive" x-transition class="relative max-w-md mx-auto" style="display:none">
+            <div id="shelf-fill-camera-reader" class="rounded-xl overflow-hidden border border-shelf-border bg-black" x-show="!isZxingFallback"></div>
+            <div id="shelf-fill-zxing-container" class="rounded-xl overflow-hidden border border-shelf-border bg-black" x-show="isZxingFallback" style="display:none">
+                <video id="shelf-fill-zxing-video" class="w-full" autoplay muted playsinline></video>
+            </div>
+            <div x-show="scanPaused" x-transition class="absolute inset-0 bg-black/80 rounded-xl flex flex-col items-center justify-center p-4 text-center z-10" style="display:none">
+                <p x-show="scanLoading" class="text-shelf-muted text-sm mb-3">Filing item…</p>
+                <template x-if="scanResult"><div><p class="text-white font-medium text-lg mb-1" x-text="scanResult.title || scanResult.code"></p><span class="text-xs px-3 py-1 rounded-full inline-block mb-4 bg-shelf-success/30 text-shelf-success" x-text="scanResult.label || 'shelved'"></span></div></template>
+                <button @click="resumeScanning()" type="button" class="mt-2 px-6 py-2.5 bg-shelf-accent text-white rounded-lg text-sm font-medium hover:bg-shelf-accent2 transition-colors">Scan Next</button>
+            </div>
+        </div>
+    </div>
+
+    <form id="shelf-fill-form" hx-post="/api/shelf-fill/scan" hx-target="#shelf-fill-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
+        <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
+            <label for="shelf-fill-barcode" class="block text-sm font-medium text-shelf-muted mb-1">ISBN / UPC / copy barcode</label>
+            <input type="text" id="shelf-fill-barcode" name="isbn" autofocus autocomplete="off" placeholder="Scan or type a barcode…"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+        </div>
+    </form>
+
+    <h2 class="text-lg font-semibold mb-3">Filed this session</h2>
+    <div id="shelf-fill-results" class="space-y-3"></div>
+</div>
+<script src="/static/js/scanner-engine.js"></script>
+<script src="/static/js/shelf-fill.js"></script>
+{% endblock %}
