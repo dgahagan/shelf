@@ -32,7 +32,6 @@ function isbnCamera() {
             this.cameraActive = true;
             this.accepted = false;
             this.status = 'Starting camera…';
-
             try {
                 await this.$nextTick();
                 this.scanner = window.createBarcodeScanner({
@@ -72,7 +71,6 @@ function isbnCamera() {
                 this.status = 'That barcode is not a 978/979 ISBN. Try again.';
                 return;
             }
-
             var input = document.getElementById('isbn');
             if (!input) return;
             this.accepted = true;
@@ -87,11 +85,97 @@ function isbnCamera() {
     };
 }
 
+function validEan13(code) {
+    if (!/^\d{13}$/.test(code)) return false;
+    var total = 0;
+    for (var i = 0; i < 12; i += 1) total += parseInt(code[i], 10) * (i % 2 ? 3 : 1);
+    return ((10 - (total % 10)) % 10) === parseInt(code[12], 10);
+}
+
+function validUpcA(code) {
+    if (!/^\d{12}$/.test(code)) return false;
+    var total = 0;
+    for (var i = 0; i < 11; i += 1) total += parseInt(code[i], 10) * (i % 2 ? 1 : 3);
+    return ((10 - (total % 10)) % 10) === parseInt(code[11], 10);
+}
+
+function canonicalEditUpc(raw) {
+    var digits = String(raw || '').replace(/\D/g, '');
+    if (digits.length === 12 && validUpcA(digits)) return '0' + digits;
+    if (digits.length === 13 && digits.slice(0, 3) !== '978' && digits.slice(0, 3) !== '979' && validEan13(digits)) return digits;
+    return '';
+}
+
+function upcCamera() {
+    return {
+        cameraActive: false,
+        scanner: false,
+        isZxingFallback: false,
+        accepted: false,
+        status: 'Point the camera at a UPC-A or EAN-13 retail barcode.',
+
+        async startCamera() {
+            if (this.cameraActive) return;
+            this.cameraActive = true;
+            this.accepted = false;
+            this.status = 'Starting camera…';
+            try {
+                await this.$nextTick();
+                this.scanner = window.createBarcodeScanner({
+                    html5ElId: 'edit-upc-camera-reader',
+                    videoEl: 'edit-upc-zxing-video',
+                    html5Config: { fps: 10, qrbox: { width: 280, height: 100 }, aspectRatio: 1.5 },
+                    onDecode: (decodedText) => this.acceptDecoded(decodedText)
+                });
+                this.isZxingFallback = this.scanner.engine === 'zxing';
+                await this.$nextTick();
+                await this.scanner.start();
+                this.status = 'Point the camera at a UPC-A or EAN-13 retail barcode.';
+            } catch (err) {
+                if (this.scanner) await this.scanner.stop();
+                this.scanner = false;
+                this.cameraActive = false;
+                this.isZxingFallback = false;
+                if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+                    showToast('Camera requires HTTPS. Access Shelf via https:// and accept the certificate.', 'error');
+                } else {
+                    showToast('Camera access denied. Check browser permissions for this site.', 'error');
+                }
+            }
+        },
+
+        async stopCamera() {
+            if (this.scanner) await this.scanner.stop();
+            this.scanner = false;
+            this.cameraActive = false;
+            this.isZxingFallback = false;
+        },
+
+        acceptDecoded(decodedText) {
+            if (this.accepted) return;
+            var canonical = canonicalEditUpc(decodedText);
+            if (!canonical) {
+                this.status = 'That is not a valid UPC-A / EAN-13 retail barcode. Try again.';
+                return;
+            }
+            var input = document.getElementById('upc');
+            if (!input) return;
+            this.accepted = true;
+            input.value = canonical;
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            this.stopCamera().then(function () {
+                input.focus();
+                input.select();
+            });
+        }
+    };
+}
+
 function updateEditSectionVisibility(root) {
     var mediaSelect = root.querySelector('#media_type');
     if (!mediaSelect) return;
     var mediaType = mediaSelect.value;
-
     root.querySelectorAll('[data-media-types]').forEach(function (element) {
         var supported = (element.dataset.mediaTypes || '').split(/\s+/).filter(Boolean);
         var alwaysVisible = element.dataset.alwaysVisible === 'true';
@@ -115,4 +199,5 @@ document.addEventListener('DOMContentLoaded', function () {
 document.addEventListener('alpine:init', function () {
     Alpine.data('coverDrop', coverDrop);
     Alpine.data('isbnCamera', isbnCamera);
+    Alpine.data('upcCamera', upcCamera);
 });
