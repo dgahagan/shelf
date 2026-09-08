@@ -22,11 +22,16 @@ New here? Start with **[Installation](installation.md)**, then
 | Doc | What it covers |
 |---|---|
 | [Getting started](user-guide/getting-started.md) | Setup wizard, your first scan, the main screens |
+| [Home](user-guide/home.md) | The collection overview Shelf opens on, and how it differs from Browse |
 | [Scanning](user-guide/scanning.md) | Camera and USB/Bluetooth scanners, the 8 scan modes, media-type detection and Auto, title search, manual add |
+| [Editing barcodes](user-guide/editing-barcodes.md) | Scanning or typing a retail UPC/EAN on the item edit page |
 | [Photo Intake](user-guide/photo-intake.md) | Bulk-add from a shelf photo: vision backends, tiling, cost, reviewing results |
 | [Browse & search](user-guide/browse-and-search.md) | Filters, views, sorting, tags, bulk editing |
 | [Items](user-guide/items.md) | The item page, editing, covers, synopses, reading status, locations, merging |
+| [Music](user-guide/music.md) | Cataloguing exact releases from MusicBrainz: formats, track lists, multi-disc, identifiers |
+| [Periodicals](user-guide/periodicals.md) | Magazines as publication plus issue, and what a 977 barcode resolves to |
 | [Locations](user-guide/locations.md) | Nested locations: creating, moving, renaming and deleting them, and what a full path means |
+| [Shelf Fill](user-guide/shelf-fill.md) | Rapid placement: keep a shelf selected and scan items onto it one after another |
 | [Series](user-guide/series.md) | Series page, gaps, Hardcover completeness checks, rename/merge/disband |
 | [Lending](user-guide/lending.md) | Borrowers, Lend/Return modes, overdue tracking, reminder notifications |
 | [Wishlist & Store Mode](user-guide/wishlist-and-store-mode.md) | Building a wishlist; the offline bookstore PWA |
@@ -34,7 +39,10 @@ New here? Start with **[Installation](installation.md)**, then
 | [Stats & valuation](user-guide/stats-and-valuation.md) | Stats dashboard, ISBNdb valuation, the insurance report, display currency |
 | [Import & export](user-guide/import-and-export.md) | CSV, Goodreads/StoryGraph migration, portable archive, database backup |
 | [Integrations](user-guide/integrations.md) | Hardcover, Audiobookshelf, IGDB, TMDb, ISBNdb, Google Books, vision providers — what each adds and how to connect it |
+| [RomM](romm.md) | Connecting a self-hosted RomM server for digital games |
+| [Komga](komga.md) | Connecting a self-hosted Komga server for digital comics and manga |
 | [Users & roles](user-guide/users-and-roles.md) | Admin / editor / viewer, adding users, passwords, the log viewer |
+| [Settings](user-guide/settings.md) | The four Settings sections and what lives in each |
 
 ## Help
 

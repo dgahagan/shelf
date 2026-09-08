@@ -6,8 +6,94 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+Eleven contributions from [@sudo-rpaisley](https://github.com/sudo-rpaisley),
+merged together. Shelf has until now catalogued things you read and things you
+play. This batch adds the two families it could not describe — music, where the
+unit is a specific pressing rather than a title, and periodicals, where the unit
+is an issue of something ongoing — plus two integrations for the digital
+libraries people already run beside Shelf, and the screens for putting physical
+copies in a particular order on a particular shelf.
+
 ### Added
 
+- **Music is a first-class part of the catalogue.** A new **Music** page
+  searches MusicBrainz by title, artist, barcode or catalogue number, and
+  catalogues the *release* rather than the title — so two pressings of the same
+  album keep their own country, date, label, catalogue number, packaging and
+  medium. Track lists and multi-disc releases are stored with their real side
+  and track numbering, so a vinyl A1/B1 stays A1/B1. Formats are **Vinyl**,
+  **Cassette**, **CD** and **Digital Music**, reusing Shelf's existing CD type
+  rather than inventing a second one. When MusicBrainz reports a medium Shelf
+  does not recognise, the add screen asks you to choose rather than guessing.
+  Releases sharing a MusicBrainz release group are linked automatically, so the
+  vinyl and the CD of one album find each other. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#109](https://github.com/dgahagan/shelf/pull/109)
+- **Magazines are catalogued as a publication and its issues.** A **Periodicals**
+  page separates the thing you subscribe to from the individual issue on the
+  shelf, so a run of one magazine is one publication with many issues rather
+  than many unrelated rows. Scanning a 977 barcode resolves the publication from
+  its ISSN; the issue number and date stay yours to confirm, because the
+  supplement digits on a periodical barcode are not reliable enough to trust
+  unattended. The family is named separately from the magazine format, leaving
+  room for journals and newspapers later. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#106](https://github.com/dgahagan/shelf/pull/106)
+- **RomM integration for digital games.** Connect a self-hosted RomM server in
+  Settings → Integrations and Shelf can discover and synchronise your digital
+  game library, keeping RomM's own record identity so a re-sync updates rather
+  than duplicates. A RomM game is deliberately *not* matched onto an existing
+  physical game by title and platform — that would silently turn a cartridge
+  into a service-backed item — so it gets its own record, and you can link the
+  two yourself. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#100](https://github.com/dgahagan/shelf/pull/100)
+- **Komga integration for digital comics and manga.** Connect a self-hosted
+  Komga server and Shelf can discover its libraries and synchronise books and
+  series, matching on ISBN where one exists. A library's Comic/Manga kind is
+  kept separate from Shelf's own media type, so changing one does not silently
+  reclassify a manually catalogued item — Shelf asks you to make that change
+  explicitly. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#101](https://github.com/dgahagan/shelf/pull/101)
+- **Manga is a media type of its own.** Previously manga had to be filed as a
+  comic. It now sits in the book family with its own type, so it carries an
+  ISBN, belongs to a series, and appears separately in Browse filters and
+  statistics. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#105](https://github.com/dgahagan/shelf/pull/105)
+- **Shelf Fill: put a lot of things on one shelf, quickly.** Choose a room,
+  bookcase or shelf and it stays selected while you scan item after item onto
+  it. Items already in the catalogue move without a fresh metadata lookup;
+  barcodes Shelf does not recognise fall through to the normal Add pipeline.
+  Copy-specific barcodes are supported, so two copies of the same book can be
+  placed independently. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#113](https://github.com/dgahagan/shelf/pull/113)
+- **Arrange the copies on a shelf into their real order.** Any location gets an
+  **Arrange** page where editors and administrators can drag physical copies
+  into the order they actually sit in, or order them automatically by Title,
+  Creator, Series, Release or Issue. Ordering belongs to the copy rather than
+  the catalogue item, so duplicate copies stay distinct and can sit beside one
+  another. Issue and release ordering use Periodicals and Music metadata when
+  those are present. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#115](https://github.com/dgahagan/shelf/pull/115)
+- **Related media groups.** Different forms of the same work — a novel, its
+  audiobook, its film adaptation — can be connected explicitly, as `format`,
+  `related` or `adaptation`. A group is the connected set of links rather than a
+  separate record, so linking A to B and B to C presents all three together, and
+  unlinking splits the group naturally. This release is the model foundation;
+  matching is manual by design, because a cross-media relationship guessed from
+  a title alone is usually wrong. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#114](https://github.com/dgahagan/shelf/pull/114)
+- **Scan or edit a retail UPC/EAN on the item edit page.** The Identifiers
+  section now takes retail barcodes as well as ISBNs, with the same camera
+  scanner used elsewhere. Scanning fills the field only — it does not save or
+  trigger a metadata lookup. UPC-A is canonicalised to EAN-13 for storage,
+  checksums are validated, and 978/979 Bookland codes are refused because they
+  belong in the ISBN field. Shelf's per-media-type duplicate protection applies,
+  so the same barcode may repeat across media types but not within one. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#112](https://github.com/dgahagan/shelf/pull/112)
+- **Shelf opens on a Home overview.** Home answers "what is happening in my
+  library?" — catalogue, owned and wishlist totals, what is currently lent out,
+  missing covers, a media-type breakdown and recent additions — while Browse
+  stays the place for searching, filtering and bulk editing. Editors and
+  administrators also get a **Scan item** shortcut. Nothing new is stored; the
+  page is built from existing state each time it is opened. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#108](https://github.com/dgahagan/shelf/pull/108)
+- **Settings is organised into four sections.** Library, Integrations, Data and
+  Users, with the section you were last in remembered in the browser. Navigation
+  and presentation only — every settings form, endpoint and stored value behaves
+  as before. Settings remains administrator-only; account and password controls
+  stay under **Account**. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in [#107](https://github.com/dgahagan/shelf/pull/107)
 - **Manual cover URLs are now available directly in Edit → Artwork.** Paste a
   public HTTPS image URL and choose **Use URL** to apply it immediately through
   Shelf's existing SSRF-safe manual-cover downloader. The action stays on the

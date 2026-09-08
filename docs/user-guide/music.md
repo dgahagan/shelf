@@ -2,7 +2,7 @@
 
 Shelf can catalogue exact music releases rather than treating a title as one undifferentiated record.
 
-Supported music formats are **Vinyl**, **Cassette**, **CD**, **Digital Music**, and **Other Music Format**. CD reuses Shelf's existing CD media type.
+Supported music formats are **Vinyl**, **Cassette**, **CD** and **Digital Music**. CD reuses Shelf's existing CD media type. There is deliberately no catch-all "other" format: when MusicBrainz reports a medium Shelf does not recognise, the add screen asks you to choose the format rather than guessing.
 
 ## Add a release
 
