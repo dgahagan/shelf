@@ -12,16 +12,20 @@ MEDIA_TYPES = {
     "ebook": "eBook",
     "magazine": "Magazine",
     "dvd": "DVD / Blu-ray",
+    "vinyl": "Vinyl",
+    "cassette": "Cassette",
     "cd": "CD",
+    "digital_music": "Digital Music",
     "comic": "Comic / Graphic Novel",
     "manga": "Manga",
     "video_game": "Video Game",
 }
 
 # The book family: media types that are read, carry ISBNs, and belong to a
-# series. Everything else is deliberately outside this family: discs and
-# cartridges (dvd, cd, video_game), and periodicals, which are issue-based
-# and carry their own family below. Declared here, beside the types themselves.
+# series. Everything else is deliberately outside it and, where it needs one,
+# names its own family below — periodicals are issue-based, music is
+# release-based. `dvd` and `video_game` belong to no family; `cd` belongs to
+# the music one. Declared here, beside the types themselves.
 BOOK_MEDIA_TYPES = frozenset({"book", "kids_book", "audiobook", "ebook", "comic", "manga"})
 
 # Periodicals are modelled as publication + concrete issue records. The
@@ -29,6 +33,17 @@ BOOK_MEDIA_TYPES = frozenset({"book", "kids_book", "audiobook", "ebook", "comic"
 # magazine, leaving room for journals/newspapers later without redesigning
 # every consumer.
 PERIODICAL_MEDIA_TYPES = frozenset({"magazine"})
+
+# Music is a first-class media family. Keep this declaration beside
+# MEDIA_TYPES so routes/templates/services can share one membership test.
+# `cd` is the existing upstream CD type; adding music does not create a
+# second incompatible CD identity.
+MUSIC_MEDIA_TYPES = frozenset({
+    "vinyl",
+    "cassette",
+    "cd",
+    "digital_music",
+})
 
 # Seed data — runtime platform list comes from game_platforms table
 GAME_PLATFORMS = {
@@ -152,6 +167,13 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
     "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
     "api.themoviedb.org": 0.1,  # no hard per-second cap
+    # MusicBrainz asks ordinary clients to stay at or below one request per
+    # second. Give the limiter a little margin instead of sitting exactly on
+    # the boundary; musicbrainz.py also sends an identifying User-Agent.
+    "musicbrainz.org": 1.05,
+    # Cover Art Archive is separate from MusicBrainz. Artwork requests are
+    # not latency critical, so pace them conservatively too.
+    "coverartarchive.org": 1.0,
     # EXPLORER (the keyless trial tier this client uses) allows 6 lookups per
     # minute and 100 per day; faster than the burst rate is declined with 429
     # (https://www.upcitemdb.com/wp/docs/main/development/api-rate-limits/).

@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Music — Shelf{% endblock %}
+{% block content %}
+<div>
+    <div class="flex items-center justify-between gap-4 mb-6">
+        <div>
+            <p class="text-xs text-shelf-muted">Catalogue</p>
+            <h1 class="text-2xl font-bold mt-1">Music</h1>
+            <p class="text-sm text-shelf-muted mt-1">Search exact MusicBrainz releases and keep the pressing, medium and track list you actually own.</p>
+        </div>
+        <a href="/browse" class="text-sm px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-shelf-muted hover:text-shelf-text">Browse all media</a>
+    </div>
+
+    <form method="get" action="/music" class="bg-shelf-card border border-shelf-border rounded-xl p-6 mb-6">
+        <h2 class="text-lg font-semibold mb-4">Find a release</h2>
+        <div class="space-y-3">
+            <div>
+                <label for="music-title" class="block text-sm font-medium text-shelf-muted mb-1">Release title</label>
+                <input id="music-title" name="q" value="{{ q }}" placeholder="Release title" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text outline-none">
+            </div>
+            <div>
+                <label for="music-artist" class="block text-sm font-medium text-shelf-muted mb-1">Artist</label>
+                <input id="music-artist" name="artist" value="{{ artist }}" placeholder="Artist" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text outline-none">
+            </div>
+            <div>
+                <label for="music-barcode" class="block text-sm font-medium text-shelf-muted mb-1">Barcode</label>
+                <input id="music-barcode" name="barcode" value="{{ barcode }}" inputmode="numeric" placeholder="UPC / EAN" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text outline-none">
+            </div>
+            <div>
+                <label for="music-catno" class="block text-sm font-medium text-shelf-muted mb-1">Catalogue number</label>
+                <input id="music-catno" name="catalog_number" value="{{ catalog_number }}" placeholder="Catalogue number" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text outline-none">
+            </div>
+        </div>
+        <div class="flex gap-3 mt-4">
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm">Search MusicBrainz</button>
+            {% if q or artist or barcode or catalog_number %}<a href="/music" class="px-4 py-2 text-sm text-shelf-muted hover:text-shelf-text">Clear</a>{% endif %}
+        </div>
+    </form>
+
+    {% if error %}
+    <div role="alert" class="mb-6 rounded-lg border border-shelf-border bg-shelf-card px-4 py-3 text-sm text-shelf-error">{{ error }}</div>
+    {% endif %}
+
+    {% if results %}
+    <section class="mb-6">
+        <h2 class="text-lg font-semibold mb-3">Matching releases</h2>
+        <div class="space-y-3">
+            {% for release in results %}
+            <article class="bg-shelf-card border border-shelf-border rounded-xl p-4">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <h3 class="font-semibold">{{ release.title }}</h3>
+                        {% if release.artist_credit %}<p class="text-sm text-shelf-accent2 mt-1">{{ release.artist_credit }}</p>{% endif %}
+                        <p class="text-xs text-shelf-muted mt-2">
+                            {{ release.shelf_media_label }}
+                            {% if release.release_date %} · {{ release.release_date }}{% endif %}
+                            {% if release.country %} · {{ release.country }}{% endif %}
+                            {% if release.label %} · {{ release.label }}{% endif %}
+                            {% if release.catalog_number %} · {{ release.catalog_number }}{% endif %}
+                            {% if release.format_summary %} · {{ release.format_summary }}{% endif %}
+                        </p>
+                    </div>
+                    {% if user and user.role in ('admin', 'editor') %}
+                    <form method="post" action="/api/music/add" class="space-y-2">
+                        <input type="hidden" name="release_id" value="{{ release.musicbrainz_release_id }}">
+                        <select name="media_type" required class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm">
+                            {% if not release.shelf_media_type %}
+                            <option value="" selected disabled>Choose format</option>
+                            {% endif %}
+                            {% for key, label in music_media_types.items() %}
+                            <option value="{{ key }}" {% if key == release.shelf_media_type %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="location_id" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm">
+                            <option value="">No location</option>
+                            {% for loc in locations %}<option value="{{ loc.id }}">{{ loc.name }}</option>{% endfor %}
+                        </select>
+                        <button type="submit" class="w-full px-3 py-2 bg-shelf-accent text-white rounded-lg text-sm">Add release</button>
+                    </form>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <section>
+        <div class="flex items-center justify-between gap-4 mb-3">
+            <h2 class="text-lg font-semibold">Your music</h2>
+            <span class="text-sm text-shelf-muted">{{ items|length }} shown</span>
+        </div>
+        {% if items %}
+        <div class="space-y-2">
+            {% for item in items %}
+            <a href="/music/item/{{ item.id }}" class="block bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover">
+                <div class="flex items-center justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="font-medium">{{ item.title }}</p>
+                        <p class="text-xs text-shelf-muted mt-1">{% if item.authors %}{{ item.authors }} · {% endif %}{{ music_media_types.get(item.media_type, item.media_type) }}{% if item.release_date %} · {{ item.release_date }}{% elif item.publish_year %} · {{ item.publish_year }}{% endif %}{% if item.catalog_number %} · {{ item.catalog_number }}{% endif %}</p>
+                    </div>
+                    <span class="text-sm text-shelf-muted">View</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 text-sm text-shelf-muted">No music releases are catalogued yet. Search above to add an exact release.</div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

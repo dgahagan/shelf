@@ -826,7 +826,7 @@ class TestConfirmEndpoint:
 
     def test_unknown_media_type_rejected(self, admin_client):
         resp = admin_client.post("/api/intake/confirm", json={
-            "books": [{"title": "Something", "media_type": "vinyl"}],
+            "books": [{"title": "Something", "media_type": "not-a-media-type"}],
         })
         assert resp.status_code == 422
 

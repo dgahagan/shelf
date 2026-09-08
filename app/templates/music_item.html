@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — Music — Shelf{% endblock %}
+{% block content %}
+<div>
+    <div class="mb-4">
+        <a href="/music" class="text-sm text-shelf-muted hover:text-shelf-text">&larr; Back to music</a>
+    </div>
+
+    <div class="bg-shelf-card border border-shelf-border rounded-xl p-6">
+        <div class="flex items-start justify-between gap-4 mb-4">
+            <div>
+                <p class="text-xs text-shelf-muted">{{ media_types.get(item.media_type, item.media_type) }}</p>
+                <h1 class="text-2xl font-bold mt-1">{{ item.title }}</h1>
+                {% if item.authors %}<p class="text-shelf-accent2 mt-1">{{ item.authors }}</p>{% endif %}
+            </div>
+            <div class="flex gap-2">
+                <a href="/item/{{ item.id }}" class="px-3 py-2 bg-shelf-bg border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text">Catalogue item</a>
+                {% if release and user and user.role in ('admin', 'editor') %}
+                <form method="post" action="/api/music/items/{{ item.id }}/refresh">
+                    <button type="submit" class="px-3 py-2 bg-shelf-accent text-white rounded-lg text-sm">Refresh metadata</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if release %}
+        <div class="space-y-2 text-sm mb-4">
+            {% if release.release_type %}<div><span class="text-shelf-muted">Release:</span> {{ release.release_type }}</div>{% endif %}
+            {% if release.release_date %}<div><span class="text-shelf-muted">Date:</span> {{ release.release_date }}</div>{% endif %}
+            {% if release.country %}<div><span class="text-shelf-muted">Country:</span> {{ release.country }}</div>{% endif %}
+            {% if release.label %}<div><span class="text-shelf-muted">Label:</span> {{ release.label }}</div>{% endif %}
+            {% if release.catalog_number %}<div><span class="text-shelf-muted">Catalogue #:</span> {{ release.catalog_number }}</div>{% endif %}
+            {% if release.format_summary %}<div><span class="text-shelf-muted">Format:</span> {{ release.format_summary }}</div>{% endif %}
+            {% if release.packaging %}<div><span class="text-shelf-muted">Packaging:</span> {{ release.packaging }}</div>{% endif %}
+            {% if item.upc %}<div><span class="text-shelf-muted">Barcode:</span> {{ item.upc }}</div>{% endif %}
+        </div>
+
+        {% if release.media %}
+        <div class="space-y-3">
+            {% for medium in release.media %}
+            <section class="pt-4 border-t border-shelf-border">
+                <div class="flex items-center gap-2 mb-2">
+                    <h2 class="font-semibold">{% if release.media|length > 1 %}Medium {{ medium.position }}{% else %}Track listing{% endif %}</h2>
+                    {% if medium.format %}<span class="text-xs text-shelf-muted">{{ medium.format }}</span>{% endif %}
+                    {% if medium.title %}<span class="text-xs text-shelf-muted">· {{ medium.title }}</span>{% endif %}
+                </div>
+                {% if medium.tracks %}
+                <div class="space-y-2">
+                    {% for track in medium.tracks %}
+                    <div class="flex gap-3 items-center px-3 py-2 text-sm bg-shelf-bg border border-shelf-border rounded-lg">
+                        <span class="shrink-0 text-xs text-shelf-muted">{{ track.number or track.position }}</span>
+                        <div class="min-w-0">
+                            <span>{{ track.title }}</span>
+                            {% if track.artist_credit and track.artist_credit != release.artist_credit %}<span class="text-xs text-shelf-muted"> · {{ track.artist_credit }}</span>{% endif %}
+                        </div>
+                        {% if track.duration_ms %}<span class="text-xs text-shelf-muted">{{ '%d:%02d'|format((track.duration_ms // 1000) // 60, (track.duration_ms // 1000) % 60) }}</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </section>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if release.musicbrainz_release_id %}
+        <p class="mt-4 pt-4 border-t border-shelf-border text-xs text-shelf-muted">MusicBrainz release: <a href="https://musicbrainz.org/release/{{ release.musicbrainz_release_id }}" target="_blank" rel="noopener" class="text-shelf-accent2">{{ release.musicbrainz_release_id }}</a></p>
+        {% endif %}
+        {% else %}
+        <div class="bg-shelf-bg border border-shelf-border rounded-lg p-4 text-sm text-shelf-muted">This music item does not have an exact MusicBrainz release attached yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
