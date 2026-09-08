@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Settings — Shelf{% endblock %}
 {% block content %}
-<div class="max-w-2xl mx-auto" x-data="settingsTabs">
-    <h1 class="text-2xl font-bold mb-6">Settings</h1>
+<div class="max-w-7xl mx-auto" x-data="settingsTabs">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold">Settings</h1>
+        <p class="text-sm text-shelf-muted mt-1">Manage your library, integrations, data and access from one place.</p>
+    </div>
 
     {# Known codes only: never reflect arbitrary query-string text. #}
     {% set location_error = request.query_params.get('location_error') %}
@@ -19,30 +22,40 @@
     </div>
     {% endif %}
 
-    <!-- Tab Bar -->
-    <div class="flex gap-1 mb-6 border-b border-shelf-border">
-        <button @click="setTab('library')" data-testid="tab-library"
-                :class="tab === 'library' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                class="px-2 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Library</button>
-        <button @click="setTab('integrations')" data-testid="tab-integrations"
-                :class="tab === 'integrations' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                class="px-2 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Integrations</button>
-        <button @click="setTab('data')" data-testid="tab-data"
-                :class="tab === 'data' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                class="px-2 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Data</button>
-        <button @click="setTab('users')" data-testid="tab-users"
-                :class="tab === 'users' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                class="px-2 sm:px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors">Users</button>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8" data-testid="settings-section-nav">
+        <button type="button" @click="setTab('library')" data-testid="tab-library"
+                :class="tab === 'library' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
+                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
+            <span class="block text-sm font-medium">Library</span>
+            <span class="block text-xs mt-1">Collection, lending, locations and display</span>
+        </button>
+        <button type="button" @click="setTab('integrations')" data-testid="tab-integrations"
+                :class="tab === 'integrations' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
+                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
+            <span class="block text-sm font-medium">Integrations</span>
+            <span class="block text-xs mt-1">Providers, sync and external services</span>
+        </button>
+        <button type="button" @click="setTab('data')" data-testid="tab-data"
+                :class="tab === 'data' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
+                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
+            <span class="block text-sm font-medium">Data</span>
+            <span class="block text-xs mt-1">Import, export, backup and maintenance</span>
+        </button>
+        <button type="button" @click="setTab('users')" data-testid="tab-users"
+                :class="tab === 'users' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
+                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
+            <span class="block text-sm font-medium">Users</span>
+            <span class="block text-xs mt-1">Accounts, roles and access</span>
+        </button>
     </div>
 
-    {% include "fragments/settings/library.html" %}
-
-    {% include "fragments/settings/integrations.html" %}
-    {% include "fragments/settings/romm.html" %}
-    {% include "fragments/settings/komga.html" %}
-
-    {% include "fragments/settings/data.html" %}
-
-    {% include "fragments/settings/users.html" %}
+    <div data-testid="settings-section-content">
+        {% include "fragments/settings/library.html" %}
+        {% include "fragments/settings/integrations.html" %}
+        {% include "fragments/settings/romm.html" %}
+        {% include "fragments/settings/komga.html" %}
+        {% include "fragments/settings/data.html" %}
+        {% include "fragments/settings/users.html" %}
+    </div>
 </div>
 {% endblock %}

@@ -31,6 +31,21 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
+    // base.html — user menu. Settings belongs with the signed-in user rather
+    // than consuming one of the library's primary navigation tabs. Account
+    // still opens the existing profile/password modal.
+    Alpine.data('accountMenu', function () {
+        return {
+            open: false,
+            showAccount: false,
+            toggle() { this.open = !this.open },
+            close() { this.open = false },
+            openAccount() { this.open = false; this.showAccount = true },
+            closeAccount() { this.showAccount = false },
+            closeAll() { this.open = false; this.showAccount = false }
+        };
+    });
+
     // base.html — account modal (display name + password)
     Alpine.data('accountModal', function () {
         return {
