@@ -33,7 +33,9 @@ def sync_primary_location(db, item_id: int, location_id: int | None) -> int | No
 
     A non-null location creates the first primary copy if none exists. Clearing
     a location never invents a copy merely to store ``NULL``. Existing
-    secondary copies are untouched.
+    secondary copies are untouched. When physical shelf ordering is present,
+    moving the copy to a different location clears its old location-scoped
+    ``position_order`` rather than carrying a stale shelf position with it.
 
     Returns the primary copy id, or ``None`` when no copy exists or is needed.
     """
@@ -43,14 +45,15 @@ def sync_primary_location(db, item_id: int, location_id: int | None) -> int | No
         raise ValueError("Location not found")
 
     primary = db.execute(
-        "SELECT id FROM item_copies WHERE item_id = ? AND is_primary = 1",
+        "SELECT id, location_id FROM item_copies WHERE item_id = ? AND is_primary = 1",
         (item_id,),
     ).fetchone()
     if primary:
         db.execute(
-            "UPDATE item_copies SET location_id = ?, updated_at = datetime('now') "
-            "WHERE id = ?",
-            (location_id, primary["id"]),
+            "UPDATE item_copies SET location_id = ?, "
+            "position_order = CASE WHEN location_id IS ? THEN position_order ELSE NULL END, "
+            "updated_at = datetime('now') WHERE id = ?",
+            (location_id, location_id, primary["id"]),
         )
         return primary["id"]
 

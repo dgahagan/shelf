@@ -103,6 +103,7 @@
             <div class="bg-shelf-bg rounded-lg px-4 py-2" data-testid="location-row-{{ loc.id }}">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <span>{{ loc.name }}</span>
+                    <a href="/locations/{{ loc.id }}/arrange" class="text-shelf-accent2 hover:underline text-sm">Arrange</a>
                     <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline"
                           data-confirm="Delete location '{{ loc.name }}'?">
                         <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">

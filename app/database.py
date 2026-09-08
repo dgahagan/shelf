@@ -178,6 +178,8 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
      "UPDATE locations SET label = name WHERE label IS NULL"),
     (30, "Index hierarchical location children",
      "CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_id, sort_order)"),
+    (31, "Add physical copy shelf position",
+     "ALTER TABLE item_copies ADD COLUMN position_order INTEGER DEFAULT NULL"),
 )
 
 MIGRATION_TABLES = """
