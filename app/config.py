@@ -10,6 +10,7 @@ MEDIA_TYPES = {
     "kids_book": "Kids Book",
     "audiobook": "Audiobook",
     "ebook": "eBook",
+    "magazine": "Magazine",
     "dvd": "DVD / Blu-ray",
     "cd": "CD",
     "comic": "Comic / Graphic Novel",
@@ -18,9 +19,16 @@ MEDIA_TYPES = {
 }
 
 # The book family: media types that are read, carry ISBNs, and belong to a
-# series. Everything else in MEDIA_TYPES (dvd, cd, video_game) is a disc or a
-# cartridge. Declared here, beside the types themselves.
+# series. Everything else is deliberately outside this family: discs and
+# cartridges (dvd, cd, video_game), and periodicals, which are issue-based
+# and carry their own family below. Declared here, beside the types themselves.
 BOOK_MEDIA_TYPES = frozenset({"book", "kids_book", "audiobook", "ebook", "comic", "manga"})
+
+# Periodicals are modelled as publication + concrete issue records. The
+# family is named separately even though the first supported format is
+# magazine, leaving room for journals/newspapers later without redesigning
+# every consumer.
+PERIODICAL_MEDIA_TYPES = frozenset({"magazine"})
 
 # Seed data — runtime platform list comes from game_platforms table
 GAME_PLATFORMS = {
