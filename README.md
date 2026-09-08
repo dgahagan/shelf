@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-2832%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-2854%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![E2E tests](https://img.shields.io/badge/e2e%20tests-225%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
@@ -115,7 +115,11 @@ of this whole directory carries the keys next to the data they protect.
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books, with national bibliographies consulted first for the groups they cover: German (978-3) ISBNs go to the Deutsche Nationalbibliothek (DNB), Italian ones (978-88 and 979-12) to the Servizio Bibliotecario Nazionale (SBN)
 - **Edition language** — captured on lookup, editable on items, filterable in Browse; a settings dropdown picks the preferred language for title searches
 - **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/paste-a-URL/remove, on any item. Cover search is media-type aware: books search Google Books and Open Library, DVDs the film's TMDb poster set, video games IGDB cover art and artwork. The picker reports a missing key, a rejected key, a spent quota and an unreachable provider by name, so "No covers found for this title." is only ever a genuine miss
-- **UPC support** — scan DVDs and Blu-rays with TMDb lookup, and music CDs, which are detected on Auto and filed under their own title (no music metadata provider is wired up yet, and the card says so)
+- **UPC support** — scan DVDs and Blu-rays with TMDb lookup, and music discs, which are detected on Auto. A barcode Shelf can resolve on MusicBrainz brings back the release; one it cannot is still filed under its own title
+- **Music by release, not by title** — a **Music** page searches MusicBrainz by title, artist, barcode or catalogue number and catalogues the exact pressing: country, date, label, catalogue number, packaging and medium, with real track lists across multiple discs. Vinyl, Cassette, CD and Digital Music. Two pressings of one album stay distinct and are linked to each other automatically. See [Music](docs/user-guide/music.md)
+- **Periodicals as publication plus issue** — a magazine run is one publication with many issues, not many unrelated rows. A 977 barcode resolves the publication from its ISSN; the issue number and date stay yours to confirm. See [Periodicals](docs/user-guide/periodicals.md)
+- **Manga as its own media type** — in the book family, so it carries an ISBN, belongs to a series, and filters separately from comics
+- **Retail barcodes on the edit form** — the Identifiers section takes a UPC/EAN as well as an ISBN, with the same camera scanner. UPC-A is canonicalised to EAN-13 and checksummed; 978/979 Bookland codes are refused, because they belong in the ISBN field. See [Editing barcodes](docs/user-guide/editing-barcodes.md)
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges. Platform tracking with a customizable platform list (30+ platforms from Atari 2600 to PS5)
 
 ### Scan Modes
@@ -171,12 +175,16 @@ photo into overlapping tiles for better accuracy — with a cost estimate for
 each option before anything is sent.
 
 ### Collection Management
+- **Home overview** — Shelf opens on a page that answers "what is happening in my library?": catalogue, owned and wishlist totals, what is lent out, missing covers, a media-type breakdown and recent additions. Browse stays the place for searching, filtering and bulk editing. See [Home](docs/user-guide/home.md)
 - **Filter and search** — by media type, location, reading status, ownership, lending status, and free text
 - **Reading tracking** — want-to-read, reading, and read with start/finish dates
 - **Custom tags** — free-form tags (`signed`, `first-edition`, whatever you like) as chips on the item page, with a tag filter on Browse
 - **Synopses** — item descriptions fetched automatically on add, plus a one-click backfill for your existing catalog (Open Library, Google Books, Hardcover)
 - **Stats dashboard** — books read per year, collection growth, top authors, and value-over-time charts (server-rendered SVG, no JS)
 - **Locations** — organize by room, shelf, or any system you like, and nest them: a shelf inside a bookcase inside a room. Rename or move a location and everything beneath it follows. See [Locations](docs/user-guide/locations.md)
+- **Shelf Fill** — pick a room, bookcase or shelf and it stays selected while you scan item after item onto it. Items already catalogued move without a fresh metadata lookup; unrecognised barcodes fall through to the normal Add pipeline. See [Shelf Fill](docs/user-guide/shelf-fill.md)
+- **Arrange a shelf** — any location gets an Arrange page where you drag the physical copies into the order they actually sit in, or order them automatically by title, creator, series, release or issue. The order belongs to the copy, so duplicates stay distinct and can sit side by side
+- **Related media groups** — connect the different forms of one work (a novel, its audiobook, its film adaptation) as `format`, `related` or `adaptation`. A group is the connected set of links, so linking A to B and B to C presents all three. Matching is manual by design
 - **Game platforms** — customizable list of platforms, add your own for niche or retro systems
 - **Checkout system** — lend to borrowers with the Lend scan mode, filter by "Lent Out" in browse
 - **Loan reminders** — overdue loans get a red badge, and an optional daily digest (ntfy or webhook) nags you about them; configure under Settings → Library → Lending
@@ -195,6 +203,8 @@ each option before anything is sent.
 - **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
 - **[Audiobookshelf](https://www.audiobookshelf.org)** — sync selected libraries from your Audiobookshelf server, link physical + digital formats, and jump straight to an item in ABS from its Shelf page
 - **[IGDB](https://www.igdb.com)** — video game metadata, cover art, and platform info via Twitch developer credentials (free)
+- **[RomM](https://romm.app)** — sync a self-hosted RomM server's digital game library. A RomM game gets its own record rather than being matched onto a physical cartridge you already own; link the two yourself. See [RomM](docs/romm.md)
+- **[Komga](https://komga.org)** — sync a self-hosted Komga server's digital comics and manga, matching on ISBN where one exists. A library's Comic/Manga kind is kept apart from Shelf's own media type, so it never reclassifies an item you catalogued by hand. See [Komga](docs/komga.md)
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation
 
 ### Store Mode (Offline PWA)
@@ -272,6 +282,8 @@ Shelf queries free, public APIs to look up book and game information — no API 
 | [Google Books](https://books.google.com) | Fallback metadata and cover art | No (optional key supported) |
 | [Amazon Images](https://www.amazon.com) | Fallback cover art via ISBN | No |
 | [UPC Item DB](https://www.upcitemdb.com) | Title lookup from UPC barcodes (games, DVDs) | No |
+| [MusicBrainz](https://musicbrainz.org) | Music releases by title, artist, barcode or catalogue number: pressing details, track lists, release groups | No |
+| [ISSN Portal](https://portal.issn.org) | Periodical publications from an ISSN, resolved from a 977 barcode | No |
 
 Metadata lookups send only the ISBN or UPC to these services. No personal data, account info, or collection details are transmitted.
 

@@ -401,3 +401,58 @@ class TestBookShapedControls:
         db.commit()
 
         assert self.HEADING not in viewer_client.get(f"/item/{item_id}").text
+
+
+class TestLinkedItemsAreFormatOnly:
+    """"Also available as:" claims the target is the same content in another
+    format. media_groups.link_items() also writes 'related' and 'adaptation'
+    links, for which that claim is false — a novel and its film adaptation are
+    different works — so the item page renders format links only.
+
+    Found on a live test drive (2026-09-08): an 'adaptation' link between two
+    distinct books rendered as "Also available as: Book".
+    """
+
+    def test_format_links_are_shown(self, viewer_client, db):
+        from app.services import media_groups
+
+        a = _insert_item(db, title="Novel", media_type="book")
+        b = _insert_item(db, title="Novel (audio)", media_type="audiobook")
+        media_groups.link_items(db, a, b, link_type="format")
+        db.commit()
+
+        html = viewer_client.get(f"/item/{a}").text
+
+        assert "Also available as:" in html
+        assert f'/item/{b}' in html
+
+    @pytest.mark.parametrize("link_type", ["related", "adaptation"])
+    def test_non_format_links_are_not_shown_as_another_format(
+        self, viewer_client, db, link_type
+    ):
+        from app.services import media_groups
+
+        a = _insert_item(db, title="Novel", media_type="book")
+        b = _insert_item(db, title="The Film Of It", media_type="dvd")
+        media_groups.link_items(db, a, b, link_type=link_type)
+        db.commit()
+
+        html = viewer_client.get(f"/item/{a}").text
+
+        assert "Also available as:" not in html
+
+    def test_the_audiobookshelf_linker_still_shows_because_it_defaults_to_format(
+        self, viewer_client, db
+    ):
+        """The ABS linker omits link_type and relies on the column default."""
+        a = _insert_item(db, title="Novel", media_type="book")
+        b = _insert_item(db, title="Novel (audio)", media_type="audiobook")
+        db.execute(
+            "INSERT INTO item_links (item_a_id, item_b_id) VALUES (?, ?)",
+            (min(a, b), max(a, b)),
+        )
+        db.commit()
+
+        html = viewer_client.get(f"/item/{a}").text
+
+        assert "Also available as:" in html

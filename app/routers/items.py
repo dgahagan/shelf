@@ -18,6 +18,7 @@ from app.database import (get_db, get_setting, gc_orphaned_series_meta,
                           get_reading_history)
 from app.routers.series import MAX_SERIES_NAME
 from app.routers import items_common
+from app.routers import items_scan_modes
 from app.routers.items_common import SORT_OPTIONS  # re-exported for pages.py
 from app.services import isbn as isbn_svc
 from app.services.item_write import (ItemValueError, insert_item, update_item_fields,
@@ -28,6 +29,7 @@ from app.services import detect
 from app.services import cover_queue
 from app.services import legacy_book
 from app.services import scan_outcome
+from app.services import item_merge
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
 from app.services import authors as authors_svc
@@ -220,216 +222,6 @@ def _legacy_resolution_message(resolution: legacy_book.LegacyBookResolution) -> 
     )
 
 
-def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw: str):
-    """Handle lend mode: check out an item to a borrower."""
-    if not borrower_id:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": raw, "message": "No borrower selected"},
-        )
-
-    with get_db() as db:
-        # Check if already checked out
-        active = db.execute(
-            "SELECT c.id, b.name FROM checkouts c JOIN borrowers b ON c.borrower_id = b.id "
-            "WHERE c.item_id = ? AND c.checked_in IS NULL", (item["id"],)
-        ).fetchone()
-        if active:
-            items_common._log_scan(raw, item.get("media_type", ""), "already_checked_out", item["id"], "lend")
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "already_checked_out", "isbn": raw, "title": item["title"],
-                 "item_id": item["id"], "cover_path": item.get("cover_path"),
-                 "message": f"Already lent to {active['name']}"},
-            )
-
-        borrower = db.execute("SELECT name FROM borrowers WHERE id = ?", (borrower_id,)).fetchone()
-        if not borrower:
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "error", "isbn": raw, "message": "Borrower not found"},
-            )
-
-        db.execute(
-            "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
-            (item["id"], borrower_id),
-        )
-
-    items_common._log_scan(raw, item.get("media_type", ""), "checked_out", item["id"], "lend")
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {"status": "checked_out", "isbn": raw, "title": item["title"],
-         "item_id": item["id"], "cover_path": item.get("cover_path"),
-         "authors": item.get("authors"), "message": f"Lent to {borrower['name']}"},
-    )
-    return resp
-
-
-def _scan_mode_return(request, templates, item: dict, raw: str):
-    """Handle return mode: check in an item."""
-    with get_db() as db:
-        active = db.execute(
-            "SELECT c.id, b.name, c.checked_out FROM checkouts c JOIN borrowers b ON c.borrower_id = b.id "
-            "WHERE c.item_id = ? AND c.checked_in IS NULL", (item["id"],)
-        ).fetchone()
-        if not active:
-            items_common._log_scan(raw, item.get("media_type", ""), "not_checked_out", item["id"], "return")
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "not_checked_out", "isbn": raw, "title": item["title"],
-                 "item_id": item["id"], "cover_path": item.get("cover_path"),
-                 "message": "Not currently checked out"},
-            )
-
-        db.execute(
-            "UPDATE checkouts SET checked_in = datetime('now') WHERE id = ?", (active["id"],)
-        )
-
-    items_common._log_scan(raw, item.get("media_type", ""), "returned", item["id"], "return")
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {"status": "returned", "isbn": raw, "title": item["title"],
-         "item_id": item["id"], "cover_path": item.get("cover_path"),
-         "authors": item.get("authors"), "message": f"Returned from {active['name']}"},
-    )
-    return resp
-
-
-def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw: str):
-    """Handle move mode: update item location."""
-    if not location_id or location_id <= 0:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": raw, "message": "No target location selected"},
-        )
-
-    old_location = item.get("location_name") or "No location"
-
-    # A deleted location used to be a foreign-key 500 here (#54).
-    value_error = None
-    with get_db() as db:
-        try:
-            update_item_fields(db, item["id"], {"location_id": location_id})
-        except ItemValueError as e:
-            value_error = str(e)
-        new_loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
-    if value_error:
-        items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "move")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": raw, "message": value_error},
-        )
-
-    new_name = new_loc["name"] if new_loc else "Unknown"
-    items_common._log_scan(raw, item.get("media_type", ""), "moved", item["id"], "move")
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {"status": "moved", "isbn": raw, "title": item["title"],
-         "item_id": item["id"], "cover_path": item.get("cover_path"),
-         "authors": item.get("authors"), "message": f"{old_location} → {new_name}"},
-    )
-    return resp
-
-
-def _scan_mode_inventory(
-    request,
-    templates,
-    item: dict | None,
-    location_id: int | None,
-    raw: str,
-    *,
-    inventory_confirmation: bool = False,
-):
-    """Handle inventory mode: verify item is at expected location."""
-    if not location_id or location_id <= 0:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": raw, "message": "No audit location selected"},
-        )
-
-    with get_db() as db:
-        loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
-    loc_name = loc["name"] if loc else "Unknown"
-
-    if not item:
-        items_common._log_scan(raw, "", "not_owned", None, "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "not_owned", "isbn": raw, "message": "Not in collection"},
-        )
-
-    if item.get("location_id") == location_id:
-        items_common._log_scan(raw, item.get("media_type", ""), "confirmed", item["id"], "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "confirmed", "isbn": raw, "title": item["title"],
-             "item_id": item["id"], "cover_path": item.get("cover_path"),
-             "authors": item.get("authors"), "message": f"Confirmed at {loc_name}",
-             "inventory_confirmation": inventory_confirmation},
-        )
-    else:
-        old_location = item.get("location_name") or "No location"
-        # Update location to where it actually is
-        value_error = None
-        with get_db() as db:
-            try:
-                update_item_fields(db, item["id"], {"location_id": location_id})
-            except ItemValueError as e:
-                value_error = str(e)
-        if value_error:
-            items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "inventory")
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "error", "isbn": raw, "message": value_error},
-            )
-        items_common._log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "relocated", "isbn": raw, "title": item["title"],
-             "item_id": item["id"], "cover_path": item.get("cover_path"),
-             "authors": item.get("authors"),
-             "message": f"Was at {old_location}, updated to {loc_name}",
-             "inventory_confirmation": inventory_confirmation},
-        )
-
-
-def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
-    """Handle lookup mode: check if item exists in collection."""
-    if not item:
-        items_common._log_scan(raw, "", "not_owned", None, "lookup")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "not_owned", "isbn": raw, "message": "Not in your collection"},
-        )
-
-    location_str = item.get("location_name") or "No location set"
-    items_common._log_scan(raw, item.get("media_type", ""), "found", item["id"], "lookup")
-    return templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {"status": "found", "isbn": raw, "title": item["title"],
-         "item_id": item["id"], "cover_path": item.get("cover_path"),
-         "authors": item.get("authors"), "message": f"Location: {location_str}"},
-    )
-
-
-def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
-    """Handle quick rate mode: mark item as read/completed."""
-    from datetime import date
-    with get_db() as db:
-        update_item_fields(db, item["id"], {
-            "reading_status": "read", "date_finished": date.today().isoformat(),
-        })
-
-    items_common._log_scan(raw, item.get("media_type", ""), "marked_read", item["id"], "quick_rate")
-    resp = templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {"status": "marked_read", "isbn": raw, "title": item["title"],
-         "item_id": item["id"], "cover_path": item.get("cover_path"),
-         "authors": item.get("authors"), "message": "Marked as read"},
-    )
-    return resp
-
-
 # Modes that operate on existing items (not add/wishlist)
 _EXISTING_ITEM_MODES = {"lend", "return", "move", "inventory", "lookup", "quick_rate"}
 
@@ -563,7 +355,7 @@ async def scan_isbn(
         item = _find_item_by_barcode(lookup_barcode)
         # inventory mode handles not-found specially
         if mode == "inventory":
-            return _scan_mode_inventory(
+            return items_scan_modes._scan_mode_inventory(
                 request,
                 templates,
                 item,
@@ -578,15 +370,15 @@ async def scan_isbn(
                 {"status": "not_owned", "isbn": raw, "message": "Not in your collection"},
             )
         if mode == "lend":
-            return _scan_mode_lend(request, templates, item, borrower_id, raw)
+            return items_scan_modes._scan_mode_lend(request, templates, item, borrower_id, raw)
         if mode == "return":
-            return _scan_mode_return(request, templates, item, raw)
+            return items_scan_modes._scan_mode_return(request, templates, item, raw)
         if mode == "move":
-            return _scan_mode_move(request, templates, item, location_id, raw)
+            return items_scan_modes._scan_mode_move(request, templates, item, location_id, raw)
         if mode == "lookup":
-            return _scan_mode_lookup(request, templates, item, raw)
+            return items_scan_modes._scan_mode_lookup(request, templates, item, raw)
         if mode == "quick_rate":
-            return _scan_mode_quick_rate(request, templates, item, raw)
+            return items_scan_modes._scan_mode_quick_rate(request, templates, item, raw)
 
     # --- Add / Wishlist modes (create new items) ---
     if legacy_candidates:
@@ -1125,14 +917,41 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
     if not keep_id or not merge_ids:
         return {"ok": False, "message": "Specify keep_id and merge_ids"}
 
+    # Drop the kept row and repeats before anything is written. Both end in
+    # `DELETE FROM items WHERE id = keep_id` further down, destroying the row
+    # the caller asked to keep (#86).
+    targets = list(dict.fromkeys(mid for mid in merge_ids if mid != keep_id))
+    if not targets:
+        return {"ok": False, "message": "Cannot merge an item into itself"}
+
     with get_db() as db:
         primary = db.execute("SELECT * FROM items WHERE id = ?", (keep_id,)).fetchone()
         if not primary:
             return {"ok": False, "message": "Primary item not found"}
 
+        # Refuse before writing anything: the merge is one transaction, and a
+        # kept row holding two open loans is a state no surface can show.
+        on_loan = item_merge.active_loan_ids(db, [keep_id, *targets])
+        if len(on_loan) > 1:
+            titles = [
+                row["title"]
+                for row in db.execute(
+                    "SELECT title FROM items WHERE id IN "
+                    f"({','.join('?' for _ in on_loan)}) ORDER BY id",
+                    sorted(on_loan),
+                ).fetchall()
+            ]
+            return {
+                "ok": False,
+                "message": "Cannot merge items that are both on loan: "
+                           + ", ".join(f'"{t}"' for t in titles)
+                           + ". Check one in first.",
+            }
+
+        merged = 0
         _MERGE_FILLABLE = frozenset(["subtitle", "authors", "publisher", "publish_year", "page_count",
                                       "description", "series_name", "narrator", "isbn"])
-        for mid in merge_ids:
+        for mid in targets:
             other = db.execute("SELECT * FROM items WHERE id = ?", (mid,)).fetchone()
             if not other:
                 continue
@@ -1155,14 +974,19 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
                         "item_id": mid,
                     }
 
-            db.execute("UPDATE scan_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
-            db.execute("UPDATE reading_log SET item_id = ? WHERE item_id = ?", (keep_id, mid))
+            # Every child table of `items` is ON DELETE CASCADE, so this has to
+            # happen before the DELETE or the cascade takes the merged row's
+            # loans, tags, links and physical copies with it (#86).
+            item_merge.reparent_children(db, keep_id, mid)
             db.execute("DELETE FROM items WHERE id = ?", (mid,))
+            merged += 1
             if fill:
                 update_item_fields(db, keep_id, fill)
                 primary = db.execute("SELECT * FROM items WHERE id = ?", (keep_id,)).fetchone()
 
-    return {"ok": True, "merged": len(merge_ids)}
+    # The count is what was actually merged, not what was asked for: an id that
+    # named no row used to be reported as a success.
+    return {"ok": True, "merged": merged}
 
 
 @router.post("/items/{item_id}")

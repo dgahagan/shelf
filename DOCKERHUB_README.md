@@ -126,12 +126,16 @@ key material.
 | **Quick Rate** | Scan to mark items as read/completed |
 
 ### Media Types
-- Books, audiobooks, eBooks, DVDs, Blu-rays, CDs, comics, kids' books, and video games
-- Link physical and digital formats together
+- Books, audiobooks, eBooks, magazines, DVDs, Blu-rays, vinyl, cassettes, CDs, digital music, comics, manga, kids' books, and video games
+- **Music by release, not by title** — search MusicBrainz by title, artist, barcode or catalogue number and catalogue the exact pressing: country, date, label, catalogue number, packaging, and real track lists across multiple discs. Two pressings of one album stay distinct and link to each other
+- **Periodicals as publication plus issue** — a magazine run is one publication with many issues; a 977 barcode resolves it from its ISSN
+- Link physical and digital formats together, and connect a novel to its audiobook or its film adaptation as a related-media group
 - Video game support with IGDB metadata and 30+ platforms (Atari 2600 to PS5)
 
 ### Collection Management
+- Home overview — totals, what is lent out, missing covers, a media-type breakdown and recent additions, with Browse kept for searching and bulk editing
 - Filter and search by media type, location, reading status, ownership, lending status, and custom tags
+- Shelf Fill — keep one shelf selected and scan item after item onto it; Arrange drags the copies on a shelf into the order they really sit in, or sorts them by title, creator, series, release or issue
 - Reading tracking — want-to-read, reading, and read with start/finish dates
 - Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover; series synopses, plus rename/merge/disband from the series card
 - Stats dashboard — books read per year, collection growth, top authors, and value-over-time charts
@@ -160,6 +164,8 @@ Shelf works fully out of the box with no API keys. These optional integrations a
 | [Hardcover](https://hardcover.app) | Reading status sync, richer metadata, series gap checks, Discover page | Yes |
 | [Audiobookshelf](https://www.audiobookshelf.org) | Sync selected audiobook libraries, link physical + digital formats | Yes |
 | [IGDB](https://dev.twitch.tv/console) (Twitch) | Video game metadata, cover art, platform info — on UPC scan, title search, and Photo Intake confirm | Yes |
+| [RomM](https://romm.app) | Sync a self-hosted RomM server's digital game library | Yes |
+| [Komga](https://komga.org) | Sync a self-hosted Komga server's digital comics and manga | Yes |
 | [TMDb](https://www.themoviedb.org) | DVD/Blu-ray metadata — from UPC barcodes, title search, and Photo Intake confirm | Yes |
 | [ISBNdb](https://isbndb.com) | Collection valuation with market prices | Paid |
 | [Anthropic](https://console.anthropic.com) | Photo Intake spine recognition (best accuracy) | Pay-per-use |

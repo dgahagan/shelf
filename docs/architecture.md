@@ -41,7 +41,10 @@ completeness), `reading_log`, `users`, `settings` (k/v, secrets encrypted),
 `share_links`, `scan_log`, `game_platforms`, `valuation_history`,
 `cover_queue`, `legacy_book_mappings` (a confirmed legacy price-point
 barcode -> ISBN-13 choice, constrained in the schema to a 17-digit barcode
-and a 978/979 ISBN).
+and a 978/979 ISBN), `item_links`, and the per-family side tables described
+below — `music_releases` + `music_media` + `music_tracks` +
+`music_identifiers`, `periodical_publications` + `periodical_issues`,
+`romm_records` and `komga_records`.
 
 **`locations` is a tree, stored denormalised.** `label` is the node's own name
 and `parent_id` its parent (`ON DELETE RESTRICT`, so a node with children
@@ -72,6 +75,58 @@ backfill creates a primary copy only for an item that is *both* owned and
 already located; `owned` alone is not treated as evidence that a row is
 physical.
 
+**A copy also carries its place on the shelf.** `item_copies.position_order`
+(migration 31) is the copy's rank within its location, and
+`services/location_order.py` is the only reader and writer of it: `direct_copies`
+orders NULLs last so a location that has never been arranged still lists
+sensibly, `apply_copy_order` writes an explicit drag order, and
+`auto_order_copies` fills it from one of the five keys in `_SORT_KEYS` — title,
+creator, series, release, issue. Ordering belongs to the **copy** rather than to
+the item for the same reason the table exists at all: two copies of one book are
+two objects, and they may sit apart.
+
+**Media families are declared in `app/config.py`, beside the types themselves.**
+`MEDIA_TYPES` is the flat list of thirteen; three frozensets name the families
+over it — `BOOK_MEDIA_TYPES` (book, kids book, audiobook, eBook, comic, manga),
+`PERIODICAL_MEDIA_TYPES` (magazine) and `MUSIC_MEDIA_TYPES` (vinyl, cassette,
+cd, digital music). `dvd` and `video_game` belong to no family, deliberately.
+Routes, templates and services share one membership test rather than each
+re-deciding what counts as a book. `manga` is what the arrangement is for: it
+needed a `MEDIA_TYPES` entry and a place in `BOOK_MEDIA_TYPES` and no table at
+all, because it is read, carries an ISBN and belongs to a series like the rest of
+that family.
+
+**A family that needs more structure gets a side table keyed on `item_id`,
+never a column on `items`.** `items` stays one row per catalogued thing and does
+not grow a column per family:
+
+- **Music.** `music_releases` is 1:1 with `items` (its primary key *is*
+  `item_id`) and holds what belongs to a specific pressing — country, release
+  date, label, catalogue number, packaging, format summary. `music_media` is the
+  disc or side, `music_tracks` hangs off a medium, and `music_identifiers` holds
+  barcodes and catalogue numbers. Two MusicBrainz ids do different jobs:
+  `musicbrainz_release_id` is `UNIQUE`, which is what makes re-adding a release
+  update rather than duplicate it, while `musicbrainz_release_group_id` is
+  indexed and *not* unique — that is how the vinyl and the CD of one album find
+  each other.
+- **Periodicals.** `periodical_publications` is the ongoing thing, with a
+  `UNIQUE COLLATE NOCASE` ISSN; `periodical_issues` is 1:1 with `items` and
+  points at it. So a run of one magazine is one publication row and many item
+  rows, which is the whole reason the family is modelled separately from books.
+  The family is named rather than hardcoded to `magazine` so journals and
+  newspapers can join it without every consumer being rewritten.
+
+**`item_links` connects two items, and a group is derived rather than stored.**
+The table is a pair of `items` ids with a `link_type` — `format`, `related` or
+`adaptation` — `UNIQUE(item_a_id, item_b_id)`, cascading from both sides.
+`services/media_groups.py` treats a group as the *connected component* reachable
+from a row, so linking A–B and B–C presents all three together and unlinking
+splits the set without rewriting a group id anywhere. **The item page's "Also
+available as:" block reads `link_type = 'format'` only.** That block asserts the
+same content in another format, which `related` and `adaptation` are not; the
+filter is deliberate, and the other two types need wording of their own before
+they get a surface.
+
 Secrets in `settings` are encrypted with a key kept *outside* the database
 (`data/encryption.key` or `SHELF_ENCRYPTION_KEY`), so a DB backup contains
 ciphertext only. Environment variables can override any secret.
@@ -101,6 +156,26 @@ Adding a provider is a module plus a registry entry — no call-site change.
 **The covers cascade below is unchanged by this**: SBN contributes no cover
 source, and the DNB cover rung is a separate hand-written prefix test in
 `services/covers.py`, not a read of this registry.
+
+**Music and periodicals do not enter through `_lookup_metadata` at all.** Each
+has its own page and its own provider, because neither is answered by an ISBN or
+a retail UPC and neither produces a plain `items` row:
+
+- **MusicBrainz** (`services/musicbrainz.py`) backs the Music page — search by
+  title, artist, barcode or catalogue number, then a release fetch that carries
+  media and tracks with it. It is a lookup of a *release*, not of a title, which
+  is why the side tables above are keyed on the release MBID rather than on
+  anything Shelf invents. `services/music_catalog.py` is what writes the item and
+  its four tables in one transaction.
+- **The ISSN portal** (`services/issn_portal.py`) resolves a 977 barcode's ISSN
+  to a publication. `services/periodical_scan.py` reads the EAN and its
+  supplement digits, and **the supplement is deliberately not trusted** to fill
+  the issue number or date — it is not reliable enough to write unattended, so
+  the user confirms those. A portal that refuses or answers nothing is handled as
+  a clean `found=False`, not an error: a datacenter IP blocked at the portal must
+  degrade to "look it up yourself", not to a failed scan.
+
+Both pace through `services/outbound.py` like every other shared public host.
 
 UPCs go to **UPC Item DB** (`services/upcitemdb.py`) for a retail product,
 then TMDb (film) or IGDB (game). **Which of the two is decided by
@@ -484,6 +559,37 @@ is neither rewritten nor re-covered, and a same-format ISBN already present
 is adopted rather than inserted — and isolated per library, so one library's
 timeout is reported for that library and the rest still run.
 
+## Self-hosted library sync
+
+Audiobookshelf, **RomM** (digital games) and **Komga** (digital comics and
+manga) are the same shape of integration: a server the user runs themselves,
+holding digital copies of things Shelf catalogues physically. Audiobookshelf is
+the one of the three that polls; **RomM and Komga sync only when asked**, so
+neither adds a task to the lifespan. Credentials go in `settings` encrypted like
+every other secret.
+
+All three call their server directly rather than through
+`services/outbound.py`, and that is the rule rather than an oversight: outbound
+pacing exists to be a good citizen on *shared public* metadata and cover hosts.
+A server the user owns is theirs to rate-limit, and pacing it would only slow
+their own sync.
+
+**Provider identity lives in a side table whose primary key is the provider's
+own id** — `romm_records(romm_id, item_id, platform_id)` and
+`komga_records(komga_id, item_id, library_id, series_id, kind)`. That is what
+makes a re-sync update its row instead of inserting a second one, and the
+`ON DELETE CASCADE` from `items` drops the record with the item. Two refusals are
+stated rather than incidental:
+
+- **RomM does not match onto an existing physical game** by title and platform.
+  Doing so would silently convert a cartridge row into a service-backed one, so
+  it inserts its own row and leaves the connection to the user, through
+  `item_links`.
+- **Komga's library kind is held apart from `items.media_type`** — that is what
+  `komga_records.kind` (`comic` or `manga`, checked in the schema) is for.
+  Changing a library's kind on the Komga side must not reclassify an item the
+  user catalogued by hand.
+
 ## Frontend
 
 Jinja2 templates; HTMX for partial updates (Browse pagination, filter
@@ -617,6 +723,20 @@ lookup, the save path, cover resolution, the scan log, UPC scanning — live in
 `SORT_OPTIONS`, `services/cover_queue.py` for `resolve_missing_cover`,
 `store.py` and `intake.py` for the save path). Callers import that module and
 call through it rather than from-importing its names.
+
+Two further modules sit beside them and are **not** routers — they hold
+functions the routers call, split out under `items.py`'s 1600-line cap rather
+than to add a surface. `items_scan_modes.py` carries what a scan *does* to an
+item that already exists (lend, return, move, inventory, lookup, quick-rate) as
+plain handlers taking everything but the database and the scan log as arguments;
+`services/item_merge.py` is the same shape for merge. Split on 2026-09-07, when
+two independent changes together pushed the module past the cap.
+
+Each media family that needed its own page got its own router rather than more
+of `items.py`: `music.py`, `periodicals.py`, `shelf_fill.py`,
+`location_order.py`, and `romm.py` / `komga.py` for the two sync integrations.
+All are registered in `app/main.py` — **registration happens there and nowhere
+else**, never at package import time.
 
 ### Writing items
 

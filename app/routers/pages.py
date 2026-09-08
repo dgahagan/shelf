@@ -215,11 +215,19 @@ async def item_detail(
         ).fetchall()
         borrowers = db.execute("SELECT * FROM borrowers ORDER BY name").fetchall()
 
-        # Linked items (different formats of the same work)
+        # Linked items (different formats of the same work). Scoped to
+        # link_type='format' because the template renders these as "Also
+        # available as:", which asserts the target is the same content in
+        # another format. That is true for a format link and false for the
+        # 'related' and 'adaptation' types media_groups.link_items() also
+        # writes — a novel and its film adaptation are different works.
+        # Every pre-existing writer (the Audiobookshelf linker, which relies
+        # on the column default, and music_catalog, which sets it) produces
+        # 'format', so this changes nothing that is currently rendered.
         linked_items = db.execute(
             "SELECT i.id, i.title, i.media_type, i.abs_id FROM item_links il "
             "JOIN items i ON (i.id = CASE WHEN il.item_a_id = ? THEN il.item_b_id ELSE il.item_a_id END) "
-            "WHERE il.item_a_id = ? OR il.item_b_id = ?",
+            "WHERE (il.item_a_id = ? OR il.item_b_id = ?) AND il.link_type = 'format'",
             (item_id, item_id, item_id),
         ).fetchall()
 

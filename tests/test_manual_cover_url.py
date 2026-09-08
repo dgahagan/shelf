@@ -187,4 +187,3 @@ def test_manual_url_from_edit_preserves_unsaved_edit_page(editor_client, db, mon
     assert "Cover updated" in resp.headers.get("HX-Trigger", "")
     row = db.execute("SELECT cover_path FROM items WHERE id = ?", (item_id,)).fetchone()
     assert row["cover_path"] == f"covers/{item_id}.jpg"
-

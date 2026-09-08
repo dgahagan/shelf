@@ -85,3 +85,43 @@ def test_issue_order_uses_periodical_metadata_when_available(db):
         "VALUES (?, ?, '2026-05-01', '5')", (earlier_item, publication_id))
 
     assert location_order.auto_order_copies(db, location_id, "issue") == [earlier, later]
+
+
+class TestArrangePageRendering:
+    """The Arrange page renders, and its cover thumbnails resolve.
+
+    `cover_path` already carries the `covers/` prefix, so the src is
+    `/{{ cover_path }}` — every other template in the app does this. Shipping
+    `/covers/{{ cover_path }}` produced `/covers/covers/N.jpg` and a 404 on
+    every card, found on a live test drive (2026-09-08) and invisible to the
+    suite because nothing rendered this template.
+    """
+
+    def test_cover_src_is_not_double_prefixed(self, viewer_client, db):
+        location_id = _location(db, "Living Room")
+        item_id = db.execute(
+            "INSERT INTO items (title, media_type, cover_path) "
+            "VALUES ('Covered', 'book', 'covers/42.jpg')"
+        ).lastrowid
+        db.execute(
+            "INSERT INTO item_copies (item_id, copy_number, location_id, is_primary) "
+            "VALUES (?, 1, ?, 1)",
+            (item_id, location_id),
+        )
+        db.commit()
+
+        html = viewer_client.get(f"/locations/{location_id}/arrange").text
+
+        assert 'src="/covers/42.jpg"' in html
+        assert "/covers/covers/" not in html
+
+    def test_a_copy_without_a_cover_renders_a_placeholder_not_a_broken_image(
+        self, viewer_client, db
+    ):
+        location_id = _location(db, "Living Room")
+        _copy(db, location_id, "No Cover")
+        db.commit()
+
+        html = viewer_client.get(f"/locations/{location_id}/arrange").text
+
+        assert "<img" not in html.split('data-copy-id')[1].split('</div>')[0]

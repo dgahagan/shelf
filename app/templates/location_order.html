@@ -42,7 +42,7 @@
              class="bg-shelf-card rounded-xl border border-shelf-border p-3 flex items-center gap-3">
             {% if can_edit %}<span data-drag-handle class="text-shelf-muted cursor-move select-none" aria-hidden="true">⋮⋮</span>{% endif %}
             {% if copy.cover_path %}
-            <img src="/covers/{{ copy.cover_path }}" alt="" class="w-10 h-14 object-cover rounded bg-shelf-bg shrink-0">
+            <img src="/{{ copy.cover_path }}" alt="" class="w-10 h-14 object-cover rounded bg-shelf-bg shrink-0">
             {% else %}
             <div class="w-10 h-14 rounded bg-shelf-bg shrink-0"></div>
             {% endif %}

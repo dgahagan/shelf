@@ -70,9 +70,6 @@ Library, and thinner otherwise.
   countries deserve the same.
 - **A translated interface.** The UI is English-only today. Translating the
   templates and letting the browser or a per-user setting pick the language.
-- **Music** ([#81](https://github.com/dgahagan/shelf/issues/81)) — CDs and records
-  can be catalogued now, but nothing looks them up, because Shelf has no music
-  metadata provider. MusicBrainz and the Cover Art Archive would fix that.
 
 ## Import and migration
 

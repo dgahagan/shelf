@@ -6,13 +6,21 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
-Eleven contributions from [@sudo-rpaisley](https://github.com/sudo-rpaisley),
-merged together. Shelf has until now catalogued things you read and things you
-play. This batch adds the two families it could not describe — music, where the
-unit is a specific pressing rather than a title, and periodicals, where the unit
-is an issue of something ongoing — plus two integrations for the digital
-libraries people already run beside Shelf, and the screens for putting physical
-copies in a particular order on a particular shelf.
+## [0.37.0] - 2026-09-08
+
+Thirteen pull requests from [@sudo-rpaisley](https://github.com/sudo-rpaisley),
+merged together — far and away the largest release Shelf has had. Shelf has
+until now catalogued things you read and things you play. This batch adds the
+two families it could not describe — music, where the unit is a specific
+pressing rather than a title, and periodicals, where the unit is an issue of
+something ongoing — plus two integrations for the digital libraries people
+already run beside Shelf, and the screens for putting physical copies in a
+particular order on a particular shelf.
+
+It also closes a data-loss bug in item merging that could take your loan
+history, tags and physical copies with the row you merged away. If you have ever
+merged two items, read the **Fixed** entry below — the damage is not
+retroactively repairable, but it cannot happen again.
 
 ### Added
 
@@ -98,7 +106,26 @@ copies in a particular order on a particular shelf.
   public HTTPS image URL and choose **Use URL** to apply it immediately through
   Shelf's existing SSRF-safe manual-cover downloader. The action stays on the
   edit page, so unsaved metadata is not discarded; normal file uploads and
-  other item edits still wait for **Save Changes**.
+  other item edits still wait for **Save Changes**. Contributed by [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#111](https://github.com/dgahagan/shelf/pull/111)
+
+### Fixed
+
+- **Merging two items no longer throws away everything attached to the merged
+  row.** The merge moved the scan and reading history across and then deleted
+  the row, which silently took its loan history, its tags, its links to other
+  formats and — since 0.36.0 — its physical copies, including what you paid,
+  where it came from and its condition. All of them now move to the row you
+  keep. Where both rows carry the same tag or the same link you get one, not a
+  duplicate; copies are renumbered onto the end of the kept row's own; and a
+  link between the two rows is dropped rather than becoming a link from the
+  item to itself. Merging an item into itself is refused instead of deleting
+  it, repeating an id in one request no longer merges it twice, an id that
+  matches no row is no longer counted as a success, and two items that are both
+  out on loan are refused with a message naming them — check one in first.
+  Original finding by [@sudo-rpaisley](https://github.com/sudo-rpaisley), via
+  [#79](https://github.com/dgahagan/shelf/pull/79).
+  ([#86](https://github.com/dgahagan/shelf/issues/86))
 
 ## [0.36.0] - 2026-09-07
 
@@ -3102,6 +3129,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.37.0]: https://github.com/dgahagan/shelf/releases/tag/v0.37.0
 [0.36.0]: https://github.com/dgahagan/shelf/releases/tag/v0.36.0
 [0.35.0]: https://github.com/dgahagan/shelf/releases/tag/v0.35.0
 [0.34.0]: https://github.com/dgahagan/shelf/releases/tag/v0.34.0
