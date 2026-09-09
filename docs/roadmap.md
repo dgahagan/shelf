@@ -118,11 +118,11 @@ The last five releases. Full detail in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.38.0](https://github.com/dgahagan/shelf/releases/tag/v0.38.0) | Every part of Shelf that answers "where is this item?" now counts physical copies: the item page lists them all, a shelf audit expects an item wherever any copy of it is, a scan that cannot say which copy reports instead of moving one, and the portable archive carries copies |
 | [0.37.2](https://github.com/dgahagan/shelf/releases/tag/v0.37.2) | Shelf Fill shows the position each scan takes on the shelf, and the shelf you picked says what is already on it and where the next scan goes |
 | [0.37.1](https://github.com/dgahagan/shelf/releases/tag/v0.37.1) | The pages 0.37.0 added are reachable: Shelf opens on Home and the **Shelf** link returns to it, Music, Periodicals and Shelf Fill are in the navigation, and Home's collection-mix tiles filter Browse instead of showing everything |
 | [0.37.0](https://github.com/dgahagan/shelf/releases/tag/v0.37.0) | Music and periodicals become families of their own — a record is catalogued as the pressing you own, a magazine as one publication with many issues; manga gets its own type; RomM and Komga sync the digital libraries you already run; a shelf can be filled quickly and then arranged into its real order; and merging two items no longer throws away what was attached to the one you merged away |
 | [0.36.0](https://github.com/dgahagan/shelf/releases/tag/v0.36.0) | Locations nest — a shelf inside a bookcase inside a room, with renames rewriting everything beneath them; an ISBN can be scanned straight into an item's edit form; and Shelf gained the storage to tell a catalogue entry apart from the individual physical copies of it |
-| [0.35.0](https://github.com/dgahagan/shelf/releases/tag/v0.35.0) | A page whose script fails to load now says so instead of looking normal and doing nothing; covers can be set from a pasted image URL; the item edit form is organised into sections |
 
 ---
 
