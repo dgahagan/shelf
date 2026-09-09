@@ -180,6 +180,8 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
      "CREATE INDEX IF NOT EXISTS idx_locations_parent ON locations(parent_id, sort_order)"),
     (31, "Add physical copy shelf position",
      "ALTER TABLE item_copies ADD COLUMN position_order INTEGER DEFAULT NULL"),
+    (32, "Add durable cover-review dismissal",
+     "ALTER TABLE items ADD COLUMN cover_review_dismissed INTEGER NOT NULL DEFAULT 0"),
 )
 
 MIGRATION_TABLES = """

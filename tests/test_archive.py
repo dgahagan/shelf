@@ -728,6 +728,78 @@ class TestRoundTripDuplicateDedupeKeys:
         # where one dedupe key can cover two rows.
         db.execute("COMMIT")
 
+    def test_round_trip_preserves_a_cover_review_dismissal(self, db):
+        """A "Not available" verdict survives export -> wipe -> import.
+
+        `_ITEM_COLUMNS` is a whitelist, so a column absent from it is silently
+        dropped on export and reset on import — which would resurrect every
+        item the user had dismissed, the exact non-convergence the column
+        exists to end.
+        """
+        item_id = _insert_item(db, title="Obscure Self-Published Thing",
+                               media_type="book")
+        db.execute("UPDATE items SET cover_review_dismissed = 1 WHERE id = ?",
+                   (item_id,))
+        db.execute("COMMIT")
+
+        path = build_archive(db)
+        with zipfile.ZipFile(path) as zf:
+            library = json.loads(zf.read("library.json"))
+        assert library["items"][0]["cover_review_dismissed"] == 1
+
+        _wipe_library(db)
+
+        with read_archive(path) as reader:
+            report = merge_archive(db, reader, mode="skip")
+        db.execute("COMMIT")
+        assert report["errors"] == []
+
+        restored = db.execute(
+            "SELECT cover_review_dismissed FROM items "
+            "WHERE title = 'Obscure Self-Published Thing'"
+        ).fetchone()
+        assert restored["cover_review_dismissed"] == 1
+
+    def test_an_archive_predating_the_dismissal_column_still_imports(self, db):
+        """Every archive written before migration 32 lacks the key entirely.
+
+        The import builds its field dict from `_ITEM_COLUMNS` with `.get()`, so
+        an absent key becomes an explicit NULL — and the column is NOT NULL, so
+        without coercion the whole import dies on an IntegrityError rather than
+        on anything the user could act on. This is the regression pin for that.
+        """
+        _insert_item(db, title="Written Before The Column", media_type="book")
+        db.execute("COMMIT")
+        path = build_archive(db)
+
+        # Rewrite library.json exactly as an older Shelf would have emitted it:
+        # with no cover_review_dismissed key on any item.
+        with zipfile.ZipFile(path) as zf:
+            names = zf.namelist()
+            blobs = {n: zf.read(n) for n in names}
+        library = json.loads(blobs["library.json"])
+        for item in library["items"]:
+            item.pop("cover_review_dismissed", None)
+        assert "cover_review_dismissed" not in library["items"][0]
+        blobs["library.json"] = json.dumps(library).encode()
+        with zipfile.ZipFile(path, "w") as zf:
+            for n in names:
+                zf.writestr(n, blobs[n])
+
+        _wipe_library(db)
+
+        with read_archive(path) as reader:
+            report = merge_archive(db, reader, mode="skip")
+        db.execute("COMMIT")
+
+        assert report["errors"] == []
+        assert report["imported"] == 1
+        restored = db.execute(
+            "SELECT cover_review_dismissed FROM items "
+            "WHERE title = 'Written Before The Column'"
+        ).fetchone()
+        assert restored["cover_review_dismissed"] == 0
+
     def test_duplicates_survive_fresh_instance_restore(self, db):
         self._seed_pair(db)
         original_path = build_archive(db)

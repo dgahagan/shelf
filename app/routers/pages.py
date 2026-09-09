@@ -532,8 +532,12 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
             "SELECT * FROM locations ORDER BY sort_order, name"
         ).fetchall()
         item_count = db.execute("SELECT COUNT(*) as c FROM items").fetchone()["c"]
+        # Excludes items dismissed from the cover-review queue
+        # (items.cover_review_dismissed, migration 32) — this figure and the
+        # /cover-review entry point's count are the same number, and an item
+        # marked "not available" there should stop being counted here too.
         missing_covers = db.execute(
-            "SELECT COUNT(*) AS c FROM items WHERE cover_path IS NULL"
+            "SELECT COUNT(*) AS c FROM items WHERE cover_path IS NULL AND cover_review_dismissed = 0"
         ).fetchone()["c"]
         cover_queue_stats = cover_queue.stats()
         # Carries each borrower's *returned* loan count for the delete

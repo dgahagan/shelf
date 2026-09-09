@@ -79,8 +79,33 @@ def test_items_columns_match_what_the_write_path_sees(db):
         reset_column_cache()
 
 
-@pytest.mark.parametrize("column", ["language", "owned", "platform", "manual_value"])
+@pytest.mark.parametrize("column", ["language", "owned", "platform", "manual_value",
+                                    "cover_review_dismissed"])
 def test_known_late_columns_survive_a_fresh_bootstrap(column, db):
     """Spot-check columns added by migration rather than in the original
     CREATE — the ones G1 is actually about."""
     assert column in _columns(db, "items")
+
+
+def test_cover_review_dismissed_defaults_to_zero_on_a_fresh_bootstrap(db):
+    """Migration 32's column must exist with default 0 on a *fresh* database.
+
+    Fresh installs never replay migrations one by one — `_backfill_versions`
+    executes every migration's SQL, and `duplicate column name` is benign only
+    for versions <= 21. So a copy of this column in SCHEMA would raise here,
+    which is exactly what this pin catches.
+    """
+    assert "cover_review_dismissed" in _columns(db, "items")
+    row = db.execute(
+        "SELECT dflt_value, \"notnull\" FROM pragma_table_info('items') "
+        "WHERE name = 'cover_review_dismissed'"
+    ).fetchone()
+    assert row["dflt_value"] == "0"
+    assert row["notnull"] == 1
+
+    db.execute("INSERT INTO items (title) VALUES ('No flag supplied')")
+    db.commit()
+    stored = db.execute(
+        "SELECT cover_review_dismissed FROM items WHERE title = 'No flag supplied'"
+    ).fetchone()
+    assert stored["cover_review_dismissed"] == 0

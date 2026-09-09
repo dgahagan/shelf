@@ -79,10 +79,17 @@ page use **Find cover** to pick another — it works even when the item
 already has a cover, not just a blank one — or **Edit** to fix the record.
 
 **I removed a cover by mistake — can I get it back?**
-Only indirectly, and only for a book added in the last 48 hours: a
-container restart re-queues cover-less recent books for automatic lookup,
-which would refetch one. Older items, or a cover you don't want refetched,
-need **Find cover** or **Upload** to set a new one by hand.
+Not the exact file, but the item goes straight back into **Review covers
+needing attention** (Settings → Data → Maintenance), where you can search or
+upload a replacement without hunting for the item first. Removing a cover also
+clears any previous **Not available** verdict, so it is the way to un-dismiss
+something. For a book added in the last 48 hours a container restart will also
+re-queue it for automatic lookup, which may refetch one on its own.
+
+**I marked something "Not available" by mistake.**
+There is no undo button yet. Two routes back: give the item a cover and then
+remove it (removal clears the verdict), or run **Retry missing covers**, which
+deliberately ignores the flag for exactly this reason.
 
 **Is the valuation a resale value?**
 No — ISBNdb list price, i.e. replacement cost. Right for insurance, not for

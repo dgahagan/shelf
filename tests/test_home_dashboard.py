@@ -75,3 +75,19 @@ def test_recent_limit_is_bounded(db):
 
     assert len(home_dashboard.dashboard_summary(db, recent_limit=500)["recent_items"]) == 50
     assert home_dashboard.dashboard_summary(db, recent_limit=-1)["recent_items"] == []
+
+
+def test_a_dismissed_item_is_not_counted_as_missing_a_cover(db):
+    """Home's tile and Settings' figure must be the same number.
+
+    Before the cover review queue they always agreed. Once a reviewer can mark
+    an item "not available", a tile that still counted it would show a
+    different number from Settings for what reads as the same thing — and the
+    tile is not a link, so nobody could drill in to find out why.
+    """
+    insert_item(db, title="Still Needs One", media_type="book")
+    dismissed = insert_item(db, title="No Cover Exists", media_type="book")
+    db.execute("UPDATE items SET cover_review_dismissed = 1 WHERE id = ?",
+               (dismissed,))
+
+    assert home_dashboard.dashboard_summary(db)["missing_cover_count"] == 1

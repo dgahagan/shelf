@@ -70,6 +70,23 @@
             </div>
 
             <div>
+                {# Unconditional entry point into /cover-review — deliberately outside
+                   the cover_queue_stats conditional above. That conditional is keyed on
+                   transient in-memory queue state (cover_queue.py), so it renders nothing
+                   most of the time; an entry point into a durable queue (items marked via
+                   items.cover_review_dismissed, migration 32) can't depend on that. Plain
+                   link, no Alpine directive/hx-/fetch() — this panel is maintenancePanel
+                   (static/js/components-settings.js:369) and needs no new state for a
+                   navigation. /cover-review itself is `editor`-gated while this page is
+                   `admin`-gated (app/routers/pages.py:521); that asymmetry is deliberate,
+                   see app/routers/cover_review.py's module docstring. #}
+                <a href="/cover-review" data-testid="cover-review-link"
+                   class="text-sm text-shelf-accent2 hover:text-shelf-accent transition-colors">
+                    Review covers needing attention ({{ missing_covers }})
+                </a>
+            </div>
+
+            <div>
                 <button @click="startSynopses()"
                         :disabled="synFetching"
                         class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">

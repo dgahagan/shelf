@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-2923%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-229%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-2984%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-230%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -114,7 +114,7 @@ of this whole directory carries the keys next to the data they protect.
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode; an empty result box names the reason when the search failed rather than missed
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books, with national bibliographies consulted first for the groups they cover: German (978-3) ISBNs go to the Deutsche Nationalbibliothek (DNB), Italian ones (978-88 and 979-12) to the Servizio Bibliotecario Nazionale (SBN)
 - **Edition language** — captured on lookup, editable on items, filterable in Browse; a settings dropdown picks the preferred language for title searches
-- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/paste-a-URL/remove, on any item. Cover search is media-type aware: books search Google Books and Open Library, DVDs the film's TMDb poster set, video games IGDB cover art and artwork. The picker reports a missing key, a rejected key, a spent quota and an unreachable provider by name, so "No covers found for this title." is only ever a genuine miss
+- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/paste-a-URL/remove, on any item. A **cover review queue** walks every cover-less item one at a time — discs, games and music included, which the automatic sweep deliberately never touches — with the picker inline, and a **Not available** verdict that is remembered so the list converges on zero. Cover search is media-type aware: books search Google Books and Open Library, DVDs the film's TMDb poster set, video games IGDB cover art and artwork. The picker reports a missing key, a rejected key, a spent quota and an unreachable provider by name, so "No covers found for this title." is only ever a genuine miss
 - **UPC support** — scan DVDs and Blu-rays with TMDb lookup, and music discs, which are detected on Auto. A barcode Shelf can resolve on MusicBrainz brings back the release; one it cannot is still filed under its own title
 - **Music by release, not by title** — a **Music** page searches MusicBrainz by title, artist, barcode or catalogue number and catalogues the exact pressing: country, date, label, catalogue number, packaging and medium, with real track lists across multiple discs. Vinyl, Cassette, CD and Digital Music. Two pressings of one album stay distinct and are linked to each other automatically. See [Music](docs/user-guide/music.md)
 - **Periodicals as publication plus issue** — a magazine run is one publication with many issues, not many unrelated rows. A 977 barcode resolves the publication from its ISSN; the issue number and date stay yours to confirm. See [Periodicals](docs/user-guide/periodicals.md)
@@ -267,7 +267,7 @@ marked `noindex`, and revocable at any time.
 | Role | Can do |
 |------|--------|
 | **Admin** | Everything: settings, users, locations, sync, bulk ops, logs |
-| **Editor** | Add/edit/delete items, scan (all modes), covers (find/upload/paste URL/remove), checkout/checkin, import/export |
+| **Editor** | Add/edit/delete items, scan (all modes), covers (find/upload/paste URL/remove, and the cover review queue), checkout/checkin, import/export |
 | **Viewer** | Browse, search, reading status, export CSV, view stats |
 
 ## Metadata Sources

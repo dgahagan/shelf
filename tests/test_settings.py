@@ -259,6 +259,51 @@ class TestCoverQueueStatusLine:
         html = admin_client.get("/settings").text
         assert "2 items without a cover" in html
 
+    def test_dismissed_item_excluded_from_missing_covers_count(self, admin_client, db):
+        """A cover-review-dismissed item (items.cover_review_dismissed, migration
+        32) is "no cover available", not "still needs one" — it must not inflate
+        either this figure or the /cover-review link's count (see
+        TestCoverReviewLink below)."""
+        _insert_item(db, title="No Cover One", isbn="9780000003041")
+        _insert_item(db, title="Dismissed", isbn="9780000003058", cover_review_dismissed=1)
+        db.commit()
+        cover_queue.enqueue(1)
+        html = admin_client.get("/settings").text
+        assert "1 item without a cover" in html
+
+
+# --- GET /settings — /cover-review entry point --------------------------------
+# Named cover-review-link: pinned here so test_nav.py's route-reachability
+# census can exempt /cover-review on the grounds that these tests, not the
+# nav registry, prove the link exists.
+
+class TestCoverReviewLink:
+    def test_link_renders_with_empty_queue_and_no_failures(self, admin_client):
+        """The exact case the old `cover_queue_stats.queued or .failed`
+        conditional suppressed — an entry point must not depend on transient
+        in-memory queue state."""
+        cover_queue.reset()
+        html = admin_client.get("/settings").text
+        assert 'data-testid="cover-queue-status"' not in html
+        assert 'data-testid="cover-review-link"' in html
+        assert 'href="/cover-review"' in html
+
+    def test_link_count_matches_missing_covers(self, admin_client, db):
+        _insert_item(db, title="No Cover One", isbn="9780000003065")
+        _insert_item(db, title="No Cover Two", isbn="9780000003072")
+        db.commit()
+        cover_queue.reset()
+        html = admin_client.get("/settings").text
+        assert "Review covers needing attention (2)" in html
+
+    def test_link_count_excludes_dismissed_items(self, admin_client, db):
+        _insert_item(db, title="No Cover One", isbn="9780000003089")
+        _insert_item(db, title="Dismissed", isbn="9780000003096", cover_review_dismissed=1)
+        db.commit()
+        cover_queue.reset()
+        html = admin_client.get("/settings").text
+        assert "Review covers needing attention (1)" in html
+
 
 class TestVisionIngestKnobHelpText:
     """The ingest long-edge knob now governs the as-is Photo Intake upload,

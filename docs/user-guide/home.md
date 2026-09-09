@@ -6,7 +6,9 @@ Home shows:
 
 - catalogue, owned and wishlist totals;
 - items currently lent out;
-- missing-cover count;
+- missing-cover count — items you have marked **Not available** in the
+  [cover review queue](items.md#the-review-queue) are excluded, so this
+  agrees with the same figure on Settings;
 - the media types currently present in the collection;
 - a media-type breakdown;
 - recent additions;

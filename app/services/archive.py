@@ -63,7 +63,8 @@ _ITEM_COLUMNS = (
     "duration_mins", "source", "notes", "reading_status", "date_started",
     "date_finished", "owned", "estimated_value", "manual_value",
     "value_updated_at", "hardcover_book_id", "hardcover_edition_id",
-    "hardcover_user_book_id", "language", "created_at", "updated_at",
+    "hardcover_user_book_id", "language", "cover_review_dismissed",
+    "created_at", "updated_at",
 )
 
 
@@ -1368,6 +1369,15 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                     updated_at = created_at
 
                 fields = {col: item_norm.get(col) for col in _ITEM_COLUMNS}
+                # `cover_review_dismissed` is NOT NULL DEFAULT 0 (migration 32),
+                # but every archive written before it lacks the key entirely and
+                # the comprehension above turns an absent key into an explicit
+                # NULL — which insert_item passes straight through to SQLite as
+                # a NOT NULL violation, failing the whole import. Coerce to the
+                # column's own default instead of special-casing the insert.
+                fields["cover_review_dismissed"] = (
+                    1 if item_norm.get("cover_review_dismissed") else 0
+                )
                 fields["created_at"] = created_at
                 fields["updated_at"] = updated_at
                 fields["location_id"] = loc_id

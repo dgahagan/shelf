@@ -1,10 +1,28 @@
-<div class="mt-3">
+{% set action_prefix = action_prefix | default('/api/items/' ~ item_id, true) %}
+{% set result_target = result_target | default('#cover-candidates', true) %}
+{% set result_swap   = result_swap   | default('innerHTML', true) %}
+{# Where the SEARCH BOX puts its own response, which is another copy of this
+   whole fragment — search box, gallery, forms and all. Item detail hosts the
+   picker inside an empty #cover-candidates and lets it refill that container.
+   A host that renders this fragment inline (the review queue) must instead
+   point the box at the picker's own wrapper with outerHTML, or the response
+   nests a second search box and a second upload form inside the first. #}
+{% set search_target = search_target | default('#cover-candidates', true) %}
+{% set search_swap   = search_swap   | default('innerHTML', true) %}
+{% set show_url_form = show_url_form if show_url_form is defined else true %}
+<div class="mt-3" id="cover-picker-{{ item_id }}">
     <input type="text" id="cover-query-{{ item_id }}" name="query" value="{{ query or '' }}"
            placeholder="Search covers…"
            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1.5 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50 mb-2"
-           hx-get="/api/items/{{ item_id }}/cover-search"
-           hx-target="#cover-candidates" hx-swap="innerHTML"
+           hx-get="{{ action_prefix }}/cover-search"
+           hx-target="{{ search_target }}" hx-swap="{{ search_swap }}"
            hx-trigger="keyup changed delay:400ms"
+           {# A counted host carries its position through the SEARCH too. The
+              response re-renders every candidate's hx-vals and the upload
+              form's hidden inputs, so a search that dropped pos/total would
+              hand the route its defaults and the counter would read "N of 0"
+              after the next pick. #}
+           {% if pos is defined and pos %}hx-vals='{"pos":"{{ pos }}","total":"{{ total }}"}'{% endif %}
            hx-include="#cover-query-{{ item_id }}">
 
     {% if candidates %}
@@ -24,8 +42,8 @@
         </div>
         {% endif %}
         {% for c in candidates %}
-        <button hx-post="/api/items/{{ item_id }}/cover-select" hx-vals='{"url":"{{ c.url }}"}'
-                hx-target="#cover-candidates" hx-swap="innerHTML"
+        <button hx-post="{{ action_prefix }}/cover-select" hx-vals='{"url":"{{ c.url }}"{% if pos is defined and pos %}, "pos":"{{ pos }}", "total":"{{ total }}"{% endif %}}'
+                hx-target="{{ result_target }}" hx-swap="{{ result_swap }}"
                 hx-include="#cover-query-{{ item_id }}"
                 class="group relative rounded-lg overflow-hidden border {% if failed_url and failed_url == c.url %}border-shelf-error{% else %}border-shelf-border hover:border-shelf-accent/50{% endif %} transition-colors cursor-pointer bg-shelf-card">
             <img src="{{ c.thumbnail }}" alt="Cover candidate" class="w-full aspect-[2/3] object-cover" loading="lazy">
@@ -58,9 +76,10 @@
     {% endif %}
 
     <div class="mt-3 space-y-3">
+        {% if show_url_form %}
         <div>
             <p class="text-xs font-medium text-shelf-muted mb-1">Use image from URL</p>
-            <form hx-post="/api/items/{{ item_id }}/cover-url" hx-swap="none"
+            <form hx-post="{{ action_prefix }}/cover-url" hx-swap="none"
                   data-testid="cover-url"
                   hx-disabled-elt="find input, find button"
                   class="flex items-center gap-2">
@@ -74,13 +93,25 @@
             </form>
             <p class="text-xs text-shelf-muted mt-1">Public HTTPS image links only. Shelf saves its own local copy.</p>
         </div>
+        {% endif %}
 
         <div>
             <p class="text-xs font-medium text-shelf-muted mb-1">Upload from this device</p>
-            <form hx-post="/api/items/{{ item_id }}/cover-upload" hx-swap="none" enctype="multipart/form-data"
+            <form hx-post="{{ action_prefix }}/cover-upload"
+                  hx-swap="{{ upload_swap | default('none', true) }}"
+                  {% if upload_target %}hx-target="{{ upload_target }}"{% endif %}
+                  enctype="multipart/form-data"
                   data-testid="cover-upload"
                   hx-disabled-elt="find input[type=file], find button"
                   class="flex flex-wrap items-center gap-2">
+                {# A counted host (the review queue) carries its position through
+                   the pick, or the server falls back to its defaults and the
+                   "N of M" counter reads nonsense after an upload. Item detail
+                   defines neither, so it emits neither. #}
+                {% if pos is defined and pos %}
+                <input type="hidden" name="pos" value="{{ pos }}">
+                <input type="hidden" name="total" value="{{ total }}">
+                {% endif %}
                 <input type="file" name="cover" accept="image/jpeg,image/png,image/gif,image/webp"
                        class="block w-full min-w-0 text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
                 <button type="submit"

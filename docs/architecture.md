@@ -568,6 +568,39 @@ Open Library hit for an item with no authors and then stores the ISBN it found
 widening it is the mistake this invariant exists to prevent; the disc and game
 covers are fetched straight through `covers._download_to_item` instead.
 
+**The terminal stage: the cover review queue** (`app/routers/cover_review.py`
+for the page and the reads, `cover_review_actions.py` for the three writes).
+Everything the automatic stages cannot or must not touch ends here, and this is
+the one stage whose predicate is **unfiltered by media type**:
+
+```sql
+WHERE cover_path IS NULL AND cover_review_dismissed = 0
+```
+
+That is legal precisely because it is the stage where a *human* decides. The
+rows are rendered for a person who picks from `covers.search_covers`, which
+dispatches by media type; **nothing in either module reaches
+`resolve_missing_cover` or `_search_isbn_for_item`**, which is the property the
+invariant above actually cares about, and it is enforced by a test over the
+modules' own source plus a database-level pin that picking a cover for an
+ISBN-less DVD leaves `isbn` NULL. Adding an automatic retry to this page would
+reintroduce the defect the invariant exists to prevent, with a wider blast
+radius than the original.
+
+`items.cover_review_dismissed` (migration 32) is the durable half.
+`cover_queue.py` is deliberately in-memory and its docstring delegates per-item
+cover state here. Three readers honour the flag — the queue's own predicate,
+`cover_queue.requeue_recent_missing` (so a boot does not override a human), and
+the Settings/Home cover-less counts. The two bulk Retry Missing Covers sweeps
+deliberately do **not**, because with no un-dismiss control in the UI they are
+the only way an accidental dismissal returns. `items_covers.cover_remove`
+clears the flag, which is the intended route back.
+
+Advancing through the queue is a **keyset seek** over `(updated_at DESC,
+id DESC)`, and each action captures its ordering key *before* writing: setting
+a cover bumps `updated_at`, so a key read afterwards would return the head of
+the queue and walk the reviewer backwards.
+
 ## Background tasks
 
 Started in the app lifespan, each polling every 5 minutes and reading its

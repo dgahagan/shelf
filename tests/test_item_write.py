@@ -47,9 +47,19 @@ RAW_UPDATE_ALLOWLIST: dict[str, set[str]] = {
     # never typed by a user, only fetched or uploaded as an image.
     "app/routers/items_covers.py": {
         "cover_path = ?",
-        "cover_path = NULL, updated_at",
+        # Removing a cover also clears any "not available" verdict, so the item
+        # returns to the review queue — a flag set by a button, never typed.
+        "cover_path = NULL, cover_review_dismissed = 0, ",
     },
     "app/routers/items_common.py": {"cover_path = ?"},
+    # The cover review queue's select/upload verbs — the same fetched-or-
+    # uploaded image path as every other entry here, never a typed value.
+    "app/routers/cover_review_actions.py": {
+        "cover_path = ?",
+        # The "not available" verdict: a flag set by a button, not a value a
+        # user types into a field.
+        "cover_review_dismissed = 1, ",
+    },
     "app/routers/items.py": {
         "cover_path = ?",
         # Synopsis fetch: backfills a missing description from a provider

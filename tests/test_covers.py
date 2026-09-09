@@ -940,3 +940,55 @@ class TestTheProviderOutcomeRendersInThePicker:
 
         assert "TMDb API key" in resp.text
         assert "rejected the configured key" not in resp.text
+
+
+class TestFragmentDefaultsReproduceItemDetailMarkup:
+    """T2 — the fragment gained `action_prefix`/`result_target`/`result_swap`/
+    `show_url_form` params so a future queue page can host it elsewhere. Every
+    route that renders it today (item detail's own cover-search call) omits
+    those params, so the Jinja defaults must reproduce today's markup exactly
+    — this is the pin that makes the parameterisation safe.
+    """
+
+    def test_the_item_detail_route_still_emits_the_hard_coded_endpoints(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Default Wiring", isbn="9789000090068")
+        db.commit()
+
+        monkeypatch.setattr(
+            covers, "search_cover_by_title",
+            AsyncMock(return_value=[
+                {"url": "https://example.test/a.jpg", "thumbnail": "https://example.test/a-thumb.jpg", "source": "Test"},
+            ]),
+        )
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        body = resp.text
+        assert f"/api/items/{item_id}/cover-search" in body
+        assert f"/api/items/{item_id}/cover-select" in body
+        assert f"/api/items/{item_id}/cover-url" in body
+        assert f"/api/items/{item_id}/cover-upload" in body
+        assert 'hx-target="#cover-candidates"' in body
+
+    def test_the_upload_form_still_discards_its_response_by_default(
+        self, editor_client, db, monkeypatch
+    ):
+        from app.services import covers
+
+        item_id = _insert_item(db, title="Default Upload Swap", isbn="9789000090075")
+        db.commit()
+
+        monkeypatch.setattr(covers, "search_cover_by_title", AsyncMock(return_value=[]))
+
+        resp = editor_client.get(f"/api/items/{item_id}/cover-search")
+
+        assert resp.status_code == 200
+        upload_tags = re.findall(r'<form[^>]*data-testid="cover-upload"[^>]*>', resp.text)
+        assert len(upload_tags) == 1
+        assert 'hx-swap="none"' in upload_tags[0]
+        assert "hx-target" not in upload_tags[0]

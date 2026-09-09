@@ -6,6 +6,44 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.39.0] - 2026-09-09
+
+Shelf has always fetched cover art automatically, and **Retry missing covers**
+has always swept up what the first pass missed. Both only ever worked on books.
+That is deliberate — the automatic chain falls back to a book-catalogue title
+search, and turning it loose on a disc once wrote a novel's cover and ISBN onto
+a DVD — but it left every cover-less disc, game and record with no route at all
+except finding each item by hand. Worse, an item with no findable cover stayed
+on the missing-covers count forever, so the number never reached zero and
+stopped meaning anything. This release adds a queue that walks those items one
+at a time and lets you record that a cover genuinely does not exist.
+
+### Added
+
+- **Cover review queue.** Settings → Data → Maintenance → **Review covers
+  needing attention** walks every cover-less item one at a time, with the cover
+  picker inline: search, pick or upload, and each choice advances to the next
+  item without leaving the queue. Unlike **Retry missing covers** — which
+  sweeps only book-shaped rows, on purpose, because the automatic chain once
+  wrote a novel's cover and ISBN onto a DVD — the queue shows **everything**,
+  discs, games and music included, because a person is deciding rather than an
+  algorithm guessing. **Not available** marks an item as genuinely coverless
+  and is remembered, so the list converges on zero instead of showing the same
+  handful forever; removing a cover puts an item back and clears that verdict.
+  The verdict survives a restart and rides along in a portable archive.
+
+### Changed
+
+- The Settings **"N items without a cover"** figure and Home's **Missing
+  covers** tile now both exclude items marked **Not available**. They agree
+  with each other and with the queue's own count.
+- Removing a cover now clears any previous "not available" verdict, which is
+  what makes removal the way back from an accidental dismissal.
+- The startup cover requeue no longer hands a dismissed item back to the
+  automatic chain on every boot. **Retry missing covers** deliberately still
+  ignores the flag — with no un-dismiss control yet, it is the one route by
+  which an accidental dismissal returns on its own.
+
 ## [0.38.0] - 2026-09-08
 
 Merging two owned records that were filed in different rooms has always kept
@@ -3240,6 +3278,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.39.0]: https://github.com/dgahagan/shelf/releases/tag/v0.39.0
 [0.38.0]: https://github.com/dgahagan/shelf/releases/tag/v0.38.0
 [0.37.2]: https://github.com/dgahagan/shelf/releases/tag/v0.37.2
 [0.37.1]: https://github.com/dgahagan/shelf/releases/tag/v0.37.1

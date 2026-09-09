@@ -26,6 +26,22 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.39.0
+
+**One migration runs.** It adds a single column (`items.cover_review_dismissed`)
+and writes no rows, so it is instant on any size of library and needs no action
+from you. Nothing existing changes meaning: every item starts undismissed.
+
+One number will look different, deliberately. The Settings **"N items without a
+cover"** figure and Home's **Missing covers** tile both now exclude items you
+have marked **Not available** in the new review queue. Before the queue existed
+there was nothing to exclude, so this only diverges once you start using it —
+and the two agree with each other, which is the point.
+
+Portable archives carry the flag: a library exported after this release and
+restored later keeps its "not available" verdicts. An archive written *before*
+this release restores normally, with every item undismissed.
+
 ### After upgrading to 0.38.0
 
 No migration runs and no data changes. What changes is what Shelf *shows* you,

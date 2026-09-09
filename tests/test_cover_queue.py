@@ -408,3 +408,26 @@ def test_start_requeues_and_returns_a_task(db, monkeypatch):
     assert task is not None
     assert queued == 1
     del item_id
+
+
+class TestTheStartupRequeueHonoursADismissal:
+    def test_a_dismissed_coverless_book_is_not_requeued(self, db):
+        """Without this clause an item a human marked "there is no cover for
+        this" is handed back to the automatic chain on every boot, forever —
+        the exact non-convergence the column exists to end."""
+        from app.services import cover_queue
+        from tests.conftest import _insert_item
+
+        kept = _insert_item(db, title="Still Wanted", media_type="book",
+                            isbn="9780000000019", cover_path=None)
+        dismissed = _insert_item(db, title="No Cover Exists", media_type="book",
+                                 isbn="9780000000026", cover_path=None)
+        db.execute("UPDATE items SET cover_review_dismissed = 1 WHERE id = ?",
+                   (dismissed,))
+        db.commit()
+
+        cover_queue.reset()
+        queued = cover_queue.requeue_recent_missing()
+
+        assert queued == 1, "only the undismissed item should be requeued"
+        assert cover_queue.stats()["queued"] == 1

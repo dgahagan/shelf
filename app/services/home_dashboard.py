@@ -22,9 +22,15 @@ def dashboard_summary(db, *, recent_limit: int = 8) -> dict:
     lent_out = db.execute(
         "SELECT COUNT(DISTINCT item_id) AS c FROM checkouts WHERE checked_in IS NULL"
     ).fetchone()["c"]
+    # Excludes items dismissed in the cover review queue, so this tile and
+    # Settings' "N items without a cover" are the same number. Before the queue
+    # existed they always agreed; letting them diverge would put two different
+    # counts of the same apparent thing on two screens, with this tile not even
+    # clickable to reconcile them (Dan's call, 2026-09-09).
     missing_cover = db.execute(
         "SELECT COUNT(*) AS c FROM items "
-        "WHERE cover_path IS NULL OR TRIM(cover_path) = ''"
+        "WHERE (cover_path IS NULL OR TRIM(cover_path) = '') "
+        "AND cover_review_dismissed = 0"
     ).fetchone()["c"]
 
     type_rows = db.execute(

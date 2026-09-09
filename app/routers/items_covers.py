@@ -310,18 +310,24 @@ async def cover_remove(item_id: int, _=Depends(require_role("editor"))):
     The file stays on disk — covers overwrite `{item_id}.jpg` in place, so
     orphan cleanup is a separate concern.
 
-    The removal is **not durable across a restart** for a book added in the
-    last 48 h: `cover_queue.requeue_recent_missing` selects on
-    `cover_path IS NULL` at startup and will re-run the auto chain (GOTCHAS
-    G29). Accepted by design — durable suppression needs a schema column and
-    belongs to the cover review queue (roadmap item 7).
+    Removing a cover returns the item to the cover review queue, and **clears
+    any previous "not available" verdict** — otherwise an item dismissed once
+    could never be reviewed again after a later removal, because the queue's
+    Remove control renders only when a cover exists.
+
+    The suppression the old note called impossible now exists: migration 32
+    added the dismissal column that roadmap item 7 was waiting on, and the
+    startup requeue honours it. A removal is therefore durable in the sense
+    that matters — it puts the item in front of a human rather than back into
+    the automatic chain.
     """
     with get_db() as db:
         item = db.execute("SELECT id FROM items WHERE id = ?", (item_id,)).fetchone()
         if not item:
             return HTMLResponse("Not found", status_code=404)
         db.execute(
-            "UPDATE items SET cover_path = NULL, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE items SET cover_path = NULL, cover_review_dismissed = 0, "
+            "updated_at = datetime('now') WHERE id = ?",
             (item_id,),
         )
 
@@ -330,6 +336,17 @@ async def cover_remove(item_id: int, _=Depends(require_role("editor"))):
     resp.headers["HX-Redirect"] = f"/item/{item_id}"
     return resp
 
+# These two sweeps are deliberately NOT filtered on `cover_review_dismissed`.
+# Both are admin-only and media-type-gated, so G29's defect cannot fire and no
+# wrong data is written; the worst case is an admin who asked for a sweep
+# getting one on a row they earlier dismissed. The deciding factor is the other
+# direction: there is no un-dismiss path in the UI (the Remove control renders
+# only when a cover exists, and a dismissed item is cover-less), so this sweep
+# is the only way an accidental dismissal comes back on its own. Adding the
+# clause would make "Not available" permanent short of a database edit.
+# Pinned by test_cover_review.py::TestRetryMissingCoversStaysDismissalBlind.
+# Revisit when un-dismissing from the UI ships.
+#
 # Bulk cover retry is restricted to book media types for the same reason the
 # startup requeue is (GOTCHAS G29): items_common.resolve_missing_cover's fallback is a
 # book-catalogue title search that accepts the first Open Library hit when the

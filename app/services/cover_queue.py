@@ -256,11 +256,18 @@ def requeue_recent_missing(window_hours: int = REQUEUE_WINDOW_HOURS) -> int:
     keeps genuinely cover-less older items from being re-hammered on every
     boot, and the media-type filter keeps non-books out of a book-catalogue
     resolver (see COVER_REQUEUE_MEDIA_TYPES).
+
+    `cover_review_dismissed = 0` is the third filter and the reason this
+    module's docstring points at the cover-review-queue plan for durable state.
+    An item a human has explicitly marked "there is no cover for this" must not
+    be handed back to the automatic chain on every boot, forever — that is
+    exactly the non-convergence the column exists to end.
     """
     placeholders = ", ".join("?" for _ in COVER_REQUEUE_MEDIA_TYPES)
     with get_db() as db:
         rows = db.execute(
             f"SELECT id FROM items WHERE cover_path IS NULL "
+            f"AND cover_review_dismissed = 0 "
             f"AND media_type IN ({placeholders}) "
             f"AND created_at >= datetime('now', ?)",
             (*COVER_REQUEUE_MEDIA_TYPES, f"-{window_hours} hours"),

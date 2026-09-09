@@ -559,6 +559,13 @@ def test_every_top_level_page_is_reachable_from_the_nav():
         "/docs/oauth2-redirect": "FastAPI's own docs UI",
         "/redoc": "FastAPI's own docs UI",
         "/openapi.json": "schema, not a page",
+        "/cover-review": (
+            "reached from Settings -> Data -> Maintenance, not the nav: a "
+            "maintenance chore does not earn permanent nav real estate "
+            "(cover-attention-queue design, section 3). The link's existence is "
+            "pinned by test_settings.py's cover-review-link tests, so this "
+            "exemption is a claim with a test behind it rather than a hole."
+        ),
     }
 
     nav_paths = {t["path"] for t in NAV_TABS}

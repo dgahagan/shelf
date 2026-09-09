@@ -96,7 +96,7 @@ checkbox, never the value. See [Integrations](user-guide/integrations.md).
 
 | Card | Options |
 |---|---|
-| **Maintenance** | Retry missing covers, backfill synopses, re-run value lookups — each with a live progress stream |
+| **Maintenance** | Retry missing covers (book-shaped rows only), **Review covers needing attention** (the manual queue, every media type), backfill synopses, re-run value lookups — the sweeps each with a live progress stream |
 | **Import / Export** | CSV export; CSV / Goodreads / StoryGraph import with "fetch covers" and "to-read → wishlist" options |
 | **Sharing** | Create and revoke public read-only wishlist / collection links |
 | **Backup & Restore** | Download a database backup (optionally passphrase-encrypted), restore from one |

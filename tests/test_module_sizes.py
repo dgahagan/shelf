@@ -25,6 +25,8 @@ LIMITS = {
     "app/routers/items_scan_modes.py": (400, "one module per mode, if it comes to that"),
     "app/routers/items_common.py": (900, "move domain logic to app/services/"),
     "app/routers/items_covers.py": (600, "split the bulk-sweep routes out"),
+    "app/routers/cover_review.py": (400, "split the queue's actions from its page"),
+    "app/routers/cover_review_actions.py": (300, "one verb per module if it grows again"),
     "app/routers/items_csv.py": (600, "move the row-mapping logic to app/services/"),
     "app/routers/items_catalog.py": (900, "split per provider (games / books / dvds)"),
     "app/templates/settings.html": (100, "it is a tab shell — new markup belongs in a fragment"),

@@ -134,7 +134,9 @@ search.
 ## Covers missing after an import
 
 Imports fetch covers in the background; give it a few minutes on a big
-batch. Then Settings → Data → Maintenance → **Retry missing covers**. Items
+batch. Then Settings → Data → Maintenance → **Retry missing covers** (books,
+comics and manga only) and **Review covers needing attention** for everything
+else it cannot reach. Items
 with no ISBN (manual adds, discs, games without IGDB) need a manual cover
 or **Find cover**.
 
@@ -225,6 +227,12 @@ you type.
 When none of the above turns up an image, **Use image from URL** sets the
 cover from a public HTTPS link directly — the one route that does not depend
 on a provider having the record at all.
+
+If a disc or a game genuinely has no cover anywhere, **Settings → Data →
+Maintenance → Review covers needing attention** is the tool for it. Retry
+missing covers cannot help here — it only sweeps book-shaped rows, on purpose —
+and the queue is where every cover-less disc, game and record actually shows
+up. It also lets you mark one **Not available** so it stops coming back.
 
 ## Photo Intake finds nothing / garbage
 

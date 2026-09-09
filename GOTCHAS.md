@@ -793,19 +793,77 @@ grep -rn 'on("dialog"\|once("dialog"' tests/e2e/
 
 ```bash
 python -c "from app.services.authors import matches; assert matches(None, 'Anyone')"
-grep -n "cover_path IS NULL" app/routers/*.py app/services/*.py | grep -E 'SELECT|UPDATE'
-# 4 hits as of 2026-08-25; each must be book-filtered or admin-invoked
+grep -n "cover_path IS NULL" app/routers/*.py app/services/*.py
+# 7 hits as of 2026-09-09. Read each: it is a query, prose about a query, or a
+# predicate held in a constant. Every *query* must be book-filtered,
+# admin-invoked, or human-decided (the fifth kind, added below).
 ```
 
+  **Do NOT re-add the `| grep -E 'SELECT|UPDATE'` second stage this line used to
+  carry.** It was there to drop prose, and it also drops any sweep whose
+  predicate does not share a line with its verb — which is what
+  `app/routers/cover_review.py:74` does:
+
+  ```python
+  _QUEUE_PREDICATE = "i.cover_path IS NULL AND i.cover_review_dismissed = 0"
+  ```
+
+  Extracting a predicate into a named constant is *good practice*, and it made
+  the newest `cover_path IS NULL` sweep in the codebase **completely invisible
+  to this guard**. Measured 2026-09-09 while adding that very sweep: the
+  two-stage grep reported 4 hits and the bare grep reports 7.
+
+  **It was hiding two sweeps, not one.** `app/services/home_dashboard.py:27`
+  has been invisible to this Verify line for as long as it has existed, for a
+  different reason with the same shape — its predicate sits on a `"WHERE …"`
+  continuation line while the `SELECT` is on the line above:
+
+  ```python
+  "WHERE cover_path IS NULL OR TRIM(cover_path) = ''"
+  ```
+
+  So the filter did not merely fail on a new style of code; it had already
+  failed on ordinary wrapped SQL and nobody noticed, because a guard that
+  under-reports looks exactly like a guard that is passing. A guard that
+  silently stops covering the thing it exists to cover is worse than no guard,
+  so the filter is gone and the cost is that you must read the hits.
+
+  (`home_dashboard.py` is a dashboard statistic rather than a sweep — it hands
+  its rows to nobody — so it was never a violation. That it went unread for
+  months is the point.)
+
   **The bare grep matches prose, not only SQL** (G53's shape, in a Verify line
-  rather than a guard). `feat/cover-picker` added a docstring at the new
+  rather than a guard). `feat/cover-picker` added a docstring at the
   `cover-remove` route explaining that removal re-arms this very requeue — a
   correct comment, and a hit that is neither book-filtered nor admin-invoked
-  because it is not a query at all. Filtering on `SELECT|UPDATE` is what drops
-  it; filtering on `#` does **not**, because the offending line is inside a
-  docstring. Read any surviving hit before filing it as a violation.
+  because it is not a query at all. Filtering on `#` does **not** drop it,
+  because the offending line is inside a docstring. Read any surviving hit
+  before filing it as a violation.
 
-- **Status:** documented.
+  **The fifth kind of legal sweep: human-decided.** The cover review queue
+  (`app/routers/cover_review.py`) selects on `cover_path IS NULL` with **no
+  media-type filter at all** — deliberately, because that is the whole point of
+  it: Retry Missing Covers cannot reach a DVD, a game or a CD, and those are
+  the items the automatic chain is worst at. It is legal here because the rows
+  are rendered for a person who chooses from `covers.search_covers` (which
+  dispatches by media type), and **nothing in that module reaches
+  `resolve_missing_cover` or `_search_isbn_for_item`** — the property this
+  entry actually cares about. That is enforced by a test asserting the module's
+  source contains no call to either, plus a database-level pin that picking a
+  cover for an ISBN-less DVD leaves `isbn` NULL. **Adding a "retry
+  automatically" button to that page reintroduces the Dune defect**, and the
+  unfiltered predicate is what would make it worse than the original.
+
+  Two sweeps gained a `cover_review_dismissed = 0` clause at the same time:
+  `cover_queue.requeue_recent_missing` (so a human's "not available" verdict is
+  not overridden on every boot) and `pages.py`'s Settings count. The two bulk
+  Retry Missing Covers queries deliberately did **not** — see that decision in
+  the cover-attention-queue plan; the short version is that with no un-dismiss
+  path in the UI, the sweep is the only way an accidental dismissal comes back.
+
+- **Status:** documented. The Verify grep is a candidate for promotion to a
+  lint, and the constant-predicate blind spot above is the reason it should be:
+  a grep that a routine refactor can defeat wants to be a test.
 
 ## G30 — When setting or "tidying" anything that paces Open Library
 
@@ -1239,7 +1297,11 @@ grep -rn "SHELF_DISABLE_COVER_ENRICH" tests/ app/
 
 - **Status:** documented. Not a lint candidate.
 
-## G34 — When an E2E test asserts membership in a capped or sampled list
+## G34 — When an E2E test asserts against a list built from the whole table
+
+(Formerly "…membership in a capped or sampled list". Widened 2026-09-09 — the
+second face below is not capped or sampled at all, and a reader whose page has
+no cap would not have found this entry under the old title.)
 
 - **Rule:** `live_server` is session-scoped (`tests/e2e/conftest.py`) and
   `make test-e2e` runs serially, so every row every earlier file seeded is
@@ -1254,6 +1316,20 @@ grep -rn "SHELF_DISABLE_COVER_ENRICH" tests/ app/
   alphabetically-early titles — which reads as a feature regression in code
   nobody touched. Same family as G31: a test that looks like coverage and
   defends nothing (or defends the wrong thing).
+- **Second face, and the sharper one: a page whose entire content is an
+  unfiltered query over the table.** The cover review queue (`/cover-review`)
+  selects every cover-less item with no media-type filter *by design*, so on
+  the session-scoped `live_server` it renders every cover-less row that any
+  earlier E2E file happened to leave behind. There is no cap to sort inside
+  and no sampling to defeat: the remedy above does not apply. Measured
+  2026-09-09 while writing `tests/e2e/test_cover_review.py` — the queue's
+  "3 of 3" premise broke because `test_component_load_guard.py`'s "Guard
+  Control Item" is cover-less and outranked the seeded rows in the queue's
+  newest-first order. **Use the function-scoped `server_factory` instead**
+  (the pattern in `tests/e2e/test_stats.py`), which gives the test a genuinely
+  empty database. The general rule: the more *inclusive* the page's query, the
+  less usable the shared server is — a page that shows everything cannot be
+  driven against a database that holds everything.
 - **Evidence:** caught on paper by the issue-31 `/plan-review` (R2,
   2026-08-21). The plan's `E2E Unassigned Book` already had at least eight
   earlier-sorting seriesless titles ahead of it (`1984`, `Book To Delete`,
@@ -3803,6 +3879,56 @@ python -m pytest tests/test_item_write.py -q -k "basename or adjacent_string"
   exemption for `item_write.py` and have not been converted — M1 was scoped to
   `item_copies`. Fix them together with the next change that touches either.
 
+
+## G89 — When adding a NOT NULL column to `items`
+
+- **Rule:** adding `NOT NULL` to `items` is **not** a self-contained schema
+  change — it is a change to the portable archive's compatibility surface, and
+  it breaks the import of every archive file written before it. Two edits go
+  with the migration, both in `app/services/archive.py`:
+  1. add the column to the `_ITEM_COLUMNS` whitelist (`:59`), or export drops
+     it silently and a restore resets it;
+  2. **coerce it on import**, because the import builds its field dict as
+     `{col: item_norm.get(col) for col in _ITEM_COLUMNS}` (`:1371`) and `.get()`
+     turns an absent key into an explicit `None`, which `insert_item` passes
+     straight to SQLite as a `NOT NULL` violation.
+- **Why:** `_build_items` selects `items.*`, which reads like "everything is
+  carried automatically" and is why the cover-attention-queue plan asserted
+  exactly that. It is not: the *serialisation* immediately below the select
+  copies only `_ITEM_COLUMNS` (`:320-321`), and both import paths read back
+  through the same tuple (`:811`, `:1370`). The failure is also asymmetric and
+  therefore easy to miss — the round-trip of a *freshly written* archive works
+  perfectly, because it has the key. It is the archive on the user's disk, from
+  before the upgrade, that dies. Nothing in the test suite exercises that
+  direction unless you write it.
+- **Evidence:** 2026-09-09, migration 32 (`cover_review_dismissed`,
+  `62efd11`). Caught before commit by probing `insert_item` with an explicit
+  `None`: `IntegrityError: NOT NULL constraint failed:
+  items.cover_review_dismissed`. Both directions are now pinned in
+  `tests/test_archive.py` —
+  `test_round_trip_preserves_a_cover_review_dismissal` and
+  `test_an_archive_predating_the_dismissal_column_still_imports`, the second
+  written by stripping the key from a real archive's `library.json`. It was
+  verified to fail without the coercion.
+- **Verify:** every `NOT NULL` column on `items` is in the whitelist.
+
+```bash
+python -c "
+import sqlite3, re
+from app.services.archive import _ITEM_COLUMNS
+src = open('app/database.py').read()
+print('whitelist size:', len(_ITEM_COLUMNS))
+print('coercions in import:', src.count('cover_review_dismissed'))
+"
+grep -n "NOT NULL" app/database.py | grep -i "ALTER TABLE items"
+# every column listed there must appear in archive._ITEM_COLUMNS and be
+# coerced at archive.py's insert path
+```
+
+- **Status:** documented. **Lint candidate** — this is mechanically checkable
+  (read `PRAGMA table_info(items)` for `notnull=1`, assert each name is in
+  `_ITEM_COLUMNS`), and a lint would not depend on anyone remembering to read
+  this entry.
 
 ## Graveyard
 
