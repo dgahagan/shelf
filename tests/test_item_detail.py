@@ -1,7 +1,12 @@
 """T1 — record footer, wishlist badge, value as-of date, admin integration block."""
+import re
+from pathlib import Path
+
 import pytest
 
-from tests.conftest import _insert_item
+from app.services.item_copies import insert_copy
+from app.services.item_write import update_item_fields
+from tests.conftest import _insert_item, _insert_location
 
 
 class TestRecordFooter:
@@ -456,3 +461,161 @@ class TestLinkedItemsAreFormatOnly:
         html = viewer_client.get(f"/item/{a}").text
 
         assert "Also available as:" in html
+
+
+class TestCopiesBlock:
+    """The item page reads `item_copies`, not just the `items.location_id`
+    seam (issue #116). A merged item legitimately has copies in two places;
+    before this the page showed only the first."""
+
+    def test_one_placed_copy_renders_the_single_location_line(self, viewer_client, db):
+        office = _insert_location(db, "Office / Bookcase 2 / Shelf 3")
+        item_id = _insert_item(db, title="One Copy", isbn="9789000020034",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "Location:" in html
+        assert "Office / Bookcase 2 / Shelf 3" in html
+        assert ">Copies<" not in html
+
+    def test_a_position_is_shown_when_set_and_absent_when_not(self, viewer_client, db):
+        office = _insert_location(db, "Office")
+        placed = _insert_item(db, title="Placed", isbn="9789000020041",
+                              location_id=office)
+        insert_copy(db, {"item_id": placed, "copy_number": 1, "location_id": office,
+                         "is_primary": 1, "position_order": 4})
+        loose = _insert_item(db, title="Loose", isbn="9789000020058",
+                             location_id=office)
+        insert_copy(db, {"item_id": loose, "copy_number": 1, "location_id": office,
+                         "is_primary": 1})
+        db.commit()
+
+        assert "· position 4" in viewer_client.get(f"/item/{placed}").text
+        assert "position" not in viewer_client.get(f"/item/{loose}").text
+
+    def test_two_copies_render_both_locations_under_a_copies_heading(
+        self, viewer_client, db
+    ):
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        item_id = _insert_item(db, title="Merged", isbn="9789000020065",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1, "location_id": office,
+                         "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2, "location_id": loft,
+                         "condition": "Fair", "provenance": "gift"})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert ">Copies<" in html
+        assert "Office" in html
+        assert "Loft" in html
+        assert "#1" in html and "#2" in html
+        assert "Fair" in html and "gift" in html
+
+    def test_a_copy_with_no_location_reads_as_no_location_not_none(
+        self, viewer_client, db
+    ):
+        office = _insert_location(db, "Office")
+        item_id = _insert_item(db, title="Half Placed", isbn="9789000020072",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1, "location_id": office,
+                         "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "No location" in html
+        assert "None" not in html
+
+    def test_an_item_with_no_copies_renders_neither_line_nor_heading(
+        self, viewer_client, db
+    ):
+        item_id = _insert_item(db, title="Unplaced", isbn="9789000020089")
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "Location:" not in html
+        assert ">Copies<" not in html
+
+    def test_a_located_item_with_no_copies_still_shows_its_location(
+        self, viewer_client, db
+    ):
+        """An upgraded database holds located items with no copy rows at all
+        (G86). `main` rendered `Location: X` for them straight off
+        `items.location_name`; hiding the wrapper on `copies == []` dropped
+        that line, so the page showed no location for an item that has one —
+        a regression, and the item-page half of B5. Distinct from the test
+        above, whose item has no location either."""
+        shelf = _insert_location(db, "Wishlist Shelf")
+        item_id = _insert_item(db, title="Wanted", isbn="9789000020119",
+                               location_id=shelf)
+        db.execute("DELETE FROM item_copies WHERE item_id = ?", (item_id,))
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "Location:" in html
+        assert "Wishlist Shelf" in html
+        assert ">Copies<" not in html
+        assert 'id="item-copies" class="hidden"' not in html
+
+    def test_clearing_a_location_leaves_no_false_location_line(self, viewer_client, db):
+        """`update_item_fields(..., location_id=None)` keeps the primary copy
+        and nulls its location (pinned in tests/test_item_copies.py). The page
+        must show the same clean empty state it showed before this fragment
+        existed, not the string `Location: None`."""
+        office = _insert_location(db, "Office")
+        item_id = _insert_item(db, title="Cleared", isbn="9789000020096",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1, "location_id": office,
+                         "is_primary": 1})
+        db.commit()
+
+        update_item_fields(db, item_id, {"location_id": None})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "Location:" not in html
+        assert ">Copies<" not in html
+        assert "None" not in html
+
+    def test_a_viewer_sees_the_block_and_it_carries_no_controls(
+        self, viewer_client, db
+    ):
+        """G54 — the wrapper id is the swap target the copy-surface plan
+        needs, and until that plan lands the block issues no request."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        item_id = _insert_item(db, title="Read Only", isbn="9789000020102",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1, "location_id": office,
+                         "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2, "location_id": loft})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert 'id="item-copies"' in html
+        assert "Loft" in html
+
+        # Asserted against the fragment source rather than a slice of the
+        # page: the wrapper's close tag is not distinguishable from any other
+        # `</div>` in rendered HTML, so a slice silently widens to the rest of
+        # the page and the check stops meaning anything.
+        source = (
+            Path(__file__).resolve().parents[1]
+            / "app" / "templates" / "fragments" / "item_copies.html"
+        ).read_text()
+        body = re.sub(r"\{#.*?#\}", "", source, flags=re.S)
+        assert 'id="item-copies"' in body
+        for construct in ("hx-get", "hx-post", "hx-put", "hx-delete", "<form", "<button"):
+            assert construct not in body

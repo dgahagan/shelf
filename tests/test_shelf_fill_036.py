@@ -75,6 +75,66 @@ def test_copy_barcode_moves_exact_secondary_without_moving_primary(db):
     assert result["copy_number"] == 2
 
 
+def test_moving_a_secondary_copy_clears_its_old_shelf_position(db, monkeypatch):
+    """_place_exact_copy's own location-setting write, isolated from the
+    append that immediately follows it in the real flow, must clear a moved
+    copy's stale position_order rather than carry it to the new shelf.
+
+    In the ordinary flow ``_append_copy_position`` always overwrites
+    ``position_order`` with a freshly computed value afterwards, which would
+    mask whether the preceding location UPDATE itself cleared the stale one —
+    so the append is stubbed out here to pin that statement's own contract.
+    """
+    first = location_svc.create_location(db, "Shelf A")
+    second = location_svc.create_location(db, "Shelf B")
+    item_id = _item(db)
+    db.execute(
+        "INSERT INTO item_copies (item_id, copy_number, location_id, copy_barcode, is_primary) "
+        "VALUES (?, 1, ?, 'PRIMARY-1', 1)", (item_id, first),
+    )
+    secondary_id = db.execute(
+        "INSERT INTO item_copies "
+        "(item_id, copy_number, location_id, copy_barcode, is_primary, position_order) "
+        "VALUES (?, 2, ?, 'SECONDARY-1', 0, 5)", (item_id, first),
+    ).lastrowid
+    monkeypatch.setattr(shelf_fill, "_append_copy_position", lambda *a, **k: None)
+
+    exact = shelf_fill._copy_by_barcode(db, "SECONDARY-1")
+    shelf_fill._place_exact_copy(db, exact, second)
+
+    moved = db.execute(
+        "SELECT location_id, position_order FROM item_copies WHERE id = ?", (secondary_id,)
+    ).fetchone()
+    assert moved["location_id"] == second
+    assert moved["position_order"] is None
+
+
+def test_append_copy_position_skips_a_copy_that_has_since_moved(db):
+    """The `AND location_id = ?` guard inside the append's own UPDATE (G18):
+    if the copy is no longer at the location this call believes it placed it
+    on, the position write must be skipped rather than clobbering wherever
+    the copy actually is now."""
+    shelf_a = location_svc.create_location(db, "Shelf A")
+    shelf_b = location_svc.create_location(db, "Shelf B")
+    item_id = _item(db)
+    copy_id = db.execute(
+        "INSERT INTO item_copies (item_id, copy_number, location_id, is_primary) "
+        "VALUES (?, 1, ?, 1)", (item_id, shelf_b),
+    ).lastrowid
+    before = db.execute(
+        "SELECT location_id, position_order FROM item_copies WHERE id = ?", (copy_id,)
+    ).fetchone()
+
+    # A stale call believing the copy is still on shelf_a.
+    result = shelf_fill._append_copy_position(db, copy_id, shelf_a)
+
+    assert result is None
+    after = db.execute(
+        "SELECT location_id, position_order FROM item_copies WHERE id = ?", (copy_id,)
+    ).fetchone()
+    assert tuple(after) == tuple(before)
+
+
 def test_shelf_fill_page_lists_nested_locations(admin_client, db):
     room = location_svc.create_location(db, "Bedroom")
     location_svc.create_location(db, "Bookcase", parent_id=room)

@@ -88,6 +88,13 @@ def _isolated_db(tmp_path, monkeypatch):
     import app.currency as currency_mod
     monkeypatch.setattr(currency_mod, "_cached_currency", None)
 
+    # Reset the item_copies column cache. It holds PRAGMA table_info output,
+    # which is the same for every test database, so nothing leaks today — but
+    # G13's rule is unconditional for a module cache read at request time, and
+    # a schema-by-hand test would otherwise inherit the previous shape.
+    import app.services.item_copies as item_copies_mod
+    item_copies_mod.reset_column_cache()
+
     # Reset the IGDB token cache — otherwise one test's cached OAuth token
     # leaks into the next test's credential pair.
     import app.services.igdb as igdb_mod

@@ -92,8 +92,28 @@ RAW_UPDATE_ALLOWLIST: dict[str, set[str]] = {
 }
 
 
-def _raw_update_hits(path: Path) -> list[tuple[int, str]]:
-    """(line_number, clause_tail) for every `UPDATE items SET` in `path`.
+#: The `item_copies` analogue of RAW_UPDATE_ALLOWLIST — same shape, same
+#: G53 comment-stripping guard below. After T2 moved all six raw write sites
+#: in `app/` onto `item_copies.insert_copy()`/`update_copy()`, no raw
+#: `UPDATE item_copies SET` remains outside `item_copies.py` at all — this
+#: empty dict is the correct and intended state, not an unfinished stub. A
+#: future raw update site earns an entry here only under the same bar
+#: RAW_UPDATE_ALLOWLIST holds for `items`: system-managed, never a
+#: user-typed value, read at its call site with a one-line reason.
+RAW_COPY_UPDATE_ALLOWLIST: dict[str, set[str]] = {}
+
+
+#: The one module allowed to write item_copies rows, as a repository-relative
+#: path. Matched exactly rather than by basename: `path.name` exempts *any*
+#: file called item_copies.py, so a router or service of that name could carry
+#: raw INSERT/UPDATE statements and both guards would wave it through — which
+#: is what M1 was.
+ITEM_COPIES_MODULE = "app/services/item_copies.py"
+
+
+def _raw_update_hits(path: Path, needle: str = "UPDATE items SET",
+                     flags: int = 0) -> list[tuple[int, str]]:
+    """(line_number, clause_tail) for every occurrence of `needle` in `path`.
 
     Comment-only lines are dropped first (G53 — a comment quoting the
     construct must not trip this guard). Double-quote characters — the only
@@ -103,8 +123,10 @@ def _raw_update_hits(path: Path) -> list[tuple[int, str]]:
     `"WHERE id = ?"` on consecutive lines, the way audiobookshelf.py used to
     write its statement) or a triple-quoted multi-line string (the
     migrations in database.py) still reads as one fragment. `line_number` is
-    where the `UPDATE items SET` text itself starts; `clause_tail` is enough
-    of what follows to test allowlist substrings against.
+    where the `needle` text itself starts; `clause_tail` is enough of what
+    follows to test allowlist substrings against. `needle` defaults to the
+    `items` guard's construct; the `item_copies` guard passes
+    `"UPDATE item_copies SET"` instead.
     """
     lines = path.read_text().splitlines()
     buf_parts: list[str] = []
@@ -130,7 +152,7 @@ def _raw_update_hits(path: Path) -> list[tuple[int, str]]:
         return line_no
 
     hits = []
-    for m in re.finditer(re.escape("UPDATE items SET"), buf):
+    for m in re.finditer(re.escape(needle), buf, flags):
         hits.append((_line_for(m.start()), buf[m.end():m.end() + 300]))
     return hits
 
@@ -215,6 +237,109 @@ class TestSingleWritePath:
             "Stale RAW_UPDATE_ALLOWLIST entries (no matching hit found) — "
             "remove them:\n  " + "\n  ".join(stale)
         )
+
+    def test_only_item_copies_module_inserts_copies(self):
+        """The `item_copies` analogue of test_only_item_write_inserts_items.
+
+        `app/database.py` is allowlisted by path rather than by substring —
+        unlike RAW_UPDATE_ALLOWLIST it need not be, since it holds exactly
+        one such statement: migration 26's backfill, which runs before any
+        application code (including this funnel) is importable. See
+        item_copies.py's module docstring."""
+        offenders = []
+        for path in APP_DIR.rglob("*.py"):
+            rel = str(path.relative_to(REPO_ROOT))
+            if rel in (ITEM_COPIES_MODULE, "app/database.py"):
+                continue
+            # Scanned through the same comment-stripped, quote-collapsed buffer
+            # the update guard uses, not line by line: a statement split across
+            # adjacent string literals ("INSERT INTO " "item_copies (...)")
+            # reads as one fragment there and as two harmless lines here. M1.
+            for line_no, _ in _raw_update_hits(path, "INSERT INTO item_copies", re.I):
+                offenders.append(f"{rel}:{line_no}")
+        assert not offenders, (
+            "item_copies rows must be created through "
+            "app.services.item_copies.insert_copy(), not raw SQL:\n  "
+            + "\n  ".join(offenders)
+        )
+
+    def test_only_item_copies_module_updates_copies(self):
+        """The `item_copies` analogue of test_only_item_write_updates_user_fields."""
+        offenders = []
+        for path in APP_DIR.rglob("*.py"):
+            rel = str(path.relative_to(REPO_ROOT))
+            if rel == ITEM_COPIES_MODULE:
+                continue
+            allowed = RAW_COPY_UPDATE_ALLOWLIST.get(rel, set())
+            for line_no, clause in _raw_update_hits(path, "UPDATE item_copies SET"):
+                if not any(sub in clause for sub in allowed):
+                    offenders.append(f"{rel}:{line_no}")
+        assert not offenders, (
+            "Raw `UPDATE item_copies SET` outside item_copies.py must be "
+            "system-managed and listed in RAW_COPY_UPDATE_ALLOWLIST — "
+            "app/services/item_copies.py holds the one write path:\n  "
+            + "\n  ".join(offenders)
+        )
+
+    def test_raw_copy_update_allowlist_has_no_stale_entries(self):
+        """The `item_copies` analogue of
+        test_raw_update_allowlist_has_no_stale_entries.
+
+        Meaningful even though RAW_COPY_UPDATE_ALLOWLIST is currently empty:
+        the loop below still walks every file under `app/` and computes its
+        real hits before comparing, rather than short-circuiting on the dict
+        being empty — so an entry added here later without a matching hit is
+        caught exactly as it would be for RAW_UPDATE_ALLOWLIST."""
+        clauses_by_path: dict[str, list[str]] = {}
+        for path in APP_DIR.rglob("*.py"):
+            rel = str(path.relative_to(REPO_ROOT))
+            if rel == ITEM_COPIES_MODULE:
+                continue
+            hits = _raw_update_hits(path, "UPDATE item_copies SET")
+            if hits:
+                clauses_by_path[rel] = [clause for _, clause in hits]
+
+        stale = []
+        for rel, substrings in RAW_COPY_UPDATE_ALLOWLIST.items():
+            clauses = clauses_by_path.get(rel, [])
+            for sub in substrings:
+                if not any(sub in c for c in clauses):
+                    stale.append(f"{rel}: {sub!r}")
+        assert not stale, (
+            "Stale RAW_COPY_UPDATE_ALLOWLIST entries (no matching hit found) "
+            "— remove them:\n  " + "\n  ".join(stale)
+        )
+
+    def test_the_copy_module_is_exempted_by_path_not_by_basename(self):
+        """M1's first bypass: `path.name == "item_copies.py"` exempted any file
+        of that name anywhere under app/, so a router called item_copies.py
+        could carry raw statements and both guards stayed green."""
+        assert ITEM_COPIES_MODULE == "app/services/item_copies.py"
+        assert (REPO_ROOT / ITEM_COPIES_MODULE).is_file()
+        # The exemption must not match a same-named file in another package.
+        assert "app/routers/item_copies.py" != ITEM_COPIES_MODULE
+
+    def test_insert_detection_sees_adjacent_string_literals(self, tmp_path):
+        """M1's second bypass: the insert guard scanned one physical line at a
+        time, so a statement split across adjacent literals was invisible to it
+        while the update guard's consolidated scanner saw it."""
+        split = tmp_path / "split.py"
+        split.write_text(
+            'db.execute(\n'
+            '    "INSERT INTO "\n'
+            '    "item_copies (item_id, copy_number) VALUES (?, ?)",\n'
+            ')\n'
+        )
+        assert _raw_update_hits(split, "INSERT INTO item_copies", re.I)
+
+        lowered = tmp_path / "lowered.py"
+        lowered.write_text('db.execute("insert into item_copies (item_id) VALUES (?)")\n')
+        assert _raw_update_hits(lowered, "INSERT INTO item_copies", re.I)
+
+        # G53 still holds: a comment quoting the construct is not a write.
+        quoted = tmp_path / "quoted.py"
+        quoted.write_text("# INSERT INTO item_copies is described here, not run\n")
+        assert not _raw_update_hits(quoted, "INSERT INTO item_copies", re.I)
 
 
 class TestInsertItem:

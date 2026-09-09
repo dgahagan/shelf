@@ -121,7 +121,7 @@ key material.
 | **Lend** | Select a borrower, then scan items to check them out |
 | **Return** | Scan items to check them back in |
 | **Move** | Select a target location, then batch-scan items to relocate them |
-| **Inventory** | Select a location, scan everything there, then check for missing items |
+| **Inventory** | Select a location, scan everything there, then check for missing items. Counts physical copies, so a book with copies in two rooms is expected in both; a scan that cannot say *which* copy reports instead of moving one |
 | **Lookup** | Scan to check if an item is in your collection — no changes made |
 | **Quick Rate** | Scan to mark items as read/completed |
 
@@ -148,7 +148,7 @@ key material.
 - Bulk editing — select items in Browse to move them, change type or reading status, or set and clear series in one go
 - Valuation report — location-grouped, print-ready collection value report for insurance (via ISBNdb)
 - Display currency — 20 currencies for every value surface (formatting, not conversion)
-- CSV import/export, plus a portable archive — export the whole collection as one zip **including cover art** and merge it into any Shelf instance without refetching a cover
+- CSV import/export, plus a portable archive — export the whole collection as one zip **including physical copies and cover art** and merge it into any Shelf instance without refetching a cover
 
 ### Multi-User
 - **Admin** — full control: settings, users, locations, sync, bulk ops, logs

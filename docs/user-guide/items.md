@@ -48,7 +48,11 @@ its home.
   appears on books, kids' books, audiobooks, ebooks and comics — discs and
   games don't carry one.
 - **Location** and **owned / wishlist** flag. Locations can be nested, and an
-  item shows the full path — see [Locations](locations.md).
+  item shows the full path — see [Locations](locations.md). An item with more
+  than one physical copy shows a **Copies** list instead of the single Location
+  line: one row per copy with its location, its position on that shelf, and
+  whatever condition, acquisition and provenance detail that copy carries. One
+  copy still shows the single line.
 - **Tags** — add or remove chips inline.
 - **Loan state** — who has it and since when, with check-in right there.
 - **Value** — ISBNdb list price if valued, or a manual value you enter.
@@ -141,6 +145,11 @@ Bulk **Merge** copies the fields the kept record lacks from the others
 before removing them. A merge that would copy an invalid ISBN is refused and
 both records are left in place. The message names the record it stopped on,
 by title and id, so a merge of several records tells you which one to fix.
+
+Merging two records that were filed in **different** places keeps both physical
+copies, in both places — the kept record then shows a Copies list naming each
+room, and each room's inventory audit expects it. That is the point of merging
+duplicate records rather than deleting one: you had two books, and you still do.
 
 ## Deleting
 

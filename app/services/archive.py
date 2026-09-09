@@ -28,6 +28,7 @@ from pathlib import Path
 
 from app import config
 from app.services import isbn as isbn_svc
+from app.services import item_copies
 from app.services.covers import MAX_COVER_SIZE, MIN_COVER_SIZE, _looks_like_image
 from app.services.item_write import insert_item, update_item_fields
 
@@ -79,6 +80,218 @@ def _tags_by_item(db) -> dict[int, list[str]]:
     return out
 
 
+# Fields carried for each item_copies row in library.json — exactly these,
+# no more. id, item_id and location_id are internal/real-database and are
+# deliberately not exported; "location" is the resolved name instead, the
+# same denormalised-full-path convention as the item-level "location" key.
+_COPY_FIELDS = (
+    "copy_number", "location", "is_primary", "position_order", "condition",
+    "acquired_date", "acquisition_source", "acquisition_price",
+    "provenance", "notes", "copy_barcode",
+)
+#: The subset of _COPY_FIELDS that reaches `.strip()` or a TEXT column. Checked
+#: before the first write, because the import cannot roll one back — see
+#: _validated_copies.
+_COPY_TEXT_FIELDS = (
+    "location", "condition", "acquired_date", "acquisition_source",
+    "provenance", "notes", "copy_barcode",
+)
+
+
+def _copies_by_item(db) -> dict[int, list[dict]]:
+    """Map real item id -> list of copy dicts, in copy_number/id order —
+    one grouped query for the whole export, mirroring `_tags_by_item` so
+    `_build_items` stays free of an N+1 over item_copies."""
+    rows = db.execute(
+        "SELECT item_copies.item_id AS item_id, "
+        "item_copies.copy_number AS copy_number, "
+        "locations.name AS location, "
+        "item_copies.is_primary AS is_primary, "
+        "item_copies.position_order AS position_order, "
+        "item_copies.condition AS condition, "
+        "item_copies.acquired_date AS acquired_date, "
+        "item_copies.acquisition_source AS acquisition_source, "
+        "item_copies.acquisition_price AS acquisition_price, "
+        "item_copies.provenance AS provenance, "
+        "item_copies.notes AS notes, "
+        "item_copies.copy_barcode AS copy_barcode "
+        "FROM item_copies LEFT JOIN locations "
+        "ON locations.id = item_copies.location_id "
+        "ORDER BY item_copies.item_id, item_copies.copy_number, item_copies.id"
+    ).fetchall()
+    out: dict[int, list[dict]] = {}
+    for r in rows:
+        copy = {field: r[field] for field in _COPY_FIELDS}
+        out.setdefault(r["item_id"], []).append(copy)
+    return out
+
+
+
+def _validated_copies(item: dict) -> list[dict] | None:
+    """Return the item's `copies` array, checked against every constraint the
+    table carries, or raise `ValueError` naming the first violation.
+
+    **`None` and `[]` are different answers.** `None` means the key was absent
+    (or JSON null) — every archive taken before 0.38.0 — and the caller keeps
+    the legacy one-copy-from-`location` behaviour. `[]` means the archive said,
+    explicitly, that this item has no physical copies, which is a real state
+    for a located wishlist item (G86) and must survive its own round trip.
+    Collapsing the two is what B3 was.
+
+    **Validation happens before a single row is written, and that is the
+    point.** `apply_plan` catches a per-item exception into `errors` and then
+    returns normally, so `get_db()` commits everything written before the
+    raise. A violation discovered on the second of two copies would otherwise
+    leave the item, its tags, its first copy and any location the item alone
+    created committed, while the report tells the user that item failed. An
+    archive is untrusted input; it must not be able to raise `IntegrityError`
+    out of an import, and it must not be able to half-import an item either.
+
+    The constraints, all from `SCHEMA` in app/database.py:
+      - `UNIQUE(item_id, copy_number)` — integer, unique within the item
+      - `CHECK(acquisition_price IS NULL OR acquisition_price >= 0)`
+      - `CHECK(is_primary IN (0, 1))`
+      - `copy_barcode UNIQUE` collection-wide — *not* checked here: a
+        collision with a row this import did not write is salvageable by
+        dropping the barcode, which the caller does, and reporting it.
+
+    Type-checking the text columns is part of that same guarantee, not
+    housekeeping. `location` reaches `.strip()` in the location resolver and
+    `copy_barcode` reaches it here, both *after* the item and its primary copy
+    are already written — so a `{"location": {}}` used to raise
+    `AttributeError` out of the middle of an import and leave an item, a copy
+    and a location committed while the report said nothing was imported. That
+    is exactly what this branch's own G85 forbids. B4.
+
+    Returns the entries sorted by `copy_number`. `is_primary` is normalised to
+    the first copy only when the array does not already carry exactly one — an
+    array with no primary, or with several, is repaired rather than refused,
+    since the partial unique index `idx_item_copies_one_primary` would
+    otherwise raise and a malformed flag is not worth losing an item over. A
+    *valid* non-first primary is preserved as given: rewriting it moved the
+    physical primary away from the location `items.location_id` still named,
+    which is the reader disagreement #116 exists to remove. B2.
+    """
+    if "copies" not in item:
+        return None
+    raw = item["copies"]
+    if raw is None:
+        return None
+    if not isinstance(raw, list):
+        raise ValueError("`copies` is not a list")
+
+    out: list[dict] = []
+    seen: set[int] = set()
+    for entry in raw:
+        if not isinstance(entry, dict):
+            raise ValueError("`copies` contains a non-object entry")
+        number = entry.get("copy_number")
+        if isinstance(number, bool) or not isinstance(number, int):
+            raise ValueError(f"copy_number {number!r} is not an integer")
+        if number in seen:
+            raise ValueError(f"duplicate copy_number {number}")
+        seen.add(number)
+
+        price = entry.get("acquisition_price")
+        if price is not None:
+            if isinstance(price, bool) or not isinstance(price, (int, float)):
+                raise ValueError(f"acquisition_price {price!r} is not a number")
+            if price < 0:
+                raise ValueError(f"acquisition_price {price!r} is negative")
+
+        position = entry.get("position_order")
+        if position is not None and (
+            isinstance(position, bool) or not isinstance(position, int)
+        ):
+            raise ValueError(f"position_order {position!r} is not an integer")
+
+        for field in _COPY_TEXT_FIELDS:
+            value = entry.get(field)
+            if value is not None and not isinstance(value, str):
+                raise ValueError(f"{field} {value!r} is not a string")
+
+        copy = {field: entry.get(field) for field in _COPY_FIELDS}
+        copy["copy_number"] = number
+        copy["acquisition_price"] = price
+        copy["is_primary"] = 1 if entry.get("is_primary") else 0
+        out.append(copy)
+
+    out.sort(key=lambda c: c["copy_number"])
+    if sum(c["is_primary"] for c in out) != 1:
+        for index, copy in enumerate(out):
+            copy["is_primary"] = 1 if index == 0 else 0
+    return out
+
+
+def _import_copies(db, real_id: int, copies: list[dict] | None, get_location_id,
+                   errors: list[str], archive_id, title: str) -> None:
+    """Write a validated `copies` array onto a freshly created item.
+
+    `insert_item` has already created a primary copy from the item's own
+    `location` (via `sync_primary_location`), so the array's primary
+    *reconciles* that row rather than inserting a second one — the partial
+    unique index `idx_item_copies_one_primary` would raise.
+
+    `None` (no `copies` key) leaves that placeholder alone, which is the
+    pre-0.38.0 behaviour. An explicit `[]` deletes it: the archive said this
+    located item has no physical copies, and keeping a copy the archive did not
+    describe would break the round trip. `items.location_id` is deliberately
+    left set — a located zero-copy item is the state G86 names. B3.
+
+    A `copy_barcode` already used by another item is dropped and reported:
+    the column is UNIQUE collection-wide, and losing a barcode is a far
+    smaller loss than losing the copy.
+    """
+    if copies is None:
+        return
+    if not copies:
+        item_copies.delete_copies_for_item(db, real_id)
+        return
+
+    existing_primary = db.execute(
+        "SELECT id FROM item_copies WHERE item_id = ? AND is_primary = 1",
+        (real_id,),
+    ).fetchone()
+
+    # Primary first, because UNIQUE(item_id, copy_number) makes the order
+    # load-bearing: the placeholder row still holds copy_number 1, so an
+    # archive whose primary is copy 2 would collide when copy 1 inserted ahead
+    # of the reconciliation. Reconciling first frees the number. B2.
+    for copy in sorted(copies, key=lambda c: (not c["is_primary"], c["copy_number"])):
+        fields = {
+            "copy_number": copy["copy_number"],
+            "location_id": get_location_id(copy.get("location")),
+            "is_primary": copy["is_primary"],
+        }
+        for column in ("position_order", "condition", "acquired_date",
+                       "acquisition_source", "acquisition_price",
+                       "provenance", "notes"):
+            fields[column] = copy.get(column)
+
+        barcode = (copy.get("copy_barcode") or "").strip() or None
+        if barcode:
+            clash = db.execute(
+                "SELECT item_id FROM item_copies WHERE copy_barcode = ?",
+                (barcode,),
+            ).fetchone()
+            if clash:
+                errors.append(
+                    f"Archive item {archive_id} ({title!r}): copy "
+                    f"{copy['copy_number']} imported without barcode "
+                    f"{barcode!r} — already used by item {clash['item_id']}"
+                )
+                barcode = None
+        fields["copy_barcode"] = barcode
+
+        if copy["is_primary"] and existing_primary:
+            # `position_order` is passed explicitly, so update_copy's
+            # location-change clearing rule does not fire and the archived
+            # shelf position survives the reconciliation.
+            item_copies.update_copy(db, existing_primary["id"], fields)
+        else:
+            item_copies.insert_copy(db, {"item_id": real_id, **fields})
+
+
 def _build_items(db) -> tuple[list[dict], dict[int, int], list[tuple[str, Path]]]:
     """Assemble the items array plus the real->archive id map and the list
     of (zip arcname, source path) cover files to copy in.
@@ -93,6 +306,7 @@ def _build_items(db) -> tuple[list[dict], dict[int, int], list[tuple[str, Path]]
         "ORDER BY items.id"
     ).fetchall()
     tags_map = _tags_by_item(db)
+    copies_map = _copies_by_item(db)
 
     id_map: dict[int, int] = {}
     items: list[dict] = []
@@ -107,6 +321,7 @@ def _build_items(db) -> tuple[list[dict], dict[int, int], list[tuple[str, Path]]
             obj[col] = row[col]
         obj["location"] = row["location_name"]
         obj["tags"] = tags_map.get(real_id, [])
+        obj["copies"] = copies_map.get(real_id, [])
 
         if row["cover_path"]:
             src = config.COVERS_DIR / f"{real_id}.jpg"
@@ -570,13 +785,29 @@ def _merge_series(db, series_list: list[dict]) -> None:
         )
 
 
-def _apply_item_update(db, item_id: int, item: dict, loc_id: int | None) -> None:
+def _apply_item_update(db, item_id: int, item: dict, loc_name: str | None,
+                       get_location_id) -> None:
     """Refresh an existing item's metadata columns from an archive item,
     mirroring _update_from_csv_row's only-overwrite-with-a-nonempty-value
     discipline (app/routers/items.py), extended to the archive's wider
     column set. created_at is never touched here; updated_at always stamps
     to now, even when nothing else changed (update_item_fields does that
-    with an empty `updates` dict — a bare touch)."""
+    with an empty `updates` dict — a bare touch).
+
+    **`location_id` obeys that same discipline, which it did not before.**
+    `update_item_fields` routes a location change into
+    `sync_primary_location`, so overwriting it dragged the matched item's real
+    primary copy to the archive's shelf on every re-import — a silent
+    relocation of a physical object (B1). A located item therefore keeps the
+    location it has, exactly as it keeps a non-empty `notes`. An item with no
+    location at all is still filled in: that is enrichment, not relocation,
+    and it is the only-overwrite-an-empty-value rule applied rather than
+    broken.
+
+    The archive's location is resolved *lazily* for the same reason. Calling
+    `get_location_id` unconditionally created the archive's location as a side
+    effect of an update that was never going to use it.
+    """
     updates: dict[str, object] = {}
     for col in _ITEM_COLUMNS:
         if col in ("created_at", "updated_at"):
@@ -586,8 +817,14 @@ def _apply_item_update(db, item_id: int, item: dict, loc_id: int | None) -> None
             val = val.strip()
         if _present(val):
             updates[col] = val
-    if loc_id is not None:
-        updates["location_id"] = loc_id
+
+    if (loc_name or "").strip():
+        current = db.execute(
+            "SELECT location_id FROM items WHERE id = ?", (item_id,)
+        ).fetchone()
+        if current is not None and current["location_id"] is None:
+            updates["location_id"] = get_location_id(loc_name)
+
     update_item_fields(db, item_id, updates)
 
 
@@ -1071,8 +1308,11 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
             if existing:
                 real_id = existing["id"]
 
-                loc_id = get_location_id(loc_name) if (loc_name or "").strip() else None
-                _apply_item_update(db, real_id, item_norm, loc_id)
+                # The location is passed by name, not pre-resolved: a matched
+                # item that already has one keeps it, and the archive's is not
+                # created as a side effect of ignoring it. B1.
+                _apply_item_update(db, real_id, item_norm, loc_name,
+                                   get_location_id)
                 for tag_name in item.get("tags") or []:
                     tag_id = get_tag_id(tag_name)
                     if tag_id:
@@ -1105,6 +1345,20 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                         else:
                             covers_installed += 1
             else:
+                # Validated before *anything* is written for this item —
+                # before the location get-or-create, before insert_item,
+                # before the tags. `apply_plan` catches a per-item exception
+                # into `errors` and then returns normally, at which point
+                # `get_db()` commits, so a violation found after the first
+                # write would leave a half-imported item behind while the
+                # report says that item failed.
+                #
+                # A *matched* item is deliberately not validated: it keeps its
+                # local copies, never reads this array, and refusing it over a
+                # field it will not use would throw away a metadata update for
+                # nothing.
+                planned_copies = _validated_copies(item)
+
                 loc_id = get_location_id(loc_name)
                 created_at = item_norm.get("created_at")
                 if not _present(created_at):
@@ -1132,6 +1386,13 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                             "INSERT INTO item_tags (item_id, tag_id) VALUES (?, ?)",
                             (real_id, tag_id),
                         )
+                # An archive with no `copies` key at all — every archive taken
+                # before 0.38.0 — leaves this a no-op and imports exactly as
+                # it did then: one primary copy from `location`, created by
+                # insert_item. The branch is reached by absence, never by an
+                # empty list.
+                _import_copies(db, real_id, planned_copies, get_location_id,
+                               errors, archive_id, title)
                 imported += 1
 
                 if has_cover_entry:

@@ -125,6 +125,56 @@ def test_item_detail_page_loads(live_server, authed_page):
     expect(authed_page.locator("body")).to_contain_text("Tolkien")
 
 
+def test_two_copies_in_two_locations_show_both_in_the_copies_block(
+    live_server, authed_page
+):
+    """#116 T10: an item with two copies in two locations renders the
+    `Copies` block (not the single-copy `Location:` line) and names both
+    locations — the design plan's own multi-copy contract for
+    fragments/item_copies.html."""
+    from app.services.item_copies import insert_copy
+
+    data_dir = live_server["data_dir"]
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        office = conn.execute(
+            "INSERT INTO locations (name) VALUES ('Copies Block Office')"
+        ).lastrowid
+        loft = conn.execute(
+            "INSERT INTO locations (name) VALUES ('Copies Block Loft')"
+        ).lastrowid
+        conn.commit()
+    finally:
+        conn.close()
+
+    item_id = insert_item(
+        data_dir, title="Two Copy Book", media_type="book",
+        isbn="9780000116000", location_id=office,
+    )
+
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        insert_copy(conn, {"item_id": item_id, "copy_number": 1,
+                            "location_id": office, "is_primary": 1})
+        insert_copy(conn, {"item_id": item_id, "copy_number": 2,
+                            "location_id": loft, "is_primary": 0})
+        conn.commit()
+    finally:
+        conn.close()
+
+    authed_page.goto(f"{live_server['url']}/item/{item_id}")
+    authed_page.wait_for_load_state("networkidle")
+
+    copies_block = authed_page.locator("#item-copies")
+    expect(copies_block).to_contain_text("Copies")
+    expect(copies_block).to_contain_text("Copies Block Office")
+    expect(copies_block).to_contain_text("Copies Block Loft")
+    # The single-copy `Location:` line is a different rendering arm — its
+    # presence here would mean the block collapsed to one row instead of
+    # listing both.
+    expect(copies_block).not_to_contain_text("Location:")
+
+
 def test_item_edit_page_loads(live_server, authed_page):
     """The edit page renders with a form pre-populated with item data."""
     item_id = insert_item(

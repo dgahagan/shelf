@@ -18,8 +18,12 @@
 // form and rendered a blank pill. Nothing here matches a class any more.
 //
 // Keep the status lists below in step with the badge's class ternary at the
-// foot of fragments/scan_result.html — that template and this table are the
-// two halves of one contract.
+// foot of fragments/scan_result.html — and with two more consumers that
+// classify the same status: the camera overlay's :class ternary in
+// scan.html, and the persisted history row in fragments/recent_scans.html.
+// All four are halves of one contract, and three of them treat an unlisted
+// status as an ERROR, so a status added here and nowhere else renders a
+// successful scan in red (issue #116).
 var SCAN_OK_STATUSES = [
     'added', 'wishlisted', 'returned', 'confirmed', 'marked_read',
     'checked_out', 'moved', 'found', 'relocated'
@@ -27,6 +31,10 @@ var SCAN_OK_STATUSES = [
 var SCAN_WARN_STATUSES = [
     'duplicate', 'already_checked_out', 'not_checked_out', 'legacy_ambiguous'
 ];
+// Neither success nor failure: the scan worked and the answer is a report.
+// 'elsewhere' is Inventory mode declining to guess which of several copies
+// the barcode named, which is the correct outcome, not a warning.
+var SCAN_INFO_STATUSES = ['elsewhere'];
 
 function scanCardOutcome(root) {
     if (!root) return null;
@@ -40,6 +48,7 @@ function scanCardOutcome(root) {
         status: status,
         ok: SCAN_OK_STATUSES.indexOf(status) !== -1,
         warn: SCAN_WARN_STATUSES.indexOf(status) !== -1,
+        info: SCAN_INFO_STATUSES.indexOf(status) !== -1,
         label: badgeEl ? badgeEl.textContent.trim() : '',
         title: titleEl ? titleEl.textContent.trim() : null,
         authors: authorsEl ? authorsEl.textContent.trim() : null,
@@ -70,14 +79,19 @@ function scanCardToast(root) {
         if (outcome.detail) text += ' — ' + outcome.detail;
     }
     // A card is a failure when its own status says so — not when some element
-    // inside it happens to be styled with a warning colour.
-    return {text: text, type: outcome.ok ? 'success' : 'warning'};
+    // inside it happens to be styled with a warning colour. 'info' is the
+    // third answer: the scan worked and reported something, so styling it as
+    // a warning would be as wrong as styling it as an error.
+    var type = 'warning';
+    if (outcome.ok) type = 'success';
+    else if (outcome.info) type = 'info';
+    return {text: text, type: type};
 }
 
 // --- Toast notifications ---
 function showToast(message, type) {
     var container = document.getElementById('toast-container');
-    var colors = {success: 'bg-shelf-success', error: 'bg-shelf-error', warning: 'bg-shelf-warning'};
+    var colors = {success: 'bg-shelf-success', error: 'bg-shelf-error', warning: 'bg-shelf-warning', info: 'bg-shelf-accent'};
     var el = document.createElement('div');
     el.className = (colors[type] || 'bg-shelf-accent') + ' text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300';
     // Structural, not belt-and-braces: makes a pill with nothing in it impossible from any caller.

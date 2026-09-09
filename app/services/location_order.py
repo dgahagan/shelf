@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from app.services import item_copies
+
 
 def _table_exists(db, name: str) -> bool:
     return db.execute(
@@ -80,10 +82,9 @@ def apply_copy_order(db, location_id: int, copy_ids: list[int]) -> None:
     if len(copy_ids) != len(supplied) or supplied != existing:
         raise ValueError("Copy order must contain every copy in this location exactly once")
     for position, copy_id in enumerate(copy_ids, start=1):
-        db.execute(
-            "UPDATE item_copies SET position_order = ?, updated_at = datetime('now') "
-            "WHERE id = ? AND location_id = ?",
-            (position, copy_id, location_id),
+        item_copies.update_copy(
+            db, copy_id, {"position_order": position},
+            expect_location_id=location_id,
         )
 
 

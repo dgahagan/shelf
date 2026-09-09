@@ -26,6 +26,26 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.38.0
+
+No migration runs and no data changes. What changes is what Shelf *shows* you,
+and two of those will look different on a collection that has ever merged two
+owned records:
+
+- **An item with more than one physical copy now lists all of them** on its
+  page, in place of the single **Location** line. An item with one copy is
+  unchanged.
+- **A shelf audit expects an item wherever any of its copies is.** A room
+  holding a non-primary copy used to report clean; it will now list that copy
+  as missing until you scan it. That is the correct answer — the copy really is
+  in that room — but the first audit you run after upgrading can show items you
+  are not used to seeing.
+
+Scanning an item at a shelf where none of its copies live no longer relocates a
+copy onto that shelf: it reports where the copies actually are and changes
+nothing. Single-copy items still relocate on a scan, exactly as before. See
+[Scanning](user-guide/scanning.md#auditing-a-shelf-with-more-than-one-copy).
+
 ### After upgrading to 0.36.0
 
 Six migrations run, and one of them **writes rows**. Every item that is marked
@@ -33,10 +53,10 @@ owned **and** already has a location gets one primary physical-copy record
 created for it, holding that location. Items with no location get nothing — the
 backfill deliberately does not treat *owned* on its own as proof that something
 is a physical object, because on a collection with many unplaced rows that
-would manufacture a copy for each of them. Nothing in the interface looks
-different: there is no per-copy screen yet, and an item's own **Location**
-field keeps working as before and now moves that item's primary copy with it.
-See [Physical copies](item-copies.md).
+would manufacture a copy for each of them. At 0.36.0 nothing in the interface
+looked different — an item's own **Location** field kept working as before and
+now moved that item's primary copy with it. Copies became visible in 0.38.0;
+see the note below, and [Physical copies](item-copies.md).
 
 Your existing locations become top-level nodes of the new location tree, with
 their names unchanged. You can now nest them — see
@@ -144,7 +164,8 @@ credentials, but **no covers**.
 ### 3. Portable archive
 
 Settings → Data → **Portable archive** exports a zip with items, tags,
-locations, series, reading log, checkouts **and cover images** — and no
+locations, series, reading log, checkouts, physical copies **and cover
+images** — and no
 credentials, users or instance-specific data. It is the safe way to move to
 a new server or hand your library to someone else, and it imports with a
 preview step that shows what's new, what's already there and how duplicates

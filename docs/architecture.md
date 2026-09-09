@@ -66,18 +66,38 @@ object rather than to the edition: `condition`, `acquired_date`,
 `copy_barcode` (unique across the collection) and its own `location_id`
 (`ON DELETE SET NULL`). `(item_id, copy_number)` is unique and a partial
 unique index allows at most one `is_primary = 1` row per item; deleting an item
-cascades to its copies. **`items.location_id` is the compatibility seam** and
-remains the only location surface in the UI: `item_write.py` mirrors a written
-`location_id` into that item's primary copy (creating it if needed), a null
-never invents a copy, and secondary copies are never moved by the legacy field
-— see `app/services/item_copies.py` and `docs/item-copies.md`. The upgrade
-backfill creates a primary copy only for an item that is *both* owned and
-already located; `owned` alone is not treated as evidence that a row is
-physical.
+cascades to its copies. **`items.location_id` is the compatibility seam**:
+`item_write.py` mirrors a written `location_id` into that item's primary copy
+(creating it if needed), a null never invents a copy, and secondary copies are
+never moved by the legacy field — see `app/services/item_copies.py` and
+`docs/item-copies.md`. The upgrade backfill creates a primary
+copy only for an item that is *both* owned and already located; `owned` alone
+is not treated as evidence that a row is physical.
+
+**The seam is no longer the whole story in the UI.** Since 0.38.0 (issue #116)
+the item page, the shelf audit (`/api/inventory/missing`), Scan's Inventory and
+Lookup modes, and the portable archive all read `item_copies` directly, because
+a merged item legitimately has copies in two rooms and the seam names only one.
+Where an item has no copy rows at all — the conservative backfill leaves
+wishlist rows without one — those readers fall back to the seam, which is then
+the only answer there is. Browse, Scan's Move mode, the valuation report and
+the Stats dashboard still group by the seam, deliberately: per-copy totals would
+change the numbers on an insurance report, which is its own decision.
+
+**`item_copies` has a write funnel.** `insert_copy` and `update_copy` in
+`app/services/item_copies.py` are the only way a row reaches the table, exactly
+as `item_write.py` is for `items`: column names are validated against
+`PRAGMA table_info`, so an unknown column raises instead of being dropped, and
+a location change clears the copy's location-scoped `position_order` unless the
+caller sets one explicitly. `tests/test_item_write.py` enforces the funnel by
+scanning `app/` for raw statements. Two set-based `INSERT ... SELECT` backfills
+stay raw and are allowlisted by path — migration 26's, which runs before any
+application code is importable, and `backfill_legacy_locations`.
 
 **A copy also carries its place on the shelf.** `item_copies.position_order`
 (migration 31) is the copy's rank within its location, and
-`services/location_order.py` is the only reader and writer of it: `direct_copies`
+it is read and written through the copy write funnel, and
+`services/location_order.py` holds the ordering logic: `direct_copies`
 orders NULLs last so a location that has never been arranged still lists
 sensibly, `apply_copy_order` writes an explicit drag order, and
 `auto_order_copies` fills it from one of the five keys in `_SORT_KEYS` — title,

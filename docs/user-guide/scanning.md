@@ -28,11 +28,32 @@ The mode is sticky — set it once and scan a pile.
 | **Lend** | Pick a borrower first; each scan checks that item out to them. Optional due date |
 | **Return** | Each scan checks the item back in, whoever had it |
 | **Move** | Pick a location first; each scan relocates the item there. To work along a shelf putting things away in order, use [Shelf Fill](shelf-fill.md) instead — it keeps the shelf selected and numbers each scan's position |
-| **Inventory** | Pick a location; scan everything physically present; then **Check for missing** lists items Shelf thinks are there but you didn't scan |
+| **Inventory** | Pick a location; scan everything physically present; then **Check for missing** lists items Shelf thinks are there but you didn't scan. Counts *copies*, not records — see [Auditing a shelf with more than one copy](#auditing-a-shelf-with-more-than-one-copy) |
 | **Lookup** | Read-only: tells you whether the item is in your library (and where, and whether it's lent out). Changes nothing |
 | **Quick Rate** | Marks the item as read / finished with today's date |
 
 The Scan tab is for editors and admins; viewers don't see it.
+
+### Auditing a shelf with more than one copy
+
+A book can exist as two physical objects — you bought a second, or you merged
+two duplicate records that were filed in different rooms. Shelf tracks those
+separately, and both Inventory and the audit count them:
+
+- **The audit expects an item on a shelf if any of its copies is there**, not
+  only the one Shelf considers primary. A copy in the Loft is expected in the
+  Loft even though the record also has a copy in the Office.
+- **Two copies of one book on the same shelf are one line with a count**
+  ("(2 copies)"). A barcode cannot tell two identical books apart, so neither
+  can the audit — scanning either one marks the book accounted for.
+- **Scanning a multi-copy book at a shelf where none of its copies live
+  reports rather than moves.** You get "Copies at Office and Loft; none here."
+  and nothing is changed. The barcode says *which book*, never *which copy*, so
+  guessing would silently move a copy out of the room it is actually in.
+
+A book with only one copy still relocates on a scan, as it always has — there
+is only one object the scan can mean. **Lookup** mode names every room a copy
+is in, for the same reason.
 
 ## Title search (no barcode)
 

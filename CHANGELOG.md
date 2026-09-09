@@ -6,6 +6,63 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.38.0] - 2026-09-08
+
+Merging two owned records that were filed in different rooms has always kept
+both physical copies. Only the first room was ever visible. The item page named
+one location, the shelf audit called the second copy's room clean, the portable
+archive exported a single copy — and Scan's Inventory mode did something worse:
+scanning the second copy where it actually sat *moved the first one there*,
+quietly undoing the arrangement the merge had preserved. Every part of Shelf
+that answers "where is this item?" now counts copies
+([#116](https://github.com/dgahagan/shelf/issues/116)).
+
+### Added
+
+- **The item page lists every physical copy**, each with its location and its
+  position on that shelf. An item with a single copy is unchanged — it shows
+  the one `Location:` line it always did, including for older items that
+  pre-date copies entirely.
+- **The portable archive carries physical copies.** Export writes every copy
+  with its location, shelf position and acquisition details, and import
+  restores them exactly. Archives written before this release still import the
+  way they always have. Each item is now checked before any part of it is
+  written, so a damaged entry is reported by name and skipped whole instead of
+  leaving a half-written item, copy and location behind. The rest of the
+  archive imports as it always did.
+
+### Changed
+
+- **Scan's Inventory mode reports instead of moving when it cannot tell which
+  copy you scanned.** Auditing a shelf and scanning an item that has copies
+  elsewhere but none here now answers "Copies at Office and Loft; none here."
+  instead of relocating a copy onto the shelf in front of you. **A single-copy
+  item still relocates, exactly as before** — that is the common case and it is
+  untouched. Only multi-copy items behave differently, and for them the old
+  behaviour was destroying the record of where things are.
+- **The shelf audit expects an item wherever any of its copies is**, primary or
+  not, and shows a count when two copies share one shelf. A room holding a
+  non-primary copy used to report clean while that copy sat there unaccounted
+  for, so audit results for merged items will look different — and correct —
+  the first time you run one after upgrading.
+
+### Fixed
+
+- **Scan's Lookup mode names every room a copy is in**, rather than only one.
+- **Re-importing an archive no longer moves an item you already have.**
+  Importing over a matching existing item used to overwrite that item's
+  location from the archive; it now leaves the item's own copies alone. This
+  bug pre-dates copies and affected plain re-imports too.
+- **A location change can no longer leave a stale shelf position behind on a
+  moved copy.** Every write to a physical copy now goes through a single
+  funnel, the same way writes to catalogue items already did.
+
+**Copies are still only created by merging two records, or by importing an
+archive that contains them.** There is deliberately no "add a copy" button yet:
+until Shelf can tell you where each copy came from, a hand-made copy would be a
+row with no history, and the merge case is the one that was actively losing
+data.
+
 ## [0.37.2] - 2026-09-08
 
 Shelf Fill has always numbered the items you scan onto a shelf, and never told
@@ -3183,6 +3240,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.38.0]: https://github.com/dgahagan/shelf/releases/tag/v0.38.0
 [0.37.2]: https://github.com/dgahagan/shelf/releases/tag/v0.37.2
 [0.37.1]: https://github.com/dgahagan/shelf/releases/tag/v0.37.1
 [0.37.0]: https://github.com/dgahagan/shelf/releases/tag/v0.37.0

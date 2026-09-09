@@ -66,6 +66,7 @@
                         <span class="text-xs px-3 py-1 rounded-full inline-block mb-4"
                               :class="scanResult.ok ? 'bg-shelf-success/30 text-shelf-success' :
                                       scanResult.warn ? 'bg-shelf-warning/30 text-shelf-warning' :
+                                      scanResult.info ? 'bg-blue-500/30 text-blue-400' :
                                       'bg-shelf-error/30 text-shelf-error'"
                               x-text="scanResult.label">
                         </span>

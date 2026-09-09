@@ -6,6 +6,9 @@ import pytest
 
 from app.database import get_db
 from app.services import provider_result
+from app.services import item_copies
+from app.services.item_copies import insert_copy
+from app.services.item_write import insert_item
 from tests.conftest import _insert_item, _insert_borrower, _insert_location
 
 
@@ -212,8 +215,242 @@ class TestInventoryMode:
         assert b"Missing" in resp.content
         assert b"1 item" in resp.content
 
+    def test_non_primary_copy_on_shelf_is_recognized(self, admin_client, db):
+        """A merged item's non-primary copy, filed on a different shelf than
+        the primary, is still expected there (issue #116's second contract).
+
+        This is the G31 pin: `main`'s item-level query only ever reads
+        `items.location_id` — the primary's shelf — so it never sees this
+        copy at all and silently reports Shelf A clean. Unscanned, the copy
+        must be flagged missing; scanned, it must clear as present.
+        """
+        shelf_a = _insert_location(db, "Shelf A")
+        shelf_b = _insert_location(db, "Shelf B")
+        item_id = _insert_item(db, title="Merged Item", isbn="9780000000521",
+                               location_id=shelf_b)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": shelf_b, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                         "location_id": shelf_a, "is_primary": 0})
+        db.commit()
+
+        resp = admin_client.post("/api/inventory/missing", data={
+            "location_id": str(shelf_a), "scanned_ids": "",
+        })
+        assert b"Merged Item" in resp.content
+        assert b"1 item" in resp.content
+
+        resp = admin_client.post("/api/inventory/missing", data={
+            "location_id": str(shelf_a), "scanned_ids": str(item_id),
+        })
+        assert b"Merged Item" not in resp.content
+        assert b"accounted for" in resp.content
+
+    def test_the_audit_trusts_the_copy_over_the_legacy_location_field(
+        self, admin_client, db
+    ):
+        """The audit reads `item_copies`, not `items.location_id`. Here the
+        legacy field says Shelf B while the item's one actual copy is on
+        Shelf A, so A expects it and B does not — the reverse of what `main`
+        answers for both shelves."""
+        shelf_a = _insert_location(db, "Shelf A")
+        shelf_b = _insert_location(db, "Shelf B")
+        item_id = _insert_item(db, title="Relocated", isbn="9780000000538",
+                               location_id=shelf_b)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": shelf_a, "is_primary": 1})
+        db.commit()
+
+        at_a = admin_client.post("/api/inventory/missing", data={
+            "location_id": str(shelf_a), "scanned_ids": "",
+        })
+        assert b"Relocated" in at_a.content
+        assert b"1 item" in at_a.content
+
+        # The half `main` gets wrong in the other direction: the seam still
+        # names Shelf B, but no copy is there, so B must report itself clean.
+        at_b = admin_client.post("/api/inventory/missing", data={
+            "location_id": str(shelf_b), "scanned_ids": "",
+        })
+        assert b"Relocated" not in at_b.content
+        assert b"accounted for" in at_b.content
+
+    def test_two_copies_on_one_shelf_collapse_to_one_line_with_count(self, admin_client, db):
+        """Two copies of one item on the same shelf are one line with a
+        count — an ISBN scan cannot tell them apart, so the audit can't
+        either."""
+        shelf_a = _insert_location(db, "Shelf A")
+        item_id = _insert_item(db, title="Twinned", isbn="9780000000545",
+                               location_id=shelf_a)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": shelf_a, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                         "location_id": shelf_a, "is_primary": 0})
+        db.commit()
+
+        resp = admin_client.post("/api/inventory/missing", data={
+            "location_id": str(shelf_a), "scanned_ids": "",
+        })
+        assert resp.content.count(b"Twinned") == 1
+        assert b"(2 copies)" in resp.content
+        assert b"1 item" in resp.content
+
+    def test_inventory_missing_all_accounted_for(self, admin_client, db):
+        shelf_a = _insert_location(db, "Shelf A")
+        item_id = _insert_item(db, title="Found Copy", isbn="9780000000552",
+                               location_id=shelf_a)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": shelf_a, "is_primary": 1})
+        db.commit()
+
+        resp = admin_client.post("/api/inventory/missing", data={
+            "location_id": str(shelf_a), "scanned_ids": str(item_id),
+        })
+        assert resp.status_code == 200
+        assert b"accounted for" in resp.content
+        assert b"Found Copy" not in resp.content
+
+    def test_a_multi_copy_item_reports_rather_than_moving(self, admin_client, db):
+        """#116's destructive half. An ISBN does not say which copy is in the
+        user's hand, so scanning a two-copy item at a shelf holding neither
+        must write nothing. `main` relocates the primary, destroying the
+        layout a merge preserved — this is the G31 pin, and it asserts on the
+        database, because the whole defect is a write."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        hall = _insert_location(db, "Hall")
+        item_id = _insert_item(db, title="Merged Copies", isbn="9780000000569",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                         "location_id": loft, "is_primary": 0})
+        db.commit()
+
+        resp = admin_client.post("/api/scan", data={
+            "isbn": "9780000000569", "mode": "inventory", "location_id": str(hall),
+        })
+
+        assert resp.status_code == 200
+        assert b"elsewhere" in resp.content
+        assert b"Copies at Office and Loft; none here." in resp.content
+
+        with get_db() as check:
+            assert check.execute(
+                "SELECT location_id FROM items WHERE id = ?", (item_id,)
+            ).fetchone()["location_id"] == office
+            assert [r["location_id"] for r in check.execute(
+                "SELECT location_id FROM item_copies WHERE item_id = ? "
+                "ORDER BY copy_number", (item_id,)
+            ).fetchall()] == [office, loft]
+
+    def test_the_elsewhere_card_is_informational_not_an_error(self, admin_client, db):
+        """Nothing failed, so the card must carry the message in
+        `data-scan-detail` and wear the neutral badge — not `data-scan-error`
+        and not a warning or error colour (G62: the card's attributes are the
+        toast's only input)."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        hall = _insert_location(db, "Hall")
+        item_id = _insert_item(db, title="Merged Copies", isbn="9780000000576",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                         "location_id": loft, "is_primary": 0})
+        db.commit()
+
+        html = admin_client.post("/api/scan", data={
+            "isbn": "9780000000576", "mode": "inventory", "location_id": str(hall),
+        }).text
+
+        assert 'data-scan-status="elsewhere"' in html
+        assert "data-scan-detail" in html
+        assert "data-scan-error" not in html
+        assert "bg-blue-500/20 text-blue-400" in html
+        assert "bg-shelf-error" not in html
+        assert "bg-shelf-warning" not in html
+        # The glyph and the title link are separate enumerations from the
+        # badge; a status missing from either renders a blank card corner.
+        assert "&check;" in html
+        assert f'href="/item/{item_id}"' in html
+
+    def test_an_item_with_no_copies_is_placed_by_the_scan(self, admin_client, db):
+        """The commonest Inventory case, and the arm a two-way split drops.
+        An item added without a location has no copy rows at all, and walking
+        a shelf to place it is what the mode is chiefly for."""
+        shelf = _insert_location(db, "Shelf A")
+        item_id = insert_item(db, title="Unplaced", isbn="9780000000583",
+                              media_type="book", source="test")
+        db.commit()
+        assert item_copies.copies_for_item(db, item_id) == []
+
+        resp = admin_client.post("/api/scan", data={
+            "isbn": "9780000000583", "mode": "inventory", "location_id": str(shelf),
+        })
+
+        assert resp.status_code == 200
+        assert b"relocated" in resp.content
+        with get_db() as check:
+            assert check.execute(
+                "SELECT location_id FROM items WHERE id = ?", (item_id,)
+            ).fetchone()["location_id"] == shelf
+            rows = check.execute(
+                "SELECT location_id, is_primary FROM item_copies WHERE item_id = ?",
+                (item_id,),
+            ).fetchall()
+        assert [tuple(r) for r in rows] == [(shelf, 1)]
+
+    def test_a_non_primary_copy_at_the_audited_shelf_confirms(self, admin_client, db):
+        """The audit's first contract: a copy here is a copy here, primary or
+        not. `main` compares the seam and would relocate the primary onto this
+        shelf instead."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        item_id = _insert_item(db, title="Second Copy Here", isbn="9780000000590",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                         "location_id": loft, "is_primary": 0})
+        db.commit()
+
+        resp = admin_client.post("/api/scan", data={
+            "isbn": "9780000000590", "mode": "inventory", "location_id": str(loft),
+        })
+
+        assert resp.status_code == 200
+        assert b"confirmed" in resp.content
+        with get_db() as check:
+            assert check.execute(
+                "SELECT location_id FROM items WHERE id = ?", (item_id,)
+            ).fetchone()["location_id"] == office
+
+    def test_more_than_three_copy_locations_are_capped(self, admin_client, db):
+        """A scan card is two lines on a phone. Four places read as three
+        and a remainder; a copy with no location says so rather than being
+        dropped."""
+        names = ["Office", "Loft", "Hall", "Garage"]
+        locs = [_insert_location(db, n) for n in names]
+        item_id = _insert_item(db, title="Everywhere", isbn="9780000000613",
+                               location_id=locs[0])
+        for number, loc in enumerate(locs, start=1):
+            insert_copy(db, {"item_id": item_id, "copy_number": number,
+                             "location_id": loc, "is_primary": 1 if number == 1 else 0})
+        insert_copy(db, {"item_id": item_id, "copy_number": 5})
+        elsewhere = _insert_location(db, "Cellar")
+        db.commit()
+
+        html = admin_client.post("/api/scan", data={
+            "isbn": "9780000000613", "mode": "inventory",
+            "location_id": str(elsewhere),
+        }).text
+
+        assert "Copies at Office, Loft, Hall and 2 more; none here." in html
+
 
 class TestLookupMode:
+
     def test_lookup_found(self, admin_client, db):
         _insert_item(db, title="Found Book", isbn="9780000000606")
         db.commit()
@@ -222,6 +459,64 @@ class TestLookupMode:
         })
         assert resp.status_code == 200
         assert b"found" in resp.content
+
+    def test_lookup_names_every_copy_location(self, admin_client, db):
+        """Lookup is the fourth reader (#116). A two-copy item that reports
+        two rooms on its page must not report one when scanned. `main`
+        answers from `item.location_name`, the seam, and names only Office."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        item_id = _insert_item(db, title="Two Rooms", isbn="9780000000620",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                         "location_id": loft, "is_primary": 0})
+        db.commit()
+
+        html = admin_client.post("/api/scan", data={
+            "isbn": "9780000000620", "mode": "lookup",
+        }).text
+
+        assert "Location: Office and Loft" in html
+
+    def test_lookup_on_an_item_with_no_copies_says_no_location_set(
+        self, admin_client, db
+    ):
+        """The zero-copy answer is unchanged, and is not the empty string."""
+        item_id = insert_item(db, title="Nowhere", isbn="9780000000637",
+                              media_type="book", source="test")
+        db.commit()
+        assert item_copies.copies_for_item(db, item_id) == []
+
+        html = admin_client.post("/api/scan", data={
+            "isbn": "9780000000637", "mode": "lookup",
+        }).text
+
+        assert "Location: No location set" in html
+
+    def test_lookup_falls_back_to_the_seam_for_a_located_zero_copy_item(
+        self, admin_client, db
+    ):
+        """An upgraded database holds located items with no copy rows at all
+        (G86) — a wishlist item, most often. Lookup formatted copies only, so
+        it answered "No location set" for an item whose own page names a
+        shelf: the fourth reader disagreeing with the other three, which is
+        the whole of #116 (B5). The test above covers the genuinely
+        location-less item; this one covers the located one."""
+        shelf = _insert_location(db, "Legacy Wishlist Shelf")
+        item_id = insert_item(db, title="Wishlist Only", isbn="9780000000644",
+                              media_type="book", source="test",
+                              location_id=shelf)
+        db.execute("DELETE FROM item_copies WHERE item_id = ?", (item_id,))
+        db.commit()
+        assert item_copies.copies_for_item(db, item_id) == []
+
+        html = admin_client.post("/api/scan", data={
+            "isbn": "9780000000644", "mode": "lookup",
+        }).text
+
+        assert "Location: Legacy Wishlist Shelf" in html
 
     def test_lookup_not_found(self, admin_client):
         resp = admin_client.post("/api/scan", data={

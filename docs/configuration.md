@@ -100,7 +100,7 @@ checkbox, never the value. See [Integrations](user-guide/integrations.md).
 | **Import / Export** | CSV export; CSV / Goodreads / StoryGraph import with "fetch covers" and "to-read → wishlist" options |
 | **Sharing** | Create and revoke public read-only wishlist / collection links |
 | **Backup & Restore** | Download a database backup (optionally passphrase-encrypted), restore from one |
-| **Portable archive** | Export the whole library as a zip including covers; import with a preview step |
+| **Portable archive** | Export the whole library as a zip including physical copies and covers; import with a preview step |
 
 ### Users
 

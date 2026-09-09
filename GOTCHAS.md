@@ -866,6 +866,17 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     because the now-unused `AsyncMock` returned a non-200, which happened to
     be the expected reject. Its sibling failed outright, which is the only
     reason anyone looked.
+  **`git stash` is the wrong revert tool once the change is committed.**
+  `git stash push -- <file>` on a file with no working-tree diff stashes
+  nothing, the test runs against the *fixed* code, passes, and `git stash pop`
+  answers `No stash entries found` — which is the only sign anything went
+  wrong, and it is easy to read as noise. Use `git checkout <base-sha> --
+  <file>`, run, then `git checkout HEAD -- <file>`. Hit twice on 2026-09-08
+  (issue #116 T10), independently, by the orchestrator and by the task's own
+  subagent. Stashing is still correct *before* the task's commit, which is why
+  it works most of the time and fails exactly when a later task re-checks an
+  earlier one's pin.
+
   A cheap corollary: when a test mocks a transport by method name
   (`client.get`), changing which method the code calls silently detaches it
   rather than failing it.
@@ -2483,7 +2494,27 @@ grep -rn "async def _[a-z_]*(.*client" tests/ | head -40
   does not, or `data-scan-error` if the branch's message *replaces* the toast
   rather than extending it (the error arm's equivalent). **Never read a card
   field by CSS class** — the reader matches declared attributes only.
-- **Why:** the client handler already toasts all 15 outcomes and is the only
+- **A new *status* has more places to reach than the toast.** Four consumers
+  classify a scan status, and **three of them treat an unlisted one as an
+  error** — so a status added to the router and the card alone renders a
+  successful scan in red, three ways:
+
+  | consumer | what it holds |
+  |---|---|
+  | `static/js/app.js` | `SCAN_OK_STATUSES` / `SCAN_WARN_STATUSES` / `SCAN_INFO_STATUSES`, and `scanCardOutcome`'s flags |
+  | `app/templates/scan.html` | the camera overlay's `:class` ternary — the final arm is red |
+  | `app/templates/fragments/recent_scans.html` | the `{% elif %}` chain — the `{% else %}` is red, and this row is **persisted**, so a miss stays wrong forever |
+  | `fragments/scan_result.html` | **five** enumerations, not one |
+
+  Grep that fragment for **every** `status ==` and `status in (` before
+  editing. Adding to the badge alone leaves the card with no glyph, no title
+  and no link — and, worst, the message falls to the `{% else %}` detail arm
+  and is emitted as `data-scan-error`, which app.js then prefers over the whole
+  assembled toast. The two enumerations a plan is most likely to miss are the
+  **title-link list** and the **detail-line list**, because neither is near the
+  badge that everyone remembers.
+
+- **Why:** the client handler already toasts all 17 outcomes and is the only
   side that classifies them; a server trigger double-fires on the typed (htmx)
   path and is invisible on the camera (`fetch`) path. Issue #45.
   The class-selector half is issue #50: the handler picked the toast's text
@@ -2495,7 +2526,12 @@ grep -rn "async def _[a-z_]*(.*client" tests/ | head -40
   text, so it will hijack the toast without looking broken.
 - **Evidence:** the seven sites removed on this branch — commit `cc01264`,
   2026-08-27. The last class read replaced by `data-scan-error` — commit
-  `08c0212`, 2026-08-28 (issue #50).
+  `08c0212`, 2026-08-28 (issue #50). The four-consumer half is issue #116,
+  commit `7d2fb88`, 2026-09-08: the `elsewhere` status was caught in plan
+  review before it shipped, and the impl plan still named only three of the
+  five enumerations in `scan_result.html`. `tests/e2e/test_scan.py` also
+  hard-codes the vocabulary and asserted a *binary* success/warning toast
+  type, so a third class needed a third set there too (G78).
 - **Verify:** `_toast_header` is called only from the three non-scan routes:
 
 ```bash
@@ -3588,6 +3624,186 @@ make check-tests
 
 - **Status:** linted — `make check-tests`.
 
+## G84 — When you change where a route lands
+
+- **Rule:** changing a redirect target is never a one-line change. Grep for the
+  old path, then sort every hit into **two** piles, because they need opposite
+  fixes:
+
+  | the site | what it means | the fix |
+  |---|---|---|
+  | *waits* for the old path (`wait_for_url`, `to_have_url`, `assert location ==`) | it only wanted "login finished" | point it at the new path |
+  | *relies on being* at the old path — reads a page-scoped global, clicks a control that page owns, asserts on its DOM | it wanted that specific page and got it by luck | **navigate there explicitly**, and leave the assertion alone |
+
+  A grep finds both piles and cannot tell them apart. The second pile is the
+  dangerous one: those tests were passing for a reason that was never written
+  down.
+
+- **Why:** measured on 0.37.1, which moved the post-login landing page from
+  `/browse` to `/`.
+  - **First pass — 217 errors in 102s** (a full run is ~530s). Three
+    `tests/e2e/conftest.py` fixtures wait for `/browse` after submitting the
+    login form, and every other E2E file depends on them, so one stale URL
+    took down the suite at fixture level. A cascade this total is a *fixture*
+    signal, not 217 bugs: read the run time before reading the failures.
+  - **Second pass — 4 failures out of 225,** all in the second pile.
+    `test_js_stack_boots_under_csp` asserted
+    `typeof window.browsePage == "function"` immediately after login;
+    `browsePage` is registered by `browse.js`, which loads only on `/browse`,
+    so it read `undefined` on Home. That assertion had never been testing what
+    it claimed — it passed because login happened to land on Browse.
+    `test_browse.py::_login_with_seeded_storage` returned a page all three of
+    its callers treated as being on Browse, and its docstring said so.
+  - **15 post-login waits across 12 files** is the scale to expect. Find them
+    by requiring `button[type=submit]` within the preceding few lines rather
+    than by matching the URL alone — a hand-written pattern missed five of
+    them, and `test_nav.py:290` is a genuine "Back to collection" click that
+    must *not* be rewritten.
+
+- **The cheaper shape, if you are writing a new login helper:** wait for "not
+  `/login`" rather than for a specific destination. Every helper in this suite
+  hard-codes the landing page, which is why moving it cost twelve files.
+
+## G85 — When an importer catches a per-record exception and carries on
+
+- **Rule:** validate a record **completely, before its first write**. Catching
+  the exception per record is not a rollback: the enclosing transaction commits
+  everything written before the raise, so a violation found on the *second* of
+  a record's rows leaves the first one — and the record, and its tags, and any
+  row a get-or-create made for it — permanently in the database, while the
+  report tells the user that record failed. If some check genuinely cannot be
+  made before the first write, wrap the record in a `SAVEPOINT` and roll back
+  its cache entries with it.
+- **Why:** `apply_plan` (`app/services/archive.py`) catches per-item exceptions
+  into an `errors` list and then returns normally, at which point `get_db()`
+  commits (`app/database.py`). The shape reads as safe — every item is in a
+  `try`, and the failure is reported — which is exactly why nobody checks it.
+  An archive is untrusted input, so the failing record is not hypothetical.
+- **Evidence:** issue #116, commit `ab64c45`, 2026-09-08. Found in plan review
+  (codex `R6`) before it shipped. The plan already stated the governing
+  invariant — "an archive is untrusted input and must not be able to raise an
+  `IntegrityError` out of an import" — but enumerated only two of the table's
+  four constraints; `UNIQUE(item_id, copy_number)` and
+  `CHECK(acquisition_price >= 0)` were unaddressed.
+- **Verify:** the pin asserts on the *database* after the request returns, not
+  on the response body — a partial write is invisible in the report by
+  definition:
+
+```bash
+python -m pytest "tests/test_archive.py::TestArchiveCopiesImport::test_a_rejected_item_leaves_nothing_behind" -q
+```
+
+  It must fail if the validation call is moved below `insert_item`. A fully
+  rejected archive also leaves **no open transaction**, so a test helper that
+  ends with `db.execute("COMMIT")` raises `no transaction is active` — that is
+  the expected state, not a bug in the test.
+- **Status:** documented. Not a lint candidate — no checker can tell a
+  validating `try` from a swallowing one.
+
+## G86 — An item with no `item_copies` row is a real state, not a fixture artefact
+
+- **Rule:** a query that answers "where is this item?" from `item_copies` must
+  decide, explicitly, what an item with **zero** copy rows means — and every
+  such reader must decide the *same* way, or two surfaces will contradict each
+  other about the same shelf. The answer in this codebase is: fall back to the
+  `items.location_id` seam, which is then the only answer there is. Guard it
+  with `NOT EXISTS (SELECT 1 FROM item_copies WHERE item_id = i.id)` so an item
+  that *has* copies is judged entirely on them.
+- **Why:** the copy backfill is deliberately conservative — migration 26 and
+  `backfill_legacy_locations` create a primary copy only for rows that are
+  `owned = 1` **and** already located, because `owned` alone is not evidence
+  that a row is physical. So an upgraded database's **wishlist item with a
+  location has no copy row**, and the shelf audit has never filtered on
+  `owned`. A plain inner join drops those rows from every audit silently. The
+  same absence appears in tests, where `_insert_item` writes `items` directly
+  and never reaches `sync_primary_location` — which makes it look like a test
+  artefact and invites the wrong fix.
+- **Evidence:** issue #116, 2026-09-08. Three tasks hit it independently:
+  the shelf audit (`6b64f01`, where the plan's specified inner-join SQL broke
+  `test_inventory_missing_endpoint`), Scan's Inventory mode (`7d2fb88`, where a
+  zero-copy item at its own shelf reported `relocated` instead of `confirmed`),
+  and the archive export (`80a232f`, where `_seed_full_library` turned out to
+  be the suite's only located item without a copy row and broke the round-trip
+  comparison). Only the last was really a fixture problem.
+- **Verify:** the audit and the scan agree about the same shelf:
+
+```bash
+grep -n "NOT EXISTS" app/routers/items.py          # the audit's fallback
+grep -n "if copies" app/routers/items_scan_modes.py # the scan's
+python -m pytest tests/test_scan_modes.py -q
+```
+
+- **Status:** documented. **Retire when `items.location_id` is retired** — the
+  entry exists only because the seam does. Lint candidate, weakly: a query
+  selecting `FROM item_copies` with no zero-row branch is mechanically
+  findable, but the false-positive surface (every write path, every ordering
+  query) is probably too wide to be worth it.
+
+
+## G87 — "Key absent" and "key present but empty" are different answers
+
+- **Rule:** when an import format gives a *missing* field a back-compatibility
+  meaning, the validator must carry that absence through as a distinct value —
+  a `None` sentinel, not the empty container. Normalising `{}` / `[]` / absent
+  onto one value destroys the only evidence of which the file meant, and the
+  two branches then cannot diverge no matter what the caller does.
+- **Why:** in `archive.py`, a missing `copies` key means "this archive predates
+  copies, synthesize the legacy one-primary-from-`location`" and `copies: []`
+  means "this item genuinely has none, restore exactly that". Both arrived at
+  `_import_copies` as `[]`, whose `if not copies: return` left `insert_item`'s
+  placeholder primary in place — so a located wishlist item exported as
+  `copies: []` reimported with a copy it never had, and no round trip could be
+  exact. The bug is invisible from either branch alone: the missing-key test
+  and the export-empty test both passed throughout.
+- **Evidence:** issue #116 diff review B3, 2026-09-08. The reviewer's probe
+  round-tripped a located zero-copy item and got `[(1, 1)]` back instead of
+  `[]`. The fix is `_validated_copies()` returning `None` for the absent key,
+  and a `delete_copies_for_item()` arm on the funnel for the empty one.
+- **Verify:** the two branches produce different rows.
+
+```bash
+python -m pytest tests/test_archive.py -q -k "no_copies_key or explicit_empty or round_trip"
+```
+
+- **Status:** documented. Not a lint candidate — "which absent values mean
+  something" is a per-format judgment no scanner can make. Applies to any
+  future child collection in the archive (`tags` already has the same shape,
+  and is *deliberately* not distinguished; if that ever changes, this is the
+  entry to read first).
+
+
+## G88 — A source guard must exempt a canonical path, never a basename
+
+- **Rule:** a repository-wide guard that scans for a forbidden construct and
+  skips the one approved writer must compare the **repository-relative path**,
+  not `Path.name`. And it must scan the same normalised text its sibling guards
+  scan — comment-stripped and with adjacent string literals joined — or the
+  construct hides by being split across two lines.
+- **Why:** `path.name == "item_copies.py"` exempts *any* file of that name
+  anywhere under `app/`. A future `app/routers/item_copies.py` is a completely
+  different module, and it would have been free to write raw SQL to the table
+  the guard exists to protect. Separately, scanning line-by-line with
+  `re.search` means `"INSERT INTO " "item_copies (...)"` across two adjacent
+  literals never matches, while the update guard's `_raw_update_hits` sees it —
+  so two guards over the same table disagreed about what counts as a write.
+- **Evidence:** issue #116 diff review M1, 2026-09-08. Both bypasses were
+  demonstrated by restoring them as mutations: a raw-SQL `app/routers/
+  item_copies.py` and an adjacent-literal insert both left the guards green.
+  Neither was a live defect — no production file was wrong — which is exactly
+  why it survived: a gate that does not gate looks identical to a gate nothing
+  has tripped.
+- **Verify:** the guards catch both bypass shapes.
+
+```bash
+python -m pytest tests/test_item_write.py -q -k "basename or adjacent_string"
+```
+
+- **Status:** documented. **Sibling defect still open:** the `items` guards at
+  `tests/test_item_write.py:156`, `:195` and `:214` use the same basename
+  exemption for `item_write.py` and have not been converted — M1 was scoped to
+  `item_copies`. Fix them together with the next change that touches either.
+
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
@@ -3714,42 +3930,3 @@ fully covers it, etc.) so future sessions don't re-learn stale rules.
   on the path whose table lacks the column instead of failing silently — but it
   cannot prevent it.
 
-## G84 — When you change where a route lands
-
-- **Rule:** changing a redirect target is never a one-line change. Grep for the
-  old path, then sort every hit into **two** piles, because they need opposite
-  fixes:
-
-  | the site | what it means | the fix |
-  |---|---|---|
-  | *waits* for the old path (`wait_for_url`, `to_have_url`, `assert location ==`) | it only wanted "login finished" | point it at the new path |
-  | *relies on being* at the old path — reads a page-scoped global, clicks a control that page owns, asserts on its DOM | it wanted that specific page and got it by luck | **navigate there explicitly**, and leave the assertion alone |
-
-  A grep finds both piles and cannot tell them apart. The second pile is the
-  dangerous one: those tests were passing for a reason that was never written
-  down.
-
-- **Why:** measured on 0.37.1, which moved the post-login landing page from
-  `/browse` to `/`.
-  - **First pass — 217 errors in 102s** (a full run is ~530s). Three
-    `tests/e2e/conftest.py` fixtures wait for `/browse` after submitting the
-    login form, and every other E2E file depends on them, so one stale URL
-    took down the suite at fixture level. A cascade this total is a *fixture*
-    signal, not 217 bugs: read the run time before reading the failures.
-  - **Second pass — 4 failures out of 225,** all in the second pile.
-    `test_js_stack_boots_under_csp` asserted
-    `typeof window.browsePage == "function"` immediately after login;
-    `browsePage` is registered by `browse.js`, which loads only on `/browse`,
-    so it read `undefined` on Home. That assertion had never been testing what
-    it claimed — it passed because login happened to land on Browse.
-    `test_browse.py::_login_with_seeded_storage` returned a page all three of
-    its callers treated as being on Browse, and its docstring said so.
-  - **15 post-login waits across 12 files** is the scale to expect. Find them
-    by requiring `button[type=submit]` within the preceding few lines rather
-    than by matching the URL alone — a hand-written pattern missed five of
-    them, and `test_nav.py:290` is a genuine "Back to collection" click that
-    must *not* be rewritten.
-
-- **The cheaper shape, if you are writing a new login helper:** wait for "not
-  `/login`" rather than for a specific destination. Every helper in this suite
-  hard-codes the landing page, which is why moving it cost twelve files.

@@ -1366,9 +1366,27 @@ async def inventory_missing(
     with get_db() as db:
         loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
         loc_name = loc["name"] if loc else "Unknown"
+        # item_copies is the source of truth for what is expected on a shelf —
+        # a copy there is expected whether or not it is the primary (issue
+        # #116), and a copy elsewhere is not expected here even when the
+        # items.location_id seam still says it is.
+        #
+        # The fallback arm is for items with no copy row at all, which is a
+        # real state and not only a test artefact: migration 26 and
+        # backfill_legacy_locations both create copies for `owned = 1` rows
+        # only, deliberately, so an upgraded database's *wishlist* item with
+        # a location has none. The audit has never filtered on `owned`, so an
+        # inner join alone would silently drop those rows from every audit.
+        # For an item with no copies the seam is the only answer there is.
         items = db.execute(
-            "SELECT id, title, authors, cover_path FROM items WHERE location_id = ? ORDER BY title",
-            (location_id,),
+            "SELECT i.id, i.title, i.authors, i.cover_path, COUNT(c.id) AS copy_count "
+            "FROM items i LEFT JOIN item_copies c "
+            "  ON c.item_id = i.id AND c.location_id = ? "
+            "WHERE c.id IS NOT NULL "
+            "   OR (i.location_id = ? "
+            "       AND NOT EXISTS (SELECT 1 FROM item_copies c2 WHERE c2.item_id = i.id)) "
+            "GROUP BY i.id ORDER BY i.title",
+            (location_id, location_id),
         ).fetchall()
 
     missing = [dict(i) for i in items if i["id"] not in scanned]
@@ -1386,10 +1404,11 @@ async def inventory_missing(
             cover = f'<img src="/covers/{item["id"]}.jpg" class="w-10 h-14 object-cover rounded" alt="">' if item["cover_path"] else '<div class="w-10 h-14 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>'
             title = item["title"] or "Untitled"
             authors = f'<p class="text-xs text-shelf-muted truncate">{item["authors"]}</p>' if item.get("authors") else ""
+            copy_count = f' <span class="text-xs text-shelf-muted">({item["copy_count"]} copies)</span>' if item["copy_count"] > 1 else ""
             html_parts.append(
                 f'<div class="bg-shelf-card rounded-lg border border-shelf-border p-3 flex items-center gap-3">'
                 f'{cover}<div class="flex-1 min-w-0"><p class="font-medium text-sm truncate">'
-                f'<a href="/item/{item["id"]}" class="hover:text-shelf-accent2">{title}</a></p>{authors}</div>'
+                f'<a href="/item/{item["id"]}" class="hover:text-shelf-accent2">{title}</a>{copy_count}</p>{authors}</div>'
                 f'<span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-error/20 text-shelf-error">missing</span></div>'
             )
 

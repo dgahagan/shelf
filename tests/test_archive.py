@@ -5,6 +5,7 @@ import json
 import os
 import re
 import shutil
+import sqlite3
 import time
 import zipfile
 
@@ -13,6 +14,7 @@ import pytest
 from app import config
 from app.database import get_db
 from app.services import archive as archive_svc
+from app.services import item_copies
 from app.services.archive import (
     ArchiveError,
     apply_plan,
@@ -71,6 +73,15 @@ def _seed_full_library(db):
     db.execute("INSERT INTO tags (name) VALUES ('sci-fi')")
     tag_id = db.execute("SELECT id FROM tags WHERE name = 'sci-fi'").fetchone()["id"]
     db.execute("INSERT INTO item_tags (item_id, tag_id) VALUES (?, ?)", (item_id, tag_id))
+
+    # Mirrors what app.services.item_copies.sync_primary_location creates for
+    # any item inserted through the real write funnel with a location_id set
+    # — _insert_item here is a raw INSERT that bypasses the funnel, so this
+    # keeps the fixture's item_copies state consistent with production rather
+    # than leaving it artificially copy-less.
+    item_copies.insert_copy(db, {
+        "item_id": item_id, "copy_number": 1, "location_id": loc_id, "is_primary": 1,
+    })
 
     config.COVERS_DIR.mkdir(parents=True, exist_ok=True)
     cover_path = config.COVERS_DIR / f"{item_id}.jpg"
@@ -138,6 +149,12 @@ class TestBuildArchive:
         assert item["location"] == "Living Room"
         assert item["tags"] == ["sci-fi"]
         assert item["cover"] == "covers/1.jpg"
+        assert item["copies"] == [{
+            "copy_number": 1, "location": "Living Room", "is_primary": 1,
+            "position_order": None, "condition": None, "acquired_date": None,
+            "acquisition_source": None, "acquisition_price": None,
+            "provenance": None, "notes": None, "copy_barcode": None,
+        }]
         for forbidden in ("abs_id", "abs_library_id", "location_id", "cover_path"):
             assert forbidden not in item
 
@@ -215,6 +232,85 @@ class TestBuildArchive:
         assert len(library["items"]) == 2
         # sanity: the file actually changed (not stale content)
         assert path2.stat().st_size != size1 or len(library["items"]) == 2
+
+    def test_item_with_two_copies_exports_both(self, db):
+        """A merged item legitimately has copies in two rooms — the export
+        must not collapse to the single legacy `location` name."""
+        item_id = _insert_item(db, title="Foundation", isbn="9780553293357")
+        loc_a = _insert_location(db, name="Living Room")
+        loc_b = _insert_location(db, name="Office")
+        item_copies.insert_copy(db, {
+            "item_id": item_id, "copy_number": 1, "location_id": loc_a,
+            "is_primary": 1, "position_order": 3, "condition": "Good",
+            "acquired_date": "2020-01-01", "acquisition_source": "Gift",
+            "acquisition_price": 12.5, "provenance": "From Grandma",
+            "notes": "First copy", "copy_barcode": "ASSET-001",
+        })
+        item_copies.insert_copy(db, {
+            "item_id": item_id, "copy_number": 2, "location_id": loc_b,
+            "is_primary": 0, "position_order": 1, "condition": "Fair",
+            "acquired_date": "2021-06-15", "acquisition_source": "Used bookstore",
+            "acquisition_price": 4.0, "provenance": None,
+            "notes": "Second copy", "copy_barcode": "ASSET-002",
+        })
+        db.execute("COMMIT")
+
+        path = build_archive(db)
+        with zipfile.ZipFile(path) as zf:
+            library = json.loads(zf.read("library.json"))
+
+        copies = library["items"][0]["copies"]
+        assert [c["copy_number"] for c in copies] == [1, 2]
+        assert copies[0] == {
+            "copy_number": 1, "location": "Living Room", "is_primary": 1,
+            "position_order": 3, "condition": "Good",
+            "acquired_date": "2020-01-01", "acquisition_source": "Gift",
+            "acquisition_price": 12.5, "provenance": "From Grandma",
+            "notes": "First copy", "copy_barcode": "ASSET-001",
+        }
+        assert copies[1] == {
+            "copy_number": 2, "location": "Office", "is_primary": 0,
+            "position_order": 1, "condition": "Fair",
+            "acquired_date": "2021-06-15", "acquisition_source": "Used bookstore",
+            "acquisition_price": 4.0, "provenance": None,
+            "notes": "Second copy", "copy_barcode": "ASSET-002",
+        }
+
+    def test_item_with_no_copies_exports_empty_list(self, db):
+        """Absence of the `copies` key is what T8's back-compat branch must
+        detect (every archive taken before this ships) — an item that was
+        exported by this code but simply owns no copies must be
+        distinguishable from that: `[]`, not a missing key."""
+        _insert_item(db, title="No Copies", isbn="9780000000132")
+        db.execute("COMMIT")
+
+        path = build_archive(db)
+        with zipfile.ZipFile(path) as zf:
+            library = json.loads(zf.read("library.json"))
+
+        item = library["items"][0]
+        assert "copies" in item
+        assert item["copies"] == []
+
+    def test_copies_query_runs_once_not_per_item(self, db, monkeypatch):
+        """`_copies_by_item` is one grouped query for the whole export — an
+        N+1 over item_copies would call it once per item instead of once
+        for the entire run, however many items are exported."""
+        for i in range(3):
+            item_id = _insert_item(db, title=f"Book {i}", isbn=f"97800000001{i:02d}")
+            item_copies.insert_copy(db, {"item_id": item_id, "copy_number": 1})
+        db.execute("COMMIT")
+
+        calls = []
+        original = archive_svc._copies_by_item
+
+        def spy(db_arg):
+            calls.append(db_arg)
+            return original(db_arg)
+
+        monkeypatch.setattr(archive_svc, "_copies_by_item", spy)
+        build_archive(db)
+        assert len(calls) == 1
 
 
 class TestExportArchiveEndpoint:
@@ -2135,3 +2231,337 @@ class TestPlanAndApplyAgreeOnABadIsbn:
         assert row["isbn"] is None
         assert row["publisher"] == "Ace"
         assert any("B00EXAMPLE" in e for e in report["errors"])
+
+
+class TestArchiveCopiesImport:
+    """The import half of issue #116. Four rules, plus the one that matters
+    most for an untrusted input: a rejected item leaves nothing behind."""
+
+    @staticmethod
+    def _archive(tmp_path, items, name="copies.zip"):
+        """Hand-build an archive rather than deleting keys from a fresh
+        export — the no-`copies`-key case has to be built, not derived, or
+        the test is only asserting that a deletion worked."""
+        return _write_zip(
+            tmp_path / name, [],
+            library=json.dumps({"items": items}),
+        )
+
+    @staticmethod
+    def _import(db, path, mode="skip"):
+        with read_archive(path) as reader:
+            report = merge_archive(db, reader, mode=mode)
+        try:
+            db.execute("COMMIT")
+        except sqlite3.OperationalError as e:
+            # "no transaction is active" is the *expected* state when every
+            # item in the archive was rejected before its first write — which
+            # is exactly what the rejection tests below assert. Anything else
+            # is a real failure and still raises.
+            if "no transaction is active" not in str(e):
+                raise
+        return report
+
+    @staticmethod
+    def _copies(db, title):
+        return db.execute(
+            "SELECT c.copy_number, c.is_primary, c.position_order, c.condition, "
+            "c.acquisition_price, c.copy_barcode, l.name AS location "
+            "FROM item_copies c JOIN items i ON i.id = c.item_id "
+            "LEFT JOIN locations l ON l.id = c.location_id "
+            "WHERE i.title = ? ORDER BY c.copy_number",
+            (title,),
+        ).fetchall()
+
+    def test_a_round_trip_preserves_every_copy_and_its_detail(self, db):
+        item_id = _insert_item(db, title="Foundation", isbn="9780553293357")
+        office = _insert_location(db, name="Office")
+        loft = _insert_location(db, name="Loft")
+        item_copies.insert_copy(db, {
+            "item_id": item_id, "copy_number": 1, "location_id": office,
+            "is_primary": 1, "position_order": 3, "condition": "Good",
+            "acquired_date": "2020-01-01", "acquisition_source": "Gift",
+            "acquisition_price": 12.5, "provenance": "From Grandma",
+            "notes": "First", "copy_barcode": "ASSET-001",
+        })
+        item_copies.insert_copy(db, {
+            "item_id": item_id, "copy_number": 2, "location_id": loft,
+            "is_primary": 0, "position_order": 1, "condition": "Fair",
+            "acquisition_price": 4.0, "notes": "Second",
+            "copy_barcode": "ASSET-002",
+        })
+        db.execute("COMMIT")
+        path = build_archive(db)
+
+        _wipe_library(db)
+        report = self._import(db, path)
+
+        assert report["errors"] == []
+        rows = [dict(r) for r in self._copies(db, "Foundation")]
+        assert [r["copy_number"] for r in rows] == [1, 2]
+        assert [r["location"] for r in rows] == ["Office", "Loft"]
+        assert [r["is_primary"] for r in rows] == [1, 0]
+        assert [r["position_order"] for r in rows] == [3, 1]
+        assert [r["condition"] for r in rows] == ["Good", "Fair"]
+        assert [r["acquisition_price"] for r in rows] == [12.5, 4.0]
+        assert [r["copy_barcode"] for r in rows] == ["ASSET-001", "ASSET-002"]
+
+    def test_an_archive_with_no_copies_key_imports_as_one_primary_copy(
+        self, db, tmp_path
+    ):
+        """Every archive taken before this ships. The branch must be reached
+        by the key's absence, never by an empty list."""
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Old Export", "media_type": "book",
+            "owned": 1, "source": "manual", "location": "Shelf A",
+        }])
+
+        report = self._import(db, path)
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+        rows = [dict(r) for r in self._copies(db, "Old Export")]
+        assert len(rows) == 1
+        assert rows[0]["copy_number"] == 1
+        assert rows[0]["is_primary"] == 1
+        assert rows[0]["location"] == "Shelf A"
+
+    def test_a_matched_existing_item_keeps_its_own_copies(self, db, tmp_path):
+        """G27's precedent: the archive already matches-and-skips dependent
+        rows for existing items, because attaching them would duplicate on
+        every repeat import. Copies are the same argument."""
+        here = _insert_location(db, name="Here")
+        item_id = _insert_item(db, title="Local", isbn="9780553293357",
+                               location_id=here)
+        item_copies.insert_copy(db, {
+            "item_id": item_id, "copy_number": 1, "location_id": here,
+            "is_primary": 1, "condition": "Mine",
+        })
+        db.execute("COMMIT")
+
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Local", "isbn": "9780553293357",
+            "media_type": "book", "owned": 1, "source": "manual",
+            "location": "Elsewhere",
+            "copies": [
+                {"copy_number": 1, "location": "Elsewhere", "is_primary": 1,
+                 "condition": "Theirs"},
+                {"copy_number": 2, "location": "Elsewhere", "is_primary": 0},
+            ],
+        }])
+        report = self._import(db, path, mode="update")
+
+        assert report["updated"] == 1
+        rows = [dict(r) for r in self._copies(db, "Local")]
+        assert len(rows) == 1
+        assert rows[0]["condition"] == "Mine"
+        # The copy must not have MOVED either. The archive's own `location`
+        # used to reach update_item_fields, which routes a location change
+        # into sync_primary_location and dragged the local primary to the
+        # archive's shelf — a silent relocation on every re-import (B1).
+        assert rows[0]["location"] == "Here"
+        seam = db.execute(
+            "SELECT l.name AS location FROM items i "
+            "LEFT JOIN locations l ON l.id = i.location_id WHERE i.id = ?",
+            (item_id,),
+        ).fetchone()
+        assert seam["location"] == "Here"
+        # And the archive's location is not created as a side effect.
+        assert db.execute(
+            "SELECT COUNT(*) AS n FROM locations WHERE name = 'Elsewhere'"
+        ).fetchone()["n"] == 0
+
+    def test_a_colliding_copy_barcode_is_imported_without_it_and_reported(
+        self, db, tmp_path
+    ):
+        """`copy_barcode` is UNIQUE collection-wide. Losing the barcode is a
+        far smaller loss than losing the copy."""
+        here = _insert_location(db, name="Here")
+        holder = _insert_item(db, title="Barcode Holder", isbn="9780441013593",
+                              location_id=here)
+        item_copies.insert_copy(db, {
+            "item_id": holder, "copy_number": 1, "location_id": here,
+            "is_primary": 1, "copy_barcode": "ASSET-001",
+        })
+        db.execute("COMMIT")
+
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Newcomer", "media_type": "book", "owned": 1,
+            "source": "manual", "location": "Shelf A",
+            "copies": [{"copy_number": 1, "location": "Shelf A",
+                        "is_primary": 1, "copy_barcode": "ASSET-001"}],
+        }])
+        report = self._import(db, path)
+
+        assert report["imported"] == 1
+        rows = [dict(r) for r in self._copies(db, "Newcomer")]
+        assert len(rows) == 1
+        assert rows[0]["copy_barcode"] is None
+        assert len(report["errors"]) == 1
+        assert "ASSET-001" in report["errors"][0]
+        assert str(holder) in report["errors"][0]
+
+    def test_two_primary_entries_import_without_raising(self, db, tmp_path):
+        """`idx_item_copies_one_primary` is a partial unique index. An archive
+        is untrusted input and must not be able to raise IntegrityError out of
+        an import — the first entry in copy_number order wins."""
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Two Primaries", "media_type": "book",
+            "owned": 1, "source": "manual", "location": "Shelf A",
+            "copies": [
+                {"copy_number": 2, "location": "Shelf B", "is_primary": 1},
+                {"copy_number": 1, "location": "Shelf A", "is_primary": 1},
+            ],
+        }])
+        report = self._import(db, path)
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+        rows = [dict(r) for r in self._copies(db, "Two Primaries")]
+        assert [(r["copy_number"], r["is_primary"]) for r in rows] == [(1, 1), (2, 0)]
+
+    def test_no_primary_entry_still_yields_exactly_one(self, db, tmp_path):
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "No Primary", "media_type": "book",
+            "owned": 1, "source": "manual", "location": "Shelf A",
+            "copies": [
+                {"copy_number": 1, "location": "Shelf A", "is_primary": 0},
+                {"copy_number": 2, "location": "Shelf B", "is_primary": 0},
+            ],
+        }])
+        report = self._import(db, path)
+
+        assert report["errors"] == []
+        rows = [dict(r) for r in self._copies(db, "No Primary")]
+        assert [(r["copy_number"], r["is_primary"]) for r in rows] == [(1, 1), (2, 0)]
+
+    def test_a_valid_non_first_primary_is_preserved(self, db, tmp_path):
+        """Exactly one primary is not a malformed array, so it must survive as
+        given. Forcing it onto copy 1 moved the physical primary away from the
+        shelf `items.location_id` still named, so the item page and the item
+        seam disagreed the moment the import succeeded — the very reader
+        disagreement #116 exists to remove (B2)."""
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Second Is Primary", "media_type": "book",
+            "owned": 1, "source": "manual", "location": "Shelf B",
+            "copies": [
+                {"copy_number": 1, "location": "Shelf A", "is_primary": 0,
+                 "condition": "Spare"},
+                {"copy_number": 2, "location": "Shelf B", "is_primary": 1,
+                 "condition": "Reading"},
+            ],
+        }])
+
+        report = self._import(db, path)
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+        rows = [dict(r) for r in self._copies(db, "Second Is Primary")]
+        assert [(r["copy_number"], r["is_primary"], r["location"]) for r in rows] == [
+            (1, 0, "Shelf A"), (2, 1, "Shelf B"),
+        ]
+        assert [r["condition"] for r in rows] == ["Spare", "Reading"]
+        seam = db.execute(
+            "SELECT l.name AS location FROM items i "
+            "LEFT JOIN locations l ON l.id = i.location_id "
+            "WHERE i.title = 'Second Is Primary'"
+        ).fetchone()
+        assert seam["location"] == "Shelf B"
+
+    def test_an_explicit_empty_copies_array_imports_no_copy(self, db, tmp_path):
+        """A located item with zero copy rows is real — an upgraded database's
+        wishlist item, the state G86 names — and the archive can say so. The
+        empty array used to collapse onto the missing-key branch, so
+        insert_item's placeholder primary survived and the round trip was not
+        exact (B3). The item keeps its location; only the copy goes."""
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Wanted", "media_type": "book",
+            "owned": 0, "source": "manual", "location": "Wishlist Shelf",
+            "copies": [],
+        }])
+
+        report = self._import(db, path)
+
+        assert report["imported"] == 1
+        assert report["errors"] == []
+        assert self._copies(db, "Wanted") == []
+        seam = db.execute(
+            "SELECT l.name AS location FROM items i "
+            "LEFT JOIN locations l ON l.id = i.location_id "
+            "WHERE i.title = 'Wanted'"
+        ).fetchone()
+        assert seam["location"] == "Wishlist Shelf"
+
+    def test_a_located_zero_copy_item_survives_its_own_round_trip(self, db, tmp_path):
+        """The export half of B3: what `_build_items` writes for a located
+        item with no copies must import back to the same thing."""
+        _insert_item(db, title="Round Trip Wishlist", owned=0,
+                     location_id=_insert_location(db, name="Wishlist Shelf"))
+        db.execute("DELETE FROM item_copies")
+        db.execute("COMMIT")
+
+        with zipfile.ZipFile(build_archive(db)) as zf:
+            exported = json.loads(zf.read("library.json"))
+        item = next(i for i in exported["items"] if i["title"] == "Round Trip Wishlist")
+        assert item["copies"] == []
+
+        db.execute("DELETE FROM items")
+        db.execute("COMMIT")
+        report = self._import(db, self._archive(tmp_path, [item], name="rt.zip"))
+
+        assert report["imported"] == 1
+        assert self._copies(db, "Round Trip Wishlist") == []
+
+    @pytest.mark.parametrize("bad_copies, fragment", [
+        ([{"copy_number": 1, "location": "Shelf A"},
+          {"copy_number": 1, "location": "Shelf B"}], "duplicate copy_number"),
+        ([{"copy_number": 1, "location": "Shelf A", "acquisition_price": -5}],
+         "negative"),
+        # B4: every value that later reaches `.strip()` or a TEXT column. Each
+        # of these used to pass validation, so the item, its primary copy and
+        # its location were already committed when the resolver raised
+        # AttributeError — a half-import reported as zero imported.
+        ([{"copy_number": 1, "location": {}}], "location"),
+        ([{"copy_number": 1, "location": "Shelf A", "copy_barcode": ["A"]}],
+         "copy_barcode"),
+        ([{"copy_number": 1, "location": "Shelf A", "condition": 7}],
+         "condition"),
+        ([{"copy_number": 1, "location": "Shelf A", "notes": {"a": 1}}],
+         "notes"),
+        ([{"copy_number": 1, "location": "Shelf A", "position_order": "third"}],
+         "position_order"),
+    ], ids=["duplicate-copy-number", "negative-price", "location-not-a-string",
+            "barcode-not-a-string", "condition-not-a-string",
+            "notes-not-a-string", "position-not-an-integer"])
+    def test_a_rejected_item_leaves_nothing_behind(
+        self, db, tmp_path, bad_copies, fragment
+    ):
+        """The whole reason validation runs before the first write.
+        `apply_plan` catches a per-item exception into `errors` and returns
+        normally, so `get_db()` commits everything written up to the raise.
+        The item, its tags, its copies and the location it alone would have
+        created must all be absent."""
+        path = self._archive(tmp_path, [{
+            "id": 1, "title": "Malformed", "media_type": "book", "owned": 1,
+            "source": "manual", "location": "Only For This Item",
+            "tags": ["only-for-this-item"],
+            "copies": bad_copies,
+        }], name=f"bad-{fragment.split()[0]}.zip")
+
+        report = self._import(db, path)
+
+        assert report["imported"] == 0
+        assert len(report["errors"]) == 1
+        assert fragment in report["errors"][0]
+
+        assert db.execute(
+            "SELECT COUNT(*) AS n FROM items WHERE title = 'Malformed'"
+        ).fetchone()["n"] == 0
+        assert db.execute("SELECT COUNT(*) AS n FROM item_copies").fetchone()["n"] == 0
+        assert db.execute("SELECT COUNT(*) AS n FROM item_tags").fetchone()["n"] == 0
+        assert db.execute(
+            "SELECT COUNT(*) AS n FROM locations WHERE name = 'Only For This Item'"
+        ).fetchone()["n"] == 0
+        assert db.execute(
+            "SELECT COUNT(*) AS n FROM tags WHERE name = 'only-for-this-item'"
+        ).fetchone()["n"] == 0

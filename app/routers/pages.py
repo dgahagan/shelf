@@ -11,6 +11,7 @@ from app.database import get_db, get_setting, get_game_platforms, get_reading_hi
 from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
+from app.services import item_copies
 from app.services.home_dashboard import dashboard_summary
 
 router = APIRouter()
@@ -255,6 +256,11 @@ async def item_detail(
 
         game_platforms = get_game_platforms(db)
 
+        # Every physical copy, not just the primary. `items.location_id` is
+        # the compatibility seam and names only one place; a merged item can
+        # legitimately have copies in two (issue #116).
+        copies = item_copies.copies_for_item(db, item_id)
+
         from app.routers.tags import get_item_tags, get_all_tags
         item_tags = get_item_tags(db, item_id)
         all_tags = get_all_tags(db)
@@ -295,6 +301,7 @@ async def item_detail(
             "item": item,
             "item_id": item_id,
             "back": back,
+            "copies": copies,
             "item_tags": item_tags,
             "all_tags": all_tags,
             "media_types": MEDIA_TYPES,

@@ -1257,7 +1257,7 @@ def test_a_typed_duplicate_scan_raises_exactly_one_warning_toast(
 # paragraph inside the not_found arm's manual-add form — a hidden element
 # that still yields a (blank) textContent (`G51`).
 #
-# This section pins the fix across the router's full 16-status vocabulary,
+# This section pins the fix across the router's full 17-status vocabulary,
 # not just the one status that shipped broken, so a future status — or a
 # regressed data-scan-* attribute on an existing one — fails here instead of
 # reaching a user as a blank toast.
@@ -1313,6 +1313,7 @@ _STATUS_CASES = {
     "moved": dict(title="Dune", item_id=7, message="Office Shelf → Loft Box"),
     "confirmed": dict(title="Dune", item_id=7, message="Confirmed at Office Shelf"),
     "relocated": dict(title="Dune", item_id=7, message="Was at Office Shelf, updated to Loft Box"),
+    "elsewhere": dict(title="Dune", item_id=7, message="Copies at Office Shelf and Loft Box; none here."),
     "found": dict(title="Dune", item_id=7, message="Location: Office Shelf"),
     "marked_read": dict(title="Dune", item_id=7, message="Marked as read"),
     "already_checked_out": dict(title="Dune", item_id=7, message="Already lent to Bea"),
@@ -1329,11 +1330,20 @@ _STATUS_CASES = {
     "error": dict(message="Invalid ISBN"),
 }
 
-# Per app.js's SCAN_OK_STATUSES — every other status toasts as a warning.
+# Per app.js's SCAN_OK_STATUSES.
 _OK_STATUSES = {
     "added", "wishlisted", "returned", "confirmed", "marked_read",
     "checked_out", "moved", "found", "relocated",
 }
+
+# Per app.js's SCAN_INFO_STATUSES — the scan worked and the answer is a
+# report, so it is neither a success nor a warning. Kept as its own set
+# rather than folded into _OK_STATUSES because the point of the status is
+# that three other consumers used to classify it as an *error* (issue #116);
+# a two-way split here would not notice that coming back.
+_INFO_STATUSES = {"elsewhere"}
+
+# Everything else toasts as a warning.
 
 # What each status's toast must actually SAY — the field the card declares,
 # not merely "some text".
@@ -1356,6 +1366,7 @@ _TOAST_MUST_CONTAIN = {
     "moved": "Office Shelf \u2192 Loft Box",
     "confirmed": "Confirmed at Office Shelf",
     "relocated": "Was at Office Shelf, updated to Loft Box",
+    "elsewhere": "Copies at Office Shelf and Loft Box; none here.",
     "found": "Location: Office Shelf",
     "marked_read": "Dune",
     "already_checked_out": "Already lent to Bea",
@@ -1366,10 +1377,11 @@ _TOAST_MUST_CONTAIN = {
     "legacy_ambiguous": "Which book is this?",
 }
 
-assert set(_STATUS_CASES) == _OK_STATUSES | {
+assert set(_STATUS_CASES) == _OK_STATUSES | _INFO_STATUSES | {
     "duplicate", "already_checked_out", "not_checked_out",
     "not_owned", "not_found", "error", "legacy_ambiguous",
-}, "status table drifted from the 16-status vocabulary"
+}, "status table drifted from the 17-status vocabulary"
+assert not (_OK_STATUSES & _INFO_STATUSES), "a status is one class or the other"
 assert set(_TOAST_MUST_CONTAIN) == set(_STATUS_CASES), (
     "every status case needs the text its toast must carry"
 )
@@ -1379,7 +1391,7 @@ assert set(_TOAST_MUST_CONTAIN) == set(_STATUS_CASES), (
 def test_every_scan_status_toasts_non_empty_text(live_server, authed_page, status):
     """The pin: every status in the router's vocabulary toasts *something*.
 
-    Parametrised over the full 16-status table so a future status — or a
+    Parametrised over the full 17-status table so a future status — or a
     regressed data-scan-* attribute on an existing one — fails here instead
     of shipping a blank toast."""
     authed_page.goto(f"{live_server['url']}/scan")
@@ -1395,10 +1407,135 @@ def test_every_scan_status_toasts_non_empty_text(live_server, authed_page, statu
     assert must in toast["text"], (
         f"{status} toasted {toast['text']!r}, which does not carry {must!r}"
     )
-    expected_type = "success" if status in _OK_STATUSES else "warning"
+    if status in _OK_STATUSES:
+        expected_type = "success"
+    elif status in _INFO_STATUSES:
+        expected_type = "info"
+    else:
+        expected_type = "warning"
     assert toast["type"] == expected_type, (
         f"{status} toasted type {toast['type']!r}, expected {expected_type!r}"
     )
+    assert_page_clean(authed_page)
+
+
+def test_the_elsewhere_status_is_never_rendered_as_a_failure(
+    live_server, authed_page
+):
+    """Issue #116's own repro, in the three places the parametrised test above
+    cannot reach.
+
+    `elsewhere` reports that a scan succeeded and the copy lives somewhere
+    else. Four consumers classify a scan status and three of them treat an
+    unlisted one as an ERROR: app.js's outcome tables (covered above), the
+    camera overlay's `:class` ternary in scan.html, and the persisted history
+    row in fragments/recent_scans.html. A status added to the card alone would
+    show the user a successful scan in red, three ways, and the history row
+    would keep showing it in red forever.
+
+    The overlay and the history row are asserted against template source
+    rather than a live render: the overlay only exists while the camera is
+    open, and the history row needs a persisted scan_log write. Both are class
+    strings, which is what the acceptance is about — the classification, not
+    the word.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    # 1. app.js classifies it as info — neither ok nor warn.
+    card = _render_status_card("elsewhere", **_STATUS_CASES["elsewhere"])
+    outcome = authed_page.evaluate(
+        "(html) => { const d = document.createElement('div'); d.innerHTML = html; "
+        "return scanCardOutcome(d.querySelector('.scan-result')); }",
+        card,
+    )
+    assert outcome["info"] is True
+    assert outcome["ok"] is False and outcome["warn"] is False
+
+    # 2. The card itself wears the neutral badge, not a warning or an error.
+    assert "bg-blue-500/20 text-blue-400" in card
+    assert "bg-shelf-error" not in card
+    assert "bg-shelf-warning" not in card
+    assert "data-scan-error" not in card
+
+    # 3. The camera overlay has an info arm ahead of its red fallback.
+    overlay = (Path(__file__).resolve().parents[2]
+               / "app" / "templates" / "scan.html").read_text()
+    info_arm = overlay.index("scanResult.info")
+    error_arm = overlay.index("bg-shelf-error/30 text-shelf-error")
+    assert info_arm < error_arm, "the info arm must precede the red fallback"
+
+    # 4. The persisted history row is blue, not the {% else %} error colour.
+    history = (Path(__file__).resolve().parents[2] / "app" / "templates"
+               / "fragments" / "recent_scans.html").read_text()
+    blue_arm = [l for l in history.splitlines() if "bg-blue-500/20" in l]
+    assert len(blue_arm) == 1 and "'elsewhere'" in blue_arm[0]
+
+    assert_page_clean(authed_page)
+
+
+def test_inventory_on_a_multi_copy_item_at_a_shelf_holding_none_reports_and_writes_nothing(
+    live_server, authed_page
+):
+    """#116 T10, driven for real through `/api/scan` rather than a rendered
+    fixture (unlike `test_the_elsewhere_status_is_never_rendered_as_a_failure`
+    above, which pins the card/overlay/history classification against
+    hand-supplied context). A two-copy item scanned at a shelf holding
+    neither copy must render the `elsewhere` card *and* leave both copies
+    exactly where they were — the destructive half of #116 that
+    `tests/test_scan_modes.py::test_a_multi_copy_item_reports_rather_than_moving`
+    pins at the database layer. This test proves the same thing from the
+    browser side: reload the item page and confirm both original locations
+    are still shown, rather than trusting the card's message alone.
+    """
+    data_dir = live_server["data_dir"]
+
+    office = _insert_location(data_dir, "Elsewhere Office")
+    loft = _insert_location(data_dir, "Elsewhere Loft")
+    hall = _insert_location(data_dir, "Elsewhere Hall")
+
+    item_id = insert_item(
+        data_dir, title="Elsewhere Copies Book", media_type="book",
+        isbn="9780000116017", location_id=office,
+    )
+
+    from app.services.item_copies import insert_copy
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        insert_copy(conn, {"item_id": item_id, "copy_number": 1,
+                            "location_id": office, "is_primary": 1})
+        insert_copy(conn, {"item_id": item_id, "copy_number": 2,
+                            "location_id": loft, "is_primary": 0})
+        conn.commit()
+    finally:
+        conn.close()
+
+    _open_scan_in_mode(authed_page, live_server, "Inventory")
+    authed_page.select_option("#location", str(hall))
+    authed_page.fill("#isbn-input", "9780000116017")
+    authed_page.press("#isbn-input", "Enter")
+
+    scan_result = authed_page.locator(".scan-result").first
+    expect(scan_result).to_contain_text(
+        "Copies at Elsewhere Office and Elsewhere Loft; none here.",
+        timeout=10_000,
+    )
+    assert scan_result.get_attribute("data-scan-status") == "elsewhere"
+    assert scan_result.locator("[data-scan-detail]").count() == 1
+    assert scan_result.locator("[data-scan-error]").count() == 0
+    badge = scan_result.locator("[data-scan-badge]")
+    assert "bg-blue-500/20 text-blue-400" in (badge.get_attribute("class") or "")
+    expect(badge).to_contain_text("elsewhere")
+
+    # The point: reload the item page and confirm nothing moved. Reading
+    # only the card's message would not catch a write that happened anyway.
+    authed_page.goto(f"{live_server['url']}/item/{item_id}")
+    authed_page.wait_for_load_state("networkidle")
+    copies_block = authed_page.locator("#item-copies")
+    expect(copies_block).to_contain_text("Elsewhere Office")
+    expect(copies_block).to_contain_text("Elsewhere Loft")
+    expect(copies_block).not_to_contain_text("Elsewhere Hall")
+
     assert_page_clean(authed_page)
 
 

@@ -13,7 +13,38 @@ were"; this is that split.
 
 from app.database import get_db
 from app.routers import items_common
+from app.services import item_copies
 from app.services.item_write import ItemValueError, update_item_fields
+
+
+#: How many copy locations a scan card names before it says "and N more".
+#: A scan card is two lines on a phone; three names plus a remainder is as
+#: much as it holds and still reads. Chosen here rather than left to the
+#: caller so Inventory and Lookup cannot drift apart.
+_PLACE_CAP = 3
+
+
+def _format_copy_places(copies) -> str:
+    """Name the distinct locations a set of copies occupies, in row order.
+
+    `copies` is `item_copies.copies_for_item` output. Duplicate location
+    names collapse — two copies on one shelf is one place — and a copy with
+    no location contributes the literal "no location", because "where is it?"
+    has an answer there and it is not silence. Returns "" for no copies.
+    """
+    places: list[str] = []
+    for copy in copies:
+        name = copy["location_name"] if copy["location_id"] else "no location"
+        if name not in places:
+            places.append(name)
+    if not places:
+        return ""
+    if len(places) > _PLACE_CAP:
+        named, rest = places[:_PLACE_CAP], len(places) - _PLACE_CAP
+        return f"{', '.join(named)} and {rest} more"
+    if len(places) == 1:
+        return places[0]
+    return f"{', '.join(places[:-1])} and {places[-1]}"
 
 
 def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw: str):
@@ -143,18 +174,53 @@ def _scan_mode_inventory(
             {"status": "error", "isbn": raw, "message": "No audit location selected"},
         )
 
-    with get_db() as db:
-        loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
-    loc_name = loc["name"] if loc else "Unknown"
-
     if not item:
+        # Read before the audit location: nothing here writes, and an
+        # unknown barcode is not worth opening a write transaction for.
         items_common._log_scan(raw, "", "not_owned", None, "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_owned", "isbn": raw, "message": "Not in collection"},
         )
 
-    if item.get("location_id") == location_id:
+    # G18 — the decision and the write share one connection and one write
+    # lock. The arm this scan takes now depends on the item's copy
+    # cardinality, not on a single integer, and a copy inserted between a
+    # read on one connection and an UPDATE on another would be acted on
+    # blind. BEGIN IMMEDIATE takes the write lock before the first read.
+    value_error = None
+    with get_db() as db:
+        db.execute("BEGIN IMMEDIATE")
+        loc = db.execute(
+            "SELECT name FROM locations WHERE id = ?", (location_id,)
+        ).fetchone()
+        loc_name = loc["name"] if loc else "Unknown"
+        copies = item_copies.copies_for_item(db, item["id"])
+        # An item with no copy rows at all falls back to the items.location_id
+        # seam, exactly as /api/inventory/missing does — the two must agree
+        # about what is expected on a shelf or an audit contradicts itself.
+        # That state is real rather than a fixture artefact: migration 26 and
+        # backfill_legacy_locations create copies for `owned = 1` rows only,
+        # so an upgraded database's wishlist item with a location has none.
+        here = (
+            any(copy["location_id"] == location_id for copy in copies)
+            if copies
+            else item.get("location_id") == location_id
+        )
+
+        if not here and len(copies) < 2:
+            # Zero copies or exactly one: there is only one object the scan
+            # can mean, so relocating it is the honest reading. Zero is the
+            # common case, not a corner — an item added without a location
+            # has no copy rows at all, and placing it is what Inventory mode
+            # is chiefly for. `update_item_fields` creates the primary copy
+            # through `sync_primary_location`.
+            try:
+                update_item_fields(db, item["id"], {"location_id": location_id})
+            except ItemValueError as e:
+                value_error = str(e)
+
+    if here:
         items_common._log_scan(raw, item.get("media_type", ""), "confirmed", item["id"], "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
@@ -163,30 +229,38 @@ def _scan_mode_inventory(
              "authors": item.get("authors"), "message": f"Confirmed at {loc_name}",
              "inventory_confirmation": inventory_confirmation},
         )
-    else:
-        old_location = item.get("location_name") or "No location"
-        # Update location to where it actually is
-        value_error = None
-        with get_db() as db:
-            try:
-                update_item_fields(db, item["id"], {"location_id": location_id})
-            except ItemValueError as e:
-                value_error = str(e)
-        if value_error:
-            items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "inventory")
-            return templates.TemplateResponse(
-                request, "fragments/scan_result.html",
-                {"status": "error", "isbn": raw, "message": value_error},
-            )
-        items_common._log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
+
+    if len(copies) >= 2:
+        # The destructive half of #116: an ISBN does not say which copy is in
+        # the user's hand, and moving the primary onto this shelf destroys the
+        # layout a merge preserved. Report instead, and write nothing.
+        items_common._log_scan(raw, item.get("media_type", ""), "elsewhere", item["id"], "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "relocated", "isbn": raw, "title": item["title"],
+            {"status": "elsewhere", "isbn": raw, "title": item["title"],
              "item_id": item["id"], "cover_path": item.get("cover_path"),
              "authors": item.get("authors"),
-             "message": f"Was at {old_location}, updated to {loc_name}",
+             "message": f"Copies at {_format_copy_places(copies)}; none here.",
              "inventory_confirmation": inventory_confirmation},
         )
+
+    if value_error:
+        items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "inventory")
+        return templates.TemplateResponse(
+            request, "fragments/scan_result.html",
+            {"status": "error", "isbn": raw, "message": value_error},
+        )
+
+    old_location = item.get("location_name") or "No location"
+    items_common._log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
+    return templates.TemplateResponse(
+        request, "fragments/scan_result.html",
+        {"status": "relocated", "isbn": raw, "title": item["title"],
+         "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "authors": item.get("authors"),
+         "message": f"Was at {old_location}, updated to {loc_name}",
+         "inventory_confirmation": inventory_confirmation},
+    )
 
 
 def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
@@ -198,7 +272,18 @@ def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
             {"status": "not_owned", "isbn": raw, "message": "Not in your collection"},
         )
 
-    location_str = item.get("location_name") or "No location set"
+    # Lookup is the fourth reader (#116). It is display only, so unlike Scan
+    # Move — which is deliberately left on the seam and owned by its own plan
+    # — making it copy-aware costs one formatter call. A two-copy item that
+    # reports two rooms on its page must not report one when scanned.
+    # An upgraded database holds located items with no copy rows (G86), so the
+    # seam is the fallback before the empty label — otherwise Lookup reports
+    # "No location set" for an item whose page shows a location. B5.
+    with get_db() as db:
+        copies = item_copies.copies_for_item(db, item["id"])
+    location_str = (
+        _format_copy_places(copies) or item.get("location_name") or "No location set"
+    )
     items_common._log_scan(raw, item.get("media_type", ""), "found", item["id"], "lookup")
     return templates.TemplateResponse(
         request, "fragments/scan_result.html",

@@ -46,6 +46,44 @@ def test_exact_drag_order_is_persisted_and_location_move_clears_stale_position(d
     assert moved["position_order"] is None
 
 
+def test_ordering_write_skips_a_copy_that_has_since_moved(db):
+    """The `AND location_id = ?` guard inside the UPDATE (G18): a copy that
+    moved to another shelf between the read that produced this ordering and
+    the write must not have its position clobbered by a stale request for
+    the shelf it just left.
+
+    Pinned at the funnel rather than through `apply_copy_order`, because that
+    function validates its `copy_ids` against the shelf's current membership
+    first and so raises before it can reach the guard. The guard is what
+    protects the window *inside* the loop, which no single-threaded call can
+    open — hence the direct `update_copy` call here."""
+    location_id = _location(db)
+    a = _copy(db, location_id, "A")
+    b = _copy(db, location_id, "B")
+    other_location = _location(db, "Shelf 2")
+
+    # b moves elsewhere before the (now-stale) order for location_id lands.
+    b_item = db.execute("SELECT item_id FROM item_copies WHERE id = ?", (b,)).fetchone()["item_id"]
+    item_copies.sync_primary_location(db, b_item, other_location)
+    before = db.execute(
+        "SELECT location_id, position_order, updated_at FROM item_copies WHERE id = ?", (b,)
+    ).fetchone()
+
+    matched = item_copies.update_copy(
+        db, b, {"position_order": 5}, expect_location_id=location_id,
+    )
+
+    assert matched is False
+    after = db.execute(
+        "SELECT location_id, position_order, updated_at FROM item_copies WHERE id = ?", (b,)
+    ).fetchone()
+    assert tuple(after) == tuple(before)
+    # a, the copy that is still there, is unaffected by b's stale request.
+    assert db.execute(
+        "SELECT position_order FROM item_copies WHERE id = ?", (a,)
+    ).fetchone()["position_order"] is None
+
+
 def test_order_must_include_every_direct_copy_once(db):
     location_id = _location(db)
     a = _copy(db, location_id, "A")

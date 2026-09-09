@@ -6,7 +6,7 @@ from app.auth import require_role
 from app.config import MEDIA_TYPES
 from app.database import get_db, get_game_platforms
 from app.routers import items, items_common
-from app.services import locations as location_svc
+from app.services import item_copies, locations as location_svc
 from app.services.item_write import update_item_fields
 
 router = APIRouter()
@@ -52,11 +52,12 @@ def _append_copy_position(db, copy_id: int | None, location_id: int) -> int | No
         "WHERE location_id = ? AND id != ?",
         (location_id, copy_id),
     ).fetchone()["n"]
-    db.execute(
-        "UPDATE item_copies SET position_order = ?, updated_at = datetime('now') "
-        "WHERE id = ? AND location_id = ?",
-        (next_position, copy_id, location_id),
+    matched = item_copies.update_copy(
+        db, copy_id, {"position_order": next_position},
+        expect_location_id=location_id,
     )
+    if not matched:
+        return None
     return next_position
 
 
@@ -102,10 +103,7 @@ def _place_exact_copy(db, copy: dict, location_id: int) -> dict:
         return _place_item(db, copy["item_id"], location_id)
 
     location = _location(db, location_id)
-    db.execute(
-        "UPDATE item_copies SET location_id = ?, updated_at = datetime('now') "
-        "WHERE id = ?", (location_id, copy["copy_id"]),
-    )
+    item_copies.update_copy(db, copy["copy_id"], {"location_id": location_id})
     position_order = _append_copy_position(db, copy["copy_id"], location_id)
     item = db.execute(
         "SELECT id, title, authors, media_type, cover_path, owned "

@@ -25,6 +25,8 @@ own conflict rule, and getting one wrong raises ``IntegrityError`` mid-merge:
 - ``checkouts`` has no uniqueness constraint and is the only plain UPDATE.
 """
 
+from app.services import item_copies
+
 
 def active_loan_ids(db, item_ids) -> set[int]:
     """Which of these items are currently checked out.
@@ -98,13 +100,11 @@ def _reparent_copies(db, keep_id: int, other_id: int) -> None:
     # The merged row has at most one primary (its own partial unique index
     # guarantees that), so demoting every moved copy when the kept row already
     # has one leaves exactly one primary either way.
-    demote = ", is_primary = 0" if keep_has_primary else ""
     for offset, row in enumerate(rows, start=1):
-        db.execute(
-            f"UPDATE item_copies SET item_id = ?, copy_number = ?{demote}, "
-            "updated_at = datetime('now') WHERE id = ?",
-            (keep_id, highest + offset, row["id"]),
-        )
+        fields = {"item_id": keep_id, "copy_number": highest + offset}
+        if keep_has_primary:
+            fields["is_primary"] = 0
+        item_copies.update_copy(db, row["id"], fields)
 
 
 def reparent_children(db, keep_id: int, other_id: int) -> None:

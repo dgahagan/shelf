@@ -72,9 +72,22 @@ are planned.
 ## Portable archive
 
 **Portable archive → Export** produces a zip of your items, tags, locations,
-series, reading log, checkouts **and the cover images**. No users,
-passwords, API credentials, settings or certificates — so it's safe to hand
-to someone else or keep in a shared drive.
+series, reading log, checkouts, **your physical copies** and **the cover
+images**. No users, passwords, API credentials, settings or certificates — so
+it's safe to hand to someone else or keep in a shared drive.
+
+Three things to know about how copies come back:
+
+- **An archive taken before 0.38.0 imports as one copy per item**, from the
+  item's own location, exactly as it did then. Nothing is lost that was not
+  already lost.
+- **An item you already have keeps its own copies.** The archive updates the
+  record's fields but does not touch your copies — reconciling two sets of
+  copies would be guesswork, and it would duplicate them on every repeat
+  import.
+- **A copy barcode already in use is imported without the barcode**, and the
+  import's errors list names both items so you can sort it out. Copy barcodes
+  are unique across your whole collection.
 
 **Import** is a two-step: upload, then a **preview** shows how many items are
 new, how many you already have, and how each duplicate was matched
@@ -91,6 +104,9 @@ storing Audiobookshelf ASINs as ISBNs will carry some — is imported
 **without** its ISBN and listed in the import's report, so nothing is
 silently dropped. A row with a media type or platform Shelf doesn't know is
 refused and named in the same report; the rest of the archive still applies.
+An item is checked in full before any of it is written, so a refused item is
+skipped whole — it never leaves a half-written record, copy or location behind
+while the report says it failed.
 
 ## Database backup & restore
 

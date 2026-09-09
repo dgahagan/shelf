@@ -213,14 +213,14 @@
     <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">
         {% if status == 'added' or status == 'wishlisted' %}+
         {% elif status == 'duplicate' %}=
-        {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read') %}&check;
+        {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read', 'elsewhere') %}&check;
         {% else %}!{% endif %}
     </div>
     {% endif %}
 
     <div class="flex-1 min-w-0">
         {# Statuses with a title link #}
-        {% if status in ('added', 'wishlisted', 'duplicate', 'checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read', 'already_checked_out', 'not_checked_out') %}
+        {% if status in ('added', 'wishlisted', 'duplicate', 'checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read', 'already_checked_out', 'not_checked_out', 'elsewhere') %}
         <p class="font-medium truncate" data-scan-title>
             {% if item_id %}<a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a>
             {% else %}{{ title }}{% endif %}
@@ -235,7 +235,7 @@
         <p class="text-xs text-shelf-muted">Added to wishlist &middot; {{ media_type_label }} via {{ source }}</p>
         {% elif status == 'duplicate' %}
         <p class="text-sm text-shelf-muted">Already in collection</p>
-        {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'already_checked_out', 'not_checked_out') %}
+        {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'already_checked_out', 'not_checked_out', 'elsewhere') %}
         {# The toast reads DECLARED ATTRIBUTES ONLY — app.js matches no classes.
            data-scan-detail carries what the title cannot: a lend names its
            borrower, a move its destination, a Lookup hit its location. The
@@ -302,7 +302,7 @@
         {% elif status == 'wishlisted' %}bg-purple-500/20 text-purple-400
         {% elif status in ('duplicate', 'already_checked_out', 'not_checked_out') %}bg-shelf-warning/20 text-shelf-warning
         {% elif status == 'checked_out' %}bg-orange-500/20 text-orange-400
-        {% elif status in ('moved', 'found', 'relocated') %}bg-blue-500/20 text-blue-400
+        {% elif status in ('moved', 'found', 'relocated', 'elsewhere') %}bg-blue-500/20 text-blue-400
         {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
         {% if status == 'wishlisted' %}wishlisted
         {% elif status == 'checked_out' %}lent
@@ -310,6 +310,7 @@
         {% elif status == 'moved' %}moved
         {% elif status == 'confirmed' %}confirmed
         {% elif status == 'relocated' %}relocated
+        {% elif status == 'elsewhere' %}elsewhere
         {% elif status == 'found' %}found
         {% elif status == 'not_owned' %}not found
         {% elif status == 'marked_read' %}read

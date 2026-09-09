@@ -1,0 +1,58 @@
+{#
+  Physical copies of one item (issue #116).
+
+  The `item-copies` id is load-bearing: the copy-surface plan's mutation
+  handlers swap this fragment with hx-target="#item-copies" hx-swap="outerHTML",
+  exactly as fragments/item_tags.html and routers/tags.py do for tags. That is
+  why the block is a fragment rather than inline markup in item_detail.html,
+  and why the wrapper is always rendered even when there is nothing to show.
+
+  Read-only on purpose. Adding, editing and removing a copy belong to that
+  later plan, and it puts its controls here rather than building a second
+  block, so this fragment carries no hx-* attribute, form or button today.
+
+  copy.location_name is already the full path — locations.name is denormalised
+  (docs/architecture.md), so there is no ancestor walk to do here.
+
+  The wrapper's class is chosen by case rather than fixed, because this block
+  sits inside item_detail.html's two-column metadata grid:
+    - nothing to show  -> `hidden`, so no empty grid cell shifts the cells
+                          after it into the wrong column;
+    - one placed copy  -> no class, so the row is exactly the metadata line
+                          the page rendered before this fragment existed;
+    - two or more      -> `col-span-2`, so the list gets the full width.
+  An item with one copy whose location_id is NULL renders nothing: clearing an
+  item's location keeps its primary copy and nulls the location, so an
+  unconditional single-copy branch would print the false string
+  "Location: None" where the page used to show a clean empty state.
+
+  `legacy` is the zero-copy seam (G86, and this fragment's half of B5). An
+  upgraded database holds located items with no copy rows at all — a wishlist
+  item, most commonly — and before this fragment existed item_detail.html
+  rendered `Location: {{ item.location_name }}` for exactly that state. Hiding
+  the wrapper on `copies == []` therefore dropped a line the page used to show,
+  which is a regression rather than a missing feature. Falling back to the seam
+  keeps every reader of "where is this item?" answering alike.
+#}
+{% set placed = copies|length == 1 and copies[0].location_id %}
+{% set listed = copies|length > 1 %}
+{% set legacy = not copies and item.location_name %}
+<div id="item-copies"{% if listed %} class="col-span-2"{% elif not placed and not legacy %} class="hidden"{% endif %}>
+    {%- if legacy %}
+    <span class="text-shelf-muted">Location:</span> {{ item.location_name }}
+    {%- elif placed %}
+    {%- set copy = copies[0] %}
+    <span class="text-shelf-muted">Location:</span> {{ copy.location_name }}{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}
+    {%- elif listed %}
+    <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Copies</p>
+    <div class="space-y-1">
+        {%- for copy in copies %}
+        {%- set details = [] %}
+        {%- for value in [copy.condition, copy.acquired_date, copy.acquisition_source] %}{% if value %}{{ details.append(value) or '' }}{% endif %}{% endfor %}
+        {%- if copy.acquisition_price is not none %}{{ details.append(copy.acquisition_price|money) or '' }}{% endif %}
+        {%- for value in [copy.provenance, copy.notes] %}{% if value %}{{ details.append(value) or '' }}{% endif %}{% endfor %}
+        <div><span class="text-shelf-muted">#{{ copy.copy_number }}</span> {% if copy.location_id %}{{ copy.location_name }}{% else %}<span class="text-shelf-muted">No location</span>{% endif %}{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{% for detail in details %} · {{ detail }}{% endfor %}</div>
+        {%- endfor %}
+    </div>
+    {%- endif %}
+</div>

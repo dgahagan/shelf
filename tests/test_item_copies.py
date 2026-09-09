@@ -178,3 +178,156 @@ def test_owned_flag_is_independent_of_copy_rows(db):
     assert db.execute(
         "SELECT 1 FROM item_copies WHERE item_id = ?", (item_id,)
     ).fetchone() is not None
+
+
+class TestCopyWriteFunnel:
+    """The `item_copies` write funnel — `insert_copy` / `update_copy`.
+
+    Modelled on `item_write`'s: names are validated against the live schema so
+    a typo raises instead of being dropped, unset columns take their SCHEMA
+    defaults, and the location-scoped `position_order` rule lives here rather
+    than in each caller.
+    """
+
+    def test_insert_rejects_an_unknown_column(self, db):
+        item_id = _item(db)
+        with pytest.raises(ValueError) as exc:
+            item_copies.insert_copy(
+                db, {"item_id": item_id, "copy_number": 1, "no_such_column": 1}
+            )
+        assert "no_such_column" in str(exc.value)
+
+    def test_update_rejects_an_unknown_column(self, db):
+        item_id = _item(db)
+        copy_id = item_copies.insert_copy(db, {"item_id": item_id, "copy_number": 1})
+        with pytest.raises(ValueError) as exc:
+            item_copies.update_copy(db, copy_id, {"no_such_column": 1})
+        assert "no_such_column" in str(exc.value)
+
+    def test_both_functions_refuse_the_managed_id(self, db):
+        item_id = _item(db)
+        with pytest.raises(ValueError, match="id"):
+            item_copies.insert_copy(
+                db, {"id": 99, "item_id": item_id, "copy_number": 1}
+            )
+        copy_id = item_copies.insert_copy(db, {"item_id": item_id, "copy_number": 1})
+        with pytest.raises(ValueError, match="id"):
+            item_copies.update_copy(db, copy_id, {"id": 99})
+        with pytest.raises(ValueError, match="created_at"):
+            item_copies.update_copy(db, copy_id, {"created_at": "2020-01-01"})
+
+    def test_insert_requires_item_id_and_copy_number(self, db):
+        item_id = _item(db)
+        with pytest.raises(ValueError, match="copy_number"):
+            item_copies.insert_copy(db, {"item_id": item_id})
+        with pytest.raises(ValueError, match="item_id"):
+            item_copies.insert_copy(db, {"copy_number": 1})
+
+    def test_unset_columns_take_their_schema_defaults(self, db):
+        item_id = _item(db)
+        copy_id = item_copies.insert_copy(db, {"item_id": item_id, "copy_number": 1})
+        row = db.execute(
+            "SELECT * FROM item_copies WHERE id = ?", (copy_id,)
+        ).fetchone()
+        assert row["is_primary"] == 0
+        assert row["location_id"] is None
+        assert row["created_at"]
+        assert row["updated_at"]
+
+    def test_a_move_clears_the_stale_shelf_position(self, db):
+        office = _location(db, "Office")
+        loft = _location(db, "Loft")
+        item_id = _item(db)
+        copy_id = item_copies.insert_copy(
+            db,
+            {"item_id": item_id, "copy_number": 1, "location_id": office,
+             "position_order": 3},
+        )
+
+        item_copies.update_copy(db, copy_id, {"location_id": loft})
+
+        row = db.execute(
+            "SELECT location_id, position_order FROM item_copies WHERE id = ?",
+            (copy_id,),
+        ).fetchone()
+        assert row["location_id"] == loft
+        assert row["position_order"] is None
+
+    def test_a_move_to_the_same_location_keeps_the_position(self, db):
+        office = _location(db, "Office")
+        item_id = _item(db)
+        copy_id = item_copies.insert_copy(
+            db,
+            {"item_id": item_id, "copy_number": 1, "location_id": office,
+             "position_order": 3},
+        )
+
+        item_copies.update_copy(db, copy_id, {"location_id": office})
+
+        assert db.execute(
+            "SELECT position_order FROM item_copies WHERE id = ?", (copy_id,)
+        ).fetchone()["position_order"] == 3
+
+    def test_an_explicit_position_order_wins_over_the_clearing_rule(self, db):
+        office = _location(db, "Office")
+        loft = _location(db, "Loft")
+        item_id = _item(db)
+        copy_id = item_copies.insert_copy(
+            db,
+            {"item_id": item_id, "copy_number": 1, "location_id": office,
+             "position_order": 3},
+        )
+
+        item_copies.update_copy(
+            db, copy_id, {"location_id": loft, "position_order": 7}
+        )
+
+        row = db.execute(
+            "SELECT location_id, position_order FROM item_copies WHERE id = ?",
+            (copy_id,),
+        ).fetchone()
+        assert row["location_id"] == loft
+        assert row["position_order"] == 7
+
+    def test_clearing_a_location_clears_the_position_too(self, db):
+        office = _location(db, "Office")
+        item_id = _item(db)
+        copy_id = item_copies.insert_copy(
+            db,
+            {"item_id": item_id, "copy_number": 1, "location_id": office,
+             "position_order": 3},
+        )
+
+        item_copies.update_copy(db, copy_id, {"location_id": None})
+
+        row = db.execute(
+            "SELECT location_id, position_order FROM item_copies WHERE id = ?",
+            (copy_id,),
+        ).fetchone()
+        assert row["location_id"] is None
+        assert row["position_order"] is None
+
+    def test_reset_column_cache_lets_a_second_connection_re_read(self, db, tmp_path):
+        """G13's own contract: the cache is per-process, so it must be
+        droppable or a hand-built schema inherits the previous shape."""
+        item_id = _item(db)
+        warmed = item_copies.copy_columns(db)
+        assert "position_order" in warmed
+
+        item_copies.reset_column_cache()
+        assert item_copies._columns is None
+
+        scratch = sqlite3.connect(tmp_path / "scratch.db")
+        scratch.row_factory = sqlite3.Row
+        scratch.execute(
+            "CREATE TABLE item_copies (id INTEGER PRIMARY KEY, item_id INTEGER, "
+            "copy_number INTEGER)"
+        )
+        assert item_copies.copy_columns(scratch) == {
+            "id", "item_id", "copy_number"
+        }
+        scratch.close()
+
+        item_copies.reset_column_cache()
+        assert item_copies.copy_columns(db) == warmed
+        assert item_id

@@ -90,9 +90,7 @@
                     {% if item.duration_mins %}
                     <div><span class="text-shelf-muted">Duration:</span> {{ (item.duration_mins // 60) }}h {{ item.duration_mins % 60 }}m</div>
                     {% endif %}
-                    {% if item.location_name %}
-                    <div><span class="text-shelf-muted">Location:</span> {{ item.location_name }}</div>
-                    {% endif %}
+                    {% include "fragments/item_copies.html" %}
                     {% if item.manual_value is not none %}
                     <div><span class="text-shelf-muted">Value:</span> <span class="text-shelf-success">{{ item.manual_value|money }}</span> <span class="text-xs text-shelf-muted">(manual)</span></div>
                     {% elif item.estimated_value %}
