@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}RomM Library — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold">RomM Library</h1>
+            <p class="text-sm text-shelf-muted mt-1">{{ total }} synced digital game{{ '' if total == 1 else 's' }}. RomM remains the source of the game files.</p>
+        </div>
+        {% if can_manage_romm %}<a href="/settings" class="text-sm text-shelf-accent2 hover:underline">RomM settings</a>{% endif %}
+    </div>
+
+    {% if platforms %}
+    <div class="flex gap-2 overflow-x-auto pb-2 mb-5">
+        <a href="/romm/library{% if q %}?q={{ q|urlencode }}{% endif %}"
+           class="shrink-0 px-3 py-2 rounded-lg text-sm {% if not selected_platform %}bg-shelf-accent text-white{% else %}bg-shelf-card border border-shelf-border{% endif %}">All · {{ platforms|sum(attribute='game_count') }}</a>
+        {% for platform in platforms %}
+        <a href="/romm/library?platform={{ platform.platform_id|urlencode }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+           class="shrink-0 px-3 py-2 rounded-lg text-sm {% if selected_platform == platform.platform_id %}bg-shelf-accent text-white{% else %}bg-shelf-card border border-shelf-border{% endif %}">{{ platform.platform_name }} · {{ platform.game_count }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="get" action="/romm/library" class="flex flex-wrap gap-2 mb-6">
+        {% if selected_platform %}<input type="hidden" name="platform" value="{{ selected_platform }}">{% endif %}
+        <input type="search" name="q" value="{{ q }}" placeholder="Search synced games or publisher…"
+               class="flex-1 min-w-[200px] bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg hover:bg-shelf-accent2">Search</button>
+        {% if q %}<a href="/romm/library{% if selected_platform %}?platform={{ selected_platform|urlencode }}{% endif %}" class="px-4 py-2 bg-shelf-card border border-shelf-border rounded-lg">Clear</a>{% endif %}
+    </form>
+
+    {% if games %}
+    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {% for game in games %}
+        <div class="bg-shelf-card rounded-xl border border-shelf-border overflow-hidden min-w-0">
+            <a href="/item/{{ game.item_id }}" class="block aspect-[2/3] bg-shelf-bg">
+                {% if game.cover_path %}
+                <img src="/{{ game.cover_path }}" alt="{{ game.title }}" class="w-full h-full object-cover" loading="lazy">
+                {% else %}
+                <div class="w-full h-full flex items-center justify-center p-4 text-center text-sm text-shelf-muted">{{ game.title }}</div>
+                {% endif %}
+            </a>
+            <div class="p-3">
+                <a href="/item/{{ game.item_id }}" class="font-medium text-sm line-clamp-2 hover:text-shelf-accent2">{{ game.title }}</a>
+                <p class="text-xs text-shelf-muted mt-1 truncate">{{ game.platform_name }}{% if game.publish_year %} · {{ game.publish_year }}{% endif %}</p>
+                {% if game.romm_url %}<a href="{{ game.romm_url }}" target="_blank" rel="noopener" class="inline-block mt-2 text-xs text-shelf-accent2 hover:underline">Open in RomM</a>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if page_count > 1 %}
+    <div class="flex items-center justify-center gap-3 mt-8 text-sm">
+        {% if page > 1 %}<a class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg" href="/romm/library?page={{ page - 1 }}{% if selected_platform %}&platform={{ selected_platform|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}">Previous</a>{% endif %}
+        <span class="text-shelf-muted">Page {{ page }} of {{ page_count }}</span>
+        {% if page < page_count %}<a class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg" href="/romm/library?page={{ page + 1 }}{% if selected_platform %}&platform={{ selected_platform|urlencode }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}">Next</a>{% endif %}
+    </div>
+    {% endif %}
+    {% else %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center text-shelf-muted">
+        {% if q or selected_platform %}No synced RomM games match these filters.{% else %}No RomM games have been synchronised yet.{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

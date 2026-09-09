@@ -566,6 +566,8 @@ def test_every_top_level_page_is_reachable_from_the_nav():
             "pinned by test_settings.py's cover-review-link tests, so this "
             "exemption is a claim with a test behind it rather than a hole."
         ),
+        "/romm": "provider shortcut reached from Settings -> RomM",
+        "/romm/library": "provider catalogue reached from Settings -> RomM",
     }
 
     nav_paths = {t["path"] for t in NAV_TABS}
