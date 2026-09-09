@@ -48,9 +48,11 @@ camera permission.
 EAN-13 (ISBN-13 and UPC-like), EAN-8, UPC-A, UPC-E. ISBN-10s can be typed.
 
 **What about books with no barcode?**
-Title search (Open Library), manual add, or Photo Intake of the cover
-face-up — the model recognizes the cover, and reads the printed ISBN if the
-back cover is showing.
+Title search (Open Library), or Photo Intake of the cover face-up — the
+model recognizes the cover, and reads the printed ISBN if the back cover is
+showing. Manual entry is not an answer here yet: the form exists only on a
+scan that came back empty, so it cannot be reached without a barcode. A
+standalone one is [planned](https://github.com/dgahagan/shelf/issues/120).
 
 **Can several people use it?**
 Yes: admin / editor / viewer roles on one shared library. Per-user reading

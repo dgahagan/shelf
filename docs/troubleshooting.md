@@ -51,10 +51,12 @@ has a barcode for this).
 - Many pre-2007 books carry only an ISBN-10 *printed* and an EAN that isn't
   the ISBN; type the ISBN-10.
 - Store-price-sticker barcodes aren't ISBNs. Peel.
-- Genuinely obscure editions: use **Title search** or **Add manually**. The
-  title-search result box makes the same distinctions this card does — a
-  rejected key, a rate-limited provider and an unreachable one each say so,
-  so an empty box there is a real miss and not a silent failure.
+- Genuinely obscure editions: use **Title search**. The title-search result
+  box makes the same distinctions this card does — a rejected key, a
+  rate-limited provider and an unreachable one each say so, so an empty box
+  there is a real miss and not a silent failure. If title search misses too,
+  there is no manual route in yet; a standalone **Add item manually** is
+  [planned](https://github.com/dgahagan/shelf/issues/120).
 - A **connectivity card** is a different problem: the lookup could not reach
   the provider at all (DNS, no route, a timeout). It is not a missing record,
   and the scan is logged as `error` rather than `not_found`. Check the

@@ -74,9 +74,20 @@ says — the provider answered and genuinely had nothing.
 
 ## Manual add
 
-**Add manually** opens a blank item form for anything lookup can't find: a
-self-published book, a burned CD, a box set. Fill what you know; you can
-attach a cover by upload or cover search afterwards from the item page.
+When a scan finds a valid barcode that no provider knows, the result card
+opens a manual entry form in place. Fill what you know; you can attach a
+cover by upload or cover search afterwards from the item page.
+
+**It appears on that card only, and that is a real limitation today.** There
+is no standalone "add by hand" control, so the form is reachable only after
+a lookup has run and come back empty. An item with **no barcode at all**
+cannot start here: a title typed into the scan box fails ISBN validation
+before any lookup, and a title search that returns nothing offers no way
+through either. A self-published book, a burned CD, a niche import or
+something you made yourself therefore has no manual route in yet.
+
+A general "Add item manually" entry point, for every media type and with no
+lookup required, is [planned](https://github.com/dgahagan/shelf/issues/120).
 
 What you type is checked before it's stored: an ISBN whose check digit
 doesn't add up, a location that no longer exists, or a game platform that
