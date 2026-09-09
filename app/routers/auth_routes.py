@@ -11,6 +11,7 @@ from app.auth import (
 )
 from app.config import get_client_ip
 from app.database import get_db
+from app.services import libraries
 
 logger = logging.getLogger(__name__)
 
@@ -170,10 +171,14 @@ async def create_user(
 
     try:
         with get_db() as db:
-            db.execute(
+            cursor = db.execute(
                 "INSERT INTO users (username, password, display_name, role) VALUES (?, ?, ?, ?)",
                 (username, hash_password(password), display_name, role),
             )
+            if role in ("viewer", "editor"):
+                libraries.set_membership(
+                    db, libraries.DEFAULT_LIBRARY_ID, cursor.lastrowid, role
+                )
     except sqlite3.IntegrityError:
         logger.warning("Failed to create user '%s': username already exists", username)
         return {"ok": False, "message": "Username already exists"}
@@ -208,6 +213,15 @@ async def update_user_role(
             "UPDATE users SET role = ?, token_version = token_version + 1, updated_at = datetime('now') WHERE id = ?",
             (role, user_id),
         )
+        if role == "admin":
+            # Admin is the explicit global bypass; it needs no membership row.
+            libraries.remove_membership(db, libraries.DEFAULT_LIBRARY_ID, user_id)
+        else:
+            # Preserve the existing user-management contract for Main Library.
+            # Memberships in every other library remain independent.
+            libraries.set_membership(
+                db, libraries.DEFAULT_LIBRARY_ID, user_id, role
+            )
 
     logger.info("User id=%d role changed to '%s' by user '%s'", user_id, role, current_user["username"])
     return {"ok": True, "message": "Role updated — user's sessions have been invalidated"}

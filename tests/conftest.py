@@ -206,14 +206,32 @@ def viewer_client(client, viewer_user):
     return client
 
 
-def _insert_item(db, title="Test Book", isbn="9780000000026", media_type="book", **kwargs):
-    """Insert a test item and return its ID."""
+def _insert_item(
+    db,
+    title="Test Book",
+    isbn="9780000000026",
+    media_type="book",
+    _library_id=1,
+    **kwargs,
+):
+    """Insert a test item, defaulting to Main Library when libraries exist."""
     fields = {"title": title, "isbn": isbn, "media_type": media_type, "source": "test"}
     fields.update(kwargs)
     cols = ", ".join(fields.keys())
     placeholders = ", ".join("?" for _ in fields)
     cursor = db.execute(f"INSERT INTO items ({cols}) VALUES ({placeholders})", list(fields.values()))
-    return cursor.lastrowid
+    item_id = cursor.lastrowid
+    if _library_id is not None:
+        try:
+            exists = db.execute(
+                "SELECT 1 FROM libraries WHERE id = ?", (int(_library_id),)
+            ).fetchone()
+        except sqlite3.OperationalError:
+            exists = None
+        if exists:
+            from app.services import libraries
+            libraries.assign_item(db, item_id, int(_library_id))
+    return item_id
 
 
 def _insert_borrower(db, name="Test Borrower"):

@@ -58,7 +58,7 @@ from typing import Any, Iterable, Mapping
 from app.config import MEDIA_TYPES
 from app.database import get_game_platforms
 from app.services import isbn as isbn_svc
-from app.services import item_copies
+from app.services import item_copies, libraries
 from app.services.write_targets import (  # noqa: F401 — re-exported
     ItemValueError,
     UnknownLocationError,
@@ -280,6 +280,7 @@ def insert_item(db, fields: Mapping[str, Any] | None = None, **kwargs) -> int:
         [values[n] for n in names],
     )
     item_id = cursor.lastrowid
+    libraries.assign_item(db, item_id, libraries.DEFAULT_LIBRARY_ID)
     if "location_id" in values:
         item_copies.sync_primary_location(db, item_id, values["location_id"])
     return item_id
