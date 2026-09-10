@@ -45,6 +45,33 @@ MUSIC_MEDIA_TYPES = frozenset({
     "digital_music",
 })
 
+# What to call the person on the cover. `items.authors` is one column for
+# every media type, but "Author(s)" is only right for the book family, so the
+# label the add form puts on that field is declared here — once — rather than
+# as a ternary in whichever template needs it. Two templates read it today and
+# the Browse/Music cards (#119) are the third.
+#
+# Only the overrides live in the map; everything else takes the default. Read
+# it through creator_label() rather than indexing it.
+#
+# `magazine` is deliberately absent, so it reads "Author(s)": a magazine's
+# `authors` column holds contributors, and the publication itself already has
+# its own `publisher` field. This is the intended answer, not an omission.
+DEFAULT_CREATOR_LABEL = "Author(s)"
+
+CREATOR_LABELS = {
+    "video_game": "Developer",
+    "dvd": "Director",
+    # Derived from MUSIC_MEDIA_TYPES rather than retyped, so a fifth music
+    # format added above cannot silently fall back to "Author(s)".
+    **{media_type: "Artist" for media_type in MUSIC_MEDIA_TYPES},
+}
+
+
+def creator_label(media_type):
+    """The label for the creator field of `media_type`."""
+    return CREATOR_LABELS.get(media_type, DEFAULT_CREATOR_LABEL)
+
 # Seed data — runtime platform list comes from game_platforms table
 GAME_PLATFORMS = {
     "atari2600": "Atari 2600",

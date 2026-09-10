@@ -215,6 +215,30 @@ def wait_for_video_ready(page, selector: str, timeout_ms: int = 15_000) -> None:
     )
 
 
+def template_env():
+    """A standalone Jinja environment carrying the app's globals and filters.
+
+    Several tests here render one fragment in isolation rather than driving a
+    request, and a bare `Environment(loader=FileSystemLoader("app/templates"))`
+    has none of what `app/main.py` registers on `templates.env`. A template
+    that reads a global then raises `UndefinedError` in these tests only —
+    invisible to the unit suite, which goes through the app.
+
+    The globals are **copied from the app's own environment**, not re-listed,
+    so a global added there cannot drift out of step with this one. Import is
+    inside the function per G14: `app.main` at module level runs at collection,
+    before the data-dir fixtures redirect anything.
+    """
+    from jinja2 import Environment, FileSystemLoader
+
+    from app.main import templates
+
+    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
+    env.globals.update(templates.env.globals)
+    env.filters.update(templates.env.filters)
+    return env
+
+
 @pytest.fixture(scope="session")
 def playwright_instance():
     with sync_playwright() as pw:

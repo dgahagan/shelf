@@ -6,6 +6,47 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.40.0] - 2026-09-10
+
+Shelf could always store an item no database has heard of — a self-published
+book, a home-made compilation, a zine — but there was no way to *reach* the form
+that does it. Manual entry lived inside the barcode scanner's not-found card, so
+you first needed a valid barcode that failed to resolve before Shelf would offer
+to let you type. Typing a title into the scan box, which is what people actually
+did, returned an error and nothing else. This release gives manual entry its own
+way in, from five places.
+
+### Added
+
+- **Add by hand** — a standalone manual entry panel on the Scan page, needing
+  nothing but a title. Every media type including the music formats and
+  magazines, an optional ISBN or UPC that is filed into the right column on
+  its own, and wishlist mode. Five ways in: the Scan page itself, Home's quick
+  actions, an empty title search (carrying what you typed through as the
+  title), the error card you get when the scan box cannot read what you typed
+  — which is what happens when you type a title into it — and **Add another
+  like this** on any item's page, which prefills the author, publisher, year,
+  media type, platform, series and location from that item. The creator field
+  renames itself per media type: Author(s) for books, Developer for games,
+  Director for discs, Artist for music. Closes
+  [#120](https://github.com/dgahagan/shelf/issues/120).
+
+  Two things it deliberately does not do. A hand-typed record or magazine is
+  stored as a plain item, with no pressing or issue record behind it — no track
+  list, no catalogue number, and it does not appear in the Music page's release
+  browser. You catalogued what you own; you did not identify a particular
+  pressing, and the form does not pretend otherwise. And an item added with no
+  ISBN or UPC is not checked for duplicates: there is nothing reliable to match
+  on, and matching on title alone would refuse the second copy of a book you
+  own twice.
+
+### Fixed
+
+- Two documentation pages described an **Add a copy** control on the item page
+  that has never existed. The page now has a real control for prefilling a new
+  item from an existing one, named **Add another like this** so it does not
+  collide with physical copies, and the docs describe what actually ships.
+
 ## [0.39.0] - 2026-09-09
 
 Shelf has always fetched cover art automatically, and **Retry missing covers**
@@ -3278,6 +3319,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.40.0]: https://github.com/dgahagan/shelf/releases/tag/v0.40.0
 [0.39.0]: https://github.com/dgahagan/shelf/releases/tag/v0.39.0
 [0.38.0]: https://github.com/dgahagan/shelf/releases/tag/v0.38.0
 [0.37.2]: https://github.com/dgahagan/shelf/releases/tag/v0.37.2

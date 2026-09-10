@@ -34,4 +34,10 @@
 {% include "fragments/search_status_notice.html" %}
 {% elif query %}
 <p class="text-sm text-shelf-muted">No movies found for "{{ query }}". Try a different search.</p>
+<button type="button" data-manual-add
+        data-manual-add-title="{{ query }}"
+        data-manual-add-type="dvd"
+        class="mt-2 px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs font-medium hover:border-shelf-accent transition-colors">
+    Add it by hand
+</button>
 {% endif %}

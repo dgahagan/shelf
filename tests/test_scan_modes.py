@@ -1,5 +1,6 @@
 """Tests for scan modes: add, wishlist, lend, return, move, inventory, lookup, quick_rate."""
 
+import re
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -611,6 +612,78 @@ class TestManualAddForm:
         assert resp.status_code == 200
         assert 'name="location_id"' in resp.text
         assert ">Location</option>" in resp.text
+
+    def test_card_is_unchanged_by_the_fragment_extraction(self, admin_client, db):
+        """Issue #120 moved this form into fragments/manual_add_form.html and
+        included it back. The card is the default host, so nothing it renders
+        may change — including the parts the include could plausibly have
+        dropped on the way out: the Alpine root (which stays on the *card*, not
+        in the fragment), the two hidden inputs the scan fixes, and the swap
+        destination the form carries for itself (G54)."""
+        _insert_location(db, name="Study")
+        db.commit()
+
+        html = self._scan_unknown(admin_client).text
+
+        # The component root stays on the card. The fragment is scope-less
+        # markup, because several cards can sit on one page at once.
+        assert 'x-data="manualAddForm"' in html
+
+        # The scan fixes both of these, so on this host they are hidden.
+        assert '<input type="hidden" name="isbn"' in html
+        assert '<input type="hidden" name="media_type"' in html
+
+        # G54: this host's form settles its own destination.
+        assert 'hx-target="closest .scan-result"' in html
+        assert 'hx-swap="outerHTML"' in html
+
+        # The fields the extraction carried across.
+        assert 'name="series_name"' in html
+        assert 'name="location_id"' in html
+        assert "Copy from an existing item" in html
+        assert "Study" in html
+
+    def test_the_cards_shared_fields_carry_no_value_attribute(self, admin_client, db):
+        """The card host gets no prefill, so the three fields the panel
+        prefills must render exactly as they did before the panel existed.
+
+        T3 measured its own extraction as byte-neutral; T4 then added
+        `value="{{ manual_prefill.* }}"` to markup both hosts share, and on
+        the card that undefined value rendered as `value=""` on publisher,
+        publish_year and series_name. Inert in a browser, but it is the
+        contract the extraction was checked against, and the presence-only
+        assertions above cannot see it.
+
+        The opening tag is matched whole rather than pinning the class
+        chain, which any restyle would break.
+        """
+        _insert_location(db, name="Study")
+        db.commit()
+
+        html = self._scan_unknown(admin_client).text
+        for field in ("publisher", "publish_year", "series_name"):
+            tag = _input_tag(html, field)
+            assert "value=" not in tag, f"{field}: {tag}"
+
+    def test_the_panel_still_carries_the_prefill_slots(self, admin_client, db):
+        """The other half of the guard above: suppressing the attribute on the
+        card must not suppress it on the host that exists to be prefilled."""
+        _insert_location(db, name="Study")
+        db.commit()
+
+        html = admin_client.get("/scan?add=manual").text
+        for field in ("publisher", "publish_year", "series_name"):
+            tag = _input_tag(html, field)
+            assert "value=" in tag, f"{field}: {tag}"
+
+
+def _input_tag(html, name):
+    """The complete `<input ... name="{name}" ...>` opening tag, newlines and
+    all. Named for this module; see G93 on redefining a helper that already
+    exists here."""
+    m = re.search(r'<input[^>]*name="%s"[^>]*>' % re.escape(name), html)
+    assert m, f'no <input name="{name}"> in the rendered markup'
+    return m.group(0)
 
 
 class TestRecentScans:

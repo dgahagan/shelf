@@ -190,10 +190,13 @@
         reconcile(document);
     });
 
-    // And every HTMX swap target. Two components — hcResultCard and
-    // manualAddForm — have no root at alpine:initialized on any page and
-    // arrive only by swap, so losing components-item.js would otherwise scan
-    // clean and then deliver a dead card in silence.
+    // And every HTMX swap target. hcResultCard has no root at
+    // alpine:initialized on any page and arrives only by swap, so losing
+    // components-item.js would otherwise scan clean and then deliver a dead
+    // card in silence. manualAddForm was in the same position until #120 gave
+    // it a page-load root on /scan (the manual entry panel); the not_found
+    // card still delivers its own instances by swap, so this pass still
+    // covers those.
     //
     // G6: read the event's own target, never re-query the document. This
     // listens on `document` rather than `document.body` only because the guard

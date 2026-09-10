@@ -18,6 +18,7 @@ function scanPage() {
         lastScanTime: 0,
         inventoryScannedIds: [],
         isZxingFallback: false,
+        manualOpen: false,
 
         modes: [
             {id: 'add', label: 'Add'},
@@ -58,6 +59,10 @@ function scanPage() {
                 });
         },
 
+        toggleManual() {
+            this.manualOpen = !this.manualOpen;
+        },
+
         setMode(m) {
             this.mode = m;
             localStorage.setItem('shelf_scan_mode', m);
@@ -90,6 +95,41 @@ function scanPage() {
         // Client-side validation before form submit
         init() {
             var self = this;
+
+            // The manual panel's open state is seeded server-side from
+            // ?add=manual, so there is no URL parsing here and no
+            // open-then-populate flash.
+            var seed = document.querySelector('[data-manual-open]');
+            this.manualOpen = !!(seed && seed.dataset.manualOpen === 'true');
+
+            // ...but `mode` is restored from localStorage above, and six of
+            // the eight modes hide the panel AND its only toggle. Without
+            // this, every returning user whose last mode was Lookup follows
+            // Home's "Add by hand" link and sees nothing change. Normalize
+            // before Alpine paints. A seeded 'wishlist' is preserved:
+            // arriving by deep link must not move someone off wishlist mode.
+            if (this.manualOpen && this.mode !== 'add' && this.mode !== 'wishlist') {
+                this.mode = 'add';
+                localStorage.setItem('shelf_scan_mode', 'add');
+            }
+
+            // One delegated listener for every way in (#120). A button in a
+            // swapped-in search-result fragment has no reliable Alpine scope
+            // and the CSP forbids inline onclick, so each way in is a plain
+            // button carrying three data attributes and no JS of its own —
+            // and it survives every HTMX swap.
+            document.addEventListener('click', function (e) {
+                var btn = e.target.closest ? e.target.closest('[data-manual-add]') : null;
+                if (!btn) return;
+                e.preventDefault();
+                self.manualOpen = true;
+                window.dispatchEvent(new CustomEvent('shelf:manual-add', {
+                    detail: {
+                        title: btn.dataset.manualAddTitle || '',
+                        media_type: btn.dataset.manualAddType || ''
+                    }
+                }));
+            });
             var form = document.querySelector('form[hx-post="/api/scan"]');
             if (form) {
                 form.addEventListener('htmx:beforeRequest', function(e) {

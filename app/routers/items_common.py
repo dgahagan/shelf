@@ -889,3 +889,4 @@ def _manual_form_locations():
     """
     with get_db() as db:
         return db.execute("SELECT id, name FROM locations ORDER BY sort_order, name").fetchall()
+

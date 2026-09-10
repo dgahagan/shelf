@@ -55,8 +55,9 @@ has a barcode for this).
   box makes the same distinctions this card does — a rejected key, a
   rate-limited provider and an unreachable one each say so, so an empty box
   there is a real miss and not a silent failure. If title search misses too,
-  there is no manual route in yet; a standalone **Add item manually** is
-  [planned](https://github.com/dgahagan/shelf/issues/120).
+  the empty result box offers **Add it by hand**, which opens the Scan page's
+  Add by hand panel with what you typed already in the title field. A title
+  typed into the barcode box reaches the same offer from its error card.
 - A **connectivity card** is a different problem: the lookup could not reach
   the provider at all (DNS, no route, a timeout). It is not a missing record,
   and the scan is logged as `error` rather than `not_found`. Check the

@@ -83,7 +83,10 @@
 
     <!-- Scan Form -->
     <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
-        <input type="hidden" name="mode" :value="mode">
+        {# The id is what the manual panel's form pulls in with hx-include:
+           the panel lives in its own x-data scope, and a cross-scope Alpine
+           read under the CSP build fails silently. #}
+        <input type="hidden" id="scan-mode" name="mode" :value="mode">
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
@@ -187,6 +190,37 @@
                        name="q">
             </div>
             <div id="title-search-results" class="mt-4"></div>
+        </div>
+    </div>
+
+    {# Manual entry panel (#120, add/wishlist only) — the third input path on
+       this page, beside the barcode form and title search. Same mode guard
+       title search uses. The open state is seeded server-side from
+       ?add=manual rather than parsed out of the URL in JS, so there is no
+       open-then-populate flash and the whole thing is unit-testable. #}
+    <div x-show="mode === 'add' || mode === 'wishlist'" x-transition class="mb-6" style="display:none">
+        <button type="button" @click="toggleManual()"
+                class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:border-shelf-accent transition-colors"
+                data-manual-toggle>
+            <span x-text="manualOpen ? 'Hide manual entry' : 'Add by hand'">Add by hand</span>
+        </button>
+
+        <div x-show="manualOpen" x-transition class="mt-4"
+             data-manual-open="{{ 'true' if manual_open else 'false' }}"
+             {% if not manual_open %}style="display:none"{% endif %}>
+            <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+                <h2 class="text-lg font-semibold mb-3">Add by Hand</h2>
+                <p class="text-xs text-shelf-muted mb-4">No lookup involved — a title is all you need. Everything else is optional and editable afterwards.</p>
+                {# Its own component instance. `data-manual-host` is what gates
+                   the panel-only behaviour inside manualAddForm: the same
+                   component is mounted by every not_found card, and several
+                   can sit on this page at once. #}
+                <div x-data="manualAddForm" data-manual-host="panel"
+                     data-creator-labels='{{ creator_labels | tojson }}'>
+                    {% set manual_host = 'panel' %}
+                    {% include "fragments/manual_add_form.html" with context %}
+                </div>
+            </div>
         </div>
     </div>
 

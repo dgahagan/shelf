@@ -57,7 +57,10 @@ its home.
 - **Loan state** — who has it and since when, with check-in right there.
 - **Value** — ISBNdb list price if valued, or a manual value you enter.
 - **Links** — jump to the item in Audiobookshelf or Hardcover when linked.
-- **Add a copy** — new item form pre-filled from this one.
+- **Add another like this** — opens the Scan page's Add by hand panel with this
+  item's author, publisher, year, media type, platform, series and location
+  filled in. It creates a separate record, not another physical copy of this
+  one.
 
 ## Editing
 

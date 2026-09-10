@@ -43,7 +43,14 @@ from starlette.requests import Request
 from starlette.responses import Response, RedirectResponse
 
 from app import browse_columns, browse_filters
-from app.config import COVERS_DIR, DATA_DIR, MEDIA_TYPES, get_client_ip
+from app.config import (
+    COVERS_DIR,
+    CREATOR_LABELS,
+    DATA_DIR,
+    MEDIA_TYPES,
+    creator_label,
+    get_client_ip,
+)
 from app.currency import CURRENCIES, format_money, get_currency
 from app.services.national import SEARCH_LANGS
 from app.database import init_db, get_db
@@ -416,6 +423,10 @@ templates.env.filters["money"] = format_money
 templates.env.globals["currency"] = get_currency
 templates.env.globals["currencies"] = CURRENCIES
 templates.env.globals["search_langs"] = SEARCH_LANGS
+# The creator field's label per media type — declared once in app/config.py.
+# A global rather than route context, so neither host route grows a key for it.
+templates.env.globals["creator_labels"] = CREATOR_LABELS
+templates.env.globals["creator_label"] = creator_label
 # Browse's hx-include lists are derived, not written — see app/browse_filters.py.
 templates.env.globals["filter_includes"] = browse_filters.filter_includes
 templates.env.globals["browse_filter_config"] = browse_filters.client_config

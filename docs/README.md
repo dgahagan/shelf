@@ -23,7 +23,7 @@ New here? Start with **[Installation](installation.md)**, then
 |---|---|
 | [Getting started](user-guide/getting-started.md) | Setup wizard, your first scan, the main screens |
 | [Home](user-guide/home.md) | The collection overview Shelf opens on, and how it differs from Browse |
-| [Scanning](user-guide/scanning.md) | Camera and USB/Bluetooth scanners, the 8 scan modes, media-type detection and Auto, title search, manual add |
+| [Scanning](user-guide/scanning.md) | Camera and USB/Bluetooth scanners, the 8 scan modes, media-type detection and Auto, title search, Add by hand |
 | [Editing barcodes](user-guide/editing-barcodes.md) | Scanning or typing a retail UPC/EAN on the item edit page |
 | [Photo Intake](user-guide/photo-intake.md) | Bulk-add from a shelf photo: vision backends, tiling, cost, reviewing results |
 | [Browse & search](user-guide/browse-and-search.md) | Filters, views, sorting, tags, bulk editing |

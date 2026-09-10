@@ -30,6 +30,7 @@ from app.services import cover_queue
 from app.services import legacy_book
 from app.services import scan_outcome
 from app.services import item_merge
+from app.services import item_template
 from app.services import upc as upc_svc, tmdb, igdb
 from app.services import synopsis as synopsis_svc
 from app.services import authors as authors_svc
@@ -417,7 +418,14 @@ async def scan_isbn(
             return templates.TemplateResponse(
                 request,
                 "fragments/scan_result.html",
-                {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
+                # This branch is also what a *title* typed into the scan box
+                # reaches, which is the whole reason it offers the manual
+                # panel (#120). The offer is gated on this flag and NOT on
+                # `status == 'error'`: manual_add's own four validation
+                # errors render the same arm, and a link back into the form
+                # they came from is a loop. Exactly one branch sets it.
+                {"status": "error", "isbn": isbn, "message": "Invalid ISBN",
+                 "offer_manual": True, "manual_add_text": raw},
             )
         isbn13 = pair[0]
 
@@ -584,6 +592,10 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
 
     isbn = form.get("isbn", "").strip()
     media_type = form.get("media_type", "book")
+    # Defaulted to "add" to match /api/scan's own Form("add") at :233 — the
+    # value reaches scan_log.mode, so an absent field must log what the scan
+    # route would log for the same submission.
+    mode = form.get("mode", "add")
 
     # A UPC belongs in items.upc, never in items.isbn (#20). to_isbn13()
     # will happily zero-pad a 12-digit UPC-A into something ISBN-shaped, so
@@ -684,36 +696,61 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
              "item_id": existing["id"]},
         )
 
-    # Handle cover upload
-    cover_path = None
-    cover_file = form.get("cover")
-    if cover_file and hasattr(cover_file, "read"):
-        content = await cover_file.read()
-        if content and len(content) > 100:
-            cover_path = covers.save_uploaded_cover(item_id, content)
-
-    # If no upload, check for preview cover from scan, then try Amazon
-    if not cover_path and isbn13:
-        preview_path = covers.COVERS_DIR / f"preview_{isbn13}.jpg"
-        if preview_path.exists():
-            # Rename preview to permanent cover
-            dest = covers.COVERS_DIR / f"{item_id}.jpg"
-            preview_path.rename(dest)
-            cover_path = f"covers/{item_id}.jpg"
-        else:
-            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-                cover_path = await covers.download_cover(item_id, isbn13, None, None, client)
-
-    if cover_path:
+    # Wishlist mode: set owned = 0 (mirrors /api/scan, items.py:530-532).
+    if mode == "wishlist":
         with get_db() as db:
-            db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+            update_item_fields(db, item_id, {"owned": 0})
 
-    items_common._log_scan(isbn13 or upc_code or "", media_type, "added", item_id)
+    status = "wishlisted" if mode == "wishlist" else "added"
+
+    # Handle cover upload.
+    #
+    # Everything from here to the UPDATE is enrichment over a row that is
+    # already committed — twice, in wishlist mode. A filesystem or network
+    # failure used to escape as a 500 over an add that had in fact
+    # succeeded, and the user's natural retry filed a *second* row: a
+    # title-only manual add carries no identifier, so `_find_duplicate_item`
+    # cannot recognise the one already stored and nothing else can either.
+    # The item is the thing the user asked for; the cover is not worth
+    # losing it over, and rolling the row back instead would only trade
+    # this failure for an orphaned file.
+    cover_path = None
+    cover_failed = False
+    try:
+        cover_file = form.get("cover")
+        if cover_file and hasattr(cover_file, "read"):
+            content = await cover_file.read()
+            if content and len(content) > 100:
+                cover_path = covers.save_uploaded_cover(item_id, content)
+
+        # If no upload, check for preview cover from scan, then try Amazon
+        if not cover_path and isbn13:
+            preview_path = covers.COVERS_DIR / f"preview_{isbn13}.jpg"
+            if preview_path.exists():
+                # Rename preview to permanent cover
+                dest = covers.COVERS_DIR / f"{item_id}.jpg"
+                preview_path.rename(dest)
+                cover_path = f"covers/{item_id}.jpg"
+            else:
+                async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+                    cover_path = await covers.download_cover(item_id, isbn13, None, None, client)
+
+        if cover_path:
+            with get_db() as db:
+                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+    except Exception:
+        logger.warning(
+            "manual add %s: cover could not be saved", item_id, exc_info=True
+        )
+        cover_path = None
+        cover_failed = True
+
+    items_common._log_scan(isbn13 or upc_code or "", media_type, status, item_id, mode)
 
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {
-            "status": "added",
+            "status": status,
             "isbn": isbn13 or upc_code or "",
             "title": title,
             "authors": form.get("authors"),
@@ -723,7 +760,14 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
             "media_type_label": MEDIA_TYPES.get(media_type, media_type),
         },
     )
-    resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {title[:50]}")
+    toast_message = f"Added to wishlist: {title[:50]}" if mode == "wishlist" else f"Added: {title[:50]}"
+    # Say what actually happened. Silently dropping the cover would leave the
+    # user with a coverless item and no idea why; the item page can retry it.
+    if cover_failed:
+        toast_message += " — cover could not be saved"
+    resp.headers["HX-Trigger"] = items_common._toast_header(
+        toast_message, "warning" if cover_failed else "success"
+    )
     return resp
 
 
@@ -750,27 +794,15 @@ async def suggest_items(q: str = "", _=Depends(require_role("editor"))):
 async def copy_template(item_id: int, _=Depends(require_role("editor"))):
     """Copyable-field subset of an item for manual-add prefill (#19).
 
-    Explicitly excludes title, isbn/upc, cover, reading status, value, and
-    notes — those are identity/state, not template, fields. Keep this key
-    set in sync with .devdocs/archive/completed/plan-issues-15-18-19-quick-wins.md section B.
+    The field set is `item_template.COPYABLE_FIELDS`, which /scan's `?from={id}`
+    panel prefill also reads (#120) — one declaration, two consumers, so they
+    cannot drift.
     """
     with get_db() as db:
-        row = db.execute(
-            """SELECT authors, publisher, publish_year, media_type, platform,
-               series_name, location_id FROM items WHERE id = ?""",
-            (item_id,),
-        ).fetchone()
-    if not row:
+        fields = item_template.copyable_fields(db, item_id)
+    if fields is None:
         return JSONResponse({"error": "Not found"}, status_code=404)
-    return JSONResponse({
-        "authors": row["authors"],
-        "publisher": row["publisher"],
-        "publish_year": row["publish_year"],
-        "media_type": row["media_type"],
-        "platform": row["platform"],
-        "series_name": row["series_name"],
-        "location_id": row["location_id"],
-    })
+    return JSONResponse(fields)
 
 
 @router.get("/search")

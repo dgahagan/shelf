@@ -17,14 +17,19 @@ Four groups, matching the plan:
   (b) the former host, components.js — once on a base.html shell (/browse,
       with a toast), once on a fresh, unconfigured /setup (no toast: that
       shell loads neither app.js nor #toast-container, G50);
-  (c) the two swap-only components (hcResultCard, manualAddForm), reached
-      through a *real* HTMX swap, not injected markup;
+  (c) the two components components-item.js owns that a page can be missing
+      without any static x-data to scan (hcResultCard, manualAddForm),
+      reached through a *real* HTMX swap, not injected markup. hcResultCard
+      is still swap-only; manualAddForm gained a page-load root on /scan with
+      issue #120's manual entry panel, so its case below is reported at
+      alpine:initialized and the swap only proves the card's instances are
+      covered too;
   (d) one control: the guard is silent on a healthy page, including after a
       real swap, proving the htmx:afterSwap listener itself is inert when
       nothing is actually lost.
 
-Reaching the two swap-only components without live third-party credentials
------------------------------------------------------------------------
+Reaching these two components without live third-party credentials
+------------------------------------------------------------------
 `hcResultCard` only ever arrives via `#hc-results`' `hx-get
 /api/hardcover/search`, gated on `has_hardcover` (`app/routers/pages.py:128`)
 — true only once a `hardcover_token` setting exists — and even then
@@ -418,7 +423,7 @@ def test_components_js_loss_on_unconfigured_setup_reports_without_a_toast(
 
 
 # ---------------------------------------------------------------------------
-# (c) The two swap-only components
+# (c) The two components reached through a real swap
 # ---------------------------------------------------------------------------
 
 
@@ -463,11 +468,14 @@ def test_hc_result_card_swap_reports_and_toasts_once(live_server, browser, setup
 
 
 def test_manual_add_form_swap_reports_and_toasts_once(live_server, browser, setup_admin):
-    """/scan: manualAddForm, like hcResultCard, has no root at
-    alpine:initialized — only a not_found card carries it. Two scans of the
-    same offline-deterministic non-match (media_type=dvd, "999999999999" —
-    see test_scan.py::test_manual_add_copy_from_picker) swap two cards in
-    (hx-swap="afterbegin"); still exactly one message and one toast."""
+    """/scan carries a manualAddForm root at alpine:initialized since #120 —
+    the manual entry panel — so the guard reports the lost script on page
+    load, before any swap. Two scans of the same offline-deterministic
+    non-match (media_type=dvd, "999999999999" — see
+    test_scan.py::test_manual_add_copy_from_picker) then swap in two
+    not_found cards (hx-swap="afterbegin"), each carrying its own instance;
+    reportedScripts dedupes, so it is still exactly one message and one
+    toast."""
     base = live_server["url"]
     ctx, pg = _login(browser, base, setup_admin)
     guard_msgs = _guard_messages(pg)
@@ -476,15 +484,39 @@ def test_manual_add_form_swap_reports_and_toasts_once(live_server, browser, setu
     pg.goto(f"{base}/scan")
     pg.wait_for_load_state("networkidle")
 
+    # The new shape: the panel's root is present at load, so the message is
+    # already out before the first scan. Asserting this is what stops the test
+    # passing for the old reason after #120 changed it.
+    assert len(guard_msgs) == 1, (
+        "expected the guard to report at alpine:initialized — /scan has "
+        f"carried a manualAddForm root since #120; saw {len(guard_msgs)}"
+    )
+    assert "did not register manualAddForm" in guard_msgs[0]
+
+    # /scan loads recent scans into the same container, and every other test
+    # in this session has left rows in it — count from a baseline, never from
+    # zero. The hard-coded 1 and 2 held only while this file sorted before
+    # test_scan.py, which is a property of the filenames and not of the test:
+    # run after test_scan.py's issue-120 nodes it saw 7 and failed.
+    base_count = pg.locator(".scan-result").count()
+
     pg.select_option("#media-type", "dvd")
     pg.fill("#isbn-input", "999999999999")
     pg.press("#isbn-input", "Enter")
-    expect(pg.locator(".scan-result")).to_have_count(1, timeout=20_000)
-    expect(pg.locator(".scan-result").first).to_contain_text("not found")
+    expect(pg.locator(".scan-result")).to_have_count(base_count + 1, timeout=20_000)
+    # The card's own status, not a bare count — a duplicate or error card
+    # would satisfy the count just as well, and this test is about what the
+    # not_found card's manualAddForm instance does.
+    first_card = pg.locator(".scan-result").first
+    expect(first_card).to_have_attribute("data-scan-status", "not_found")
+    expect(first_card).to_contain_text("not found")
 
     pg.fill("#isbn-input", "999999999999")
     pg.press("#isbn-input", "Enter")
-    expect(pg.locator(".scan-result")).to_have_count(2, timeout=20_000)
+    expect(pg.locator(".scan-result")).to_have_count(base_count + 2, timeout=20_000)
+    expect(pg.locator(".scan-result").first).to_have_attribute(
+        "data-scan-status", "not_found"
+    )
 
     msg = _only(guard_msgs)
     assert "/static/js/components-item.js did not register manualAddForm" in msg

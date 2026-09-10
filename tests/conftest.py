@@ -1,4 +1,5 @@
 import os
+import re
 import sqlite3
 import sys
 import tempfile
@@ -204,6 +205,20 @@ def viewer_client(client, viewer_user):
     token = create_token(viewer_user["id"], viewer_user["username"], viewer_user["role"], viewer_user["display_name"])
     client.cookies.set("access_token", token)
     return client
+
+
+def has_bare_attribute(html: str, name: str) -> bool:
+    """Is `name` an attribute in its own right, and not merely the prefix of a
+    longer one?
+
+    `assert "data-manual-add" in html` is satisfied by `data-manual-add-title`
+    alone. Removing the bare hook that the click listener actually selects on
+    therefore left every claiming test green while the button went inert —
+    caught by mutation, not by the suite. Match the name followed by an
+    attribute boundary (whitespace, `=`, `>` or `/`), never by `-` or another
+    word character.
+    """
+    return re.search(re.escape(name) + r"(?![-\w])", html) is not None
 
 
 def _insert_item(db, title="Test Book", isbn="9780000000026", media_type="book", **kwargs):

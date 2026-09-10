@@ -23,7 +23,7 @@ Shelf opens on **Home** — a read-only overview of your collection. Click
 | Tab | What it is |
 |---|---|
 | **Home** | Totals, what is lent out, missing covers, media-type mix, recent additions. Not a tab — the **Shelf** link in the menu bar. [Home](home.md) |
-| **Scan** | The workhorse: camera or hardware scanner, eight modes, title search, manual add. [Scanning](scanning.md) |
+| **Scan** | The workhorse: camera or hardware scanner, eight modes, title search, and Add by hand for anything no lookup can find. [Scanning](scanning.md) |
 | **Browse** | Your catalog — grid or list, filters, search, bulk edit. [Browse & search](browse-and-search.md) |
 | **Shelf Fill** | Keep one shelf selected and scan items onto it (editors and admins). [Shelf Fill](shelf-fill.md) |
 | **Series** | Library grouped by series with gap detection. [Series](series.md) |

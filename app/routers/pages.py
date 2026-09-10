@@ -11,7 +11,7 @@ from app.database import get_db, get_setting, get_game_platforms, get_reading_hi
 from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
-from app.services import item_copies
+from app.services import item_copies, item_template
 from app.services.home_dashboard import dashboard_summary
 
 router = APIRouter()
@@ -148,7 +148,27 @@ async def discover(request: Request, _=Depends(require_role("viewer"))):
 
 
 @router.get("/scan")
-async def scan(request: Request, _=Depends(require_role("editor"))):
+async def scan(
+    request: Request,
+    add: str = "",
+    from_: str = Query("", alias="from"),
+    _=Depends(require_role("editor")),
+):
+    """The scan surface. `?add=manual` opens the manual entry panel (#120),
+    and `?from={id}` prefills it from an existing item.
+
+    `from` is typed `str` and parsed here rather than annotated `int | None`.
+    FastAPI validates an annotation *before* the handler runs, so a typed int
+    would return 422 on `?from=notanumber` and the panel could never degrade
+    gracefully. `item_detail` below uses the same tolerant idiom. Missing,
+    malformed, zero, negative and nonexistent ids all mean the same thing: no
+    prefill, a normal 200 page. Never a 404.
+    """
+    try:
+        candidate = int(from_)
+    except (TypeError, ValueError):
+        candidate = 0
+
     with get_db() as db:
         locations = db.execute(
             "SELECT * FROM locations ORDER BY sort_order, name"
@@ -157,11 +177,27 @@ async def scan(request: Request, _=Depends(require_role("editor"))):
         borrowers = db.execute(
             "SELECT * FROM borrowers ORDER BY name"
         ).fetchall()
+        # The same field set the copy-template endpoint serves the in-form
+        # picker, read through the one helper both share.
+        #
+        # NULL columns are normalized to "" here rather than in the helper:
+        # the endpoint serves JSON, where `null` is the honest answer and the
+        # picker's JS skips it (`applyTemplate`). A template has no such
+        # guard — Jinja renders None as the text "None", which reached the
+        # Series and Publisher inputs and made the Year input unparseable.
+        manual_prefill = {
+            name: ("" if value is None else value)
+            for name, value in (
+                (item_template.copyable_fields(db, candidate) if candidate > 0 else None)
+                or {}
+            ).items()
+        }
     return request.app.state.templates.TemplateResponse(
         request,
         "scan.html",
         {"media_types": MEDIA_TYPES, "game_platforms": game_platforms,
-         "locations": locations, "borrowers": borrowers},
+         "locations": locations, "borrowers": borrowers,
+         "manual_open": add == "manual", "manual_prefill": manual_prefill},
     )
 
 

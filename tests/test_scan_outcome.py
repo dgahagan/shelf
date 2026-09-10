@@ -27,6 +27,8 @@ from app.services.scan_outcome import (
     provider_label,
 )
 
+from tests.conftest import has_bare_attribute
+
 
 class TestPrecedence:
     def test_a_hit_has_no_notice(self):
@@ -246,3 +248,73 @@ class TestTemplateArmsPerBranch:
         _, result_card_half = self._halves()
         arms = set(re.findall(self._ARM_PATTERN, result_card_half))
         assert arms == set(RESULT_CARD_ARMS)
+
+
+class TestManualAddOfferOnTheErrorCard:
+    """Issue #120's second way in — and the one place in that plan where the
+    wrong template arm would fail silently.
+
+    `fragments/scan_result.html` has three top-level branches, and the
+    invalid-ISBN card is not a `status == 'error'` arm: it falls to the
+    catch-all `{% else %}` detail line inside the *third* branch. That same
+    line is what all four of `manual_add`'s own validation errors reach, which
+    is why the offer is gated on a flag exactly one router branch sets rather
+    than on the status (G65).
+    """
+
+    def test_a_bad_check_digit_offers_the_manual_panel(self, admin_client):
+        """This branch is also what a *title* typed into the scan box reaches,
+        which is the whole point of the offer."""
+        resp = admin_client.post(
+            "/api/scan",
+            data={"isbn": "The Dispossessed", "media_type": "book", "mode": "add"},
+        )
+        assert resp.status_code == 200
+        assert has_bare_attribute(resp.text, "data-manual-add")
+        assert 'data-manual-add-title="The Dispossessed"' in resp.text
+
+    def test_the_error_message_still_reaches_the_toast(self, admin_client):
+        """G62: `data-scan-error` is the toast's only input on this arm, and
+        adding the offer must not displace it."""
+        resp = admin_client.post(
+            "/api/scan",
+            data={"isbn": "9780000000001", "media_type": "book", "mode": "add"},
+        )
+        assert "data-scan-error" in resp.text
+        assert "Invalid ISBN" in resp.text
+
+    def test_the_manual_routes_own_errors_do_not_offer_it(self, admin_client):
+        """A link back into the form the user just came from is a loop. All
+        four of manual_add's validation errors render this same arm."""
+        no_title = admin_client.post("/api/items/manual", data={"title": "  "})
+        assert no_title.status_code == 200
+        assert "data-scan-error" in no_title.text
+        assert "Title is required" in no_title.text
+        assert "data-manual-add" not in no_title.text
+
+    def test_a_manual_post_with_a_bad_isbn_does_not_offer_it_either(self, admin_client):
+        """The same message as the scan branch, from the other route — the
+        flag is what separates them, not the message and not the status."""
+        resp = admin_client.post(
+            "/api/items/manual",
+            data={"title": "A Book", "isbn": "9780000000001", "media_type": "book"},
+        )
+        assert "Invalid ISBN" in resp.text
+        assert "data-manual-add" not in resp.text
+
+    def test_a_successful_scan_card_does_not_offer_it(self, admin_client, db):
+        from tests.conftest import _insert_item
+
+        _insert_item(db, title="Owned", isbn="9780306406157", media_type="book")
+        db.commit()
+        resp = admin_client.post(
+            "/api/scan",
+            data={"isbn": "9780306406157", "media_type": "book", "mode": "add"},
+        )
+        assert "data-manual-add" not in resp.text
+
+    def test_exactly_one_router_branch_sets_the_flag(self):
+        """The gate this task's safety rests on. If a second branch ever sets
+        `offer_manual`, the loop it was written to prevent is back."""
+        src = Path("app/routers/items.py").read_text()
+        assert src.count("offer_manual") == 1

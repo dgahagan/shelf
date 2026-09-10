@@ -11,6 +11,7 @@
             <a href="/browse" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">Browse collection</a>
             {% if user and user.role in ('admin', 'editor') %}
             <a href="/scan" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">Scan item</a>
+            <a href="/scan?add=manual" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">Add by hand</a>
             {% endif %}
             <a href="/stats" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">Statistics</a>
         </div>

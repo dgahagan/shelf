@@ -3930,6 +3930,199 @@ grep -n "NOT NULL" app/database.py | grep -i "ALTER TABLE items"
   `_ITEM_COLUMNS`), and a lint would not depend on anyone remembering to read
   this entry.
 
+## G90 — `x-show` does not remove a form control from submission
+
+- **Rule:** hiding a control with `x-show` still submits it. `x-show` sets
+  `display: none` and nothing else, and a hidden `<select>`/`<input>` that has
+  a name and a value is still a **successful control**, so the browser posts
+  it. When the point of hiding a field is that it no longer *applies*, add
+  **`:disabled`** — that is what removes it from the submission. Keep the
+  `x-show` for the visual result; the two bindings do different jobs.
+- **Why:** it lands as wrong data, not as a visible bug, and the server cannot
+  tell. The field arrives looking exactly like a deliberate choice, so any
+  validation that only asks "is this a legal value?" passes it. Nothing in the
+  unit suite sees it either: the route is called directly, so the *browser's*
+  decision about what to submit is never exercised.
+- **Evidence:** issue #120's manual entry panel (2026-09-09, `4bcfa4d`), found
+  by the codex prep review before any code existed. The panel's platform
+  `<select>` is `x-show="mediaType === 'video_game'"`. `manual_add` reads
+  `platform` unconditionally (`app/routers/items.py`) and
+  `app/services/item_write.py` validates only that the value is a key in
+  `get_game_platforms` — never that the media type is `video_game`. So
+  choosing PlayStation 5, switching the type to DVD and submitting stored
+  `ps5` on the DVD row. Shipped with `:disabled="mediaType !== 'video_game'"`
+  and an E2E pin that asserts the control is disabled, not merely hidden.
+- **Sibling:** **G59** is the same rule for a *URL-building* binding — an
+  `x-show`n element whose `:src` still evaluates and still fetches. Same root
+  (`x-show` guards visibility and nothing else); different casualty, so both
+  entries stay.
+- **Verify:** every named control whose `x-show` gates whether the field
+  applies also carries `:disabled` — a hit here without one is the trap:
+
+```bash
+grep -rn 'x-show="[^"]*"' app/templates/ | grep -E 'name="[a-z_]+"' | grep -v ':disabled'
+```
+
+- **Status:** documented — a lint candidate, and the grep above is most of
+  one. What stops it graduating is that "hidden because it does not apply" and
+  "hidden but still meant" are indistinguishable from the markup.
+
+## G91 — When a shared Alpine component gains a page-level listener or a dataset read
+
+- **Rule:** first ask **how many roots of it exist on one page**. A component
+  mounted by a swapped-in fragment can have many live instances at once, so
+  anything new that reaches *outside* its own root — a `window`/`document`
+  listener, a read of a `data-*` attribute only one host sets — must be gated
+  on a host marker the root carries (`rootEl.dataset.<host> === '<value>'`),
+  and any such parse must tolerate the attribute being absent.
+- **Why:** both failures land in the *other* hosts, which the change was not
+  about. An ungated `window` listener registered per instance means one event
+  mutates every instance. An ungated `JSON.parse(rootEl.dataset.x)` throws
+  inside `init()` on every host that does not carry the attribute — and under
+  Alpine that kills the rest of that component's initialisation silently, so
+  an unrelated feature on those hosts simply stops working.
+- **And a direct `el.value =` desynchronises from `x-model`.** Once one host
+  binds a field with `x-model`, any code that still assigns the DOM value
+  leaves the component's own state stale, so everything derived from it — a
+  label, an `x-show`, a `:disabled` — disagrees with what is submitted. Route
+  every programmatic change through the state, not the element.
+- **Evidence:** issue #120 (2026-09-09, `4bcfa4d`), all three found by the
+  codex prep review. `manualAddForm` is mounted by the new `/scan` panel *and*
+  by every `not_found` scan card — and its own comment already said several
+  cards can coexist. Shipped with `data-manual-host="panel"` gating the
+  listener and the label map, `JSON.parse(… || '{}')`, and `applyTemplate`
+  routing the media type through `this.mediaType`.
+- **Verify:** every `window`/`document` listener registered inside an
+  `Alpine.data` factory is either on a single-root component or host-gated:
+
+```bash
+grep -n "addEventListener" static/js/components*.js
+```
+
+- **Status:** documented.
+
+## G92 — A Jinja global makes the template unrenderable outside the app
+
+- **Rule:** registering a helper or constant on `templates.env.globals` in
+  `app/main.py` is invisible to any **hand-built** `Environment`. Several E2E
+  tests render one fragment in isolation that way, and a template that reads a
+  new global raises `UndefinedError` **there only**. Build such an environment
+  with `tests/e2e/conftest.py`'s `template_env()`, which copies the globals and
+  filters off the app's own env rather than re-listing them.
+- **Why:** the unit suite goes through the app, so it cannot see this at all —
+  the failure appears only in the E2E suite, at a phase boundary, in tests the
+  change had nothing to do with. The error names the *template* line, which
+  points at the feature rather than at the environment that is missing.
+- **Evidence:** issue #120's `creator_label` global (2026-09-09) reddened three
+  tests in `tests/e2e/test_scan.py` that render `fragments/scan_result.html`
+  through a bare `Environment`. **It was the second instance:** a comment
+  beside `search_langs` in the same helper already described the identical
+  failure from a previous occurrence, having been fixed by passing that one
+  through the context. Fixed for the class in `d1a78b5` by deriving the
+  environment from the app's instead.
+- **Verify:** no test builds a bare environment for an app template:
+
+```bash
+grep -rn "Environment(loader=FileSystemLoader" tests/
+# every hit should be template_env(), or a template that reads no global
+```
+
+- **Status:** documented — a lint candidate: "`Environment(loader=...)` in
+  `tests/` that is not `template_env()`" is mechanically checkable.
+
+## G93 — Defining a helper in a large test module can silently shadow one
+
+- **Rule:** **grep the module for the name first.** Python keeps the last
+  definition, so a second `def _login_page(...)` with a different signature
+  rebinds the first — and every earlier caller now calls yours. No error is
+  raised at import; the failure surfaces as a `TypeError`/`AttributeError`
+  inside tests your change never touched.
+- **Why:** the traceback points at the *victims*, not at the new code, and
+  running the new test alone passes — it is the only caller using the new
+  signature. Only the full file, or the full suite, shows it.
+- **Evidence:** issue #120 T8 (2026-09-09). A new helper named `_login_page`
+  was added at the end of `tests/e2e/test_scan.py`, which already had one at
+  `:267` taking a caller-built context. Three camera tests failed with
+  `AttributeError: 'dict' object has no attribute 'new_context'`. The new test
+  passed in isolation throughout. Resolved by reusing the existing helper.
+- **Verify:** duplicate top-level defs in the E2E modules —
+
+```bash
+for f in tests/e2e/*.py tests/*.py; do
+  grep -oE '^def [a-zA-Z_]+' "$f" | sort | uniq -d | sed "s|^|$f: |"
+done
+```
+
+- **Status:** documented — a lint candidate; the loop above is already the
+  check, and it has no false-positive surface worth speaking of.
+
+## G94 — Running the full E2E suite many times in one session exhausts a third-party trial quota
+
+- **Rule:** `make test-e2e` makes **live** calls to the UPC Item DB trial API,
+  which is rate-limited to **100 requests per day**. A plan with several phase
+  boundaries runs the suite five to ten times, and the last runs can fail on the
+  quota rather than on the code. Before treating a red E2E as a regression, check
+  the upstream directly, and check the same test against `main` in a throwaway
+  worktree. **Do not guess at when the quota returns** — the 429 carries
+  `Retry-After` and `X-RateLimit-Reset`, so the reset is an exact timestamp
+  rather than "some time tomorrow" (see **Verify**).
+- **Why:** it reddens a test the branch never touched, at the end of a long
+  run, which is exactly when a tired reader concludes their last change broke
+  something. It also degrades *monotonically* through a session, so the early
+  boundaries are green and the final gate is not — the shape that most looks
+  like "the last task did it".
+- **Evidence:** issue #120's run, 2026-09-09. The 230-test baseline and four
+  later full runs were green;
+  `test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice` failed
+  on the seventh, rendering the `quota` notice instead of `no_provider`.
+  Reproduced identically on `main` at `ea1b0f4` in a worktree, and
+  `curl "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000"`
+  answered `429 {"code":"EXCEED_LIMIT"}`. The test's own docstring already
+  says "if this test goes red, suspect the network before the code" and names
+  that curl — this entry exists so the *orchestrator* meets the warning
+  before it spends an hour, rather than only the person reading that one test.
+
+  It fired again the same evening, at the 0.40.0 release gate: 238/239 E2E
+  passed, the same test red, `X-RateLimit-Remaining: 0` and `Retry-After:
+  25173` — a reset at **06:58 EDT the next morning**, not the vague "tomorrow"
+  the first write-up left the reader with. Three cheap checks settled it
+  without the worktree run: the live 429, `git show main:…` vs `HEAD` proving
+  the test function **byte-identical** on the branch, and the failure dump
+  showing the not-found card (what a 429 produces) rather than the `quota`
+  notice. Prefer those three to a ten-minute worktree reproduction. The
+  release stopped at step 3 and waited for the reset rather than recording the
+  failure and pushing on — the first of the two dispositions above, chosen
+  deliberately because the steps after the gate are a public push and a tag.
+- **Do not "fix" it by loosening the assertion.** It is pinning a real
+  distinction (`no_provider` vs `quota`) that the scan card is supposed to
+  make. Wait for the quota, or record the failure as environmental with the
+  evidence above. Waiting is the cheaper option far more often than it looks,
+  because **Verify** tells you exactly how long it is.
+- **Verify:**
+
+```bash
+# Is it the quota? 429 = quota, not code.
+curl -s -o /dev/null -w '%{http_code}\n' \
+  "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000"
+
+# When does it come back? Read the headers the 429 already carries.
+curl -sD - -o /dev/null \
+  "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000" \
+  | grep -iE 'ratelimit|retry-after'
+# X-RateLimit-Limit: 100      quota size
+# X-RateLimit-Remaining: 0    0 confirms exhaustion
+# X-RateLimit-Reset: <epoch>  -> date -d @<epoch>
+# Retry-After: <seconds>      same answer, relative
+
+date -d @"$(curl -sD - -o /dev/null \
+  "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000" \
+  | awk -F': ' 'tolower($1)=="x-ratelimit-reset"{print $2+0}')"
+```
+
+- **Status:** documented. Not a lint candidate. **Revisit trigger:** the suite
+  gains a second live-network dependency, or this test is given a recorded
+  fixture — at which point this entry retires.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

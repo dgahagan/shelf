@@ -409,6 +409,15 @@ class is what makes any paragraph added to a card able to hijack the toast,
 which is why nothing here does it any more. `showToast` also floors an empty
 message to `Done`, so a blank pill is unreachable from any caller.
 
+That catch-all error arm can also carry a **manual-add offer** — the button
+that opens the Scan page's Add by hand panel with the typed text as the
+title. It is gated on an `offer_manual` flag that exactly one router branch
+sets, the bad-check-digit branch of `/api/scan`, which is also what a *title*
+typed into the scan box reaches. It is deliberately not gated on
+`status == 'error'`: all four of `manual_add`'s own validation failures
+render this same arm, and offering the form the user just failed to submit
+would be a loop.
+
 When enrichment does not happen, the card names *which* dead end it hit rather
 than collapsing every case into "no match". `services/scan_outcome.py` makes
 that decision — one keyword-only function returning a bare state name — and
@@ -671,8 +680,11 @@ loaded first in both shells (`base.html` and the standalone `setup.html`),
 records every registration by wrapping `Alpine.data` from the first
 `alpine:init` listener, then reconciles the live `[x-data]` roots against what
 it recorded — for the whole document at `alpine:initialized`, and for the swap
-target on `htmx:afterSwap`, since two components (`hcResultCard`,
-`manualAddForm`) have no root on any page until HTMX delivers one. What it
+target on `htmx:afterSwap`, since `hcResultCard` has no root on any page
+until HTMX delivers one. `manualAddForm` was in that position too until the
+Scan page's Add by hand panel gave it a page-load root, so it is now caught by
+the `alpine:initialized` pass there; the `htmx:afterSwap` pass still covers the
+instance every `not_found` scan card brings with it. What it
 cannot resolve becomes **one `console.error` per lost script**, naming the file
 and — for the four page-scoped components, which alone declare a matching
 top-level function — whether that script executed at all. The reader gets one
@@ -690,6 +702,18 @@ UI; the rest derives. The templates' `hx-include` lists come from a
 `values_from(request.query_params)`, build their WHERE with `build_where`, and
 declare no filter parameters of their own; and `browse.js` reads the same
 declaration out of a `type="application/json"` block.
+
+**The creator field's label is declared the same way**, in `app/config.py`:
+`CREATOR_LABELS` maps a media type to what its `items.authors` column is
+called on screen — Developer for a video game, Director for a disc, Artist for
+the music formats — and `creator_label()` falls back to `Author(s)` for
+everything else. The music entries are derived from `MUSIC_MEDIA_TYPES` rather
+than retyped, so a fifth music format inherits the label by existing. Both the
+map and the lookup are registered as Jinja globals (`app/main.py:428-429`), so
+neither of the two routes that render the manual-add fragment carries a context
+key for it; one column with several names is a labelling fact, not a schema
+one, which is why it lives in config beside the media types rather than in the
+write funnel.
 
 Every dropdown's counts are **cross-filtered** — a dropdown's count group is
 the where-clause with its own filter removed, via

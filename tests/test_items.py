@@ -1814,3 +1814,47 @@ class TestReadingStatusValueFunnel:
         row = db.execute("SELECT reading_status, date_started FROM items WHERE id = ?", (item_id,)).fetchone()
         assert row["reading_status"] is None
         assert row["date_started"] is None
+
+
+class TestManualAddEntryPoints:
+    """T7 — links to the /scan?add=manual panel from Home and the item page."""
+
+    def test_home_offers_add_by_hand_for_admin(self, admin_client):
+        html = admin_client.get("/").text
+        assert 'href="/scan?add=manual"' in html
+        assert "Add by hand" in html
+
+    def test_home_offers_add_by_hand_for_editor(self, editor_client):
+        html = editor_client.get("/").text
+        assert 'href="/scan?add=manual"' in html
+        assert "Add by hand" in html
+
+    def test_home_does_not_offer_add_by_hand_for_viewer(self, viewer_client):
+        html = viewer_client.get("/").text
+        assert "Add by hand" not in html
+        assert 'href="/scan?add=manual"' not in html
+
+    def test_item_page_offers_add_another_like_this_for_editor(self, editor_client, db):
+        item_id = _insert_item(db, title="Manual Add Entry Point Book", isbn="9789000011124")
+        db.commit()
+
+        resp = editor_client.get(f"/item/{item_id}")
+        assert resp.status_code == 200
+        assert f'href="/scan?add=manual&from={item_id}"' in resp.text
+        assert "Add another like this" in resp.text
+
+    def test_item_page_does_not_offer_add_another_like_this_for_viewer(self, viewer_client, db):
+        item_id = _insert_item(db, title="Manual Add Entry Point Viewer Book", isbn="9789000011131")
+        db.commit()
+
+        resp = viewer_client.get(f"/item/{item_id}")
+        assert resp.status_code == 200
+        assert "Add another like this" not in resp.text
+        assert "/scan?add=manual" not in resp.text
+
+    def test_home_and_item_page_never_say_add_a_copy(self, admin_client, db):
+        item_id = _insert_item(db, title="Add A Copy Wording Book", isbn="9789000011148")
+        db.commit()
+
+        assert "Add a copy" not in admin_client.get("/").text
+        assert "Add a copy" not in admin_client.get(f"/item/{item_id}").text

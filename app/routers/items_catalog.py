@@ -62,7 +62,7 @@ async def search_games(
     return templates.TemplateResponse(
         request, "fragments/game_search_results.html",
         {
-            "results": results, "platform": platform,
+            "results": results, "platform": platform, "query": q.strip(),
             "search_status": search_status, "search_provider": search_provider,
         },
     )

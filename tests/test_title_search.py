@@ -12,6 +12,8 @@ from app.services import provider_result
 from app.services.openlibrary import search_books
 from app.services.tmdb import search_movies, lookup_by_title
 
+from tests.conftest import has_bare_attribute
+
 
 class TestOpenLibrarySearch:
     @respx.mock
@@ -597,6 +599,241 @@ class TestSearchOutcomeNoticesReplaceTheMissLine:
         assert resp.status_code == 200
         assert "No books found" in resp.text
         assert "data-search-status" not in resp.text
+
+
+class TestManualAddFromEmptyTitleSearch:
+    """Issue #120 T5: an empty book/game/DVD title search offers "Add it by
+    hand", carrying the typed query and the right media type, so T4's
+    delegated `[data-manual-add]` listener can open and prefill the panel.
+
+    A rejected key, a spent quota and an unreachable provider are NOT misses
+    (G47) — the button must not appear under any of those, and
+    `search_status_notice.html` stays untouched. Real results must not show
+    the button either.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _creds(self, db):
+        # Games and DVDs need configured credentials to get past the
+        # unconfigured-provider guard before a ProviderResult can even be
+        # produced. Open Library takes no key, so books needs none of this.
+        # G48: commit before the request — the route opens its own connection.
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("igdb_client_id", "test-client-id"),
+        )
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("igdb_client_secret", "test-client-secret"),
+        )
+        db.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+            ("tmdb_api_key", "test-tmdb-key"),
+        )
+        db.commit()
+
+    # -- books ----------------------------------------------------------
+
+    def test_book_empty_search_offers_manual_add_with_typed_title(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.no_match("openlibrary")
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get(
+            "/api/books/search", params={"q": "Nonexistent Book", "media_type": "book"}
+        )
+
+        assert resp.status_code == 200
+        assert has_bare_attribute(resp.text, "data-manual-add")
+        assert 'data-manual-add-title="Nonexistent Book"' in resp.text
+        assert 'data-manual-add-type="book"' in resp.text
+
+    def test_book_results_render_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.found(
+                "openlibrary", [{"title": "Dune", "isbn": "9780441172719"}]
+            )
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get("/api/books/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert "data-manual-add" not in resp.text
+
+    def test_book_search_quota_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.rate_limited("openlibrary")
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get("/api/books/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="quota"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    def test_book_search_offline_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import openlibrary
+
+        async def _search(*a, **kw):
+            return provider_result.transport_failed("openlibrary")
+
+        monkeypatch.setattr(openlibrary, "search_books", _search)
+        resp = editor_client.get("/api/books/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="offline"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    # -- games ------------------------------------------------------------
+    # Also pins that the route now passes `query` through to the fragment
+    # (it did not before T5), so a no-results game search names what was
+    # typed the same way books and DVDs already did.
+
+    def test_game_empty_search_offers_manual_add_with_typed_title(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.no_match("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get(
+            "/api/games/search", params={"q": "Nonexistent Game", "platform": ""}
+        )
+
+        assert resp.status_code == 200
+        assert has_bare_attribute(resp.text, "data-manual-add")
+        assert 'data-manual-add-title="Nonexistent Game"' in resp.text
+        assert 'data-manual-add-type="video_game"' in resp.text
+
+    def test_game_results_render_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.found("igdb", [{"title": "Halo", "igdb_id": 1}])
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert "data-manual-add" not in resp.text
+
+    def test_game_search_rejected_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.rejected("igdb", status=403)
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="rejected"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    def test_game_search_quota_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.rate_limited("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="quota"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    def test_game_search_offline_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import igdb
+
+        async def _search(*a, **kw):
+            return provider_result.transport_failed("igdb")
+
+        monkeypatch.setattr(igdb, "search_games", _search)
+        resp = editor_client.get("/api/games/search", params={"q": "Halo", "platform": ""})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="offline"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    # -- dvds ---------------------------------------------------------
+
+    def test_dvd_empty_search_offers_manual_add_with_typed_title(
+        self, editor_client, monkeypatch
+    ):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.no_match("tmdb")
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Nonexistent Movie"})
+
+        assert resp.status_code == 200
+        assert has_bare_attribute(resp.text, "data-manual-add")
+        assert 'data-manual-add-title="Nonexistent Movie"' in resp.text
+        assert 'data-manual-add-type="dvd"' in resp.text
+
+    def test_dvd_results_render_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.found("tmdb", [{"title": "Dune", "tmdb_id": 1}])
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert "data-manual-add" not in resp.text
+
+    def test_dvd_search_rejected_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.rejected("tmdb", status=401)
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="rejected"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    def test_dvd_search_quota_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.rate_limited("tmdb")
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="quota"' in resp.text
+        assert "data-manual-add" not in resp.text
+
+    def test_dvd_search_offline_renders_no_manual_add_button(self, editor_client, monkeypatch):
+        from app.services import tmdb
+
+        async def _search(*a, **kw):
+            return provider_result.transport_failed("tmdb")
+
+        monkeypatch.setattr(tmdb, "search_movies", _search)
+        resp = editor_client.get("/api/dvds/search", params={"q": "Dune"})
+
+        assert resp.status_code == 200
+        assert 'data-search-status="offline"' in resp.text
+        assert "data-manual-add" not in resp.text
 
 
 class TestTheRejectedCopyNeverCreepsBackIntoTheRouter:

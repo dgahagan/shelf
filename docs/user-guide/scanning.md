@@ -1,7 +1,8 @@
 # Scanning
 
 The **Scan** tab is where items enter Shelf and where most day-to-day actions
-happen. One barcode field, one mode selector, and a strip of recent scans.
+happen. One barcode field, one mode selector, and a strip of recent scans —
+plus title search and **Add by hand** for the things a barcode cannot reach.
 
 ## Input methods
 
@@ -72,22 +73,42 @@ card uses: a rejected key, a provider that is rate-limiting us, or a provider
 Shelf could not reach at all. "No books found for …" now means only what it
 says — the provider answered and genuinely had nothing.
 
-## Manual add
+## Add by hand
 
-When a scan finds a valid barcode that no provider knows, the result card
-opens a manual entry form in place. Fill what you know; you can attach a
-cover by upload or cover search afterwards from the item page.
+Nothing needs a barcode. **Add by hand** is a panel on the Scan page, below
+title search, and a title is the only field it requires. Everything else is
+optional and editable afterwards from the item page.
 
-**It appears on that card only, and that is a real limitation today.** There
-is no standalone "add by hand" control, so the form is reachable only after
-a lookup has run and come back empty. An item with **no barcode at all**
-cannot start here: a title typed into the scan box fails ISBN validation
-before any lookup, and a title search that returns nothing offers no way
-through either. A self-published book, a burned CD, a niche import or
-something you made yourself therefore has no manual route in yet.
+Open it with the **Add by hand** button, or go straight to `/scan?add=manual`.
+It is available in **Add** and **Wishlist** modes; arriving by the link from
+anywhere else switches you to Add mode so the panel is there when you land.
 
-A general "Add item manually" entry point, for every media type and with no
-lookup required, is [planned](https://github.com/dgahagan/shelf/issues/120).
+- **Media type** is yours to choose — every type Shelf supports, including
+  the music formats and magazines. There is no "Auto" here: that means
+  "detect it from the barcode", and there is no barcode to detect from.
+- **ISBN or barcode** is optional. Type one and Shelf files it correctly on
+  its own — an ISBN goes in the ISBN column, a UPC in the UPC column.
+- **Wishlist mode** works here too: switch the Scan page to Wishlist and what
+  you add by hand goes on the wishlist rather than the shelf.
+- The **creator field** renames itself to match the type — Author(s) for
+  books, Developer for games, Director for discs, Artist for music.
+- The **platform** picker appears only for video games.
+
+Five ways in, all landing on the same panel:
+
+1. The **Add by hand** button on the Scan page itself.
+2. **Add by hand** in Home's quick actions.
+3. The button on an empty **title search** — it carries what you typed
+   through as the title. A provider *failure* deliberately does not offer it:
+   a rejected key is not a missing book, and hand-typing what a working key
+   would have fetched is the wrong repair.
+4. The button on the card you get when the scan box cannot read what you
+   typed — which is what happens when you type a **title** into it.
+5. **Add another like this** on any item's page, which prefills the author,
+   publisher, year, type, platform, series and location from that item.
+
+A scan that finds a valid barcode no provider knows still opens the same
+form in place on its result card, as it always has.
 
 What you type is checked before it's stored: an ISBN whose check digit
 doesn't add up, a location that no longer exists, or a game platform that
@@ -100,8 +121,11 @@ straight away. The lookup modes (lend, return, move, inventory, lookup,
 quick-rate) are not that strict on purpose: an old record whose stored ISBN
 isn't valid is still found when you scan it.
 
-From an existing item's page, **Add a copy** pre-fills a new form from it —
-handy for a second edition or a duplicate copy you want as its own record.
+From an existing item's page, **Add another like this** opens the Add by
+hand panel with that item's author, publisher, year, media type, platform,
+series and location already filled — handy for a second edition or the next
+book in a series. It creates a **separate record**; it does not register
+another physical copy of the same item.
 
 The Scan tab is not the only place a camera scan happens. An item's **edit**
 form has a **Scan ISBN** button in its Identifiers section, for fixing one

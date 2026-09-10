@@ -10,6 +10,7 @@ from tests.e2e.conftest import (
     assert_page_clean,
     attach_page_guard,
     insert_item,
+    template_env,
     wait_for_video_ready,
 )
 
@@ -450,7 +451,6 @@ def test_scan_cover_poll_settles_after_two_attempts(live_server, authed_page):
 # fragments/scan_result.html would not fail a test that wrote the attribute
 # itself. Mutation-checked both ways.
 def _render_card(**overrides):
-    from jinja2 import Environment, FileSystemLoader
 
     from app.services.national import SEARCH_LANGS
 
@@ -468,16 +468,13 @@ def _render_card(**overrides):
         "detect_overrode": False,
         "detect_reason": "",
         "message": "",
-        # The not_found arm's language <select> reads this as a Jinja
-        # *global* in the real app (app/main.py sets it on templates.env);
-        # this standalone Environment has no such global, so a not_found
-        # render needs it supplied explicitly or `search_langs.items()`
-        # raises on an Undefined.
+        # Supplied explicitly, though template_env() now also carries it as
+        # a global: this pins the *value* the not_found arm's language
+        # <select> renders, independently of what the app registers.
         "search_langs": SEARCH_LANGS,
     }
     ctx.update(overrides)
-    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
-    return env.get_template("fragments/scan_result.html").render(**ctx)
+    return template_env().get_template("fragments/scan_result.html").render(**ctx)
 
 
 _OUTCOME = "(html) => { const d = document.createElement('div'); d.innerHTML = html; " \
@@ -1267,7 +1264,6 @@ def test_a_typed_duplicate_scan_raises_exactly_one_warning_toast(
 
 
 def _render_status_card(status, **overrides):
-    from jinja2 import Environment, FileSystemLoader
 
     from app.services.national import SEARCH_LANGS
 
@@ -1294,8 +1290,7 @@ def _render_status_card(status, **overrides):
         "mode": "add",
     }
     ctx.update(overrides)
-    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
-    return env.get_template("fragments/scan_result.html").render(**ctx)
+    return template_env().get_template("fragments/scan_result.html").render(**ctx)
 
 
 _TOAST = "(html) => { const d = document.createElement('div'); d.innerHTML = html; " \
@@ -1597,3 +1592,372 @@ def test_an_empty_toast_message_still_renders_text(live_server, authed_page):
     expect(toast).to_be_visible(timeout=5_000)
     assert (toast.text_content() or "").strip() != ""
     assert_page_clean(authed_page)
+
+
+# ---------------------------------------------------------------------------
+# The manual entry panel (#120)
+# ---------------------------------------------------------------------------
+
+
+def _login_seeding_scan_mode(browser, live_server, setup_admin, mode, path):
+    """Log in through a fresh context with the scan mode seeded before first
+    paint, then land on `path`.
+
+    G52: `add_init_script` must run before the very first navigation, and
+    `authed_page` builds its context inside the fixture, so it cannot be used
+    — a fresh context has no session cookie and every authenticated page just
+    redirects to /login. Mirrors `authed_page`'s login sequence. The caller
+    owns closing the context.
+    """
+    import json as _json
+
+    ctx = browser.new_context()
+    ctx.add_init_script(
+        "localStorage.setItem('shelf_scan_mode', %s);" % _json.dumps(mode)
+    )
+    pg = attach_page_guard(ctx.new_page())
+    pg.goto(f"{live_server['url']}/login")
+    pg.fill("input[name=username]", setup_admin["username"])
+    pg.fill("input[name=password]", setup_admin["password"])
+    pg.click("button[type=submit]")
+    pg.wait_for_url(f"{live_server['url']}/", timeout=10_000)
+    pg.goto(f"{live_server['url']}{path}")
+    return ctx, pg
+
+
+def test_deep_link_opens_the_panel_even_from_a_lookup_mode(
+    browser, live_server, setup_admin
+):
+    """R1: `mode` is restored from localStorage, and six of the eight modes
+    hide the panel *and its only toggle*. Without the normalization in
+    scanPage.init, every returning user whose last mode was Lookup follows
+    Home's "Add by hand" link and sees nothing change.
+
+    The key is `shelf_scan_mode`, with underscores — hyphenated, this seeds
+    nothing and the test passes vacuously.
+    """
+    ctx, pg = _login_seeding_scan_mode(
+        browser, live_server, setup_admin, "lookup", "/scan?add=manual"
+    )
+    try:
+        expect(pg.locator('[data-manual-host="panel"]')).to_be_visible(timeout=10_000)
+        assert pg.evaluate("localStorage.getItem('shelf_scan_mode')") == "add"
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_deep_link_preserves_a_seeded_wishlist_mode(browser, live_server, setup_admin):
+    """The normalization must not move someone off wishlist mode: wishlist
+    already shows the panel, and arriving by deep link is not a request to
+    start adding to the shelf instead."""
+    ctx, pg = _login_seeding_scan_mode(
+        browser, live_server, setup_admin, "wishlist", "/scan?add=manual"
+    )
+    try:
+        expect(pg.locator('[data-manual-host="panel"]')).to_be_visible(timeout=10_000)
+        assert pg.evaluate("localStorage.getItem('shelf_scan_mode')") == "wishlist"
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def _panel_with_seeded_media_type(browser, live_server, setup_admin, stored):
+    """Log in through a fresh context with `shelf_media_type` seeded before
+    first paint, then open the manual panel.
+
+    G52 again: `add_init_script` has to be registered on the context before
+    the very first navigation, so `authed_page` cannot carry it. The caller
+    owns closing the context.
+    """
+    import json as _json
+
+    ctx = browser.new_context()
+    if stored is not None:
+        ctx.add_init_script(
+            "localStorage.setItem('shelf_media_type', %s);" % _json.dumps(stored)
+        )
+    pg = _login_page(live_server, ctx, setup_admin)
+    pg.goto(f"{live_server['url']}/scan?add=manual")
+    expect(pg.locator('[data-manual-host="panel"]')).to_be_visible(timeout=10_000)
+    return ctx, pg
+
+
+def test_the_panel_opens_on_the_pages_persisted_media_type(
+    browser, live_server, setup_admin
+):
+    """B2: the panel is a *nested* Alpine component, so it shadows the Scan
+    page's `mediaType` and inherits nothing from it. Reading only its own
+    <select> in init() recovers what the server marked selected, which
+    without `?from=` is the first option — Book. A user whose page has said
+    DVD for months opened Add by hand, saw Book, submitted without touching
+    it and stored a Book.
+
+    Asserts the *stored* type, not just the control: the visible default is
+    only a symptom, the wrong row is the defect.
+    """
+    ctx, pg = _panel_with_seeded_media_type(
+        browser, live_server, setup_admin, "dvd"
+    )
+    try:
+        expect(pg.locator("#media-type")).to_have_value("dvd")
+        expect(pg.locator("#manual-media-type")).to_have_value("dvd")
+
+        title = "Panel Seeded Type Nebula Atlas"
+        base = pg.locator("#scan-results .scan-result").count()
+        panel = pg.locator('[data-manual-host="panel"]')
+        panel.locator('input[name="title"]').fill(title)
+        with pg.expect_response(lambda r: "/api/items/manual" in r.url and r.ok):
+            panel.locator('button[type="submit"]').click()
+
+        expect(pg.locator("#scan-results .scan-result")).to_have_count(
+            base + 1, timeout=10_000
+        )
+        added_card = pg.locator("#scan-results .scan-result").first
+        expect(added_card).to_have_attribute("data-scan-status", "added")
+
+        with pg.expect_navigation():
+            added_card.locator("[data-scan-title] a").click()
+        type_row = pg.get_by_text("Type:", exact=True).locator("xpath=..")
+        expect(type_row).to_contain_text("DVD")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_the_panel_falls_back_to_book_when_the_page_is_on_auto(
+    browser, live_server, setup_admin
+):
+    """`auto` means "detect it from the barcode", and the panel has no
+    barcode to detect from — so it is not an answer the panel can take, and
+    the fallback stays Book. Pinned because the fix for B2 could just as
+    easily have copied `auto` across and offered a type the select does not
+    even carry."""
+    ctx, pg = _panel_with_seeded_media_type(
+        browser, live_server, setup_admin, "auto"
+    )
+    try:
+        expect(pg.locator("#media-type")).to_have_value("auto")
+        expect(pg.locator("#manual-media-type")).to_have_value("book")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_a_from_prefill_outranks_the_pages_persisted_media_type(
+    browser, live_server, setup_admin
+):
+    """Precedence, in one walk: the page says DVD, the panel opens on DVD,
+    the user files a video game, and re-opening the panel with `?from=` that
+    item shows *its* type rather than the page's. A server prefill is an
+    explicit answer about this item; the stored value is only a standing
+    preference."""
+    ctx, pg = _panel_with_seeded_media_type(
+        browser, live_server, setup_admin, "dvd"
+    )
+    try:
+        expect(pg.locator("#manual-media-type")).to_have_value("dvd")
+
+        title = "Panel From Prefill Nebula Atlas"
+        base = pg.locator("#scan-results .scan-result").count()
+        panel = pg.locator('[data-manual-host="panel"]')
+        panel.locator('input[name="title"]').fill(title)
+        pg.select_option("#manual-media-type", "video_game")
+        with pg.expect_response(lambda r: "/api/items/manual" in r.url and r.ok):
+            panel.locator('button[type="submit"]').click()
+
+        expect(pg.locator("#scan-results .scan-result")).to_have_count(
+            base + 1, timeout=10_000
+        )
+        added_card = pg.locator("#scan-results .scan-result").first
+        expect(added_card).to_have_attribute("data-scan-status", "added")
+        href = added_card.locator("[data-scan-title] a").get_attribute("href")
+        item_id = href.rstrip("/").rsplit("/", 1)[-1]
+
+        pg.goto(f"{live_server['url']}/scan?add=manual&from={item_id}")
+        expect(pg.locator('[data-manual-host="panel"]')).to_be_visible(timeout=10_000)
+        # localStorage still says DVD; the prefill still wins.
+        expect(pg.locator("#media-type")).to_have_value("dvd")
+        expect(pg.locator("#manual-media-type")).to_have_value("video_game")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_a_hidden_platform_select_is_not_submitted(authed_page, live_server):
+    """R2: x-show only sets display:none, and a hidden <select> is still a
+    successful control that posts its value. manual_add reads `platform`
+    unconditionally and item_write validates only that the key exists, never
+    that the media type is video_game — so without :disabled, choosing
+    PlayStation 5 and switching to DVD stores `ps5` on the DVD row."""
+    pg = authed_page
+    pg.goto(f"{live_server['url']}/scan?add=manual")
+    expect(pg.locator('[data-manual-host="panel"]')).to_be_visible(timeout=10_000)
+
+    pg.select_option("#manual-media-type", "video_game")
+    expect(pg.locator('[data-manual-host="panel"] select[name=platform]')).to_be_visible()
+    pg.select_option('[data-manual-host="panel"] select[name=platform]', "ps5")
+
+    pg.select_option("#manual-media-type", "dvd")
+    expect(
+        pg.locator('[data-manual-host="panel"] select[name=platform]')
+    ).to_be_hidden()
+    # The data half, not the visual one: a disabled control is not submitted.
+    assert pg.eval_on_selector(
+        '[data-manual-host="panel"] select[name=platform]', "el => el.disabled"
+    ) is True
+    assert_page_clean(pg)
+
+
+def test_the_panel_and_the_cards_do_not_reach_into_each_other(
+    authed_page, live_server
+):
+    """R3: manualAddForm is mounted by the panel *and* by every not_found
+    card, and several cards can sit on one page at once. Unguarded, the
+    panel's window listener would mutate every card's form and its dataset
+    read would throw inside each card's init(), killing every copy picker."""
+    pg = authed_page
+    pg.goto(f"{live_server['url']}/scan?add=manual")
+    expect(pg.locator('[data-manual-host="panel"]')).to_be_visible(timeout=10_000)
+
+    # #scan-results loads recent scans on page load, so count from a
+    # baseline rather than from zero.
+    pg.wait_for_load_state("networkidle")
+    base = pg.locator(".scan-result").count()
+
+    # Two not_found cards, from the same offline-deterministic non-match.
+    # A barcode of this test's own: 999999999999 is *added* as "Goodfellas"
+    # by the camera-overlay test above, so reusing it makes this pass or fail
+    # on suite order — the second scan would return a duplicate card, which
+    # carries no manual form and no copy picker at all.
+    barcode = "999999999120"
+    pg.select_option("#media-type", "dvd")
+    for added in (1, 2):
+        pg.fill("#isbn-input", barcode)
+        pg.press("#isbn-input", "Enter")
+        expect(pg.locator(".scan-result")).to_have_count(base + added, timeout=20_000)
+
+    # Assert the shape rather than trusting it: a duplicate or error card
+    # would satisfy the count above and silently defeat the rest.
+    expect(pg.locator('.scan-result[data-scan-status="not_found"]')).to_have_count(2)
+
+    # Every card's copy picker initialised — an unguarded JSON.parse in init()
+    # would have thrown before this input was reachable. Only the two
+    # not_found cards carry one; the recent-scan rows are status cards.
+    pickers = pg.locator('.scan-result input[placeholder^="Copy from"]')
+    expect(pickers).to_have_count(2)
+
+    pg.evaluate(
+        "window.dispatchEvent(new CustomEvent('shelf:manual-add',"
+        " {detail: {title: 'Only The Panel', media_type: 'book'}}))"
+    )
+
+    panel_title = pg.locator('[data-manual-host="panel"] input[name=title]')
+    expect(panel_title).to_have_value("Only The Panel")
+    card_titles = pg.locator('.scan-result input[name="title"]')
+    assert card_titles.count() == 2
+    for i in range(card_titles.count()):
+        assert (card_titles.nth(i).input_value() or "") == ""
+
+    assert_page_clean(pg)
+
+
+@pytest.mark.parametrize(
+    "context_kwargs,label",
+    [
+        pytest.param(
+            {"viewport": {"width": 1280, "height": 800}}, "desktop", id="desktop"
+        ),
+        pytest.param(
+            {
+                "viewport": {"width": 390, "height": 844},
+                "is_mobile": True,
+                "has_touch": True,
+            },
+            "mobile",
+            id="mobile",
+        ),
+    ],
+)
+def test_a_typed_title_walks_manual_add_through_to_the_item_page(
+    browser, live_server, setup_admin, context_kwargs, label
+):
+    """#120's E2E contract: type a title that fails ISBN check-digit
+    validation, open the manual panel from the resulting error card's
+    "Add it by hand" button (data-manual-add), pick a media type, submit, and
+    land on an added card whose item page shows the type chosen.
+
+    Run at desktop (1280x800) and a real mobile context (390x844,
+    is_mobile + touch, per a real device rather than merely resizing
+    authed_page — the fallback `set_viewport_size` used at test_nav.py:236):
+    the mobile nav is a different component and the panel's two-column
+    grids wrap differently there, so both are real coverage, not a repeat.
+    """
+    ctx = browser.new_context(**context_kwargs)
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        title = f"Manual Add Walk Nebula Atlas ({label})"
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+
+        # #scan-results loads recent scans on page load, and other tests in
+        # this session have left rows in it — count from a baseline, never
+        # from zero (see test_the_panel_and_the_cards_do_not_reach_into_
+        # each_other above).
+        base = pg.locator("#scan-results .scan-result").count()
+
+        # A title fails the ISBN check digit and lands in the same "error"
+        # arm a mistyped barcode does (items.py's `pair is None` branch),
+        # which is what offers the manual-add button (#120).
+        pg.fill("#isbn-input", title)
+        with pg.expect_response(lambda r: "/api/scan" in r.url and r.ok):
+            pg.press("#isbn-input", "Enter")
+        expect(pg.locator("#scan-results .scan-result")).to_have_count(
+            base + 1, timeout=10_000
+        )
+
+        error_card = pg.locator("#scan-results .scan-result").first
+        expect(error_card).to_have_attribute("data-scan-status", "error")
+        manual_btn = error_card.locator("[data-manual-add]")
+        expect(manual_btn).to_have_attribute("data-manual-add-title", title)
+
+        # No request in flight from this click — it only flips Alpine state
+        # and dispatches shelf:manual-add.
+        manual_btn.click()
+
+        panel = pg.locator('[data-manual-host="panel"]')
+        expect(panel).to_be_visible(timeout=10_000)
+        panel_title = panel.locator('input[name="title"]')
+        expect(panel_title).to_have_value(title)
+
+        # No `auto` option on the panel's media type — it is the user's
+        # choice to make, not a detection to defer.
+        pg.select_option("#manual-media-type", "magazine")
+
+        submit_btn = panel.locator('button[type="submit"]')
+        with pg.expect_response(lambda r: "/api/items/manual" in r.url and r.ok):
+            submit_btn.click()
+
+        expect(pg.locator("#scan-results .scan-result")).to_have_count(
+            base + 2, timeout=10_000
+        )
+        added_card = pg.locator("#scan-results .scan-result").first
+        # Assert the card's own status, never a bare count — a duplicate or
+        # error card would satisfy the count above just as well.
+        expect(added_card).to_have_attribute("data-scan-status", "added")
+        expect(added_card).to_contain_text(title)
+
+        title_link = added_card.locator("[data-scan-title] a")
+        expect(title_link).to_be_visible()
+        with pg.expect_navigation():
+            title_link.click()
+
+        expect(pg.locator("h1")).to_contain_text(title)
+        # The row's own <div>, reached from its label rather than from a
+        # six-class Tailwind chain that any restyle would break.
+        type_row = pg.get_by_text("Type:", exact=True).locator("xpath=..")
+        expect(type_row).to_contain_text("Magazine")
+
+        assert_page_clean(pg)
+    finally:
+        ctx.close()

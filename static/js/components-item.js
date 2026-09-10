@@ -384,12 +384,97 @@ document.addEventListener('alpine:init', function () {
     // component's own root rather than the document.
     Alpine.data('manualAddForm', function () {
         var rootEl = null;
+        var isPanel = false;
+        var creatorLabels = {};
+
+        // The panel's opening media type. A nested Alpine component shadows
+        // the parent's state name and inherits nothing from it, so reading
+        // the <select> alone recovers only what the *server* marked selected
+        // — which for a panel opened without `?from=` is the first option,
+        // Book. A user whose Scan page has been set to DVD for months then
+        // saw Book here and stored a Book on an unchanged submit.
+        // Source: diff-review codex B2.
+        function initialMediaType(sel) {
+            if (!sel) return 'book';
+            // A server prefill (`?from=<id>`) is an explicit answer about
+            // this item and outranks the page's standing preference.
+            var marked = sel.querySelector('option[selected]');
+            if (marked) return marked.value;
+            var stored = '';
+            try {
+                stored = localStorage.getItem('shelf_media_type') || '';
+            } catch (e) {
+                stored = '';
+            }
+            // `auto` means "detect it from the barcode" and there is no
+            // barcode here; a value that is not one of the options is
+            // equally no answer. Both fall through to the first option.
+            if (stored && stored !== 'auto' && Array.prototype.some.call(
+                sel.options, function (o) { return o.value === stored; }
+            )) return stored;
+            return sel.value || 'book';
+        }
         return {
             showForm: true,
             copyQuery: '', suggestions: [], copiedFrom: '', copyError: '',
             searchTimer: 0,
+            // Only the panel host binds this; the card's media type is fixed
+            // by the scan and rendered server-side.
+            mediaType: '',
             init() {
+                var self = this;
                 rootEl = this.$el;
+
+                // Everything below is panel-only, and the gate is not
+                // decoration: this same component is mounted by every
+                // not_found card, and several can sit on one page at once.
+                // A card host carries no data-creator-labels, so an
+                // unguarded JSON.parse would throw inside init() and kill
+                // the copy picker on every card; and one window listener per
+                // instance would mean opening the panel mutates every card's
+                // form.
+                isPanel = rootEl.dataset.manualHost === 'panel';
+                if (!isPanel) return;
+
+                try {
+                    creatorLabels = JSON.parse(rootEl.dataset.creatorLabels || '{}');
+                } catch (e) {
+                    creatorLabels = {};
+                }
+
+                var sel = rootEl.querySelector('[name="media_type"]');
+                this.mediaType = initialMediaType(sel);
+                // x-model pushes state to the control after init(), but the
+                // panel is also read by tests and by the platform :disabled
+                // binding before that settles; keep the two in step here.
+                if (sel) sel.value = this.mediaType;
+
+                window.addEventListener('shelf:manual-add', function (e) {
+                    var d = (e && e.detail) ? e.detail : {};
+                    var title = rootEl.querySelector('[name="title"]');
+                    if (title) title.value = d.title || '';
+                    if (d.media_type) self.setMediaType(d.media_type);
+                    if (title) title.focus();
+                });
+            },
+
+            // The label follows the selected type on the panel. A getter
+            // rather than a computed field — scanPage.modeConfig is the
+            // precedent for one under the CSP build.
+            get creatorLabel() {
+                return creatorLabels[this.mediaType] || 'Author(s)';
+            },
+
+            // Every programmatic type change goes through here, so
+            // this.mediaType, the select, the creator label and the platform
+            // x-show/:disabled can never disagree with what is submitted.
+            setMediaType(value) {
+                if (!value) return;
+                var sel = rootEl ? rootEl.querySelector('[name="media_type"]') : null;
+                if (sel && !Array.prototype.some.call(sel.options, function (o) {
+                    return o.value === value;
+                })) return;
+                this.mediaType = value;
             },
             onCopyInput() {
                 var self = this;
@@ -427,11 +512,6 @@ document.addEventListener('alpine:init', function () {
             applyTemplate(d) {
                 var root = rootEl;
                 if (!root) return;
-                // media_type is deliberately not applied: it is a hidden field
-                // set by the scanner for THIS scan, and the platform select is
-                // rendered from it server-side, so overwriting it here would
-                // silently change the saved type with nothing on screen to show
-                // it. Everything else in the copy-template payload prefills.
                 var names = ['authors', 'publisher', 'publish_year', 'platform',
                              'series_name', 'location_id'];
                 names.forEach(function (name) {
@@ -439,6 +519,24 @@ document.addEventListener('alpine:init', function () {
                     var el = root.querySelector('[name="' + name + '"]');
                     if (el) el.value = d[name];
                 });
+                // media_type applies only where the field is a <select> — a
+                // feature test on the element, not a host flag.
+                //
+                // On the not_found CARD it is a hidden input fixed by the
+                // scanner for this scan, and the platform select is rendered
+                // from it server-side, so writing it here would silently
+                // change the saved type with nothing on screen to show it.
+                //
+                // On the PANEL it is a select the user can see change, so
+                // applying it is the point. It goes through setMediaType
+                // rather than el.value: the select carries x-model, and a
+                // direct assignment would leave this.mediaType stale, so the
+                // creator label and the platform x-show/:disabled would
+                // disagree with what gets submitted.
+                var mt = root.querySelector('[name="media_type"]');
+                if (mt && mt.tagName === 'SELECT' && d.media_type) {
+                    this.setMediaType(d.media_type);
+                }
             }
         };
     });
