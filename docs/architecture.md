@@ -198,7 +198,12 @@ a retail UPC and neither produces a plain `items` row:
 Both pace through `services/outbound.py` like every other shared public host.
 
 UPCs go to **UPC Item DB** (`services/upcitemdb.py`) for a retail product,
-then TMDb (film) or IGDB (game). **Which of the two is decided by
+then TMDb (film) or IGDB (game). The endpoint is `config.upc_lookup_url()`,
+read at call time and overridable with `SHELF_UPC_LOOKUP_URL`; pacing is keyed
+on the URL's *host*, so an override to a local address is unpaced by design.
+The E2E suite exercises this leg against a local stub rather than the live
+trial API, and the live endpoint is checked separately by `make test-contract`
+— see **Testing** below. **Which of the two is decided by
 `services/detect.py`, not by the scan form's dropdown** — the product record
 is fetched once, above the fork, precisely so detection can read it. The
 dropdown is an input to that decision, not an oracle over it.
@@ -902,6 +907,35 @@ The rule is pinned structurally. `tests/test_item_write.py` requires that
 and `platform = NULL` cascades, the name-keyed series rename, three
 migrations) — a new user-value write anywhere else fails the suite, and so
 does a stale allowlist entry.
+
+## Testing
+
+Two suites, and they **cannot share one pytest invocation**: the unit and
+integration tests run in-process against a temp data directory, while the E2E
+tests drive a real browser against a uvicorn subprocess that the fixtures boot
+themselves. `make test` runs the first, `make test-e2e` the second.
+
+**The release gate makes no live third-party call.** That is a stated
+invariant, not an accident of which tests happen to be written. For UPC Item DB
+it is enforced structurally: `tests/e2e/conftest.py::upc_stub` is a session-scoped
+stdlib HTTP server that replays responses recorded under `tests/fixtures/`, and
+`_boot_server` injects its URL into the *fixed* environment block every E2E
+server gets — so no test opts in, and an inherited `SHELF_UPC_LOOKUP_URL` from
+the developer's shell cannot displace it. The stub host is deliberately absent
+from `HOST_RATE_LIMITS`. TMDb and IGDB need no equivalent: they are
+credential-gated and skip cleanly when no key is configured.
+
+**The `live` marker and `tests/contract/`.** A test that really does call a
+third party is marked `live` and lives in `tests/contract/`, which every
+gate-running and test-counting command excludes. `make test-contract` is the
+only target that runs them, and it is run at release — never on a gate, and
+never in `test-all`, `verify` or the pre-push hook. Today there is one: it
+proves the recorded UPC Item DB fixture still matches what the live endpoint
+serves. It spends one lookup from a 100-per-day trial budget, so when that
+budget is already spent it **skips**, with the quota reset time in the skip
+reason, rather than failing a release for a reason unrelated to the change.
+A skip means the contract went unchecked — read the reason, record it, and do
+not wait for it.
 
 ## Security posture
 

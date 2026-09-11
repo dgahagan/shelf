@@ -18,6 +18,7 @@ make test                  # unit/integration tests — quiet + parallel (exclud
 make test-fast             # re-run only last run's failures (--lf, serial)
 make test-verbose          # per-test roll-call, for humans
 make test-e2e              # Playwright E2E — spins up its own server, no dev server needed
+make test-contract         # live UPC Item DB contract check — run at release, never on a gate
 python -m pytest tests/test_items.py::test_name -v           # single unit test
 python -m pytest tests/e2e/test_scan.py -v -m e2e            # single E2E file
 make css                   # rebuild committed Tailwind stylesheet + restamp SW_VERSION (required after template/JS changes)
@@ -113,6 +114,11 @@ Paths live in `app/config.py` (`DATA_DIR`, `DATABASE_PATH`, `COVERS_DIR`). `from
 - `tests/conftest.py`: an autouse fixture isolates every test into a tmp data dir; use the `client` / `admin_client` / `editor_client` / `viewer_client` fixtures (CSRF pre-seeded, rate limiting off) and `db` for direct queries. Helpers `_insert_item`, `_insert_borrower`, `_insert_location` seed data.
 - E2E tests (`tests/e2e/`, marked `e2e`) use raw Playwright and launch their own uvicorn server per session.
 - `make verify` enforces a minimum unit-test count (`MIN_TESTS` in the Makefile) — deleting tests will fail it.
+- **E2E makes no live third-party calls.** The UPC Item DB stub
+  (`tests/e2e/conftest.py::upc_stub`, served to every E2E server through
+  `_boot_server`'s fixed env block) is the mechanism; `live` is the marker for a
+  test that does call out, and such tests live in `tests/contract/`, off every
+  gate target and run only by `make test-contract`.
 
 <!-- devwf:begin -->
 ## dev-workflow (installed)

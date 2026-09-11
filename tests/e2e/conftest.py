@@ -5,6 +5,7 @@ Uses raw Playwright (not pytest-playwright) so we can control the server
 lifecycle and auth state independently.
 """
 import contextlib
+import http.server
 import os
 import socket
 import sqlite3
@@ -14,7 +15,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from playwright.sync_api import sync_playwright
@@ -88,19 +89,119 @@ def _wait_for_server(url: str, timeout: float = _SERVER_TIMEOUT, output: "_Outpu
 
 
 # ---------------------------------------------------------------------------
+# UPC Item DB stub (issue #123)
+# ---------------------------------------------------------------------------
+
+_UPC_FIXTURES = APP_DIR / "tests" / "fixtures"
+
+# UPC -> (status, extra headers, body). Recorded from the trial API on
+# 2026-09-10 with `curl ".../prod/trial/lookup?upc=<code>"`.
+_UPC_STUB_TABLE = {
+    "000000000000": (
+        200, {},
+        (_UPC_FIXTURES / "upcitemdb_lookup_000000000000.json").read_bytes(),
+    ),
+    # The three throwaway codes the not-found tests use fail the API's own
+    # format check — 400, and it still costs a lookup live (#123). Body
+    # recorded verbatim: {"code":"INVALID_UPC","message":"Not a valid UPC code."}
+    "999999999999": (400, {}, b'{"code":"INVALID_UPC","message":"Not a valid UPC code."}'),
+    "888888888888": (400, {}, b'{"code":"INVALID_UPC","message":"Not a valid UPC code."}'),
+    "999999999120": (400, {}, b'{"code":"INVALID_UPC","message":"Not a valid UPC code."}'),
+    # A spent daily quota, exactly as the 0.40.0 release gate saw it (G94).
+    # Retry-After is above outbound.RETRY_AFTER_MAX (30s) on purpose, so
+    # outbound.fetch returns the 429 at once instead of sleeping through two
+    # backoff retries — and because that is what a spent quota really looks
+    # like, rather than a blip.
+    "000000000429": (
+        429,
+        {"Retry-After": "25173", "X-RateLimit-Limit": "100", "X-RateLimit-Remaining": "0"},
+        b'{"code":"EXCEED_LIMIT","message":"Exceed request limit"}',
+    ),
+}
+
+# A well-formed code the API does not know answers 200 with an empty list, and
+# `lookup` files that as `no_match`. Mirroring it means a future test that
+# scans a fresh throwaway code gets the card it would get live, with no request
+# leaving the machine.
+_UPC_STUB_UNKNOWN = (200, {}, b'{"code":"OK","total":0,"offset":0,"items":[]}')
+
+
+class _UpcStubHandler(http.server.BaseHTTPRequestHandler):
+    """Answers the one endpoint `app/services/upcitemdb.py` calls."""
+
+    def do_GET(self):  # noqa: N802 — BaseHTTPRequestHandler's own spelling
+        parts = urlsplit(self.path)
+        upc = parse_qs(parts.query).get("upc", [""])[0]
+        self.server.requests.append((parts.path, upc))
+
+        if parts.path != "/lookup":
+            status, headers, body = 404, {}, b'{"code":"NOT_FOUND"}'
+        else:
+            status, headers, body = _UPC_STUB_TABLE.get(upc, _UPC_STUB_UNKNOWN)
+
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        for name, value in headers.items():
+            self.send_header(name, value)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *args):
+        """Drop the stdlib's per-request stderr chatter."""
+
+
+@pytest.fixture(scope="session")
+def upc_stub():
+    """A local stand-in for api.upcitemdb.com, served to every E2E server.
+
+    Answers GET /lookup?upc=... from `_UPC_STUB_TABLE`. The request still
+    leaves the app through `outbound.fetch` and `classify_response` still reads
+    a real status code, so `items_common.py` is still the thing deciding —
+    which is the property the scan tests pin (G31). Anything but /lookup is a
+    404, so a wrong URL fails loudly instead of looking like a miss.
+
+    Yields {"url", "requests"}; `requests` is a list of (path, upc) a test can
+    assert against to prove the lookup actually went out.
+    """
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), _UpcStubHandler)
+    server.requests = []
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield {
+            "url": f"http://127.0.0.1:{server.server_address[1]}",
+            "requests": server.requests,
+        }
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+
+# ---------------------------------------------------------------------------
 # Session-scoped fixtures
 # ---------------------------------------------------------------------------
 
 
 @contextlib.contextmanager
-def _boot_server(env_extra: "dict[str, str] | None" = None, *, clear_env=()):
+def _boot_server(
+    env_extra: "dict[str, str] | None" = None, *, clear_env=(), upc_stub_url: str
+):
     """Start a uvicorn process against a fresh temp DB; yield its coordinates.
 
     The body `live_server` used to inline, so there is one implementation
     rather than two. Environment construction order is load-bearing: copy
-    `os.environ`, drop every name in `clear_env`, apply the fixed E2E values,
-    then apply `env_extra` last — so a caller can always opt back in to
-    something `clear_env` removed.
+    `os.environ`, drop every name in `clear_env`, apply the fixed E2E values
+    (`DATA_DIR`, `SHELF_DISABLE_RATE_LIMIT`, `SHELF_DEV_INSECURE_COOKIES`,
+    `SHELF_DISABLE_COVER_ENRICH`, `SHELF_UPC_LOOKUP_URL`), then apply
+    `env_extra` last — so a caller can always opt back in to something
+    `clear_env` removed.
+
+    `upc_stub_url` is keyword-only and **required** on purpose. Both callers
+    supply it from the `upc_stub` fixture, so every E2E server gets the stub
+    without any test opting in; a third caller that forgets it fails here
+    rather than silently running against the live trial API (#123).
     """
     tmpdir = tempfile.mkdtemp(prefix="shelf_e2e_")
     data_dir = Path(tmpdir) / "data"
@@ -117,6 +218,11 @@ def _boot_server(env_extra: "dict[str, str] | None" = None, *, clear_env=()):
         # too, so E2E makes no outbound cover fetches. enqueue() still works —
         # jobs simply sit, which is what the cover-poll tests rely on.
         "SHELF_DISABLE_COVER_ENRICH": "1",
+        # The UPC Item DB stub, in the *fixed* block rather than in `env_extra`:
+        # every E2E server gets it with no test opting in, and `clear_env`
+        # cannot remove it. `env_extra` is applied after, so a test that wants
+        # a different stub can still override it (#123).
+        "SHELF_UPC_LOOKUP_URL": f"{upc_stub_url}/lookup",
     })
     env.update(env_extra or {})
 
@@ -149,18 +255,18 @@ def _boot_server(env_extra: "dict[str, str] | None" = None, *, clear_env=()):
 
 
 @pytest.fixture(scope="session")
-def live_server():
+def live_server(upc_stub):
     """Start a uvicorn process with a temp DB; yield the base URL.
 
     Passes no `clear_env`, which is what preserves the pre-extraction contract
     byte for byte: the whole parent environment, then the fixed E2E values.
     """
-    with _boot_server() as server:
+    with _boot_server(upc_stub_url=upc_stub["url"]) as server:
         yield server
 
 
 @pytest.fixture
-def server_factory():
+def server_factory(upc_stub):
     """Boot throwaway servers with caller-supplied env, torn down per test.
 
     Function-scoped, unlike `live_server`, so a test can drive several
@@ -186,7 +292,11 @@ def server_factory():
     with contextlib.ExitStack() as stack:
         def factory(env_extra: "dict[str, str] | None" = None) -> dict:
             return stack.enter_context(
-                _boot_server(env_extra, clear_env=SECRET_ENV_VARS.values())
+                _boot_server(
+                    env_extra,
+                    clear_env=SECRET_ENV_VARS.values(),
+                    upc_stub_url=upc_stub["url"],
+                )
             )
         yield factory
 

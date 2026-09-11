@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
+import app.config
 from app.services import upcitemdb
 
 
@@ -186,10 +187,31 @@ class TestLookup:
         await upcitemdb.lookup("085391163121", client)
 
         call = fake_fetch.await_args
-        assert call.args == (client, "GET", upcitemdb.UPC_LOOKUP_URL)
+        assert call.args == (client, "GET", app.config.upc_lookup_url())
         assert call.kwargs.get("params") == {"upc": "085391163121"}
         assert call.kwargs.get("timeout") == 10
         assert _no_retry_timeouts(call)
+
+    async def test_a_configured_url_override_is_used(self, fake_fetch, monkeypatch):
+        monkeypatch.setenv("SHELF_UPC_LOOKUP_URL", "http://127.0.0.1:1/lookup")
+        fake_fetch.return_value = StubResponse(200, json_data={"items": [{"title": "X"}]})
+        client = object()
+
+        await upcitemdb.lookup("085391163121", client)
+
+        call = fake_fetch.await_args
+        assert call.args == (client, "GET", "http://127.0.0.1:1/lookup")
+
+    async def test_with_no_override_it_uses_the_trial_default(self, fake_fetch, monkeypatch):
+        monkeypatch.delenv("SHELF_UPC_LOOKUP_URL", raising=False)
+        fake_fetch.return_value = StubResponse(200, json_data={"items": [{"title": "X"}]})
+        client = object()
+
+        await upcitemdb.lookup("085391163121", client)
+
+        call = fake_fetch.await_args
+        assert call.args == (client, "GET", app.config.UPC_LOOKUP_URL_DEFAULT)
+        assert app.config.UPC_LOOKUP_URL_DEFAULT == "https://api.upcitemdb.com/prod/trial/lookup"
 
     async def test_a_404_is_none(self, fake_fetch):
         fake_fetch.return_value = StubResponse(404)

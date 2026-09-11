@@ -26,11 +26,10 @@ import re
 
 import httpx
 
+import app.config
 from app.services import outbound, provider_result
 
 logger = logging.getLogger(__name__)
-
-UPC_LOOKUP_URL = "https://api.upcitemdb.com/prod/trial/lookup"
 
 # Platform / format tokens that appear as a trailing " - <token>" suffix.
 _PLATFORM_SUFFIXES = [
@@ -158,7 +157,7 @@ async def lookup(upc: str, client: httpx.AsyncClient) -> provider_result.Provide
     """
     try:
         resp = await outbound.fetch(
-            client, "GET", UPC_LOOKUP_URL, params={"upc": upc}, timeout=10,
+            client, "GET", app.config.upc_lookup_url(), params={"upc": upc}, timeout=10,
         )
         classified = provider_result.classify_response("upcitemdb", resp)
         if classified is not None:

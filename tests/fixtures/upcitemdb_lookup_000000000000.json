@@ -1,0 +1,40 @@
+{
+    "code": "OK",
+    "total": 1,
+    "offset": 0,
+    "items": [
+        {
+            "ean": "0000000000000",
+            "title": "ORGANIC BLUE CORN TORTILLA CHIPS",
+            "description": "INGREDIENTS: ORGANIC BLUE CORN, ORGANIC SUNFLOWER OIL, SEA SALT, TRACE OF LIME.",
+            "upc": "000000000000",
+            "brand": "N/A",
+            "model": "SKU97950",
+            "color": "",
+            "size": "",
+            "dimension": "",
+            "weight": "",
+            "category": "Food, Beverages & Tobacco > Food Items > Snack Foods > Pretzels",
+            "lowest_recorded_price": 0.6,
+            "highest_recorded_price": 56,
+            "images": [
+                "http://www.aveda.co.uk/media/images/products/600x600/000000000000_FRONT.jpg"
+            ],
+            "offers": [
+                {
+                    "merchant": "Aveda",
+                    "domain": "aveda.com",
+                    "title": "Aveda embellished hair",
+                    "currency": "",
+                    "list_price": "",
+                    "price": 42,
+                    "shipping": "Free Shipping",
+                    "condition": "New",
+                    "availability": "",
+                    "link": "https://www.upcitemdb.com/norob/alink/?id=w2x2x2t203y2c444q2&tid=1&seq=1789084720&plt=68d08d3aa7c3649940145a0d86e6c8d0",
+                    "updated_t": 1585578961
+                }
+            ]
+        }
+    ]
+}

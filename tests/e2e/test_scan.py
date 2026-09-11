@@ -123,22 +123,16 @@ def test_manual_add_copy_from_picker(live_server, authed_page):
     pick() runs it from) instead of a closure-captured rootEl set once in
     init().
 
-    Reaching the not_found branch offline: the ISBN path (_lookup_metadata)
-    calls Open Library/Google Books directly, and a real network failure
-    there is caught as status="error" (not "not_found"), so it can't render
-    the manual-add form without live network. The UPC/DVD path used to be
-    simpler than it is now: `upcitemdb.lookup` wrapped its UPC Item DB
-    request in a bare except and returned None on any failure, so an
-    unresolvable UPC reached not_found regardless of network reachability.
-    T5 removed that bare except — `upcitemdb.lookup` now lets
-    `httpx.TimeoutException` and `httpx.NetworkError` propagate, and those
-    render a "Metadata lookup failed — check connectivity" card instead of
-    not_found. This test still reaches not_found deterministically, but for
-    a narrower reason: "999999999999" fails UPC Item DB's own format
-    validation and draws a real HTTP 400 — a non-200, which `lookup` still
-    normalises to None — so this is the non-200-independent route into the
-    form, not a network-independent one. There's no existing e2e pattern for
-    the ISBN not-found branch to follow instead.
+    Reaching the not_found branch: the ISBN path (_lookup_metadata) calls
+    Open Library/Google Books directly, and a real network failure there is
+    caught as status="error" (not "not_found"), so it can't render the
+    manual-add form. The UPC/DVD path can, and since #123 it does so with no
+    request leaving the machine: `upc_stub` (tests/e2e/conftest.py) answers
+    "999999999999" with the recorded `400 INVALID_UPC`, which is the same
+    route to not_found the live API takes. `upcitemdb.lookup` no longer
+    swallows transport failures — `transport_failed` renders a "Metadata
+    lookup failed — check connectivity" card instead of not_found — so the
+    400 matters: it is a real non-200 answer, not an unreachable host.
     """
     data_dir = live_server["data_dir"]
 
@@ -154,9 +148,9 @@ def test_manual_add_copy_from_picker(live_server, authed_page):
 
     authed_page.select_option("#media-type", "dvd")
     # "999999999999" fails UPC Item DB's own format validation (HTTP 400,
-    # not a catalog miss) — a stable, deterministic non-match. Plain
-    # all-zeros/all-repeated-digit codes are unreliable here because the
-    # trial API has real placeholder listings under some of them.
+    # not a catalog miss) — a stable, deterministic non-match. `upc_stub`
+    # serves that recorded 400, so the scan reaches not_found the same way it
+    # would live, with no request leaving the machine (#123).
     authed_page.fill("#isbn-input", "999999999999")
     authed_page.press("#isbn-input", "Enter")
 
@@ -204,11 +198,11 @@ def test_rescanning_a_manually_added_upc_reports_duplicate(live_server, authed_p
     and step 5 returned a 500 from an uncaught UNIQUE(isbn, media_type).
 
     "888888888888" has a bad UPC-A check digit, so UPC Item DB rejects it on
-    format (HTTP 400) rather than as a catalog miss — the same deterministic,
-    non-200-independent route to not_found that
-    test_manual_add_copy_from_picker documents. It must differ from that
-    test's code: live_server is session-scoped, so both tests share one
-    database.
+    format (HTTP 400) rather than as a catalog miss — the same deterministic
+    route to not_found that test_manual_add_copy_from_picker documents, and
+    since #123 it is served by `upc_stub` with no request leaving the machine.
+    It must still differ from that test's code: live_server is session-scoped,
+    so both tests share one database.
     """
     barcode = "888888888888"
 
@@ -998,7 +992,7 @@ def _watch_csp_violations(pg):
 
 
 def test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice(
-    live_server, authed_page
+    live_server, authed_page, upc_stub
 ):
     """#44, driven for real through `/api/scan` — not a rendered fixture.
 
@@ -1014,16 +1008,14 @@ def test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice(
     is ever computed (items_common.py:596-610: `search_queries("")` is `[]`,
     and `if not queries` returns first). So unlike the not_found tests above,
     which deliberately pick a barcode UPC Item DB rejects on format, this one
-    needs UPC Item DB to actually resolve the barcode. "000000000000" does:
-    the trial API serves a stable placeholder listing for it — confirmed with
-    a direct `curl` against api.upcitemdb.com before writing this test:
-    title "ORGANIC BLUE CORN TORTILLA CHIPS", category Food/Snacks. (This is
-    the exact quirk `test_manual_add_copy_from_picker`'s docstring warns
-    other tests off of — "the trial API has real placeholder listings under
-    some of them" — used here on purpose instead of avoided.) That title
-    carries no video-game/DVD marker, so `detect_media_type`'s tier 4 keeps
-    the scanned "cd" hint exactly as sent (app/services/detect.py) — a CD has
-    no barcode-side detection signal of its own; the dropdown is the only
+    needs the product lookup to actually resolve the barcode. Since #123 it
+    does so **offline**: `upc_stub` (tests/e2e/conftest.py) answers
+    "000000000000" from the recorded placeholder record in
+    tests/fixtures/upcitemdb_lookup_000000000000.json — title "ORGANIC BLUE
+    CORN TORTILLA CHIPS", category Food/Snacks. That title carries no
+    video-game/DVD marker, so `detect_media_type`'s tier 4 keeps the scanned
+    "cd" hint exactly as sent (app/services/detect.py) — a CD has no
+    barcode-side detection signal of its own; the dropdown is the only
     evidence it will ever have.
 
     Still the deterministic half of the state machine: the *second* outbound
@@ -1031,14 +1023,9 @@ def test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice(
     items_common.py:557's "no outbound request at all" is about that second
     call, not the UPC Item DB product lookup this test does depend on.
 
-    **If this test goes red, suspect the network before the code.** It rests
-    on a third party continuing to serve a placeholder listing for
-    "000000000000". Two failure modes read as an assertion error rather than
-    as what they are: the trial API dropping or changing that listing, and
-    the trial API rate-limiting the run (a 429 is a non-200, so `lookup`
-    normalises it to None and this falls to the not_found card). Check
-    `curl "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000"`
-    before assuming `no_provider` broke.
+    This test no longer reaches api.upcitemdb.com, and neither does any other
+    test on the gate; that the live endpoint still serves this record is
+    checked by `make test-contract`, which is off every gate (#123, G94).
     """
     csp_violations = _watch_csp_violations(authed_page)
 
@@ -1056,7 +1043,60 @@ def test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice(
     expect(scan_result).to_contain_text("added")
     expect(scan_result).to_contain_text("CD")
 
+    # The product lookup really went out through the seam. Without this, a
+    # future short-circuit that answered `no_provider` without ever looking
+    # the product up would pass this test for the wrong reason.
+    assert ("/lookup", "000000000000") in upc_stub["requests"]
+
     assert csp_violations == [], csp_violations
+    assert_page_clean(authed_page)
+
+
+def test_a_rate_limited_upc_lookup_renders_the_quota_card_not_a_bare_miss(
+    live_server, authed_page, upc_stub
+):
+    """#123: a product lookup that 429s must render the quota notice
+    *distinctly* from a plain catalog miss and from `no_provider` — the "no
+    metadata source for this format" arm. Until #123 the `quota` arm on this
+    gate was reachable only when the live UPC Item DB trial quota happened to
+    be spent, so it was never actually exercised; the suite merely survived
+    it. The sibling test above stubs the *markup* for the ISBN version of
+    this because it cannot drive a real 429 out of Open Library or Google
+    Books. This one does not need to: `upc_stub` (tests/e2e/conftest.py)
+    serves a recorded 429 for barcode "000000000429", so this test drives a
+    real rate-limit response through the router, `provider_result.py`'s
+    `classify_response`, and the template — nothing here is hand-rendered.
+    """
+    authed_page.goto(f"{live_server['url']}/scan")
+    authed_page.wait_for_load_state("networkidle")
+
+    # `dvd`, not `cd`: under `cd` the same 429 also lands on the not_found
+    # card, because the product lookup sits above the media-type fork — that
+    # would only prove the 429 is visible somewhere. `dvd` is the type that
+    # *has* a provider (TMDb), so choosing it pins the more informative claim:
+    # a spent quota outranks "go ask TMDb", not just "no provider configured".
+    authed_page.select_option("#media-type", "dvd")
+    authed_page.fill("#isbn-input", "000000000429")
+    authed_page.press("#isbn-input", "Enter")
+
+    scan_result = authed_page.locator(".scan-result").first
+    expect(scan_result).to_have_attribute("data-scan-status", "not_found")
+    expect(scan_result).to_contain_text(
+        "A metadata source is rate-limiting us right now"
+    )
+    expect(scan_result).not_to_contain_text(
+        "Shelf has no metadata source for this format yet"
+    )
+    expect(scan_result).not_to_contain_text("rejected the configured key")
+
+    # Same form, same fields, same submit button — only the notice above it
+    # changed.
+    form = scan_result.locator("form")
+    expect(form).to_have_count(1)
+    expect(form.locator("input[name=title]")).to_be_visible()
+
+    assert ("/lookup", "000000000429") in upc_stub["requests"]
+
     assert_page_clean(authed_page)
 
 
@@ -1825,7 +1865,8 @@ def test_the_panel_and_the_cards_do_not_reach_into_each_other(
     pg.wait_for_load_state("networkidle")
     base = pg.locator(".scan-result").count()
 
-    # Two not_found cards, from the same offline-deterministic non-match.
+    # Two not_found cards, from the same offline-deterministic non-match —
+    # 999999999120 is a `upc_stub` key answering the recorded 400 (#123).
     # A barcode of this test's own: 999999999999 is *added* as "Goodfellas"
     # by the camera-overlay test above, so reusing it makes this pass or fail
     # on suite order — the second scan would return a duplicate card, which

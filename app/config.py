@@ -210,6 +210,20 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "api.upcitemdb.com": 10.0,
 }
 
+# The keyless trial endpoint `services/upcitemdb.py` calls. Overridable so a
+# test harness can point the app at a local stub; read at call time so the
+# override is honoured by a process that set it before import and by a test
+# that sets it after. Pacing is keyed on the URL's *host* (outbound.py), so an
+# override to 127.0.0.1 is unpaced by design — never add the stub host to
+# HOST_RATE_LIMITS above. Not a production setting: leave it unset.
+UPC_LOOKUP_URL_DEFAULT = "https://api.upcitemdb.com/prod/trial/lookup"
+
+
+def upc_lookup_url() -> str:
+    """The UPC Item DB lookup endpoint: `SHELF_UPC_LOOKUP_URL`, else the trial URL."""
+    return os.environ.get("SHELF_UPC_LOOKUP_URL") or UPC_LOOKUP_URL_DEFAULT
+
+
 # HTTP client defaults
 HTTP_TIMEOUT = 15  # seconds for external API calls
 DEFAULT_PAGE_SIZE = 60

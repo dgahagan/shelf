@@ -48,12 +48,11 @@ same *mechanism* (`page.route` fulfilling a real HTMX request) that
 already uses for `/api/scan`. The request that swaps the card is real; only
 the far side (a live Hardcover account) is substituted.
 
-`manualAddForm` needs no such substitution: `test_scan.py`'s own
-`test_manual_add_copy_from_picker` already established a network-independent,
-deterministic route to a `not_found` card — `media_type=dvd` with the
-12-digit code "999999999999", which fails UPC Item DB's own format
-validation (a real HTTP 400, not a network dependency) — reused verbatim
-here.
+`manualAddForm` needs no such substitution: `media_type=dvd` with the
+12-digit code "999999999999" is a deterministic route to a `not_found` card,
+and since #123 it is literally offline — `upc_stub` in `conftest.py` serves
+that code the recorded `400 INVALID_UPC` the live API answers with, so the
+card is reached through the real router with no request leaving the machine.
 
 Toast timing
 ------------
@@ -471,8 +470,8 @@ def test_manual_add_form_swap_reports_and_toasts_once(live_server, browser, setu
     """/scan carries a manualAddForm root at alpine:initialized since #120 —
     the manual entry panel — so the guard reports the lost script on page
     load, before any swap. Two scans of the same offline-deterministic
-    non-match (media_type=dvd, "999999999999" — see
-    test_scan.py::test_manual_add_copy_from_picker) then swap in two
+    non-match (media_type=dvd, "999999999999" — served the recorded 400 by
+    `upc_stub` in conftest.py) then swap in two
     not_found cards (hx-swap="afterbegin"), each carrying its own instance;
     reportedScripts dedupes, so it is still exactly one message and one
     toast."""

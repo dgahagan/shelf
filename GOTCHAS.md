@@ -2991,10 +2991,28 @@ grep -n 'HEADING = ' tests/test_item_detail.py    # must read ">Reading Status</
 
   Both markers must sit on the line *after* their `{% if` and the constant must
   name the element.
+- **The other face: an absence pin on a phrase the page cannot render at all.**
+  Same defect, opposite cause — not a comment that wrongly *satisfies* the
+  needle, but a needle nothing can ever produce, so the pin is green forever
+  and defends nothing. It arrives when the phrase is lifted from a *code*
+  comment rather than from a template. Caught 2026-09-10 (plan
+  `issue-123-upc-gate-stub`, T3): the implementation plan specified
+  `not_to_contain_text("no TMDb match")` for the scan card's quota arm, and
+  "no TMDb match" is written **only** in `app/routers/items_common.py:555` and
+  `app/services/scan_outcome.py:8,88`, all three explaining the concept. The
+  not_found card has exactly two arms and
+  `app/templates/fragments/scan_result.html:54-73` says so in its own comment
+  (`rejected` and `quota`); the pin was replaced with `"rejected the configured
+  key"`, the real sibling. **Before writing a negative pin, grep the needle in
+  `app/templates/` — not in `app/`.** A hit only outside the template directory
+  means you are pinning a concept, not a string.
 - **Status:** documented. Lint candidate — "a `not in html` pin whose needle also
   appears verbatim inside a `<!-- -->` in the rendered template" is checkable in
   `scripts/check_test_conventions.py`, but needs a template→test mapping the
-  script does not have; noisy until it does.
+  script does not have; noisy until it does. The second face above is the
+  cheaper half of that lint and needs no mapping: a `not_to_contain_text` /
+  `not in html` needle that appears **nowhere** under `app/templates/` is
+  mechanically checkable on its own.
 
 ## G70 — When an E2E locator can match more than one element and one of them is `x-show`-toggled
 
@@ -4056,77 +4074,74 @@ done
 - **Status:** documented — a lint candidate; the loop above is already the
   check, and it has no false-positive surface worth speaking of.
 
-## G94 — Running the full E2E suite many times in one session exhausts a third-party trial quota
+## G95 — When excluding tests from a gate target, exclude by path, not by marker
 
-- **Rule:** `make test-e2e` makes **live** calls to the UPC Item DB trial API,
-  which is rate-limited to **100 requests per day**. A plan with several phase
-  boundaries runs the suite five to ten times, and the last runs can fail on the
-  quota rather than on the code. Before treating a red E2E as a regression, check
-  the upstream directly, and check the same test against `main` in a throwaway
-  worktree. **Do not guess at when the quota returns** — the 429 carries
-  `Retry-After` and `X-RateLimit-Reset`, so the reset is an exact timestamp
-  rather than "some time tomorrow" (see **Verify**).
-- **Why:** it reddens a test the branch never touched, at the end of a long
-  run, which is exactly when a tired reader concludes their last change broke
-  something. It also degrades *monotonically* through a session, so the early
-  boundaries are green and the final gate is not — the shape that most looks
-  like "the last task did it".
-- **Evidence:** issue #120's run, 2026-09-09. The 230-test baseline and four
-  later full runs were green;
-  `test_a_cd_hinted_upc_scan_files_title_only_with_a_no_provider_notice` failed
-  on the seventh, rendering the `quota` notice instead of `no_provider`.
-  Reproduced identically on `main` at `ea1b0f4` in a worktree, and
-  `curl "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000"`
-  answered `429 {"code":"EXCEED_LIMIT"}`. The test's own docstring already
-  says "if this test goes red, suspect the network before the code" and names
-  that curl — this entry exists so the *orchestrator* meets the warning
-  before it spends an hour, rather than only the person reading that one test.
-
-  It fired again the same evening, at the 0.40.0 release gate: 238/239 E2E
-  passed, the same test red, `X-RateLimit-Remaining: 0` and `Retry-After:
-  25173` — a reset at **06:58 EDT the next morning**, not the vague "tomorrow"
-  the first write-up left the reader with. Three cheap checks settled it
-  without the worktree run: the live 429, `git show main:…` vs `HEAD` proving
-  the test function **byte-identical** on the branch, and the failure dump
-  showing the not-found card (what a 429 produces) rather than the `quota`
-  notice. Prefer those three to a ten-minute worktree reproduction. The
-  release stopped at step 3 and waited for the reset rather than recording the
-  failure and pushing on — the first of the two dispositions above, chosen
-  deliberately because the steps after the gate are a public push and a tag.
-- **Do not "fix" it by loosening the assertion.** It is pinning a real
-  distinction (`no_provider` vs `quota`) that the scan card is supposed to
-  make. Wait for the quota, or record the failure as environmental with the
-  evidence above. Waiting is the cheaper option far more often than it looks,
-  because **Verify** tells you exactly how long it is.
-- **Verify:**
+- **Rule:** A command that **counts** tests (`pytest --co -q`) may only ever be
+  narrowed with `--ignore=<dir>`. A `-m "not <marker>"` deselection is legal on
+  a command that **runs** tests and illegal on one that counts them. So a test
+  that must stay off the gate gets its own directory, and every counting
+  command ignores that directory by path — the marker is a second fence, never
+  the only one.
+- **Why:** the two commands report in different formats and only one of them
+  parses. `scripts/stamp_test_badges.py` and `make verify` both read the count
+  out of the collection summary with a regex anchored on
+  `^(\d+) tests? collected`. With nothing deselected pytest prints
+  `239 tests collected`, which matches. Deselect a single test and it prints
+  `238/239 tests collected (1 deselected)` — which matches **neither** regex,
+  so `verify` exits `ERROR: could not determine unit test count` and the badge
+  stamper raises. The failure names the count, not the flag that broke it, so
+  it reads as a collection problem rather than as the `-m` someone just added
+  one line away. A *run* is unaffected: `N passed, 1 deselected` is a format
+  nothing here parses.
+- **Evidence:** measured on pytest 9.0.3 while planning issue #123
+  (2026-09-10), before the code existed — which is why `tests/contract/` is a
+  directory rather than a bare `live` marker. `766d57c` added
+  `--ignore=tests/contract` to `test`, `test-verbose`, `test-fast`, `verify`'s
+  count and `stamp_test_badges.py`'s unit suite, and `-m "not live"` only to
+  `test` and `test-e2e`, the two that run. Both fences are deliberate: the path
+  ignore is what keeps the counts parseable, the marker is what catches a
+  `live` test landing in the wrong directory later.
+- **Verify:** the asymmetry, in two lines —
 
 ```bash
-# Is it the quota? 429 = quota, not code.
-curl -s -o /dev/null -w '%{http_code}\n' \
-  "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000"
-
-# When does it come back? Read the headers the 429 already carries.
-curl -sD - -o /dev/null \
-  "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000" \
-  | grep -iE 'ratelimit|retry-after'
-# X-RateLimit-Limit: 100      quota size
-# X-RateLimit-Remaining: 0    0 confirms exhaustion
-# X-RateLimit-Reset: <epoch>  -> date -d @<epoch>
-# Retry-After: <seconds>      same answer, relative
-
-date -d @"$(curl -sD - -o /dev/null \
-  "https://api.upcitemdb.com/prod/trial/lookup?upc=000000000000" \
-  | awk -F': ' 'tolower($1)=="x-ratelimit-reset"{print $2+0}')"
+# Both include tests/contract/, so the marker actually deselects something.
+python -m pytest tests/ --ignore=tests/e2e --co -q | tail -1
+# -> 3059 tests collected                       <- parses
+python -m pytest tests/ --ignore=tests/e2e -m "not live" --co -q | tail -1
+# -> 3058/3059 tests collected (1 deselected)   <- matches neither regex
+grep -n 'tests\? collected' Makefile scripts/stamp_test_badges.py
 ```
 
-- **Status:** documented. Not a lint candidate. **Revisit trigger:** the suite
-  gains a second live-network dependency, or this test is given a recorded
-  fixture — at which point this entry retires.
+  The first prints a bare count; the second prints the `N/M … (k deselected)`
+  form. Every command the third line finds must be of the first shape. **The
+  `-m` has to deselect a real test for the difference to appear** — run this
+  against a path that contains one, or both lines print the bare form and the
+  check silently proves nothing.
+- **Status:** documented. Lint candidate — "a `--co` invocation in `Makefile`
+  or `scripts/` that also carries `-m`" is a one-line grep and would belong in
+  `scripts/check_test_conventions.py`.
 
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
 fully covers it, etc.) so future sessions don't re-learn stale rules.
+
+- **G94 — running the full E2E suite many times in one session exhausts a
+  third-party trial quota** (retired 2026-09-10 by issue #123). The E2E suite
+  no longer talks to the UPC Item DB trial API at all: every E2E server now
+  serves it from a local stdlib stub (`tests/e2e/conftest.py::upc_stub`),
+  wired into `_boot_server`'s fixed environment block with no per-test opt-in.
+  Measured across a full `make test-e2e` run: `X-RateLimit-Remaining` was 78
+  before and 77 after, a delta of exactly one, which was the measuring
+  request's own cost — the gate makes zero live calls. The live check still
+  exists, moved to `tests/contract/test_upcitemdb_live.py` (marked `live`,
+  run only by `make test-contract`, off every gate); when the quota is spent
+  it now **skips** with the reset time in the reason, rather than failing,
+  which is the exact hand computation this entry's **Verify** block used to
+  walk through. One sentence of the original warning survives and still
+  applies: the `no_provider` / `quota` distinction is now pinned by two E2E
+  tests (one of them dedicated to the `quota` arm), and loosening either is
+  still the wrong fix if a UPC-related E2E test goes red.
 
 - **G19 — bump `SW_VERSION` when a precached file changes** (retired
   2026-08-24). Refactored away: `SW_VERSION` is no longer typed by hand. It is

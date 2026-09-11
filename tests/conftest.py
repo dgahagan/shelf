@@ -68,6 +68,9 @@ def _isolated_db(tmp_path, monkeypatch):
     for env_name in SECRET_ENV_VARS.values():
         monkeypatch.delenv(env_name, raising=False)
 
+    # A developer shell that exports the E2E stub URL must not reach the unit suite.
+    monkeypatch.delenv("SHELF_UPC_LOOKUP_URL", raising=False)
+
     # Reset cached secret key so each test gets a fresh one
     import app.auth as auth_mod
     monkeypatch.setattr(auth_mod, "_cached_secret_key", None)

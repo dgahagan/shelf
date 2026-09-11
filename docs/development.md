@@ -42,6 +42,7 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `make test-fast` | Re-run only the last failures |
 | `make test-verbose` | Per-test output |
 | `make test-e2e` | Playwright E2E; starts its own server |
+| `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
 | `make checks-fast` | Offline lints: secrets, CSRF, Alpine CSP, service-worker version, test conventions, README test-count badges |
@@ -57,6 +58,11 @@ tests fails CI.
 runs `make css` and fails if the committed `static/css/app.css` or `static/sw.js`
 differs — so a template change without the `make css` that follows it is caught
 on the PR rather than in a browser. Run all four locally before pushing.
+
+CI does **not** run `make test-contract`, and neither does any gate target.
+The release gate makes no live third-party call — that is a stated invariant
+(`architecture.md`, Testing), and the contract test is the deliberate exception
+that lives outside it.
 
 ### Service worker versioning
 

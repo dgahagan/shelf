@@ -6,6 +6,42 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.40.1] - 2026-09-11
+
+Nothing in this release changes what Shelf does. It exists because the checks
+that have to pass before a release can ship had come to depend on a free
+third-party lookup quota, and that quota ran out twice — once mid-development
+and once at the 0.40.0 release itself, which then waited seven hours for the
+allowance to reset before it could go out. The tests now answer that question
+locally, so a release is held up by Shelf's own code and nothing else.
+
+### Fixed
+
+- **Releases no longer wait on a third-party daily allowance.** One browser test
+  needed a live barcode lookup to succeed in order to check what Shelf says when
+  a product is found but no metadata source covers its format. The free tier
+  allows 100 lookups a day, a full test run spends several, and once the day's
+  allowance was gone the test failed for a reason that had nothing to do with
+  the code. That test now uses a recorded copy of the provider's response, and
+  no test that runs before a release calls out to the internet at all.
+
+### Added
+
+- **A separate check that the recorded copy is still faithful.** A recording can
+  drift from what a provider actually serves and nobody would notice. One test,
+  run by hand at each release rather than on every change, asks the live service
+  the same question and compares. It spends a single lookup, and if the day's
+  allowance is already gone it reports that it could not check rather than
+  failing the release.
+
+### Changed
+
+- **Scanning is unaffected.** The lookup endpoint is now read from configuration
+  instead of being fixed in the code, so the tests can point it at a local
+  stand-in. Left alone it resolves to exactly the same address as before, at the
+  same request pacing. The new `SHELF_UPC_LOOKUP_URL` setting is for the test
+  suite; leave it unset.
+
 ## [0.40.0] - 2026-09-10
 
 Shelf could always store an item no database has heard of — a self-published
@@ -3319,6 +3355,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.40.1]: https://github.com/dgahagan/shelf/releases/tag/v0.40.1
 [0.40.0]: https://github.com/dgahagan/shelf/releases/tag/v0.40.0
 [0.39.0]: https://github.com/dgahagan/shelf/releases/tag/v0.39.0
 [0.38.0]: https://github.com/dgahagan/shelf/releases/tag/v0.38.0

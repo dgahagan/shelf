@@ -44,7 +44,7 @@ README_PATH = ROOT / "README.md"
 # (badge slug in the shields URL, pytest argv). The slug is the anchor: it is
 # what makes the badge greppable and what these regexes key off.
 SUITES = (
-    ("unit%20tests", ["tests/", "--ignore=tests/e2e"]),
+    ("unit%20tests", ["tests/", "--ignore=tests/e2e", "--ignore=tests/contract"]),
     ("e2e%20tests", ["tests/e2e/", "-m", "e2e"]),
 )
 

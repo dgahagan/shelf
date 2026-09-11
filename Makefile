@@ -15,7 +15,7 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 # split. Never add -p no:cacheprovider here — test-fast's --lf needs the cache.
 PYTEST_PAR   ?= -n auto --dist loadfile
 
-.PHONY: setup css test test-verbose test-fast test-e2e test-all \
+.PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests \
         badges check-badges check-roadmap \
         checks checks-fast \
@@ -57,21 +57,27 @@ css:
 # ---------------------------------------------------------------------------
 
 test:
-	python -m pytest tests/ --ignore=tests/e2e $(PYTEST_FLAGS) $(PYTEST_PAR)
+	python -m pytest tests/ --ignore=tests/e2e --ignore=tests/contract -m "not live" $(PYTEST_FLAGS) $(PYTEST_PAR)
 
 # Per-test roll-call, for when a human is reading the output.
 test-verbose:
-	python -m pytest tests/ --ignore=tests/e2e -v --tb=short
+	python -m pytest tests/ --ignore=tests/e2e --ignore=tests/contract -v --tb=short
 
 # Inner fix loop: re-run only what failed last time. Stays parallel because
 # --lf falls back to the *whole* suite when nothing failed last run, and a
 # serial fallback there costs 97s instead of 17s. (--lf is a collection-time
 # filter, so it composes fine with xdist — don't add -x, which does not.)
 test-fast:
-	python -m pytest tests/ --ignore=tests/e2e $(PYTEST_FLAGS) $(PYTEST_PAR) --lf
+	python -m pytest tests/ --ignore=tests/e2e --ignore=tests/contract $(PYTEST_FLAGS) $(PYTEST_PAR) --lf
 
 test-e2e:
-	python -m pytest tests/e2e/ $(PYTEST_FLAGS) -m e2e
+	python -m pytest tests/e2e/ $(PYTEST_FLAGS) -m "e2e and not live"
+
+# The live contract check for the UPC Item DB stub's recording. Spends one
+# trial-tier lookup per run (100/day); run at release, never on a gate
+# (#123). A skip means the quota was already spent — read the reason.
+test-contract:
+	python -m pytest tests/contract/ $(PYTEST_FLAGS) -m live -rs
 
 test-all: test test-e2e
 
@@ -215,7 +221,7 @@ fix:
 # that makes the comparison die with "integer expected" — which bash treats
 # as false, silently passing the guard no matter how many tests were deleted.
 verify: test-all
-	@count=$$(python -m pytest tests/ --ignore=tests/e2e --co -q 2>/dev/null \
+	@count=$$(python -m pytest tests/ --ignore=tests/e2e --ignore=tests/contract --co -q 2>/dev/null \
 		| grep -oP '^\d+(?= tests? collected)' | tail -1); \
 	if [ -z "$$count" ]; then \
 		echo "ERROR: could not determine unit test count"; exit 1; \
