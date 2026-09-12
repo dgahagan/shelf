@@ -29,6 +29,13 @@ A location that still contains child locations cannot be deleted. Move or delete
 
 Deleting a leaf location clears that location from items that used it. When the physical-copy model is present, the copy itself is retained and only its location is cleared.
 
+## Finding what else is here
+
+A location shown on an item page is a link to Browse, filtered to that
+location. The filter matches **that node only, not the locations nested inside
+it** — clicking a shelf shows what is on that shelf, while clicking a room
+shows only the items filed on the room itself, not the items on its shelves.
+
 ## Compatibility
 
 Shelf continues to keep an unambiguous full path in the existing `locations.name` field. This lets older catalogue, browse and export code display `Living Room / Shelf 1` without needing to understand the hierarchy immediately, while the new `label` and `parent_id` fields hold the real tree structure.

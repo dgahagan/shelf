@@ -54,7 +54,7 @@ from app.config import (
 from app.currency import CURRENCIES, format_money, get_currency
 from app.services.national import SEARCH_LANGS
 from app.database import init_db, get_db
-from app.routers import pages, items, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music
+from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music
 from app.routers import auth_routes
 
 
@@ -519,6 +519,7 @@ app.include_router(hardcover.router)
 app.include_router(store.router)
 app.include_router(series.router)
 app.include_router(share.router)
+app.include_router(item_copies.router)
 app.include_router(tags.router)
 app.include_router(intake.router)
 app.include_router(archive.router)

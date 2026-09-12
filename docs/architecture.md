@@ -85,14 +85,19 @@ the Stats dashboard still group by the seam, deliberately: per-copy totals would
 change the numbers on an insurance report, which is its own decision.
 
 **`item_copies` has a write funnel.** `insert_copy` and `update_copy` in
-`app/services/item_copies.py` are the only way a row reaches the table, exactly
-as `item_write.py` is for `items`: column names are validated against
+`app/services/item_copies.py` are the only way a row reaches or changes in the
+table, and `delete_copy` / `delete_copies_for_item` the only way one leaves it,
+exactly as `item_write.py` is for `items`: column names are validated against
 `PRAGMA table_info`, so an unknown column raises instead of being dropped, and
 a location change clears the copy's location-scoped `position_order` unless the
 caller sets one explicitly. `tests/test_item_write.py` enforces the funnel by
 scanning `app/` for raw statements. Two set-based `INSERT ... SELECT` backfills
 stay raw and are allowlisted by path — migration 26's, which runs before any
-application code is importable, and `backfill_legacy_locations`.
+application code is importable, and `backfill_legacy_locations`. `add_copy`
+and `delete_copy` sit above the row-level pair and hold the rules no caller
+should reproduce: numbering a new copy above the item's highest, deciding
+`is_primary` from what the item already has, and promoting the lowest-numbered
+survivor when the primary is removed. See `docs/item-copies.md`.
 
 **A copy also carries its place on the shelf.** `item_copies.position_order`
 (migration 31) is the copy's rank within its location, and

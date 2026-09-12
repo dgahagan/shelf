@@ -137,6 +137,7 @@ key material.
 - Home overview — totals, what is lent out, missing covers, a media-type breakdown and recent additions, with Browse kept for searching and bulk editing
 - Filter and search by media type, location, reading status, ownership, lending status, and custom tags
 - Shelf Fill — keep one shelf selected and scan item after item onto it; Arrange drags the copies on a shelf into the order they really sit in, or sorts them by title, creator, series, release or issue
+- Physical copies — own two of something and track them apart: add a copy on the item page, give each its own location, condition, acquired date, source, price, provenance and barcode, and remove one when it goes. Removing the copy marked primary promotes the next one and the item's location follows it
 - Reading tracking — want-to-read, reading, and read with start/finish dates
 - Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover; series synopses, plus rename/merge/disband from the series card
 - Stats dashboard — books read per year, collection growth, top authors, and value-over-time charts

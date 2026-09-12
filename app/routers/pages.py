@@ -296,6 +296,12 @@ async def item_detail(
         # the compatibility seam and names only one place; a merged item can
         # legitimately have copies in two (issue #116).
         copies = item_copies.copies_for_item(db, item_id)
+        # The copies block's controls build their location <select> from this;
+        # a fragment re-rendered without it loses every picker. There is no
+        # shared all_locations() helper — four routes inline this same query.
+        locations = db.execute(
+            "SELECT * FROM locations ORDER BY sort_order, name"
+        ).fetchall()
 
         from app.routers.tags import get_item_tags, get_all_tags
         item_tags = get_item_tags(db, item_id)
@@ -338,6 +344,7 @@ async def item_detail(
             "item_id": item_id,
             "back": back,
             "copies": copies,
+            "locations": locations,
             "item_tags": item_tags,
             "all_tags": all_tags,
             "media_types": MEDIA_TYPES,

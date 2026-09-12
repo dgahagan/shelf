@@ -10,7 +10,11 @@ used by the existing UI. The primary copy mirrors that value when one exists;
 secondary copies are never moved by legacy item writes.
 
 **The write funnel.** ``insert_copy`` and ``update_copy`` are the only way a
-row reaches this table, exactly as ``item_write.insert_item`` is for ``items``.
+row reaches or changes in this table, and ``delete_copy`` /
+``delete_copies_for_item`` the only way one leaves it, exactly as
+``item_write.insert_item`` is for ``items``. ``add_copy`` is the funnel's
+front door for the item page: it owns numbering and the primary decision, so
+no caller has to reproduce either.
 Column names are validated against ``PRAGMA table_info(item_copies)``, so an
 unknown column raises instead of being silently dropped, and unset columns are
 left out of the statement so the ``SCHEMA`` defaults apply. Two set-based
@@ -270,3 +274,154 @@ def copies_for_item(db, item_id: int):
         "WHERE c.item_id = ? ORDER BY c.copy_number, c.id",
         (item_id,),
     ).fetchall()
+
+
+def _lowest_numbered_copy(db, item_id: int):
+    """The copy that inherits primary when the current primary is removed.
+
+    Lowest `copy_number` wins, `id` breaking a tie — the same stable order
+    `copies_for_item` renders in, so the copy the user sees at the top of the
+    list is the one that gets promoted. Returns `None` when the item has no
+    copies left.
+
+    Caller must already hold the write lock (see `delete_copy`).
+    """
+    return db.execute(
+        "SELECT id, location_id FROM item_copies WHERE item_id = ? "
+        "ORDER BY copy_number, id LIMIT 1",
+        (item_id,),
+    ).fetchone()
+
+
+def add_copy(db, item_id: int, fields: Mapping[str, Any] | None = None) -> int:
+    """Add one physical copy to an item and return the new copy's id.
+
+    Numbering continues above the item's current highest `copy_number`, the
+    same rule `item_merge._reparent_copies` uses, so no number collides and
+    the numbers the user already knows are stable.
+
+    **Primary is decided by what is already there, never by the caller.** An
+    item with no copies at all gets its first copy as the primary, which is
+    what `sync_primary_location` would have produced for the same input, and
+    the legacy `items.location_id` seam is re-pointed at that copy so the
+    primary and the seam still mirror each other (the invariant in this
+    module's docstring, and what `delete_copy`'s promotion preserves from the
+    other direction). An item that already has a copy gets a **secondary**:
+    `is_primary` is 0, the existing primary is untouched, and the seam does
+    not move — adding a second copy is not a move of the first.
+
+    `fields` may carry any `item_copies` column except `item_id`,
+    `copy_number` and `is_primary`, which this function owns. Validation,
+    including the unknown-column check, is `insert_copy`'s.
+
+    Caller must hold the write lock: the highest-number read, the has-a-copy
+    read and the insert have to be one serialized unit or two concurrent adds
+    both see the same maximum and collide on `UNIQUE(item_id, copy_number)`
+    (G18). Every route here opens its block with `BEGIN IMMEDIATE`.
+    """
+    values: dict[str, Any] = dict(fields or {})
+    owned_by_this_function = {"item_id", "copy_number", "is_primary"} & set(values)
+    if owned_by_this_function:
+        raise ValueError(
+            f"add_copy() does not take {sorted(owned_by_this_function)} — it "
+            "numbers the copy and decides primary from what the item already has."
+        )
+
+    if not db.execute("SELECT 1 FROM items WHERE id = ?", (item_id,)).fetchone():
+        raise ValueError("Item not found")
+
+    existing = db.execute(
+        "SELECT COALESCE(MAX(copy_number), 0) AS highest, COUNT(*) AS n "
+        "FROM item_copies WHERE item_id = ?",
+        (item_id,),
+    ).fetchone()
+    first_copy = existing["n"] == 0
+
+    values["item_id"] = item_id
+    values["copy_number"] = existing["highest"] + 1
+    values["is_primary"] = 1 if first_copy else 0
+    copy_id = insert_copy(db, values)
+
+    if first_copy and values.get("location_id") is not None:
+        # The seam mirrors the primary. Writing it through the item funnel
+        # rather than a raw statement re-enters `sync_primary_location`, which
+        # finds the copy just inserted and re-applies the same location — a
+        # no-op move, so the position survives.
+        from app.services import item_write
+
+        item_write.update_item_fields(
+            db, item_id, {"location_id": values["location_id"]}
+        )
+    return copy_id
+
+
+def delete_copy(db, copy_id: int) -> dict[str, Any] | None:
+    """Remove one physical copy, promoting a survivor when it was the primary.
+
+    Returns `None` when no such copy exists. Otherwise a dict the caller can
+    render from: `item_id`, `was_primary`, `promoted_copy_id` (the survivor
+    that inherited primary, or `None`) and `remaining` (how many copies the
+    item has left).
+
+    Three outcomes, and the seam moves in two of them:
+
+    - **A secondary goes.** Nothing else changes; `items.location_id` and the
+      primary copy are untouched.
+    - **The primary goes and others survive.** The lowest-numbered survivor is
+      promoted and the seam is re-pointed at *its* location, so Browse, CSV
+      export, the archive and Scan keep reading a real location rather than a
+      new null. Silent by design — the design plan settled that this is not
+      announced.
+    - **The last copy goes.** The seam is set to NULL. The item row itself is
+      **not** deleted: a located item with no copies is a legitimate state
+      (G86), and so is an unlocated one.
+
+    Removal is permanent — condition, acquisition detail and provenance go
+    with the row, and there is no soft delete anywhere in this schema.
+
+    Caller must hold the write lock. The read that chooses the survivor and
+    the writes that promote it are one serialized unit, and the copy row is
+    re-read here rather than trusted from the caller's earlier read, because a
+    bare `SELECT` takes no lock under sqlite3's deferred isolation (G18).
+    Every route here opens its block with `BEGIN IMMEDIATE`.
+    """
+    copy = db.execute(
+        "SELECT id, item_id, is_primary FROM item_copies WHERE id = ?",
+        (copy_id,),
+    ).fetchone()
+    if copy is None:
+        return None
+
+    item_id = copy["item_id"]
+    was_primary = bool(copy["is_primary"])
+    db.execute("DELETE FROM item_copies WHERE id = ?", (copy_id,))
+
+    survivor = _lowest_numbered_copy(db, item_id)
+    promoted_copy_id = None
+    seam: int | None = None
+
+    if survivor is not None and was_primary:
+        # Promote *before* touching the seam. `update_item_fields` re-enters
+        # `sync_primary_location`, which looks for a primary and inserts a
+        # fresh copy when it finds none — so a seam write made while the item
+        # has no primary would invent a row rather than move one.
+        # No `location_id` in these fields, so the funnel's position-clearing
+        # rule does not fire and the survivor keeps its shelf position.
+        update_copy(db, survivor["id"], {"is_primary": 1})
+        promoted_copy_id = survivor["id"]
+        seam = survivor["location_id"]
+
+    if survivor is None or promoted_copy_id is not None:
+        from app.services import item_write
+
+        item_write.update_item_fields(db, item_id, {"location_id": seam})
+
+    remaining = db.execute(
+        "SELECT COUNT(*) AS n FROM item_copies WHERE item_id = ?", (item_id,)
+    ).fetchone()["n"]
+    return {
+        "item_id": item_id,
+        "was_primary": was_primary,
+        "promoted_copy_id": promoted_copy_id,
+        "remaining": remaining,
+    }

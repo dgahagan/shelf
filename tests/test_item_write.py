@@ -273,6 +273,34 @@ class TestSingleWritePath:
             + "\n  ".join(offenders)
         )
 
+    def test_only_item_copies_module_deletes_copies(self):
+        """The `item_copies` analogue of test_only_item_copies_module_inserts_copies,
+        for the delete arm of the funnel.
+
+        No migration removes item_copies rows — migration 26 only backfills
+        with an `INSERT ... SELECT` — so unlike the insert guard above,
+        `app/database.py` earns no exemption here; verified by reading, not
+        assumed. Only ITEM_COPIES_MODULE is exempt, and by repository-relative
+        path rather than by `Path.name` (G88): a same-named file anywhere else
+        under `app/` — a future router, say — must not walk through this the
+        way M1's insert/update bypasses did. Scanned through the same
+        comment-stripped, quote-collapsed buffer as the other two guards
+        (G53), so neither an explanatory comment nor a statement split across
+        adjacent string literals produces a false result either way."""
+        offenders = []
+        for path in APP_DIR.rglob("*.py"):
+            rel = str(path.relative_to(REPO_ROOT))
+            if rel == ITEM_COPIES_MODULE:
+                continue
+            for line_no, _ in _raw_update_hits(path, "DELETE FROM item_copies", re.I):
+                offenders.append(f"{rel}:{line_no}")
+        assert not offenders, (
+            "item_copies rows must be removed through the delete arm of "
+            "app.services.item_copies (delete_copy / delete_copies_for_item), "
+            "not raw SQL:\n  "
+            + "\n  ".join(offenders)
+        )
+
     def test_only_item_copies_module_updates_copies(self):
         """The `item_copies` analogue of test_only_item_write_updates_user_fields."""
         offenders = []

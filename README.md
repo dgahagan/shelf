@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-3058%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-240%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-3131%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-246%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -185,6 +185,7 @@ each option before anything is sent.
 - **Stats dashboard** — books read per year, collection growth, top authors, and value-over-time charts (server-rendered SVG, no JS)
 - **Locations** — organize by room, shelf, or any system you like, and nest them: a shelf inside a bookcase inside a room. Rename or move a location and everything beneath it follows. See [Locations](docs/user-guide/locations.md)
 - **Shelf Fill** — pick a room, bookcase or shelf and it stays selected while you scan item after item onto it. Items already catalogued move without a fresh metadata lookup; unrecognised barcodes fall through to the normal Add pipeline. See [Shelf Fill](docs/user-guide/shelf-fill.md)
+- **Physical copies** — own two of something and track them apart: add a copy on the item page, give each its own location, condition, acquired date, source, price, provenance and barcode, and remove one when it goes. Removing the copy marked primary promotes the next one and the item's location follows it
 - **Arrange a shelf** — any location gets an Arrange page where you drag the physical copies into the order they actually sit in, or order them automatically by title, creator, series, release or issue. The order belongs to the copy, so duplicates stay distinct and can sit side by side
 - **Related media groups** — connect the different forms of one work (a novel, its audiobook, its film adaptation) as `format`, `related` or `adaptation`. A group is the connected set of links, so linking A to B and B to C presents all three. Matching is manual by design
 - **Game platforms** — customizable list of platforms, add your own for niche or retro systems

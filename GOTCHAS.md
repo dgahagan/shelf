@@ -83,8 +83,31 @@ into subagent prompts).
   expect red from a bare second connection, and expect a **stopwatch** from
   anything routed through `logging`. If your only pin is "the test still
   passes", you have not checked G3 at all.
+- **The lock is released by `rollback()`/`commit()`, not by leaving the
+  `with` block** — so on a *refusal* path the rule is **roll back, then log**.
+  Moving the log outside the block is the legible form of that and is worth
+  doing, but a log emitted after an explicit `db.rollback()` and still inside
+  the block is already fast and its record still lands. Knowing which of the
+  two edits is load-bearing matters when you mutation-check the fix: reverting
+  "log outside the block" while leaving the rollback in place changes nothing
+  and looks like a toothless pin, when in fact the pin is fine and the
+  mutation was the wrong one. Restore the *original* shape — log inside, no
+  rollback before it — or you have not tested the trap.
 - **Evidence:** `7f4c645` (2026-08-18, found in the 0.5.0 manual pass).
   The logging-is-silent half: `af6b7a7` and `6def115` (2026-09-05, issue #83).
+  Fourth instance, and the one that says the trap is not only a migration
+  problem: `1ee23b9` (2026-09-11, plan `item-copies-surface`), found by the
+  Antigravity diff review (`gemini-B1`) against a branch whose impl plan had
+  tagged G18 on the same routes and **not** G3 — the `BEGIN IMMEDIATE` the
+  plan correctly required is exactly what makes an in-block `logger.warning`
+  a five-second stall. **When a plan adds `BEGIN IMMEDIATE` to a route, G3
+  becomes live on that route**; the two entries travel together and a plan
+  that cites one should be read for the other. Measured on the unfixed path:
+  `POST /api/items/{id}/copies` with an unknown `location_id` answered 400
+  after **5.01s** with **zero** rows in `log_entries`; after the fix, 0.01s
+  and one row. Pinned by both properties in
+  `tests/test_item_copies_routes.py::TestRefusalsDoNotLogUnderTheWriteLock` —
+  the landed record is the deterministic half, the stopwatch names the cost.
 - **Verify:** on a scratch DB, a `log_entries` insert on a second connection
   while a write transaction is open must still wait out the busy timeout
   (~5s) and fail — "no lock" means the contention behavior changed and this
@@ -3006,13 +3029,39 @@ grep -n 'HEADING = ' tests/test_item_detail.py    # must read ">Reading Status</
   key"`, the real sibling. **Before writing a negative pin, grep the needle in
   `app/templates/` — not in `app/`.** A hit only outside the template directory
   means you are pinning a concept, not a string.
+- **The third face, and the one that arrives late: the needle is legitimate
+  content the container grew afterwards.** Not a comment that wrongly satisfies
+  the needle, and not a needle nothing can render — a needle the template
+  renders *on purpose*, in a control added long after the pin was written. The
+  pin is correct and green for months, then a feature lands inside the same
+  container and it goes red against code that is working exactly as designed.
+  **An absence pin must name the element it means, not the container it sits
+  in.** "No copy is at this shelf" is an assertion about the copy rows; writing
+  it as `not_to_contain_text` over `#item-copies` also covers every `<option>`
+  of any picker that block ever grows.
+  Caught 2026-09-11 (plan `item-copies-surface`, T4/T6):
+  `tests/e2e/test_scan.py::test_inventory_on_a_multi_copy_item_at_a_shelf_holding_none_reports_and_writes_nothing`
+  asserted `not_to_contain_text("Elsewhere Hall")` on the whole `#item-copies`
+  block to prove an Inventory scan moved nothing. T4 gave that block an
+  Add-copy `<select>` listing **every** location, so the audited shelf's name
+  now appears inside it whether or not anything moved. Fixed by scoping to the
+  copy rows' own location links
+  (`copies_block.locator("a").all_text_contents()`), then re-proved against a
+  simulated move. Two costs worth noting: the same trap bit the new E2E file
+  being written *in the same task*, which worked around it silently rather than
+  recognising it; and the subagent that hit the red test attributed it to an
+  older commit and left it, when `git checkout main` would have shown in
+  seconds that the branch caused it. **A test that is red on your branch and
+  green on `main` is yours, whatever its blame line says.**
 - **Status:** documented. Lint candidate — "a `not in html` pin whose needle also
   appears verbatim inside a `<!-- -->` in the rendered template" is checkable in
   `scripts/check_test_conventions.py`, but needs a template→test mapping the
   script does not have; noisy until it does. The second face above is the
   cheaper half of that lint and needs no mapping: a `not_to_contain_text` /
   `not in html` needle that appears **nowhere** under `app/templates/` is
-  mechanically checkable on its own.
+  mechanically checkable on its own. The third face is not mechanically
+  checkable at all — the needle is legitimate on both sides — which is why the
+  rule is about what the assertion is *scoped to*.
 
 ## G70 — When an E2E locator can match more than one element and one of them is `x-show`-toggled
 
@@ -3710,6 +3759,16 @@ grep -n "__guardToastAppends" tests/e2e/test_component_load_guard.py
   for the wrong reason. Read the DOM or the DB directly at the instant the
   waiter returns.
 
+- **And the predicate has to match the URL the browser actually requests.**
+  HTMX serialises a form's fields as a **query string** on `hx-delete` (and
+  `hx-get`), not as a body the way it does for `hx-post` — so a Remove button
+  that sits inside the edit form issues
+  `DELETE /api/items/7/copies/12?condition=Fine&…`, and a predicate written
+  `r.url.endswith("/copies/12")` never fires. The wait then times out 30 s
+  later pointing at the click, not at the predicate. Split the query off
+  first: `r.url.split("?")[0].endswith(...)`. Hit twice on 2026-09-11 (plan
+  `item-copies-surface`, T6), once while writing the test and once while
+  mutation-proving it.
 - **Verify:**
 
 ```bash
@@ -4120,6 +4179,52 @@ grep -n 'tests\? collected' Makefile scripts/stamp_test_badges.py
 - **Status:** documented. Lint candidate — "a `--co` invocation in `Makefile`
   or `scripts/` that also carries `-m`" is a one-line grep and would belong in
   `scripts/check_test_conventions.py`.
+
+## G96 — When a write funnel's own helper writes back through the other funnel
+
+
+- **Rule:** `item_write.update_item_fields(db, item_id, {"location_id": …})`
+  re-enters `item_copies.sync_primary_location`, which **creates** a primary
+  copy when it finds none. So any code that removes or demotes copies and then
+  writes the `items.location_id` seam must leave the item with its intended
+  primary **before** the seam write — or the seam write puts back the row that
+  was just removed. Order the promotion first, then the seam. The same applies
+  to any future path that clears copies and re-points the seam in one
+  transaction.
+- **Why:** the two funnels call each other by design — the seam mirrors the
+  primary, and `update_item_fields` exists partly to keep that true — so the
+  re-entry is invisible at the call site. It reads as one ordinary funnel call.
+  And the failure is not an error: `delete_copy` returns a sensible dict, the
+  route answers 200, the fragment re-renders, and the only symptom is a copy
+  the user deleted quietly reappearing with a fresh id, its condition, price
+  and provenance gone. A "removing the last copy leaves no copies" assertion
+  catches it; a "the seam is NULL" assertion alone does not, because the
+  invented copy is created *at* the location the seam still held.
+- **Evidence:** plan `item-copies-surface` T2, 2026-09-11 (`e5092af`). Found by
+  the G31 mutation pass rather than by a failure — mutation M7 reordered the
+  promotion after the seam write and turned
+  `test_removing_the_primary_promotes_the_lowest_numbered_survivor` and
+  `test_the_promoted_survivor_keeps_its_shelf_position` red; a second mutation
+  (M9) made the last-copy branch re-send the item's own location instead of
+  NULL and resurrected the deleted copy exactly as described. Neither was ever
+  a live defect — the ordering was right from the first draft — which is
+  precisely why it is worth writing down: nothing in the code's shape would
+  have told the next reader that the two lines cannot be swapped.
+  Related: **G18** (the read and the writes are one transaction under
+  `BEGIN IMMEDIATE`) and **G86** (a located item with no copies is a real
+  state, so "no copies left" is never a reason to invent one).
+- **Verify:** the promotion is ordered before the seam, and the pins that
+  prove it are still present:
+
+```bash
+grep -n "Promote \*before\* touching the seam" app/services/item_copies.py
+python -m pytest tests/test_item_copies.py -q -k "promotes_the_lowest or invent_a_replacement"
+```
+
+- **Status:** documented. Not a lint candidate — "these two statements are
+  order-dependent" is not mechanically findable; the defence is the mutation
+  pass, which is G31's job.
+
 
 ## Graveyard
 

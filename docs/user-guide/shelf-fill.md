@@ -20,7 +20,7 @@ Nothing is locked in: any shelf can be reordered later on its **Arrange** page, 
 ## What each scan does
 
 - Existing catalogue items are moved immediately without repeating metadata lookups.
-- A copy-specific barcode moves that exact copy; it does not silently move the primary copy. This is how two copies of the same book end up on different shelves.
+- A copy-specific barcode moves that exact copy; it does not silently move the primary copy. This is how two copies of the same book end up on different shelves. You set that barcode on the item page — open a copy's **Edit** panel and fill in **Copy barcode** (see [Items](items.md)). A copy with no barcode of its own is still reached by the item's ISBN or UPC.
 - A wishlisted item becomes owned when it is physically shelved.
 - Unknown item barcodes reuse Shelf's normal Add scanner and metadata providers, then land on the shelf.
 - Hierarchical locations are stored directly on the first-class physical-copy record; the catalogue item's location remains the compatibility projection for its primary copy.

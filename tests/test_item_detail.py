@@ -591,8 +591,14 @@ class TestCopiesBlock:
     def test_a_viewer_sees_the_block_and_it_carries_no_controls(
         self, viewer_client, db
     ):
-        """G54 — the wrapper id is the swap target the copy-surface plan
-        needs, and until that plan lands the block issues no request."""
+        """Item detail is `viewer`; every copy mutation is `editor`. A control
+        rendered to a viewer produces a 403 on click, which is the failure
+        that split exists to avoid — so the viewer's page must carry none.
+
+        Asserted against the viewer's *rendered page* rather than the fragment
+        source: since the copies surface landed, the source legitimately holds
+        controls, and they are gated by role at render time. That is the thing
+        worth pinning."""
         office = _insert_location(db, "Office")
         loft = _insert_location(db, "Loft")
         item_id = _insert_item(db, title="Read Only", isbn="9789000020102",
@@ -606,16 +612,190 @@ class TestCopiesBlock:
 
         assert 'id="item-copies"' in html
         assert "Loft" in html
+        assert 'data-testid="add-copy"' not in html
+        assert "/api/items/%d/copies" % item_id not in html
 
-        # Asserted against the fragment source rather than a slice of the
-        # page: the wrapper's close tag is not distinguishable from any other
-        # `</div>` in rendered HTML, so a slice silently widens to the rest of
-        # the page and the check stops meaning anything.
-        source = (
-            Path(__file__).resolve().parents[1]
-            / "app" / "templates" / "fragments" / "item_copies.html"
-        ).read_text()
-        body = re.sub(r"\{#.*?#\}", "", source, flags=re.S)
-        assert 'id="item-copies"' in body
-        for construct in ("hx-get", "hx-post", "hx-put", "hx-delete", "<form", "<button"):
-            assert construct not in body
+    def test_an_editor_gets_an_add_control_on_every_arm(self, admin_client, db):
+        """placed, listed, legacy and the empty state all offer Add copy. The
+        empty state is the one that changed: an owned but unlocated item is
+        exactly where "I own two of these" starts, so it renders for an editor
+        rather than hiding."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+
+        placed = _insert_item(db, title="Placed", isbn="9789000020126",
+                              location_id=office)
+        insert_copy(db, {"item_id": placed, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+
+        listed = _insert_item(db, title="Listed", isbn="9789000020133",
+                              location_id=office)
+        insert_copy(db, {"item_id": listed, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": listed, "copy_number": 2, "location_id": loft})
+
+        legacy = _insert_item(db, title="Legacy", isbn="9789000020140",
+                              location_id=office)
+        db.execute("DELETE FROM item_copies WHERE item_id = ?", (legacy,))
+
+        empty = _insert_item(db, title="Empty", isbn="9789000020157")
+        db.execute("DELETE FROM item_copies WHERE item_id = ?", (empty,))
+        db.commit()
+
+        for item_id in (placed, listed, legacy, empty):
+            html = admin_client.get(f"/item/{item_id}").text
+            assert 'data-testid="add-copy"' in html, f"no Add copy on item {item_id}"
+            assert f'hx-post="/api/items/{item_id}/copies"' in html
+            # `hidden` is a CSS class, so the control is in the markup either
+            # way — asserting only on the markup passes against a block that
+            # is hidden from the editor who is supposed to use it.
+            assert 'id="item-copies" class="hidden"' not in html, (
+                f"the block is hidden from an editor on item {item_id}"
+            )
+
+    def test_the_empty_state_stays_hidden_for_a_viewer(self, viewer_client, db):
+        """The wrapper is only `hidden` when there is nothing to show *and*
+        the user cannot edit — otherwise an empty grid cell shifts the cells
+        after it into the wrong column."""
+        item_id = _insert_item(db, title="Nothing", isbn="9789000020164")
+        db.execute("DELETE FROM item_copies WHERE item_id = ?", (item_id,))
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert 'id="item-copies" class="hidden"' in html
+
+    def test_the_add_form_offers_every_location_and_a_no_location_option(
+        self, admin_client, db
+    ):
+        _insert_location(db, "Attic")
+        _insert_location(db, "Basement")
+        item_id = _insert_item(db, title="Picker", isbn="9789000020171")
+        db.commit()
+
+        html = admin_client.get(f"/item/{item_id}").text
+
+        assert '<option value="">No location</option>' in html
+        assert ">Attic<" in html and ">Basement<" in html
+
+    def test_every_control_settles_its_own_swap_destination(self):
+        """G54 — a control in a swapped-in fragment has no ancestor outside it,
+        so an omitted target swaps the whole block into the control itself.
+        The regex reads each element's own opening tag; a page-level
+        `assert "hx-target" in html` is satisfiable by any sibling and defends
+        nothing."""
+        fragments = Path(__file__).resolve().parents[1] / "app" / "templates" / "fragments"
+        # Both halves of the surface: the collapsed block and the panel that
+        # replaces it. The panel is swapped-in content twice over, so its
+        # Save, Cancel and Remove have no ancestor inside the page at all.
+        for name in ("item_copies.html", "item_copy_edit.html"):
+            body = re.sub(r"\{#.*?#\}", "", (fragments / name).read_text(), flags=re.S)
+            issuing = re.findall(r"<[a-z]+\b[^>]*hx-(?:post|get|put|delete)=[^>]*>",
+                                 body, re.S)
+            assert issuing, f"{name} should issue at least one request"
+            for tag in issuing:
+                assert re.search(r'hx-target|hx-swap="(none|outerHTML)"', tag), \
+                    f"{name}: {tag}"
+
+    def test_a_location_path_links_to_browse_on_every_arm(self, viewer_client, db):
+        """The link carries the registered `location_filter` parameter — held
+        to the registry by tests/test_nav.py — and scopes to that node only."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+
+        placed = _insert_item(db, title="Placed Link", isbn="9789000020188",
+                              location_id=office)
+        insert_copy(db, {"item_id": placed, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+
+        listed = _insert_item(db, title="Listed Link", isbn="9789000020195",
+                              location_id=office)
+        insert_copy(db, {"item_id": listed, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": listed, "copy_number": 2, "location_id": loft})
+
+        legacy = _insert_item(db, title="Legacy Link", isbn="9789000020201",
+                              location_id=office)
+        db.execute("DELETE FROM item_copies WHERE item_id = ?", (legacy,))
+        db.commit()
+
+        assert f"/browse?location_filter={office}" in viewer_client.get(
+            f"/item/{placed}").text
+        listed_html = viewer_client.get(f"/item/{listed}").text
+        assert f"/browse?location_filter={office}" in listed_html
+        assert f"/browse?location_filter={loft}" in listed_html
+        assert f"/browse?location_filter={office}" in viewer_client.get(
+            f"/item/{legacy}").text
+
+    def test_every_row_offers_an_editor_its_own_edit_control(self, admin_client, db):
+        """Each row's control names its own copy id. Several rows carry the
+        same label, so a control that pointed at a shared route would open the
+        wrong copy's panel — and nothing on the page would look wrong."""
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        item_id = _insert_item(db, title="Two Rows", isbn="9789000020225",
+                               location_id=office)
+        first = insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                                 "location_id": office, "is_primary": 1})
+        second = insert_copy(db, {"item_id": item_id, "copy_number": 2,
+                                  "location_id": loft})
+        db.commit()
+
+        html = admin_client.get(f"/item/{item_id}").text
+
+        for copy_id in (first, second):
+            assert f'data-testid="edit-copy-{copy_id}"' in html
+            assert f'hx-get="/api/items/{item_id}/copies/{copy_id}/edit"' in html
+
+    def test_a_single_copy_line_also_offers_edit(self, admin_client, db):
+        office = _insert_location(db, "Office")
+        # A decoy copy on another item first, so this item's copy is not id 1.
+        # `item_copies.id` is AUTOINCREMENT and each test gets a fresh
+        # database, so without the decoy a control hardcoded to `/copies/1/`
+        # satisfies the assertion below by coincidence — the pin would pass
+        # against a control that opens the wrong copy's panel.
+        decoy = _insert_item(db, title="Decoy", isbn="9789000020256")
+        insert_copy(db, {"item_id": decoy, "copy_number": 1, "is_primary": 1})
+        item_id = _insert_item(db, title="One Row", isbn="9789000020232",
+                               location_id=office)
+        only = insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                                "location_id": office, "is_primary": 1})
+        assert only != 1, "the decoy should have taken id 1"
+        db.commit()
+
+        html = admin_client.get(f"/item/{item_id}").text
+
+        assert f'data-testid="edit-copy-{only}"' in html
+        # The destination, not just the marker: a control carrying the right
+        # test id and the wrong copy id opens someone else's panel, and
+        # nothing on the page looks wrong.
+        assert f'hx-get="/api/items/{item_id}/copies/{only}/edit"' in html
+
+    def test_a_viewer_gets_no_edit_control(self, viewer_client, db):
+        office = _insert_location(db, "Office")
+        loft = _insert_location(db, "Loft")
+        item_id = _insert_item(db, title="No Edit", isbn="9789000020249",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2, "location_id": loft})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "data-testid=\"edit-copy-" not in html
+        assert "/edit" not in html
+
+    def test_a_copy_with_no_location_gets_no_link(self, viewer_client, db):
+        office = _insert_location(db, "Office")
+        item_id = _insert_item(db, title="Half Linked", isbn="9789000020218",
+                               location_id=office)
+        insert_copy(db, {"item_id": item_id, "copy_number": 1,
+                         "location_id": office, "is_primary": 1})
+        insert_copy(db, {"item_id": item_id, "copy_number": 2})
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert "No location" in html
+        assert "/browse?location_filter=None" not in html

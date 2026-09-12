@@ -34,14 +34,55 @@ location tree's business — see `app/services/locations.py`.
 ## The write funnel
 
 `insert_copy` and `update_copy` in `app/services/item_copies.py` are the only
-way a row reaches this table, guarded the same way `app/services/item_write.py`
-is for `items`: column names are validated against `PRAGMA table_info`, so an
+way a row reaches or changes in this table, and `delete_copy` /
+`delete_copies_for_item` the only way one leaves it, guarded the same way
+`app/services/item_write.py` is for `items`: column names are validated against `PRAGMA table_info`, so an
 unknown column raises rather than being silently dropped, and unset columns take
 their schema defaults. A location change clears the copy's location-scoped
 `position_order` — a shelf position means nothing on a different shelf — unless
 the caller passes one explicitly, which is how Shelf Fill's append and Arrange's
 renumber keep working. Two set-based backfills stay raw and are allowlisted by
 path in `tests/test_item_write.py`.
+
+`add_copy` is the funnel's front door for the item page: it numbers the new
+copy above the item's current highest and decides `is_primary` from what the
+item already has, so no caller reproduces either rule. A copy added to an item
+that has none becomes the primary, and `items.location_id` is re-pointed at it
+so the seam and the primary still mirror each other.
+
+## Removing a copy, and the promotion
+
+`delete_copy` removes one row and then keeps every reader of "where is this
+item?" answering alike:
+
+- Removing a **secondary** changes nothing else. The seam and the primary copy
+  are untouched.
+- Removing the **primary** while others survive promotes the
+  **lowest-numbered survivor** (`ORDER BY copy_number, id`) to
+  `is_primary = 1` and re-points `items.location_id` at *that copy's*
+  location, so Browse, CSV export, the archive and Scan keep reading a real
+  location rather than a new null. The promotion is silent — nothing is
+  announced to the user.
+- Removing the **last** copy sets `items.location_id` to NULL and leaves the
+  item row standing. A located item with no copies is a legitimate state.
+
+The survivor is marked primary *before* the seam is written, because the seam
+write re-enters `sync_primary_location`, which creates a primary when it finds
+none — a seam write made while the item has no primary would invent a copy
+rather than move one.
+
+Removal is permanent. A copy's condition, acquisition details and provenance go
+with the row, and nothing in this schema is soft-deleted, which is why the UI
+control is guarded by a confirmation naming what is lost.
+
+## Which surfaces write copies
+
+The **item page** is a writer as well as a reader: a copy can be
+added, edited in place and removed there, through five `editor` routes in
+`app/routers/item_copies.py`. Before it, the only way a second copy came into
+being was merging two items, which is a side effect rather than a way to say
+"I own two of these" — so the condition, acquisition and provenance columns,
+and the per-copy barcode Shelf Fill scans, had no producer at all.
 
 ## Which surfaces read copies
 

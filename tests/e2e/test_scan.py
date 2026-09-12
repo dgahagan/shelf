@@ -1566,10 +1566,19 @@ def test_inventory_on_a_multi_copy_item_at_a_shelf_holding_none_reports_and_writ
     # only the card's message would not catch a write that happened anyway.
     authed_page.goto(f"{live_server['url']}/item/{item_id}")
     authed_page.wait_for_load_state("networkidle")
+    # Scoped to the copy rows' own location links, not the block's whole
+    # text. Since the copies surface landed, the block also renders an
+    # Add-copy <select> listing *every* location, so "Elsewhere Hall" appears
+    # inside it as an <option> whether or not anything moved there — a bare
+    # `not_to_contain_text` over the container is green only until a control
+    # inside it legitimately names the value the pin excludes.
     copies_block = authed_page.locator("#item-copies")
-    expect(copies_block).to_contain_text("Elsewhere Office")
-    expect(copies_block).to_contain_text("Elsewhere Loft")
-    expect(copies_block).not_to_contain_text("Elsewhere Hall")
+    linked = copies_block.locator("a").all_text_contents()
+    assert "Elsewhere Office" in linked
+    assert "Elsewhere Loft" in linked
+    assert "Elsewhere Hall" not in linked, (
+        "the scan must not have moved a copy to the audited shelf"
+    )
 
     assert_page_clean(authed_page)
 

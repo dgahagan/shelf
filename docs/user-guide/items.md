@@ -48,11 +48,35 @@ its home.
   appears on books, kids' books, audiobooks, ebooks and comics — discs and
   games don't carry one.
 - **Location** and **owned / wishlist** flag. Locations can be nested, and an
-  item shows the full path — see [Locations](locations.md). An item with more
-  than one physical copy shows a **Copies** list instead of the single Location
-  line: one row per copy with its location, its position on that shelf, and
-  whatever condition, acquisition and provenance detail that copy carries. One
-  copy still shows the single line.
+  item shows the full path — see [Locations](locations.md). Every location
+  shown here is a link to Browse filtered to that location.
+- **Copies** — the physical objects you own, as opposed to the catalogue entry
+  describing them. An item with more than one copy shows a **Copies** list
+  instead of the single Location line: one row per copy with its location, its
+  position on that shelf, and whatever condition, acquisition and provenance
+  detail that copy carries. One copy still shows the single line.
+
+  **Add copy** records a second (or third) of the same title — two copies of a
+  novel on different shelves, a reading copy and a signed one. Pick a location
+  or leave it blank; the copy is added without disturbing the copy you already
+  had.
+
+  **Edit** on a row opens that copy in place, where you can set its location,
+  condition, acquired date, source, price, provenance and its own copy
+  barcode. Condition is free text with a list of suggestions (New, Fine, Good,
+  Fair, Poor, Ex-library) — type anything else if you grade your own way.
+  Moving a copy to a different shelf clears the position it had on the old one.
+  A copy barcode belongs to one copy across your whole collection: reusing one
+  is refused, and the message names the item already holding it.
+
+  **Remove copy** is in the same panel, behind a confirmation. **Removal is
+  permanent**: that copy's condition, acquisition details and provenance are
+  deleted and cannot be restored. Removing the copy marked primary hands that
+  status to the lowest-numbered copy left, and the item's location follows it.
+  Removing the last copy leaves the item in your catalogue with no location.
+
+  Adding, editing and removing copies needs an editor or admin account.
+  Viewers see the list and nothing else.
 - **Tags** — add or remove chips inline.
 - **Loan state** — who has it and since when, with check-in right there.
 - **Value** — ISBNdb list price if valued, or a manual value you enter.

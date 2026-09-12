@@ -88,9 +88,9 @@ without retyping it. Shelf stores the catalogue record, never the audio.
 ## Collectors and inventory
 
 **Planned.** For collections where the individual copy matters, not just the
-title: per-copy condition, edition and provenance fields, printable accession
-labels, a reconciliation report for a shelf audit, and a duplicate audit across
-the whole collection.
+title: printable accession labels, a reconciliation report for a shelf audit,
+and a duplicate audit across the whole collection. Per-copy condition,
+acquisition and provenance fields have shipped — see the item page.
 
 ## Reading life
 
@@ -118,11 +118,11 @@ The last five releases. Full detail in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.41.0](https://github.com/dgahagan/shelf/releases/tag/v0.41.0) | Physical copies finally have a place you can write them: add a second or third copy on the item page, give each its own location, condition, acquired date, source, price, provenance and barcode, and remove one when it goes — and every location on an item page is now a link into Browse |
 | [0.40.1](https://github.com/dgahagan/shelf/releases/tag/v0.40.1) | Nothing you can see: the checks that have to pass before a release can ship no longer depend on a free third-party lookup allowance, which had twice held a release back — once for seven hours |
 | [0.40.0](https://github.com/dgahagan/shelf/releases/tag/v0.40.0) | Anything no lookup can find can now be typed in by hand: a standalone **Add by hand** panel needing only a title, every media type, no barcode required — reachable from Home, from an empty title search, from a mistyped barcode, and from any item's page as **Add another like this** |
 | [0.39.0](https://github.com/dgahagan/shelf/releases/tag/v0.39.0) | Covers the automatic chain cannot reach get a queue of their own: every cover-less item, discs, games and records included, walked one at a time with the picker inline — and an item with genuinely no cover anywhere can be marked **Not available** so the missing-covers count finally reaches zero |
 | [0.38.0](https://github.com/dgahagan/shelf/releases/tag/v0.38.0) | Every part of Shelf that answers "where is this item?" now counts physical copies: the item page lists them all, a shelf audit expects an item wherever any copy of it is, a scan that cannot say which copy reports instead of moving one, and the portable archive carries copies |
-| [0.37.2](https://github.com/dgahagan/shelf/releases/tag/v0.37.2) | Shelf Fill shows the position each scan takes on the shelf, and the shelf you picked says what is already on it and where the next scan goes |
 
 ---
 

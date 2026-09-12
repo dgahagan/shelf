@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 # path -> (cap, what to do when it trips)
 LIMITS = {
     "app/routers/items.py": (1600, "split by feature area, as items_covers/csv/catalog were"),
+    "app/routers/item_copies.py": (400, "split the edit panel's routes out"),
     "app/routers/items_scan_modes.py": (400, "one module per mode, if it comes to that"),
     "app/routers/items_common.py": (900, "move domain logic to app/services/"),
     "app/routers/items_covers.py": (600, "split the bulk-sweep routes out"),
@@ -57,6 +58,7 @@ _ROUTE_PER_MODULE = {
     "items_covers": "/api/items/{item_id}/cover-status",
     "items_csv": "/api/export/csv",
     "items_catalog": "/api/games/search",
+    "item_copies": "/api/items/{item_id}/copies",
 }
 
 

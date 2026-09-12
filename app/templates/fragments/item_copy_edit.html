@@ -1,0 +1,105 @@
+{#
+  The expanded edit panel for one physical copy.
+
+  Swapped in over the collapsed Copies block by the Edit control in
+  fragments/item_copies.html, and swapped back out by Save, Cancel or Remove.
+  One request for the whole row, never one per field: every route under /api/
+  shares a 60-per-minute-per-IP rate limit, so a field-at-a-time panel would
+  spend the user's budget on typing.
+
+  G54: Save, Cancel and Remove each carry their OWN hx-target and hx-swap.
+  This panel is swapped-in content, so nothing outside the fragment is an
+  ancestor of it and no target is inherited. All three land back on
+  #item-copies, because all three routes answer with the collapsed block.
+
+  HTMX only, no Alpine — no x-data here, so G4 and G5 do not apply, and the
+  global HTMX hook in base.html supplies the CSRF token.
+
+  G35 on the price: `step` is paired with `min` on the same element. Without a
+  `min` the step base is the element's own `value`, so `step` would constrain
+  edits *relative to the price already stored* — and the browser refuses to
+  submit the whole form, silently, with no server-side signal. Same shape as
+  item_edit.html's manual_value.
+
+  Condition is free text with a suggestion list: the schema declares TEXT with
+  no CHECK, deliberately, because a fixed vocabulary would need a rule for
+  every value already stored and would break collectors who grade their own
+  way. The datalist suggests; it does not constrain.
+#}
+<div id="item-copies" class="col-span-2 border border-shelf-border rounded-lg p-3 bg-shelf-bg/40">
+    <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">
+        Copy #{{ copy.copy_number }}{% if copy.is_primary %} · primary{% endif %}
+    </p>
+    <form hx-post="/api/items/{{ item_id }}/copies/{{ copy.id }}"
+          hx-target="#item-copies" hx-swap="outerHTML"
+          class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+            <label for="copy-location-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Location</label>
+            <select id="copy-location-{{ copy.id }}" name="location_id" data-narrow-ok
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                <option value="">No location</option>
+                {% for loc in locations %}
+                <option value="{{ loc.id }}" {% if copy.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="copy-condition-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Condition</label>
+            <input type="text" id="copy-condition-{{ copy.id }}" name="condition" data-narrow-ok
+                   value="{{ copy.condition or '' }}" list="copy-condition-options" autocomplete="off" maxlength="60"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+            <datalist id="copy-condition-options">
+                <option value="New"></option>
+                <option value="Fine"></option>
+                <option value="Good"></option>
+                <option value="Fair"></option>
+                <option value="Poor"></option>
+                <option value="Ex-library"></option>
+            </datalist>
+        </div>
+        <div>
+            <label for="copy-acquired-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Acquired</label>
+            <input type="date" id="copy-acquired-{{ copy.id }}" name="acquired_date" data-narrow-ok
+                   value="{{ copy.acquired_date or '' }}"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+        </div>
+        <div>
+            <label for="copy-source-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Source</label>
+            <input type="text" id="copy-source-{{ copy.id }}" name="acquisition_source" data-narrow-ok
+                   value="{{ copy.acquisition_source or '' }}" maxlength="120"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+        </div>
+        <div>
+            <label for="copy-price-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Price ({{ currency().symbol }})</label>
+            <input type="number" id="copy-price-{{ copy.id }}" name="acquisition_price" step="0.01" min="0" data-narrow-ok
+                   value="{{ copy.acquisition_price if copy.acquisition_price is not none else '' }}"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+        </div>
+        <div>
+            <label for="copy-barcode-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Copy barcode</label>
+            <input type="text" id="copy-barcode-{{ copy.id }}" name="copy_barcode" data-narrow-ok
+                   value="{{ copy.copy_barcode or '' }}" autocomplete="off" maxlength="64"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+            <p class="text-xs text-shelf-muted mt-1">Scanned by Shelf Fill to place this exact copy.</p>
+        </div>
+        <div class="sm:col-span-2">
+            <label for="copy-provenance-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Provenance</label>
+            <input type="text" id="copy-provenance-{{ copy.id }}" name="provenance" data-narrow-ok
+                   value="{{ copy.provenance or '' }}" maxlength="200"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+        </div>
+        <div class="sm:col-span-2 flex flex-wrap items-center gap-2">
+            <button type="submit" data-testid="save-copy"
+                    class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">Save</button>
+            <button type="button" data-testid="cancel-copy"
+                    hx-get="/api/items/{{ item_id }}/copies"
+                    hx-target="#item-copies" hx-swap="outerHTML"
+                    class="px-3 py-1 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs hover:bg-shelf-hover transition-colors">Cancel</button>
+            <button type="button" data-testid="remove-copy"
+                    hx-delete="/api/items/{{ item_id }}/copies/{{ copy.id }}"
+                    hx-target="#item-copies" hx-swap="outerHTML"
+                    hx-confirm="Remove copy #{{ copy.copy_number }}? Its condition, acquisition details and provenance are deleted permanently and cannot be restored."
+                    class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors ml-auto">Remove copy</button>
+        </div>
+    </form>
+</div>

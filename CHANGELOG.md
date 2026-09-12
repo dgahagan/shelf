@@ -6,6 +6,51 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-09-11
+
+Shelf has understood physical copies for several releases — Shelf Fill can scan
+one copy onto a shelf without moving the other, Arrange keeps duplicates
+distinct, and a copy has always had room for its condition, what you paid and
+where it came from. What it never had was a way for you to *make* one. The only
+thing that produced a second copy was merging two items, which is a side effect
+rather than a way to say "I own two of these", and the condition, acquisition
+and provenance fields had no way to be filled in at all. This release gives
+copies a place on the item page: add one, fill it in, and remove it when it
+goes.
+
+### Added
+
+- **Add, edit and remove physical copies from the item page.** **Add copy**
+  records a second or third of the same title — two copies of a novel on
+  different shelves, a reading copy and a signed one. Each row gets an **Edit**
+  panel holding its location, condition, acquired date, source, price,
+  provenance and its own copy barcode. Condition is free text with suggestions
+  (New, Fine, Good, Fair, Poor, Ex-library), so grade your own way if you
+  prefer. An item with one copy still shows the single Location line; a second
+  copy turns it into a numbered list.
+- **A copy barcode you set here is what Shelf Fill scans.** Give one copy its
+  own barcode and scanning it shelves that exact copy instead of the primary
+  one. Until now nothing could write that field, so the feature had no way to
+  be used.
+- **Editing a copy's location clears the shelf position it had on the old
+  shelf.** A position means nothing on a different shelf, so it is not carried
+  across. Arrange the new shelf to place it.
+
+### Changed
+
+- **Every location on an item page is now a link** into Browse, filtered to
+  that location. The filter matches that node and nothing nested inside it —
+  clicking a shelf shows what is on that shelf, and clicking a room shows only
+  what is filed on the room itself, not what sits on its shelves.
+- **Removing the copy marked primary promotes the next one**, and the item's
+  location follows it. Removal is permanent and is behind a confirmation that
+  names what is lost: that copy's condition, acquisition details and provenance
+  are deleted and cannot be restored. Removing the last copy leaves the item in
+  your catalogue with no location, which is a legitimate state and not an
+  error.
+- **Adding, editing and removing copies needs an editor or admin account.**
+  Viewers see the copies list and none of the controls.
+
 ## [0.40.1] - 2026-09-11
 
 Nothing in this release changes what Shelf does. It exists because the checks
@@ -3355,6 +3400,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.41.0]: https://github.com/dgahagan/shelf/releases/tag/v0.41.0
 [0.40.1]: https://github.com/dgahagan/shelf/releases/tag/v0.40.1
 [0.40.0]: https://github.com/dgahagan/shelf/releases/tag/v0.40.0
 [0.39.0]: https://github.com/dgahagan/shelf/releases/tag/v0.39.0
