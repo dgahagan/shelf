@@ -1,0 +1,48 @@
+<section id="related-media-panel" class="mb-6" data-related-media-panel>
+    <div class="flex items-center justify-between gap-3 mb-2">
+        <div>
+            <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted">Related media</p>
+            <p class="text-xs text-shelf-muted mt-1">Manually connect formats, related works or adaptations. Shelf does not guess cross-media relationships from titles.</p>
+        </div>
+    </div>
+
+    {% if related_items %}
+    <div class="space-y-2 mb-3">
+        {% for related in related_items %}
+        <div class="flex items-center gap-3 bg-shelf-bg border border-shelf-border rounded-lg p-2">
+            {% if related.cover_path %}<img src="/{{ related.cover_path }}" alt="" class="w-8 h-12 object-cover rounded shrink-0">{% endif %}
+            <div class="min-w-0 flex-1">
+                <a href="/item/{{ related.id }}" class="text-sm font-medium hover:text-shelf-accent2">{{ related.title }}</a>
+                <p class="text-xs text-shelf-muted">
+                    {{ related.media_type|replace('_', ' ')|title }}
+                    {% if related.direct %} · {{ related.link_type|replace('_', ' ')|title }}{% else %} · via related group{% endif %}
+                    {% if related.platform %} · {{ related.platform }}{% endif %}
+                </p>
+            </div>
+            {% if related.direct and user and user.role in ('admin', 'editor') %}
+            <button hx-delete="/api/related-media/items/{{ item.id }}/links/{{ related.id }}"
+                    hx-target="#related-media-panel" hx-swap="outerHTML"
+                    class="text-xs text-shelf-error hover:underline">Unlink</button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-sm text-shelf-muted mb-3">No related media linked yet.</p>
+    {% endif %}
+
+    {% if user and user.role in ('admin', 'editor') %}
+    <details class="rounded-lg border border-shelf-border bg-shelf-bg p-3">
+        <summary class="cursor-pointer text-sm text-shelf-accent2">Link another catalogue item</summary>
+        <div class="mt-3">
+            <input type="search" name="q" placeholder="Search title, creator or series…" maxlength="120"
+                   hx-get="/api/related-media/items/{{ item.id }}/search"
+                   hx-trigger="keyup changed delay:300ms"
+                   hx-target="#related-media-search-results-{{ item.id }}"
+                   hx-swap="innerHTML"
+                   class="w-full bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            <div id="related-media-search-results-{{ item.id }}" class="mt-2"></div>
+        </div>
+    </details>
+    {% endif %}
+</section>

@@ -1,0 +1,22 @@
+{% if query and not candidates %}
+<p class="text-xs text-shelf-muted">No unlinked catalogue items matched “{{ query }}”.</p>
+{% endif %}
+{% for candidate in candidates %}
+<div class="flex items-center gap-2 py-2{% if not loop.last %} border-b border-shelf-border{% endif %}">
+    <div class="min-w-0 flex-1">
+        <p class="text-sm font-medium truncate">{{ candidate.title }}</p>
+        <p class="text-xs text-shelf-muted truncate">{{ candidate.media_type|replace('_', ' ')|title }}{% if candidate.authors %} · {{ candidate.authors }}{% endif %}</p>
+    </div>
+    <form hx-post="/api/related-media/items/{{ item_id }}/links"
+          hx-target="#related-media-panel" hx-swap="outerHTML"
+          class="flex items-center gap-1 shrink-0">
+        <input type="hidden" name="other_item_id" value="{{ candidate.id }}">
+        <select name="link_type" class="bg-shelf-card border border-shelf-border rounded px-2 py-1 text-xs text-shelf-text">
+            <option value="format">Format</option>
+            <option value="related" selected>Related</option>
+            <option value="adaptation">Adaptation</option>
+        </select>
+        <button type="submit" class="px-2 py-1 bg-shelf-accent text-white rounded text-xs">Link</button>
+    </form>
+</div>
+{% endfor %}

@@ -28,4 +28,11 @@
         {% endif %}
     </div>
     {% endif %}
+
+    {# Keep the loader inside #item-tags. Tag mutations replace this whole
+       fragment, so the previous panel is removed before a fresh one loads
+       instead of accumulating duplicate Related Media panels. #}
+    <div hx-get="/api/related-media/items/{{ item_id }}/panel" hx-trigger="load" hx-swap="outerHTML">
+        <div class="mt-4 text-xs text-shelf-muted">Loading related media…</div>
+    </div>
 </div>
