@@ -1,5 +1,9 @@
 {% for item in items %}
+{% if item.browse_series_group %}
+{% include "fragments/komga_series_card.html" %}
+{% else %}
 {% include "fragments/item_card.html" %}
+{% endif %}
 {% endfor %}
 {% if has_more is defined and has_more %}
 <div id="load-more" class="col-span-full text-center py-4"

@@ -1,0 +1,23 @@
+{# One stable-ID Komga series in Browse grid view. #}
+<a href="{{ item.browse_series_url }}" class="group relative"
+   data-komga-series-id="{{ item.browse_series_id }}">
+    <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg">
+        <span class="absolute top-2 right-2 z-10 px-2 py-1 rounded-md text-[10px] font-semibold bg-shelf-card/95 text-shelf-text border border-shelf-border shadow">
+            {{ item.browse_series_count }} item{% if item.browse_series_count != 1 %}s{% endif %}
+        </span>
+        {% if item.cover_path %}
+        <img src="/{{ item.cover_path }}" alt="{{ item.browse_series_name }}" loading="lazy">
+        {% else %}
+        <div class="w-full h-full flex items-center justify-center p-4 text-center bg-shelf-hover">
+            <div>
+                <svg class="w-10 h-10 mx-auto mb-2 text-shelf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V5a2 2 0 00-2-2H6.5A2.5 2.5 0 004 5.5v14z"/></svg>
+                <p class="text-xs text-shelf-muted line-clamp-3">{{ item.browse_series_name }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    <div class="absolute bottom-0 left-0 right-0 p-3 pt-10 bg-gradient-to-t from-black/90 via-black/55 to-transparent rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+        <p class="text-white text-sm font-semibold leading-tight line-clamp-2">{{ item.browse_series_name }}</p>
+        <p class="text-white/70 text-xs mt-0.5">{{ item.browse_series_kind|capitalize }} · Open series</p>
+    </div>
+</a>

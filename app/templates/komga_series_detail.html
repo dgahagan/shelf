@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ series.name }} — Shelf{% endblock %}
+{% block content %}
+<div class="mb-6">
+    <a href="/browse" class="text-sm text-shelf-accent2 hover:text-shelf-text">&larr; Back to Browse</a>
+    <div class="flex items-start justify-between gap-4 mt-3 flex-wrap">
+        <div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <h1 class="text-2xl font-bold" data-testid="komga-series-heading">{{ series.name }}</h1>
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-accent/15 text-shelf-accent2 border border-shelf-border">Komga {{ series.kind_label }}</span>
+            </div>
+            <p class="text-sm text-shelf-muted mt-1">
+                {{ series.item_count }} item{% if series.item_count != 1 %}s{% endif %}
+                · {{ series.owned_count }} owned
+                {% if series.wishlist_count %} · {{ series.wishlist_count }} wishlisted{% endif %}
+                {% if series.neither_count %} · {{ series.neither_count }} neither owned nor wishlisted{% endif %}
+                {% if series.gaps %}
+                · <span class="text-shelf-warning">possibly missing
+                    {%- for gap in series.gaps[:8] %} #{{ gap }}{% if not loop.last %},{% endif %}{% endfor %}
+                    {%- if series.gaps|length > 8 %} +{{ series.gaps|length - 8 }} more{% endif %}</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-4">
+    {% for item in series['items'] %}
+    <a href="/item/{{ item.id }}?from=series" class="group min-w-0"
+       data-testid="komga-series-item"
+       data-series-position="{{ item.series_position if item.series_position is not none else '' }}">
+        <div class="relative aspect-[2/3] bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg">
+            {% if item.cover_path %}
+            <img src="/{{ item.cover_path }}" alt="{{ item.title }}" class="w-full h-full object-cover" loading="lazy">
+            {% else %}
+            <div class="w-full h-full flex items-center justify-center p-3 text-center bg-shelf-hover">
+                <span class="text-xs text-shelf-muted line-clamp-4">{{ item.title }}</span>
+            </div>
+            {% endif %}
+            {% if item.series_position is not none %}
+            <span class="absolute top-1 left-1 bg-black/75 text-white text-[10px] px-1.5 py-0.5 rounded">
+                #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}
+            </span>
+            {% endif %}
+            {% if item.wishlisted %}
+            <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded font-medium">Wishlist</span>
+            {% endif %}
+        </div>
+        <p class="text-sm text-shelf-text font-medium mt-2 leading-tight line-clamp-2">{{ item.title }}</p>
+        {% if item.authors %}<p class="text-xs text-shelf-muted truncate mt-0.5">{{ item.authors }}</p>{% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,5 +1,9 @@
 {% for item in items %}
+{% if item.browse_series_group %}
+{% include "fragments/komga_series_row.html" %}
+{% else %}
 {% include "fragments/item_row.html" %}
+{% endif %}
 {% endfor %}
 {% if has_more is defined and has_more %}
 <tr id="load-more"

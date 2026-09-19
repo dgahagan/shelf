@@ -1,0 +1,47 @@
+{# One stable-ID Komga series in Browse list view. #}
+{% set col_class = {
+    'author': 'text-shelf-muted text-sm truncate max-w-[200px]',
+    'status': '',
+    'value': 'text-shelf-success text-sm',
+    'series': 'text-shelf-muted text-xs truncate max-w-[200px]',
+    'publisher': 'text-shelf-muted text-xs truncate max-w-[200px]',
+    'identifier': 'text-shelf-muted text-xs font-mono',
+} %}
+<tr class="border-b border-shelf-border hover:bg-shelf-hover/50 transition-colors"
+    data-komga-series-id="{{ item.browse_series_id }}">
+    {% for col in browse_columns %}
+    {%- if col.name == 'select' %}
+    <td x-show="selectMode" data-col="select" class="px-3 py-2 w-8"></td>
+    {%- elif col.name == 'cover' %}
+    <td data-col="cover" class="px-3 py-2 w-10">
+        <a href="{{ item.browse_series_url }}" aria-label="Open {{ item.browse_series_name }} series">
+            {% if item.cover_path %}
+            <img src="/{{ item.cover_path }}" alt="" class="w-8 h-12 object-cover rounded" loading="lazy">
+            {% else %}
+            <div class="w-8 h-12 bg-shelf-hover rounded flex items-center justify-center">
+                <svg class="w-4 h-4 text-shelf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 006.5 22H20V5a2 2 0 00-2-2H6.5A2.5 2.5 0 004 5.5v14z"/></svg>
+            </div>
+            {% endif %}
+        </a>
+    </td>
+    {%- elif col.name == 'title' %}
+    <td data-col="title" class="px-3 py-2">
+        <div class="flex items-center gap-2">
+            <a href="{{ item.browse_series_url }}"
+               class="text-shelf-text text-sm font-medium truncate max-w-xs hover:underline">{{ item.browse_series_name }}</a>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-hover text-shelf-muted shrink-0">
+                {{ item.browse_series_count }} item{% if item.browse_series_count != 1 %}s{% endif %}
+            </span>
+        </div>
+    </td>
+    {%- else %}
+    <td x-show="visibleCols.{{ col.name }}" data-col="{{ col.name }}"
+        class="px-3 py-2 {{ col_class.get(col.name, 'text-shelf-muted text-xs') }}">
+        {%- if col.name == 'media_type' %}{{ media_types.get(item.browse_series_kind, item.browse_series_kind|capitalize) }}
+        {%- elif col.name == 'series' %}{{ item.browse_series_name }}
+        {%- else %}—
+        {%- endif %}
+    </td>
+    {%- endif %}
+    {% endfor %}
+</tr>
