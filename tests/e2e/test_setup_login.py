@@ -84,7 +84,7 @@ def test_logout(live_server, authed_page):
     authed_page.goto(f"{live_server['url']}/browse")
     authed_page.wait_for_load_state("networkidle")
     authed_page.get_by_test_id("account-menu-button").click()
-    authed_page.get_by_test_id("account-menu-panel").get_by_role("button", name="Sign out").click()
+    authed_page.get_by_test_id("account-menu-logout").click()
     authed_page.wait_for_url(f"{live_server['url']}/login", timeout=5_000)
     expect(authed_page).to_have_url(f"{live_server['url']}/login")
 
