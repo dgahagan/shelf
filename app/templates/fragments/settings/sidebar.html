@@ -1,0 +1,27 @@
+<aside class="flex flex-wrap w-full lg:w-64 shrink-0 gap-2 self-start content-start"
+       aria-label="Settings sections" data-testid="settings-section-nav">
+    <button type="button" @click="setTab('library')" data-testid="tab-library"
+            :class="tab === 'library' ? 'bg-shelf-hover text-white border-shelf-accent/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-white hover:bg-shelf-hover'"
+            class="w-32 lg:w-64 min-h-24 shrink-0 text-left border rounded-xl p-4 transition-colors">
+        <span class="block text-sm font-semibold">Library</span>
+        <span class="hidden lg:flex text-xs mt-1">Display, navigation, locations and lending.</span>
+    </button>
+    <button type="button" @click="setTab('integrations')" data-testid="tab-integrations"
+            :class="tab === 'integrations' ? 'bg-shelf-hover text-white border-shelf-accent/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-white hover:bg-shelf-hover'"
+            class="w-32 lg:w-64 min-h-24 shrink-0 text-left border rounded-xl p-4 transition-colors">
+        <span class="block text-sm font-semibold">Integrations</span>
+        <span class="hidden lg:flex text-xs mt-1">Connected services, sync and external providers.</span>
+    </button>
+    <button type="button" @click="setTab('data')" data-testid="tab-data"
+            :class="tab === 'data' ? 'bg-shelf-hover text-white border-shelf-accent/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-white hover:bg-shelf-hover'"
+            class="w-32 lg:w-64 min-h-24 shrink-0 text-left border rounded-xl p-4 transition-colors">
+        <span class="block text-sm font-semibold">Data</span>
+        <span class="hidden lg:flex text-xs mt-1">Import, export, backups and maintenance.</span>
+    </button>
+    <button type="button" @click="setTab('users')" data-testid="tab-users"
+            :class="tab === 'users' ? 'bg-shelf-hover text-white border-shelf-accent/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-white hover:bg-shelf-hover'"
+            class="w-32 lg:w-64 min-h-24 shrink-0 text-left border rounded-xl p-4 transition-colors">
+        <span class="block text-sm font-semibold">Users</span>
+        <span class="hidden lg:flex text-xs mt-1">Accounts, roles and access.</span>
+    </button>
+</aside>

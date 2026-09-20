@@ -2,60 +2,19 @@
 {% block title %}Settings — Shelf{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto" x-data="settingsTabs">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold">Settings</h1>
-        <p class="text-sm text-shelf-muted mt-1">Manage your library, integrations, data and access from one place.</p>
-    </div>
+    {% include "fragments/settings/page_header.html" %}
 
-    {# Known codes only: never reflect arbitrary query-string text. #}
-    {% set location_error = request.query_params.get('location_error') %}
-    {% if location_error in ('blank', 'duplicate', 'missing') %}
-    <div data-testid="location-error-banner"
-         class="bg-shelf-bg text-shelf-error border border-shelf-border rounded-lg px-4 py-2 text-sm mb-6">
-        {% if location_error == 'blank' %}
-        Location name is required.
-        {% elif location_error == 'duplicate' %}
-        A location with that name already exists.
-        {% else %}
-        That location no longer exists.
-        {% endif %}
-    </div>
-    {% endif %}
+    <div class="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
+        {% include "fragments/settings/sidebar.html" %}
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8" data-testid="settings-section-nav">
-        <button type="button" @click="setTab('library')" data-testid="tab-library"
-                :class="tab === 'library' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
-                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
-            <span class="block text-sm font-medium">Library</span>
-            <span class="block text-xs mt-1">Collection, lending, locations and display</span>
-        </button>
-        <button type="button" @click="setTab('integrations')" data-testid="tab-integrations"
-                :class="tab === 'integrations' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
-                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
-            <span class="block text-sm font-medium">Integrations</span>
-            <span class="block text-xs mt-1">Providers, sync and external services</span>
-        </button>
-        <button type="button" @click="setTab('data')" data-testid="tab-data"
-                :class="tab === 'data' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
-                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
-            <span class="block text-sm font-medium">Data</span>
-            <span class="block text-xs mt-1">Import, export, backup and maintenance</span>
-        </button>
-        <button type="button" @click="setTab('users')" data-testid="tab-users"
-                :class="tab === 'users' ? 'bg-shelf-hover text-white' : 'text-shelf-muted hover:text-white hover:bg-shelf-hover'"
-                class="w-full text-left bg-shelf-card border border-shelf-border rounded-lg p-5 transition-colors">
-            <span class="block text-sm font-medium">Users</span>
-            <span class="block text-xs mt-1">Accounts, roles and access</span>
-        </button>
-    </div>
-
-    <div data-testid="settings-section-content">
-        {% include "fragments/settings/library.html" %}
-        {% include "fragments/settings/integrations.html" %}
-        {% include "fragments/settings/romm.html" %}
-        {% include "fragments/settings/komga.html" %}
-        {% include "fragments/settings/data.html" %}
-        {% include "fragments/settings/users.html" %}
+        <div class="min-w-0 flex-1 w-full" data-testid="settings-section-content">
+            {% include "fragments/settings/library.html" %}
+            {% include "fragments/settings/integrations.html" %}
+            {% include "fragments/settings/romm.html" %}
+            {% include "fragments/settings/komga.html" %}
+            {% include "fragments/settings/data.html" %}
+            {% include "fragments/settings/users.html" %}
+        </div>
     </div>
 </div>
 {% endblock %}
