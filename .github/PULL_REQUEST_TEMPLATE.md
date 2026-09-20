@@ -21,7 +21,8 @@ invest time — see CONTRIBUTING.md.
 - [ ] `make test` passes
 - [ ] `make test-e2e` passes
 - [ ] `make checks` passes
-- [ ] `make css` re-run, if templates or Tailwind classes changed
+- [ ] No generated output in this PR — `static/css/app.css`, `static/sw.js`'s
+      `SW_VERSION`, and README's test-count badges are regenerated on `main`
 
 ## Notes for review
 

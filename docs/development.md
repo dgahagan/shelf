@@ -46,18 +46,38 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
 | `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, README test-count badges |
-| `make badges` | Restamp README's two test-count badges from `pytest --co` — **required after adding or deleting tests** |
+| `make badges` | Restamp README's two test-count badges from `pytest --co` — run it on `main`, **never commit the result in a pull request** |
 | `make checks` | All checks incl. `pip-audit` and licenses (network) |
-| `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — **required after any template/JS change**, and commit both |
+| `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — run it after any template/JS change to see your work, **but leave the output out of a pull request** |
 
 Unit and E2E tests **cannot share one pytest invocation** — always use the
 targets above. `make verify` enforces a minimum test count, so deleting
 tests fails CI.
 
-**CI runs `make test`, `make checks-fast` and `make test-e2e`**, plus a job that
-runs `make css` and fails if the committed `static/css/app.css` or `static/sw.js`
-differs — so a template change without the `make css` that follows it is caught
-on the PR rather than in a browser. Run all four locally before pushing.
+**CI runs four jobs**, and two of them behave differently on a pull request
+than on a push to `main`:
+
+| Job | What it does |
+|---|---|
+| `test` | `make test` and `make checks-fast` |
+| `e2e` | `make css`, then `make test-e2e` — the suite is always judged against a stylesheet rebuilt from the templates in that checkout |
+| `css` | Rebuilds with `make css`. The **rebuild** runs on every event, so a template or `tailwind.config.js` change that breaks compilation still fails cheaply. The **comparison** against the committed output fails on push to `main` and is advisory (a `::notice::`) on a pull request |
+| `generated-output` | Pull requests only. Fails if the merge result changes `static/css/app.css`, `sw.js`'s `SW_VERSION` or either README badge count, relative to the base branch |
+
+The split exists because **a pull request carries no generated output** — see
+[CONTRIBUTING.md](../CONTRIBUTING.md). Those three artefacts are regenerated on
+`main` by the maintainer after merging, so on a pull request the staleness
+checks cannot be satisfied and report instead of failing; the
+`generated-output` job is what keeps the files out of the diff in the first
+place. A parse failure is never downgraded: a check whose parser has stopped
+matching is a disarmed tripwire, not staleness, and it fails everywhere.
+
+`generated-output` compares the merge result against the base it merges into,
+not against the commit the branch was cut from — so a branch that is merely
+behind `main` is not blamed for a restamp `main` made since, while a merge that
+resolved a generated value to the branch's stale side is still caught.
+
+Run `make test`, `make test-e2e` and `make checks-fast` locally before pushing.
 
 CI does **not** run `make test-contract`, and neither does any gate target.
 The release gate makes no live third-party call — that is a stated invariant
@@ -77,7 +97,12 @@ chars of a sha256 over the sorted `PRECACHE` paths and their contents.
 `make css` stamps it (`scripts/stamp_sw_version.py`); `make check-sw-version`
 and `tests/test_store.py` fail if the committed value is stale or hand-edited.
 `static/css/app.css` is precached, so a Tailwind rebuild renames the cache by
-itself. Commit `static/sw.js` alongside `static/css/app.css`.
+itself. On `main` the two are committed together; **in a pull request neither
+travels at all** — the stamp is one token, so a restamp in each PR collides
+across a batch. On a `pull_request` build `check-sw-version` and its pin in
+`tests/test_store.py` report the drift and pass, and the `generated-output`
+job refuses a PR that changed the value. A parse failure still fails
+everywhere: that is a disarmed tripwire, not staleness.
 
 One rule survives automation: **never add `sw.js` to its own `PRECACHE`** —
 stamping would change the bytes the stamp is derived from and never converge.
@@ -94,7 +119,9 @@ CI runs it) fails if the committed numbers no longer match what collects —
 except on a **pull-request build**, where it reports the drift and passes.
 Every PR that adds a test would otherwise go red on the badge alone, and a PR
 that restamps it collides with every other restamping PR on one README line.
-The badge is restamped on `main` after the merge instead.
+The badge is restamped on `main` after the merge instead, and the
+`generated-output` job refuses a PR that restamped it anyway — which is what
+the advisory alone did not prevent.
 
 The counts come from collection rather than from a run on purpose. Collection
 cannot pass or fail, so the badge asserts only *"this suite contains N tests"*,
@@ -103,7 +130,9 @@ beside them already says. A badge that re-stated the pass/fail state would be a
 second copy of it, free to disagree.
 
 Add a test and forget to restamp and the gate fails with the two numbers side
-by side — the same bargain as `SW_VERSION`.
+by side — locally and on `main`, the same bargain as `SW_VERSION`. On a pull
+request it is the opposite bargain: restamping is what fails, and the drift is
+reported instead.
 
 ### Responsive geometry
 
@@ -219,8 +248,11 @@ it posted from.
   likewise one template per tab under `templates/fragments/settings/`.
 - **`from app.config import X` freezes the value at import time.** Read
   `app.config.X` at call time instead; tests override config.
-- **Tailwind output is committed.** Forgetting `make css` ships a page with
-  missing styles — and leaves `SW_VERSION` unstamped.
+- **Tailwind output is committed — but generated on `main`, not in a pull
+  request.** The committed `static/css/app.css` is the only stylesheet the
+  image ever serves, so a release that skips `make css` ships a page with
+  missing styles and an unstamped `SW_VERSION`. A pull request nonetheless
+  leaves it out: see the `generated-output` job above.
 - Before touching migrations, Alpine components, covers, the service worker
   or outbound rate limiting, read the matching entry in `GOTCHAS.md`.
 
@@ -253,8 +285,10 @@ See [Architecture](architecture.md) for how the pieces fit.
 ## Submitting changes
 
 Read [CONTRIBUTING.md](../CONTRIBUTING.md). Short form: open an issue first
-for anything non-trivial, run `make test`, `make test-e2e`, `make checks`,
-`make css`, fill in the PR template.
+for anything non-trivial, run `make test`, `make test-e2e` and `make checks`,
+and fill in the PR template. Run `make css` to see a template change rendered,
+but keep the generated output — `app.css`, `SW_VERSION`, the README badges —
+out of the pull request.
 
 ## Releases
 

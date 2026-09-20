@@ -32,13 +32,20 @@ everywhere local, it still fails. Main is where the person who *can* restamp is.
 """
 
 import argparse
-import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+
+# scripts/ is not a package -- tests load this script standalone via
+# importlib.util.spec_from_file_location, which skips sys.path[0] entirely.
+# Put the script's own directory on the path so `import ci_context` resolves
+# under both that loader and a direct `python scripts/stamp_test_badges.py`.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ci_context import staleness_is_enforceable  # noqa: E402
+
 README_PATH = ROOT / "README.md"
 
 # (badge slug in the shields URL, pytest argv). The slug is the anchor: it is
@@ -127,16 +134,6 @@ def stamp(check_only=False):
     else:
         print("Test-count badges already current.")
     return 0
-
-
-def staleness_is_enforceable() -> bool:
-    """False only on a pull-request CI build, where the check cannot be met.
-
-    Deliberately narrow: `GITHUB_EVENT_NAME` is `pull_request` only in that one
-    context. A push to main, a local run and a manual dispatch all still
-    enforce, so the badge cannot drift anywhere it can actually be fixed.
-    """
-    return os.environ.get("GITHUB_EVENT_NAME") != "pull_request"
 
 
 def main():

@@ -6,6 +6,17 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **A pull request no longer carries generated build output.** `static/css/app.css`,
+  the `SW_VERSION` value in `static/sw.js` and README's two test-count badges are
+  regenerated on `main` after merging, so contributors leave them out. Run `make css`
+  and `make badges` to see your work — just not in the commit. A new `generated-output`
+  check refuses a pull request that includes them and says how to back each one out;
+  the staleness checks report instead of failing there, and still fail on `main` and
+  locally. E2E now rebuilds the stylesheet first, so a pull request is tested against
+  the CSS its own templates ask for.
+
 ## [0.43.0] - 2026-09-19
 
 Shelf has always had a separate media type for children's books. It never earned

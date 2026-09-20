@@ -31,10 +31,53 @@ jobs:
       - name: Offline lints (secrets, CSRF header, Alpine CSP)
         run: make checks-fast
 
+  # A pull request carries no generated build output: the Tailwind build
+  # static/css/app.css, the SW_VERSION value in static/sw.js, and README.md's
+  # two test-count badges. All three are regenerated on `main` by the
+  # maintainer after merging.
+  #
+  # The reason is collision, not tidiness. app.css is one minified line and
+  # SW_VERSION is one token, so any two PRs that touch a template regenerate
+  # the same line from the same base and conflict with each other under every
+  # merge method — through no fault of either author. Measured 2026-09-19: of
+  # six PRs opened that day, four carried both files, and squash-merging the
+  # first put the second into conflict on exactly those two files and nothing
+  # else. A fifth committed a badge restamp taken from a stale base and moved
+  # the counts backwards.
+  #
+  # The comparison is merge-result against the base it merges into, so a PR
+  # that is merely behind `main` is not blamed for a restamp `main` made since.
+  generated-output:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 2 — the default of 1 leaves the merge ref without its
+      # first parent, and the comparison would then fail for a reason that
+      # reads like a bug in the script rather than a shallow checkout.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      # Stdlib only: the check imports the two stamp scripts for their
+      # parsers, and neither has a third-party dependency. No pip install.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: A pull request must not change generated build output
+        run: python scripts/check_pr_generated.py
+
   # The committed Tailwind build must match what the templates actually ask for.
   # Nothing caught a forgotten `make css` before: the stale stylesheet is valid
   # CSS, every unit test passes, and the missing rule only shows up as a broken
   # layout in a browser.
+  #
+  # The rebuild runs on every event — a template or tailwind.config.js change
+  # that breaks compilation should still fail somewhere cheap. The *comparison*
+  # splits: enforced on push to main, advisory on a pull request, where a PR
+  # that edits any precached file moves the digest and is not allowed to
+  # restamp it. `scripts/ci_context.py` is the one place that decides which,
+  # shared with check-sw-version and its pin in tests/test_store.py.
   css:
     runs-on: ubuntu-latest
     steps:
@@ -60,10 +103,18 @@ jobs:
       - name: Committed build output must match the rebuild
         run: |
           git diff --exit-code --stat static/css/app.css static/sw.js || {
-            echo "::error::Committed build output is stale — run 'make css' and commit the result."
-            echo "static/css/app.css is the Tailwind build; static/sw.js carries the"
-            echo "SW_VERSION stamped from the precache digest. Both are generated."
-            exit 1
+            if python scripts/ci_context.py; then
+              echo "::error::Committed build output is stale — run 'make css' and commit the result."
+              echo "static/css/app.css is the Tailwind build; static/sw.js carries the"
+              echo "SW_VERSION stamped from the precache digest. Both are generated."
+              exit 1
+            fi
+            echo "::notice::ADVISORY on a pull-request build: the committed build output is"
+            echo "stale, and this cannot be satisfied here — a pull request that changes any"
+            echo "precached file moves the digest, and a pull request that restamps it"
+            echo "collides with every other pull request restamping the same line. The"
+            echo "maintainer runs 'make css' once after merging. Enforced on push to main"
+            echo "and locally."
           }
 
   # Playwright suite, in its own job: it is the slowest gate and the only one
@@ -84,6 +135,25 @@ jobs:
 
       - name: Install Chromium
         run: playwright install --with-deps chromium
+
+      # E2E must judge the PR against the CSS its own templates ask for.
+      # Pull requests no longer carry static/css/app.css, so without this a PR
+      # that adds a utility class is tested against a stylesheet that lacks it
+      # — a `hidden lg:flex` element is simply visible, and a test passes or
+      # fails for the wrong reason, undiagnosable from the PR's own diff.
+      # Rebuilt on every event, not only pull requests: one code path, and on
+      # a current `main` it is a no-op. Observed cost 16 s against 11 m 17 s
+      # for the suite itself. Nothing built here is pushed anywhere.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install Tailwind
+        run: npm ci
+
+      - name: Rebuild the stylesheet the tests will be served
+        run: make css
 
       # Spins up its own uvicorn per session — no dev server needed.
       - name: Run E2E tests

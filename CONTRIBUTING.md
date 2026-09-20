@@ -46,6 +46,11 @@ about your code.** It is your branch point being overwritten. When that happens
 GitHub also cannot build a merge commit, so CI stops running and the PR looks
 untested as well as stale. Neither is a judgement about the work.
 
+One large cause of that has been removed: generated build output no longer
+travels in a pull request, so two PRs that touch a template no longer collide
+on the same rebuilt line. See the generated-files note under
+[Before you submit](#before-you-submit).
+
 What actually helps:
 
 - **Branch from current `main`, and rebase rather than merge** if you are asked
@@ -76,7 +81,7 @@ make test        # unit + integration tests
 make test-e2e    # Playwright E2E tests (starts its own server)
 make checks      # dependency audit, license check, secret scan, CSRF lint, Alpine CSP lint
 make test-contract   # live UPC Item DB check (one lookup/run) — not needed for a PR
-make css         # if you touched templates or Tailwind classes — commit the rebuilt CSS *and* static/sw.js
+make css         # if you touched templates or Tailwind classes — to see your work; do NOT commit the result
 ```
 
 Notes:
@@ -99,12 +104,24 @@ Notes:
 - `MIGRATIONS` in `app/database.py` is append-only — never edit or reorder an
   existing entry.
 - No CDN references — all JS and CSS is vendored in `static/`.
-- **Some files are generated — never hand-edit them.** `static/css/app.css` and
-  the `SW_VERSION` constant in `static/sw.js` come from `make css`; the
-  test-count badges in `README.md` come from `make badges`. Run the target and
-  commit the result. If you rebase, regenerate these rather than replaying your
-  old hunk — the service-worker stamp is a digest over the whole precache set,
-  so a replayed stamp fails `make check-sw-version`.
+- **Three things are generated, and a pull request must not carry any of
+  them:** `static/css/app.css` (the Tailwind build), the `SW_VERSION` constant
+  in `static/sw.js`, and the two test-count badges in `README.md`. Run
+  `make css` and `make badges` as much as you like to see your work — just
+  leave the result out of the commit. The maintainer regenerates all three on
+  `main` after merging.
+
+  This is not tidiness. `app.css` is one minified line and `SW_VERSION` is one
+  token, so any two pull requests that touch a template regenerate the same
+  line from the same base and then conflict with each other — under every
+  merge method, and through no fault of either author.
+
+  The `generated-output` check enforces it, and its message names each
+  offending artefact and how to back it out: a `git checkout` command for
+  `app.css`, and the value to restore for the other two, so the rest of your
+  changes to those files are untouched. You may still edit `sw.js` and
+  `README.md` freely — the rule is about those specific generated values, not
+  about the files.
 - `GOTCHAS.md` lists the project's known traps; skim the headings before
   touching migrations, Alpine components, covers or the service worker.
 

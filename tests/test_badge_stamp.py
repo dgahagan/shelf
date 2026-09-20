@@ -8,7 +8,6 @@ disarmed tripwire that silently passes is the failure this file exists to catch.
 """
 
 import importlib.util
-import os
 from pathlib import Path
 
 import pytest
@@ -22,7 +21,7 @@ _spec.loader.exec_module(stamp_test_badges)
 
 class TestBadgeStamp:
     @pytest.mark.skipif(
-        os.environ.get("GITHUB_EVENT_NAME") == "pull_request",
+        not stamp_test_badges.staleness_is_enforceable(),
         reason="Unsatisfiable on a PR build: a restamp in each PR collides "
                "across the batch. Enforced on push to main and locally.")
     def test_readme_badges_are_current(self):

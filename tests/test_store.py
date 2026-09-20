@@ -20,6 +20,13 @@ _spec = importlib.util.spec_from_file_location("stamp_sw_version", _SCRIPT)
 stamp_sw_version = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(stamp_sw_version)
 
+# scripts/ is not a package -- loaded standalone the same way, for the shared
+# "is staleness enforceable here?" predicate (scripts/ci_context.py).
+_CI_CONTEXT_SCRIPT = REPO_ROOT / "scripts" / "ci_context.py"
+_ci_context_spec = importlib.util.spec_from_file_location("ci_context", _CI_CONTEXT_SCRIPT)
+ci_context = importlib.util.module_from_spec(_ci_context_spec)
+_ci_context_spec.loader.exec_module(ci_context)
+
 
 class TestStorePage:
     def test_store_page_renders(self, admin_client):
@@ -61,6 +68,10 @@ class TestSwPrecacheDigest:
             # static/, contains '..', or does not exist on disk.
             stamp_sw_version.resolve_entry(url_path)
 
+    @pytest.mark.skipif(
+        not ci_context.staleness_is_enforceable(),
+        reason="Unsatisfiable on a PR build: a restamp in each PR collides "
+               "across the batch. Enforced on push to main and locally.")
     def test_sw_version_matches_precache_digest(self):
         changed, current, expected = stamp_sw_version.stamp(check_only=True)
 
@@ -113,6 +124,53 @@ class TestSwPrecacheDigest:
         """A regex that stops matching must raise, not silently disarm."""
         with pytest.raises(stamp_sw_version.SwParseError):
             stamp_sw_version.parse_sw("// no SW_VERSION and no PRECACHE here")
+
+    def test_check_is_advisory_on_pull_request_build(self, tmp_path, monkeypatch, capsys):
+        """`main() --check` reports but returns 0 on a PR build with a stale
+        stamp -- the CLI-level counterpart to
+        tests/test_badge_stamp.py::test_pr_builds_downgrade_staleness_to_advisory,
+        since `make check-sw-version` calls `main()`, not `stamp()` directly.
+        """
+        sw_copy = tmp_path / "sw.js"
+        sw_copy.write_text(SW_PATH.read_text().replace(
+            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
+            "SW_VERSION = 'vSTALE'",
+        ))
+        monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
+        monkeypatch.setattr("sys.argv", ["stamp_sw_version.py", "--check"])
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+
+        assert stamp_sw_version.main() == 0
+        assert "ADVISORY" in capsys.readouterr().err
+
+    def test_check_still_fails_on_push_and_unset(self, tmp_path, monkeypatch, capsys):
+        """The same stale stamp fails `--check` everywhere except a PR build."""
+        sw_copy = tmp_path / "sw.js"
+        sw_copy.write_text(SW_PATH.read_text().replace(
+            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
+            "SW_VERSION = 'vSTALE'",
+        ))
+        monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
+        monkeypatch.setattr("sys.argv", ["stamp_sw_version.py", "--check"])
+
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "push")
+        assert stamp_sw_version.main() == 1
+        assert "ADVISORY" not in capsys.readouterr().err
+
+        monkeypatch.delenv("GITHUB_EVENT_NAME")
+        assert stamp_sw_version.main() == 1
+
+    def test_parse_failure_is_never_downgraded_on_pull_request(self, tmp_path, monkeypatch):
+        """The SwParseError branch answers a different question than staleness
+        (G68) -- an unparseable sw.js must still fail `--check` even on a
+        pull_request build, where the staleness branch alone is disarmed."""
+        sw_copy = tmp_path / "sw.js"
+        sw_copy.write_text("// no SW_VERSION and no PRECACHE here")
+        monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
+        monkeypatch.setattr("sys.argv", ["stamp_sw_version.py", "--check"])
+        monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+
+        assert stamp_sw_version.main() == 1
 
 
 class TestStoreData:

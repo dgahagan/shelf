@@ -19,6 +19,17 @@ fails the gate.
 
 Note sw.js itself is deliberately not in PRECACHE — if it were, stamping the
 version would change the bytes the version is derived from and never converge.
+
+**The staleness check (`--check`) is advisory on a pull-request CI build, and
+only there.** It is unsatisfiable in that context, which is different from
+being inconvenient: a PR that touches any of the eight precached files (the
+stylesheet, store.js, scanner-engine.js, the two vendored scanners, the
+manifest, the two icons) moves the digest, and a PR that restamps SW_VERSION
+to get green collides with every other PR touching the same line. So on
+`pull_request` the check reports and returns 0; on push to main, and
+everywhere local, it still fails. Main is where the person who can run
+`make css` actually is. A parse failure (`SwParseError`) is a different
+question — the tripwire itself being disarmed — and is never downgraded.
 """
 
 import argparse
@@ -30,6 +41,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SW_PATH = ROOT / "static" / "sw.js"
 STATIC_ROOT = ROOT / "static"
+
+# scripts/ is not a package -- tests load this script standalone via
+# importlib.util.spec_from_file_location, which skips sys.path[0] entirely.
+# Put the script's own directory on the path so `import ci_context` resolves
+# under both that loader and a direct `python scripts/stamp_sw_version.py`.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ci_context import staleness_is_enforceable  # noqa: E402
 
 DIGEST_CHARS = 8
 
@@ -162,6 +180,18 @@ def main():
             "`python scripts/stamp_sw_version.py`) and commit static/sw.js.",
             file=sys.stderr,
         )
+        if not staleness_is_enforceable():
+            # Advisory here by design -- see the module docstring. Say so
+            # loudly: a tripwire that goes quiet is worse than one that fails,
+            # because nobody learns it stopped watching.
+            print("\nADVISORY on a pull-request build: this cannot be "
+                  "satisfied here, because a PR that changes any precached "
+                  "file moves the digest, and a PR that restamps SW_VERSION "
+                  "to get green collides with every other PR restamping the "
+                  "same line. The maintainer runs `make css` once after "
+                  "merging. Enforced on push to main and locally.",
+                  file=sys.stderr)
+            return 0
         return 1
 
     print(f"SW version stamp: SW_VERSION {current} -> {expected} (precache digest changed).")

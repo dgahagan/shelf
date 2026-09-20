@@ -963,6 +963,21 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
   it works most of the time and fails exactly when a later task re-checks an
   earlier one's pin.
 
+  **And `git checkout` is the wrong revert tool while the work is still
+  uncommitted — the exact mirror of the above, and it destroys more.** The
+  paragraph above prescribes `git checkout HEAD -- <file>` to undo a mutation,
+  which is right *after* the task has committed. Run the same command during a
+  task whose changes are not committed yet and it discards **the whole task's
+  work in that file**, not just the mutation — silently, with no stash to pop
+  and nothing to say it happened beyond a file that suddenly reads like `main`.
+  Before the commit, copy the file aside first (`cp <file> /tmp/<file>.bak`) and
+  restore from the copy. Hit 2026-09-19 on `feat/pr-generated-assets` T2 by the
+  orchestrator, one task after reading this entry: the subagent's finished,
+  reviewed, unstaged edits to `scripts/stamp_sw_version.py` were wiped by the
+  restore step of a mutation pass and had to be reconstructed from the diff in
+  the review. **The rule is: pick the revert tool by whether the work is
+  committed, not by which command the entry you last read happened to name.**
+
   A cheap corollary: when a test mocks a transport by method name
   (`client.get`), changing which method the code calls silently detaches it
   rather than failing it.
@@ -4929,6 +4944,51 @@ print('OK')"
 
 - **Status:** documented. Not a lint candidate — which cutoff a fixture is
   claiming to represent is intent, not a grep.
+
+## G110 — A delegated task's explanatory prose can invent a fact the gate cannot see
+
+- **Rule:** when a subagent writes or extends one of this repo's *why*
+  docstrings, module headers or long code comments, **read the factual claims
+  in the prose as carefully as the code** — specifically any claim about what
+  else in the tree consumes, enforces or depends on the thing being written.
+  The gate has no opinion about prose. Check each named consumer exists and
+  does what the sentence says, or cut the sentence.
+- **Why:** this codebase deliberately favours docstrings that explain *why*,
+  with concrete cross-references ("`make css` stamps it; `make checks-fast` and
+  `tests/test_store.py` verify it"). That house style is worth keeping, and it
+  is also a standing invitation for a model to produce one more plausible
+  cross-reference than it has evidence for — the invented one is formatted
+  identically to the true ones, sits beside claims that *are* true, and is
+  invisible to `make test`, every lint, and `make checks`. It then ships: these
+  files are published to the public repo, and a wrong "X depends on this"
+  sends the next reader to look for something that was never there.
+- **Evidence:** `362932f` (2026-09-19, plan `pr-generated-assets` T1). The
+  `sonnet` subagent's new `scripts/ci_context.py` docstring justified the
+  module by naming its consumers, and listed "the Alpine-CSP lint's own
+  generated artifacts" among them. That lint has no generated artefact and no
+  pull-request downgrade; the real consumers were `stamp_sw_version.py --check`,
+  its pin in `tests/test_store.py`, and the `css` job's comparison. Everything
+  else in the task was correct, the full gate was green, and the sentence was
+  caught only by the orchestrator reading the diff. The subagent's own
+  "Surprises" section reported none — it did not know it had invented it.
+- **The asymmetry that makes this worth an entry:** a wrong *line of code* has
+  many chances to be caught — a test, a lint, a reviewer, production. A wrong
+  *sentence about the code* has exactly one: somebody reading the diff. So the
+  prose in a delegated diff deserves more scrutiny per line than the code does,
+  which is the opposite of how a diff is normally read.
+- **Verify:** judgement, but bounded — for each cross-reference a new docstring
+  makes, grep the thing it names:
+
+```bash
+# e.g. for a docstring claiming check X consults this module:
+grep -rn "ci_context" scripts/ tests/ .github/workflows/
+```
+
+- **Status:** documented. Not a lint candidate — no checker can tell an
+  invented cross-reference from a true one; that is the whole difficulty.
+  The countermeasure is procedural: `/run-plan`'s diff review reads the prose,
+  and a subagent brief that asks for a *why* docstring should say that every
+  cross-reference in it must be one the author verified.
 
 ## Graveyard
 
