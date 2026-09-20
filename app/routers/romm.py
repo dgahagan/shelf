@@ -8,7 +8,7 @@ import logging
 
 import httpx
 from fastapi import APIRouter, Depends, Request
-from starlette.responses import StreamingResponse
+from starlette.responses import RedirectResponse, StreamingResponse
 
 from app.auth import require_role
 from app.services import romm_client, romm_sync
@@ -146,3 +146,22 @@ async def item_action(item_id: int):
         logger.debug("RomM action lookup failed for item %d", item_id, exc_info=True)
         url = None
     return {"ok": bool(url), "url": url}
+
+
+@router.get("/items/{item_id}/open", dependencies=[Depends(require_role("viewer"))])
+async def open_item(item_id: int):
+    """Open a RomM-backed item without making Browse construct provider URLs.
+
+    The browser requests this only when the user activates the card action, so
+    a page of RomM games does not fan out into one action lookup per card.
+    ``item_action`` remains the single place that chooses the browser-facing
+    RomM root and stable provider identity.
+    """
+    try:
+        url = romm_sync.item_action(item_id)
+    except Exception:
+        logger.debug("RomM open lookup failed for item %d", item_id, exc_info=True)
+        url = None
+    if not url:
+        return RedirectResponse(url=f"/item/{item_id}", status_code=303)
+    return RedirectResponse(url=url, status_code=302)

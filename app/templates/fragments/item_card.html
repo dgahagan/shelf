@@ -1,4 +1,5 @@
-<a href="/item/{{ item.id }}" class="group relative" data-item-id="{{ item.id }}" @click.prevent="openOrToggle({{ item.id }}, '/item/{{ item.id }}', $event)">
+<div class="relative">
+<a href="/item/{{ item.id }}" class="group relative block" data-item-id="{{ item.id }}" @click.prevent="openOrToggle({{ item.id }}, '/item/{{ item.id }}', $event)">
     <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg"
          :class="selectedIds.includes({{ item.id }}) ? 'ring-2 ring-shelf-accent' : ''">
         {% if item.wishlisted %}
@@ -42,3 +43,10 @@
         </div>
     </div>
 </a>
+{% if item.source == 'romm' %}
+<a href="/api/romm/items/{{ item.id }}/open" target="_blank" rel="noopener"
+   x-show="!selectMode" data-testid="romm-card-action"
+   class="absolute top-2 left-2 z-20 px-2 py-1 rounded-md bg-black/70 border border-white/20 text-white text-[10px] font-medium hover:bg-black/90 transition-colors"
+   title="Open in RomM">RomM ↗</a>
+{% endif %}
+</div>

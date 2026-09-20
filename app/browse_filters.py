@@ -176,6 +176,7 @@ class BrowseFilter:
 FILTERS: tuple[BrowseFilter, ...] = (
     BrowseFilter("q", prefix="Search", condition=_search),
     BrowseFilter("media_type_filter", prefix="Type", condition=_column("i.media_type")),
+    BrowseFilter("source_filter", prefix="Source", condition=_column("i.source")),
     BrowseFilter("location_filter", prefix="Location", condition=_column("i.location_id", cast=int)),
     BrowseFilter("sort", prefix="Sort", default="newest", clear_to="newest"),
     BrowseFilter("reading_status", prefix="Status", condition=_column("i.reading_status")),

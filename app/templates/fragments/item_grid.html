@@ -1,3 +1,30 @@
+{% set current_source = request.query_params.get('source_filter', '') %}
+{% set common_sources = ['manual', 'romm', 'komga', 'audiobookshelf', 'musicbrainz', 'hardcover', 'igdb', 'issn', 'openlibrary', 'google', 'photo_intake', 'store_queue'] %}
+<div class="flex items-center justify-end gap-2 mb-4" data-testid="source-filter-wrap">
+    <label for="source-filter" class="text-xs text-shelf-muted">Source</label>
+    <select id="source-filter" name="source_filter" data-testid="source-filter"
+            hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+            hx-include="{{ filter_includes('source_filter') }}"
+            class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        <option value="" {{ 'selected' if not current_source else '' }}>All Sources</option>
+        <option value="manual" {{ 'selected' if current_source == 'manual' else '' }}>Manual</option>
+        <option value="romm" {{ 'selected' if current_source == 'romm' else '' }}>RomM</option>
+        <option value="komga" {{ 'selected' if current_source == 'komga' else '' }}>Komga</option>
+        <option value="audiobookshelf" {{ 'selected' if current_source == 'audiobookshelf' else '' }}>Audiobookshelf</option>
+        <option value="musicbrainz" {{ 'selected' if current_source == 'musicbrainz' else '' }}>MusicBrainz</option>
+        <option value="hardcover" {{ 'selected' if current_source == 'hardcover' else '' }}>Hardcover</option>
+        <option value="igdb" {{ 'selected' if current_source == 'igdb' else '' }}>IGDB</option>
+        <option value="issn" {{ 'selected' if current_source == 'issn' else '' }}>ISSN</option>
+        <option value="openlibrary" {{ 'selected' if current_source == 'openlibrary' else '' }}>Open Library</option>
+        <option value="google" {{ 'selected' if current_source == 'google' else '' }}>Google Books</option>
+        <option value="photo_intake" {{ 'selected' if current_source == 'photo_intake' else '' }}>Photo Intake</option>
+        <option value="store_queue" {{ 'selected' if current_source == 'store_queue' else '' }}>Store Queue</option>
+        {% if current_source and current_source not in common_sources %}
+        <option value="{{ current_source }}" selected>{{ current_source | replace('_', ' ') | title }}</option>
+        {% endif %}
+    </select>
+</div>
+
 {% if items %}
 <template x-if="viewMode === 'grid'">
 <div class="cover-grid" data-testid="item-grid">
