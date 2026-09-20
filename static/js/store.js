@@ -304,6 +304,8 @@
         flushQueue().then(refreshData, refreshData);
 
         if ('serviceWorker' in navigator) {
+            // Test-drive throwaway edit: precache-touching change, deliberately
+            // left un-restamped to exercise the PR advisory path.
             navigator.serviceWorker.register('/sw.js').catch(function () {
                 // Untrusted cert or unsupported browser — page still works online
             });
