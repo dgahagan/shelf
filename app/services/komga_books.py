@@ -8,6 +8,7 @@ candidates while preserving the library-level Comics/Manga choice from
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import httpx
@@ -15,6 +16,27 @@ import httpx
 from app.services.komga_libraries import KomgaError, _headers
 
 PAGE_SIZE = 200
+
+# Komga can derive ``seriesTitle`` as ``<Series> (<Volume>)`` from ComicInfo
+# metadata when its append-volume option is enabled. Shelf groups catalogue
+# items by series_name, so retaining that suffix would split one manga/comic
+# run into one group per volume. Four-digit publication-year suffixes are kept
+# because names such as ``Batman (2016)`` commonly identify distinct runs.
+_VOLUME_SERIES_RE = re.compile(r"^(?P<name>.+?)\s+\((?P<number>\d+)\)$")
+
+
+def _canonical_series_name(value: Any) -> str | None:
+    """Return a stable Shelf grouping name for a Komga series title."""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    match = _VOLUME_SERIES_RE.fullmatch(text)
+    if not match:
+        return text
+    number = match.group("number")
+    if len(number) == 4 and 1800 <= int(number) <= 2199:
+        return text
+    return match.group("name").strip() or text
 
 
 def _authors(metadata: dict[str, Any]) -> str | None:
@@ -75,7 +97,7 @@ def normalise_book(book: dict[str, Any], *, library_id: str, kind: str) -> dict[
         "title": title,
         "authors": _authors(metadata),
         "isbn": str(metadata.get("isbn") or "").strip() or None,
-        "series_name": str(book.get("seriesTitle") or "").strip() or None,
+        "series_name": _canonical_series_name(book.get("seriesTitle")),
         "series_position": _series_position(metadata),
         "publish_year": _publish_year(metadata.get("releaseDate")),
         "description": str(metadata.get("summary") or "").strip() or None,

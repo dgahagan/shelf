@@ -1,6 +1,6 @@
 import pytest
 
-from app.services import komga_records
+from app.services import komga_books, komga_records
 from app.services.item_write import insert_item
 
 
@@ -195,3 +195,38 @@ def test_detaching_komga_holding_keeps_catalogue_item(db):
 def test_missing_or_unknown_library_classification_is_rejected(db):
     with pytest.raises(komga_records.KomgaPersistenceError):
         komga_records.persist_candidate(db, _candidate(library_kind="unknown"))
+
+
+def test_resync_repairs_old_volume_suffix_series_name(db):
+    first = komga_records.persist_candidate(
+        db,
+        _candidate(
+            komga_id="one-piece-21",
+            title="One Piece Vol. 21",
+            series_name="One Piece (21)",
+            series_position=21.0,
+        ),
+    )
+
+    candidate = komga_books.normalise_book(
+        {
+            "id": "one-piece-21",
+            "seriesId": "one-piece",
+            "seriesTitle": "One Piece (21)",
+            "metadata": {
+                "title": "One Piece Vol. 21",
+                "isbn": "9781974700523",
+                "numberSort": 21,
+            },
+        },
+        library_id="library-1",
+        kind="manga",
+    )
+    second = komga_records.persist_candidate(db, candidate)
+
+    row = db.execute(
+        "SELECT series_name FROM items WHERE id = ?", (first["item_id"],)
+    ).fetchone()
+    assert second["action"] == "updated"
+    assert second["item_id"] == first["item_id"]
+    assert row["series_name"] == "One Piece"

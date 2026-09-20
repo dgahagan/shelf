@@ -105,3 +105,25 @@ async def test_fetch_library_books_surfaces_connection_errors(respx_mock):
             await komga_books.fetch_library_books(
                 client, "https://komga.example", "secret", "library-1"
             )
+
+
+def test_normalise_book_strips_komga_volume_suffix_but_keeps_year_runs():
+    def series_name(value):
+        candidate = komga_books.normalise_book(
+            {
+                "id": f"book-{value}",
+                "name": "Fallback",
+                "seriesTitle": value,
+                "metadata": {"title": "Issue"},
+            },
+            library_id="library-1",
+            kind="manga",
+        )
+        return candidate["series_name"]
+
+    assert series_name("One Piece (3)") == "One Piece"
+    assert series_name("One Piece (108)") == "One Piece"
+    assert series_name("  One Piece (21)  ") == "One Piece"
+    assert series_name("One Piece (0021)") == "One Piece"
+    assert series_name("Batman (2016)") == "Batman (2016)"
+    assert series_name("Watchmen") == "Watchmen"
