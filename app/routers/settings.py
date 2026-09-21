@@ -26,6 +26,7 @@ _INTEGRATION_KEYS = (
     "google_books_api_key",
     "igdb_client_id",
     "igdb_client_secret",
+    "discogs_token",
 )
 
 
