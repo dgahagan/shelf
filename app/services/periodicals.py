@@ -11,6 +11,7 @@ issue-discriminator data, but its interpretation is publisher/cadence-specific,
 so Shelf preserves it verbatim rather than guessing an issue number or date.
 """
 
+import re
 from dataclasses import dataclass
 
 from app.services.upc import normalize_barcode
@@ -53,6 +54,25 @@ def issn_from_seven_digits(stem: str) -> str | None:
     value = (11 - (weighted % 11)) % 11
     check = "X" if value == 10 else str(value)
     return f"{stem[:4]}-{stem[4:]}{check}"
+
+
+def normalise_issn(value: str | None) -> str | None:
+    """Return a canonical, checksum-valid ISSN or raise for invalid input.
+
+    The blank value is allowed because a 977 scan can supply its derived ISSN
+    separately. User/provider-confirmed values, when present, must be real ISSNs
+    before they are allowed to replace that derived publication hint.
+    """
+    compact = re.sub(r"[^0-9Xx]", "", value or "").upper()
+    if not compact:
+        return None
+    if len(compact) != 8 or not compact[:7].isdigit() or compact[7] not in "0123456789X":
+        raise ValueError("ISSN must contain seven digits and a valid check character")
+
+    expected = issn_from_seven_digits(compact[:7])
+    if expected is None or compact[7] != expected[-1]:
+        raise ValueError("ISSN check digit is invalid")
+    return expected
 
 
 def parse_barcode(raw: str) -> PeriodicalBarcode | None:

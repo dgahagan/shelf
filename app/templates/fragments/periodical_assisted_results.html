@@ -1,0 +1,26 @@
+{% if candidates %}
+<div class="space-y-2">
+    {% for candidate in candidates %}
+    <article class="flex items-start gap-3 rounded-lg border border-shelf-border bg-shelf-card p-3">
+        {% if candidate.cover_url %}<img src="{{ candidate.cover_url }}" alt="" class="w-10 h-14 object-cover rounded shrink-0">{% endif %}
+        <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-shelf-text">{{ candidate.title }}</p>
+            <p class="text-xs text-shelf-muted mt-1">
+                {% if candidate.issue_date %}{{ candidate.issue_date }}{% endif %}
+                {% if candidate.publisher %}{% if candidate.issue_date %} · {% endif %}{{ candidate.publisher }}{% endif %}
+                {% if candidate.issn %} · ISSN {{ candidate.issn }}{% endif %}
+            </p>
+        </div>
+        <button type="button"
+                hx-get="/api/periodicals/assist/select?volume_id={{ candidate.google_volume_id|urlencode }}&raw_barcode={{ raw_barcode|urlencode }}&location_id={{ location_id or '' }}&mode={{ mode|urlencode }}"
+                hx-target="closest .scan-result"
+                hx-swap="outerHTML"
+                class="shrink-0 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30">
+            Use result
+        </button>
+    </article>
+    {% endfor %}
+</div>
+{% elif query %}
+<p class="text-xs text-shelf-muted">No matching Google Books magazine titles were found. Try a shorter publication title or use the exact-barcode links below.</p>
+{% endif %}

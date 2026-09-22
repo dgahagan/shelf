@@ -3,7 +3,7 @@
         <div>
             <p class="text-xs text-shelf-muted">Periodical found</p>
             <h3 class="font-semibold mt-1">{{ candidate.publication_title or 'Publication title needed' }}</h3>
-            <p class="text-xs text-shelf-muted mt-1">ISSN {{ candidate.issn }} · {{ candidate.barcode_ean }}{% if candidate.barcode_supplement %} + {{ candidate.barcode_supplement }}{% endif %}</p>
+            <p class="text-xs text-shelf-muted mt-1">ISSN {{ candidate.issn or 'unknown' }} · {{ candidate.barcode_ean or raw_barcode[:13] }}{% if candidate.barcode_supplement %} + {{ candidate.barcode_supplement }}{% endif %}</p>
         </div>
         <span class="text-xs px-2 py-1 bg-shelf-hover rounded text-shelf-muted">Magazine</span>
     </div>
@@ -12,7 +12,27 @@
     <div class="mb-3 rounded-lg border border-shelf-border bg-shelf-bg px-3 py-2 text-xs text-shelf-warning">{{ notice }}</div>
     {% endif %}
 
-    <p class="text-sm text-shelf-muted mb-4">The barcode identifies the publication, but its add-on is publisher-specific. Confirm the issue details instead of letting Shelf guess what the supplement means.</p>
+    <p class="text-sm text-shelf-muted mb-4">The printed carrier and add-on identify the scan. Confirm the publication and concrete issue separately; Shelf will not guess what a publisher-specific supplement means.</p>
+
+    <details class="mb-4 rounded-lg border border-shelf-border bg-shelf-bg p-3">
+        <summary class="cursor-pointer text-sm font-medium text-shelf-accent2">Wrong or missing publication? Search magazines</summary>
+        <p class="text-xs text-shelf-muted mt-2">Search Google Books by magazine title. Selecting a candidate only fills this card; nothing is added until you confirm below.</p>
+        <form class="flex gap-2 mt-3"
+              hx-get="/api/periodicals/assist/search"
+              hx-target="#periodical-assisted-{{ raw_barcode }}"
+              hx-swap="innerHTML">
+            <input type="hidden" name="raw_barcode" value="{{ raw_barcode }}">
+            <input type="hidden" name="location_id" value="{{ location_id or '' }}">
+            <input type="hidden" name="mode" value="{{ mode }}">
+            <input name="q" type="search" maxlength="120" placeholder="Magazine title…"
+                   class="min-w-0 flex-1 bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            <button type="submit" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm">Search</button>
+        </form>
+        <div id="periodical-assisted-{{ raw_barcode }}" class="mt-3"></div>
+        <div class="flex flex-wrap gap-3 mt-3 text-xs">
+            <a href="https://www.google.com/search?q={{ raw_barcode|urlencode }}" target="_blank" rel="noopener" class="text-shelf-accent2 hover:text-shelf-accent">Search exact barcode on the web ↗</a>
+        </div>
+    </details>
 
     <form method="post" action="/api/periodicals/confirm" class="space-y-3">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -23,26 +43,35 @@
         <input type="hidden" name="mode" value="{{ mode }}">
 
         <div>
-            <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-publication-title">Publication</label>
-            <input id="periodical-publication-title" name="publication_title" required value="{{ candidate.publication_title or '' }}" placeholder="Publication title" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+            <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-publication-title-{{ raw_barcode }}">Publication</label>
+            <input id="periodical-publication-title-{{ raw_barcode }}" name="publication_title" required value="{{ candidate.publication_title or '' }}" placeholder="Publication title"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-publication-issn-{{ raw_barcode }}">Publication ISSN</label>
+            <input id="periodical-publication-issn-{{ raw_barcode }}" name="publication_issn" value="{{ candidate.issn or '' }}" placeholder="1234-567X"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm font-mono text-shelf-text outline-none">
+            <p class="text-xs text-shelf-muted mt-1">This may differ from the 977-derived hint when a trusted result or the printed masthead proves otherwise.</p>
         </div>
 
         <div class="space-y-3">
             <div>
-                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-volume">Volume</label>
-                <input id="periodical-volume" name="volume" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-volume-{{ raw_barcode }}">Volume</label>
+                <input id="periodical-volume-{{ raw_barcode }}" name="volume" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
             </div>
             <div>
-                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-number">Issue number</label>
-                <input id="periodical-issue-number" name="issue_number" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-number-{{ raw_barcode }}">Issue number</label>
+                <input id="periodical-issue-number-{{ raw_barcode }}" name="issue_number" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
             </div>
             <div>
-                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-date">Issue date</label>
-                <input id="periodical-issue-date" name="issue_date" type="date" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-date-{{ raw_barcode }}">Issue date</label>
+                <input id="periodical-issue-date-{{ raw_barcode }}" name="issue_date" type="date"
+                       value="{% if candidate.issue_date and candidate.issue_date|length >= 10 %}{{ candidate.issue_date[:10] }}{% endif %}"
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
             </div>
             <div>
-                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-cover-date">Cover date / label</label>
-                <input id="periodical-cover-date" name="cover_date_label" placeholder="September 2026, Summer Special…" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-cover-date-{{ raw_barcode }}">Cover date / label</label>
+                <input id="periodical-cover-date-{{ raw_barcode }}" name="cover_date_label" placeholder="September 2026, Summer Special…" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
             </div>
         </div>
 
