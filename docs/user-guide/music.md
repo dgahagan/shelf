@@ -41,4 +41,8 @@ Release metadata does not store condition, acquisition details or provenance. Th
 
 ## Discogs
 
-Discogs enrichment is intentionally separate from the core Music contribution. MusicBrainz provides the canonical release identity in this feature; Discogs can be added later as optional pressing enrichment without making the core catalogue depend on a Discogs credential.
+Discogs is optional exact-pressing enrichment for a Music item. Add a personal access token under **Settings → Integrations → Discogs**, then open a Music item and use the Discogs panel to search concrete releases by title, artist, barcode or catalogue number.
+
+Choosing **Use this pressing** validates the concrete Discogs Release and remembers only that Release ID in Shelf. MusicBrainz remains the canonical release identity, and choosing or clearing a Discogs pressing does not replace the MusicBrainz release.
+
+Shelf does not permanently copy the Discogs API response into its release metadata. The panel can load fresh Discogs details on demand and links back to the selected release with attribution. Discogs artwork is not imported, and condition, acquisition details and provenance continue to belong to Shelf's physical-copy records rather than to the Discogs selection.

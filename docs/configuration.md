@@ -89,7 +89,7 @@ lives:
 | **Movie Database (TMDb)** | API key for DVD / Blu-ray lookups, for **Find cover** on a DVD, and for the lookup a Photo Intake row typed DVD runs when you confirm it |
 | **Photo Intake (Vision)** | Provider: Anthropic (API key + model), OpenAI-compatible (base URL, optional key, model, ingest long-edge), or Ollama (URL, model, ingest long-edge) |
 | **IGDB (Video Games)** | Twitch client ID + secret, for game lookups, for **Find cover** on a video game, and for the lookup a Photo Intake row typed Video Game runs when you confirm it |
-| **Discogs** | Personal access token, for the optional Discogs music lookup. Nothing uses it yet: the lookup arrives in a later release, and MusicBrainz stays the source of a music release's identity |
+| **Discogs** | Personal access token for optional exact-pressing lookup on Music item pages. MusicBrainz remains the canonical release identity; Shelf stores only the selected Discogs Release ID and fetches provider details on demand |
 
 Each card has a short inline setup guide for obtaining its credential. Keys
 are **write-only** — once saved you see a masked placeholder and a "clear"

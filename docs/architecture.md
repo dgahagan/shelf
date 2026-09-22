@@ -354,12 +354,16 @@ a retail UPC and neither produces a plain `items` row:
   host. A chosen result only refills the card; the scanned EAN and supplement
   stay the issue's identity, and an ISSN is taken only when its check digit is
   valid. Nothing is written until the user confirms.
-- **Discogs** (`services/discogs.py`) searches for an exact pressing and fetches a
-  release by id, with the admin's personal access token (`discogs_token`, a
-  sensitive setting). **Nothing calls it yet** — it is groundwork for optional
-  exact-pressing enrichment of a Music item, and it is not meant to replace the
-  MusicBrainz release as a release's identity. `api.discogs.com` is paced at
-  1 req/s, the published rate for authenticated requests.
+- **Discogs** (`services/discogs.py`) is optional exact-pressing enrichment on
+  an existing Music item. `routers/music.py` searches concrete releases and
+  validates a chosen release before `services/discogs_selection.py` stores only
+  its Release ID in `music_identifiers` as `discogs_release_id`. MusicBrainz
+  remains the canonical identity in `music_releases`; Discogs response metadata
+  is fetched fresh on demand rather than copied into Shelf, and Discogs artwork
+  or copy-level condition, acquisition and provenance data are not imported.
+  The admin's personal access token (`discogs_token`) remains a sensitive
+  setting, and `api.discogs.com` is paced at 1 req/s, the published rate for
+  authenticated requests.
 
 All three pace through `services/outbound.py` like every other shared public host.
 

@@ -76,5 +76,14 @@
         <div class="bg-shelf-bg border border-shelf-border rounded-lg p-4 text-sm text-shelf-muted">This music item does not have an exact MusicBrainz release attached yet.</div>
         {% endif %}
     </div>
+
+    {% if release %}
+    <section id="discogs-panel"
+             hx-get="/api/music/items/{{ item.id }}/discogs"
+             hx-trigger="load" hx-swap="outerHTML"
+             class="mt-6 bg-shelf-card border border-shelf-border rounded-xl p-6 text-sm text-shelf-muted">
+        Loading Discogs pressing information&hellip;
+    </section>
+    {% endif %}
 </div>
 {% endblock %}
