@@ -118,10 +118,9 @@ async def lookup_issue(
 ) -> provider_result.ProviderResult:
     """Fetch the exact Google Books volume explicitly chosen by the user.
 
-    Search results may show Google's remote thumbnail as a preview, but this
-    focused PR does not persist remote periodical artwork. Drop that presentation
-    field at the selection boundary rather than carrying a URL the confirm path
-    would silently ignore.
+    Keep the provider's cover URL on the selected payload so confirmation can
+    hand that exact image to Shelf's cover queue. The cover downloader applies
+    its normal trusted-domain allowlist before any request is made.
     """
     volume_id = (volume_id or "").strip()
     if not _VOLUME_ID_RE.fullmatch(volume_id):
@@ -149,6 +148,4 @@ async def lookup_issue(
         issue = None
     if not issue:
         return provider_result.no_match("google", status=response.status_code)
-    issue = dict(issue)
-    issue.pop("cover_url", None)
-    return provider_result.found("google", issue, status=response.status_code)
+    return provider_result.found("google", dict(issue), status=response.status_code)

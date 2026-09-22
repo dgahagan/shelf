@@ -9,7 +9,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
-from app.services import item_write, periodical_google, periodical_records, periodical_scan, periodicals
+from app.services import cover_queue, item_write, periodical_google, periodical_records, periodical_scan, periodicals
 from app.services.item_write import ItemValueError, insert_item
 
 router = APIRouter()
@@ -217,6 +217,7 @@ async def assisted_periodical_select(
         "barcode_ean": serial.ean13,
         "barcode_supplement": serial.supplement,
         "issue_date": issue.get("issue_date"),
+        "cover_url": issue.get("cover_url"),
     }
     return request.app.state.templates.TemplateResponse(
         request,
@@ -243,6 +244,7 @@ async def confirm_periodical_issue(
     issue_number: str = Form(""),
     issue_date: str = Form(""),
     cover_date_label: str = Form(""),
+    cover_url: str = Form(""),
     location_id: int | None = Form(None),
     mode: str = Form("add"),
     _=Depends(require_role("editor")),
@@ -316,6 +318,19 @@ async def confirm_periodical_issue(
         return HTMLResponse(str(exc), status_code=400)
     except ValueError as exc:
         return HTMLResponse(str(exc), status_code=400)
+
+    selected_cover_url = cover_url.strip()
+    if selected_cover_url:
+        # A magazine must never fall through to the generic book title/author
+        # recovery path if this provider image fails. The exact URL is still
+        # checked by covers.download_cover's trusted-domain allowlist.
+        cover_queue.enqueue(
+            item_id,
+            hints={
+                "cover_url": selected_cover_url,
+                "skip_title_search": True,
+            },
+        )
 
     return RedirectResponse(f"/periodicals/{publication_id}", status_code=303)
 

@@ -29,12 +29,14 @@ def test_google_periodical_parser_rejects_books_and_keeps_issue_fields():
             "publishedDate": "2026-03-01",
             "language": "en",
             "industryIdentifiers": [{"type": "ISSN", "identifier": "2049-3630"}],
+            "imageLinks": {"thumbnail": "http://books.google.com/preview.jpg"},
         },
     })
     assert issue["google_volume_id"] == "mag-1"
     assert issue["title"] == "Popular Science"
     assert issue["issue_date"] == "2026-03-01"
     assert issue["issn"] == "2049-3630"
+    assert issue["cover_url"] == "https://books.google.com/preview.jpg"
 
 
 def test_confirmed_issn_is_checksum_validated():
@@ -98,6 +100,7 @@ def test_selecting_candidate_refills_confirmation_without_losing_addon(admin_cli
         "issue_date": "2026-03-01",
         "issn": "2049-3630",
         "language": "en",
+        "cover_url": "https://books.google.com/selected.jpg",
     })
     with patch(
         "app.routers.periodicals.periodical_google.lookup_issue",
@@ -114,6 +117,7 @@ def test_selecting_candidate_refills_confirmation_without_losing_addon(admin_cli
     assert 'action="/api/periodicals/confirm"' in response.text
     assert "+ 05" in response.text
     assert "2026-03-01" in response.text
+    assert 'name="cover_url" value="https://books.google.com/selected.jpg"' in response.text
 
 
 def test_disappeared_selected_result_retargets_visible_message(admin_client):
@@ -178,6 +182,33 @@ def test_assisted_confirm_can_override_barcode_hint_issn(admin_client, db):
     assert publication["issn"] == "2049-3630"
     assert issue["barcode_ean"] == BARCODE[:13]
     assert issue["barcode_supplement"] == "05"
+
+
+def test_assisted_confirm_queues_selected_google_cover(admin_client, db):
+    cover_url = "https://books.google.com/selected.jpg"
+    with patch("app.routers.periodicals.cover_queue.enqueue") as enqueue:
+        response = admin_client.post(
+            "/api/periodicals/confirm",
+            data={
+                "raw_barcode": BARCODE,
+                "publication_title": "Popular Science",
+                "publication_issn": "2049-3630",
+                "issue_number": "3",
+                "issue_date": "2026-03-01",
+                "cover_url": cover_url,
+                "mode": "add",
+            },
+            follow_redirects=False,
+        )
+
+    assert response.status_code == 303
+    item_id = db.execute(
+        "SELECT item_id FROM periodical_issues ORDER BY item_id DESC LIMIT 1"
+    ).fetchone()["item_id"]
+    enqueue.assert_called_once_with(
+        item_id,
+        hints={"cover_url": cover_url, "skip_title_search": True},
+    )
 
 
 def test_assisted_confirm_preserves_0451_trash_restore(admin_client, db):

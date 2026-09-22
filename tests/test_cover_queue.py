@@ -285,6 +285,31 @@ def test_hints_reach_download_cover(db, monkeypatch):
     assert kwargs["hardcover_cover_url"] == "https://hc.test/c.jpg"
 
 
+def test_exact_cover_hint_can_skip_book_title_fallback(db, monkeypatch):
+    item_id = _insert_item(db, title="Magazine issue", media_type="magazine")
+    db.commit()
+    download = AsyncMock(return_value=None)
+    title_search = AsyncMock(return_value=("9780000000125", "https://example.test/book.jpg"))
+
+    async def scenario():
+        from app.routers import items_common
+        from app.services import covers
+
+        monkeypatch.setattr(covers, "download_cover", download)
+        monkeypatch.setattr(items_common, "_search_isbn_for_item", title_search)
+        cover_queue.enqueue(
+            item_id,
+            hints={
+                "cover_url": "https://books.google.com/missing.jpg",
+                "skip_title_search": True,
+            },
+        )
+        return await cover_queue.process_one(None)
+
+    assert asyncio.run(scenario()) is False
+    title_search.assert_not_awaited()
+
+
 def test_without_hints_the_call_shape_is_unchanged(db, monkeypatch):
     item_id = _insert_item(db, title="Plain", isbn="9780000000132")
     db.commit()

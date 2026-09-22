@@ -215,7 +215,9 @@ async def resolve_missing_cover(
     `hardcover_cover_url`) — the scan path passes the ones it already looked
     up, so queueing its download does not change which sources get tried.
     With hints the first attempt runs even for an ISBN-less item, since a
-    hinted `cover_url` alone can resolve it.
+    hinted `cover_url` alone can resolve it. `skip_title_search` is for exact
+    provider images on non-book media: if that hinted image fails, the generic
+    Open Library title/author recovery path must not guess a book cover.
 
     Returns the stored cover path, or None if nothing was found. Items that
     already have a cover are left alone.
@@ -241,6 +243,9 @@ async def resolve_missing_cover(
     elif row["isbn"]:
         cover_path = await covers.download_cover(
             item_id, row["isbn"], None, None, client)
+
+    if not cover_path and hints and hints.get("skip_title_search"):
+        return None
 
     if not cover_path:
         found_isbn, cover_url = await _search_isbn_for_item(
