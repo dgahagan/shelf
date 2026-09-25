@@ -156,6 +156,10 @@ def get_secret_key() -> str:
     return _cached_secret_key
 
 
+# settings key: the highest token_version a deleted user held, so a restore still outranks it.
+TOKEN_VERSION_HIGH_WATER = "token_version_high_water"
+
+
 def hash_password(plain: str) -> str:
     return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
@@ -225,7 +229,12 @@ def clear_auth_cookie(response: Response) -> None:
 
 
 def get_current_user(request: Request) -> dict | None:
-    """Read user from JWT cookie. Returns dict with id, username, role, display_name or None."""
+    """Resolve the session to its users row: id, username, role, display_name, token_version.
+
+    The JWT proves the session; identity and role come from the row. A token whose
+    version or username no longer matches the row (a password change, a role
+    change, an id reused after a restore) resolves to no session.
+    """
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -233,26 +242,28 @@ def get_current_user(request: Request) -> dict | None:
     if not payload:
         return None
 
-    # Check token version against DB to detect invalidated tokens
-    token_tv = payload.get("tv", 1)
     user_id = int(payload["sub"])
     with get_db() as db:
-        row = db.execute("SELECT token_version FROM users WHERE id = ?", (user_id,)).fetchone()
-        if not row:
-            return None
-        if row["token_version"] != token_tv:
-            return None
+        row = db.execute(
+            "SELECT username, role, display_name, token_version FROM users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+    if not row or row["token_version"] != payload.get("tv", 1):
+        return None
+    if row["username"].casefold() != str(payload.get("username", "")).casefold():
+        return None
 
     return {
         "id": user_id,
-        "username": payload["username"],
-        "role": payload["role"],
-        "display_name": payload.get("display_name", payload["username"]),
+        "username": row["username"],
+        "role": row["role"],
+        "display_name": row["display_name"] or row["username"],
+        "token_version": row["token_version"],
     }
 
 
-def should_refresh_token(request: Request) -> str | None:
-    """If token is past half-life, return a fresh token. Otherwise None."""
+def should_refresh_token(request: Request, user: dict) -> str | None:
+    """If the token is past half-life, return a fresh one minted from the resolved user."""
     token = request.cookies.get("access_token")
     if not token:
         return None
@@ -265,8 +276,7 @@ def should_refresh_token(request: Request) -> str | None:
     half_life = (exp - iat) / 2
     if now > iat + half_life:
         return create_token(
-            int(payload["sub"]), payload["username"], payload["role"],
-            payload.get("display_name"), payload.get("tv", 1),
+            user["id"], user["username"], user["role"], user["display_name"], user["token_version"],
         )
     return None
 

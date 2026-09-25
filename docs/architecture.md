@@ -11,12 +11,18 @@ Middleware, outermost first (`app/main.py`):
 1. **SecurityHeaders** — strict CSP (no `unsafe-inline`/`unsafe-eval`, no
    third-party origins), HSTS, frame/denial headers.
 2. **RateLimit** — per-IP sliding window on `/api/`, `/share/`, `/login`,
-   `/setup`. Client IP comes from the socket unless `SHELF_TRUST_PROXY` is
-   set.
+   `/setup`. The client IP is the socket peer and no header is read in app
+   code. uvicorn's proxy-headers middleware rewrites the peer for proxies
+   listed in `SHELF_TRUST_PROXY` (handed to it as `FORWARDED_ALLOW_IPS` by
+   `entrypoint.sh`), walking `X-Forwarded-For` right to left and skipping
+   every trusted hop.
 3. **Auth** — JWT in an HTTP-only secure cookie; redirects to `/setup` when
    no users exist, `/login` when unauthenticated; sliding refresh past the
-   token's half-life. Roles admin / editor / viewer enforced per route with
-   `require_role`.
+   token's half-life. Identity and role are read from the `users` row on
+   every request: the JWT proves the session and does not carry it, so a token
+   whose version or username no longer matches the row is no session, and a
+   refreshed token is minted from the row. Roles admin / editor / viewer
+   enforced per route with `require_role`.
 4. **CSRF** — double-submit cookie; accepts an `X-CSRF-Token` header (HTMX,
    fetch) or `_csrf` form field on mutating requests.
 
@@ -1463,6 +1469,13 @@ as a wrong password, so timing does not enumerate accounts), short-lived
 sliding JWTs, per-IP rate limiting, encrypted secrets,
 write-only credential fields, allow-listed image hosts for cover downloads,
 `noindex` + unguessable tokens on share links.
+
+**bcrypt never runs on the event loop.** Every hash and verify in a route goes
+through the thread pool, and never while a write transaction is open, so a
+burst of logins cannot stall other requests or hold SQLite's write lock.
+**A restore outranks every earlier session:** it sets each user's token version
+above the highest version this install issued before the restore, so no cookie
+from before it authenticates afterwards.
 
 **The database holds no key material.** The credential-encryption key
 (`data/encryption.key`, or `SHELF_ENCRYPTION_KEY`) and the session-signing key

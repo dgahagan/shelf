@@ -174,7 +174,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         # Sliding expiry: refresh token if past half-life, preserving CSRF token
         if user:
-            fresh_token = should_refresh_token(request)
+            fresh_token = should_refresh_token(request, user)
             if fresh_token:
                 set_auth_cookie(response, fresh_token, request.cookies.get("csrf_token"))
 

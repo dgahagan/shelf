@@ -432,6 +432,16 @@ async def restore_backup(request: Request):
     # "database disk image is malformed". backup() copies page by page
     # through SQLite, which holds the right locks and leaves the WAL
     # consistent with the file it belongs to.
+    # Read before the copy: afterwards the live table no longer exists. Deleted
+    # users' versions survive only in the high-water setting.
+    from app.auth import TOKEN_VERSION_HIGH_WATER
+    with get_db() as db:
+        live_max = db.execute(
+            "SELECT MAX(COALESCE((SELECT MAX(token_version) FROM users), 0), "
+            "COALESCE((SELECT CAST(value AS INTEGER) FROM settings WHERE key = ?), 0))",
+            (TOKEN_VERSION_HIGH_WATER,),
+        ).fetchone()[0]
+
     src = sqlite3.connect(str(tmp_path))
     try:
         dest = sqlite3.connect(str(DATABASE_PATH))
@@ -443,7 +453,11 @@ async def restore_backup(request: Request):
         src.close()
         tmp_path.unlink(missing_ok=True)
 
-    # Invalidate all existing sessions by bumping every user's token_version.
+    # Invalidate every existing session. The restored rows carry their own, older
+    # versions, so a flat bump could land on a version a live cookie still holds;
+    # lifting every row above the pre-restore maximum refuses all of them. A
+    # password change that commits between the live_max read and the copy can
+    # still collide; the route is admin-only and that window is accepted.
     # Encrypted settings in the restored DB stay readable because the
     # encryption key lives outside the DB (env var or DATA_DIR/encryption.key)
     # and is unaffected by the restore. A backup from a *different* install
@@ -453,7 +467,10 @@ async def restore_backup(request: Request):
     from app.database import init_db
     init_db()  # bring an older restored DB up to the current schema first
     with get_db() as db:
-        db.execute("UPDATE users SET token_version = token_version + 1")
+        db.execute(
+            "UPDATE users SET token_version = MAX(token_version, ?) + 1, updated_at = datetime('now')",
+            (live_max,),
+        )
     invalidate_nav_cache()  # the restored DB carries its own settings
 
     return {"ok": True, "message": "Database restored. All sessions invalidated. Restart the container to apply."}

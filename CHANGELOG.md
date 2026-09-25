@@ -6,6 +6,51 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.51.0] - 2026-09-25
+
+The security review that led to 0.50.1 found three more problems in how
+Shelf signs people in. Each needs a particular setup to exploit, so they
+ship as a normal release. Behind a reverse proxy set up the way the docs
+said, a client could choose the IP address Shelf logged and rate-limited.
+A burst of login attempts could freeze the whole app while passwords were
+checked. And after a restore, a session the restore should have ended could
+still work. If you run Shelf behind a proxy, read
+**Changed** before you upgrade.
+
+### Changed
+
+- **`SHELF_TRUST_PROXY` is now your proxy's address, not an on/off switch.**
+  Set it to the address the proxy reaches Shelf from: `127.0.0.1` on the same
+  host, the Docker bridge gateway under `docker run -p`, or the proxy's LAN
+  address. For a chain of proxies, give a comma-separated list. Shelf then
+  reads `X-Forwarded-For` from the right and skips every proxy you listed, so
+  the client can no longer write its own address into the log or pick its own
+  rate-limit bucket. The old value `1` still works for a proxy on the same
+  host: it now means `127.0.0.1`, and Shelf prints a startup warning that asks
+  for the address. For a proxy on another machine, `1` puts every client in
+  the proxy's rate-limit bucket until you set the address.
+- **`CF-Connecting-IP` is no longer read.** Any proxy can pass that header
+  through from the client, and Shelf cannot tell whether Cloudflare is the
+  only way in. Behind Cloudflare, list Cloudflare's published IP ranges in
+  `SHELF_TRUST_PROXY` instead.
+- **A restore now signs out every session that existed before it.** That
+  includes a session that a restored backup would otherwise accept again, for
+  example one from before a password change the backup does not contain, or
+  one belonging to a user deleted since the backup. Everyone signs in again
+  after a restore.
+
+### Fixed
+
+- **Login attempts no longer freeze the rest of the app.** Password checks
+  now run beside the web server instead of inside it. Before this change, 30
+  simultaneous login attempts could hold every other page, stream and
+  background task for about six seconds. Adding a user and changing or
+  resetting a password work the same way.
+- **Your role and display name now come from your account, not from your
+  sign-in cookie.** A role change takes effect on the next page load. A
+  cookie that names a different account from the one now stored under its
+  id is refused, which can happen when a restore reuses an id.
+
 ## [0.50.1] - 2026-09-24
 
 A code and security review found one serious problem and a few smaller ones,
@@ -4274,6 +4319,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.51.0]: https://github.com/dgahagan/shelf/releases/tag/v0.51.0
 [0.50.1]: https://github.com/dgahagan/shelf/releases/tag/v0.50.1
 [0.50.0]: https://github.com/dgahagan/shelf/releases/tag/v0.50.0
 [0.49.0]: https://github.com/dgahagan/shelf/releases/tag/v0.49.0

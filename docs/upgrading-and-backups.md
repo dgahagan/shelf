@@ -26,6 +26,27 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.51.0
+
+**`SHELF_TRUST_PROXY` is now the proxy's address.** Set it to the address
+your reverse proxy reaches Shelf from (`127.0.0.1` on the same host, the
+Docker bridge gateway under `docker run -p`, or the proxy's LAN address), or a
+comma-separated list for a chain. The old value `1` keeps working for a
+same-host proxy: it now means `127.0.0.1`, and Shelf prints a startup warning
+asking for the address. For a proxy on another machine, `1` makes every client
+share the proxy's rate-limit bucket until you set the address. See
+[HTTPS and reverse proxies](https-and-reverse-proxy.md#2-reverse-proxy-with-a-real-certificate).
+
+**`CF-Connecting-IP` is no longer read.** Behind Cloudflare, list
+Cloudflare's published IP ranges in `SHELF_TRUST_PROXY` instead.
+
+**A restore now signs out every session that existed before it.** That
+includes a session a restored backup would otherwise have accepted, such as
+one from before a password change the backup does not contain. Everyone logs
+in again after a restore.
+
+**No migrations run.**
+
 ### After upgrading to 0.49.0
 
 **Exports now include Trash.** The CSV export gains a `deleted` column, and

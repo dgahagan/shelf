@@ -62,7 +62,7 @@ CERT_SAN=IP:192.168.1.100,DNS:shelf,DNS:localhost
 | `CERT_SAN` | `DNS:shelf,DNS:localhost` | TLS certificate Subject Alternative Names. Add your machine's IP or hostname so other devices can connect |
 | `SECRET_KEY` | *(auto-generated)* | JWT signing key. If unset, generated at `data/signing.key` (0600) on first start; an existing key from before 0.30 is moved there from the database on the first start after upgrading, so sessions survive. Set it explicitly to run several instances against one database |
 | `SHELF_ENCRYPTION_KEY` | *(auto-generated)* | Encryption key for stored API credentials. Auto-generated at `/data/encryption.key` if not set. Set it explicitly (e.g. `openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
-| `SHELF_TRUST_PROXY` | *(unset)* | Set to `1` when running behind a reverse proxy so client IPs are read from proxy headers |
+| `SHELF_TRUST_PROXY` | *(unset)* | The reverse proxy's address as Shelf sees it: comma-separated IPs or CIDRs (e.g. `127.0.0.1` for a same-host proxy, `172.17.0.1` under `docker run -p`). Forwarded headers are honoured only from these peers. The legacy `1` means `127.0.0.1` and prints a startup warning. Leave unset without a proxy |
 
 ## Persistent Data
 

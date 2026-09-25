@@ -61,9 +61,46 @@ location / {
 }
 ```
 
-Then set `SHELF_TRUST_PROXY=1` so login rate limiting and the auth log see
-the real client IP instead of the proxy's. **Do not set it without a proxy**
-— the forwarded headers are client-controlled.
+Then set `SHELF_TRUST_PROXY` to **the proxy's address as Shelf sees it**, so
+login rate limiting and the auth log see the real client IP instead of the
+proxy's:
+
+- `127.0.0.1` for a proxy on the same host. The bundled compose file uses host
+  networking, so this is the usual value.
+- The Docker bridge gateway when Shelf runs under `docker run -p`, commonly
+  `172.17.0.1`.
+- The proxy's LAN address when it runs on another machine.
+
+With the bundled compose file and a proxy on the same host, set `127.0.0.1`
+and stop here. Shelf already trusts `127.0.0.1` when the variable is unset, so
+the log shows your clients' real addresses, not the proxy's.
+
+For any other setup, find the address first. Leave the variable unset, fail
+one login through the proxy, and read the `from <ip>` at the end of that line
+in the log viewer. If that address is the same whatever device you log in
+from, it is the proxy's: set it. If it changes from device to device, Shelf
+already trusts the proxy — the address is a client's, and setting it would put
+every client in one rate-limit bucket.
+
+A chain of two proxies lists both, comma-separated
+(`SHELF_TRUST_PROXY=10.0.0.5,127.0.0.1`). Shelf walks `X-Forwarded-For` from
+the right and skips every listed proxy, so the first address it does not
+trust is the client, whatever the client itself sent.
+
+Behind Cloudflare, list Cloudflare's published IP ranges. `CF-Connecting-IP`
+is not read.
+
+Avoid `*`. It trusts every peer, and the server then takes the **left-most**
+`X-Forwarded-For` entry, which the client wrote. That is the spoof this
+setting exists to stop.
+
+**Do not set it without a proxy.** An address that is not your proxy lets
+anything at that address choose the client IP Shelf logs and rate-limits.
+
+The legacy value `1` still works for a same-host proxy: it means `127.0.0.1`,
+and Shelf prints a warning at startup asking for the address instead. Outside
+Docker, the entrypoint that reads `SHELF_TRUST_PROXY` does not run; set
+uvicorn's own `FORWARDED_ALLOW_IPS` to the same list.
 
 ### 3. VPN home
 

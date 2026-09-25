@@ -256,7 +256,10 @@ grep -n "htmx.process" static/js/browse.js                  # expect >= 1, in th
 - **Rule:** Always pass the user's current DB `token_version` to
   `create_token()`. The parameter defaults to `1`, so a call site that
   omits it mints a token that is instantly invalidated for any user whose
-  version was bumped (password reset, role change).
+  version was bumped (password reset, role change). Inside a request the
+  resolved user carries it: `request.state.user["token_version"]`, read from
+  the row by `get_current_user` (`bf643eb`, 2026-09-24). Mint from that,
+  unless the route itself just bumped the version.
 - **Why:** The display-name handler did exactly this — the refreshed JWT
   logged the user out on their next request, but only for users with a
   bumped version, so it passed casual testing.
@@ -5426,6 +5429,30 @@ grep -n 'type="submit" class="sr-only"' app/templates/scan.html app/templates/sh
   ```
 - **Status:** active. Lint candidate: a test that walks every static route and
   asserts no earlier route fully matches it.
+
+## G120 — When a test edits a user's row while holding that user's session
+
+- **Rule:** decide what the edit does to the session before writing the
+  assertion. The session resolves from the `users` row on every request, so a
+  direct `UPDATE users` changes the fixture's own client: a new
+  `token_version` or `username` ends the session (a 303 to `/login`, or an
+  HTML page where the test expected JSON), and a new `role` or
+  `display_name` takes effect on the next request. When the edit is only
+  set-up for something else, re-mint the cookie at the new version with
+  `create_token(..., token_version=<new>)` and set it on the client.
+- **Why:** before `bf643eb` the role and display name came from the JWT claims,
+  so an `UPDATE` of them was invisible to a live session, and only a version
+  bump ended one. Tests written against that model now fail with a
+  `JSONDecodeError` on a response that is really the login page.
+- **Evidence:** `d52baec`, 2026-09-24. The restore pins bumped the live
+  admin's `token_version` to set up the scenario, and the restore request
+  itself was bounced to `/login` until the cookie was re-minted at that version.
+- **Verify:** the row is the identity (expect `username, role, display_name,
+  token_version` in the query):
+  ```bash
+  grep -n "SELECT username, role, display_name, token_version FROM users" app/auth.py
+  ```
+- **Status:** documented.
 
 ## Graveyard
 

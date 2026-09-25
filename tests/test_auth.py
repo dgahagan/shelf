@@ -99,7 +99,9 @@ def test_should_refresh_token_before_halflife(client, admin_user):
     from starlette.requests import Request
     req = MagicMock()
     req.cookies = {"access_token": token}
-    result = should_refresh_token(req)
+    user = {"id": admin_user["id"], "username": "admin", "role": "admin",
+            "display_name": "admin", "token_version": 1}
+    result = should_refresh_token(req, user)
     assert result is None  # too fresh to refresh
 
 
@@ -121,9 +123,14 @@ def test_should_refresh_token_after_halflife():
     from unittest.mock import MagicMock
     req = MagicMock()
     req.cookies = {"access_token": old_token}
-    new_token = should_refresh_token(req)
+    # The row now says viewer at version 4: the refreshed token must carry the row, not the claims.
+    user = {"id": 1, "username": "alice", "role": "viewer", "display_name": "Alice", "token_version": 4}
+    new_token = should_refresh_token(req, user)
     assert new_token is not None
     assert new_token != old_token
+    refreshed = decode_token(new_token)
+    assert refreshed["role"] == "viewer"
+    assert refreshed["tv"] == 4
 
 
 # --- Secret key ---

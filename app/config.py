@@ -289,24 +289,14 @@ SECRET_ENV_VARS = {
 
 
 def get_client_ip(request) -> str:
-    """Extract the real client IP for rate limiting and auth logs.
+    """Return the client IP for rate limiting and auth logs: the socket peer.
 
-    Proxy headers (CF-Connecting-IP, X-Forwarded-For) are client-controlled and
-    trivially spoofable, so they are only honored when SHELF_TRUST_PROXY is set —
-    i.e. the operator has a reverse proxy in front that overwrites them. In the
-    default direct-connection deployment we use the socket peer address.
+    No header is read here, because every header is client-controlled. Behind a
+    trusted reverse proxy the peer is already the real client: uvicorn's
+    proxy-headers middleware rewrites it for peers listed in FORWARDED_ALLOW_IPS
+    (set from SHELF_TRUST_PROXY by entrypoint.sh), walking X-Forwarded-For from
+    the right and skipping trusted hops.
     """
-    if os.environ.get("SHELF_TRUST_PROXY"):
-        # Cloudflare sets this to the actual visitor IP
-        cf_ip = request.headers.get("cf-connecting-ip")
-        if cf_ip:
-            return cf_ip.strip()
-
-        # Standard proxy header — first entry is the original client
-        xff = request.headers.get("x-forwarded-for")
-        if xff:
-            return xff.split(",")[0].strip()
-
     return request.client.host if request.client else "unknown"
 
 

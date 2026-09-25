@@ -41,6 +41,7 @@ as. Its entries fall into three groups — **Account** (profile and password),
 Login sets an HTTP-only, secure cookie with a 7-day JWT that refreshes while
 you're active, so a device you use regularly stays logged in. **Log out**
 from the account menu; to force every device out, change your password.
+Restoring a database backup also signs every device out.
 Login attempts are rate-limited per IP.
 
 ## The log viewer

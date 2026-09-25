@@ -43,4 +43,4 @@ it weren't:
 - Container runs as a non-root user
 
 If you're exposing Shelf beyond your LAN, put it behind a reverse proxy with
-a real certificate and set `SHELF_TRUST_PROXY=1`.
+a real certificate and set `SHELF_TRUST_PROXY` to the proxy's address.

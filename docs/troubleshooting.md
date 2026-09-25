@@ -394,9 +394,13 @@ between a script that never arrived and one that arrived too late.
 ## Rate-limited (HTTP 429) in the UI
 
 This one is Shelf's own inbound limit, not a provider's. Per-IP limits
-protect `/api/`, `/share/`, `/login` and `/setup`. Behind a reverse proxy
-without `SHELF_TRUST_PROXY=1`, every client looks like the proxy's IP and
-shares one bucket — set the variable.
+protect `/api/`, `/share/`, `/login` and `/setup`. Behind a reverse proxy,
+every client looks like the proxy's IP and shares one bucket unless
+`SHELF_TRUST_PROXY` names that proxy's address. The legacy value `1` means
+`127.0.0.1`, so it has the same effect when the proxy is on another machine or
+reaches Shelf through the Docker bridge. Set the proxy's address instead; see
+[HTTPS and reverse proxies](https-and-reverse-proxy.md#2-reverse-proxy-with-a-real-certificate)
+for how to find it.
 
 ## Still stuck
 
