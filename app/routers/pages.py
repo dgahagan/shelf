@@ -18,6 +18,7 @@ from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
 from app.services import item_copies, item_template, item_write
+from app.services import locations as location_svc
 from app.services.home_dashboard import dashboard_summary
 
 router = APIRouter()
@@ -610,9 +611,7 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
     borrower_error_message = BORROWER_ERROR_MESSAGES.get(request.query_params.get("borrower_error"))
     with get_db() as db:
         settings = get_all_settings(db)
-        locations = db.execute(
-            "SELECT * FROM locations ORDER BY sort_order, name"
-        ).fetchall()
+        locations = location_svc.location_tree(db)
         item_count = db.execute("SELECT COUNT(*) as c FROM items_live").fetchone()["c"]
         # Excludes items dismissed from the cover-review queue
         # (items.cover_review_dismissed, migration 32) — this figure and the

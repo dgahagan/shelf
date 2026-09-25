@@ -6,6 +6,36 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.51.1] - 2026-09-25
+
+When you edit a location in Settings, its **Parent** list used to offer the
+location's own contents. So *Office* could be put "inside Office / Bookcase A",
+a move Shelf always refuses. Picking one only brought you back to an error
+banner. The list now leaves those out. The two location forms on that card
+also now describe the same choice in the same words.
+
+### Fixed
+
+- **A location's Parent list no longer offers places inside that location.**
+  Editing *Office* no longer lists *Office / Bookcase A* or anything under it,
+  so every choice in the list is one Shelf will accept. Shelf still refuses an
+  impossible move if one reaches it some other way. For example, another tab
+  may have been left open while someone rearranged the tree. The existing
+  message then explains why. Reported in
+  [#103](https://github.com/dgahagan/shelf/issues/103).
+
+### Changed
+
+- **Both location forms now list each option as "Inside" plus its full path.** Before,
+  the edit form listed bare paths and the add form said "Inside …". The edit
+  form's field is now labelled **Parent**, so the word "Inside" appears only
+  in the options. Reported in
+  [#104](https://github.com/dgahagan/shelf/issues/104).
+- **The Settings location list is now in tree order.** Each location appears
+  directly under its parent, siblings in name order. Before, the list was
+  sorted by the full path text, which kept a parent and its children together
+  in most cases but not all.
+
 ## [0.51.0] - 2026-09-25
 
 The security review that led to 0.50.1 found three more problems in how
@@ -4319,6 +4349,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.51.1]: https://github.com/dgahagan/shelf/releases/tag/v0.51.1
 [0.51.0]: https://github.com/dgahagan/shelf/releases/tag/v0.51.0
 [0.50.1]: https://github.com/dgahagan/shelf/releases/tag/v0.50.1
 [0.50.0]: https://github.com/dgahagan/shelf/releases/tag/v0.50.0

@@ -120,13 +120,13 @@
                                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                         </div>
                         <div>
-                            <label for="location-parent-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Inside</label>
+                            <label for="location-parent-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Parent</label>
                             <select id="location-parent-{{ loc.id }}" name="parent_id"
                                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
                                 <option value="">Top level</option>
                                 {% for parent in locations %}
-                                {% if parent.id != loc.id %}
-                                <option value="{{ parent.id }}" {% if loc.parent_id == parent.id %}selected{% endif %}>{{ parent.name }}</option>
+                                {% if parent.id != loc.id and loc.id not in parent.ancestor_ids %}
+                                <option value="{{ parent.id }}" {% if loc.parent_id == parent.id %}selected{% endif %}>Inside {{ parent.name }}</option>
                                 {% endif %}
                                 {% endfor %}
                             </select>

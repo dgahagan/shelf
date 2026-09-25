@@ -188,7 +188,7 @@ def location_tree(db):
 
     out: list[dict] = []
 
-    def visit(parent_id: int | None, depth: int) -> None:
+    def visit(parent_id: int | None, depth: int, path: tuple[int, ...]) -> None:
         for row in by_parent.get(parent_id, []):
             out.append({
                 "id": row["id"],
@@ -197,8 +197,9 @@ def location_tree(db):
                 "parent_id": row["parent_id"],
                 "sort_order": row["sort_order"],
                 "depth": depth,
+                "ancestor_ids": list(path),
             })
-            visit(row["id"], depth + 1)
+            visit(row["id"], depth + 1, path + (row["id"],))
 
-    visit(None, 0)
+    visit(None, 0, ())
     return out

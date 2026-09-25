@@ -13,7 +13,7 @@ The same label can therefore appear beneath different parents: `Shelf 1` in the 
 
 ## Create a nested location
 
-Open **Settings → Library → Locations**. Enter the new location label and, if it belongs inside another location, choose a parent. Leave the parent blank to create a top-level location.
+Open **Settings → Library → Locations**. Enter the new location label and, if it belongs inside another location, choose it as the parent. Leave the parent at **Top level** to create a top-level location.
 
 There is no fixed room/bookcase/shelf structure. Any level can be omitted and nesting can be as deep as your collection needs.
 
@@ -21,7 +21,7 @@ There is no fixed room/bookcase/shelf structure. Any level can be omitted and ne
 
 Existing locations can be renamed or moved beneath another parent from the same Settings card. Shelf rewrites the displayed full path for that location and all of its descendants in one transaction, so existing item assignments continue to point at the same location records.
 
-Shelf prevents moving a location beneath itself or one of its descendants.
+The **Parent** list on a location's edit form offers only the places it can go inside: the location itself and everything nested beneath it are left out, because a location cannot be moved inside its own contents. Shelf still refuses such a move if one is submitted some other way.
 
 ## Delete a location
 

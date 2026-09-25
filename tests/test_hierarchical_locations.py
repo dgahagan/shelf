@@ -155,3 +155,14 @@ def test_tree_is_depth_first_and_sibling_sort_order_is_local(db):
         ("Living / Shelf A / Box", 2),
         ("Living / Shelf B", 1),
     ]
+
+
+def test_ancestor_ids_is_the_root_to_parent_path(db):
+    room = location_svc.create_location(db, "Living Room")
+    case = location_svc.create_location(db, "Bookcase 1", parent_id=room)
+    shelf = location_svc.create_location(db, "Shelf 3", parent_id=case)
+
+    tree = {row["id"]: row for row in location_svc.location_tree(db)}
+    assert tree[room]["ancestor_ids"] == []
+    assert tree[case]["ancestor_ids"] == [room]
+    assert tree[shelf]["ancestor_ids"] == [room, case]

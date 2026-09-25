@@ -1,6 +1,31 @@
 """Route/UI regressions for hierarchical physical locations (#98)."""
 
+import re
+
 from app.services import locations as location_svc
+
+
+def _select_block(html: str, select_id: str) -> str:
+    """Slice out one <select id="..."> ... </select> block.
+
+    A bare substring check over the whole page passes for the wrong reason —
+    the row headers print every full path (G69) — so assertions about a
+    single select's offered options must be scoped to that select.
+    """
+    match = re.search(
+        rf'<select id="{re.escape(select_id)}"[^>]*>.*?</select>', html, re.DOTALL
+    )
+    assert match, f'no <select id="{select_id}"> found'
+    return match.group(0)
+
+
+def _form_block(html: str, action: str) -> str:
+    """Slice out one <form action="..." method="post"> ... </form> block."""
+    match = re.search(
+        rf'<form action="{re.escape(action)}" method="post".*?</form>', html, re.DOTALL
+    )
+    assert match, f'no <form action="{action}"> found'
+    return match.group(0)
 
 
 def test_create_location_under_parent_builds_full_path(admin_client, db):
@@ -124,6 +149,47 @@ def test_settings_location_form_offers_parent_and_uses_node_label(admin_client, 
     assert f'data-testid="location-row-{shelf}"' in response.text
     assert 'value="Shelf 1"' in response.text
     assert "Living Room / Shelf 1" in response.text
+
+
+def test_edit_parent_select_excludes_own_subtree(admin_client, db):
+    office = location_svc.create_location(db, "Office")
+    bookcase = location_svc.create_location(db, "Bookcase A", parent_id=office)
+    shelf3 = location_svc.create_location(db, "Shelf 3", parent_id=bookcase)
+    attic = location_svc.create_location(db, "Attic")
+    db.commit()
+
+    response = admin_client.get("/settings")
+
+    assert response.status_code == 200
+    html = response.text
+
+    office_select = _select_block(html, f"location-parent-{office}")
+    assert f'value="{bookcase}"' not in office_select
+    assert f'value="{shelf3}"' not in office_select
+    assert f'value="{attic}"' in office_select
+    assert "Top level" in office_select
+
+    shelf3_select = _select_block(html, f"location-parent-{shelf3}")
+    assert f'value="{office}"' in shelf3_select
+    assert f'value="{bookcase}" selected' in shelf3_select
+
+
+def test_edit_and_create_selects_word_options_the_same(admin_client, db):
+    office = location_svc.create_location(db, "Office")
+    bookcase = location_svc.create_location(db, "Bookcase A", parent_id=office)
+    shelf3 = location_svc.create_location(db, "Shelf 3", parent_id=bookcase)
+    db.commit()
+
+    response = admin_client.get("/settings")
+
+    assert response.status_code == 200
+    html = response.text
+
+    create_select = _form_block(html, "/api/locations")
+    assert "Inside Office / Bookcase A" in create_select
+
+    edit_select = _select_block(html, f"location-parent-{shelf3}")
+    assert "Inside Office / Bookcase A" in edit_select
 
 
 def test_hierarchy_error_banner_uses_fixed_copy(admin_client):
