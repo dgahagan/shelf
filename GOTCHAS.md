@@ -54,6 +54,12 @@ into subagent prompts).
   are bound at call time, and after the await the component may have
   re-rendered, leaving the node stale or detached. Capture what you need
   before the await.
+- **`intake.js` is stricter: no `$el`/`$root` at all**, not even before an
+  await and not in a comment — `tests/test_intake.py::
+  test_intake_js_has_no_el_or_root_magics` fails on either. Copying
+  `manualAddForm`'s `rootEl = this.$el` shape into `intakePage` goes red there;
+  give the root an `id` and use `document.getElementById`, as the file already
+  does for `intake-video` (#119 T7, `3457291`, 2026-09-26).
 - **Status:** linted — `make check-alpine` flags `$el`/`$root` used after an
   `await` in `static/js/`.
 
@@ -5253,7 +5259,11 @@ grep -rn "keeps_stored_cover\|restored_card" app/ | grep -v "def "
   a different template from the one named; a hard-delete pin in
   `tests/test_tags.py` was on no list at all (`1ba6e7f`); and the Komga/RomM
   docs the plan told T9 to amend describe a cleanup those integrations do not
-  have.
+  have. Again on `feat/issue-119-square-music-covers` (2026-09-26): the plan
+  named ~20 renderers of `fragments/scan_result.html` and the grep found
+  **69** (19 could reach the cover, 44 could not — classifying them was the
+  work); `cover_search.html` had a fifth context, `cover_review_page`, that a
+  prep review caught (`faa13c1`).
 - **Verify:** judgement. When you tick off a named list, write down how many
   sites you found beside how many were named.
 - **Status:** documented. Not a lint candidate.
@@ -5453,6 +5463,26 @@ grep -n 'type="submit" class="sr-only"' app/templates/scan.html app/templates/sh
   grep -n "SELECT username, role, display_name, token_version FROM users" app/auth.py
   ```
 - **Status:** documented.
+
+## G121 — When a fixed-width `<img>` sits in a narrow padded box (a table cell above all)
+
+- **Rule:** Tailwind's preflight gives every `img` `max-width: 100%`, so a
+  `w-8` image in a cell whose *content* box is narrower than 32px is squeezed
+  to fit — the width class loses silently, and `object-cover` hides the
+  distortion by cropping. Add `max-w-none` to a thumbnail whose width is the
+  design, and measure it (`getBoundingClientRect()`), not its class.
+- **Why:** a `<div>` placeholder with the same `w-8` is *not* capped and
+  widens the cell instead, so the covered and coverless rows of one table
+  disagree, and nothing in the markup looks wrong.
+- **Evidence:** the Browse list view's cover cell is `w-10 px-3` (16px of
+  content). Its `w-8 h-12` thumbnail rendered **16×48** on `main` for every
+  book — found only when #119's T9 measured a square record at 16×16 instead
+  of 32×32. Fixed in `d8fb89e` (2026-09-26), pinned by
+  `tests/e2e/test_cover_shape.py::test_browse_list_thumbnails`.
+- **Verify:** `grep -n "max-w-none" app/templates/fragments/item_row.html`
+  (expect the cover `<img>`), and the E2E above.
+- **Status:** documented. Other `w-8`/`w-10` thumbnails in padded cells
+  (`stats.html`, `related_media_panel.html`) were not measured.
 
 ## Graveyard
 

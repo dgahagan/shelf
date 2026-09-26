@@ -41,7 +41,24 @@ function intakePage() {
         // or A's rows land under B's preview.
         photoGeneration: 0,
 
+        // media_type -> creator-noun map ("Artist", "Developer", …), read once
+        // from the root's dataset below. Falls back to {} so creatorLabelFor()
+        // still has a default to fall back to.
+        creatorLabels: {},
+
         init() {
+            // Found by id, like the video element below — this file avoids
+            // the Alpine root/element magics entirely (G2; enforced by
+            // test_intake_js_has_no_el_or_root_magics), and intakePage has
+            // exactly one root per page (intake.html), so the lookup needs
+            // no host gate. The parse still tolerates the attribute being
+            // absent.
+            var pageEl = document.getElementById('intake-page');
+            try {
+                this.creatorLabels = JSON.parse((pageEl && pageEl.dataset.creatorLabels) || '{}');
+            } catch (e) {
+                this.creatorLabels = {};
+            }
             // Capability, not user-agent: an Android tablet in desktop mode and
             // a touchscreen Chromebook both get the right path this way.
             this.supportsCapture = 'capture' in document.createElement('input');
@@ -375,6 +392,12 @@ function intakePage() {
 
         setBookMediaType(i, value) {
             this.books[i].media_type = value;
+        },
+
+        // Mirrors components-item.js's manualAddForm.creatorLabel getter, but
+        // as a method since this needs a per-row argument.
+        creatorLabelFor(mediaType) {
+            return this.creatorLabels[mediaType] || 'Author(s)';
         },
 
         selectAll() {

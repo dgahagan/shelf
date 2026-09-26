@@ -70,6 +70,9 @@ class TestCreatorLabelMapIntegrity:
 
         assert templates.env.globals["creator_label"] is creator_label
         assert templates.env.globals["creator_labels"] is CREATOR_LABELS
+        from app.config import browse_creator_label
+
+        assert templates.env.globals["browse_creator_label"] is browse_creator_label
 
     def test_map_holds_only_overrides(self):
         """Nothing in the map may repeat the default — an entry that does is a

@@ -20,7 +20,9 @@ failure modes, and a row can only ever hit one of them, so both are gated:
 Both report the *innermost* offender and its geometry, because "the page is
 640px wide" is not actionable and "passphrase input right edge 550px" is.
 """
+import base64
 import json
+import sqlite3
 from contextlib import contextmanager
 
 import pytest
@@ -66,6 +68,9 @@ PAGES = (
     ("discover", "/discover", None),
     ("item detail", "/item/{item_id}", None),
     ("item edit", "/item/{item_id}/edit", None),
+    # A release with artwork: the cover stacks above the header row below
+    # `sm` and sits beside it from `sm` up (#119).
+    ("music item", "/music/item/{music_item_id}", None),
     ("settings:library", "/settings", "tab-library"),
     ("settings:integrations", "/settings", "tab-integrations"),
     ("settings:data", "/settings", "tab-data"),
@@ -312,8 +317,45 @@ def wide_item(live_server):
     )
 
 
+# A valid 1x1 GIF: the browser must decode the cover, or a broken-image box
+# sized by its alt text would be measured instead of the real layout.
+_GIF = base64.b64decode("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7")
+
+
+@pytest.fixture(scope="module")
+def wide_music_item(live_server):
+    """One vinyl with a cover and a long title, for the Music item page.
+
+    Seeded once for the module for the same UNIQUE reason as `wide_item`. The
+    cover file is planted on disk and `cover_path` pointed at it — the shape of
+    `tests/e2e/test_item_crud.py::_seed_item_with_cover`, copied rather than
+    imported by house convention.
+    """
+    data_dir = live_server["data_dir"]
+    item_id = insert_item(
+        data_dir,
+        title="A Deliberately Long Release Title For Measuring Layout",
+        isbn="9780000004018",
+        media_type="vinyl",
+        authors="An Artist With A Fairly Long Name",
+    )
+    covers_dir = data_dir / "covers"
+    covers_dir.mkdir(exist_ok=True)
+    (covers_dir / f"{item_id}.jpg").write_bytes(_GIF)
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        conn.execute(
+            "UPDATE items SET cover_path = ? WHERE id = ?",
+            (f"covers/{item_id}.jpg", item_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return item_id
+
+
 @contextmanager
-def _walk_pages(live_server, browser, setup_admin, item_id, width):
+def _walk_pages(live_server, browser, setup_admin, item_id, width, music_item_id):
     """Log in once at `width`, then yield (label, path, page) for every page.
 
     One context and one login per viewport rather than per page: the login is a
@@ -331,7 +373,7 @@ def _walk_pages(live_server, browser, setup_admin, item_id, width):
         page.wait_for_url(f"{live_server['url']}/", timeout=10_000)
 
         for label, template, testid in PAGES:
-            path = template.format(item_id=item_id)
+            path = template.format(item_id=item_id, music_item_id=music_item_id)
             page.goto(f"{live_server['url']}{path}")
             _settle(page)
             if testid:
@@ -347,10 +389,14 @@ def _walk_pages(live_server, browser, setup_admin, item_id, width):
 
 
 @pytest.mark.parametrize("width", VIEWPORTS)
-def test_no_horizontal_overflow(live_server, browser, setup_admin, wide_item, width):
+def test_no_horizontal_overflow(
+    live_server, browser, setup_admin, wide_item, wide_music_item, width
+):
     """Every top-level page must fit `width` without a horizontal scrollbar."""
     failures = []
-    with _walk_pages(live_server, browser, setup_admin, wide_item, width) as pages:
+    with _walk_pages(
+        live_server, browser, setup_admin, wide_item, width, wide_music_item
+    ) as pages:
         for label, path, page in pages:
             m = page.evaluate(_MEASURE)
             if m["scrollWidth"] > m["clientWidth"] + 1:
@@ -359,7 +405,9 @@ def test_no_horizontal_overflow(live_server, browser, setup_admin, wide_item, wi
 
 
 @pytest.mark.parametrize("width", VIEWPORTS)
-def test_no_collapsed_text_controls(live_server, browser, setup_admin, wide_item, width):
+def test_no_collapsed_text_controls(
+    live_server, browser, setup_admin, wide_item, wide_music_item, width
+):
     """No text-entry control may be squeezed below a usable width.
 
     The other half of the G43 class, and the half an overflow gate cannot see:
@@ -371,7 +419,9 @@ def test_no_collapsed_text_controls(live_server, browser, setup_admin, wide_item
     320px, on a row that passed the overflow gate.
     """
     failures = []
-    with _walk_pages(live_server, browser, setup_admin, wide_item, width) as pages:
+    with _walk_pages(
+        live_server, browser, setup_admin, wide_item, width, wide_music_item
+    ) as pages:
         for label, path, page in pages:
             for c in page.evaluate(_COLLAPSE):
                 failures.append({"label": label, "path": path, **c})

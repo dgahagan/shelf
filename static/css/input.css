@@ -7,6 +7,9 @@ body { background-color: #0f1117; color: #e2e8f0; }
 .cover-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1.25rem; }
 .cover-card { aspect-ratio: 2/3; }
 .cover-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
+/* Square artwork (music). Keeps each box's width and derives its height, so
+   it overrides .cover-card's 2:3, aspect-[2/3] and any fixed h-* utility. */
+[data-cover-shape="square"] { aspect-ratio: 1 / 1; height: auto; }
 .scan-result { animation: slideIn 0.3s ease-out; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 /* Scrollbar */

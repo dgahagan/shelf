@@ -285,7 +285,8 @@
                 <option value="oldest" {{ 'selected' if f.sort == 'oldest' else '' }}>Oldest First</option>
                 <option value="title_asc" {{ 'selected' if f.sort == 'title_asc' else '' }}>Title A–Z</option>
                 <option value="title_desc" {{ 'selected' if f.sort == 'title_desc' else '' }}>Title Z–A</option>
-                <option value="author" {{ 'selected' if f.sort == 'author' else '' }}>Author</option>
+                {# Re-rendered out of band by every page-1 search (filter_counts_oob.html). #}
+                <option id="sort-option-author" value="author" {{ 'selected' if f.sort == 'author' else '' }}>{{ browse_creator_label(f.media_type_filter) }}</option>
                 <option value="year_desc" {{ 'selected' if f.sort == 'year_desc' else '' }}>Year (Newest)</option>
                 <option value="year_asc" {{ 'selected' if f.sort == 'year_asc' else '' }}>Year (Oldest)</option>
             </select>

@@ -53,7 +53,7 @@ def restored_card(item_id: int) -> dict:
     """
     with get_db() as db:
         row = db.execute(
-            "SELECT title, authors, cover_path FROM items_live WHERE id = ?",
+            "SELECT title, authors, cover_path, media_type FROM items_live WHERE id = ?",
             (item_id,),
         ).fetchone()
     if row is None:  # pragma: no cover — restored in this same request
@@ -63,6 +63,7 @@ def restored_card(item_id: int) -> dict:
         "authors": row["authors"],
         "cover_path": row["cover_path"],
         "cover_pending": not row["cover_path"],
+        "media_type": row["media_type"],
     }
 
 

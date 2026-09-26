@@ -1,4 +1,9 @@
 {% if render_oob_counts %}
+{# The author sort option follows the Type filter. Swap the <option>, never its
+   <select>: browse.js binds the sort select's change listener once at load,
+   and replacing the element would silently drop it. #}
+<option id="sort-option-author" value="author" hx-swap-oob="true" {{ 'selected' if active_sort == 'author' else '' }}>{{ browse_creator_label(active_type) }}</option>
+
 <span id="collection-count" hx-swap-oob="true" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span>
 
 <select id="type-filter" name="media_type_filter" hx-swap-oob="true"

@@ -67,6 +67,7 @@ def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw
                 request, "fragments/scan_result.html",
                 {"status": "already_checked_out", "isbn": raw, "title": item["title"],
                  "item_id": item["id"], "cover_path": item.get("cover_path"),
+                 "media_type": item.get("media_type"),
                  "message": f"Already lent to {active['name']}"},
             )
 
@@ -87,6 +88,7 @@ def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw
         request, "fragments/scan_result.html",
         {"status": "checked_out", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"), "message": f"Lent to {borrower['name']}"},
     )
     return resp
@@ -105,6 +107,7 @@ def _scan_mode_return(request, templates, item: dict, raw: str):
                 request, "fragments/scan_result.html",
                 {"status": "not_checked_out", "isbn": raw, "title": item["title"],
                  "item_id": item["id"], "cover_path": item.get("cover_path"),
+                 "media_type": item.get("media_type"),
                  "message": "Not currently checked out"},
             )
 
@@ -117,6 +120,7 @@ def _scan_mode_return(request, templates, item: dict, raw: str):
         request, "fragments/scan_result.html",
         {"status": "returned", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"), "message": f"Returned from {active['name']}"},
     )
     return resp
@@ -153,6 +157,7 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
         request, "fragments/scan_result.html",
         {"status": "moved", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"), "message": f"{old_location} → {new_name}"},
     )
     return resp
@@ -226,6 +231,7 @@ def _scan_mode_inventory(
             request, "fragments/scan_result.html",
             {"status": "confirmed", "isbn": raw, "title": item["title"],
              "item_id": item["id"], "cover_path": item.get("cover_path"),
+             "media_type": item.get("media_type"),
              "authors": item.get("authors"), "message": f"Confirmed at {loc_name}",
              "inventory_confirmation": inventory_confirmation},
         )
@@ -239,6 +245,7 @@ def _scan_mode_inventory(
             request, "fragments/scan_result.html",
             {"status": "elsewhere", "isbn": raw, "title": item["title"],
              "item_id": item["id"], "cover_path": item.get("cover_path"),
+             "media_type": item.get("media_type"),
              "authors": item.get("authors"),
              "message": f"Copies at {_format_copy_places(copies)}; none here.",
              "inventory_confirmation": inventory_confirmation},
@@ -257,6 +264,7 @@ def _scan_mode_inventory(
         request, "fragments/scan_result.html",
         {"status": "relocated", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"),
          "message": f"Was at {old_location}, updated to {loc_name}",
          "inventory_confirmation": inventory_confirmation},
@@ -289,6 +297,7 @@ def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
         request, "fragments/scan_result.html",
         {"status": "found", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"), "message": f"Location: {location_str}"},
     )
 
@@ -306,6 +315,7 @@ def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
         request, "fragments/scan_result.html",
         {"status": "marked_read", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"), "message": "Marked as read"},
     )
     return resp
@@ -325,5 +335,6 @@ def _scan_mode_in_trash(request, templates, item: dict, raw: str, mode: str):
         request, "fragments/scan_result.html",
         {"status": "in_trash", "isbn": raw, "mode": mode, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
+         "media_type": item.get("media_type"),
          "authors": item.get("authors"), "deleted_at": item.get("deleted_at")},
     )

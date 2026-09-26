@@ -42,16 +42,17 @@ async def cover_status(request: Request, item_id: int, attempt: int = 0, _=Depen
     attempt = max(0, min(attempt, MAX_COVER_POLLS))
     with get_db() as db:
         row = db.execute(
-            "SELECT cover_path FROM items_live WHERE id = ?", (item_id,)
+            "SELECT cover_path, media_type FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
     if not row:
         return templates.TemplateResponse(
             request, "fragments/cover_thumb.html",
-            {"item_id": item_id, "cover_path": None, "attempt": MAX_COVER_POLLS},
+            {"item_id": item_id, "cover_path": None, "media_type": None, "attempt": MAX_COVER_POLLS},
         )
     return templates.TemplateResponse(
         request, "fragments/cover_thumb.html",
-        {"item_id": item_id, "cover_path": row["cover_path"], "attempt": attempt},
+        {"item_id": item_id, "cover_path": row["cover_path"], "media_type": row["media_type"],
+         "attempt": attempt},
     )
 
 @router.post("/items/{item_id}/retry-cover")
@@ -163,6 +164,7 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
             "candidates": result.payload or [],
             "item_id": item_id,
             "cover_path": item["cover_path"],
+            "media_type": item["media_type"],
             "query": search_query,
             "search_note": _search_note(item["media_type"], creds),
             "search_status": search_status,
@@ -215,6 +217,7 @@ async def cover_select(
             "candidates": result.payload or [],
             "item_id": item_id,
             "cover_path": item["cover_path"],
+            "media_type": item["media_type"],
             "query": search_query,
             "search_note": _search_note(item["media_type"], creds),
             "search_status": search_status,

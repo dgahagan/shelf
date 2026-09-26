@@ -110,7 +110,7 @@
      data-scan-status="{{ status }}" x-data="manualAddForm">
     <div class="flex items-center gap-4 mb-3">
         {% if preview_cover %}
-        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover>
+        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
         {% else %}
         <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-lg">?</div>
         {% endif %}
@@ -161,7 +161,7 @@
     {% set attempt = 0 %}
     {% include "fragments/cover_thumb.html" %}
     {% elif cover_path %}
-    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover>
+    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
     {% else %}
     <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">
         {% if status == 'added' or status == 'wishlisted' or status == 'promoted' or status == 'restored' %}+

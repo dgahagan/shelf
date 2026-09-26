@@ -654,6 +654,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
                if status != "restored" else restore_report.restored_card(item_id)),
             "item_id": item_id,
             "source": source, "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            "media_type": media_type,
             # T5 renders these; T4 only has to carry them.
             "detect_reason": detect_reason, "detect_overrode": detect_overrode,
             "enrich_status": enrich_status, "enrich_provider": enrich_provider,
@@ -836,7 +837,7 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
                 "cover_path": cover_path}
                if status != "restored" else restore_report.restored_card(item_id)),
             "item_id": item_id,
-            "source": source, "media_type_label": "Video Game",
+            "source": source, "media_type_label": "Video Game", "media_type": "video_game",
             # T5 renders these; T4 only has to carry them.
             "detect_reason": detect_reason, "detect_overrode": detect_overrode,
             "enrich_status": enrich_status, "enrich_provider": "IGDB",

@@ -6,6 +6,48 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.52.0] - 2026-09-26
+
+Record sleeves, CD cases and cassette j-cards are square. Shelf showed every
+cover in a tall book-shaped box, which cut the sides off album artwork in
+Browse, on Home, on share pages and in every thumbnail. The Music page for a
+release showed no artwork at all. Music covers now show square and whole
+everywhere. A record's creator is called its **Artist** where Shelf used to
+say "Author". Requested in [#119](https://github.com/dgahagan/shelf/issues/119)
+by [@danielgratzl](https://github.com/danielgratzl).
+
+### Added
+
+- **The Music page for a release shows its artwork.** The cover sits beside
+  the title on a wide screen and above it on a phone. A release with no cover
+  shows none, as before. Changing the cover is still done from the edit page.
+
+### Changed
+
+- **Music covers show square and uncropped wherever Shelf shows a cover.**
+  That is Browse (grid and list), Home, public share pages, the cover review
+  queue, the cover picker, scan cards, Stats, Trash, location arrange and the
+  inventory audit. Books, games and films keep their tall box. The stored
+  image is not changed, only the box it is shown in. In a Browse grid of all
+  types, a record sits beside taller books, so a row can be uneven. Pick a
+  music format in the **Type** filter and the grid is uniform.
+- **The creator field says "Artist" for music.** This applies on the edit
+  page and in Photo Intake, where a row's placeholder follows the type you
+  pick. Book rows in Photo Intake now read "Author(s)", matching the edit
+  page.
+- **Browse's Author column and Author sort follow the Type filter.** With one
+  type picked they read **Artist** for music, **Developer** for video games
+  and **Director** for DVDs. With no type picked they still read **Author**.
+
+Books and music deliberately keep one shared Browse page rather than
+separate top-level sections. Location, tags, status and lending work the
+same for both, and the **Type** filter already gives a music-only view.
+
+### Fixed
+
+- **Cover thumbnails in Browse's list view are full width again.** They had
+  been squeezed to a thin sliver, half their intended width.
+
 ## [0.51.1] - 2026-09-25
 
 When you edit a location in Settings, its **Parent** list used to offer the
@@ -4349,6 +4391,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.52.0]: https://github.com/dgahagan/shelf/releases/tag/v0.52.0
 [0.51.1]: https://github.com/dgahagan/shelf/releases/tag/v0.51.1
 [0.51.0]: https://github.com/dgahagan/shelf/releases/tag/v0.51.0
 [0.50.1]: https://github.com/dgahagan/shelf/releases/tag/v0.50.1

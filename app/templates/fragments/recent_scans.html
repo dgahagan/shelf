@@ -4,7 +4,7 @@
        trashed item keeps its scan_log link (restore re-links it for free),
        and its page would bounce to Browse. #}
     {% if scan.cover_path %}
-    <img src="/covers/{{ scan.live_item_id }}.jpg" class="w-12 h-16 object-cover rounded" alt="">
+    <img src="/covers/{{ scan.live_item_id }}.jpg" class="w-12 h-16 object-cover rounded" alt="" data-cover-shape="{{ cover_shape(scan.media_type) }}">
     {% else %}
     <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>
     {% endif %}

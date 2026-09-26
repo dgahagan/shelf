@@ -115,18 +115,18 @@ anything, so it follows the households work.
 ## Recently shipped
 
 The last five releases that changed something you can see. Some releases change
-only the foundations — 0.42.4, 0.42.5 and 0.45.1 prepared Shelf's data for the
-Trash that 0.46.0 ships — and those are left out here
+only security or foundations — 0.50.1 and 0.51.0 hardened sign-in and fixed a
+security issue without changing what you see — and those are left out here
 rather than listed as "nothing visible". Full detail on every release, visible
 or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.51.1](https://github.com/dgahagan/shelf/releases/tag/v0.51.1) | Moving a location is simpler to get right. When you edit a location in Settings, its **Parent** list no longer offers places inside that location, so every choice is one Shelf will accept. Both location forms now word each option the same way, as "Inside" plus its full path, and the Settings location list is in tree order |
 | [0.50.0](https://github.com/dgahagan/shelf/releases/tag/v0.50.0) | Tag the items you already own. Select them in Browse and choose **Add tag** or **Remove tag**. Admins rename, scope and delete tags in Settings, which shows how many items carry each. The item edit page has a Tags section, and Browse has an optional **Tags** column whose chips filter by that tag |
 | [0.49.0](https://github.com/dgahagan/shelf/releases/tag/v0.49.0) | Trash now travels with your library. The CSV export marks items in Trash with a `deleted` column, and the portable archive carries deleted items and copies with the dates they were deleted, so moving to a new server no longer empties your Trash. Importing either puts them back in Trash, and an import never moves a live item there. The archive preview says how many items in your Trash it will restore |
 | [0.48.0](https://github.com/dgahagan/shelf/releases/tag/v0.48.0) | Tag a pile as you add it. Type **Default tags** once on Scan, Shelf Fill or Photo Intake, and every item you add from then on carries them, with suggestions for the media type you are scanning. A Music item can now record its exact Discogs pressing, and a magazine issue found by search keeps that result's cover |
 | [0.47.0](https://github.com/dgahagan/shelf/releases/tag/v0.47.0) | A magazine whose 977 barcode does not resolve, or resolves to the wrong publication, no longer has to be typed in by hand. The confirmation card can search Google Books by magazine title, and choosing a result fills in the card for you to check. It never adds an issue by itself, and the barcode you scanned stays the issue's identity |
-| [0.46.0](https://github.com/dgahagan/shelf/releases/tag/v0.46.0) | Deleting is no longer final. Deleting an item or removing a copy moves it to **Trash**, and everything attached to it stays: copies, tags, loans, reading history and links. **Restore** puts it back exactly as it was. Only an admin can delete permanently, and nothing is deleted on a timer. Past a retention window, 180 days by default, admins get a banner offering to empty the old rows. Scanning a trashed item in Lend, Move or another existing-item mode says *In Trash* and offers Restore instead of acting on it. Dutch ISBNs are now looked up in the Dutch National Bibliography first |
 
 ---
 

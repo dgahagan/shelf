@@ -1,6 +1,5 @@
 """E2E tests: item detail, edit, and delete."""
 import sqlite3
-from pathlib import Path
 
 import pytest
 from playwright.sync_api import expect
@@ -53,11 +52,9 @@ def _cover_search_fragment(item_id: int, *, with_current: bool = True) -> str:
     Rendering the template keeps the stub honest: only the *candidate data* is
     faked, never the markup.
     """
-    from jinja2 import Environment, FileSystemLoader
+    from tests.e2e.conftest import template_env
 
-    templates_dir = Path(__file__).resolve().parents[2] / "app" / "templates"
-    env = Environment(loader=FileSystemLoader(str(templates_dir)), autoescape=True)
-    return env.get_template("fragments/cover_search.html").render(
+    return template_env().get_template("fragments/cover_search.html").render(
         item_id=item_id,
         candidates=[
             {
@@ -68,6 +65,7 @@ def _cover_search_fragment(item_id: int, *, with_current: bool = True) -> str:
             for i in range(2)
         ],
         cover_path=f"covers/{item_id}.jpg" if with_current else None,
+        media_type="book",
         query="stub query",
         failed_url=None,
     )

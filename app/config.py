@@ -93,6 +93,30 @@ def creator_label(media_type):
     """The label for the creator field of `media_type`."""
     return CREATOR_LABELS.get(media_type, DEFAULT_CREATOR_LABEL)
 
+
+# Media types whose artwork is square. Derived from MUSIC_MEDIA_TYPES, not
+# retyped, so a fifth music format cannot silently fall back to portrait —
+# the same rule CREATOR_LABELS applies above. Read it through cover_shape().
+SQUARE_COVER_MEDIA_TYPES = frozenset(MUSIC_MEDIA_TYPES)
+
+
+def cover_shape(media_type):
+    """"square" or "portrait": the box a cover of `media_type` is shown in."""
+    return "square" if media_type in SQUARE_COVER_MEDIA_TYPES else "portrait"
+
+
+# Browse's creator column header and author sort option. They follow the Type
+# filter, borrowing CREATOR_LABELS' overrides, but keep Browse's own default:
+# with no single type picked the column mixes every type, and it has always
+# read "Author", not the add form's per-item "Author(s)". One function, so the
+# header and the sort option cannot disagree.
+BROWSE_CREATOR_DEFAULT = "Author"
+
+
+def browse_creator_label(media_type):
+    """The creator column's label on Browse when filtered to `media_type`."""
+    return CREATOR_LABELS.get(media_type, BROWSE_CREATOR_DEFAULT)
+
 # Starter tag suggestions offered per media type by
 # app.services.tags.suggestions_for(), shown only until the user scopes a
 # tag of their own to that type. The three music formats share one list

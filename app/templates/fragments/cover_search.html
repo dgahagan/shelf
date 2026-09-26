@@ -37,7 +37,8 @@
         {% if cover_path %}
         <div data-testid="current-cover"
              class="relative rounded-lg overflow-hidden border border-shelf-accent bg-shelf-card">
-            <img src="/{{ cover_path }}" alt="Current cover" class="w-full aspect-[2/3] object-cover">
+            <img src="/{{ cover_path }}" alt="Current cover" class="w-full aspect-[2/3] object-cover"
+                 data-cover-shape="{{ cover_shape(media_type) }}">
             <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center">Current</div>
         </div>
         {% endif %}
@@ -46,7 +47,8 @@
                 hx-target="{{ result_target }}" hx-swap="{{ result_swap }}"
                 hx-include="#cover-query-{{ item_id }}"
                 class="group relative rounded-lg overflow-hidden border {% if failed_url and failed_url == c.url %}border-shelf-error{% else %}border-shelf-border hover:border-shelf-accent/50{% endif %} transition-colors cursor-pointer bg-shelf-card">
-            <img src="{{ c.thumbnail }}" alt="Cover candidate" class="w-full aspect-[2/3] object-cover" loading="lazy">
+            <img src="{{ c.thumbnail }}" alt="Cover candidate" class="w-full aspect-[2/3] object-cover" loading="lazy"
+                 data-cover-shape="{{ cover_shape(media_type) }}">
             {% if failed_url and failed_url == c.url %}
             <div class="absolute top-0 inset-x-0 bg-shelf-error/90 text-[10px] text-white px-1 py-0.5 text-center">Failed</div>
             {% endif %}

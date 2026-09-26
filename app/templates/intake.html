@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Photo Intake — Shelf{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto" x-data="intakePage">
+<div class="max-w-3xl mx-auto" x-data="intakePage" id="intake-page" data-creator-labels='{{ creator_labels | tojson }}'>
     <h1 class="text-2xl font-bold mb-1">Photo Intake</h1>
     <p class="text-sm text-shelf-muted mb-6">Photograph books on a shelf, in a stack, or face-up &mdash; front cover is fine. The vision model reads spines and recognizes covers; a readable back-cover barcode gives exact-edition metadata. Review the list, then confirm.</p>
 
@@ -186,7 +186,8 @@
                               title="Identified from the cover, not read — double-check"
                               class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">recognized</span>
                     </div>
-                    <input type="text" :value="book.authors" @input="setBookAuthors(i, $event.target.value)" placeholder="Author"
+                    <input type="text" :value="book.authors" @input="setBookAuthors(i, $event.target.value)" :placeholder="creatorLabelFor(book.media_type)"
+                           data-testid="intake-authors"
                            class="flex-1 min-w-0 lg:flex-none lg:w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
                     <input type="text" :value="book.isbn" @input="setBookIsbn(i, $event.target.value)" placeholder="ISBN"
                            inputmode="numeric" data-testid="intake-isbn"

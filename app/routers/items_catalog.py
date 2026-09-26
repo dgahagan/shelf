@@ -180,7 +180,7 @@ async def add_game_from_search(
             "status": "added", "isbn": "", "title": metadata["title"],
             "authors": metadata.get("developer"),
             "cover_path": cover_path, "item_id": item_id,
-            "source": "igdb", "media_type_label": "Video Game",
+            "source": "igdb", "media_type_label": "Video Game", "media_type": "video_game",
         },
     )
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {metadata['title'][:50]}")
@@ -364,7 +364,7 @@ async def add_book_from_search(
                 "cover_path": cover_path}
                if status != "restored" else restore_report.restored_card(item_id)),
             "item_id": item_id, "source": source,
-            "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            "media_type_label": MEDIA_TYPES.get(media_type, media_type), "media_type": media_type,
         },
     )
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {metadata['title'][:50]}")
@@ -505,7 +505,7 @@ async def add_dvd_from_search(
         {
             "status": "added", "isbn": "", "title": title,
             "cover_path": cover_path, "item_id": item_id,
-            "source": "tmdb", "media_type_label": "DVD / Blu-ray",
+            "source": "tmdb", "media_type_label": "DVD / Blu-ray", "media_type": "dvd",
         },
     )
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {title[:50]}")

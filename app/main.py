@@ -48,6 +48,8 @@ from app.config import (
     CREATOR_LABELS,
     DATA_DIR,
     MEDIA_TYPES,
+    browse_creator_label,
+    cover_shape,
     creator_label,
     get_client_ip,
 )
@@ -427,6 +429,11 @@ templates.env.globals["search_langs"] = SEARCH_LANGS
 # A global rather than route context, so neither host route grows a key for it.
 templates.env.globals["creator_labels"] = CREATOR_LABELS
 templates.env.globals["creator_label"] = creator_label
+# Each cover's box shape per media type — declared once in app/config.py, and
+# carried as data-cover-shape so one CSS rule squares every music cover.
+templates.env.globals["cover_shape"] = cover_shape
+# Browse's creator column and author sort option follow the Type filter.
+templates.env.globals["browse_creator_label"] = browse_creator_label
 # Browse's hx-include lists are derived, not written — see app/browse_filters.py.
 templates.env.globals["filter_includes"] = browse_filters.filter_includes
 templates.env.globals["browse_filter_config"] = browse_filters.client_config

@@ -98,7 +98,7 @@
 
             {{ field("title", "Title", item.title) }}
             {{ field("subtitle", "Subtitle", item.subtitle) }}
-            {{ field("authors", "Authors", item.authors) }}
+            {{ field("authors", creator_label(item.media_type), item.authors) }}
 
             <div>
                 <label for="media_type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
@@ -167,9 +167,9 @@
             <div x-data="coverDrop">
                 <div class="flex items-center gap-4">
                     {% if item.cover_path %}
-                    <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded" alt="Current cover">
+                    <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded" alt="Current cover" data-cover-shape="{{ cover_shape(item.media_type) }}">
                     {% else %}
-                    <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded" alt="Cover preview" style="display:none">
+                    <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded" alt="Cover preview" style="display:none" data-cover-shape="{{ cover_shape(item.media_type) }}">
                     <div x-show="!preview" class="w-16 h-24 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">None</div>
                     {% endif %}
                     <div class="flex-1">

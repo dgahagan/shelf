@@ -473,6 +473,23 @@ def test_review_row_renders_isbn_media_type_and_recognized_marker(live_server, i
         "E2E Recognized Disc")
 
 
+def test_author_placeholder_follows_media_type(live_server, intake_page):
+    """Switching a row's type to vinyl relabels its creator field (#119, T7).
+
+    No request is made by the media-type select's change handler, so there is
+    nothing to wait for beyond the attribute update itself (G83) —
+    `expect(...).to_have_attribute(...)` auto-retries until Alpine re-renders.
+    """
+    _analyze(live_server, intake_page)
+
+    row = intake_page.locator("[data-testid=intake-row]").nth(0)
+    author_input = row.locator("[data-testid=intake-authors]")
+    expect(author_input).to_have_attribute("placeholder", "Author(s)")
+
+    row.locator("[data-testid=intake-media-type]").select_option("vinyl")
+    expect(author_input).to_have_attribute("placeholder", "Artist")
+
+
 def test_confirm_round_trip_sends_edits_and_persists_them(live_server, intake_page):
     # Row 1 is already in the library, so confirm skips it before any lookup.
     insert_item(live_server["data_dir"], title="E2E Read Book",
@@ -976,7 +993,7 @@ def _row_metrics(page):
                     badgeVisible: visible,
                     checkbox: box(row.querySelector('input[type=checkbox]')),
                     title: box(row.querySelector('input[placeholder=Title]')),
-                    author: box(row.querySelector('input[placeholder=Author]')),
+                    author: box(row.querySelector('[data-testid=intake-authors]')),
                     isbn: box(row.querySelector('[data-testid=intake-isbn]')),
                     select: box(row.querySelector('[data-testid=intake-media-type]')),
                     titleValue: row.querySelector('input[placeholder=Title]').value,
@@ -1201,7 +1218,7 @@ def test_review_row_edits_round_trip_at_both_viewports(live_server, intake_page,
 
     plain, recognized = _plain_row(page), _recognized_row(page)
     plain.locator("input[placeholder=Title]").fill("Edited Title 33")
-    plain.locator("input[placeholder=Author]").fill("Edited Author")
+    plain.locator("[data-testid=intake-authors]").fill("Edited Author")
     plain.locator("[data-testid=intake-isbn]").fill("123")
     plain.locator("[data-testid=intake-media-type]").select_option("comic")
 

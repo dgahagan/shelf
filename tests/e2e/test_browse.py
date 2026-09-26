@@ -632,3 +632,44 @@ def test_browse_language_filter_narrows_and_composes(live_server, authed_page):
     expect(authed_page.locator("body")).to_contain_text("Sprachprobe Deutsch")
     expect(authed_page.locator("body")).not_to_contain_text("Sprachprobe Deutsch Disc")
     expect(authed_page.locator("body")).not_to_contain_text("Sprachprobe English")
+
+def test_creator_label_follows_the_type_filter(live_server, authed_page):
+    """#119: with Type = Vinyl the list's creator column and the author sort
+    option read "Artist"; back on All Types both read "Author" again. The sort
+    option is swapped out of band as a bare <option>, never its <select> —
+    browse.js binds the select's change listener once at load, so this also
+    checks the listener survives the swaps."""
+    insert_item(live_server["data_dir"], title="Creator Label Vinyl", media_type="vinyl", isbn="9780009991191")
+    page = authed_page
+    _reset_browse_storage(page, live_server["url"])
+    page.goto(f"{live_server['url']}/browse")
+    page.wait_for_load_state("networkidle")
+    with page.expect_response(lambda r: "/api/search" in r.url):
+        page.locator("[data-testid='view-list']").click()
+
+    header = page.locator("th[data-col=author]")
+    option = page.locator("select[name=sort] option[value=author]")
+    expect(option).to_have_count(1)
+
+    with page.expect_response(lambda r: "/api/search" in r.url):  # G83
+        page.locator("select#type-filter").select_option("vinyl")
+    expect(header).to_have_text("Artist")
+    expect(option).to_have_text("Artist")
+
+    with page.expect_response(lambda r: "/api/search" in r.url):
+        page.locator("select[name=sort]").select_option("author")
+    expect(page).to_have_url(re.compile(r"sort=author"))
+
+    with page.expect_response(lambda r: "/api/search" in r.url):
+        page.locator("select#type-filter").select_option("")
+    expect(header).to_have_text("Author")
+    expect(option).to_have_text("Author")
+    expect(option).to_have_count(1)
+    # The swapped option came back selected, so the control still names the
+    # sort the rows are in rather than falling back to the first option.
+    expect(page.locator("select[name=sort]")).to_have_value("author")
+
+    # The select element was never replaced, so its persist listener still runs.
+    with page.expect_response(lambda r: "/api/search" in r.url):
+        page.locator("select[name=sort]").select_option("title_asc")
+    assert page.evaluate("() => localStorage.getItem('shelf-sort')") == "title_asc"

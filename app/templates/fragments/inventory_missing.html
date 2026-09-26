@@ -12,7 +12,7 @@
 {% for item in missing %}
 <div class="bg-shelf-card rounded-lg border border-shelf-border p-3 flex items-center gap-3">
     {% if item.cover_path %}
-    <img src="/covers/{{ item.id }}.jpg" class="w-10 h-14 object-cover rounded" alt="">
+    <img src="/covers/{{ item.id }}.jpg" class="w-10 h-14 object-cover rounded" alt="" data-cover-shape="{{ cover_shape(item.media_type) }}">
     {% else %}
     <div class="w-10 h-14 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">?</div>
     {% endif %}

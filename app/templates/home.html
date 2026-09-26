@@ -101,7 +101,7 @@
         <div class="cover-grid" data-testid="home-recent-items">
             {% for item in recent_items %}
             <a href="/item/{{ item.id }}" class="group relative">
-                <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg">
+                <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg" data-cover-shape="{{ cover_shape(item.media_type) }}">
                     {% if item.wishlisted %}
                     <div class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shadow">Wishlist</div>
                     {% endif %}

@@ -26,7 +26,7 @@
                 {% for col in browse_columns %}
                 <th {% if col.name == 'select' %}x-show="selectMode"{% elif not col.locked %}x-show="visibleCols.{{ col.name }}"{% endif %}
                     data-col="{{ col.name }}"
-                    class="px-3 py-2{% if col.name == 'select' %} w-8{% elif col.name == 'cover' %} w-10{% endif %}">{{ col.label }}</th>
+                    class="px-3 py-2{% if col.name == 'select' %} w-8{% elif col.name == 'cover' %} w-10{% endif %}">{{ browse_creator_label(active_type) if col.name == 'author' else col.label }}</th>
                 {% endfor %}
             </tr>
         </thead>

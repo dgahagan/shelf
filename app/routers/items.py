@@ -651,7 +651,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
             **card,
             "item_id": item_id,
             "source": source,
-            "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            "media_type_label": MEDIA_TYPES.get(media_type, media_type), "media_type": media_type,
             # T5 renders these; T4 only has to carry them.
             "detect_reason": detect_reason,
             "detect_overrode": detect_overrode,
@@ -860,7 +860,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
                      **({"cover_path": cover_path} if cover_path else {})}),
             "item_id": item_id,
             "source": "manual",
-            "media_type_label": MEDIA_TYPES.get(media_type, media_type),
+            "media_type_label": MEDIA_TYPES.get(media_type, media_type), "media_type": media_type,
         },
     )
     toast_message = f"Added to wishlist: {title[:50]}" if mode == "wishlist" else f"Added: {title[:50]}"
@@ -983,7 +983,7 @@ async def search_items(
         "load_more_url": load_more_url,
         "page": page,
         "total": total,
-        "has_filters": browse_filters.has_active_filters(values),
+        "has_filters": browse_filters.has_active_filters(values), "active_sort": sort,
         "seven_days_ago": (datetime.now(tz=None) - timedelta(days=7)).strftime("%Y-%m-%d"),
     }
     if counts:
@@ -1542,7 +1542,7 @@ async def inventory_missing(
         # inner join alone would silently drop those rows from every audit.
         # For an item with no copies the seam is the only answer there is.
         items = db.execute(
-            "SELECT i.id, i.title, i.authors, i.cover_path, COUNT(c.id) AS copy_count "
+            "SELECT i.id, i.title, i.authors, i.cover_path, i.media_type, COUNT(c.id) AS copy_count "
             "FROM items_live i LEFT JOIN copies_live c "
             "  ON c.item_id = i.id AND c.location_id = ? "
             "WHERE c.id IS NOT NULL "

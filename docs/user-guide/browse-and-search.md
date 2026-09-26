@@ -13,6 +13,11 @@ visits.
 List view's toolbar has a **Columns** button. It opens a checklist of columns
 plus a **Reset to defaults** button.
 
+With a single type picked in the **Type** filter, the **Author** column's
+header uses that type's word — **Artist** for music, **Developer** for video
+games, **Director** for DVDs — and reads **Author** otherwise. The checklist
+itself always calls it **Author**.
+
 The selection checkbox, cover thumbnail, and **Title** are always shown and
 aren't offered in the picker — Title is the row's link to the item, so a row
 without it would go nowhere.
@@ -84,6 +89,8 @@ than an error, and leaves the filter listed so you can clear it.
 ## Sorting
 
 Title, author, date added, publish year, value — ascending or descending.
+Like the column header, the author sort option takes the picked type's word:
+with **Type** set to a music format it reads **Artist**, and so on.
 Sort by "date added, newest first" is the quickest way to check a scanning
 session.
 

@@ -27,6 +27,10 @@ Each track can retain its MusicBrainz recording identity, artist credit and dura
 
 After adding an exact release, Shelf asks Cover Art Archive for artwork associated with that MusicBrainz release. A front image is preferred. Existing Shelf cover artwork is never overwritten by a refresh.
 
+Music artwork is shown square and uncropped wherever Shelf shows a cover: Browse, Home, share pages, the list view and other thumbnails, the cover review queue, the cover picker, scan cards, and the Music item page, which shows the cover in its header. Books, games and films keep their taller portrait box. In a Browse grid showing all types, a record sits beside taller book covers, so a row can be uneven; pick a music type in the **Type** filter and the grid is uniform.
+
+The creator field is labelled **Artist** for music when you add or edit a release, in Photo Intake, and in Browse's list view when a music type is picked in the **Type** filter.
+
 ## Alternate formats
 
 MusicBrainz Release Group identity is stored separately from the exact release identity. If two catalogued releases share a Release Group, Shelf links them using its existing `format` item relationship while preserving each exact release as its own catalogue item.

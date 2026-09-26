@@ -25,7 +25,7 @@
         <div class="cover-grid">
             {% for item in items %}
             <div>
-                <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border shadow-lg">
+                <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border shadow-lg" data-cover-shape="{{ cover_shape(item.media_type) }}">
                     {% if item.cover_path %}
                     <img src="/{{ item.cover_path }}" alt="" loading="lazy">
                     {% else %}
