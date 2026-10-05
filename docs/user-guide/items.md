@@ -197,6 +197,12 @@ deliberately never touches a DVD, a game, a CD or a record: the automatic
 chain's fallback is a book-catalogue title search, and turning it loose on a
 disc once wrote a novel's cover and ISBN onto it.
 
+For a book with an ISBN, **Find cover** checks that exact edition in Google
+Books and Open Library first. If neither has its cover, the picker shows title
+matches marked **Check edition** so you can choose the right printing. Typing
+a different search query looks for alternate editions directly. A missing
+result, a spent provider quota and a connection failure are reported separately.
+
 ### The review queue
 
 That leaves everything the sweep cannot reach, which is exactly the media the

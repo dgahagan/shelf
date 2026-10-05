@@ -141,7 +141,7 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, cover_path, media_type, publish_year, platform "
+            "SELECT title, authors, isbn, cover_path, media_type, publish_year, platform "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Key-by-key through get_setting, never the bulk settings accessor:
@@ -195,7 +195,7 @@ async def cover_select(
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, cover_path, media_type, publish_year, platform "
+            "SELECT title, authors, isbn, cover_path, media_type, publish_year, platform "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Same key-by-key build as cover_search — this failure path re-renders

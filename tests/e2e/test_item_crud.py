@@ -73,10 +73,8 @@ def _cover_search_fragment(item_id: int, *, with_current: bool = True) -> str:
 
 def _stub_cover_search(authed_page, item_id: int, *, with_current: bool = True):
     """Intercept the picker's GET so the test never reaches
-    covers.search_cover_by_title — which calls googleapis.com and
-    openlibrary.org for real on two 10s timeouts and swallows every
-    exception (app/services/covers.py:113-160), so a flaky leg would just
-    render an empty grid instead of failing loudly. `make test-e2e` is a
+    covers.search_book_covers, which calls googleapis.com and
+    openlibrary.org for real with 10s timeouts. `make test-e2e` is a
     release gate; a leg whose outcome depends on the network is a defect.
 
     Returns (handled, offenders): `handled["count"]` proves our route — not
@@ -463,10 +461,9 @@ def test_cover_picker_opens_on_item_that_already_has_a_cover(live_server, authed
     item that already has a cover, not just on cover-less items.
 
     The picker's GET is stubbed via page.route rather than hit for real:
-    covers.search_cover_by_title calls out to googleapis.com and
-    openlibrary.org on two 10s timeouts and swallows every exception, so a
-    flaky leg would silently render as an empty gallery instead of failing
-    this test where the bug would actually be. See _stub_cover_search's
+    covers.search_book_covers calls out to googleapis.com and
+    openlibrary.org on 10s timeouts, which could make the UI test flaky.
+    See _stub_cover_search's
     docstring for how "the server was never reached" is verified rather than
     assumed.
     """

@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import COVERS_DIR
-from app.services import googlebooks, igdb, outbound, provider_result, tmdb
+from app.services import book_cover_search, igdb, outbound, provider_result, tmdb
 
 logger = logging.getLogger(__name__)
 
@@ -106,49 +106,14 @@ def save_uploaded_cover(item_id: int, content: bytes) -> str | None:
     return f"covers/{item_id}.jpg"
 
 
-async def search_cover_by_title(
-    title: str,
-    author: str | None,
-    client: httpx.AsyncClient,
-    *,
-    google_api_key: str | None = None,
-) -> list[dict]:
-    """Search for cover candidates by title/author. Returns list of {url, source, thumbnail}."""
-    candidates = []
-
-    # Google Books search
-    try:
-        candidates.extend(await googlebooks.search_covers(
-            title, author, client, api_key=google_api_key
-        ))
-    except Exception:
-        pass
-
-    # Open Library search
-    try:
-        params = {"title": title, "limit": "5"}
-        if author:
-            params["author"] = author.split(",")[0].strip()
-        resp = await outbound.fetch(
-            client, "GET",
-            "https://openlibrary.org/search.json",
-            params=params,
-            timeout=10,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            for doc in data.get("docs", []):
-                cover_i = doc.get("cover_i")
-                if cover_i:
-                    candidates.append({
-                        "url": f"https://covers.openlibrary.org/b/id/{cover_i}-L.jpg",
-                        "thumbnail": f"https://covers.openlibrary.org/b/id/{cover_i}-M.jpg",
-                        "source": "Open Library",
-                    })
-    except Exception:
-        pass
-
-    return candidates
+async def search_book_covers(
+    title: str, author: str | None, isbn: str | None,
+    client: httpx.AsyncClient, *, google_api_key: str | None = None,
+) -> provider_result.ProviderResult:
+    """Search exact ISBN editions first, then offer title matches for review."""
+    return await book_cover_search.search(
+        title, author, isbn, client, google_api_key=google_api_key,
+    )
 
 # --- Media-type dispatch for the cover picker -------------------------------
 #
@@ -245,20 +210,13 @@ async def search_covers(
         return await _tmdb_candidates(item, query, client, creds)
     if provider == "igdb":
         return await _igdb_candidates(item, query, client, creds)
-    # Called as the bare module global on purpose: eight tests in
-    # tests/test_covers.py patch `covers.search_cover_by_title` by attribute,
-    # and a local alias or a from-import would detach every one of them.
-    #
-    # Wrapped as `found` rather than re-typed: the book branch fans out over
-    # Google Books and Open Library and swallows each one's failure on its own
-    # (`search_cover_by_title` above), so it has no single outcome to report.
-    # Re-typing that cascade is `plan-cover-editions`' work.
-    return provider_result.found("openlibrary", await search_cover_by_title(
+    return await search_book_covers(
         query,
         _col(item, "authors"),
+        _col(item, "isbn") if query.strip() == (_col(item, "title") or "").strip() else None,
         client,
         google_api_key=creds.get("google_books_api_key"),
-    ))
+    )
 
 
 async def _tmdb_candidates(
