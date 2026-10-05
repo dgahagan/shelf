@@ -795,7 +795,10 @@ document.addEventListener('submit', async function (e) {
     }
 
     try {
-        const body = new URLSearchParams(new FormData(form));
+        const body = new URLSearchParams();
+        new FormData(form).forEach((value, name) => {
+            if (typeof value === 'string') body.append(name, value);
+        });
         const response = await fetch(form.action, {
             method: 'POST',
             headers: { 'X-CSRF-Token': window.csrfToken() },
