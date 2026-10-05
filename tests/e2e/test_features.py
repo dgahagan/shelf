@@ -87,8 +87,8 @@ def _feature_state(page, key: str) -> str:
 
 
 def test_disabled_series_page_round_trips_through_enable(live_server, authed_page):
-    """Turn Series off with no dialog, see it gone from the nav and gated at
-    /series, then turn it back on from the disabled page itself."""
+    """Turn Series off in place, see it gone from the nav and gated at /series,
+    then turn it back on from the disabled page itself."""
     base_url = live_server["url"]
 
     dialogs: list[str] = []
@@ -102,9 +102,16 @@ def test_disabled_series_page_round_trips_through_enable(live_server, authed_pag
     _open_features_tab(authed_page, base_url)
     assert _feature_state(authed_page, "series") == "on"
 
-    with authed_page.expect_navigation():
-        authed_page.click('[data-testid="feature-toggle-series"]')
+    toggle = authed_page.locator('[data-testid="feature-toggle-series"]')
+    toggle.scroll_into_view_if_needed()
+    scroll_before = authed_page.evaluate("window.scrollY")
+    authed_page.evaluate("window.__settingsDocumentMarker = 'same-document'")
+    toggle.click()
+
+    expect(authed_page.locator('[data-testid="feature-row-series"] [data-feature-state="off"]')).to_be_visible()
     assert authed_page.url == f"{base_url}/settings"
+    assert authed_page.evaluate("window.__settingsDocumentMarker") == "same-document"
+    assert abs(authed_page.evaluate("window.scrollY") - scroll_before) <= 4
     assert dialogs == []  # series has no probes — turning it off never asks
 
     # The nav no longer offers Series, on the desktop bar or the mobile menu.
@@ -143,8 +150,7 @@ def test_turning_off_share_with_a_link_confirms_first(live_server, authed_page, 
     authed_page.click('[data-testid="feature-toggle-share"]')
     assert len(dismissed) == 1
     assert "1 active share link" in dismissed[0]
-    # Dismissed: the form never submitted, so nothing navigated and the flag
-    # is unchanged.
+    # Dismissed: the form never submitted, so the flag is unchanged.
     assert _feature_state(authed_page, "share") == "on"
 
     accepted: list[str] = []
@@ -154,16 +160,16 @@ def test_turning_off_share_with_a_link_confirms_first(live_server, authed_page, 
         dialog.accept()
 
     authed_page.once("dialog", _accept)
-    with authed_page.expect_navigation():
-        authed_page.click('[data-testid="feature-toggle-share"]')
+    authed_page.click('[data-testid="feature-toggle-share"]')
     assert len(accepted) == 1
     assert "1 active share link" in accepted[0]
+    expect(authed_page.locator('[data-testid="feature-row-share"] [data-feature-state="off"]')).to_be_visible()
     assert _feature_state(authed_page, "share") == "off"
 
     # Restore: the live_server DB is session-scoped and shared with every
     # other E2E test.
-    with authed_page.expect_navigation():
-        authed_page.click('[data-testid="feature-toggle-share"]')
+    authed_page.click('[data-testid="feature-toggle-share"]')
+    expect(authed_page.locator('[data-testid="feature-row-share"] [data-feature-state="on"]')).to_be_visible()
     assert _feature_state(authed_page, "share") == "on"
 
 
@@ -208,13 +214,9 @@ def test_minimal_install_then_apply_standard_from_settings(server_factory, brows
         profiles = page.locator('[data-testid="feature-profiles"]')
         expect(profiles).to_have_attribute("data-profile-current", "minimal")
 
-        with page.expect_navigation():
-            page.click('[data-testid="profile-apply-standard"]')
+        page.click('[data-testid="profile-apply-standard"]')
 
-        # Re-open the tab: the redirect lands on /settings, and the tab
-        # choice is Alpine's own localStorage state, not something this
-        # click guarantees.
-        _open_features_tab(page, base_url)
+        # Applying a profile refreshes the panel in place.
         profiles = page.locator('[data-testid="feature-profiles"]')
         expect(profiles).to_have_attribute("data-profile-current", "standard")
 

@@ -101,8 +101,8 @@ def _toggle_lending(browser, base_url, setup_admin, expect_state, dialogs=None):
                 dialogs.append(dialog.message)
                 dialog.accept()
             pg.once("dialog", _accept)
-        with pg.expect_navigation():
-            pg.click('[data-testid="feature-toggle-lending"]')
+        pg.click('[data-testid="feature-toggle-lending"]')
+        expect(pg.locator(f'[data-testid="feature-row-lending"] [data-feature-state="{expect_state}"]')).to_be_visible()
         assert _feature_state(pg, "lending") == expect_state
         assert_page_clean(pg)
     finally:

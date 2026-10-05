@@ -143,8 +143,8 @@ def test_turning_price_alerts_off_removes_line_and_notes_block(
     _open_features_tab(authed_page, base_url)
     assert _feature_state(authed_page, "price_alerts") == "on"
     try:
-        with authed_page.expect_navigation():
-            authed_page.click('[data-testid="feature-toggle-price_alerts"]')
+        authed_page.click('[data-testid="feature-toggle-price_alerts"]')
+        expect(authed_page.locator('[data-testid="feature-row-price_alerts"] [data-feature-state="off"]')).to_be_visible()
         assert _feature_state(authed_page, "price_alerts") == "off"
 
         authed_page.goto(item_url)
@@ -162,8 +162,8 @@ def test_turning_price_alerts_off_removes_line_and_notes_block(
         # Restore: the live_server DB is shared with every other E2E test.
         _open_features_tab(authed_page, base_url)
         if _feature_state(authed_page, "price_alerts") == "off":
-            with authed_page.expect_navigation():
-                authed_page.click('[data-testid="feature-toggle-price_alerts"]')
+            authed_page.click('[data-testid="feature-toggle-price_alerts"]')
+            expect(authed_page.locator('[data-testid="feature-row-price_alerts"] [data-feature-state="on"]')).to_be_visible()
     assert _feature_state(authed_page, "price_alerts") == "on"
     authed_page.goto(item_url)
     expect(authed_page.locator('[data-testid="list-price-line"]')).to_be_visible()

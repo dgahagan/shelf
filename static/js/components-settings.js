@@ -784,7 +784,7 @@ document.addEventListener('submit', async function (e) {
     if (e.defaultPrevented) return;
     const form = e.target;
     if (!form || !form.matches) return;
-    if (!form.matches('form[action^="/api/settings/features/"], form[action="/api/settings/profile"]')) return;
+    if (!form.matches('form[action^="/api/settings/features/"]:not([action$="/enable"]), form[action="/api/settings/profile"]')) return;
 
     e.preventDefault();
     const button = form.querySelector('button[type="submit"]');
@@ -810,6 +810,15 @@ document.addEventListener('submit', async function (e) {
         const currentPanel = document.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
         const updatedPanel = refreshed.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
         if (!currentPanel || !updatedPanel) throw new Error('Could not refresh feature settings');
+
+        // Feature flags also decide which tabs the server renders in the
+        // desktop and mobile navigation. Keep those in sync with the saved
+        // state while preserving the existing Alpine menu component.
+        for (const selector of ['nav .hidden.lg\\:flex', 'nav [data-testid="nav-menu-panel"]']) {
+            const currentNav = document.querySelector(selector);
+            const updatedNav = refreshed.querySelector(selector);
+            if (currentNav && updatedNav) currentNav.innerHTML = updatedNav.innerHTML;
+        }
         currentPanel.innerHTML = updatedPanel.innerHTML;
     } catch (error) {
         if (button) {
