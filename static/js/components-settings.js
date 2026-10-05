@@ -35,6 +35,24 @@ document.addEventListener('alpine:init', function () {
             tab: 'library',
             init() {
                 this.tab = localStorage.getItem('shelf_settings_tab') || 'library';
+
+                // Feature switches use a normal POST/redirect so their state
+                // is authoritative on reload. Carry the current scroll offset
+                // through that redirect to avoid dropping users at the top of
+                // the long Features panel after each change.
+                const savedScroll = sessionStorage.getItem('shelf_settings_scroll');
+                if (savedScroll !== null) {
+                    sessionStorage.removeItem('shelf_settings_scroll');
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                        window.scrollTo(0, Number(savedScroll) || 0);
+                    }));
+                }
+                document.addEventListener('submit', (event) => {
+                    if (event.defaultPrevented) return;
+                    const form = event.target;
+                    if (!form.matches('form[action^="/api/settings/features/"], form[action="/api/settings/profile"]')) return;
+                    sessionStorage.setItem('shelf_settings_scroll', String(window.scrollY));
+                });
             },
             setTab(name) {
                 this.tab = name;
