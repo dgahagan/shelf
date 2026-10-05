@@ -35,24 +35,6 @@ document.addEventListener('alpine:init', function () {
             tab: 'library',
             init() {
                 this.tab = localStorage.getItem('shelf_settings_tab') || 'library';
-
-                // Feature switches use a normal POST/redirect so their state
-                // is authoritative on reload. Carry the current scroll offset
-                // through that redirect to avoid dropping users at the top of
-                // the long Features panel after each change.
-                const savedScroll = sessionStorage.getItem('shelf_settings_scroll');
-                if (savedScroll !== null) {
-                    sessionStorage.removeItem('shelf_settings_scroll');
-                    requestAnimationFrame(() => requestAnimationFrame(() => {
-                        window.scrollTo(0, Number(savedScroll) || 0);
-                    }));
-                }
-                document.addEventListener('submit', (event) => {
-                    if (event.defaultPrevented) return;
-                    const form = event.target;
-                    if (!form.matches('form[action^="/api/settings/features/"], form[action="/api/settings/profile"]')) return;
-                    sessionStorage.setItem('shelf_settings_scroll', String(window.scrollY));
-                });
             },
             setTab(name) {
                 this.tab = name;
@@ -792,4 +774,48 @@ document.addEventListener('submit', function (e) {
     if (!form || !form.getAttribute) return;
     const msg = form.getAttribute('data-confirm');
     if (msg && !confirm(msg)) e.preventDefault();
+});
+
+// Feature changes keep the user on the current page. Let the server handle
+// the same form POST and redirect, then refresh only the Features panel from
+// the redirected Settings response so its status and profile controls reflect
+// the saved state without a document navigation.
+document.addEventListener('submit', async function (e) {
+    if (e.defaultPrevented) return;
+    const form = e.target;
+    if (!form || !form.matches) return;
+    if (!form.matches('form[action^="/api/settings/features/"], form[action="/api/settings/profile"]')) return;
+
+    e.preventDefault();
+    const button = form.querySelector('button[type="submit"]');
+    const originalLabel = button ? button.textContent : '';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Saving…';
+    }
+
+    try {
+        const body = new URLSearchParams(new FormData(form));
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': window.csrfToken() },
+            body
+        });
+        if (!response.ok || !new URL(response.url).pathname.endsWith('/settings')) {
+            throw new Error(`Request failed (${response.status})`);
+        }
+
+        const html = await response.text();
+        const refreshed = new DOMParser().parseFromString(html, 'text/html');
+        const currentPanel = document.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
+        const updatedPanel = refreshed.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
+        if (!currentPanel || !updatedPanel) throw new Error('Could not refresh feature settings');
+        currentPanel.innerHTML = updatedPanel.innerHTML;
+    } catch (error) {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+        alert(error.message || 'Could not save feature settings');
+    }
 });
