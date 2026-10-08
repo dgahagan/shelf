@@ -289,6 +289,7 @@ HOST_RATE_LIMITS: dict[str, float] = {
     # limited one. Do not lower below 3.0.
     "covers.openlibrary.org": 3.0,
     "services.dnb.de": 1.0,  # DNB SRU catalog — good citizenship
+    "tagetes2.oszk.hu": 1.0,  # OSZK NEKTÁR Z39.50 catalog
     "portal.dnb.de": 1.0,  # DNB cover host, same citizenship
     "opac.sbn.it": 1.0,  # SBN publishes no rate limit; matches DNB, a comparable national library
     "data.bibliotheken.nl": 1.0,  # KB Dutch National Bibliography SPARQL endpoint

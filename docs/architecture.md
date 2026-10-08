@@ -448,19 +448,28 @@ the next boot re-indexes everything.
 The national leg is a registry, `services/national.py`: unhyphenated ISBN-13
 registration-group prefixes mapped to provider modules, resolved by
 **longest** prefix match, so a narrow key can coexist with a broader one. It
-currently serves three providers — **DNB** (`services/dnb.py`, MARC21 over SRU)
-for 978-3, **SBN** (`services/sbn.py`, flat JSON over ICCU's OPAC endpoint) for
-the Italian 978-88 and 979-12, and **KB** (`services/kb.py`, SPARQL over the
-Nederlandse Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups. Keys
-are as wide as the group: the Italian `97888` and `97912` and Dutch `97890` and
-`97894` use five digits so neighbouring registration groups are not captured.
+currently serves four providers — **DNB** (`services/dnb.py`, MARC21 over SRU)
+for 978-3, **OSZK NEKTÁR** (`services/oszk.py`, HUNMARC over Z39.50 at
+`tagetes2.oszk.hu:1616/ANY`) for the Hungarian 978-615 and 978-963 groups,
+**SBN** (`services/sbn.py`, flat JSON over ICCU's OPAC endpoint) for the Italian
+978-88 and 979-12, and **KB** (`services/kb.py`, SPARQL over the Nederlandse
+Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups. Keys are as wide
+as the group: the Italian `97888` and `97912` and Dutch `97890` and `97894` use
+five digits so neighbouring registration groups are not captured.
 All providers build stored bibliographic strings through
 `services/bib_normalize.py`, so text is NFC and comparable.
 An ISBN in no registered group skips the leg entirely and costs no request.
 Adding a provider is a module plus a registry entry — no call-site change.
-**The covers cascade below is unchanged by this**: SBN contributes no cover
-source, and the DNB cover rung is a separate hand-written prefix test in
-`services/covers.py`, not a read of this registry.
+NEKTÁR uses `yaz-client` and `pymarc`; it paces each query against
+`tagetes2.oszk.hu` and accepts records only when a 020 ISBN exactly matches
+the requested edition. Its five-second query timeout and provider diagnostics
+stay server-side, while the scan surface receives only the normal provider
+outcome and `oszk` identifier.
+**The covers cascade and picker below are unchanged by this**: OSZK, SBN and KB
+contribute no cover source, and the DNB cover rung is a separate hand-written
+prefix test in `services/covers.py`, not a read of this registry. Any later
+OSZK cover source needs its own request pacing, host configuration, URL
+validation and a placement decision in the cover order and picker.
 
 **Music and periodicals do not enter through `_lookup_metadata` at all.** Each
 has its own page and its own provider, because neither is answered by an ISBN or
