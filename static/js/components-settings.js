@@ -775,3 +775,59 @@ document.addEventListener('submit', function (e) {
     const msg = form.getAttribute('data-confirm');
     if (msg && !confirm(msg)) e.preventDefault();
 });
+
+// Feature changes keep the user on the current page. Let the server handle
+// the same form POST and redirect, then refresh only the Features panel from
+// the redirected Settings response so its status and profile controls reflect
+// the saved state without a document navigation.
+document.addEventListener('submit', async function (e) {
+    if (e.defaultPrevented) return;
+    const form = e.target;
+    if (!form || !form.matches) return;
+    if (!form.matches('form[action^="/api/settings/features/"]:not([action$="/enable"]), form[action="/api/settings/profile"]')) return;
+
+    e.preventDefault();
+    const button = form.querySelector('button[type="submit"]');
+    const originalLabel = button ? button.textContent : '';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Saving…';
+    }
+
+    try {
+        const body = new URLSearchParams();
+        new FormData(form).forEach((value, name) => {
+            if (typeof value === 'string') body.append(name, value);
+        });
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'X-CSRF-Token': window.csrfToken() },
+            body
+        });
+        if (!response.ok || !new URL(response.url).pathname.endsWith('/settings')) {
+            throw new Error(`Request failed (${response.status})`);
+        }
+
+        const html = await response.text();
+        const refreshed = new DOMParser().parseFromString(html, 'text/html');
+        const currentPanel = document.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
+        const updatedPanel = refreshed.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
+        if (!currentPanel || !updatedPanel) throw new Error('Could not refresh feature settings');
+
+        // Feature flags also decide which tabs the server renders in the
+        // desktop and mobile navigation. Keep those in sync with the saved
+        // state while preserving the existing Alpine menu component.
+        for (const selector of ['nav .hidden.lg\\:flex', 'nav [data-testid="nav-menu-panel"]']) {
+            const currentNav = document.querySelector(selector);
+            const updatedNav = refreshed.querySelector(selector);
+            if (currentNav && updatedNav) currentNav.innerHTML = updatedNav.innerHTML;
+        }
+        currentPanel.innerHTML = updatedPanel.innerHTML;
+    } catch (error) {
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+        alert(error.message || 'Could not save feature settings');
+    }
+});
