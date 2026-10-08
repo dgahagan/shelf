@@ -1,5 +1,6 @@
 """Tests for item deletion (editor role, FK handling) and browse lent_out filter."""
 
+import io
 import logging
 import re
 import sqlite3
@@ -1959,6 +1960,98 @@ class TestEditFormLegacyInvalidIdentifierNote:
         db.commit()
         html = editor_client.get(f"/item/{item_id}/edit").text
         assert 'data-testid="upc-stored-invalid"' not in html
+
+
+class TestRefusedEditSaveLeavesTheCoverAlone:
+    """#127: a refused edit save must not write the uploaded cover — the
+    existing file stays byte-identical and no new file appears."""
+
+    OLD = b"\xff\xd8\xff" + b"old-cover" * 40
+    NEW = b"\xff\xd8\xff" + b"new-cover" * 50
+
+    def _cover(self, item_id):
+        import app.config
+        return app.config.COVERS_DIR / f"{item_id}.jpg"
+
+    def _seed_cover(self, db, item_id):
+        path = self._cover(item_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(self.OLD)
+        db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (f"covers/{item_id}.jpg", item_id))
+        db.commit()
+
+    def _post(self, client, item_id, data=None, **changes):
+        if data is None:
+            data, _ = _rendered_form(client, item_id)
+            data.update(changes)
+        return client.post(f"/api/items/{item_id}", data=data,
+                           files={"cover": ("c.jpg", io.BytesIO(self.NEW), "image/jpeg")},
+                           follow_redirects=False)
+
+    def _row(self, item_id):
+        with get_db() as check_db:
+            return check_db.execute(
+                "SELECT title, cover_path FROM items WHERE id = ?", (item_id,)
+            ).fetchone()
+
+    def _assert_refused_untouched(self, resp, item_id, code):
+        assert resp.status_code == 303
+        assert resp.headers["location"] == f"/item/{item_id}/edit?error={code}"
+        assert self._cover(item_id).read_bytes() == self.OLD
+        assert self._row(item_id)["cover_path"] == f"covers/{item_id}.jpg"
+
+    def test_invalid_isbn_keeps_the_existing_cover(self, editor_client, db):
+        item_id = _insert_item(db, title="Cover ISBN", isbn="9780000000026")
+        self._seed_cover(db, item_id)
+        resp = self._post(editor_client, item_id, isbn=TestEditFormValueFunnel.INVALID_ISBN)
+        self._assert_refused_untouched(resp, item_id, "invalid_isbn")
+
+    def test_invalid_upc_keeps_the_existing_cover(self, editor_client, db):
+        item_id = _insert_item(db, title="Cover UPC", isbn=None, upc="078073003501", media_type="dvd")
+        self._seed_cover(db, item_id)
+        resp = self._post(editor_client, item_id, upc=TestEditFormValueFunnel.INVALID_UPC)
+        self._assert_refused_untouched(resp, item_id, "invalid_upc")
+
+    def test_funnel_refusal_keeps_the_existing_cover(self, editor_client, db):
+        item_id = _insert_item(db, title="Cover Location", isbn="9780000000026")
+        self._seed_cover(db, item_id)
+        resp = self._post(editor_client, item_id, location_id="999999")
+        self._assert_refused_untouched(resp, item_id, "unknown_location")
+
+    def test_refusal_on_a_coverless_row_writes_no_file(self, editor_client, db):
+        item_id = _insert_item(db, title="No Cover", isbn="9780000000026")
+        db.commit()
+        resp = self._post(editor_client, item_id, isbn=TestEditFormValueFunnel.INVALID_ISBN)
+        assert resp.headers["location"] == f"/item/{item_id}/edit?error=invalid_isbn"
+        assert not self._cover(item_id).exists()
+        assert self._row(item_id)["cover_path"] is None
+
+    def test_stale_form_for_a_trashed_item_writes_no_file(self, editor_client, db):
+        from app.services.item_write import trash_item
+        item_id = _insert_item(db, title="Trashed", isbn="9780000000026")
+        trash_item(db, item_id)
+        db.commit()
+        resp = self._post(editor_client, item_id, data={"title": "Stale"})
+        assert resp.status_code == 404
+        assert not self._cover(item_id).exists()
+
+    def test_a_successful_save_writes_the_cover(self, editor_client, db):
+        item_id = _insert_item(db, title="Cover Saved", isbn="9780000000026")
+        self._seed_cover(db, item_id)
+        resp = self._post(editor_client, item_id, title="Cover Saved 2")
+        assert resp.headers["location"] == f"/item/{item_id}"
+        assert self._cover(item_id).read_bytes() == self.NEW
+        row = self._row(item_id)
+        assert (row["title"], row["cover_path"]) == ("Cover Saved 2", f"covers/{item_id}.jpg")
+
+    def test_a_failed_cover_write_rolls_the_row_back(self, editor_client, db):
+        item_id = _insert_item(db, title="Rollback", isbn="9780000000026")
+        db.commit()
+        with patch("app.services.covers.write_uploaded_cover", side_effect=OSError("disk full")):
+            with pytest.raises(OSError):
+                self._post(editor_client, item_id, title="Should Roll Back")
+        row = self._row(item_id)
+        assert (row["title"], row["cover_path"]) == ("Rollback", None)
 
 
 class TestBulkUpdateValueFunnel:

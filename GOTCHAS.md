@@ -2415,21 +2415,21 @@ print('\n'.join(bad) or 'OK: every swap destination is explicit')
   `content = await cover_file.read(covers.MAX_COVER_SIZE + 1)`, with
   `save_uploaded_cover`'s existing `> MAX_COVER_SIZE` branch unchanged
   (`app/services/covers.py:100`).
-- **Four call sites still carry the unbounded shape, and this entry was
-  written knowing it** — the cover uploads at `app/routers/items.py:797` and
-  `:1173`, the **photo-intake upload at `intake.py:101`** (the largest payload
+- **Three call sites still carry the unbounded shape, and this entry was
+  written knowing it** — the manual-add cover upload at `app/routers/items.py:820`, the **photo-intake upload at `intake.py:101`** (the largest payload
   of the set, and the one a first pass at this entry missed), and the DB
-  restore at `settings.py:325` (lines as of 2026-09-23). The archive imports
+  restore at `settings.py:325` (lines as of 2026-10-01; the edit-save cover read
+  was bounded by plan `issue-127-refused-save-cover`, `c19f934`). The archive imports
   were bounded by plan-soft-delete-export, and the CSV import before it. All were out of `feat/cover-picker`'s scope. **This is
   G29's lesson repeating in advance: documenting a rule is not the same as
   enforcing it**, and G29 shipped with two live violations of its own rule
-  still in the tree. If you are editing any of those four paths for another
+  still in the tree. If you are editing any of those three paths for another
   reason, bound the read while you are there; do not leave this entry
   describing a tree that mostly violates it. (Note the ceiling differs per
   path — a CSV or archive import has no `MAX_COVER_SIZE` to reuse and needs
   one chosen deliberately.)
-- **Verify:** the count of unbounded reads must go **down**, never up. Four
-  as of 2026-09-23:
+- **Verify:** the count of unbounded reads must go **down**, never up. Three
+  as of 2026-10-01:
 
 ```bash
 grep -rn 'await [a-z_]*\.read()' app/routers/ | grep -vc 'read([^)]'
@@ -5883,6 +5883,76 @@ grep -rnE '^[A-Z_]+ *= *DATA_DIR */' app --include=*.py | grep -v '^app/config.p
 
 - **Status:** documented. Retire it when `isbndb.CACHE_FILE` resolves at call
   time and the grep above returns nothing.
+
+## G135 — When a plan adds a feature-registry entry that should not start on for every install
+
+- **Rule:** a new `Feature` reads as **on** on every upgraded install until
+  something writes its `feature.<key>` row — whatever profile that install
+  applied. If the feature should start off for some installs, append a data
+  migration that writes the row (`INSERT OR IGNORE`, so a choice already made
+  stands), keyed on a flag the install already has.
+- **Why:** `features._flags()` is `get_setting(...) != "0"`, so a missing row
+  is on. `apply_profile` writes rows only for the features that existed when
+  the profile was applied. An install that applied Standard before the
+  feature existed therefore gets an Everything-only feature switched on by the
+  upgrade, and a feature that spends a paid key (ISBNdb) starts spending it.
+- **Evidence:** price-alerts test drive, Observation 5 (2026-10-01): the prod
+  copy had no feature rows and the new row read On. Fixed by migration 41
+  (`a2d9b54`), which starts `price_alerts` off where `feature.valuation` is
+  `'0'`.
+- **Verify:**
+
+```bash
+grep -n "get_setting(db, setting_key(k)) != \"0\"" app/features.py
+```
+
+- **Status:** documented. Retire it if an absent flag row ever resolves
+  through the install's profile instead of reading as on.
+
+## G136 — When an Alpine method switches a settings tab and then touches an element on the new tab
+
+- **Rule:** do not scroll to or focus an element on the newly shown panel at
+  `$nextTick`. Wait until the element is actually visible (`offsetParent`
+  non-null), checking frame by frame with a bounded retry, as
+  `settingsTabs.goToField()` does.
+- **Why:** under this Alpine CSP build the panel's `x-show` has not applied by
+  the time `$nextTick` runs — measured: hidden at `$nextTick`, hidden at
+  `setTimeout(0)`, visible one `requestAnimationFrame` after `$nextTick`.
+  `scrollIntoView()` and `focus()` on a hidden element silently do nothing, so
+  the method looks correct, raises nothing, and the page guard stays clean.
+- **Evidence:** price-alerts test drive, Observation 4 (`18be8b3`,
+  2026-10-01). The first fix used `$nextTick` alone; the new E2E test
+  (`test_notify_link_lands_on_the_notify_field`) failed in both modes with
+  "viewport ratio 0" until the frame wait went in.
+- **Verify:**
+
+```bash
+grep -n "offsetParent" static/js/components-settings.js
+```
+
+- **Status:** documented.
+
+## G137 — When a client caches an external service's answer
+
+- **Rule:** cache an **answer**, never a failure. Write the entry only for a
+  response that says something about the thing looked up (a 200, or a 404
+  that means "no such record"). A 401/403, 429, 5xx or timeout must leave any
+  existing entry untouched.
+- **Why:** the ISBNdb price cache is trusted for 365 days. Caching `None` for
+  a refused or rate-limited request overwrote good prices, and the valuation
+  report then showed no price for those books for a year without asking
+  again. The nightly price-alert pass made it recur unattended.
+- **Evidence:** price-alerts test drive, Observation 1 (2026-10-01): a stub
+  429 replaced a cached $20.00 with `None`, and valuation's next read returned
+  `None` with zero requests. Fixed in `a8336de`
+  (`isbndb._CACHEABLE_STATUSES`).
+- **Verify:**
+
+```bash
+grep -n "_CACHEABLE_STATUSES" app/services/isbndb.py
+```
+
+- **Status:** documented. The rule applies to any new cached lookup.
 
 ## Graveyard
 

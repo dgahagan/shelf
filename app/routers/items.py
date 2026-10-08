@@ -1192,14 +1192,15 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
         # A non-numeric year/count/value used to be a 500.
         return _refused("invalid_number")
 
-    # Handle cover upload
+    # Cover upload: validated here, written only after every refusal below
+    # has had its chance — a refused save must not touch the file (#127).
+    cover_content = None
     cover_file = form.get("cover")
     if cover_file and hasattr(cover_file, "read"):
-        content = await cover_file.read()
-        if content and len(content) > 100:
-            cover_path = covers.save_uploaded_cover(item_id, content)
-            if cover_path:
-                fields["cover_path"] = cover_path
+        content = await cover_file.read(covers.MAX_COVER_SIZE + 1)
+        if content and len(content) > 100 and covers.validate_uploaded_cover(content):
+            cover_content = content
+            fields["cover_path"] = f"covers/{item_id}.jpg"
 
     if not fields:
         return RedirectResponse(url=redirect_url, status_code=303)
@@ -1283,6 +1284,10 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
             new_series_name = fields["series_name"]
             if old_series_name.strip().casefold() != (new_series_name or "").strip().casefold():
                 gc_orphaned_series_meta(db, old_series_name)
+
+        # Inside the block: a failed write rolls the row update back (G118).
+        if cover_content is not None:
+            covers.write_uploaded_cover(item_id, cover_content)
 
     return RedirectResponse(url=redirect_url, status_code=303)
 

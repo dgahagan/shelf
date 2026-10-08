@@ -94,16 +94,33 @@ def _looks_like_image(content: bytes) -> bool:
     return any(content.startswith(sig) for sig in _IMAGE_SIGNATURES)
 
 
+def validate_uploaded_cover(content: bytes) -> bool:
+    """True if `content` is an acceptable cover upload (size and image magic).
+
+    Pure: no mkdir, no write. Safe to call before a route knows whether it
+    will go on to save.
+    """
+    if len(content) < MIN_COVER_SIZE or len(content) > MAX_COVER_SIZE:
+        return False
+    return _looks_like_image(content)
+
+
+def write_uploaded_cover(item_id: int, content: bytes) -> str:
+    """Write already-validated cover bytes to `{item_id}.jpg`. Returns the relative path.
+
+    Does no validation: the caller must have passed `content` through
+    `validate_uploaded_cover` first. The two are separate so a route that may
+    still refuse the save (#127) can validate early and write last, leaving
+    the existing cover untouched when it refuses.
+    """
+    COVERS_DIR.mkdir(parents=True, exist_ok=True)
+    (COVERS_DIR / f"{item_id}.jpg").write_bytes(content)
+    return f"covers/{item_id}.jpg"
+
+
 def save_uploaded_cover(item_id: int, content: bytes) -> str | None:
     """Save an uploaded cover image. Returns relative path or None."""
-    COVERS_DIR.mkdir(parents=True, exist_ok=True)
-    dest = COVERS_DIR / f"{item_id}.jpg"
-    if len(content) < MIN_COVER_SIZE or len(content) > MAX_COVER_SIZE:
-        return None
-    if not _looks_like_image(content):
-        return None
-    dest.write_bytes(content)
-    return f"covers/{item_id}.jpg"
+    return write_uploaded_cover(item_id, content) if validate_uploaded_cover(content) else None
 
 
 async def search_cover_by_title(

@@ -6,6 +6,36 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.62.1] - 2026-10-08
+
+A save on the edit page that Shelf refused could still replace the item's
+cover. If you picked a new cover and the save was then refused, for example for
+an ISBN with a wrong check digit, the new image was written anyway, over the
+old one, while the page said "Nothing was saved". The old cover was gone. Now a
+refused save changes nothing, the cover included.
+
+### Fixed
+
+- **A refused edit no longer touches the cover.** Shelf now writes the uploaded
+  cover only after every other part of the save has passed. A refused save
+  leaves the existing cover exactly as it was, and on an item without a cover
+  it leaves no stray image file behind. This covers every refusal on the edit
+  page: an invalid ISBN or UPC, a barcode already used by another item or by
+  one in Trash, and an item that was moved to Trash while its edit page was
+  open. A save that succeeds is unchanged.
+
+### Changed
+
+- **Turning a feature on or off no longer reloads Settings.** Feature toggles
+  and profile changes now save in the background. The Features panel and the
+  navigation update in place, and the page keeps its scroll position, so you
+  can change several features in a row. Contributed by
+  [@notAnElephant](https://github.com/notAnElephant) in
+  [#147](https://github.com/dgahagan/shelf/pull/147).
+
+A cover that an earlier refused save already replaced cannot be recovered by
+this release. Shelf kept no copy of the old file.
+
 ## [0.62.0] - 2026-10-01
 
 The wishlist was a shopping list nobody watched: to know whether a book you
@@ -4845,6 +4875,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.62.1]: https://github.com/dgahagan/shelf/releases/tag/v0.62.1
 [0.62.0]: https://github.com/dgahagan/shelf/releases/tag/v0.62.0
 [0.61.1]: https://github.com/dgahagan/shelf/releases/tag/v0.61.1
 [0.61.0]: https://github.com/dgahagan/shelf/releases/tag/v0.61.0
