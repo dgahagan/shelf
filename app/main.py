@@ -99,6 +99,38 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 _SKIP_AUTH_PATHS = frozenset({"/login", "/setup", "/logout", "/health", "/sw.js"})
 _SKIP_AUTH_PREFIXES = ("/static/", "/covers/", "/share/")
 
+
+def _cross_site_bounce(request: Request) -> Response | None:
+    """Re-request a cross-site page navigation once from the same origin.
+
+    The session cookie is SameSite=Strict, so a browser withholds it on any
+    navigation that starts on another site (a dashboard, a chat link). A
+    same-origin `Refresh` makes the browser ask again with the cookie (#149).
+    Never on /api/: its GET event streams do real work and CSRF skips GETs.
+    """
+    if request.method != "GET":
+        return None
+    if request.headers.get("sec-fetch-mode") != "navigate":
+        return None
+    if request.headers.get("sec-fetch-site") != "cross-site":
+        return None
+    path = request.url.path
+    if path == "/api" or path.startswith("/api/"):
+        return None
+    # The raw path keeps its percent-encoding, so a decoded CR LF cannot reach
+    # the header. A leading run of / and \ collapses to one /, so the target
+    # can never be protocol-relative (//evil.example).
+    raw = request.scope.get("raw_path")
+    raw = raw.decode("latin-1") if raw else path
+    target = "/" + raw.lstrip("/\\")
+    query = request.scope.get("query_string", b"")
+    if query:
+        target += "?" + query.decode("latin-1")
+    return Response(
+        status_code=200,
+        headers={"Refresh": f"0;url={target}", "Cache-Control": "no-store"},
+    )
+
 # Methods that mutate state and must carry a CSRF token
 _CSRF_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
@@ -172,10 +204,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 return RedirectResponse(url="/setup", status_code=303)
 
         # Login redirect: if users exist but no session, redirect to /login
-        # (skip for POST /login, POST /setup to avoid blocking form submissions)
-        if path not in _SKIP_AUTH_PATHS and not user:
+        # (skip for POST /login, POST /setup to avoid blocking form submissions).
+        # A cross-site page navigation arrives without the Strict cookie, so it
+        # is re-requested once same-origin first — /login included, where a
+        # live session then goes on to /.
+        if not user and (path not in _SKIP_AUTH_PATHS or path == "/login"):
             if get_user_count() > 0:
-                return RedirectResponse(url="/login", status_code=303)
+                bounce = _cross_site_bounce(request)
+                if bounce:
+                    return bounce
+                if path != "/login":
+                    return RedirectResponse(url="/login", status_code=303)
 
         response = await call_next(request)
 

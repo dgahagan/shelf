@@ -106,6 +106,12 @@ and Shelf prints a warning at startup asking for the address instead. Outside
 Docker, the entrypoint that reads `SHELF_TRUST_PROXY` does not run; set
 uvicorn's own `FORWARDED_ALLOW_IPS` to the same list.
 
+**Opening Shelf from another site keeps the session.** The login cookie is
+deliberately `SameSite=Strict`. A cross-site link from a dashboard (Homepage,
+Homarr), a chat message or another host on your LAN still lands on the page
+you clicked, logged in: Shelf has the browser re-request it once from its own
+origin, with the cookie. Do not rewrite the cookie's `SameSite` at the proxy.
+
 **Fallback: proxy to the built-in HTTPS listener.** Leave `SHELF_TLS` on and
 point the proxy at `https://127.0.0.1:18888`, telling it to skip verification
 of the self-signed upstream — Caddy's `transport http { tls_insecure_skip_verify }`

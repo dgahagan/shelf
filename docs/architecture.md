@@ -24,7 +24,16 @@ Middleware, outermost first (`app/main.py`):
    every request: the JWT proves the session and does not carry it, so a token
    whose version or username no longer matches the row is no session, and a
    refreshed token is minted from the row. Roles admin / editor / viewer
-   enforced per route with `require_role`.
+   enforced per route with `require_role`. Session length is
+   `SHELF_SESSION_DAYS` (default 7). The session cookie stays
+   `SameSite=Strict`, so a browser withholds it on a navigation that starts on
+   another site. A cross-site **page** navigation without a session (`GET`,
+   `Sec-Fetch-Mode: navigate`, `Sec-Fetch-Site: cross-site`) therefore gets one
+   empty `200` with `Refresh: 0` to the same path, which the browser re-requests
+   same-origin with the cookie; `/login` itself included. Never on `/api/`:
+   the GET event streams there (Hardcover export and import, synopsis
+   backfill, cover bulk retry, Komga / RomM / Audiobookshelf sync, valuation)
+   do real work, and CSRF does not check GETs.
 4. **CSRF** — double-submit cookie; accepts an `X-CSRF-Token` header (HTMX,
    fetch) or `_csrf` form field on mutating requests.
 

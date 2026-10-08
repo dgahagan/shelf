@@ -5954,6 +5954,52 @@ grep -n "_CACHEABLE_STATUSES" app/services/isbndb.py
 
 - **Status:** documented. The rule applies to any new cached lookup.
 
+## G138 — When a response header echoes the request's path (`Refresh`, `Location`, a future `next=`)
+
+- **Rule:** build the target from `request.scope["raw_path"]` and
+  `scope["query_string"]`, decoded `latin-1`, never from `request.url.path`.
+  Then collapse any leading run of `/` and `\` to one `/`
+  (`"/" + raw.lstrip("/\\")`). Pin both by equality.
+- **Why:** `request.url.path` is percent-**decoded**, so
+  `/browse%0d%0aX-Injected:1` becomes a path holding CR LF, ready to split a
+  header. And ASGI delivers `GET //evil.example/x` as path `//evil.example/x`,
+  which a browser reads as protocol-relative: an open redirect. `/\host` and
+  `///host` are the same trap; a `[1:]` slice misses them.
+- **Evidence:** issue #149, `5d42f45` (2026-10-08) — `_cross_site_bounce` in
+  `app/main.py`. Starlette's TestClient sends both shapes verbatim, so
+  `tests/test_auth_cross_site_arrival.py` pins them as plain unit tests.
+  Swapping the `lstrip` for the raw path turns 3 of them red.
+- **Verify:**
+
+```bash
+grep -n 'raw_path\|lstrip("/' app/main.py
+```
+
+- **Status:** documented. The design plan names a `next=` redirect after login
+  as the revisit; it is this rule's next caller.
+
+## G139 — When a test needs a request to be cross-site
+
+- **Rule:** use a different **host**, not a different port. Serve the other
+  site from `127.0.0.1` and address Shelf as `localhost` (or the reverse).
+  Prove it was cross-site by asserting on something only the cross-site leg
+  produces — for the auth bounce, a 200 carrying a `refresh` header.
+- **Why:** a site is scheme plus registrable domain; the port does not count.
+  `127.0.0.1:A` linking to `127.0.0.1:B` is same-site, so `SameSite=Strict`
+  cookies are sent and the test passes for the wrong reason. The E2E
+  `upc_stub` is exactly that shape. Chromium reaches the `127.0.0.1`-bound E2E
+  uvicorn as `localhost` with no bind change.
+- **Evidence:** issue #149 probe (`probe_strict_arrival.out`) and
+  `tests/e2e/test_auth_arrival.py` (2026-10-08). With the bounce disabled,
+  the logged-in test lands on `/login`.
+- **Verify:**
+
+```bash
+grep -n '127.0.0.1\|localhost' tests/e2e/test_auth_arrival.py
+```
+
+- **Status:** documented.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

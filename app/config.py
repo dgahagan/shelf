@@ -1,6 +1,9 @@
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
 DATABASE_PATH = DATA_DIR / "shelf.db"
@@ -333,7 +336,28 @@ DEFAULT_PAGE_SIZE = 60
 # Auth
 SECRET_KEY = os.environ.get("SECRET_KEY", "")  # auto-generated into DATA_DIR/signing.key if empty
 JWT_ALGORITHM = "HS256"
-JWT_EXPIRY_SECONDS = 7 * 24 * 3600  # 7 days
+SESSION_DAYS_DEFAULT = 7
+SESSION_DAYS_MAX = 365
+
+
+def session_days(raw: str | None) -> int:
+    """Parse SHELF_SESSION_DAYS. Unset or empty (compose passes "") is the default, silently."""
+    if raw is None or not raw.strip():
+        return SESSION_DAYS_DEFAULT
+    try:
+        days = int(raw)
+    except ValueError:
+        days = 0
+    if not 1 <= days <= SESSION_DAYS_MAX:
+        logger.warning(
+            "SHELF_SESSION_DAYS=%r is not an integer from 1 to %d; using %d",
+            raw, SESSION_DAYS_MAX, SESSION_DAYS_DEFAULT,
+        )
+        return SESSION_DAYS_DEFAULT
+    return days
+
+
+JWT_EXPIRY_SECONDS = session_days(os.environ.get("SHELF_SESSION_DAYS")) * 24 * 3600
 
 # API secret env var overrides (take priority over DB settings when set)
 # Map: settings key -> env var name

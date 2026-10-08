@@ -6,6 +6,38 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.63.0] - 2026-10-08
+
+Opening Shelf from a link on another site showed the login page, even when you
+had logged in that morning, and reloading the page did not help. This hit
+anyone who opens Shelf from a homelab dashboard, a chat message, or another
+machine on the LAN. Your session was still there; the browser was not sending
+it. Now the page opens as it should. This release also lets you choose how long
+a login lasts.
+
+### Fixed
+
+- **A link from another site no longer shows the login page.** Opening Shelf
+  from a homelab dashboard, a chat link or another host on your LAN showed the
+  login page even with a live session, and reloading did not help. The
+  session cookie is `SameSite=Strict`, so the browser withheld it on that
+  first request. Shelf now asks the browser to repeat the request once from
+  Shelf's own address, which sends the cookie, and the page opens. The cookie
+  itself stays `SameSite=Strict`, and links into Shelf's API still need a
+  login, so no other site can start a sync or an export. Reported by
+  [@notAnElephant](https://github.com/notAnElephant) in
+  [#149](https://github.com/dgahagan/shelf/issues/149).
+
+### Added
+
+- **`SHELF_SESSION_DAYS` sets how long a login lasts.** Whole days from 1 to
+  365; the default stays 7. A session in use is renewed once it is past half
+  its length, so someone who opens Shelf every few days is never logged out.
+  An invalid value logs a warning and uses 7. Sessions that already exist keep
+  their old expiry until their next renewal. There is deliberately no "remember
+  me" box on the login form: a session already lasts across visits, and this
+  setting covers how long.
+
 ## [0.62.1] - 2026-10-08
 
 A save on the edit page that Shelf refused could still replace the item's
@@ -4875,6 +4907,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.63.0]: https://github.com/dgahagan/shelf/releases/tag/v0.63.0
 [0.62.1]: https://github.com/dgahagan/shelf/releases/tag/v0.62.1
 [0.62.0]: https://github.com/dgahagan/shelf/releases/tag/v0.62.0
 [0.61.1]: https://github.com/dgahagan/shelf/releases/tag/v0.61.1
