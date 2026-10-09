@@ -662,8 +662,13 @@ post-redirect re-check. Misses are retried by a background **cover queue**
 The **picker is a separate, human-driven path** and dispatches on the item's
 media type (`covers.search_covers`): `dvd` → TMDb's poster set for the film,
 `video_game` → IGDB cover art and artwork, and everything else — including an
-unrecognised `media_type`, which the schema does not constrain — → the
-unchanged book search over Google Books and Open Library. Here TMDb and IGDB
+unrecognised `media_type`, which the schema does not constrain — → book cover
+search over Google Books and Open Library. The book search asks both sources
+for the item's exact ISBN edition first. It accepts a Google result only when
+its identifiers match and an Open Library result only when the ISBN endpoint's
+edition identifiers match; otherwise it offers title matches labelled
+"Check edition" for a person to inspect. A custom picker query skips the ISBN
+stage so the user can look for an alternate edition. Here TMDb and IGDB
 supply *galleries* rather than the single URL the unattended cascade takes,
 and the two must not be conflated: the cascade is untouched by the picker's
 dispatch. `MEDIA_TYPE_PROVIDERS` and `CREDENTIAL_KEYS` in `covers.py` are the
@@ -697,9 +702,9 @@ unconfigured-provider note first (nothing was asked, so there is no outcome to
 report), then the actionable state, then the generic "No covers found" line,
 which now means only that the provider answered and had nothing. A `found`
 result with an **empty** payload is that genuine miss and is not an error. The
-book branch is wrapped as `found` rather than re-typed: it fans out over two
-sources that each swallow their own failure, so it has no single outcome to
-report.
+book branch combines the two source outcomes: if neither supplies a candidate,
+a rejected key, rate limit or transport failure reaches the picker rather
+than being shown as a genuine miss.
 
 ### Scan outcomes
 

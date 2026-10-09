@@ -83,7 +83,7 @@ class TestCoversSearchByTitle:
         fake_fetch.return_value = StubResponse(200, json_data={"items": [], "docs": []})
         client = object()
 
-        await covers.search_cover_by_title("Dune", "Frank Herbert", client)
+        await covers.search_book_covers("Dune", "Frank Herbert", None, client)
 
         assert fake_fetch.await_count == 2
         gbooks_call, ol_call = fake_fetch.await_args_list

@@ -7,6 +7,10 @@ from app.services import provider_result
 from tests.conftest import _insert_item
 
 
+def _book_result(candidates):
+    return provider_result.found("book_covers", candidates)
+
+
 class TestCoverSearchQuery:
     def test_query_overrides_stored_title(self, editor_client, db, monkeypatch):
         from app.services import covers
@@ -14,8 +18,8 @@ class TestCoverSearchQuery:
         item_id = _insert_item(db, title="Stored Title", isbn="9789000030019")
         db.commit()
 
-        search = AsyncMock(return_value=[])
-        monkeypatch.setattr(covers, "search_cover_by_title", search)
+        search = AsyncMock(return_value=_book_result([]))
+        monkeypatch.setattr(covers, "search_book_covers", search)
 
         resp = editor_client.get(
             f"/api/items/{item_id}/cover-search", params={"query": "Custom Query"}
@@ -31,8 +35,8 @@ class TestCoverSearchQuery:
         item_id = _insert_item(db, title="Stored Title", isbn="9789000030026")
         db.commit()
 
-        search = AsyncMock(return_value=[])
-        monkeypatch.setattr(covers, "search_cover_by_title", search)
+        search = AsyncMock(return_value=_book_result([]))
+        monkeypatch.setattr(covers, "search_book_covers", search)
 
         resp = editor_client.get(
             f"/api/items/{item_id}/cover-search", params={"query": "   "}
@@ -41,6 +45,7 @@ class TestCoverSearchQuery:
         assert resp.status_code == 200
         args, _ = search.await_args
         assert args[0] == "Stored Title"
+        assert args[2] == "9789000030026"
 
 
 class TestCoverSelectFailure:
@@ -52,10 +57,10 @@ class TestCoverSelectFailure:
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
         monkeypatch.setattr(
-            covers, "search_cover_by_title",
-            AsyncMock(return_value=[
+            covers, "search_book_covers",
+            AsyncMock(return_value=_book_result([
                 {"url": "https://example.test/a.jpg", "thumbnail": "https://example.test/a-thumb.jpg", "source": "Test"},
-            ]),
+            ])),
         )
 
         resp = editor_client.post(
@@ -95,8 +100,8 @@ class TestCoverSelectFailure:
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
-        search = AsyncMock(return_value=[])
-        monkeypatch.setattr(covers, "search_cover_by_title", search)
+        search = AsyncMock(return_value=_book_result([]))
+        monkeypatch.setattr(covers, "search_book_covers", search)
 
         # No query box exists yet (a later task adds it) so the only way to
         # observe that the box would be seeded is the template context the
@@ -129,11 +134,11 @@ class TestCoverSelectFailure:
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
         monkeypatch.setattr(
-            covers, "search_cover_by_title",
-            AsyncMock(return_value=[
+            covers, "search_book_covers",
+            AsyncMock(return_value=_book_result([
                 {"url": "https://example.test/a.jpg", "thumbnail": "https://example.test/a-thumb.jpg", "source": "Test A"},
                 {"url": "https://example.test/b.jpg", "thumbnail": "https://example.test/b-thumb.jpg", "source": "Test B"},
-            ]),
+            ])),
         )
 
         resp = editor_client.post(
@@ -447,7 +452,7 @@ class TestPickerReachability:
         )
         db.commit()
 
-        monkeypatch.setattr(covers, "search_cover_by_title", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_book_covers", AsyncMock(return_value=_book_result([])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
@@ -466,11 +471,11 @@ class TestPickerReachability:
         db.commit()
 
         monkeypatch.setattr(
-            covers, "search_cover_by_title",
-            AsyncMock(return_value=[
+            covers, "search_book_covers",
+            AsyncMock(return_value=_book_result([
                 {"url": "https://example.test/a.jpg", "thumbnail": "https://example.test/a-thumb.jpg", "source": "Test A"},
                 {"url": "https://example.test/b.jpg", "thumbnail": "https://example.test/b-thumb.jpg", "source": "Test B"},
-            ]),
+            ])),
         )
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -505,7 +510,7 @@ class TestPickerReachability:
         db.commit()
 
         monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
-        monkeypatch.setattr(covers, "search_cover_by_title", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_book_covers", AsyncMock(return_value=_book_result([])))
 
         resp = editor_client.post(
             f"/api/items/{item_id}/cover-select",
@@ -1020,10 +1025,10 @@ class TestFragmentDefaultsReproduceItemDetailMarkup:
         db.commit()
 
         monkeypatch.setattr(
-            covers, "search_cover_by_title",
-            AsyncMock(return_value=[
+            covers, "search_book_covers",
+            AsyncMock(return_value=_book_result([
                 {"url": "https://example.test/a.jpg", "thumbnail": "https://example.test/a-thumb.jpg", "source": "Test"},
-            ]),
+            ])),
         )
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
@@ -1044,7 +1049,7 @@ class TestFragmentDefaultsReproduceItemDetailMarkup:
         item_id = _insert_item(db, title="Default Upload Swap", isbn="9789000090075")
         db.commit()
 
-        monkeypatch.setattr(covers, "search_cover_by_title", AsyncMock(return_value=[]))
+        monkeypatch.setattr(covers, "search_book_covers", AsyncMock(return_value=_book_result([])))
 
         resp = editor_client.get(f"/api/items/{item_id}/cover-search")
 
