@@ -5,7 +5,8 @@
 <script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
 {% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto" x-data="scanPage" data-off-modes="{{ off_scan_modes }}">
+<div class="max-w-3xl mx-auto" x-data="scanPage" data-off-modes="{{ off_scan_modes }}"
+     data-status-labels='{{ status_label_sets | tojson }}'>
 
     <!-- Mode Switcher -->
     <div class="flex flex-wrap gap-2 mb-4">
@@ -183,6 +184,25 @@
                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
                 <datalist id="tag-suggestions"></datalist>
                 <p class="text-xs text-shelf-muted mt-1">Added to every new item. Separate several with <code>;</code>.</p>
+            </div>
+
+            <!-- Default reading status (add/wishlist only) -->
+            {# Sticky per device (shelf_reading_status). :disabled keeps it out
+               of other modes' submissions and off types with no status (G90);
+               the server checks the type again. The option words follow the
+               media type, from data-status-labels on the root. #}
+            <div x-show="mode === 'add' || mode === 'wishlist'" x-transition class="mt-4">
+                <label for="default-reading-status" class="block text-sm font-medium text-shelf-muted mb-1">Default status</label>
+                <select id="default-reading-status" name="reading_status"
+                        x-model="readingStatus" @change="persistReadingStatus()"
+                        :disabled="statusDisabled"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none disabled:opacity-50">
+                    <option value="">None</option>
+                    <option value="want_to_read" x-text="statusWant">Want to</option>
+                    <option value="reading" x-text="statusDoing">In progress</option>
+                    <option value="read" x-text="statusDone">Finished</option>
+                </select>
+                <p class="text-xs text-shelf-muted mt-1">Set on every new item. No dates are recorded.</p>
             </div>
 
             <!-- Validation warnings -->

@@ -6,6 +6,45 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.64.0] - 2026-10-09
+
+Marking a book you had just started meant scanning it and then opening its page
+to set the status. On a stack of books, that is one extra edit per book. The
+Scan page now has a **Default status** beside Default tags, and every new item
+takes it. This release also carries a batch of cover-picker work from
+[@notAnElephant](https://github.com/notAnElephant), who reported the scan
+problem too: **Find cover** now looks for the book's own edition first.
+
+### Added
+
+- **A default reading status on the Scan page.** Choose None, Want to Read,
+  Reading or Read once, and every item you add by barcode, title search or
+  Add by hand takes it. It works in Add and Wishlist modes. Other modes hide
+  it. The words follow the media type, as on the item page (Want to Watch for
+  DVDs, Want to Play for games). The choice is remembered on each device, like
+  the other scan defaults. Media without a reading status, such as CDs and
+  records, never take it. It sets the status only. No start or finish date is
+  recorded, because a scan-time default has no real date: a shelf read years
+  ago would otherwise be marked finished today. You can add dates on the item
+  page. A scan that finds an item you already own leaves its status alone. An
+  item restored from Trash takes the default only if it had no status before
+  you trashed it. Requested by
+  [@notAnElephant](https://github.com/notAnElephant) in
+  [#148](https://github.com/dgahagan/shelf/issues/148).
+
+### Changed
+
+- **Find cover looks for the book's exact edition first.** For a book with an
+  ISBN, the cover picker asks Google Books and Open Library for that edition
+  before anything else, and accepts a result only when its ISBN matches. If
+  neither source has it, the picker shows title matches marked **Check
+  edition**, so you can pick the right printing. Typing your own search looks
+  for other editions directly. A spent provider quota, a rejected API key and a
+  connection failure now show as what they are, instead of "No covers found".
+  The automatic cover search that runs when you add an item is unchanged.
+  Contributed by [@notAnElephant](https://github.com/notAnElephant) in
+  [#146](https://github.com/dgahagan/shelf/pull/146).
+
 ## [0.63.0] - 2026-10-08
 
 Opening Shelf from a link on another site showed the login page, even when you
@@ -4907,6 +4946,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.64.0]: https://github.com/dgahagan/shelf/releases/tag/v0.64.0
 [0.63.0]: https://github.com/dgahagan/shelf/releases/tag/v0.63.0
 [0.62.1]: https://github.com/dgahagan/shelf/releases/tag/v0.62.1
 [0.62.0]: https://github.com/dgahagan/shelf/releases/tag/v0.62.0

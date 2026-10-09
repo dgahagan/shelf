@@ -3091,6 +3091,9 @@ for path, cap in re.findall(r'\"([^\"]+\.(?:py|html))\": \((\d+),', src):
 "
 ```
 
+- **Also `app/routers/items.py`:** 1592/1600 as of `31b40a3` (2026-10-09,
+  plan `issue-148-scan-default-status`, +7 within a stated +12 budget). Eight
+  lines are left, so the next plan that touches it should plan an extraction.
 - **Status:** documented. The cap is already mechanically enforced — what is
   missing is the *warning* before the budget is spent, not the failure after.
   A lint that fails at 95% of a cap would move the signal to the change that
@@ -5999,6 +6002,31 @@ grep -n '127.0.0.1\|localhost' tests/e2e/test_auth_arrival.py
 ```
 
 - **Status:** documented.
+
+## G140 — When a plan, prompt or test names a media type by its stored value
+
+- **Rule:** read `app.config.MEDIA_TYPES` before you write a type value.
+  There is **no `music` type**. The music formats are `vinyl`, `cassette`,
+  `cd` and `digital_music`. For "a type with no reading status", use one of
+  those or `magazine` (`STATUS_MEDIA_TYPES` is the book family plus `dvd` and
+  `video_game`).
+- **Why:** user docs say "music" and so does the item page's prose, so
+  "music" reads like a value. It is not one. `insert_item(media_type="music")`
+  raises `UnknownMediaType`, so a test meant to prove "no status for this
+  type" goes red for an unrelated reason. A `select_option("#media-type",
+  "music")` in E2E times out.
+- **Evidence:** plan `issue-148-scan-default-status` (2026-10-09). The design
+  and the impl plan both named `music` as the non-status type in T1, T2, T4
+  and T5. T1's first test run failed on it, and the later prompts were
+  corrected to `vinyl`.
+- **Verify:**
+
+```bash
+python3 -c "from app.config import MEDIA_TYPES, STATUS_MEDIA_TYPES as S; print([t for t in MEDIA_TYPES if t not in S])"
+```
+
+- **Status:** documented. This is a lint candidate: grep plan docs and tests
+  for `media_type="music"` / `"music"` as a value.
 
 ## Graveyard
 

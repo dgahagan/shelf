@@ -224,8 +224,19 @@ async def scan(
         {"media_types": MEDIA_TYPES, "game_platforms": game_platforms,
          "locations": locations, "borrowers": borrowers,
          "manual_open": add == "manual", "manual_prefill": manual_prefill,
-         "off_scan_modes": features.disabled_scan_modes()},
+         "off_scan_modes": features.disabled_scan_modes(),
+         "status_label_sets": _status_label_sets()},
     )
+
+
+def _status_label_sets():
+    """The Scan card's default-status words per media type: `auto` gets the
+    neutral set, and every status-capable type its own. The keys other than
+    `auto` are the types the control is enabled for."""
+    def words(labels):
+        return [labels.want, labels.doing, labels.done]
+    sets = {t: words(status_labels(t)) for t in sorted(STATUS_MEDIA_TYPES)}
+    return {"auto": words(status_labels(None)), **sets}
 
 
 @router.get("/intake")

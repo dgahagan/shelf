@@ -94,7 +94,7 @@ class TestPanelFields:
         panel = self._panel(admin_client)
         assert 'hx-target="#scan-results"' in panel
         assert 'hx-swap="afterbegin"' in panel
-        assert 'hx-include="#scan-mode, #default-tags"' in panel
+        assert 'hx-include="#scan-mode, #default-tags, #default-reading-status"' in panel
 
     def test_the_page_supplies_the_included_mode_input(self, admin_client):
         assert 'id="scan-mode"' in admin_client.get("/scan").text
@@ -128,7 +128,7 @@ class TestPanelFields:
                 data={"isbn": "9780000999931", "media_type": "book", "mode": "add"},
             )
         form = re.search(r'<form hx-post="/api/items/manual"[^>]*>', resp.text, re.S).group(0)
-        assert 'hx-include="#default-tags"' in form
+        assert 'hx-include="#default-tags, #default-reading-status"' in form
         assert 'name="tags"' not in resp.text
 
     def test_panel_has_no_skip_button(self, admin_client):

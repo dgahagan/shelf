@@ -306,6 +306,7 @@ async def shelf_fill_scan(
         legacy_confirm_isbn13=legacy_confirm_isbn13,
         legacy_supplement=legacy_supplement,
         tags=tags,
+        reading_status="",
         _=_,
     )
     context = getattr(response, "context", None) or {}

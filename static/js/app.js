@@ -251,6 +251,7 @@ document.body.addEventListener('htmx:afterSwap', function() {
         });
     }
     syncDefaultTags();
+    syncDefaultReadingStatus();
 });
 
 // The default-tags field can change after the results are on screen, so it is
@@ -263,9 +264,20 @@ function syncDefaultTags() {
         el.value = value;
     });
 }
+// The default reading status, mirrored the same way into each result's
+// .reading-status-sync. Disabled (another mode, or a type with no status)
+// mirrors as empty; the server checks the type again.
+function syncDefaultReadingStatus() {
+    var sel = document.getElementById('default-reading-status');
+    var value = sel && !sel.disabled ? sel.value : '';
+    document.querySelectorAll('.reading-status-sync').forEach(function(el) {
+        el.value = value;
+    });
+}
 ['input', 'change'].forEach(function(type) {
     document.body.addEventListener(type, function(e) {
         if (e.target && e.target.id === 'default-tags') syncDefaultTags();
+        if (e.target && e.target.id === 'default-reading-status') syncDefaultReadingStatus();
     });
 });
 

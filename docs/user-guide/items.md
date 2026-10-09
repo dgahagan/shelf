@@ -5,7 +5,7 @@ its home.
 
 ## What's on the page
 
-- **Cover**, with **Find cover** (search by title, or type your own query,
+- **Cover**, with **Find cover** (search by ISBN and title, or type your own query,
   and pick a candidate — your current cover is shown first, marked
   *Current*, for comparison), **Upload** your own image, paste a link
   under **Use image from URL**, or **Remove cover**. These work on an item that already has a cover, not just a
@@ -17,7 +17,7 @@ its home.
 
   | Media type | What it searches | Tiles are labelled |
   |---|---|---|
-  | Books, ebooks, audiobooks, comics | Google Books and Open Library | by source |
+  | Books, ebooks, audiobooks, comics | Google Books and Open Library — the exact ISBN edition first, then title matches | by source and match (`Open Library · ISBN match`, `Google Books · Check edition`) |
   | DVDs and Blu-rays | the film's poster set on TMDb | by language (`TMDb · EN`) — the same film's posters differ mostly by language |
   | Video games | IGDB cover art **and** key artwork, as separate tiles | by game and kind (`IGDB · Portal · cover`) |
 
@@ -257,6 +257,9 @@ the sync reconciles the reading side. Hardcover is for books, so only books,
 audiobooks, ebooks, comics and manga sync. A disc's, game's, album's or
 magazine's status stays in Shelf: it is never sent to Hardcover and never
 overwritten from it, even when the item was once a book linked to Hardcover.
+A status set at scan time, from the Scan page's
+[default reading status](scanning.md#default-reading-status), syncs like any
+other.
 
 ## Duplicates and merging
 

@@ -21,15 +21,16 @@
            hx-include rather than by an Alpine binding — the mode lives in
            scanPage's scope, and a cross-scope read under the CSP build fails
            silently rather than loudly. Both forms also include the host
-           page's #default-tags the same way; htmx skips it when it is absent
-           or disabled, so a host without it posts no `tags`. #}
+           page's #default-tags and #default-reading-status the same way; htmx
+           skips each when it is absent or disabled, so a host without them
+           posts no `tags` and no `reading_status`. #}
         {% if manual_host == 'panel' %}
         <form hx-post="/api/items/manual" hx-target="#scan-results" hx-swap="afterbegin"
-              hx-include="#scan-mode, #default-tags" enctype="multipart/form-data"
+              hx-include="#scan-mode, #default-tags, #default-reading-status" enctype="multipart/form-data"
               class="space-y-3">
         {% else %}
         <form hx-post="/api/items/manual" hx-target="closest .scan-result" hx-swap="outerHTML"
-              hx-include="#default-tags" enctype="multipart/form-data"
+              hx-include="#default-tags, #default-reading-status" enctype="multipart/form-data"
               class="border-t border-shelf-border pt-3 space-y-3">
         {% endif %}
             {% if manual_host == 'panel' %}

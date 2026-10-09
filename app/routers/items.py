@@ -242,17 +242,21 @@ async def scan_isbn(
     mode: str = Form("add"), borrower_id: int | None = Form(None),
     legacy_confirm_isbn13: str = Form(""),
     legacy_supplement: str = Form(""),
-    tags: str = Form(""),
+    tags: str = Form(""), reading_status: str = Form(""),
     _=Depends(require_role("editor")),
 ):
-    """Thin wrapper: whatever `_scan_isbn_inner` files takes the default tags in its own transaction (G118)."""
-    with tags_svc.default_tags(tags):
-        return await _scan_isbn_inner(request, isbn, media_type, location_id, platform, mode,
-                                      borrower_id, legacy_confirm_isbn13, legacy_supplement, tags)
+    """Thin wrapper: whatever `_scan_isbn_inner` files takes the default tags and reading status in its own transaction (G118)."""
+    try:
+        with tags_svc.default_tags(tags), item_write.default_reading_status(reading_status):
+            return await _scan_isbn_inner(request, isbn, media_type, location_id, platform, mode,
+                                          borrower_id, legacy_confirm_isbn13, legacy_supplement, tags, reading_status)
+    except item_write.InvalidReadingStatus as e:
+        return request.app.state.templates.TemplateResponse(
+            request, "fragments/scan_result.html", {"status": "error", "isbn": isbn, "message": str(e)})
 
 
 async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mode, borrower_id,
-                            legacy_confirm_isbn13, legacy_supplement, tags):
+                            legacy_confirm_isbn13, legacy_supplement, tags, reading_status):
     """Scan a barcode: mode-aware dispatch for add, lend, return, move, inventory, lookup, quick_rate."""
     templates = request.app.state.templates
     raw = isbn.strip()
@@ -324,6 +328,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                         "mode": mode,
                         "borrower_id": borrower_id,
                         "tags": tags,
+                        "reading_status": reading_status,
                     },
                 )
 
@@ -445,6 +450,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                     "mode": mode,
                     "borrower_id": borrower_id,
                     "tags": tags,
+                    "reading_status": reading_status,
                 },
             )
 
@@ -751,7 +757,8 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
             # replaced also sat outside the lock above.
             wishlist = {"owned": 0, "wishlisted": True} if mode == "wishlist" else {}
             try:
-                with tags_svc.default_tags(form.get("tags") or ""):
+                with tags_svc.default_tags(form.get("tags") or ""), \
+                        item_write.default_reading_status(form.get("reading_status") or ""):
                     item_id = insert_item(
                         db,
                         **wishlist,

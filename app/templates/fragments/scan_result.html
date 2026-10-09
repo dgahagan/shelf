@@ -26,6 +26,7 @@
             {% if platform %}<input type="hidden" name="platform" value="{{ platform }}">{% endif %}
             {% if borrower_id %}<input type="hidden" name="borrower_id" value="{{ borrower_id }}">{% endif %}
             {% if tags %}<input type="hidden" name="tags" value="{{ tags }}">{% endif %}
+            {% if reading_status %}<input type="hidden" name="reading_status" value="{{ reading_status }}">{% endif %}
             <button type="submit"
                     class="w-full text-left bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:border-shelf-accent hover:bg-shelf-hover transition-colors">
                 <span class="block font-medium text-shelf-text">{{ candidate.title }}</span>
@@ -70,6 +71,7 @@
         {% if platform %}<input type="hidden" name="platform" value="{{ platform }}">{% endif %}
         {% if borrower_id %}<input type="hidden" name="borrower_id" value="{{ borrower_id }}">{% endif %}
         {% if tags %}<input type="hidden" name="tags" value="{{ tags }}">{% endif %}
+        {% if reading_status %}<input type="hidden" name="reading_status" value="{{ reading_status }}">{% endif %}
         {# `required` and not `pattern` alone: pattern does not reject an empty
            value, so without it "Look it up" on an untouched field posts and the
            same card comes back with nothing to say (diff-review codex B2). #}

@@ -102,6 +102,31 @@ Tags are applied on the item page or its edit page, or in bulk from
 [Browse](browse-and-search.md#bulk-editing), and an admin renames, scopes and
 deletes them in [Settings](settings.md#tags).
 
+## Default reading status
+
+Started a stack, or cataloguing a shelf you have already read? Pick it once in
+**Default status**, just below Default tags, and every item **Add** or
+**Wishlist** files from then on takes that status — no second edit per item.
+
+- **Choices:** None, or the three statuses. **The words follow the media
+  type**, as on the item page: Want to Read / Reading / Read for books, Want
+  to Watch / Watching / Watched for discs, Want to Play / Playing / Played
+  for games. Under **Auto** it shows neutral words until the scan says what
+  the item is.
+- **Disabled where it would do nothing:** in every mode other than Add and
+  Wishlist, and for a type with no reading status (music, magazines…). Under
+  Auto a scan that turns out to be one of those files with no status.
+- **It is sticky per device**, like the mode, location and default tags.
+- **Only an item filed now takes it:** a new item, a wishlist add, or an
+  item a scan brings back from Trash *that has no status of its own*. A
+  restored item that already had one keeps it. A duplicate never changes,
+  nor does a wishlist item a scan marks as owned.
+- **No dates are recorded.** Setting Read here does not stamp a finish date
+  or add a reading-log entry; set dates on the item page if you want them.
+- It carries through the same places default tags do: the [legacy-barcode
+  follow-up](#legacy-price-point-book-barcodes), [title search](#title-search-no-barcode),
+  and the [Add by hand](#add-by-hand) form.
+
 ## Title search (no barcode)
 
 Below the barcode field, **Title search** covers the things barcodes miss —
@@ -118,6 +143,9 @@ An empty result box tells you *why* it is empty, in the same words the scan
 card uses: a rejected key, a provider that is rate-limiting us, or a provider
 Shelf could not reach at all. "No books found for …" now means only what it
 says — the provider answered and genuinely had nothing.
+
+An item added from the results takes the [default tags](#default-tags) and
+the [default reading status](#default-reading-status) set on the card.
 
 ## Add by hand
 
@@ -139,6 +167,8 @@ anywhere else switches you to Add mode so the panel is there when you land.
 - The **creator field** renames itself to match the type — Author(s) for
   books, Developer for games, Director for discs, Artist for music.
 - The **platform** picker appears only for video games.
+- The card's [default tags](#default-tags) and [default reading
+  status](#default-reading-status) apply here too.
 
 Five ways in, all landing on the same panel:
 

@@ -1318,17 +1318,33 @@ wins. Admins rename, re-scope and delete through two plain form routes,
 the `UNIQUE NOCASE` column rather than a pre-read. The admin gate is per route,
 since the same router carries the editor routes.
 
-**Default tags ride the insert funnel's transaction.** An add route wraps
-its insert in `tags_svc.default_tags(raw)`, and `insert_item` attaches the add
-form's `tags` to the row it inserts or restores, on the same connection, so the
-item and its tags commit together or not at all (G118). Only a row the funnel
-files takes them — a `duplicate`, `promoted` or `in_trash` result never
-reaches the funnel. `POST /api/scan` (a thin wrapper over `_scan_isbn_inner`,
-which is also what Shelf Fill's scan reaches), the three catalog adds,
-`POST /api/items/manual` and Photo Intake's confirm loop each open the block.
-The block empties itself on exit, so a background task spawned inside it does
-not inherit the tags. The scan's two legacy-barcode continuation forms echo
-`tags` as a hidden input, so the item that finally lands still carries it.
+**Add-time defaults ride the insert funnel's transaction.** Two
+`ContextVar` blocks carry what the Scan card sets for a session:
+`tags_svc.default_tags(raw)` and `item_write.default_reading_status(raw)`. An
+add route wraps its insert in them, and `insert_item` applies them to the row
+it inserts or restores, on the same connection, so the item and its defaults
+commit together or not at all (G118). Only a row the funnel files takes them —
+a `duplicate`, `promoted` or `in_trash` result never reaches the funnel. Each
+block empties itself on exit, so a background task spawned inside it does not
+inherit it.
+
+- **Default tags** attach to a fresh row and to a restored one alike: tags are
+  additive. `POST /api/scan` (a thin wrapper over `_scan_isbn_inner`, which is
+  also what Shelf Fill's scan reaches), the three catalog adds,
+  `POST /api/items/manual` and Photo Intake's confirm loop each open the block.
+- **The default reading status** is validated when the block is *entered*, so
+  an unknown value renders the route's error card before any lookup or
+  insert. It is set on a fresh row only when the caller passed no status and
+  the type carries one (`STATUS_MEDIA_TYPES`), and on a restored row only when
+  that row's status is NULL — a status is one value, and restore never
+  overwrites what the user left. It records no dates and no `reading_log` row.
+  Only the Scan page's sites open it: the scan wrapper, the three catalog adds
+  and manual add. Shelf Fill passes an empty value through the scan wrapper,
+  and Photo Intake does not open it.
+
+The scan's two legacy-barcode continuation forms echo `tags` and
+`reading_status` as hidden inputs, so the item that finally lands still
+carries both.
 
 **Wishlist membership is a list, not a column.** All three funnels accept a
 virtual `wishlisted: bool` field, popped before the name check so it never

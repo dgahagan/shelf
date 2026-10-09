@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-5033%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-323%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-5069%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-327%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -186,7 +186,7 @@ each option before anything is sent.
 - **Choose your features** — the setup wizard starts you on Minimal, Standard or Everything, and Settings → Features turns any optional part (Lending, Sharing, Valuation, Price alerts, Photo Intake, the integrations, …) on or off later, one at a time or by applying a profile. A feature that is off leaves the pages you use, and its data is kept for when it comes back. See [Configuration → Features](docs/configuration.md#features)
 - **Home overview** — Shelf opens on a page that answers "what is happening in my library?": catalogue, owned and wishlist totals, what is lent out, missing covers, a media-type breakdown and recent additions. Browse stays the place for searching, filtering and bulk editing. See [Home](docs/user-guide/home.md)
 - **Filter and search** — by media type, location, status (read, watched, played), ownership, lending status, source (which sync, provider or import an item arrived from), and free text
-- **Reading tracking** — want-to-read, reading, and read with start/finish dates
+- **Reading tracking** — want-to-read, reading, and read with start/finish dates, and a default status for a scanning session
 - **Custom tags** — free-form tags (`signed`, `first-edition`, whatever you like) as chips on the item page and its edit page, applied to many items at once from the Browse bulk bar, with a tag filter and an optional Tags column on Browse. Admins rename, scope and delete tags in Settings, which shows how many items carry each. Set **default tags** for a scanning session on Scan, Shelf Fill or Photo Intake and every item you add is tagged as it arrives, with suggestions for the media type you are scanning
 - **Synopses** — item descriptions fetched automatically on add, plus a one-click backfill for your existing catalog (Open Library, Google Books, Hardcover)
 - **Stats dashboard** — books read per year, collection growth, top authors, and value-over-time charts (server-rendered SVG, no JS)

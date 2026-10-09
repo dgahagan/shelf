@@ -18,7 +18,7 @@ from app.auth import require_role
 from app.config import BOOK_MEDIA_TYPES, HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
 from app.database import get_db, get_game_platforms, get_setting
 from app.routers import items_common
-from app.services import covers, igdb, openlibrary, restore_report, scan_outcome, tmdb
+from app.services import covers, igdb, item_write, openlibrary, restore_report, scan_outcome, tmdb
 from app.services import tags as tags_svc
 from app.services import isbn as isbn_svc
 from app.services import upc as upc_svc
@@ -76,6 +76,7 @@ async def add_game_from_search(
     platform: str = Form(""),
     location_id: int | None = Form(None),
     tags: str = Form(""),
+    reading_status: str = Form(""),
     _=Depends(require_role("editor")),
 ):
     """Add a video game to the collection from an IGDB search result."""
@@ -133,7 +134,8 @@ async def add_game_from_search(
             # ItemValueError and the card carries its message. Rendered after
             # the block so nothing runs under the write.
             try:
-                with tags_svc.default_tags(tags):
+                with tags_svc.default_tags(tags), \
+                     item_write.default_reading_status(reading_status):
                     item_id = insert_item(
                         db,
                         title=metadata["title"],
@@ -251,6 +253,7 @@ async def add_book_from_search(
     media_type: str = Form("book"),
     location_id: int | None = Form(None),
     tags: str = Form(""),
+    reading_status: str = Form(""),
     _=Depends(require_role("editor")),
 ):
     """Add a book to the collection from a title search result (by ISBN)."""
@@ -316,7 +319,8 @@ async def add_book_from_search(
             )
 
         try:
-            with tags_svc.default_tags(tags):
+            with tags_svc.default_tags(tags), \
+                 item_write.default_reading_status(reading_status):
                 item_id = items_common._save_item(metadata, isbn13, media_type, location_id, source, hc_ids)
         except sqlite3.IntegrityError:
             # A rival add (this same route, or a scan of the same ISBN) can
@@ -335,6 +339,13 @@ async def add_book_from_search(
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
                 {"status": "duplicate", "isbn": isbn13, "title": existing["title"], "item_id": existing["id"]},
+            )
+        except ItemValueError as e:
+            # A reading_status outside the three values raises on block entry,
+            # before any insert, so nothing was filed.
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "error", "isbn": isbn13, "message": str(e)},
             )
 
         # Cover kept: skip the download entirely on a restored row that
@@ -414,6 +425,7 @@ async def add_dvd_from_search(
     cover_url: str = Form(""),
     location_id: int | None = Form(None),
     tags: str = Form(""),
+    reading_status: str = Form(""),
     _=Depends(require_role("editor")),
 ):
     """Add a DVD/Blu-ray to the collection from a TMDb search result."""
@@ -462,7 +474,8 @@ async def add_dvd_from_search(
             # ItemValueError and the card carries its message. Rendered after
             # the block so nothing runs under the write.
             try:
-                with tags_svc.default_tags(tags):
+                with tags_svc.default_tags(tags), \
+                     item_write.default_reading_status(reading_status):
                     item_id = insert_item(
                         db,
                         title=title,

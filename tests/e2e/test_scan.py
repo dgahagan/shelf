@@ -2336,6 +2336,115 @@ def test_manual_add_panel_attaches_default_tags_to_the_new_item(
     assert_page_clean(authed_page)
 
 
+_STATUS_SELECT = "#default-reading-status"
+
+
+def _status_words(page) -> list:
+    """The three option texts, read one option at a time (G51, G70)."""
+    return [
+        page.locator(f'{_STATUS_SELECT} option[value="{v}"]').text_content().strip()
+        for v in ("want_to_read", "reading", "read")
+    ]
+
+
+def _open_scan(page, live_server):
+    page.goto(f"{live_server['url']}/scan")
+    page.wait_for_load_state("networkidle")
+    expect(page.locator(_STATUS_SELECT)).to_be_attached()
+
+
+def test_default_reading_status_is_enabled_in_add_and_disabled_elsewhere(
+    live_server, authed_page
+):
+    """G90: the control is hidden outside add/wishlist, and hidden is not
+    enough: only `disabled` keeps it out of the POST."""
+    _open_scan(authed_page, live_server)
+    select = authed_page.locator(_STATUS_SELECT)
+    expect(select).to_be_visible()
+    expect(select).to_be_enabled()
+
+    switcher = authed_page.locator("div.flex.flex-wrap.gap-2.mb-4")
+    for label in ("Lend", "Move"):
+        switcher.get_by_role("button", name=label, exact=True).click()
+        expect(select).to_be_hidden()
+        expect(select).to_be_disabled()
+    switcher.get_by_role("button", name="Add", exact=True).click()
+    expect(select).to_be_visible()
+    expect(select).to_be_enabled()
+    assert_page_clean(authed_page)
+
+
+def test_default_reading_status_persists_across_reload(live_server, authed_page):
+    """A real `change` writes the sticky value; no localStorage seeding."""
+    _open_scan(authed_page, live_server)
+    authed_page.select_option(_STATUS_SELECT, "reading")
+    authed_page.reload()
+    authed_page.wait_for_load_state("networkidle")
+    expect(authed_page.locator(_STATUS_SELECT)).to_have_value("reading")
+    assert_page_clean(authed_page)
+
+
+def test_default_reading_status_words_follow_the_media_type(
+    live_server, authed_page
+):
+    _open_scan(authed_page, live_server)
+    select = authed_page.locator(_STATUS_SELECT)
+
+    expect(select.locator('option[value="want_to_read"]')).to_have_text("Want to")
+    assert _status_words(authed_page) == ["Want to", "In progress", "Finished"]
+
+    authed_page.select_option("#media-type", "dvd")
+    expect(select.locator('option[value="want_to_read"]')).to_have_text(
+        "Want to Watch"
+    )
+    assert _status_words(authed_page) == ["Want to Watch", "Watching", "Watched"]
+    expect(select).to_be_enabled()
+
+    authed_page.select_option("#media-type", "vinyl")
+    expect(select).to_be_disabled()
+
+    authed_page.select_option("#media-type", "auto")
+    expect(select).to_be_enabled()
+    assert _status_words(authed_page) == ["Want to", "In progress", "Finished"]
+    assert_page_clean(authed_page)
+
+
+def test_manual_add_panel_applies_the_default_reading_status(
+    live_server, authed_page
+):
+    """The panel's `hx-include` carries the status to /api/items/manual."""
+    data_dir = live_server["data_dir"]
+    title = "T5 Manual Status Subject"
+    _open_scan(authed_page, live_server)
+    authed_page.select_option(_STATUS_SELECT, "want_to_read")
+
+    authed_page.click("button[data-manual-toggle]")
+    panel = authed_page.locator('[data-manual-host="panel"]')
+    expect(panel).to_be_visible()
+    panel.locator("select[name=media_type]").select_option("book")
+    panel.locator("input[name=title]").fill(title)
+    with authed_page.expect_response(
+        lambda r: "/api/items/manual" in r.url and r.ok
+    ):
+        panel.locator("form button[type=submit]").click()
+
+    conn = sqlite3.connect(str(data_dir / "shelf.db"))
+    try:
+        row = conn.execute(
+            "SELECT id, reading_status FROM items WHERE title = ?", (title,)
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row is not None, "manual add did not create the item"
+    assert row[1] == "want_to_read"
+
+    authed_page.goto(f"{live_server['url']}/item/{row[0]}")
+    authed_page.wait_for_load_state("networkidle")
+    section = authed_page.locator("#reading-status-section")
+    expect(section.get_by_role("button", name="Want to Read")).to_be_visible()
+    assert_page_clean(authed_page)
+
+
 def _tag_suggestion_names(page) -> list:
     return page.evaluate(
         "() => Array.from(document.querySelectorAll("

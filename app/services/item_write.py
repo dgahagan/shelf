@@ -73,9 +73,11 @@ follow-up writes (tags, scan log, cover path) to commit together, and
 (G16, G18).
 """
 
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Iterable, Mapping
 
-from app.config import MEDIA_TYPES, canonical_media_type
+from app.config import MEDIA_TYPES, STATUS_MEDIA_TYPES, canonical_media_type
 from app.database import get_game_platforms
 from app.services import author_index
 from app.services import isbn as isbn_svc
@@ -543,6 +545,9 @@ def insert_item(db, fields: Mapping[str, Any] | None = None, *,
       they deleted gets it back as they left it, not overwritten by whatever
       the provider says today. The caller's ownership intent is applied, and
       only ever toward owned (see `apply_restored_ownership`).
+      One exception: inside a `default_reading_status` block, a restored
+      row whose status is NULL takes the default. A status the row already
+      has is never overwritten.
     - **refuses**, with `restore_trashed=False`, raising `IdentifierInTrash`
       and writing nothing. That is the machine path: a background sync must
       not resurrect what a person deleted.
@@ -560,6 +565,11 @@ def insert_item(db, fields: Mapping[str, Any] | None = None, *,
             "insert_item() requires a non-empty 'title' — items.title is NOT "
             "NULL, and a blank title is unrecoverable in the UI."
         )
+
+    pending_status = _pending_status()
+    if (pending_status is not None and values.get("reading_status") is None
+            and _status_type(values.get("media_type"))):
+        values["reading_status"] = pending_status
 
     _validated_names(db, values, _MANAGED, "insert_item")
     values = validate_item_fields(db, values)
@@ -583,6 +593,8 @@ def insert_item(db, fields: Mapping[str, Any] | None = None, *,
             )
         if restore_item(db, row["id"]):
             apply_restored_ownership(db, row["id"], values, wishlisted)
+            if pending_status is not None:
+                _restore_default_status(db, row["id"], pending_status)
             tags.attach_pending(db, row["id"])
             return ItemId(row["id"], restored=True)
         # The row stopped being trashed between the lookup and the write —
@@ -606,6 +618,67 @@ def insert_item(db, fields: Mapping[str, Any] | None = None, *,
     if values.get("authors"):
         author_index.reindex_item(db, item_id, values["authors"])
     return item_id
+
+
+_pending_reading_status: ContextVar = ContextVar(
+    "pending_default_reading_status", default=None
+)
+
+
+@contextmanager
+def default_reading_status(raw):
+    """Within this block, every item `insert_item` files with no status of
+    its own takes `raw` as its reading status, if its type has one.
+
+    `raw` is checked on entry, before the body runs: blank or None means no
+    default, anything outside `READING_STATUSES` raises
+    `InvalidReadingStatus`. An add route enters the block before its lookup
+    or its insert, so a bad value files nothing.
+
+    The holder is emptied on exit, not only unset: a task spawned inside the
+    block copies the context, and must not apply it later (as
+    `tags.default_tags`).
+    """
+    status = raw.strip() if isinstance(raw, str) else raw
+    status = status or None
+    if status is not None and status not in READING_STATUSES:
+        raise InvalidReadingStatus(
+            f"Invalid reading status: {status!r}", value=status
+        )
+    holder = {"status": status}
+    token = _pending_reading_status.set(holder)
+    try:
+        yield
+    finally:
+        holder["status"] = None
+        _pending_reading_status.reset(token)
+
+
+def _pending_status() -> str | None:
+    """The enclosing `default_reading_status` block's value, else None."""
+    holder = _pending_reading_status.get()
+    return holder["status"] if holder else None
+
+
+def _status_type(media_type) -> bool:
+    """Whether a row of `media_type` carries a reading status. A missing
+    type is the `SCHEMA` default, `book`."""
+    return canonical_media_type(media_type or "book") in STATUS_MEDIA_TYPES
+
+
+def _restore_default_status(db, item_id: int, status: str) -> None:
+    """Give a just-restored row the block's status, only when it has none.
+
+    Same connection as the restore (G118). `update_item_fields` re-enters
+    `sync_primary_location` only for `location_id`, so this write does not
+    touch copies (G96).
+    """
+    row = db.execute(
+        "SELECT reading_status, media_type FROM items_live WHERE id = ?",
+        (item_id,),
+    ).fetchone()
+    if row and row["reading_status"] is None and _status_type(row["media_type"]):
+        update_item_fields(db, item_id, {"reading_status": status})
 
 
 def trashed_title(db, item_id: int) -> str | None:

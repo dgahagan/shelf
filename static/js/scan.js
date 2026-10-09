@@ -18,6 +18,18 @@ function scanPage() {
         })(),
         platform: localStorage.getItem('shelf_platform') || '',
         location: localStorage.getItem('shelf_location') || '',
+        readingStatus: (function () {
+            var v = localStorage.getItem('shelf_reading_status') || '';
+            return ['', 'want_to_read', 'reading', 'read'].indexOf(v) === -1 ? '' : v;
+        })(),
+        // The default-status words for the current media type, and whether
+        // that type carries a status at all (refreshStatusLabels).
+        statusLabelSets: {},
+        statusWant: 'Want to',
+        statusDoing: 'In progress',
+        statusDone: 'Finished',
+        statusTypeOk: true,
+        statusDisabled: false,
         borrowerId: '',
         cameraActive: false,
         scanPaused: false,
@@ -102,6 +114,24 @@ function scanPage() {
             localStorage.setItem('shelf_platform', this.platform);
         },
 
+        persistReadingStatus() {
+            localStorage.setItem('shelf_reading_status', this.readingStatus);
+        },
+
+        // Auto gets the neutral words; a type outside the map has no status,
+        // so the control is disabled and keeps the neutral words.
+        refreshStatusLabels() {
+            var sets = this.statusLabelSets;
+            var words = sets[this.mediaType] || sets.auto ||
+                ['Want to', 'In progress', 'Finished'];
+            this.statusTypeOk = this.mediaType === 'auto' || !!sets[this.mediaType];
+            if (!this.statusTypeOk) words = sets.auto || ['Want to', 'In progress', 'Finished'];
+            this.statusWant = words[0];
+            this.statusDoing = words[1];
+            this.statusDone = words[2];
+            this.statusDisabled = (this.mode !== 'add' && this.mode !== 'wishlist') || !this.statusTypeOk;
+        },
+
         // Client-side validation before form submit
         init() {
             var self = this;
@@ -129,6 +159,16 @@ function scanPage() {
             var seed = document.querySelector('[data-manual-open]');
             this.manualOpen = !!(seed && seed.dataset.manualOpen === 'true');
 
+            // Default-status words per media type, from the root (G91: absence
+            // or a bad value never throws). A watch, not a hook in
+            // persistMediaType(): auto-detect and restore change it too.
+            var labelsEl = document.querySelector('[data-status-labels]');
+            try {
+                this.statusLabelSets = JSON.parse((labelsEl && labelsEl.dataset.statusLabels) || '{}') || {};
+            } catch (err) {
+                this.statusLabelSets = {};
+            }
+
             // ...but `mode` is restored from localStorage above, and six of
             // the eight modes hide the panel AND its only toggle. Without
             // this, every returning user whose last mode was Lookup follows
@@ -139,6 +179,12 @@ function scanPage() {
                 this.mode = 'add';
                 localStorage.setItem('shelf_scan_mode', 'add');
             }
+
+            // Both inputs to the default-status control change from more than
+            // one place (setMode, auto-detect, the restore above), so watch them.
+            this.refreshStatusLabels();
+            this.$watch('mediaType', function () { self.refreshStatusLabels(); });
+            this.$watch('mode', function () { self.refreshStatusLabels(); });
 
             // One delegated listener for every way in (#120). A button in a
             // swapped-in search-result fragment has no reliable Alpine scope
