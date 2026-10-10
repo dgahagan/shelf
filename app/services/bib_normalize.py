@@ -177,6 +177,7 @@ MARC_TO_ISO639_1: dict[str, str] = {
     "cze": "cs",
     "ces": "cs",
     "nor": "no",
+    "hun": "hu",
 }
 
 

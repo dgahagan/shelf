@@ -8,3 +8,4 @@ PyJWT==2.15.0
 bcrypt==4.3.0
 cryptography==50.0.0
 anthropic==0.116.0
+pymarc==5.4.0
