@@ -30,7 +30,7 @@ def _diagnostic(stdout: bytes, stderr: bytes) -> str:
         if any(
             word in line.casefold()
             for word in (
-                "error", "diagnostic", "warning", "search", "hits", "connection", "connecting"
+                "error", "diagnostic", "warning", "search", "hits", "connection", "connecting", "not connected"
             )
         )
     ]
@@ -161,6 +161,11 @@ async def lookup(isbn13: str, client=None) -> provider_result.ProviderResult:
                 "OSZK NEKTÁR query failed for ISBN %s (exit %s): %s",
                 isbn13, process.returncode, diagnostic,
             )
+            return provider_result.transport_failed("oszk")
+
+        output = (stdout + b"\n" + stderr).lower()
+        if b"not connected yet" in output or b"connect failed:" in output:
+            logger.warning("OSZK NEKTÁR connection failed for ISBN %s: %s", isbn13, diagnostic)
             return provider_result.transport_failed("oszk")
 
         try:

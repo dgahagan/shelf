@@ -123,6 +123,28 @@ async def test_missing_yaz_client_is_transport_failure(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("stdout, stderr", [
+    (b"Connecting...Z> Not connected yet\n", b""),
+    (b"Connecting...\n", b"connect failed: cs=1 msg=System (lower-layer) error\n"),
+])
+async def test_connection_failure_with_zero_exit_is_transport_failure(monkeypatch, caplog, stdout, stderr):
+    stub_process(monkeypatch, FakeProcess(b"", stdout=stdout, stderr=stderr))
+
+    result = await oszk.lookup("9786155420818")
+
+    assert result == provider_result.transport_failed("oszk")
+    assert "connection failed" in caplog.text
+
+
+@pytest.mark.asyncio
+async def test_zero_hits_is_no_match(monkeypatch, caplog):
+    stub_process(monkeypatch, FakeProcess(b"", stdout=b"Search was a success.\nNumber of hits: 0"))
+
+    assert await oszk.lookup("9786155420818") == provider_result.no_match("oszk")
+    assert "connection failed" not in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_query_timeout_is_transport_failure(monkeypatch):
     class SlowProcess(FakeProcess):
         async def communicate(self, _input=None):
