@@ -273,6 +273,8 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
         SELECT 'feature.price_alerts', '0'
         WHERE EXISTS (SELECT 1 FROM settings
                       WHERE key = 'feature.valuation' AND value = '0')"""),
+    (42, "Add cover edition ISBN", "ALTER TABLE items ADD COLUMN cover_edition_isbn TEXT"),
+    (43, "Add cover edition language", "ALTER TABLE items ADD COLUMN cover_edition_language TEXT"),
 )
 
 MIGRATION_TABLES = """

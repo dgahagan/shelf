@@ -67,3 +67,25 @@ Saved **Default tags** are not updated. Renaming or deleting a tag leaves the
 old name in any Default tags field on Scan, Shelf Fill or Photo Intake that
 still holds it, on this device and on others — and the next item filed there
 creates the old tag again. Clear or retype those fields after a rename.
+
+### LibraryThing English cover fallback
+
+Add your LibraryThing API token in Settings > Integrations, or set
+`LIBRARYTHING_TOKEN` in your deployment environment. Environment values take
+precedence. Saved tokens are encrypted, masked, and never returned to the browser.
+Never commit a token; `.env.example` contains only an empty placeholder.
+
+When existing direct cover downloads fail, Shelf asks LibraryThing for related
+ISBNs and tries verified English editions, regardless of the original language.
+It retains your original ISBN and metadata and labels the cover as coming from
+another edition. Existing title/author recovery still runs if this fallback
+finds nothing. English candidates also appear in the manual cover picker.
+Use Retry Missing Covers to process older missing covers; existing covers are
+never automatically replaced.
+
+The integration checks up to 20 editions within a 20-second budget, returns up
+to five picker candidates, and caches mappings for 24 hours (until restart or
+credential change). Unknown edition languages are skipped. LibraryThing calls
+are limited to one per second. Each installation supplies its own token.
+LibraryThing permits non-commercial API use only unless you obtain permission:
+https://www.librarything.com/developer/terms

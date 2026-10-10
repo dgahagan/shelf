@@ -59,16 +59,14 @@ async def cover_status(request: Request, item_id: int, attempt: int = 0, _=Depen
 async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
     """Re-attempt cover download for an item."""
     with get_db() as db:
-        item = db.execute("SELECT isbn FROM items_live WHERE id = ?", (item_id,)).fetchone()
+        item = db.execute("SELECT isbn, cover_path FROM items_live WHERE id = ?", (item_id,)).fetchone()
     if not item or not item["isbn"]:
         return {"ok": False, "message": "No ISBN"}
-
+    if item["cover_path"]:
+        return {"ok": True, "cover_path": item["cover_path"]}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        cover_path = await covers.download_cover(item_id, item["isbn"], None, None, client)
-
+        cover_path = await items_common.resolve_missing_cover(item_id, client)
     if cover_path:
-        with get_db() as db:
-            db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
         return {"ok": True, "cover_path": cover_path}
     return {"ok": False, "message": "No cover found"}
 
@@ -132,6 +130,10 @@ def _cover_search_credentials(db, media_type: str | None) -> dict[str, str]:
         google_key = get_setting(db, "google_books_api_key")
         if google_key:
             creds["google_books_api_key"] = google_key
+    if not keys:
+        token = get_setting(db, "librarything_token")
+        if token:
+            creds["librarything_token"] = token
     return creds
 
 
@@ -141,7 +143,7 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, isbn, cover_path, media_type, publish_year, platform "
+            "SELECT title, authors, cover_path, media_type, publish_year, platform, isbn, cover_edition_language "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Key-by-key through get_setting, never the bulk settings accessor:
@@ -164,6 +166,7 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
             "candidates": result.payload or [],
             "item_id": item_id,
             "cover_path": item["cover_path"],
+            "cover_edition_language": item["cover_edition_language"],
             "media_type": item["media_type"],
             "query": search_query,
             "search_note": _search_note(item["media_type"], creds),
@@ -177,6 +180,8 @@ async def cover_select(
     request: Request,
     item_id: int,
     url: str = Form(...),
+    edition_isbn: str | None = Form(None),
+    edition_language: str | None = Form(None),
     query: str | None = Form(None),
     _=Depends(require_role("editor")),
 ):
@@ -185,8 +190,13 @@ async def cover_select(
         cover_path = await covers._download_to_item(item_id, url, client)
 
     if cover_path:
+        from app.services.librarything import selected_provenance
+        provenance = selected_provenance(edition_isbn, edition_language)
         with get_db() as db:
-            db.execute("UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?", (cover_path, item_id))
+            db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL, updated_at = datetime('now') WHERE id = ?", (cover_path, item_id))
+            if provenance:
+                items_common.update_item_fields(db, item_id, {"cover_edition_isbn": provenance[0],
+                                                           "cover_edition_language": provenance[1]})
         resp = HTMLResponse("")
         resp.headers["HX-Trigger"] = items_common._toast_header("Cover updated")
         resp.headers["HX-Redirect"] = f"/item/{item_id}"
@@ -195,7 +205,7 @@ async def cover_select(
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, isbn, cover_path, media_type, publish_year, platform "
+            "SELECT title, authors, cover_path, media_type, publish_year, platform, isbn, cover_edition_language "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Same key-by-key build as cover_search — this failure path re-renders
@@ -217,6 +227,7 @@ async def cover_select(
             "candidates": result.payload or [],
             "item_id": item_id,
             "cover_path": item["cover_path"],
+            "cover_edition_language": item["cover_edition_language"],
             "media_type": item["media_type"],
             "query": search_query,
             "search_note": _search_note(item["media_type"], creds),
@@ -253,7 +264,7 @@ async def cover_from_url(
 
     with get_db() as db:
         db.execute(
-            "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL, updated_at = datetime('now') WHERE id = ?",
             (cover_path, item_id),
         )
     resp = HTMLResponse("")
@@ -298,7 +309,7 @@ async def cover_upload(request: Request, item_id: int, _=Depends(require_role("e
 
     with get_db() as db:
         db.execute(
-            "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL, updated_at = datetime('now') WHERE id = ?",
             (cover_path, item_id),
         )
     resp = HTMLResponse("")
@@ -329,7 +340,7 @@ async def cover_remove(item_id: int, _=Depends(require_role("editor"))):
         if not item:
             return HTMLResponse("Not found", status_code=404)
         db.execute(
-            "UPDATE items SET cover_path = NULL, cover_review_dismissed = 0, "
+            "UPDATE items SET cover_path = NULL, cover_edition_isbn = NULL, cover_edition_language = NULL, cover_review_dismissed = 0, "
             "updated_at = datetime('now') WHERE id = ?",
             (item_id,),
         )

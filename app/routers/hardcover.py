@@ -211,7 +211,7 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
             cover_path = await covers.download_cover(item_id, isbn, None, None, client, hardcover_cover_url=cover_url)
         if cover_path:
             with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     return {
         "ok": True, "item_id": item_id, "title": title,
@@ -432,7 +432,7 @@ async def import_hardcover_stream(request: Request, _=Depends(require_role("edit
                             done_covers += 1
                             if isinstance(result, str) and result:
                                 with get_db() as db:
-                                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (result, job["item_id"]))
+                                    db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (result, job["item_id"]))
                         await queue.put({
                             "type": "progress", "current": done_covers, "total": len(cover_jobs),
                             "title": f"Covers: {done_covers}/{len(cover_jobs)}", "status": "covers",

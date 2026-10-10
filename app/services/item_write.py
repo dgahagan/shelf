@@ -782,6 +782,9 @@ def _execute_update(db, fields: Mapping[str, Any], where: str,
     claim a slot a trashed row holds — see `refuse_trash_collision`.
     """
     values = dict(fields)
+    if "cover_path" in values:
+        values.setdefault("cover_edition_isbn", None)
+        values.setdefault("cover_edition_language", None)
     values.pop("updated_at", None)
     _validated_names(db, values, _MANAGED_ON_UPDATE, who)
     values = validate_item_fields(db, values)

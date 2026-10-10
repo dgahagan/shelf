@@ -120,6 +120,7 @@ async def fetch(
     method: str,
     url: str,
     *,
+    log_url: str | None = None,
     retries: int = 2,
     retry_timeouts: bool = False,
     **kwargs,
@@ -167,7 +168,7 @@ async def fetch(
             logger.debug(
                 "outbound: %s %s failed (%s), retrying in %.2fs",
                 method,
-                url,
+                log_url or url,
                 type(exc).__name__,
                 delay,
             )
@@ -196,7 +197,7 @@ async def fetch(
                 logger.debug(
                     "outbound: %s %s returned %d, retrying in %.2fs",
                     method,
-                    url,
+                    log_url or url,
                     resp.status_code,
                     delay,
                 )

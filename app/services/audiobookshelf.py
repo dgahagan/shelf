@@ -361,7 +361,7 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         cover_dest.write_bytes(cover_resp.content)
                         with get_db() as db:
                             db.execute(
-                                "UPDATE items SET cover_path = ? WHERE id = ?",
+                                "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?",
                                 (f"covers/{item_id}.jpg", item_id),
                             )
                 except Exception:

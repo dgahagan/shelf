@@ -771,6 +771,7 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
         {"settings": settings, "locations": locations, "item_count": item_count, "share_links": share_links,
          "borrowers": borrowers, "secrets_saved": secrets_saved,
          "secrets_present": secrets_present, "abs_url_present": abs_url_present,
+         "env_overrides": env_overrides,
          "game_platforms_list": game_platforms_list,
          "hideable_nav_tab_states": hideable_nav_tab_states,
          "feature_rows": features_rows,

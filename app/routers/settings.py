@@ -25,6 +25,7 @@ _INTEGRATION_KEYS = (
     "tmdb_api_key",
     "hardcover_token",
     "google_books_api_key",
+        "librarything_token",
     "igdb_client_id",
     "igdb_client_secret",
     "discogs_token",
@@ -70,6 +71,9 @@ async def update_settings(request: Request):
             if key in ("abs_url", "abs_public_url"):
                 value = value.rstrip("/")
             _upsert_setting(db, key, value, cleared=form.get(f"clear_{key}") == "on")
+    if "librarything_token" in form:
+        from app.services.librarything import reset_cache
+        reset_cache()
     invalidate_nav_cache()  # hardcover_token gates the Discover tab
     return RedirectResponse(url="/settings", status_code=303)
 
