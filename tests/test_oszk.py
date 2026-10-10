@@ -45,6 +45,8 @@ def stub_process(monkeypatch, process):
         assert args[0] == "yaz-client"
         assert args[1] == "-m"
         assert args[3] == "tagetes2.oszk.hu:1616/ANY"
+        assert kwargs["cwd"] == kwargs["env"]["HOME"]
+        assert Path(kwargs["cwd"]).is_dir()
         process.marc_path = args[2]
         return process
 
@@ -72,6 +74,17 @@ async def test_saved_nektar_record_parses_hungarian_metadata(monkeypatch, no_pac
     no_pacing.assert_awaited_once_with("tagetes2.oszk.hu")
     assert scan_outcome.PROVIDER_LABELS["oszk"] == "OSZK NEKTÁR"
     assert browse_counts.SOURCE_LABELS["oszk"] == "OSZK NEKTÁR"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("isbn13", ["978615542081\n!id", "978615542081٨"])
+async def test_invalid_isbn_never_starts_yaz(monkeypatch, no_pacing, isbn13):
+    create = AsyncMock()
+    monkeypatch.setattr(oszk.asyncio, "create_subprocess_exec", create)
+
+    assert await oszk.lookup(isbn13) == provider_result.no_match("oszk")
+    create.assert_not_awaited()
+    no_pacing.assert_not_awaited()
 
 
 @pytest.mark.asyncio

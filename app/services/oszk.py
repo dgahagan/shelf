@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import re
 import tempfile
 from pathlib import Path
@@ -117,12 +118,16 @@ def _parse_record(record) -> dict | None:
 
 async def lookup(isbn13: str, client=None) -> provider_result.ProviderResult:
     """Query NEKTÁR, returning only the exact-edition record as metadata."""
+    if not re.fullmatch(r"[0-9]{13}", isbn13):
+        return provider_result.no_match("oszk")
     await outbound.acquire(HOST)
     with tempfile.TemporaryDirectory(prefix="shelf-oszk-") as directory:
         marc_path = Path(directory) / "record.mrc"
         try:
             process = await asyncio.create_subprocess_exec(
                 "yaz-client", "-m", str(marc_path), ADDRESS,
+                cwd=directory,
+                env={"HOME": directory, "PATH": os.environ.get("PATH", "/usr/bin:/bin")},
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
