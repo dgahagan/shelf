@@ -66,7 +66,11 @@ def _parse_record(record) -> dict | None:
         result["subtitle"] = "; ".join(subtitles)
 
     names = []
-    for field in record.get_fields("100"):
+    for field in record.get_fields("100") + record.get_fields("700"):
+        if field.tag == "700":
+            roles = [role.casefold().rstrip(" .") for role in field.get_subfields("4")]
+            if field.get("t") or (roles and "aut" not in roles):
+                continue
         surname = bib_normalize.nfc(field.get("a", "")).rstrip(" ,")
         given = bib_normalize.nfc(field.get("j", ""))
         name = (
@@ -107,12 +111,6 @@ def _parse_record(record) -> dict | None:
     if languages:
         result["language"] = bib_normalize.to_iso639_1(languages[0])
 
-    for field in record.get_fields("020"):
-        for value in field.get_subfields("a"):
-            candidate = re.sub(r"[^\dXx]", "", value).upper()
-            if len(candidate) == 10:
-                result["isbn10"] = candidate
-                return result
     return result
 
 

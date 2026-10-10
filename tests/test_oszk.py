@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock
 
 import pytest
+from pymarc import Field, MARCReader, Subfield
 
 from app.services import browse_counts, oszk, provider_result, scan_outcome
 
@@ -74,6 +75,17 @@ async def test_saved_nektar_record_parses_hungarian_metadata(monkeypatch, no_pac
     no_pacing.assert_awaited_once_with("tagetes2.oszk.hu")
     assert scan_outcome.PROVIDER_LABELS["oszk"] == "OSZK NEKTÁR"
     assert browse_counts.SOURCE_LABELS["oszk"] == "OSZK NEKTÁR"
+
+
+def test_added_author_is_kept_but_translator_is_not():
+    with FIXTURE.open("rb") as stream:
+        record = next(iter(MARCReader(stream, to_unicode=True, force_utf8=True)))
+    record.add_field(Field(
+        tag="700", indicators=["1", " "],
+        subfields=[Subfield(code="a", value="Pool,"), Subfield(code="j", value="Robert")],
+    ))
+
+    assert oszk._parse_record(record)["authors"] == "James Clear, Robert Pool"
 
 
 @pytest.mark.asyncio
