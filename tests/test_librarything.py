@@ -181,6 +181,8 @@ async def test_automatic_stores_provenance_and_keeps_original_metadata(monkeypat
         return "covers/1.jpg", {"edition_isbn": ENGLISH, "edition_language": "en"}
     monkeypatch.setattr(covers, "download_cover", no_direct)
     monkeypatch.setattr(lt, "download_cover", mapped)
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(items_common, "_search_isbn_for_item", AsyncMock(return_value=(None, None)))
     assert await items_common.resolve_missing_cover(item_id, None) == "covers/1.jpg"
     with get_db() as db:
         item = db.execute("SELECT * FROM items_live WHERE id = ?", (item_id,)).fetchone()
@@ -272,3 +274,24 @@ def test_picker_mapped_candidates_render_and_keep_input_isbn(admin_client, monke
     assert "English cover from another edition" in response.text
     assert ENGLISH in response.text and TOKEN not in response.text
     assert mapped.await_args.args[0] == ORIGINAL
+
+
+@pytest.mark.asyncio
+async def test_title_recovery_wins_before_librarything(monkeypatch):
+    from unittest.mock import AsyncMock
+    from app.database import get_db, set_setting
+    from app.services.item_write import insert_item
+    from app.routers import items_common
+    from app.services import covers
+    with get_db() as db:
+        item_id = insert_item(db, {"title": "Atomi szokások", "isbn": ORIGINAL, "media_type": "book"})
+        set_setting(db, "librarything_token", TOKEN)
+    mapped = AsyncMock(return_value=(None, None))
+    monkeypatch.setattr(lt, "download_cover", mapped)
+    monkeypatch.setattr(covers, "download_cover", AsyncMock(side_effect=[None, "covers/1.jpg"]))
+    monkeypatch.setattr(items_common, "_search_isbn_for_item", AsyncMock(return_value=(None, "https://books.google.com/recovered.jpg")))
+    assert await items_common.resolve_missing_cover(item_id, None) == "covers/1.jpg"
+    mapped.assert_not_awaited()
+    with get_db() as db:
+        row = db.execute("SELECT cover_edition_isbn FROM items_live WHERE id = ?", (item_id,)).fetchone()
+        assert row[0] is None

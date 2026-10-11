@@ -75,11 +75,12 @@ Add your LibraryThing API token in Settings > Integrations, or set
 precedence. Saved tokens are encrypted, masked, and never returned to the browser.
 Never commit a token; `.env.example` contains only an empty placeholder.
 
-When existing direct cover downloads fail, Shelf asks LibraryThing for related
-ISBNs and tries verified English editions, regardless of the original language.
+When existing direct cover downloads and title/author recovery fail, Shelf asks
+LibraryThing for related ISBNs and tries verified English editions, regardless of
+the original language.
 It retains your original ISBN and metadata and labels the cover as coming from
-another edition. Existing title/author recovery still runs if this fallback
-finds nothing. English candidates also appear in the manual cover picker.
+another edition. Title/author recovery keeps its existing language behavior.
+English candidates also appear in the manual cover picker.
 Use Retry Missing Covers to process older missing covers; existing covers are
 never automatically replaced.
 

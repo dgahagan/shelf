@@ -206,8 +206,8 @@ async def resolve_missing_cover(
 
     An item with an ISBN tries the standard cover chain first (Open Library
     covers -> Amazon -> Google Books). If that fails — or there is no ISBN —
-    LibraryThing can first try a verified English related edition, then
-    a title/author search finds the work's best-known edition instead
+    a title/author search finds the work's best-known edition instead.
+    LibraryThing tries verified English related editions only if that fails
     (imported and print-on-demand edition ISBNs often have no cover
     anywhere). A recovered ISBN is stored on ISBN-less items unless another
     item already holds it.
@@ -249,15 +249,6 @@ async def resolve_missing_cover(
     if not cover_path and hints and hints.get("skip_title_search"):
         return None
 
-    from app.services import librarything
-    if not cover_path and row["media_type"] in librarything.BOOK_TYPES and row["isbn"]:
-        with get_db() as db:
-            token = get_setting(db, "librarything_token")
-            google_key = get_setting(db, "google_books_api_key")
-        if token:
-            cover_path, edition = await librarything.download_cover(
-                item_id, row["isbn"], token, client, google_key)
-
     if not cover_path:
         found_isbn, cover_url = await _search_isbn_for_item(
             row["title"], row["authors"], client)
@@ -294,6 +285,15 @@ async def resolve_missing_cover(
         elif found_isbn and not row["isbn"]:
             cover_path = await covers.download_cover(
                 item_id, found_isbn, None, None, client)
+
+    from app.services import librarything
+    if not cover_path and row["media_type"] in librarything.BOOK_TYPES and row["isbn"]:
+        with get_db() as db:
+            token = get_setting(db, "librarything_token")
+            google_key = get_setting(db, "google_books_api_key")
+        if token:
+            cover_path, edition = await librarything.download_cover(
+                item_id, row["isbn"], token, client, google_key)
 
     if cover_path:
         with get_db() as db:
