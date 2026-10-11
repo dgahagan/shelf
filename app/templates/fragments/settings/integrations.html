@@ -918,8 +918,6 @@
         </form>
     </div>
 
-    </div><!-- /Integrations Tab -->
-
 <div class="bg-shelf-card border border-shelf-border rounded-xl p-5">
     <h2 class="text-lg font-semibold">LibraryThing</h2>
     <p class="text-sm text-shelf-muted mt-2">Find English covers from related editions when existing cover sources fail. Your book's ISBN and metadata stay unchanged.</p>
@@ -927,10 +925,10 @@
     <form action="/api/settings" method="post" class="space-y-3 mt-3">
         <label for="librarything_token" class="block text-sm font-medium">API token</label>
         <input type="password" id="librarything_token" name="librarything_token" autocomplete="new-password"
-               placeholder="{% if secrets_present['librarything_token'] %}Configured: leave blank to keep{% else %}Optional LibraryThing token{% endif %}"
+               placeholder="{% if secrets_saved['librarything_token'] %}Saved &ndash; leave blank to keep{% else %}Optional LibraryThing token{% endif %}"
                class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2">
-        {% if 'librarything_token' in env_overrides %}<p class="text-xs text-shelf-muted">Configured through LIBRARYTHING_TOKEN; the environment value takes precedence.</p>{% endif %}
         {% if secrets_saved['librarything_token'] %}<label class="flex items-center gap-2 text-xs"><input type="checkbox" name="clear_librarything_token"> Remove saved token</label>{% endif %}
         <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm">Save</button>
     </form>
 </div>
+    </div><!-- /Integrations Tab -->
