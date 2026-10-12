@@ -316,11 +316,3 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
         window.location = '/browse';
     }
 });
-
-// Replaces hx-vals='js:...' on the recent-scans panel (dynamic localStorage value)
-document.body.addEventListener('htmx:configRequest', function (evt) {
-    var el = evt.detail.elt;
-    if (el && el.getAttribute && el.getAttribute('data-vals-scan-mode') !== null) {
-        evt.detail.parameters.mode = localStorage.getItem('shelf_scan_mode') || 'add';
-    }
-});

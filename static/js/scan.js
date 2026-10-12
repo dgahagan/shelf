@@ -41,6 +41,7 @@ function scanPage() {
         inventoryScannedIds: [],
         isZxingFallback: false,
         manualOpen: false,
+        recentScansRequest: 0,
 
         modes: [
             {id: 'add', label: 'Add'},
@@ -68,13 +69,21 @@ function scanPage() {
         },
 
         loadRecentScans(m) {
+            var self = this;
+            var request = ++this.recentScansRequest;
+            var results = document.getElementById('scan-results');
+            var firstResult = results.firstChild;
             fetch('/api/recent-scans?mode=' + encodeURIComponent(m))
                 .then(function(r) {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.text();
                 })
                 .then(function(html) {
-                    document.getElementById('scan-results').innerHTML = html;
+                    // A newer history load or an inserted scan card makes this snapshot stale.
+                    if (request === self.recentScansRequest && results.firstChild === firstResult) {
+                        results.innerHTML = html;
+                        htmx.process(results);
+                    }
                 })
                 .catch(function() {
                     showToast('Could not load recent scans', 'error');
@@ -179,6 +188,7 @@ function scanPage() {
                 this.mode = 'add';
                 localStorage.setItem('shelf_scan_mode', 'add');
             }
+            this.loadRecentScans(this.mode);
 
             // Both inputs to the default-status control change from more than
             // one place (setMode, auto-detect, the restore above), so watch them.

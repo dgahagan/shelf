@@ -63,6 +63,36 @@ def test_scan_page_has_isbn_input(live_server, authed_page):
     expect(isbn_input).to_be_visible()
 
 
+@pytest.mark.parametrize("history_load", ["initial", "mode_switch"])
+def test_pending_history_does_not_erase_new_scan(live_server, authed_page, history_load):
+    pg = authed_page
+    if history_load == "mode_switch":
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+
+    pending = []
+    pg.route("**/api/recent-scans?*", lambda route: pending.append(route))
+    pg.route("**/api/scan", lambda route: route.fulfill(
+        content_type="text/html",
+        body='<div class="scan-result" data-scan-status="added">'
+             '<a href="/item/42" data-scan-title>New scanned book</a></div>',
+    ))
+    with pg.expect_request(lambda r: "/api/recent-scans" in r.url):
+        if history_load == "initial":
+            pg.goto(f"{live_server['url']}/scan", wait_until="domcontentloaded")
+        else:
+            pg.get_by_role("button", name="Add", exact=True).click()
+
+    pg.fill("#isbn-input", "9780000450012")
+    pg.press("#isbn-input", "Enter")
+    expect(pg.locator("#scan-results")).to_contain_text("New scanned book")
+    pending[0].fulfill(content_type="text/html", body="<p>Older history</p>")
+    pg.wait_for_load_state("networkidle")
+    expect(pg.locator("#scan-results")).to_contain_text("New scanned book")
+    expect(pg.locator("#scan-results")).not_to_contain_text("Older history")
+    assert_page_clean(pg)
+
+
 def test_confirmed_legacy_inventory_result_is_added_to_scanned_ids(
     live_server, authed_page
 ):
@@ -92,6 +122,23 @@ def test_confirmed_legacy_inventory_result_is_added_to_scanned_ids(
 
     assert state == {"ids": [42], "marker": False}
     assert_page_clean(authed_page)
+
+
+def test_latest_scan_mode_history_wins(live_server, authed_page):
+    pg = authed_page
+    pg.goto(f"{live_server['url']}/scan")
+    pg.wait_for_load_state("networkidle")
+    pending = []
+    pg.route("**/api/recent-scans?*", lambda route: pending.append(route))
+    for mode in ("Wishlist", "Add"):
+        with pg.expect_request(lambda r: "/api/recent-scans" in r.url):
+            pg.get_by_role("button", name=mode, exact=True).click()
+    pending[1].fulfill(content_type="text/html", body="<p>Latest Add history</p>")
+    expect(pg.locator("#scan-results")).to_contain_text("Latest Add history")
+    pending[0].fulfill(content_type="text/html", body="<p>Outdated Wishlist history</p>")
+    pg.wait_for_load_state("networkidle")
+    expect(pg.locator("#scan-results")).to_contain_text("Latest Add history")
+    assert_page_clean(pg)
 
 
 def test_scan_mode_switching(live_server, authed_page):
