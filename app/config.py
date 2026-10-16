@@ -293,6 +293,8 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "portal.dnb.de": 1.0,  # DNB cover host, same citizenship
     "opac.sbn.it": 1.0,  # SBN publishes no rate limit; matches DNB, a comparable national library
     "data.bibliotheken.nl": 1.0,  # KB Dutch National Bibliography SPARQL endpoint
+    "urn.porbase.org": 1.0,  # PORBASE (Biblioteca Nacional de Portugal) URN resolver; publishes no limit
+    "rnod.bnportugal.gov.pt": 1.0,  # PORBASE cover scans, same library; publishes no limit
     "api.hardcover.app": 1.0,  # 60/min API limit
     "api2.isbndb.com": 3.0,  # was isbndb's own 3s post-request sleep
     "www.googleapis.com": 0.25,  # Google Books quota is per-day; light pacing only

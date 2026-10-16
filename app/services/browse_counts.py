@@ -23,6 +23,7 @@ SOURCE_LABELS = {
     "issn": "ISSN",
     "openlibrary": "Open Library",
     "oszk": "OSZK NEKTÁR",
+    "porbase": "PORBASE",
     "google": "Google Books",
     "photo_intake": "Photo Intake",
     "store_queue": "Store Queue",

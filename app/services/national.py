@@ -21,7 +21,7 @@ from types import ModuleType
 # is what callers already reach for: intake.py, openlibrary.py, googlebooks.py.
 from app.services.bib_normalize import MARC_TO_ISO639_1, to_iso639_1  # noqa: F401
 
-from app.services import dnb, kb, oszk, sbn
+from app.services import dnb, kb, oszk, porbase, sbn
 
 # ISBN-13 prefix (unhyphenated, longest-match wins) -> provider module.
 #
@@ -39,6 +39,8 @@ PREFIX_PROVIDERS: dict[str, ModuleType] = {
     "97912": sbn,  # 979-12: Italian registration group (no ISBN-10 equivalent)
     "97890": kb,  # 978-90: Netherlands
     "97894": kb,  # 978-94: Netherlands
+    "978972": porbase,  # 978-972: Portugal (older group)
+    "978989": porbase,  # 978-989: Portugal
 }
 
 

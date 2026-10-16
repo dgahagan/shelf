@@ -59,6 +59,7 @@ PROVIDER_LABELS = {
     "dnb": "DNB",
     "oszk": "OSZK NEKTÁR",
     "sbn": "SBN",
+    "porbase": "PORBASE",
     "tmdb": "TMDb",
     "igdb": "IGDB",
     "upcitemdb": "UPC Item DB",

@@ -1,7 +1,7 @@
 """Tests for app.services.national — prefix-provider registry and the shared
 MARC <-> ISO 639-1 language mapper. Pure logic, no app/db needed (see G14)."""
 
-from app.services import dnb, kb, oszk, sbn
+from app.services import dnb, kb, oszk, porbase, sbn
 from app.services.national import (
     PREFIX_PROVIDERS,
     SEARCH_LANGS,
@@ -33,6 +33,14 @@ class TestProviderFor:
 
     def test_dutch_group_978_94_returns_kb(self):
         assert provider_for("9789400000000") is kb
+
+    def test_portuguese_groups_return_porbase(self):
+        assert provider_for("9789896168285") is porbase
+        assert provider_for("9789722026673") is porbase
+
+    def test_portuguese_group_does_not_swallow_neighbours(self):
+        assert provider_for("9788535914849") is None  # 978-85 Brazil
+        assert provider_for("9789730000000") is None  # 978-973 Romania
 
     def test_spanish_group_is_not_routed_to_sbn(self):
         # 978-84 (Spain) must NOT match. A 4-digit "9788" key would pass this

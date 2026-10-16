@@ -76,7 +76,8 @@ Library, and thinner otherwise.
 
 - **More national sources.** German ISBNs already route to the Deutsche
   Nationalbibliothek, Italian ones to Italy's national network, Dutch ones to
-  the Koninklijke Bibliotheek and Hungarian ones to OSZK NEKTÁR. Other
+  the Koninklijke Bibliotheek, Hungarian ones to OSZK NEKTÁR and Portuguese
+  ones to PORBASE. Other
   countries deserve the same.
 - **A translated interface.** The UI is English-only today. Translating the
   templates and letting the browser or a per-user setting pick the language.

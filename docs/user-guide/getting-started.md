@@ -64,7 +64,7 @@ barcode field and scan. Or type the ISBN and press Enter.
 Shelf looks the ISBN up (Open Library, then Hardcover and Google Books as
 fallbacks; German ISBNs go to the Deutsche Nationalbibliothek first, Italian
 ones to the Servizio Bibliotecario Nazionale, Dutch ones to the Koninklijke
-Bibliotheek, and Hungarian ones to OSZK NEKTÁR),
+Bibliotheek, Hungarian ones to OSZK NEKTÁR, and Portuguese ones to PORBASE),
 downloads a cover, and the item appears in the **Recent scans** strip with a
 link to its page. Series and descriptions are fetched too when a source has
 them.

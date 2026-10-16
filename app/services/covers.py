@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import COVERS_DIR
-from app.services import book_cover_search, igdb, outbound, provider_result, tmdb
+from app.services import book_cover_search, igdb, national, outbound, porbase, provider_result, tmdb
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +23,7 @@ ALLOWED_COVER_DOMAINS = {
     "images.igdb.com",
     "image.tmdb.org",  # TMDb posters (tmdb.TMDB_IMAGE_BASE)
     "portal.dnb.de",  # DNB/MVB cover service for German (978-3) ISBNs
+    "rnod.bnportugal.gov.pt",  # PORBASE cover scans for Portuguese (978-989, 978-972) ISBNs
     "coverartarchive.org",  # Cover Art Archive entry point for music releases
 }
 
@@ -72,6 +73,16 @@ async def download_cover(item_id: int, isbn: str | None, cover_url: str | None, 
     # Try provided cover URL (e.g., from Google Books)
     if cover_url and is_allowed_cover_url(cover_url):
         if await _download(cover_url, dest, client):
+            return f"covers/{item_id}.jpg"
+
+    # Last resort for Portuguese-group ISBNs: the National Library's own scan
+    # of the cover, linked from the PORBASE record. The link carries record
+    # ids, so it costs one resolver request to find; other ISBNs never pay it.
+    # The registry decides which ISBNs these are, so the prefixes live in one
+    # place.
+    if isbn and national.provider_for(isbn) is porbase:
+        url = await porbase.cover_url(isbn, client)
+        if url and await _download(url, dest, client):
             return f"covers/{item_id}.jpg"
 
     return None

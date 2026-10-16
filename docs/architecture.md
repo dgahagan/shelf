@@ -448,13 +448,17 @@ the next boot re-indexes everything.
 The national leg is a registry, `services/national.py`: unhyphenated ISBN-13
 registration-group prefixes mapped to provider modules, resolved by
 **longest** prefix match, so a narrow key can coexist with a broader one. It
-currently serves four providers — **DNB** (`services/dnb.py`, MARC21 over SRU)
+currently serves five providers — **DNB** (`services/dnb.py`, MARC21 over SRU)
 for 978-3, **OSZK NEKTÁR** (`services/oszk.py`, HUNMARC over Z39.50 at
 `tagetes2.oszk.hu:1616/ANY`) for the Hungarian 978-615 and 978-963 groups,
 **SBN** (`services/sbn.py`, flat JSON over ICCU's OPAC endpoint) for the Italian
-978-88 and 979-12, and **KB** (`services/kb.py`, SPARQL over the Nederlandse
-Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups. Keys are as wide
-as the group: the Italian `97888` and `97912` and Dutch `97890` and `97894` use
+978-88 and 979-12, **KB** (`services/kb.py`, SPARQL over the Nederlandse
+Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups, and **PORBASE**
+(`services/porbase.py`, Dublin Core XML from the `urn.porbase.org` resolver) for
+the Portuguese 978-972 and 978-989 groups. PORBASE answers a miss with HTTP 200
+and an `<error>` body, marks non-sorting articles with literal `?` or `<>`, and
+mixes real series with "Fora de colecção" in `dc:relation`, so the client strips
+the markers and reads no series. Keys are as wide as the group: the Italian `97888` and `97912` and Dutch `97890` and `97894` use
 five digits so neighbouring registration groups are not captured.
 All providers build stored bibliographic strings through
 `services/bib_normalize.py`, so text is NFC and comparable.
@@ -671,7 +675,7 @@ cannot answer differently on a shorter phrasing of the same request, and a
 host that just timed out costs another round trip per retry.
 
 **Covers** (`services/covers.py`) cascade: Open Library → Hardcover → DNB →
-Amazon → Google Books → IGDB, with manual upload, a pasted image URL
+Amazon → Google Books → PORBASE (Portuguese ISBNs only, last resort) → IGDB, with manual upload, a pasted image URL
 (`services/manual_cover.py`) and a search picker. Game
 and film artwork does not run the cascade — IGDB and TMDb each supply one URL
 with the metadata, downloaded directly through the same allow-list and
