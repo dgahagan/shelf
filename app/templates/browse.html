@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Browse — Shelf{% endblock %}
 {% block content %}
-<div x-data="browsePage" data-initial-query="{{ initial_query or '' }}">
-    <!-- Bulk Action Bar -->
+<div x-data="browsePage" data-initial-query="{{ initial_query or '' }}" class="flex flex-col">
+    <!-- Bulk Action Bar. order-last + sticky, not fixed: it takes its own height in the
+         flow below the grid, so the last row can always scroll clear of it. The bar wraps,
+         so that height changes with the viewport width (issue #159). -->
     <div x-show="selectMode && selectedIds.length > 0" x-transition
-         class="fixed bottom-0 inset-x-0 z-40 bg-shelf-card border-t border-shelf-border py-3 px-4 shadow-lg">
+         class="order-last sticky bottom-0 z-40 -mx-4 sm:-mx-6 lg:-mx-8 -mb-6 bg-shelf-card border-t border-shelf-border py-3 px-4 sm:px-6 lg:px-8 shadow-lg">
         <div class="max-w-7xl mx-auto flex items-center gap-3 flex-wrap">
             <span class="text-sm text-shelf-muted" x-text="selectedIds.length + ' selected'"></span>
             <select x-model="bulkLocationVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
@@ -43,7 +45,7 @@
             <!-- Series is a text input rather than a <select> (any name is
                  valid, existing ones autocomplete), so it needs an explicit
                  label — unlabelled it reads as a gap between the dropdowns. -->
-            <div class="flex items-center gap-1.5 pl-3 border-l border-shelf-border">
+            <div class="flex items-center flex-wrap gap-1.5 pl-3 border-l border-shelf-border">
                 <label for="bulk-series" class="text-sm text-shelf-muted shrink-0">Series</label>
                 <input type="text" id="bulk-series" x-model="bulkSeriesVal" list="bulk-series-options"
                        placeholder="Type or pick a series..."
@@ -77,7 +79,7 @@
             {% if user and user.role in ('admin', 'editor') %}
             <!-- Tags: same input+datalist shape as Series, but two buttons --
                  a name can be added or removed rather than set/cleared. -->
-            <div class="flex items-center gap-1.5 pl-3 border-l border-shelf-border">
+            <div class="flex items-center flex-wrap gap-1.5 pl-3 border-l border-shelf-border">
                 <label for="bulk-tag" class="text-sm text-shelf-muted shrink-0">Tag</label>
                 <input type="text" id="bulk-tag" x-model="bulkTagVal" list="bulk-tag-options"
                        maxlength="40" placeholder="Type or pick a tag..."

@@ -235,8 +235,8 @@ def test_bulk_language_apply_then_clear(live_server, authed_page):
 
 @pytest.mark.parametrize("width", [320, 390])
 def test_bulk_language_group_stays_in_viewport(live_server, authed_page, width):
-    """The bulk bar is position: fixed, so a child can overflow without
-    widening the document (G43) -- measure element boxes, not scrollWidth."""
+    """The bulk bar is sticky and in flow (#159), so an overflowing child widens
+    the document -- but measure element boxes too (G43), not only scrollWidth."""
     item_id = insert_item(
         live_server["data_dir"], title=f"Bulk Language Box {width}", isbn=f"97800099941{width % 100:02d}"
     )

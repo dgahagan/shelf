@@ -125,11 +125,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.66.0](https://github.com/dgahagan/shelf/releases/tag/v0.66.0) | Scan a magazine. A 977 barcode in Add or Wishlist (13, 15 or 18 digits, add-on and all) opens the confirm card, whatever the Media Type says, and rescanning an issue you own says so. Shelf Fill's camera overlay now colours its result instead of showing every scan in green. |
 | [0.65.0](https://github.com/dgahagan/shelf/releases/tag/v0.65.0) | Back up your library to a CSV and get all of it back. The export now carries language and series number, and the import reads every column the export writes, including location, platform and values. Locations named in the file are created, and the import lists which. Browse can now set or clear the **Language** of many items at once, and Hungarian ISBNs are looked up in the national library catalogue (contributed by [@notAnElephant](https://github.com/notAnElephant)). |
 | [0.64.0](https://github.com/dgahagan/shelf/releases/tag/v0.64.0) | Set a reading status as you scan. The Scan page has a **Default status** beside Default tags, and every new item you add by barcode, title search or by hand takes it. No dates are recorded. **Find cover** also looks for a book's exact ISBN edition first. |
 | [0.63.0](https://github.com/dgahagan/shelf/releases/tag/v0.63.0) | Open Shelf from a link on another site and stay logged in. A link from a homelab dashboard, a chat message or another machine on your LAN now opens the page you clicked instead of the login form. `SHELF_SESSION_DAYS` sets how long a login lasts; the default stays 7 days. |
 | [0.62.0](https://github.com/dgahagan/shelf/releases/tag/v0.62.0) | Watch the wishlist's prices. Every night Shelf checks the publisher's list price of wishlisted books through ISBNdb and sends one message when any drop past your threshold; a book's page shows its list price and the one before. List price only, not used-market deals. Needs an ISBNdb key. |
-| [0.61.0](https://github.com/dgahagan/shelf/releases/tag/v0.61.0) | Turn a month or a year into one shareable image. Stats → **Wrap-up** draws what you finished and added, with a grid of covers, in your browser; download it, or share it from your phone. Nothing is stored or published. |
 
 ---
 

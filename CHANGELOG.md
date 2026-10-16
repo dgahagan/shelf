@@ -6,15 +6,51 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.67.0] - 2026-10-15
+
+Portuguese books were often missing from the lookup. Open Library and Google
+Books both lack many Portuguese titles, so a scan of a 978-989 or 978-972 ISBN
+often found nothing. Now those ISBNs are looked up in Portugal's national
+library catalogue first. This release also fixes two bugs. The Scan page could
+hide a book you had just added. Browse's edit bar could cover the last item in
+the list.
+
 ### Added
 
-- **Portuguese ISBNs are looked up in the national library catalogue.** ISBNs that
-  start 978-989 or 978-972 are looked up first in PORBASE, the Biblioteca Nacional
-  de Portugal's catalogue. If PORBASE has no record, the usual sources answer as
-  before. Open Library and Google Books both lack many Portuguese titles.
-- **Portuguese covers fall back to PORBASE.** When no other source has a cover for a
-  978-989 or 978-972 ISBN, Shelf uses the scan of the cover that PORBASE links from
-  the book's record. It is tried last, so it never replaces a cover from another source.
+- **Portuguese ISBNs are looked up in the national library catalogue.** ISBNs
+  that start 978-989 or 978-972 are looked up first in PORBASE, the Biblioteca
+  Nacional de Portugal's catalogue. It needs no API key. If PORBASE has no
+  record, the usual sources answer as before. Series are not read from
+  PORBASE, on purpose: its records mix real series with labels such as "Fora
+  de colecção" ("outside any collection"). Contributed by
+  [@JoaoPCAzevedo](https://github.com/JoaoPCAzevedo) in
+  [#158](https://github.com/dgahagan/shelf/pull/158), for
+  [#157](https://github.com/dgahagan/shelf/issues/157).
+- **Portuguese covers fall back to PORBASE.** When no other source has a cover
+  for a 978-989 or 978-972 ISBN, Shelf uses the scan of the cover that PORBASE
+  links from the book's record. It is tried last, so it never replaces a cover
+  from another source. Contributed by
+  [@JoaoPCAzevedo](https://github.com/JoaoPCAzevedo) in
+  [#158](https://github.com/dgahagan/shelf/pull/158).
+
+### Fixed
+
+- **A book you add on the Scan page stays in the results.** If the Recent scans
+  list was slow to load, it could arrive after your scan and replace the whole
+  list, so the book you had just added disappeared until you refreshed the
+  page. An older list now never replaces a newer one. Contributed by
+  [@notAnElephant](https://github.com/notAnElephant) in
+  [#156](https://github.com/dgahagan/shelf/pull/156).
+- **Browse's select-mode edit bar no longer covers the last item in the list.**
+  The bar now takes its own space at the end of the page, so you can scroll the
+  last row clear of it at any window width. The Series and Tag groups in the bar
+  now wrap on a narrow phone instead of running off the right edge. On a window
+  wider than 1280 px the bar is as wide as the page content, not the whole
+  window. Reported by [@benjysmith](https://github.com/benjysmith) in
+  [#159](https://github.com/dgahagan/shelf/issues/159).
+- **A build-time dependency is updated** (`source-map-js` 1.2.2) to fix a
+  security issue in that package. It is used only to build the stylesheet and is
+  not part of the running app.
 
 ## [0.66.0] - 2026-10-15
 
@@ -5050,6 +5086,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.67.0]: https://github.com/dgahagan/shelf/releases/tag/v0.67.0
 [0.66.0]: https://github.com/dgahagan/shelf/releases/tag/v0.66.0
 [0.65.0]: https://github.com/dgahagan/shelf/releases/tag/v0.65.0
 [0.64.0]: https://github.com/dgahagan/shelf/releases/tag/v0.64.0
