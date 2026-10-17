@@ -19,7 +19,7 @@
                    trigger). #}
                 {% set selected_currency = settings.get("currency", "USD") %}
                 <select id="currency" name="currency"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     {% for code, cur in currencies.items() %}
                     <option value="{{ code }}" {% if selected_currency == code %}selected{% endif %}>{{ code }} — {{ cur.name }} ({{ cur.symbol }})</option>
                     {% endfor %}
@@ -32,7 +32,7 @@
                    app/services/national.py. #}
                 {% set selected_search_lang = settings.get("metadata_search_lang", "en") %}
                 <select id="metadata_search_lang" name="metadata_search_lang"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     {% for code, name in search_langs.items() %}
                     <option value="{{ code }}" {% if selected_search_lang == code %}selected{% endif %}>{{ name }}</option>
                     {% endfor %}
@@ -61,7 +61,7 @@
                        nested in a label is interactive content that can toggle the checkbox. #}
                     <div data-nav-setting-row="{{ tab.key }}" class="flex items-center gap-2 text-sm">
                         <label class="flex items-center gap-2">
-                            <input type="checkbox" name="{{ tab.key }}" class="rounded border-shelf-border"
+                            <input type="checkbox" name="{{ tab.key }}" class="rounded-sm border-shelf-border"
                                    {% if not tab.hidden %}checked{% endif %}>
                             {{ tab.label }}
                         </label>
@@ -125,12 +125,12 @@
                         <div>
                             <label for="location-name-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Name</label>
                             <input id="location-name-{{ loc.id }}" type="text" name="name" value="{{ loc.label or loc.name }}" required
-                                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                         </div>
                         <div>
                             <label for="location-parent-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Parent</label>
                             <select id="location-parent-{{ loc.id }}" name="parent_id"
-                                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                                 <option value="">Top level</option>
                                 {% for parent in locations %}
                                 {% if parent.id != loc.id and loc.id not in parent.ancestor_ids %}
@@ -151,9 +151,9 @@
 
         <form action="/api/locations" method="post" class="space-y-2">
             <input type="text" name="name" placeholder="New location name..." required
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             <select name="parent_id"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="">Top level</option>
                 {% for loc in locations %}
                 <option value="{{ loc.id }}">Inside {{ loc.name }}</option>
@@ -200,7 +200,7 @@
         {% if feature_on('lending') %}
         <form action="/api/borrowers" method="post" class="flex gap-2" data-testid="borrower-add">
             <input type="text" name="name" placeholder="Add borrower..." required
-                   class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                   class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Add
             </button>
@@ -231,7 +231,7 @@
 
         <form action="/api/platforms" method="post" class="flex gap-2">
             <input type="text" name="name" placeholder="Platform name (e.g. TurboGrafx-16)..." required
-                   class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                   class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Add
             </button>
@@ -249,7 +249,7 @@
                 <label for="lending_overdue_days" class="block text-sm font-medium text-shelf-muted mb-1">Overdue after (days, for loans without a due date — 0 disables)</label>
                 <input type="number" id="lending_overdue_days" name="lending_overdue_days" min="0" step="1"
                        value="{{ settings.get('lending_overdue_days', '28') }}"
-                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
                 <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">Notification URL (ntfy topic or webhook)</label>
@@ -261,7 +261,7 @@
                     </select>
                     <input type="text" id="notify-url-input" name="notify_url" x-ref="notifyUrl" autocomplete="off"
                            placeholder="{% if secrets_saved['notify_url'] %}Saved — leave blank to keep{% else %}https://ntfy.sh/your-private-topic{% endif %}"
-                           class="basis-full sm:flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="basis-full sm:flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testNotify"
                             :disabled="ntTesting"
@@ -275,7 +275,7 @@
                 </template>
                 {% if secrets_saved['notify_url'] %}
                 <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
-                    <input type="checkbox" name="clear_notify_url" class="rounded border-shelf-border"> Remove saved URL (disables reminders)
+                    <input type="checkbox" name="clear_notify_url" class="rounded-sm border-shelf-border"> Remove saved URL (disables reminders)
                 </label>
                 {% endif %}
             </div>
@@ -294,7 +294,7 @@
                 <label for="trash_retention_days" class="block text-sm font-medium text-shelf-muted mb-1">Prompt to empty Trash after (days — 0 never prompts)</label>
                 <input type="number" id="trash_retention_days" name="trash_retention_days" min="0" max="36500" step="1" required
                        value="{{ settings.get('trash_retention_days', '180') }}"
-                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <p class="text-xs text-shelf-muted">Browse the deleted items and copies themselves from the account menu → Library → Trash.</p>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">

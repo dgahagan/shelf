@@ -58,9 +58,9 @@
                     <div class="flex items-center gap-2">
                         <span class="font-medium">{{ row.label }}</span>
                         {% if row.enabled %}
-                        <span class="text-xs px-2 py-0.5 rounded border border-shelf-success/50 text-shelf-text" data-feature-state="on">On</span>
+                        <span class="text-xs px-2 py-0.5 rounded-sm border border-shelf-success/50 text-shelf-text" data-feature-state="on">On</span>
                         {% else %}
-                        <span class="text-xs px-2 py-0.5 rounded bg-shelf-hover text-shelf-muted" data-feature-state="off">Off</span>
+                        <span class="text-xs px-2 py-0.5 rounded-sm bg-shelf-hover text-shelf-muted" data-feature-state="off">Off</span>
                         {% endif %}
                     </div>
                     <p class="text-sm text-shelf-muted mt-1">{{ row.description }}</p>

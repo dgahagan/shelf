@@ -80,7 +80,7 @@
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = row.included !== false;
-                checkbox.className = 'rounded border-shelf-border';
+                checkbox.className = 'rounded-sm border-shelf-border';
                 checkbox.dataset.role = 'included';
 
                 const name = document.createElement('span');

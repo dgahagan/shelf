@@ -18,7 +18,7 @@
               class="inline-flex items-center gap-1">
             <input type="text" name="name" list="tag-suggestions" placeholder="+ tag"
                    maxlength="40" autocomplete="off" data-narrow-ok
-                   class="w-24 bg-shelf-bg border border-shelf-border rounded-full px-2.5 py-1 text-xs text-shelf-text focus:ring-1 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+                   class="w-24 bg-shelf-bg border border-shelf-border rounded-full px-2.5 py-1 text-xs text-shelf-text focus:ring-1 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
             <datalist id="tag-suggestions">
                 {% for tag in all_tags %}
                 <option value="{{ tag.name }}"></option>

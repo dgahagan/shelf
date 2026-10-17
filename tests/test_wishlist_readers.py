@@ -187,7 +187,7 @@ class TestItemPage:
 class TestSearchCard:
     """T9: `/api/search`'s card ribbon (item_card.html:4)."""
 
-    _CARD_RIBBON = 'text-black shadow">Wishlist</div>'
+    _CARD_RIBBON = 'text-black shadow-sm">Wishlist</div>'
 
     def test_card_badge_present_for_member(self, admin_client, rows):
         html = admin_client.get("/api/search?q=Member+Wishlist+Book").text
@@ -226,7 +226,7 @@ class TestHomeRecent:
     too". One item per test makes each assertion mean what it says.
     """
 
-    _RIBBON = 'text-black shadow">Wishlist</div>'
+    _RIBBON = 'text-black shadow-sm">Wishlist</div>'
 
     def test_recent_grid_badge_present_for_member(self, admin_client, db):
         _insert_item(db, title="Home Wishlist Item", isbn="9780000000051", owned=0,
@@ -256,7 +256,7 @@ class TestSeriesPage:
     series page has no query filter either.
     """
 
-    _RIBBON = 'text-black text-[9px] px-1 rounded font-medium">Wishlist</span>'
+    _RIBBON = 'text-black text-[9px] px-1 rounded-sm font-medium">Wishlist</span>'
 
     def test_series_badge_present_for_member(self, admin_client, db):
         _insert_item(db, title="Series Wishlist Item", isbn="9780000000052",

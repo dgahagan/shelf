@@ -114,7 +114,7 @@
         <div x-show="renaming" style="display:none" class="mt-3 border-t border-shelf-border pt-3">
             <p class="text-xs text-shelf-muted mb-1">Rename this series. Typing the name of another series merges the two.</p>
             <input type="text" x-model="renameDraft" list="series-names" placeholder="Series name"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50"
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50"
                    data-testid="rename-input">
             <p x-show="mergeTarget" style="display:none" class="text-xs text-shelf-warning mt-1">
                 Both series' books will be combined under <span x-text="mergeTarget"></span>, keeping their positions as-is.
@@ -167,7 +167,7 @@
             {% if can_edit %}
             <div x-show="editing" style="display:none">
                 <textarea x-model="draft" rows="4" placeholder="What is this series about?"
-                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50"
+                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50"
                           data-testid="synopsis-input"></textarea>
                 <div class="flex items-center gap-2 mt-2">
                     <button @click="saveDescription" :disabled="saving"
@@ -197,10 +197,10 @@
                     </div>
                     {% endif %}
                     {% if item.series_position is not none %}
-                    <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1 rounded">#{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}</span>
+                    <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1 rounded-sm">#{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}</span>
                     {% endif %}
                     {% if item.wishlisted %}
-                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded font-medium">Wishlist</span>
+                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded-sm font-medium">Wishlist</span>
                     {% endif %}
                 </div>
             </a>
@@ -227,7 +227,7 @@
                             {% if can_edit %}
                             <button x-show="!added[b.hardcover_book_id]"
                                     @click="addToWishlist(b)"
-                                    class="ml-auto px-2 py-0.5 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors shrink-0">
+                                    class="ml-auto px-2 py-0.5 bg-shelf-accent/20 text-shelf-accent2 rounded-sm text-xs hover:bg-shelf-accent/30 transition-colors shrink-0">
                                 + Wishlist
                             </button>
                             <span x-show="added[b.hardcover_book_id]" style="display:none" class="ml-auto text-xs text-shelf-success shrink-0">Wishlisted</span>
@@ -259,7 +259,7 @@
                     </div>
                     {% endif %}
                     {% if item.wishlisted %}
-                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded font-medium">Wishlist</span>
+                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded-sm font-medium">Wishlist</span>
                     {% endif %}
                 </div>
             </a>

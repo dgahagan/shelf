@@ -9,7 +9,7 @@
 <select id="type-filter" name="media_type_filter" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('media_type_filter') }}"
-        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_type else '' }}>All Types ({{ type_total }})</option>
     {% for key, label in media_types.items() %}
     {% set count = type_counts.get(key, 0) %}
@@ -22,7 +22,7 @@
 <select id="owned-filter" name="owned" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('owned') }}"
-        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_owned else '' }}>All ({{ owned_count + wishlist_count + neither_count }})</option>
     <option value="1" {{ 'selected' if active_owned == '1' else '' }}>Owned ({{ owned_count }})</option>
     <option value="0" {{ 'selected' if active_owned == '0' else '' }}>Wishlist ({{ wishlist_count }})</option>
@@ -33,7 +33,7 @@
 <select id="location-filter" name="location_filter" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('location_filter') }}"
-        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_location else '' }}>All Locations ({{ filtered_total }})</option>
     {% for loc in locations %}
     {% set lcount = location_counts.get(loc.id, 0) if location_counts else 0 %}
@@ -46,7 +46,7 @@
 <select id="source-filter" name="source_filter" data-testid="source-filter" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('source_filter') }}"
-        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_source else '' }}>All Sources</option>
     {% for key, count in source_counts.items() %}
     <option value="{{ key }}" {{ 'selected' if active_source == key else '' }}>{{ source_labels.get(key, key | replace('_', ' ') | title) }} ({{ count }})</option>
@@ -64,7 +64,7 @@
 <select id="reading-status-filter" name="reading_status" hx-swap-oob="true"
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('reading_status') }}"
-        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_reading_status else '' }}>All Statuses</option>
     <option value="want_to_read" {{ 'selected' if active_reading_status == 'want_to_read' else '' }}>{{ sl.want }}{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>
     <option value="reading" {{ 'selected' if active_reading_status == 'reading' else '' }}>{{ sl.doing }}{% if rsc.get('reading') %} ({{ rsc.reading }}){% endif %}</option>

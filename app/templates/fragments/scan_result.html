@@ -78,7 +78,7 @@
         <input type="text" name="legacy_supplement" inputmode="numeric" pattern="[0-9]{5}" maxlength="5"
                required
                autocomplete="off" autofocus placeholder="5 digits" aria-label="Five-digit supplement"
-               class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted focus:border-shelf-accent focus:outline-none">
+               class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted focus:border-shelf-accent focus:outline-hidden">
         <button type="submit"
                 class="shrink-0 px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
             Look it up
@@ -112,9 +112,9 @@
      data-scan-status="{{ status }}" x-data="manualAddForm">
     <div class="flex items-center gap-4 mb-3">
         {% if preview_cover %}
-        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
+        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
         {% else %}
-        <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-lg">?</div>
+        <div class="w-12 h-16 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-muted text-lg">?</div>
         {% endif %}
         <div class="flex-1 min-w-0">
             <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
@@ -163,9 +163,9 @@
     {% set attempt = 0 %}
     {% include "fragments/cover_thumb.html" %}
     {% elif cover_path %}
-    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
+    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
     {% else %}
-    <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">
+    <div class="w-12 h-16 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-muted text-xs">
         {% if status == 'added' or status == 'wishlisted' or status == 'promoted' or status == 'restored' %}+
         {% elif status == 'duplicate' %}=
         {% elif status == 'in_trash' %}&#8634;

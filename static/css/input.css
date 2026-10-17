@@ -1,6 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@source "../../app/templates";
+@source "../js";
+@theme {
+  --color-shelf-bg: #0f1117;
+  --color-shelf-card: #1a1d27;
+  --color-shelf-hover: #242836;
+  --color-shelf-accent: #6366f1;
+  --color-shelf-accent2: #818cf8;
+  --color-shelf-text: #e2e8f0;
+  --color-shelf-muted: #94a3b8;
+  --color-shelf-border: #2d3148;
+  --color-shelf-success: #22c55e;
+  --color-shelf-warning: #eab308;
+  --color-shelf-error: #ef4444;
+}
+
+/* Keep Tailwind 3's preflight defaults that v4 dropped. */
+@layer base {
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  ::placeholder { color: #9ca3af; }
+}
+
+/* Tailwind 4's space-y-* puts each gap after a child (margin-block-end) where
+   v3 put it before the next one, so a child followed only by hidden siblings
+   leaves its gap at the bottom of the container: a form's trailing
+   <input type="hidden">, a [hidden] media-type field, an x-show tail. Drop that
+   gap, as v3 did. `.hidden` is not in the list: it often pairs with an `sm:`
+   display class, so it does not mean hidden at every width. */
+@layer utilities {
+  :where([class*="space-y-"]) > :not(:last-child):not(:has(~ :not([hidden], [type="hidden"], [style*="display: none"], [style*="display:none"], template, script))) {
+    margin-block-end: 0;
+  }
+}
 
 /* App-wide styles previously inlined in base.html */
 body { background-color: #0f1117; color: #e2e8f0; }
@@ -8,7 +39,7 @@ body { background-color: #0f1117; color: #e2e8f0; }
 .cover-card { aspect-ratio: 2/3; }
 .cover-card img { width: 100%; height: 100%; object-fit: cover; border-radius: 0.5rem; }
 /* Square artwork (music). Keeps each box's width and derives its height, so
-   it overrides .cover-card's 2:3, aspect-[2/3] and any fixed h-* utility. */
+   it overrides .cover-card's 2:3, aspect-2/3 and any fixed h-* utility. */
 [data-cover-shape="square"] { aspect-ratio: 1 / 1; height: auto; }
 .scan-result { animation: slideIn 0.3s ease-out; }
 @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }

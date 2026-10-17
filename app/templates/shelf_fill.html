@@ -17,7 +17,7 @@
                         x-model="location" @change="persistLocation()"
                         hx-get="/api/shelf-fill/summary" hx-trigger="change"
                         hx-target="#shelf-fill-summary" hx-swap="outerHTML"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
                     <option value="">Choose a location…</option>
                     {% for loc in locations %}
                     <option value="{{ loc.id }}">{{ '— ' * loc.depth }}{{ loc.label }}</option>
@@ -28,7 +28,7 @@
                 <label for="shelf-fill-media-type" class="block text-sm font-medium text-shelf-muted mb-1">Media type</label>
                 <select id="shelf-fill-media-type" name="media_type" form="shelf-fill-form"
                         x-model="mediaType" @change="persistMediaType()"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
                     <option value="auto">Auto — detect from barcode</option>
                     {% for key, label in media_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
                 </select>
@@ -37,7 +37,7 @@
                 <label for="shelf-fill-platform" class="block text-sm font-medium text-shelf-muted mb-1">Game platform</label>
                 <select id="shelf-fill-platform" name="platform" form="shelf-fill-form"
                         x-model="platform" @change="persistPlatform()"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
                     <option value="">Any / unknown</option>
                     {% for key, label in game_platforms.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
                 </select>
@@ -52,7 +52,7 @@
             <input type="text" id="default-tags" name="tags" list="tag-suggestions" form="shelf-fill-form"
                    data-tag-suggest data-storage-key="shelf_fill_tags" data-type-source="#shelf-fill-media-type"
                    autocomplete="off" placeholder="e.g. Cookbook; Signed"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
             <datalist id="tag-suggestions"></datalist>
             <p class="text-xs text-shelf-muted mt-1">Added to every item filed this session. Separate several with <code>;</code>.</p>
         </div>
@@ -89,7 +89,7 @@
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
             <label for="shelf-fill-barcode" class="block text-sm font-medium text-shelf-muted mb-1">ISBN / UPC / copy barcode</label>
             <input type="text" id="shelf-fill-barcode" name="isbn" autofocus autocomplete="off" placeholder="Scan or type a barcode…"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
         </div>
     </form>
 

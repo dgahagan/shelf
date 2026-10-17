@@ -13,21 +13,21 @@
             <div>
                 <label for="komga-url" class="block text-sm font-medium text-shelf-muted mb-1">Komga URL</label>
                 <input id="komga-url" type="url" placeholder="http://komga:25600"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
                 <label for="komga-public-url" class="block text-sm font-medium text-shelf-muted mb-1">Browser URL <span class="text-shelf-muted font-normal">(optional)</span></label>
                 <input id="komga-public-url" type="url" placeholder="https://komga.example.com"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <p class="mt-1 text-xs text-shelf-muted">Use this when Shelf reaches Komga over Docker/LAN but browsers use a reverse-proxy address.</p>
             </div>
             <div>
                 <label for="komga-api-key" class="block text-sm font-medium text-shelf-muted mb-1">API key</label>
                 <input id="komga-api-key" type="password" autocomplete="new-password" placeholder="Leave blank to keep the saved key"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input id="komga-clear-key" type="checkbox" class="rounded border-shelf-border"> Remove saved API key
+                <input id="komga-clear-key" type="checkbox" class="rounded-sm border-shelf-border"> Remove saved API key
             </label>
             <div class="flex flex-wrap gap-2">
                 <button id="komga-save" type="button" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">Save</button>

@@ -86,7 +86,7 @@
         <div>
             <label for="{{ name }}" class="block text-sm font-medium text-shelf-muted mb-1">{{ label }}</label>
             <input type="{{ type }}" id="{{ name }}" name="{{ name }}" value="{{ value if value is not none else '' }}" placeholder="{{ placeholder }}"{% if step %} step="{{ step }}"{% endif %}
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
         </div>
         {% endmacro %}
 
@@ -103,7 +103,7 @@
             <div>
                 <label for="media_type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
                 <select id="media_type" name="media_type"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     {% for key, label in media_types.items() %}
                     <option value="{{ key }}" {% if item.media_type == key %}selected{% endif %}>{{ label }}</option>
                     {% endfor %}
@@ -118,7 +118,7 @@
             <div data-media-types="book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.language else 'false' }}">
                 <label for="language" class="block text-sm font-medium text-shelf-muted mb-1">Language</label>
                 <select id="language" name="language"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">Unknown</option>
                     {% for code, label in search_langs.items() %}
                     <option value="{{ code }}" {% if item.language == code %}selected{% endif %}>{{ label }}</option>
@@ -134,7 +134,7 @@
                     <label for="reading_status" class="block text-sm font-medium text-shelf-muted mb-1">Status</label>
                     {% set sl = status_labels(item.media_type) %}
                     <select id="reading_status" name="reading_status"
-                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                         <option value="">None</option>
                         <option value="want_to_read" {% if item.reading_status == 'want_to_read' %}selected{% endif %}>{{ sl.want }}</option>
                         <option value="reading" {% if item.reading_status == 'reading' %}selected{% endif %}>{{ sl.doing }}</option>
@@ -150,13 +150,13 @@
             <div>
                 <label for="description" class="block text-sm font-medium text-shelf-muted mb-1">Description</label>
                 <textarea id="description" name="description" rows="4"
-                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.description or '' }}</textarea>
+                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">{{ item.description or '' }}</textarea>
             </div>
 
             <div>
                 <label for="notes" class="block text-sm font-medium text-shelf-muted mb-1">Notes</label>
                 <textarea id="notes" name="notes" rows="3"
-                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">{{ item.notes or '' }}</textarea>
+                          class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">{{ item.notes or '' }}</textarea>
             </div>
         </section>
         <section id="edit-artwork" data-testid="edit-section-artwork" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
@@ -168,10 +168,10 @@
             <div x-data="coverDrop">
                 <div class="flex items-center gap-4">
                     {% if item.cover_path %}
-                    <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded" alt="Current cover" data-cover-shape="{{ cover_shape(item.media_type) }}">
+                    <img :src="preview || '/{{ item.cover_path }}'" class="w-16 h-24 object-cover rounded-sm" alt="Current cover" data-cover-shape="{{ cover_shape(item.media_type) }}">
                     {% else %}
-                    <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded" alt="Cover preview" style="display:none" data-cover-shape="{{ cover_shape(item.media_type) }}">
-                    <div x-show="!preview" class="w-16 h-24 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs">None</div>
+                    <img x-show="preview" :src="preview" class="w-16 h-24 object-cover rounded-sm" alt="Cover preview" style="display:none" data-cover-shape="{{ cover_shape(item.media_type) }}">
+                    <div x-show="!preview" class="w-16 h-24 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-muted text-xs">None</div>
                     {% endif %}
                     <div class="flex-1">
                         <div @dragover.prevent="dragging = true" @dragleave="dragging = false"
@@ -193,7 +193,7 @@
                 <div class="flex flex-col sm:flex-row gap-2">
                     <input type="url" id="edit-cover-url" name="url" inputmode="url" autocomplete="url"
                            placeholder="https://example.com/cover.jpg"
-                           class="min-w-0 flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none placeholder-shelf-muted/50">
+                           class="min-w-0 flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
                     <button type="button" data-testid="edit-cover-url-submit"
                             hx-post="/api/items/{{ item.id }}/cover-url"
                             hx-include="#edit-cover-url"
@@ -301,7 +301,7 @@
             <div>
                 <label for="location_id" class="block text-sm font-medium text-shelf-muted mb-1">Location</label>
                 <select id="location_id" name="location_id"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">None</option>
                     {% for loc in locations %}
                     <option value="{{ loc.id }}" {% if item.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
@@ -315,7 +315,7 @@
                     <input type="hidden" name="owned" value="0">
                     <input type="checkbox" name="owned" value="1" {% if item.owned %}checked{% endif %}
                            x-model="owned" data-testid="edit-owned"
-                           class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                           class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                     <span class="font-medium text-shelf-muted">I own this item</span>
                 </label>
                 <div>
@@ -326,7 +326,7 @@
                         <input type="checkbox" name="wishlisted" value="1" {% if item.wishlisted %}checked{% endif %}
                                {% if item.owned %}disabled{% endif %}
                                x-model="wishlisted" :disabled="owned" data-testid="edit-wishlisted"
-                               class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent disabled:opacity-50">
+                               class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent disabled:opacity-50">
                         <span class="font-medium text-shelf-muted">On my wishlist</span>
                     </label>
                     <p class="text-xs text-shelf-muted mt-1 ml-6">Uncheck both for a book you read but don't own — reading history stays.</p>
@@ -336,7 +336,7 @@
             <div>
                 <label for="manual_value" class="block text-sm font-medium text-shelf-muted mb-1">Value ({{ currency().symbol }})</label>
                 <input type="number" id="manual_value" name="manual_value" value="{{ item.manual_value if item.manual_value is not none else '' }}" step="0.01" min="0"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
                 <p class="text-xs text-shelf-muted mt-1">Overrides the ISBNdb estimate everywhere it's shown{% if item.estimated_value %} &mdash; ISBNdb estimate: {{ item.estimated_value|money }}{% endif %}</p>
             </div>
         </section>
@@ -350,7 +350,7 @@
             <div data-media-types="video_game" data-always-visible="{{ 'true' if item.platform else 'false' }}">
                 <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
                 <select id="platform" name="platform"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">None</option>
                     {% for key, label in game_platforms.items() %}
                     <option value="{{ key }}" {% if item.platform == key %}selected{% endif %}>{{ label }}</option>
@@ -380,7 +380,7 @@
     {# The heading below already names the section, so the fragment's own
        label is hidden here; a class on the section survives the fragment's
        outerHTML swaps, a flag passed to the include would not. #}
-    <section id="edit-tags" data-testid="edit-section-tags" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4 [&_[data-tags-label]]:hidden">
+    <section id="edit-tags" data-testid="edit-section-tags" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4 **:data-tags-label:hidden [&>#item-tags]:mb-0">
         <div>
             <h2 class="text-lg font-semibold">Tags</h2>
             <p class="text-sm text-shelf-muted mt-1">Tags save as you add or remove them.</p>

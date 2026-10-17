@@ -19,7 +19,7 @@
         {{ feature_notes.feature_off_note('abs_sync') }}
 
         <!-- Help Modal -->
-        <div x-show="showAbsHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showAbsHelp = false" style="display:none">
+        <div x-show="showAbsHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showAbsHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
                 <h3 class="text-lg font-bold mb-3">Connecting to Audiobookshelf</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
@@ -40,7 +40,7 @@
             <div>
                 <label for="abs_url" class="block text-sm font-medium text-shelf-muted mb-1">Audiobookshelf URL</label>
                 <input type="url" id="abs_url" name="abs_url" x-model="absUrl" value="{{ settings.get('abs_url', '') }}" placeholder="http://localhost:13378"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             {# Optional browser-facing root. The URL above may be an internal
                Docker/LAN address that the user's browser cannot reach. #}
@@ -52,7 +52,7 @@
                 </p>
                 {% endif %}
                 <input type="url" id="abs_public_url" name="abs_public_url" value="{{ settings.get('abs_public_url', '') }}" placeholder="https://audiobooks.example.com"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <p class="mt-1 text-xs text-shelf-muted">
                     Used only for <span class="text-shelf-text">Listen</span> and <span class="text-shelf-text">Read on Audiobookshelf</span> links. Set it when Shelf reaches Audiobookshelf over a Docker or LAN address but your browser uses a reverse-proxy domain. Leave blank to use the URL above.
                 </p>
@@ -62,7 +62,7 @@
                 <div class="flex gap-2">
                     <input type="password" id="abs_token" name="abs_token" x-model="absToken" autocomplete="new-password"
                            placeholder="{% if secrets_saved['abs_token'] %}Saved — leave blank to keep{% else %}Bearer token from ABS settings{% endif %}"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testAbs"
                             :disabled="absTesting || !absTestReady"
@@ -88,7 +88,7 @@
             </div>
             {% if secrets_saved['abs_token'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_abs_token" class="rounded border-shelf-border"> Remove saved token
+                <input type="checkbox" name="clear_abs_token" class="rounded-sm border-shelf-border"> Remove saved token
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
@@ -182,7 +182,7 @@
                         <template x-for="lib in libs" :key="lib.id">
                             <label class="flex items-center gap-2 text-sm cursor-pointer">
                                 <input type="checkbox" :checked="lib.included" @change="toggleLib(lib.id)"
-                                       class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                                       class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                                 <span class="text-shelf-text" x-text="lib.name"></span>
                                 <span class="text-xs text-shelf-muted" x-text="'(' + lib.media_type + ')'"></span>
                             </label>
@@ -223,7 +223,7 @@
         {{ feature_notes.feature_off_note('hardcover') }}
 
         <!-- Help Modal -->
-        <div x-show="showHcHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showHcHelp = false" style="display:none">
+        <div x-show="showHcHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showHcHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
                 <h3 class="text-lg font-bold mb-3">Connecting to Hardcover</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
@@ -247,7 +247,7 @@
                 <div class="flex gap-2">
                     <input type="password" id="hardcover_token" name="hardcover_token" x-model="hcToken" autocomplete="new-password"
                            placeholder="{% if secrets_saved['hardcover_token'] %}Saved — leave blank to keep{% else %}Your Hardcover API token{% endif %}"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testHc"
                             :disabled="hcTesting || (!hcToken && !hcSaved)"
@@ -273,7 +273,7 @@
             </div>
             {% if secrets_saved['hardcover_token'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_hardcover_token" class="rounded border-shelf-border"> Remove saved token
+                <input type="checkbox" name="clear_hardcover_token" class="rounded-sm border-shelf-border"> Remove saved token
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
@@ -289,30 +289,30 @@
             <!-- Status filter checkboxes -->
             <div class="flex flex-wrap gap-x-4 gap-y-1 mb-3">
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
-                    <input type="checkbox" x-model="hcFilter1" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    <input type="checkbox" x-model="hcFilter1" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                     Want to Read
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
-                    <input type="checkbox" x-model="hcFilter2" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    <input type="checkbox" x-model="hcFilter2" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                     Reading
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
-                    <input type="checkbox" x-model="hcFilter3" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    <input type="checkbox" x-model="hcFilter3" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                     Read
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
-                    <input type="checkbox" x-model="hcFilter4" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    <input type="checkbox" x-model="hcFilter4" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                     Paused
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
-                    <input type="checkbox" x-model="hcFilter5" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                    <input type="checkbox" x-model="hcFilter5" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                     Did Not Finish
                 </label>
             </div>
 
             <!-- Overwrite toggle -->
             <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
-                <input type="checkbox" x-model="importOverwrite" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                <input type="checkbox" x-model="importOverwrite" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                 Overwrite existing items with Hardcover data
             </label>
 
@@ -400,7 +400,7 @@
             <p class="text-xs text-shelf-muted mb-3">Push your Shelf collection to your Hardcover library. Only items with an ISBN can be exported.</p>
 
             <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
-                <input type="checkbox" x-model="exportOwnedOnly" class="rounded border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
+                <input type="checkbox" x-model="exportOwnedOnly" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
                 Owned items only (exclude wishlist)
             </label>
 
@@ -470,7 +470,7 @@
         {{ feature_notes.feature_off_note('valuation') }}
 
         <!-- Help Modal -->
-        <div x-show="showHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showHelp = false" style="display:none">
+        <div x-show="showHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
                 <h3 class="text-lg font-bold mb-3">Getting an ISBNdb API Key</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
@@ -495,7 +495,7 @@
                     <input type="password" id="isbndb_api_key" name="isbndb_api_key"
                            x-model="apiKey" autocomplete="new-password"
                            placeholder="{% if secrets_saved['isbndb_api_key'] %}Saved — leave blank to keep{% else %}Your ISBNdb API key{% endif %}"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testKey"
                             :disabled="testing || (!apiKey && !apiKeySaved)"
@@ -522,7 +522,7 @@
             </div>
             {% if secrets_saved['isbndb_api_key'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_isbndb_api_key" class="rounded border-shelf-border"> Remove saved key
+                <input type="checkbox" name="clear_isbndb_api_key" class="rounded-sm border-shelf-border"> Remove saved key
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
@@ -603,7 +603,7 @@
         </div>
 
         <!-- Help Modal -->
-        <div x-show="showGoogleBooksHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showGoogleBooksHelp = false" style="display:none">
+        <div x-show="showGoogleBooksHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showGoogleBooksHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
                 <h3 class="text-lg font-bold mb-3">Getting a Google Books API key</h3>
                 <p class="text-sm text-shelf-muted mb-3">The key comes from Google Cloud, not from a Google Books account.</p>
@@ -635,7 +635,7 @@
                     <input type="password" id="google_books_api_key" name="google_books_api_key"
                            x-model="googleBooksKey" autocomplete="new-password"
                            placeholder="{% if secrets_saved['google_books_api_key'] %}Saved — leave blank to keep{% else %}Optional Google Books API key{% endif %}"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testGoogleBooks"
                             :disabled="googleBooksTesting || (!googleBooksKey && !googleBooksSaved)"
@@ -664,7 +664,7 @@
             </div>
             {% if secrets_saved['google_books_api_key'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_google_books_api_key" class="rounded border-shelf-border"> Remove saved key
+                <input type="checkbox" name="clear_google_books_api_key" class="rounded-sm border-shelf-border"> Remove saved key
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
@@ -683,7 +683,7 @@
         </div>
 
         <!-- Help Modal -->
-        <div x-show="showTmdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showTmdbHelp = false" style="display:none">
+        <div x-show="showTmdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showTmdbHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
                 <h3 class="text-lg font-bold mb-3">Getting a TMDb credential</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
@@ -707,7 +707,7 @@
                 <div class="flex gap-2">
                     <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey" autocomplete="new-password"
                            placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key or read access token{% endif %}"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testTmdb"
                             :disabled="tmdbTesting || (!tmdbKey && !tmdbSaved)"
@@ -733,7 +733,7 @@
             </div>
             {% if secrets_saved['tmdb_api_key'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_tmdb_api_key" class="rounded border-shelf-border"> Remove saved key
+                <input type="checkbox" name="clear_tmdb_api_key" class="rounded-sm border-shelf-border"> Remove saved key
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
@@ -752,7 +752,7 @@
             <div>
                 <label for="vision_provider" class="block text-sm font-medium text-shelf-muted mb-1">Provider</label>
                 <select id="vision_provider" name="vision_provider" x-model="visionProvider"
-                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">Disabled</option>
                     <option value="anthropic">Anthropic API</option>
                     <option value="openai">OpenAI-compatible</option>
@@ -764,11 +764,11 @@
                     <label for="anthropic_api_key" class="block text-sm font-medium text-shelf-muted mb-1">Anthropic API Key</label>
                     <input type="password" id="anthropic_api_key" name="anthropic_api_key" autocomplete="new-password"
                            placeholder="{% if secrets_saved['anthropic_api_key'] %}Saved — leave blank to keep{% else %}sk-ant-...{% endif %}"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Get one at console.anthropic.com. Stored encrypted; only used server-side.</p>
                     {% if secrets_saved['anthropic_api_key'] %}
                     <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
-                        <input type="checkbox" name="clear_anthropic_api_key" class="rounded border-shelf-border"> Remove saved key
+                        <input type="checkbox" name="clear_anthropic_api_key" class="rounded-sm border-shelf-border"> Remove saved key
                     </label>
                     {% endif %}
                 </div>
@@ -776,7 +776,7 @@
                     <label for="anthropic_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
                     <input type="text" id="anthropic_vision_model" name="anthropic_vision_model"
                            value="{{ settings.get('anthropic_vision_model', '') }}" placeholder="claude-opus-4-8 (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 </div>
             </div>
             <div x-show="visionProvider === 'openai'" class="space-y-3">
@@ -784,18 +784,18 @@
                     <label for="openai_base_url" class="block text-sm font-medium text-shelf-muted mb-1">Base URL</label>
                     <input type="text" id="openai_base_url" name="openai_base_url"
                            value="{{ settings.get('openai_base_url', '') }}" placeholder="https://api.openai.com/v1 (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Any OpenAI-compatible <span class="font-mono text-xs">/chat/completions</span> endpoint &mdash; OpenAI, OpenRouter, or a local server (vLLM, LM Studio, LocalAI&hellip;).</p>
                 </div>
                 <div>
                     <label for="openai_api_key" class="block text-sm font-medium text-shelf-muted mb-1">API Key</label>
                     <input type="password" id="openai_api_key" name="openai_api_key" autocomplete="new-password"
                            placeholder="{% if secrets_saved['openai_api_key'] %}Saved — leave blank to keep{% else %}sk-...{% endif %}"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Stored encrypted; only used server-side. Local servers that need no key can leave this blank.</p>
                     {% if secrets_saved['openai_api_key'] %}
                     <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
-                        <input type="checkbox" name="clear_openai_api_key" class="rounded border-shelf-border"> Remove saved key
+                        <input type="checkbox" name="clear_openai_api_key" class="rounded-sm border-shelf-border"> Remove saved key
                     </label>
                     {% endif %}
                 </div>
@@ -803,14 +803,14 @@
                     <label for="openai_vision_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
                     <input type="text" id="openai_vision_model" name="openai_vision_model"
                            value="{{ settings.get('openai_vision_model', '') }}" placeholder="gpt-4o-mini (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model. Match this to whatever your endpoint serves.</p>
                 </div>
                 <div>
                     <label for="openai_ingest_long_edge" class="block text-sm font-medium text-shelf-muted mb-1">Image size (long edge, px)</label>
                     <input type="text" id="openai_ingest_long_edge" name="openai_ingest_long_edge" inputmode="numeric"
                            value="{{ settings.get('openai_ingest_long_edge', '') }}" placeholder="2048 (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling.</p>
                 </div>
             </div>
@@ -819,20 +819,20 @@
                     <label for="ollama_url" class="block text-sm font-medium text-shelf-muted mb-1">Ollama URL</label>
                     <input type="text" id="ollama_url" name="ollama_url"
                            value="{{ settings.get('ollama_url', '') }}" placeholder="http://localhost:11434 (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 </div>
                 <div>
                     <label for="ollama_model" class="block text-sm font-medium text-shelf-muted mb-1">Model</label>
                     <input type="text" id="ollama_model" name="ollama_model"
                            value="{{ settings.get('ollama_model', '') }}" placeholder="gemma3:12b (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;).</p>
                 </div>
                 <div>
                     <label for="ollama_ingest_long_edge" class="block text-sm font-medium text-shelf-muted mb-1">Image size (long edge, px)</label>
                     <input type="text" id="ollama_ingest_long_edge" name="ollama_ingest_long_edge" inputmode="numeric"
                            value="{{ settings.get('ollama_ingest_long_edge', '') }}" placeholder="1024 (default)"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <p class="text-xs text-shelf-muted mt-1">Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling.</p>
                 </div>
             </div>
@@ -852,7 +852,7 @@
         </div>
 
         <!-- Help Modal -->
-        <div x-show="showIgdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center" @click.self="showIgdbHelp = false" style="display:none">
+        <div x-show="showIgdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showIgdbHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
                 <h3 class="text-lg font-bold mb-3">Getting IGDB Credentials</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
@@ -875,14 +875,14 @@
                 <label for="igdb_client_id" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client ID</label>
                 <input type="text" id="igdb_client_id" name="igdb_client_id" x-model="igdbId" autocomplete="off"
                        placeholder="{% if secrets_saved['igdb_client_id'] %}Saved — leave blank to keep{% else %}Your Twitch Client ID{% endif %}"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
                 <label for="igdb_client_secret" class="block text-sm font-medium text-shelf-muted mb-1">Twitch Client Secret</label>
                 <div class="flex gap-2">
                     <input type="password" id="igdb_client_secret" name="igdb_client_secret" x-model="igdbSecret" autocomplete="new-password"
                            placeholder="{% if secrets_saved['igdb_client_secret'] %}Saved — leave blank to keep{% else %}Your Twitch Client Secret{% endif %}"
-                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                           class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testIgdb"
                             :disabled="igdbTesting || ((!igdbId || !igdbSecret) && !igdbSaved)"
@@ -908,7 +908,7 @@
             </div>
             {% if secrets_saved['igdb_client_id'] or secrets_saved['igdb_client_secret'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_igdb_client_id" @change="$el.form.clear_igdb_client_secret.checked = $el.checked" class="rounded border-shelf-border">
+                <input type="checkbox" name="clear_igdb_client_id" @change="$el.form.clear_igdb_client_secret.checked = $el.checked" class="rounded-sm border-shelf-border">
                 <input type="checkbox" name="clear_igdb_client_secret" class="hidden"> Remove saved credentials
             </label>
             {% endif %}

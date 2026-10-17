@@ -26,21 +26,21 @@
             <div>
                 <label for="username" class="block text-sm font-medium text-shelf-muted mb-1">Username</label>
                 <input type="text" id="username" name="username" required autofocus minlength="2"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
 
             <div>
                 <label for="display_name" class="block text-sm font-medium text-shelf-muted mb-1">Display Name <span class="text-shelf-muted/50">(optional)</span></label>
                 <input type="text" id="display_name" name="display_name"
                     placeholder="How your name appears in the app"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
 
             <div>
                 <label for="password" class="block text-sm font-medium text-shelf-muted mb-1">Password</label>
                 <input type="password" id="password" name="password" required minlength="8"
                     x-model="password"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                 <p x-show="tooShort" x-cloak class="text-shelf-error text-xs mt-1">Must be at least 8 characters</p>
             </div>
 
@@ -48,7 +48,7 @@
                 <label for="password_confirm" class="block text-sm font-medium text-shelf-muted mb-1">Confirm Password</label>
                 <input type="password" id="password_confirm" name="password_confirm" required
                     x-model="confirm"
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
                     :class="mismatch ? 'border-shelf-error' : ''">
                 <p x-show="mismatch" x-cloak class="text-shelf-error text-xs mt-1">Passwords do not match</p>
             </div>
@@ -59,7 +59,7 @@
             <fieldset data-testid="setup-profiles" class="space-y-2">
                 <legend class="block text-sm font-medium text-shelf-muted mb-1">How much of Shelf do you want to start with?</legend>
                 {% for p in profiles %}
-                <label class="flex items-start gap-3 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 cursor-pointer has-[:checked]:border-shelf-accent">
+                <label class="flex items-start gap-3 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 cursor-pointer has-checked:border-shelf-accent">
                     <input type="radio" name="profile" value="{{ p.name }}" data-testid="setup-profile-{{ p.name }}"
                         class="mt-1 bg-shelf-bg border-shelf-border text-shelf-accent focus:ring-shelf-accent"
                         {% if p.name == selected_profile %}checked{% endif %}>

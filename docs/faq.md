@@ -43,6 +43,11 @@ see [HTTPS & reverse proxy](https-and-reverse-proxy.md).
 **Can I use a USB barcode scanner?**
 Yes — any scanner that acts as a keyboard and sends Enter. No setup.
 
+**Which browsers does Shelf need?**
+Since 0.68.0: Safari 16.4, Chrome 111, Firefox 128 or newer (Edge and other
+Chromium browsers follow Chrome). An older browser still loads the pages, but
+some colours and styles are missing.
+
 **Does camera scanning work on iPhone?**
 Yes, since 0.10.0 (iOS Safari uses a ZXing decoder). It needs HTTPS and a
 camera permission.

@@ -68,7 +68,7 @@
             <a href="/item/{{ tile.id }}?from=stats" class="block">
                 {# The box owns the shape, so a cover file that 404s leaves an empty
                    tile rather than a collapsed broken image (qa-wrapups Obs 4). #}
-                <div class="w-full aspect-[2/3] bg-shelf-hover rounded overflow-hidden" data-cover-shape="{{ cover_shape(tile.media_type) }}">
+                <div class="w-full aspect-2/3 bg-shelf-hover rounded-sm overflow-hidden" data-cover-shape="{{ cover_shape(tile.media_type) }}">
                     {% if tile.cover_path %}
                     <img src="/{{ tile.cover_path }}" alt="" class="w-full h-full object-cover" data-cover-shape="{{ cover_shape(tile.media_type) }}">
                     {% endif %}

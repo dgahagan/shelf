@@ -36,7 +36,7 @@
         <div>
             <label for="copy-location-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Location</label>
             <select id="copy-location-{{ copy.id }}" name="location_id" data-narrow-ok
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
                 <option value="">No location</option>
                 {% for loc in locations %}
                 <option value="{{ loc.id }}" {% if copy.location_id == loc.id %}selected{% endif %}>{{ loc.name }}</option>
@@ -47,7 +47,7 @@
             <label for="copy-condition-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Condition</label>
             <input type="text" id="copy-condition-{{ copy.id }}" name="condition" data-narrow-ok
                    value="{{ copy.condition or '' }}" list="copy-condition-options" autocomplete="off" maxlength="60"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
             <datalist id="copy-condition-options">
                 <option value="New"></option>
                 <option value="Fine"></option>
@@ -61,32 +61,32 @@
             <label for="copy-acquired-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Acquired</label>
             <input type="date" id="copy-acquired-{{ copy.id }}" name="acquired_date" data-narrow-ok
                    value="{{ copy.acquired_date or '' }}"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
         </div>
         <div>
             <label for="copy-source-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Source</label>
             <input type="text" id="copy-source-{{ copy.id }}" name="acquisition_source" data-narrow-ok
                    value="{{ copy.acquisition_source or '' }}" maxlength="120"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
         </div>
         <div>
             <label for="copy-price-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Price ({{ currency().symbol }})</label>
             <input type="number" id="copy-price-{{ copy.id }}" name="acquisition_price" step="0.01" min="0" data-narrow-ok
                    value="{{ copy.acquisition_price if copy.acquisition_price is not none else '' }}"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
         </div>
         <div>
             <label for="copy-barcode-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Copy barcode</label>
             <input type="text" id="copy-barcode-{{ copy.id }}" name="copy_barcode" data-narrow-ok
                    value="{{ copy.copy_barcode or '' }}" autocomplete="off" maxlength="64"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
             <p class="text-xs text-shelf-muted mt-1">Scanned by Shelf Fill to place this exact copy.</p>
         </div>
         <div class="sm:col-span-2">
             <label for="copy-provenance-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Provenance</label>
             <input type="text" id="copy-provenance-{{ copy.id }}" name="provenance" data-narrow-ok
                    value="{{ copy.provenance or '' }}" maxlength="200"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
         </div>
         <div class="sm:col-span-2 flex flex-wrap items-center gap-2">
             <button type="submit" data-testid="save-copy"

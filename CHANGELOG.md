@@ -6,6 +6,38 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.68.0] - 2026-10-16
+
+Shelf's stylesheet was built with Tailwind CSS 3, which pinned a build-time
+dependency with a known vulnerability. The only fix was to move to Tailwind CSS 4. Pages
+look the same as before, with the few exceptions listed below. The most
+important one is the browser floor: Shelf now needs Safari 16.4, Chrome 111,
+Firefox 128 or newer. The move also fixes a video game edit form that showed
+two audiobook-only fields.
+
+### Changed
+
+- **The stylesheet is built with Tailwind CSS 4** (`@tailwindcss/cli`), for
+  [#160](https://github.com/dgahagan/shelf/issues/160). Pages look the same,
+  with three exceptions. Hover styles no longer apply on touch screens. Focus
+  outlines now stay visible in Windows high-contrast mode. The browser floor
+  is now Safari 16.4, Chrome 111 or Firefox 128; an older browser loses some
+  colours.
+
+### Fixed
+
+- **A video game's edit form no longer shows the narrator and duration
+  fields.** They belong to audiobooks only. Tailwind 3 let a layout class
+  override the attribute that hid them.
+
+### Security
+
+- **A vulnerable `postcss-selector-parser` has left the build toolchain**
+  (Dependabot alert #3, medium, GHSA-rj75-hqrm-r3gf). It was a build-time
+  dependency only and never shipped in the image. Tailwind 3 pinned the
+  affected line, so the fix was the move to Tailwind 4. Closes
+  [#160](https://github.com/dgahagan/shelf/issues/160).
+
 ## [0.67.0] - 2026-10-15
 
 Portuguese books were often missing from the lookup. Open Library and Google
@@ -5086,6 +5118,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.68.0]: https://github.com/dgahagan/shelf/releases/tag/v0.68.0
 [0.67.0]: https://github.com/dgahagan/shelf/releases/tag/v0.67.0
 [0.66.0]: https://github.com/dgahagan/shelf/releases/tag/v0.66.0
 [0.65.0]: https://github.com/dgahagan/shelf/releases/tag/v0.65.0

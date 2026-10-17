@@ -32,7 +32,7 @@
                        nothing once a cover exists — it alone stays missing-only. #}
                     <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
                             data-after-request="reload"
-                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
+                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
                         Retry ISBN
                     </button>
                     {% endif %}
@@ -43,7 +43,7 @@
                 {% if user and user.role in ('admin', 'editor') %}
                 <div class="flex flex-col gap-1 mt-2" data-testid="cover-controls">
                     <button hx-get="/api/items/{{ item.id }}/cover-search" hx-target="#cover-candidates" hx-swap="innerHTML"
-                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded hover:bg-shelf-accent/30 transition-colors">
+                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
                         Find cover
                     </button>
                 </div>
@@ -53,11 +53,11 @@
 
             <!-- Metadata -->
             <div class="flex-1 min-w-0">
-                <h1 class="text-2xl font-bold mb-1">{{ item.title }}{% if item.wishlisted %} <span class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0 align-middle" data-testid="wishlist-badge">Wishlist</span>{% endif %}</h1>
+                <h1 class="text-2xl font-bold mb-1">{{ item.title }}{% if item.wishlisted %} <span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0 align-middle" data-testid="wishlist-badge">Wishlist</span>{% endif %}</h1>
                 {% if item.wishlisted and price_line and feature_on('price_alerts') %}<p class="text-sm text-shelf-muted mb-2" data-testid="list-price-line">List price {{ price_line.current|money }}{% if price_line.stale %} as of {{ price_line.current_on }}{% endif %}{% if price_line.was is not none %} &middot; was {{ price_line.was|money }} on {{ price_line.was_on }}{% endif %}</p>{% endif %}
                 {% if item.subtitle %}<p class="text-lg text-shelf-muted mb-2">{{ item.subtitle }}</p>{% endif %}
                 {% if item.authors %}
-                <p class="text-lg mb-4 break-words">
+                <p class="text-lg mb-4 wrap-break-word">
                     {%- if item_authors %}
                     {%- for author_id, author_name, author_role in item_authors %}<a href="/browse?author_filter={{ author_id }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ author_name }}</a>{% if author_role %} <span class="text-shelf-muted">&middot; {{ author_role }}</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor -%}
                     {%- else -%}
@@ -207,7 +207,7 @@
                     <p class="text-xs text-shelf-muted mb-1">Also available as:</p>
                     <div class="flex flex-wrap gap-2">
                         {% for li in linked_items %}
-                        <a href="/item/{{ li.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="px-2 py-1 bg-shelf-hover rounded text-xs text-shelf-text hover:bg-shelf-border transition-colors">
+                        <a href="/item/{{ li.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="px-2 py-1 bg-shelf-hover rounded-sm text-xs text-shelf-text hover:bg-shelf-border transition-colors">
                             {{ media_types.get(li.media_type, li.media_type) }}
                         </a>
                         {% endfor %}
@@ -241,7 +241,7 @@
                         </p>
                         {% if user and user.role in ('admin', 'editor') %}
                         <form action="/api/checkouts/{{ current_checkout.id }}/checkin" method="post" class="mt-2">
-                            <button type="submit" class="px-3 py-1 bg-shelf-success/20 text-shelf-success rounded text-xs hover:bg-shelf-success/30 transition-colors">
+                            <button type="submit" class="px-3 py-1 bg-shelf-success/20 text-shelf-success rounded-sm text-xs hover:bg-shelf-success/30 transition-colors">
                                 Check In
                             </button>
                         </form>

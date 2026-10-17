@@ -11,22 +11,22 @@
             <div>
                 <label for="romm-url" class="block text-sm font-medium text-shelf-muted mb-1">RomM URL</label>
                 <input id="romm-url" type="url" placeholder="http://romm:8080"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
                 <label for="romm-public-url" class="block text-sm font-medium text-shelf-muted mb-1">Browser URL <span class="text-shelf-muted font-normal">(optional)</span></label>
                 <input id="romm-public-url" type="url" placeholder="https://romm.example.com"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <p class="mt-1 text-xs text-shelf-muted">Use this when Shelf connects over Docker/LAN but users open RomM through a reverse proxy.</p>
             </div>
             <div>
                 <label for="romm-token" class="block text-sm font-medium text-shelf-muted mb-1">Client API token</label>
                 <input id="romm-token" type="password" autocomplete="new-password" placeholder="Leave blank to keep the saved token"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <p class="mt-1 text-xs text-shelf-muted">A long-lived RomM client token with platform and ROM read access is sufficient.</p>
             </div>
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input id="romm-clear-token" type="checkbox" class="rounded border-shelf-border"> Remove saved token
+                <input id="romm-clear-token" type="checkbox" class="rounded-sm border-shelf-border"> Remove saved token
             </label>
             <div class="flex flex-wrap gap-2">
                 <button id="romm-save" type="button" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">Save</button>

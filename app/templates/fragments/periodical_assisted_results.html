@@ -2,7 +2,7 @@
 <div class="space-y-2">
     {% for candidate in candidates %}
     <article class="flex items-start gap-3 rounded-lg border border-shelf-border bg-shelf-card p-3">
-        {% if candidate.cover_url %}<img src="{{ candidate.cover_url }}" alt="" class="w-10 h-14 object-cover rounded shrink-0">{% endif %}
+        {% if candidate.cover_url %}<img src="{{ candidate.cover_url }}" alt="" class="w-10 h-14 object-cover rounded-sm shrink-0">{% endif %}
         <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-shelf-text">{{ candidate.title }}</p>
             <p class="text-xs text-shelf-muted mt-1">

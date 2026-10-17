@@ -5,7 +5,7 @@
             <h3 class="font-semibold mt-1" data-scan-title>{{ candidate.publication_title or 'Publication title needed' }}</h3>
             <p class="text-xs text-shelf-muted mt-1">ISSN {{ candidate.issn or 'unknown' }} · {{ candidate.barcode_ean or raw_barcode[:13] }}{% if candidate.barcode_supplement %} + {{ candidate.barcode_supplement }}{% endif %}</p>
         </div>
-        <span class="text-xs px-2 py-1 bg-shelf-hover rounded text-shelf-muted" data-scan-badge>Magazine</span>
+        <span class="text-xs px-2 py-1 bg-shelf-hover rounded-sm text-shelf-muted" data-scan-badge>Magazine</span>
     </div>
 
     {% if notice %}
@@ -25,7 +25,7 @@
             <input type="hidden" name="location_id" value="{{ location_id or '' }}">
             <input type="hidden" name="mode" value="{{ mode }}">
             <input name="q" type="search" maxlength="120" placeholder="Magazine title…"
-                   class="min-w-0 flex-1 bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                   class="min-w-0 flex-1 bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
             <button type="submit" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm">Search</button>
         </form>
         <div id="periodical-assisted-{{ raw_barcode }}" class="mt-3"></div>
@@ -46,33 +46,33 @@
         <div>
             <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-publication-title-{{ raw_barcode }}">Publication</label>
             <input id="periodical-publication-title-{{ raw_barcode }}" name="publication_title" required value="{{ candidate.publication_title or '' }}" placeholder="Publication title"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
         </div>
         <div>
             <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-publication-issn-{{ raw_barcode }}">Publication ISSN</label>
             <input id="periodical-publication-issn-{{ raw_barcode }}" name="publication_issn" value="{{ candidate.issn or '' }}" placeholder="1234-567X"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm font-mono text-shelf-text outline-none">
+                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm font-mono text-shelf-text outline-hidden">
             <p class="text-xs text-shelf-muted mt-1">This may differ from the 977-derived hint when a trusted result or the printed masthead proves otherwise.</p>
         </div>
 
         <div class="space-y-3">
             <div>
                 <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-volume-{{ raw_barcode }}">Volume</label>
-                <input id="periodical-volume-{{ raw_barcode }}" name="volume" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <input id="periodical-volume-{{ raw_barcode }}" name="volume" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
             </div>
             <div>
                 <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-number-{{ raw_barcode }}">Issue number</label>
-                <input id="periodical-issue-number-{{ raw_barcode }}" name="issue_number" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <input id="periodical-issue-number-{{ raw_barcode }}" name="issue_number" placeholder="Optional" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
             </div>
             <div>
                 <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-issue-date-{{ raw_barcode }}">Issue date</label>
                 <input id="periodical-issue-date-{{ raw_barcode }}" name="issue_date" type="date"
                        value="{% if candidate.issue_date and candidate.issue_date|length >= 10 %}{{ candidate.issue_date[:10] }}{% endif %}"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
             </div>
             <div>
                 <label class="block text-xs font-medium text-shelf-muted mb-1" for="periodical-cover-date-{{ raw_barcode }}">Cover date / label</label>
-                <input id="periodical-cover-date-{{ raw_barcode }}" name="cover_date_label" placeholder="September 2026, Summer Special…" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                <input id="periodical-cover-date-{{ raw_barcode }}" name="cover_date_label" placeholder="September 2026, Summer Special…" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
             </div>
         </div>
 

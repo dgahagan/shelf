@@ -11,12 +11,12 @@
           hx-target="#related-media-panel" hx-swap="outerHTML"
           class="flex items-center gap-1 shrink-0">
         <input type="hidden" name="other_item_id" value="{{ candidate.id }}">
-        <select name="link_type" class="bg-shelf-card border border-shelf-border rounded px-2 py-1 text-xs text-shelf-text">
+        <select name="link_type" class="bg-shelf-card border border-shelf-border rounded-sm px-2 py-1 text-xs text-shelf-text">
             <option value="format">Format</option>
             <option value="related" selected>Related</option>
             <option value="adaptation">Adaptation</option>
         </select>
-        <button type="submit" class="px-2 py-1 bg-shelf-accent text-white rounded text-xs">Link</button>
+        <button type="submit" class="px-2 py-1 bg-shelf-accent text-white rounded-sm text-xs">Link</button>
     </form>
 </div>
 {% endfor %}

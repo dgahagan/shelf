@@ -3,9 +3,9 @@
     {% for game in results %}
     <div class="bg-shelf-bg rounded-lg border border-shelf-border p-3 flex items-center gap-4">
         {% if game.cover_url %}
-        <img src="{{ game.cover_url }}" class="w-12 h-16 object-cover rounded shrink-0" alt="">
+        <img src="{{ game.cover_url }}" class="w-12 h-16 object-cover rounded-sm shrink-0" alt="">
         {% else %}
-        <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-muted text-xs shrink-0">?</div>
+        <div class="w-12 h-16 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-muted text-xs shrink-0">?</div>
         {% endif %}
         <div class="flex-1 min-w-0">
             <p class="font-medium truncate">{{ game.title }}</p>

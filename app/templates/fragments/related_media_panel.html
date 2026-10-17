@@ -10,7 +10,7 @@
     <div class="space-y-2 mb-3">
         {% for related in related_items %}
         <div class="flex items-center gap-3 bg-shelf-bg border border-shelf-border rounded-lg p-2">
-            {% if related.cover_path %}<img src="/{{ related.cover_path }}" alt="" class="w-8 h-12 object-cover rounded shrink-0" data-cover-shape="{{ cover_shape(related.media_type) }}">{% endif %}
+            {% if related.cover_path %}<img src="/{{ related.cover_path }}" alt="" class="w-8 h-12 object-cover rounded-sm shrink-0" data-cover-shape="{{ cover_shape(related.media_type) }}">{% endif %}
             <div class="min-w-0 flex-1">
                 <a href="/item/{{ related.id }}" class="text-sm font-medium hover:text-shelf-accent2">{{ related.title }}</a>
                 <p class="text-xs text-shelf-muted">
@@ -40,7 +40,7 @@
                    hx-trigger="keyup changed delay:300ms"
                    hx-target="#related-media-search-results-{{ item.id }}"
                    hx-swap="innerHTML"
-                   class="w-full bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-none">
+                   class="w-full bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text outline-hidden">
             <div id="related-media-search-results-{{ item.id }}" class="mt-2"></div>
         </div>
     </details>

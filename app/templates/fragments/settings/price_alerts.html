@@ -14,14 +14,14 @@
                 <input type="number" id="price_alert_threshold_pct" name="price_alert_threshold_pct" min="1" max="{{ price_alert_max_threshold }}" step="1" required
                        value="{{ settings.get('price_alert_threshold_pct', price_alert_default_threshold) }}"
                        data-testid="price-alert-threshold"
-                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
                 <label for="price_alert_nightly_cap" class="block text-sm font-medium text-shelf-muted mb-1">Books checked per night</label>
                 <input type="number" id="price_alert_nightly_cap" name="price_alert_nightly_cap" min="1" max="{{ price_alert_max_cap }}" step="1" required
                        value="{{ settings.get('price_alert_nightly_cap', price_alert_default_cap) }}"
                        data-testid="price-alert-cap"
-                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
         </div>
         <p class="text-xs text-shelf-muted">Each night Shelf checks the wishlisted books it looked at longest ago, up to this many, so a large wishlist is covered over several nights.</p>

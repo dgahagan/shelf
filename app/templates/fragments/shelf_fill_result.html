@@ -1,9 +1,9 @@
 <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4"
      data-scan-status="moved">
     {% if cover_path %}
-    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
+    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
     {% else %}
-    <div class="w-12 h-16 bg-shelf-hover rounded flex items-center justify-center text-shelf-success text-lg">&check;</div>
+    <div class="w-12 h-16 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-success text-lg">&check;</div>
     {% endif %}
     <div class="flex-1 min-w-0">
         <p class="font-medium truncate" data-scan-title><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>

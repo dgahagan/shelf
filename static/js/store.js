@@ -257,7 +257,9 @@
             btn.textContent = 'Scan with Camera';
             scanner = null;
             var note = $('verdict-note');
-            $('verdict').classList.remove('hidden');
+            var card = $('verdict');
+            card.classList.remove('hidden');
+            card.classList.add('border-shelf-border');
             note.textContent = 'Camera unavailable — use manual entry.';
         });
     }

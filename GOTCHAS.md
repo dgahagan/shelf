@@ -1799,6 +1799,8 @@ grep -rn "post_data_buffer" tests/e2e/
   same way — no declared width, so their intrinsic size followed the font.
   Fixed by moving the seam to `lg`, declaring `block w-full` on the inputs, and
   giving the locations/borrowers/platforms rows a `flex-wrap` seam.
+  Re-verified under Tailwind 4.3.3 (2026-10, issue #160): `.sm\:flex-1` still
+  precedes `.sm\:basis-auto` in the built app.css.
 - **Verify:** the responsive gate measures every top-level page at
   320/390/430/640/768/1024 for both overflow *and* text columns squeezed under
   80px. A breakpoint's own width is the worst case for the layout it turns on,
@@ -5837,8 +5839,8 @@ grep -cE '(http|\{scheme\})://testserver/' tests/test_auth_cookie_secure.py test
   - a new top-level `GET` page → `tests/test_nav.py`
     (`test_every_top_level_page_is_reachable_from_the_nav`) needs a `NAV_TABS`
     entry **or** an `EXEMPT` reason naming the link that reaches it;
-  - any element forced into a box (`aspect-[…]`, `object-cover`,
-    `.cover-card`) → `tests/test_cover_shape_guard.py` needs
+  - any element forced into a box (`aspect-[…]` or `aspect-N/M`,
+    `object-cover`, `.cover-card`) → `tests/test_cover_shape_guard.py` needs
     `data-cover-shape="{{ cover_shape(media_type) }}"` on it, so the query
     feeding it must select `media_type`;
   - a vendored asset → `tests/test_vendor_integrity.py` hashes only the
@@ -6081,6 +6083,39 @@ grep -rn 'len(upc_stub\["requests"\])' tests/e2e
 
 - **Status:** documented. Revisit when the stub gains a third provider, or
   when it is split into one stub per provider.
+
+## G142 — When a class's spelling changes (a Tailwind upgrade, a rename sweep, a canonicalising tool)
+
+- **Rule:** before keeping the new spelling, grep `tests/` and `scripts/` for
+  the **old** one, and read every hit. Three kinds of check go blind without
+  failing:
+  - a **negative pin** (`assert '… aspect-[2/3] …' not in html`) now passes
+    whatever the page renders;
+  - a **regex guard** keyed on the spelling (`aspect-\[`) stops seeing the
+    sites it exists to police;
+  - an **exemption reason** that cites a class's behaviour (`h-22 is not a
+    built class`) becomes false when the build starts compiling it.
+  A positive pin goes red and gets fixed; these three stay green, which is the
+  trap. Pair a negative pin with a positive one on the same element.
+- **Why:** the Tailwind 4 upgrade tool canonicalised more than its documented
+  rename table (`aspect-[2/3]` → `aspect-2/3`, `max-h-[28rem]` → `max-h-112`,
+  `has-[:checked]:` → `has-checked:`, `break-words` → `wrap-break-word`), and
+  v4 compiles any integer spacing step, so v3's dead `h-22` went live.
+  `make test` was green throughout.
+- **Evidence:** `feat/issue-160-tailwind-4`, 2026-10-16. `4ab4b49` widened
+  `test_cover_shape_guard.py`'s `_BOX` to `aspect-(?:\[|\d)` and re-aimed the
+  negative pin at `test_wrapup_route.py:164`. `46eae6c` dropped `h-22` from
+  `scan.html:64` and rewrote that file's exemption reason.
+- **Verify:**
+
+```bash
+grep -n '_BOX = re.compile' tests/test_cover_shape_guard.py   # matches aspect-N/M too
+grep -rn "aspect-\[2/3\]" app/templates static/js           # empty: no old spelling left
+```
+
+- **Status:** documented. The negative-pin half is a lint candidate: flag a
+  `not in html` assertion on a class string with no positive assertion
+  on the same element.
 
 ## Graveyard
 

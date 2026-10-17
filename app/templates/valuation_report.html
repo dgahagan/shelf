@@ -88,7 +88,7 @@
                     <tr class="hover:bg-shelf-hover/50">
                         <td class="px-3 py-1.5">
                             {% if item.cover_path %}
-                            <img src="/{{ item.cover_path }}" alt="" class="w-7 rounded-sm" loading="lazy">
+                            <img src="/{{ item.cover_path }}" alt="" class="w-7 rounded-xs" loading="lazy">
                             {% endif %}
                         </td>
                         <td class="px-3 py-1.5">{{ item.title }}{% if item.publish_year %} <span class="text-shelf-muted">({{ item.publish_year }})</span>{% endif %}</td>
@@ -98,7 +98,7 @@
                         <td class="px-3 py-1.5 text-right font-mono">
                             {% if item.effective_value %}{{ item.effective_value|money }}{% else %}&mdash;{% endif %}
                             {% if item.manual_value is not none %}
-                            <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold uppercase tracking-wide bg-shelf-accent2/10 text-shelf-accent2" title="Owner-declared value">manual</span>
+                            <span class="ml-1 px-1.5 py-0.5 rounded-sm text-[10px] font-sans font-semibold uppercase tracking-wide bg-shelf-accent2/10 text-shelf-accent2" title="Owner-declared value">manual</span>
                             {% endif %}
                         </td>
                     </tr>

@@ -69,7 +69,7 @@
 
     <!-- Account Modal -->
     <div x-show="showAccount" x-cloak @click.self="closeAccount()"
-         class="fixed inset-0 bg-black/60 z-[200] flex items-center justify-center">
+         class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center">
         <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl"
              data-display-name="{{ user.display_name or user.username }}"
              x-data="accountModal">
@@ -99,7 +99,7 @@
                 <div>
                     <label class="block text-sm font-medium text-shelf-muted mb-1">Display Name</label>
                     <input x-model="displayName" type="text"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-shelf-muted mb-1">Role</label>
@@ -119,18 +119,18 @@
                 <div>
                     <label class="block text-sm font-medium text-shelf-muted mb-1">Current Password</label>
                     <input x-model="current" type="password"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-shelf-muted mb-1">New Password</label>
                     <input x-model="newPw" type="password"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                     <p x-show="tooShort" class="text-shelf-error text-xs mt-1">Must be at least 8 characters</p>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-shelf-muted mb-1">Confirm New Password</label>
                     <input x-model="confirm" type="password"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
                            :class="mismatch ? 'border-shelf-error' : ''">
                     <p x-show="mismatch" class="text-shelf-error text-xs mt-1">Passwords do not match</p>
                 </div>

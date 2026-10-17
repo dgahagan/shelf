@@ -41,7 +41,7 @@
                 {# No `auto` option: it means "detect from the barcode" and
                    there is none. test_title_search pins the route's refusal. #}
                 <select id="manual-media-type" name="media_type" x-model="mediaType"
-                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     {% for key, label in media_types.items() %}
                     <option value="{{ key }}"{% if manual_prefill and manual_prefill.media_type == key %} selected{% endif %}>{{ label }}</option>
                     {% endfor %}
@@ -50,7 +50,7 @@
             <div>
                 <label for="manual-isbn" class="block text-sm font-medium text-shelf-muted mb-1">ISBN or barcode (optional)</label>
                 <input type="text" id="manual-isbn" name="isbn" autocomplete="off"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             {% else %}
             <input type="hidden" name="isbn" value="{{ isbn }}">
@@ -63,7 +63,7 @@
             <div class="relative">
                 <input type="text" x-model="copyQuery" @input="onCopyInput()" autocomplete="off"
                        placeholder="Copy from an existing item (optional)"
-                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <div x-show="suggestions.length > 0" x-transition
                      class="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto bg-shelf-card border border-shelf-border rounded-lg shadow-lg">
                     <template x-for="s in suggestions" :key="s.id">
@@ -82,23 +82,23 @@
 
             <div class="grid grid-cols-2 gap-3">
                 <input type="text" name="title" placeholder="Title *" required
-                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 {% if manual_host == 'panel' %}
                 <input type="text" name="authors" :placeholder="creatorLabel"
                        value="{{ manual_prefill.authors if manual_prefill else '' }}"
-                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 {% else %}
                 <input type="text" name="authors" placeholder="{{ creator_label(media_type) }}"
-                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 {% endif %}
             </div>
             <div class="grid grid-cols-2 gap-3">
                 <input type="text" name="publisher" placeholder="Publisher"
                        {%- if manual_host == 'panel' %} value="{{ manual_prefill.publisher if manual_prefill else '' }}"{% endif %}
-                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <input type="number" name="publish_year" placeholder="Year"
                        {%- if manual_host == 'panel' %} value="{{ manual_prefill.publish_year if manual_prefill else '' }}"{% endif %}
-                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             {# The card renders this only for a game, because the scan fixed the
                type. The panel's type is a live select, so the control stays in
@@ -113,7 +113,7 @@
             {% if manual_host == 'panel' or media_type == 'video_game' %}
             {% set platform_shown = manual_prefill and manual_prefill.media_type == 'video_game' %}
             <div{% if manual_host == 'panel' %} x-show="mediaType === 'video_game'"{% if not platform_shown %} style="display:none"{% endif %}{% endif %}>
-                <select name="platform"{% if manual_host == 'panel' %} :disabled="mediaType !== 'video_game'"{% endif %} class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <select name="platform"{% if manual_host == 'panel' %} :disabled="mediaType !== 'video_game'"{% endif %} class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">Platform (optional)</option>
                     <option value="atari2600"{% if manual_prefill and manual_prefill.platform == 'atari2600' %} selected{% endif %}>Atari 2600</option>
                     <option value="atari5200"{% if manual_prefill and manual_prefill.platform == 'atari5200' %} selected{% endif %}>Atari 5200</option>
@@ -154,9 +154,9 @@
                    (optional)" was truncated by the select at phone width. #}
                 <input type="text" name="series_name" placeholder="Series"
                        {%- if manual_host == 'panel' %} value="{{ manual_prefill.series_name if manual_prefill else '' }}"{% endif %}
-                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                       class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <select name="location_id"
-                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                        class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">Location</option>
                     {% for loc in locations or [] %}
                     <option value="{{ loc.id }}"{% if manual_prefill and manual_prefill.location_id == loc.id %} selected{% endif %}>{{ loc.name }}</option>
@@ -164,7 +164,7 @@
                 </select>
             </div>
             <div>
-                <select name="language" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-none">
+                <select name="language" class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <option value="">Language (unknown)</option>
                     {% for code, label in search_langs.items() %}
                     <option value="{{ code }}">{{ label }}</option>

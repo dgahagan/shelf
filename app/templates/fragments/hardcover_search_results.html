@@ -10,9 +10,9 @@
         <!-- Cover -->
         <div class="shrink-0 w-20">
             {% if book.cover_url %}
-            <img src="{{ book.cover_url }}" alt="" class="w-20 rounded shadow" loading="lazy">
+            <img src="{{ book.cover_url }}" alt="" class="w-20 rounded-sm shadow-sm" loading="lazy">
             {% else %}
-            <div class="w-20 h-28 bg-shelf-hover rounded flex items-center justify-center text-xs text-shelf-muted">No Cover</div>
+            <div class="w-20 h-28 bg-shelf-hover rounded-sm flex items-center justify-center text-xs text-shelf-muted">No Cover</div>
             {% endif %}
         </div>
 
@@ -38,7 +38,7 @@
                         @click="addBook($event)"
                         data-book='{{ book|tojson }}'
                         :disabled="adding"
-                        class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50">
+                        class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50">
                     <span x-show="!adding">Add to Wishlist</span>
                     <span x-show="adding">Adding...</span>
                 </button>

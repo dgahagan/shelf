@@ -20,7 +20,7 @@
                         <span class="text-shelf-muted text-sm ml-1" x-text="'@' + u.username"></span>
                     </div>
                     <select :value="u.role" @change="updateRole(u.id, $event.target.value)"
-                        class="bg-shelf-card border border-shelf-border rounded px-2 py-1 text-sm text-shelf-text">
+                        class="bg-shelf-card border border-shelf-border rounded-sm px-2 py-1 text-sm text-shelf-text">
                         <option value="admin">Admin</option>
                         <option value="editor">Editor</option>
                         <option value="viewer">Viewer</option>
@@ -41,13 +41,13 @@
             <h3 class="text-sm font-semibold text-shelf-muted mb-3">Add User</h3>
             <div class="grid grid-cols-2 gap-3">
                 <input x-model="newUsername" type="text" placeholder="Username" required
-                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent">
                 <input x-model="newDisplayName" type="text" placeholder="Display Name (optional)"
-                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent">
                 <input x-model="newPassword" type="password" placeholder="Password (min 8 chars)" required
-                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-none focus:border-shelf-accent">
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent">
                 <select x-model="newRole"
-                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent">
                     <option value="viewer">Viewer</option>
                     <option value="editor">Editor</option>
                     <option value="admin">Admin</option>

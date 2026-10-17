@@ -161,4 +161,4 @@ def test_a_cover_file_404_keeps_its_tile_box(viewer_client, db, pinned_today):
     db.execute("COMMIT")
     html = viewer_client.get("/stats/wrapup").text
     assert 'class="w-full h-full object-cover"' in html
-    assert 'class="w-full aspect-[2/3] object-cover' not in html
+    assert 'class="w-full aspect-2/3 object-cover' not in html

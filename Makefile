@@ -42,14 +42,14 @@ setup:
 # ---------------------------------------------------------------------------
 
 # Rebuild the committed Tailwind stylesheet after changing templates,
-# static/js, or tailwind.config.js. Resolves tailwind from node_modules
+# static/js, or static/css/input.css (theme + sources). Resolves tailwind from node_modules
 # (version pinned in package.json) rather than re-fetching it over the network
 # on every invocation — run `npm install` / `make setup` first.
 # app.css is precached by the service worker, so a rebuild must rename its
 # cache or browsers keep serving the stale copy. Stamping SW_VERSION from the
 # precache digest here is what makes that automatic (scripts/stamp_sw_version.py).
 css:
-	npx tailwindcss -c tailwind.config.js -i static/css/input.css -o static/css/app.css --minify
+	npx @tailwindcss/cli -i static/css/input.css -o static/css/app.css --minify
 	python scripts/stamp_sw_version.py
 
 # ---------------------------------------------------------------------------

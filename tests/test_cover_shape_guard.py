@@ -1,7 +1,7 @@
 """Every item cover in a template declares its shape (issue #119).
 
 Music artwork is square. A cover shown in a forced box — `object-cover`, an
-`aspect-[…]` utility, or a `.cover-card` — crops it unless the element that owns
+`aspect-[…]` or `aspect-N/M` utility, or a `.cover-card` — crops it unless the element that owns
 the box carries the cover-shape attribute, which one CSS rule turns into a
 square box. The survey that found this bug counted 18 such sites, each its own
 class string, so the 19th would be written by copying whichever one a builder
@@ -36,17 +36,18 @@ ALLOWLIST = {
     "app/templates/series.html":
         "series are book-family, and the page's SELECT carries no media_type",
     "app/templates/scan.html":
-        "the camera overlay's image is width-only (its h-22 is not a built "
-        "class) and its Alpine state carries no media type",
+        "the camera overlay's image is width-only (no height class, so its "
+        "intrinsic aspect) and its Alpine state carries no media type",
 }
 
 _JINJA_COMMENT = re.compile(r"\{#.*?#\}", re.S)
 _HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 _JINJA_CONSTRUCT = re.compile(r"\{\{.*?\}\}|\{%.*?%\}", re.S)
 _TAG = re.compile(r"<[a-zA-Z][^>]*>", re.S)
-# A forced cover box: object-cover, an arbitrary aspect utility, or the
-# .cover-card class as a whole token (not cover-card-something).
-_BOX = re.compile(r"object-cover|aspect-\[|(?<![\w-])cover-card(?![\w-])")
+# A forced cover box: object-cover, a ratio aspect utility — arbitrary
+# (aspect-[2/3]) or Tailwind 4's bare form (aspect-2/3) — or the .cover-card
+# class as a whole token (not cover-card-something).
+_BOX = re.compile(r"object-cover|aspect-(?:\[|\d)|(?<![\w-])cover-card(?![\w-])")
 
 
 def _blank(m):
@@ -101,7 +102,7 @@ def _template_files():
 def test_every_forced_cover_box_declares_its_shape():
     found = offences(_template_files())
     assert not found, (
-        "These tags force a cover into a box (object-cover / aspect-[…] / "
+        "These tags force a cover into a box (object-cover / aspect-[…] or N/M / "
         f".cover-card) but carry no {ATTR}, so a square music cover is "
         "cropped there. Add\n"
         f'    {ATTR}="{{{{ cover_shape(<row>.media_type) }}}}"\n'
@@ -156,6 +157,13 @@ def test_a_tag_split_across_lines_is_matched_whole():
     )
     assert scan(text) == []
 
+
+
+def test_a_bare_aspect_ratio_is_a_forced_box():
+    """Tailwind 4 spells the ratio `aspect-2/3`; the guard must still see it
+    when no other box token is on the tag (G142)."""
+    assert [line for line, _ in scan('<div class="w-full aspect-2/3 bg-x">')] == [1]
+    assert scan(f'<div class="w-full aspect-2/3 bg-x" {ATTR}="square">') == []
 
 def test_a_jinja_comparison_inside_a_tag_does_not_end_it():
     text = '<img class="{{ \'w-8\' if n > 1 else \'w-9\' }} object-cover">'

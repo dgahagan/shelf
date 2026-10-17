@@ -44,7 +44,7 @@
                 <p class="text-xs text-shelf-muted mb-1">Collector identifiers</p>
                 <div class="flex flex-wrap gap-1.5">
                     {% for identifier in selected_release.identifiers %}
-                    <span class="px-2 py-1 rounded bg-shelf-card border border-shelf-border text-xs">{{ identifier.identifier_type|replace('_', ' ') }}: {{ identifier.value }}</span>
+                    <span class="px-2 py-1 rounded-sm bg-shelf-card border border-shelf-border text-xs">{{ identifier.identifier_type|replace('_', ' ') }}: {{ identifier.value }}</span>
                     {% endfor %}
                 </div>
             </div>

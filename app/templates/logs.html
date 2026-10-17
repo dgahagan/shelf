@@ -18,7 +18,7 @@
             <span class="text-shelf-muted text-sm">{{ total }} entries</span>
             <div>
                 <label class="flex items-center gap-2 text-sm text-shelf-muted cursor-pointer">
-                    <input type="checkbox" x-model="auto" class="rounded bg-shelf-bg border-shelf-border text-shelf-accent focus:ring-shelf-accent">
+                    <input type="checkbox" x-model="auto" class="rounded-sm bg-shelf-bg border-shelf-border text-shelf-accent focus:ring-shelf-accent">
                     Auto-refresh
                 </label>
             </div>
@@ -31,12 +31,12 @@
             <div class="flex-1 min-w-[180px]">
                 <label class="block text-xs font-medium text-shelf-muted mb-1">Search</label>
                 <input type="text" name="q" value="{{ filter_q }}" placeholder="Search log messages..."
-                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
             <div>
                 <label class="block text-xs font-medium text-shelf-muted mb-1">Level</label>
                 <select name="level"
-                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent">
                     <option value="">All Levels</option>
                     {% for lvl in ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] %}
                     <option value="{{ lvl }}" {% if filter_level == lvl %}selected{% endif %}>{{ lvl }}</option>
@@ -46,7 +46,7 @@
             <div>
                 <label class="block text-xs font-medium text-shelf-muted mb-1">Module</label>
                 <select name="module"
-                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-none focus:border-shelf-accent">
+                    class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-1.5 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent">
                     <option value="">All Modules</option>
                     {% for mod in modules %}
                     <option value="{{ mod }}" {% if filter_module == mod %}selected{% endif %}>{{ mod }}</option>
@@ -104,13 +104,13 @@
             <div class="flex gap-2">
                 {% if has_prev %}
                 <a href="/logs?page={{ page - 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
-                   class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded text-xs hover:text-white transition-colors">
+                   class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded-sm text-xs hover:text-white transition-colors">
                     Previous
                 </a>
                 {% endif %}
                 {% if has_next %}
                 <a href="/logs?page={{ page + 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
-                   class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded text-xs hover:text-white transition-colors">
+                   class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded-sm text-xs hover:text-white transition-colors">
                     Next
                 </a>
                 {% endif %}

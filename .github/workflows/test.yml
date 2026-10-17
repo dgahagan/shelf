@@ -194,7 +194,7 @@ jobs:
   # CSS, every unit test passes, and the missing rule only shows up as a broken
   # layout in a browser.
   #
-  # The rebuild runs on every event — a template or tailwind.config.js change
+  # The rebuild runs on every event — a template or static/css/input.css change
   # that breaks compilation should still fail somewhere cheap. The *comparison*
   # splits: enforced on push to main, advisory on a pull request, where a PR
   # that edits any precached file moves the digest and is not allowed to
