@@ -4,7 +4,7 @@ import logging
 import httpx
 import pytest
 
-from app.services import librarything as lt
+from app.services import librarything as lt, provider_result
 
 ORIGINAL = "9786155420818"
 ENGLISH = "9780735211292"
@@ -25,23 +25,32 @@ async def test_mapping_normalizes_deduplicates_and_caches():
         calls.append(request)
         return httpx.Response(200, text=f"<idlist><isbn>{ORIGINAL}</isbn><isbn>0735211299</isbn><isbn>{ENGLISH}</isbn><isbn>invalid</isbn></idlist>")
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        assert await lt.related_isbns(ORIGINAL, TOKEN, client) == [ENGLISH]
-        assert await lt.related_isbns(ORIGINAL, TOKEN, client) == [ENGLISH]
+        assert (await lt.related_isbns(ORIGINAL, TOKEN, client)).payload == [ENGLISH]
+        assert (await lt.related_isbns(ORIGINAL, TOKEN, client)).payload == [ENGLISH]
         assert len(calls) == 1
-        assert await lt.related_isbns(ORIGINAL, "changed", client) == [ENGLISH]
+        assert (await lt.related_isbns(ORIGINAL, "changed", client)).payload == [ENGLISH]
         assert len(calls) == 2
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("status,body", [(403, "blocked"), (429, "limited"), (200, "<html>Cloudflare</html>"), (200, "broken"), (200, '<idlist stat="invalid"/>'), (200, "x" * (lt.MAX_RESPONSE + 1)), (200, '<!DOCTYPE idlist><idlist/>')])
-async def test_failure_not_cached(status, body):
+@pytest.mark.parametrize("status,body,outcome", [
+    (401, TOKEN, "rejected"), (403, "<html>High traffic</html>", "transport_failed"),
+    (429, "limited", "rate_limited"), (503, "unavailable", "transport_failed"),
+    (200, "<html>Cloudflare</html>", "transport_failed"), (200, "broken", "transport_failed"),
+    (200, '<idlist stat="invalid"/>', "rejected"),
+    (200, "x" * (lt.MAX_RESPONSE + 1), "transport_failed"),
+    (200, '<!DOCTYPE idlist><idlist/>', "transport_failed"),
+])
+async def test_failure_not_cached(status, body, outcome):
     calls = []
     def handler(request):
         calls.append(request)
         return httpx.Response(status, text=body)
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         for _ in range(2):
-            assert await lt.related_isbns(ORIGINAL, TOKEN, client) == []
+            result = await lt.related_isbns(ORIGINAL, TOKEN, client)
+            assert result.outcome == outcome
+            assert TOKEN not in repr(result)
     assert len(calls) == 2
 
 
@@ -69,11 +78,11 @@ async def test_timeout_and_logs_do_not_expose_token(caplog):
     def handler(request):
         raise httpx.ReadTimeout(f"secret URL {request.url}", request=request)
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-        assert await lt.related_isbns(ORIGINAL, TOKEN, client) == []
+        assert (await lt.related_isbns(ORIGINAL, TOKEN, client)).outcome == "transport_failed"
     def success(request):
         return httpx.Response(200, text="<idlist/>")
     async with httpx.AsyncClient(transport=httpx.MockTransport(success)) as client:
-        assert await lt.related_isbns(ORIGINAL, TOKEN, client) == []
+        assert (await lt.related_isbns(ORIGINAL, TOKEN, client)).outcome == "no_match"
     assert TOKEN not in caplog.text
     assert "[redacted]" in caplog.text
 
@@ -87,7 +96,7 @@ async def test_edition_requires_exact_isbn_and_english(language, identifier, exp
         return httpx.Response(200, json={"items": []})
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         result = await lt.edition_cover(ENGLISH, client)
-    assert bool(result) == expected
+    assert result.found == expected
 
 
 @pytest.mark.asyncio
@@ -98,8 +107,8 @@ async def test_google_fallback_checks_all_identifiers():
         return httpx.Response(200, json={"items": [{"volumeInfo": {"language": "en-US", "industryIdentifiers": [{"identifier": ENGLISH}], "imageLinks": {"thumbnail": "http://books.google.com/cover.jpg"}}}]})
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
         result = await lt.edition_cover(ENGLISH, client)
-    assert result["source"] == "Google Books"
-    assert result["edition_language"] == "en"
+    assert result.payload["source"] == "Google Books"
+    assert result.payload["edition_language"] == "en"
 
 
 @pytest.mark.asyncio
@@ -107,13 +116,13 @@ async def test_limits_duplicates_and_download_failures(monkeypatch):
     from app.services import covers
     inspected = []
     async def mappings(*args):
-        return [str(i) for i in range(25)]
+        return provider_result.found("librarything", [str(i) for i in range(25)])
     async def edition(isbn, *args):
         inspected.append(isbn)
-        return {"url": f"https://books.google.com/{int(isbn)//2}.jpg", "edition_isbn": ENGLISH, "edition_language": "en"}
+        return provider_result.found("google", {"url": f"https://books.google.com/{int(isbn)//2}.jpg", "edition_isbn": ENGLISH, "edition_language": "en"})
     monkeypatch.setattr(lt, "related_isbns", mappings)
     monkeypatch.setattr(lt, "edition_cover", edition)
-    assert len(await lt.search_covers(ORIGINAL, TOKEN, None)) == 5
+    assert len((await lt.search_covers(ORIGINAL, TOKEN, None)).payload) == 5
     assert len(inspected) == 9
     inspected.clear()
     attempts = []
@@ -125,9 +134,10 @@ async def test_limits_duplicates_and_download_failures(monkeypatch):
     assert path == "covers/1.jpg" and candidate["edition_isbn"] == ENGLISH
     async def miss(*args):
         inspected.append(args[0])
+        return provider_result.no_match("google")
     inspected.clear()
     monkeypatch.setattr(lt, "edition_cover", miss)
-    assert await lt.search_covers(ORIGINAL, TOKEN, None) == []
+    assert (await lt.search_covers(ORIGINAL, TOKEN, None)).outcome == "no_match"
     assert len(inspected) == 20
 
 
@@ -138,7 +148,7 @@ async def test_deadline(monkeypatch):
         return []
     monkeypatch.setattr(lt, "related_isbns", slow)
     monkeypatch.setattr(lt, "BUDGET", .01)
-    assert await lt.search_covers(ORIGINAL, TOKEN, None) == []
+    assert (await lt.search_covers(ORIGINAL, TOKEN, None)).outcome == "transport_failed"
     assert await lt.download_cover(1, ORIGINAL, TOKEN, None) == (None, None)
 
 
@@ -163,7 +173,7 @@ def test_env_override_masked(admin_client, monkeypatch):
     with get_db() as db:
         assert get_setting(db, "librarything_token") == TOKEN
     html = admin_client.get("/settings").text
-    assert TOKEN not in html and "LIBRARYTHING_TOKEN" in html
+    assert TOKEN not in html
 
 
 @pytest.mark.asyncio
@@ -266,9 +276,9 @@ def test_picker_mapped_candidates_render_and_keep_input_isbn(admin_client, monke
     with get_db() as db:
         item_id = insert_item(db, {"title": "Atomi szokások", "isbn": ORIGINAL, "media_type": "book"})
         set_setting(db, "librarything_token", TOKEN)
-    mapped = AsyncMock(return_value=[{"url": "https://books.google.com/cover.jpg", "thumbnail": "https://books.google.com/cover.jpg", "source": "Google Books", "edition_isbn": ENGLISH, "edition_language": "en"}])
+    mapped = AsyncMock(return_value=provider_result.found("librarything", [{"url": "https://books.google.com/cover.jpg", "thumbnail": "https://books.google.com/cover.jpg", "source": "Google Books", "edition_isbn": ENGLISH, "edition_language": "en"}]))
     monkeypatch.setattr(lt, "search_covers", mapped)
-    monkeypatch.setattr(covers, "search_cover_by_title", AsyncMock(return_value=[]))
+    monkeypatch.setattr(covers, "search_book_covers", AsyncMock(return_value=provider_result.no_match("google")))
     response = admin_client.get(f"/api/items/{item_id}/cover-search")
     assert response.status_code == 200
     assert "English cover from another edition" in response.text
@@ -295,3 +305,80 @@ async def test_title_recovery_wins_before_librarything(monkeypatch):
     with get_db() as db:
         row = db.execute("SELECT cover_edition_isbn FROM items_live WHERE id = ?", (item_id,)).fetchone()
         assert row[0] is None
+
+
+@pytest.mark.parametrize("logger", ["httpx", "httpcore.connection", "httpcore.http11", "httpcore.http2", "httpcore.proxy"])
+def test_redaction_leaves_other_clients_records_untouched(logger):
+    args = ("https://openlibrary.org/isbn/example.json", 200)
+    record = logging.LogRecord(logger, logging.INFO, __file__, 1, "%s returned %d", args, None)
+    for filter_ in logging.getLogger(logger).filters:
+        if isinstance(filter_, lt._RedactURL):
+            filter_.filter(record)
+    assert record.msg == "%s returned %d"
+    assert record.args is args
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure,expected", [("timeout", "transport_failed"), ("malformed", "transport_failed"), (401, "rejected"), (429, "rate_limited"), (503, "transport_failed"), (404, "no_match")])
+async def test_edition_failures_survive_other_provider_miss(failure, expected):
+    def handler(request):
+        if request.url.host == "openlibrary.org":
+            return httpx.Response(404)
+        if failure == "timeout":
+            raise httpx.ReadTimeout("offline", request=request)
+        if failure == "malformed":
+            return httpx.Response(200, text="broken")
+        return httpx.Response(failure)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        result = await lt.edition_cover(ENGLISH, client, google_key="fake-key")
+    assert result.outcome == expected
+
+
+@pytest.mark.parametrize("surface", ["item", "review", "failed-selection"])
+@pytest.mark.parametrize("failure,message", [
+    (403, "LibraryThing unavailable"), (401, "LibraryThing rejected the configured key"),
+    (429, "LibraryThing is rate-limiting"), ("timeout", "LibraryThing unavailable"),
+    ("empty", "No covers found for this title."),
+])
+def test_picker_reports_real_librarything_outcome(admin_client, monkeypatch, surface, failure, message):
+    from unittest.mock import AsyncMock
+    from app.database import get_db, set_setting
+    from app.services.item_write import insert_item
+    from app.services import covers, outbound
+    with get_db() as db:
+        item_id = insert_item(db, {"title": "Book", "isbn": ORIGINAL, "media_type": "book"})
+        set_setting(db, "librarything_token", TOKEN)
+    async def response(*args, **kwargs):
+        if failure == "timeout":
+            raise httpx.ReadTimeout(TOKEN)
+        return httpx.Response(200, text="<idlist/>") if failure == "empty" else httpx.Response(failure, text=TOKEN)
+    monkeypatch.setattr(outbound, "fetch", response)
+    monkeypatch.setattr(covers, "search_book_covers", AsyncMock(return_value=provider_result.found("google", [])))
+    if surface == "failed-selection":
+        monkeypatch.setattr(covers, "_download_to_item", AsyncMock(return_value=None))
+        response = admin_client.post(f"/api/items/{item_id}/cover-select", data={"url": "https://books.google.com/cover.jpg"})
+    else:
+        prefix = f"/api/items/{item_id}" if surface == "item" else f"/api/covers/review/{item_id}"
+        response = admin_client.get(f"{prefix}/cover-search")
+    assert response.status_code == 200
+    assert message in response.text
+    assert TOKEN not in response.text
+    if failure != "empty":
+        assert "No covers found" not in response.text
+
+
+@pytest.mark.asyncio
+async def test_search_preserves_edition_failure_and_partial_success(monkeypatch):
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(lt, "related_isbns", AsyncMock(return_value=provider_result.found("librarything", [ENGLISH, ORIGINAL])))
+    monkeypatch.setattr(lt, "edition_cover", AsyncMock(side_effect=[provider_result.transport_failed("google"), provider_result.no_match("openlibrary")]))
+    assert (await lt.search_covers(ORIGINAL, TOKEN, None)).outcome == "transport_failed"
+    candidate = {"url": "https://books.google.com/cover.jpg"}
+    async def edition(isbn, *args):
+        if isbn == ENGLISH:
+            return provider_result.found("google", candidate)
+        await asyncio.sleep(1)
+    monkeypatch.setattr(lt, "edition_cover", edition)
+    monkeypatch.setattr(lt, "BUDGET", .01)
+    result = await lt.search_covers(ORIGINAL, TOKEN, None)
+    assert result.found and result.payload == [candidate]

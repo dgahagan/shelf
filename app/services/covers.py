@@ -250,8 +250,13 @@ async def search_covers(
         mapped = await librarything.search_covers(
             _col(item, "isbn"), creds["librarything_token"], client,
             creds.get("google_books_api_key"))
-        if mapped:
-            return provider_result.found("openlibrary", (result.payload if result.found else []) + mapped)
+        candidates = (result.payload if result.found else []) + (mapped.payload if mapped.found else [])
+        if candidates:
+            return provider_result.found("librarything", candidates)
+        return provider_result.combine(
+            [provider_result.no_match(result.provider) if result.found else result, mapped],
+            provider="librarything",
+        )
     return result
 
 
