@@ -818,7 +818,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
 
         if cover_path:
             with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
     except Exception:
         logger.warning(
             "manual add %s: cover could not be saved", item_id, exc_info=True

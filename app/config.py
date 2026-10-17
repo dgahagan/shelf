@@ -297,6 +297,7 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "rnod.bnportugal.gov.pt": 1.0,  # PORBASE cover scans, same library; publishes no limit
     "api.hardcover.app": 1.0,  # 60/min API limit
     "api2.isbndb.com": 3.0,  # was isbndb's own 3s post-request sleep
+    "www.librarything.com": 1.0,
     "www.googleapis.com": 0.25,  # Google Books quota is per-day; light pacing only
     "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
     "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
@@ -381,6 +382,7 @@ SECRET_ENV_VARS = {
     "abs_token": "ABS_TOKEN",
     "hardcover_token": "HARDCOVER_TOKEN",
     "google_books_api_key": "GOOGLE_BOOKS_API_KEY",
+    "librarything_token": "LIBRARYTHING_TOKEN",
     "isbndb_api_key": "ISBNDB_API_KEY",
     "tmdb_api_key": "TMDB_API_KEY",
     "igdb_client_id": "IGDB_CLIENT_ID",

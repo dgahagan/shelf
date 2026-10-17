@@ -1740,7 +1740,7 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                         pass  # the user's own cover survives the re-import
                     elif _install_cover(reader, twin_id, cover_arcname):
                         db.execute(
-                            "UPDATE items SET cover_path = ? WHERE id = ?",
+                            "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?",
                             (f"covers/{twin_id}.jpg", twin_id),
                         )
                         covers_installed += 1
@@ -1784,7 +1784,7 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                             deselected["covers"] += 1
                     elif _install_cover(reader, real_id, cover_arcname):
                         db.execute(
-                            "UPDATE items SET cover_path = ? WHERE id = ?",
+                            "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?",
                             (f"covers/{real_id}.jpg", real_id),
                         )
                         if replacing:
@@ -1924,7 +1924,7 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                         pass
                     elif _install_cover(reader, real_id, cover_arcname):
                         db.execute(
-                            "UPDATE items SET cover_path = ? WHERE id = ?",
+                            "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?",
                             (f"covers/{real_id}.jpg", real_id),
                         )
                         covers_installed += 1
