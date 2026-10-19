@@ -125,11 +125,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.68.0](https://github.com/dgahagan/shelf/releases/tag/v0.68.0) | The stylesheet is built with Tailwind CSS 4, which clears a vulnerable build dependency. Pages look the same, but Shelf now needs Safari 16.4, Chrome 111, Firefox 128 or newer, and hover styles no longer stick on touch screens. A video game's edit form no longer shows the audiobook narrator and duration fields. |
 | [0.67.0](https://github.com/dgahagan/shelf/releases/tag/v0.67.0) | Portuguese books are looked up in PORBASE, the national library catalogue, for ISBNs starting 978-989 or 978-972, with its cover scan as a last resort (contributed by [@JoaoPCAzevedo](https://github.com/JoaoPCAzevedo)). A book you just added on Scan no longer vanishes when a slow history list arrives (contributed by [@notAnElephant](https://github.com/notAnElephant)), and Browse's select bar no longer covers the last item. |
 | [0.66.0](https://github.com/dgahagan/shelf/releases/tag/v0.66.0) | Scan a magazine. A 977 barcode in Add or Wishlist (13, 15 or 18 digits, add-on and all) opens the confirm card, whatever the Media Type says, and rescanning an issue you own says so. Shelf Fill's camera overlay now colours its result instead of showing every scan in green. |
 | [0.65.0](https://github.com/dgahagan/shelf/releases/tag/v0.65.0) | Back up your library to a CSV and get all of it back. The export now carries language and series number, and the import reads every column the export writes, including location, platform and values. Locations named in the file are created, and the import lists which. Browse can now set or clear the **Language** of many items at once, and Hungarian ISBNs are looked up in the national library catalogue (contributed by [@notAnElephant](https://github.com/notAnElephant)). |
 | [0.64.0](https://github.com/dgahagan/shelf/releases/tag/v0.64.0) | Set a reading status as you scan. The Scan page has a **Default status** beside Default tags, and every new item you add by barcode, title search or by hand takes it. No dates are recorded. **Find cover** also looks for a book's exact ISBN edition first. |
-| [0.63.0](https://github.com/dgahagan/shelf/releases/tag/v0.63.0) | Open Shelf from a link on another site and stay logged in. A link from a homelab dashboard, a chat message or another machine on your LAN now opens the page you clicked instead of the login form. `SHELF_SESSION_DAYS` sets how long a login lasts; the default stays 7 days. |
 
 ---
 

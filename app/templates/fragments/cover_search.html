@@ -52,7 +52,7 @@
             {% if failed_url and failed_url == c.url %}
             <div class="absolute top-0 inset-x-0 bg-shelf-error/90 text-[10px] text-white px-1 py-0.5 text-center">Failed</div>
             {% endif %}
-            <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center leading-tight wrap-break-word">{{ c.source }}{% if c.edition_isbn %}<br>English cover from another edition{% endif %}</div>
+            <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center leading-tight wrap-break-word">{{ c.source }}{% if c.label %}<br>{{ c.label }}{% endif %}</div>
         </button>
         {% endfor %}
     </div>

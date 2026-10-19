@@ -1,0 +1,25 @@
+{
+  "key": "/books/OL22597282M",
+  "works": [
+    {
+      "key": "/works/OL893414W"
+    }
+  ],
+  "covers": [
+    15166231
+  ],
+  "isbn_13": null,
+  "isbn_10": [
+    "0441172660",
+    "0441172717"
+  ],
+  "publish_date": "1987",
+  "publishers": [
+    "Ace Books"
+  ],
+  "languages": [
+    {
+      "key": "/languages/eng"
+    }
+  ]
+}

@@ -1,0 +1,886 @@
+{
+  "size": 155,
+  "entries": [
+    {
+      "key": "/books/OL62445412M",
+      "covers": [
+        15246488
+      ],
+      "publish_date": "2021",
+      "publishers": [
+        "Nemira Publishing House"
+      ],
+      "languages": [
+        {
+          "key": "/languages/rum"
+        }
+      ],
+      "isbn_13": [
+        "9786064312617"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL58201616M",
+      "covers": null,
+      "publish_date": "1989",
+      "publishers": [
+        "ʻAm-ʻoved"
+      ],
+      "languages": [
+        {
+          "key": "/languages/heb"
+        }
+      ],
+      "isbn_13": null,
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL48154015M",
+      "covers": null,
+      "publish_date": "2012",
+      "publishers": [
+        "Orion Publishing Group, Limited"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780575122796"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL58816437M",
+      "covers": null,
+      "publish_date": "1965",
+      "publishers": [
+        "Chilton Book Company"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": null,
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL43283259M",
+      "covers": [
+        15244952
+      ],
+      "publish_date": "1965-01-01",
+      "publishers": [
+        "Chilton Book Company"
+      ],
+      "languages": null,
+      "isbn_13": null,
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL38247617M",
+      "covers": null,
+      "publish_date": "Jun 14, 1965",
+      "publishers": [
+        "Ace"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9780450035692"
+      ],
+      "isbn_10": [
+        "0450035697"
+      ]
+    },
+    {
+      "key": "/books/OL39220318M",
+      "covers": [
+        15247496
+      ],
+      "publish_date": "1965",
+      "publishers": [
+        "Chilton Book Company"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9789997516787"
+      ],
+      "isbn_10": [
+        "9997516788"
+      ]
+    },
+    {
+      "key": "/books/OL39551956M",
+      "covers": null,
+      "publish_date": "2022",
+      "publishers": [
+        "Orion Publishing Group, Limited"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9781399611176"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL10630547M",
+      "covers": null,
+      "publish_date": "2005",
+      "publishers": [
+        "Hodder"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780340765906"
+      ],
+      "isbn_10": [
+        "0340765909"
+      ]
+    },
+    {
+      "key": "/books/OL57671241M",
+      "covers": [
+        14841443
+      ],
+      "publish_date": "Oct 01, 2020",
+      "publishers": [
+        "Pocket",
+        "POCKET"
+      ],
+      "languages": [
+        {
+          "key": "/languages/fre"
+        }
+      ],
+      "isbn_13": [
+        "9782266307307"
+      ],
+      "isbn_10": [
+        "2266307304"
+      ]
+    },
+    {
+      "key": "/books/OL62085090M",
+      "covers": [
+        15228531
+      ],
+      "publish_date": "20/10/2021",
+      "publishers": [
+        "Aleph"
+      ],
+      "languages": [
+        {
+          "key": "/languages/por"
+        }
+      ],
+      "isbn_13": [
+        "9788576574941"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL62085058M",
+      "covers": [
+        15228506
+      ],
+      "publish_date": "20/10/2021",
+      "publishers": [
+        "Aleph"
+      ],
+      "languages": [
+        {
+          "key": "/languages/por"
+        }
+      ],
+      "isbn_13": [
+        "9786586064698"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL50732450M",
+      "covers": null,
+      "publish_date": "2024",
+      "publishers": [
+        "Penguin Random House Grupo Editorial"
+      ],
+      "languages": [
+        {
+          "key": "/languages/spa"
+        }
+      ],
+      "isbn_13": [
+        "9788466363402"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL48138703M",
+      "covers": null,
+      "publish_date": "2010",
+      "publishers": [
+        "Orion Publishing Group, Limited"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780575104419"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL7893461M",
+      "covers": [
+        14020316
+      ],
+      "publish_date": "2003",
+      "publishers": [
+        "Books on Tape, inc.",
+        "Books onTape, inc."
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780736692403"
+      ],
+      "isbn_10": [
+        "0736692401"
+      ]
+    },
+    {
+      "key": "/books/OL47483482M",
+      "covers": [
+        14092069
+      ],
+      "publish_date": "Nov 12, 2020",
+      "publishers": [
+        "Debolsillo",
+        "DEBOLSILLO"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9788466356954"
+      ],
+      "isbn_10": [
+        "8466356959"
+      ]
+    },
+    {
+      "key": "/books/OL47483483M",
+      "covers": [
+        14092068
+      ],
+      "publish_date": "Nov 12, 2020",
+      "publishers": [
+        "Debolsillo",
+        "DEBOLSILLO"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9788466356954"
+      ],
+      "isbn_10": [
+        "8466356959"
+      ]
+    },
+    {
+      "key": "/books/OL47693473M",
+      "covers": null,
+      "publish_date": "2009-02-01",
+      "publishers": [
+        "Nha Nam - Hoi Nha Van"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "8936024912741"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL47345006M",
+      "covers": [
+        13934500
+      ],
+      "publish_date": "Nov 03, 2021",
+      "publishers": [
+        "MAIMÉS",
+        "Mai Més"
+      ],
+      "languages": [
+        {
+          "key": "/languages/spa"
+        }
+      ],
+      "isbn_13": [
+        "9788412363357"
+      ],
+      "isbn_10": [
+        "8412363353"
+      ]
+    },
+    {
+      "key": "/books/OL47330344M",
+      "covers": [
+        13916320
+      ],
+      "publish_date": "Apr 12, 2020",
+      "publishers": [
+        "Rebis"
+      ],
+      "languages": [
+        {
+          "key": "/languages/pol"
+        }
+      ],
+      "isbn_13": [
+        "9788381880572"
+      ],
+      "isbn_10": [
+        "8381880572"
+      ]
+    },
+    {
+      "key": "/books/OL47317022M",
+      "covers": [
+        13816755
+      ],
+      "publish_date": "Apr 12, 2019",
+      "publishers": [
+        "Nemira Publishing House"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9786064304834"
+      ],
+      "isbn_10": [
+        "6064304839"
+      ]
+    },
+    {
+      "key": "/books/OL46913349M",
+      "covers": null,
+      "publish_date": "1965-01-01",
+      "publishers": [
+        "Chilton"
+      ],
+      "languages": null,
+      "isbn_13": null,
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL47152294M",
+      "covers": [
+        13556124
+      ],
+      "publish_date": "Jul 07, 2022",
+      "publishers": [
+        "DEBOLSILLO"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9788466362818"
+      ],
+      "isbn_10": [
+        "8466362819"
+      ]
+    },
+    {
+      "key": "/books/OL42921531M",
+      "covers": null,
+      "publish_date": "2018-11-01",
+      "publishers": [
+        "Penguin Proprietary"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9781101948712"
+      ],
+      "isbn_10": [
+        "110194871X"
+      ]
+    },
+    {
+      "key": "/books/OL40225407M",
+      "covers": null,
+      "publish_date": "Oct 30, 2006",
+      "publishers": [
+        "Anubis"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9789603063957"
+      ],
+      "isbn_10": [
+        "9603063959"
+      ]
+    },
+    {
+      "key": "/books/OL8373842M",
+      "covers": null,
+      "publish_date": "1965",
+      "publishers": [
+        "Recorded Books, LLC"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9781402523809"
+      ],
+      "isbn_10": [
+        "1402523807"
+      ]
+    },
+    {
+      "key": "/books/OL43012960M",
+      "covers": null,
+      "publish_date": "1965-01-01",
+      "publishers": [
+        "Chilton Book Company"
+      ],
+      "languages": null,
+      "isbn_13": null,
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL43013026M",
+      "covers": null,
+      "publish_date": "2006-12-31",
+      "publishers": [
+        "Macmillan Audio"
+      ],
+      "languages": null,
+      "isbn_13": null,
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL40212545M",
+      "covers": [
+        12981475
+      ],
+      "publish_date": "11.03.2020",
+      "publishers": [
+        "Клуб Сімейного Дозвілля"
+      ],
+      "languages": [
+        {
+          "key": "/languages/ukr"
+        }
+      ],
+      "isbn_13": [
+        "9786171276895"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL38237349M",
+      "covers": [
+        12819203,
+        12780703
+      ],
+      "publish_date": "2021",
+      "publishers": [
+        "Raig Verd Editorial"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9788412363371"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL38566665M",
+      "covers": [
+        12804560
+      ],
+      "publish_date": "2021",
+      "publishers": [
+        "Hodder"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9781529347869"
+      ],
+      "isbn_10": null
+    },
+    {
+      "key": "/books/OL39811097M",
+      "covers": [
+        13823878
+      ],
+      "publish_date": "Aug 26, 2021",
+      "publishers": [
+        "POCKET"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9782266320481"
+      ],
+      "isbn_10": [
+        "2266320483"
+      ]
+    },
+    {
+      "key": "/books/OL9039841M",
+      "covers": [
+        12575304
+      ],
+      "publish_date": "2005",
+      "publishers": [
+        "AST"
+      ],
+      "languages": [
+        {
+          "key": "/languages/rus"
+        }
+      ],
+      "isbn_13": [
+        "9785170103560"
+      ],
+      "isbn_10": [
+        "5170103565"
+      ]
+    },
+    {
+      "key": "/books/OL35704536M",
+      "covers": [
+        12410029
+      ],
+      "publish_date": "Aug 09, 2021",
+      "publishers": [
+        "Heyne Verlag"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9783453321229"
+      ],
+      "isbn_10": [
+        "3453321227"
+      ]
+    },
+    {
+      "key": "/books/OL31884887M",
+      "covers": [
+        10565022
+      ],
+      "publish_date": "Jan 21, 2021",
+      "publishers": [
+        "ROBERT LAFFONT"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9782221252055"
+      ],
+      "isbn_10": [
+        "2221252055"
+      ]
+    },
+    {
+      "key": "/books/OL27281911M",
+      "covers": [
+        8763616
+      ],
+      "publish_date": null,
+      "publishers": [
+        "Meulenhoff"
+      ],
+      "languages": [
+        {
+          "key": "/languages/dut"
+        }
+      ],
+      "isbn_13": [
+        "9789029002578"
+      ],
+      "isbn_10": [
+        "9029002573"
+      ]
+    },
+    {
+      "key": "/books/OL27104381M",
+      "covers": [
+        8741528
+      ],
+      "publish_date": "Feb 04, 2015",
+      "publishers": [
+        "Thorndike Press"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9781410477736"
+      ],
+      "isbn_10": [
+        "1410477738"
+      ]
+    },
+    {
+      "key": "/books/OL7524304M",
+      "covers": [
+        14565843,
+        284314
+      ],
+      "publish_date": "August 2, 2005",
+      "publishers": [
+        "Ace Trade"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780441013593"
+      ],
+      "isbn_10": [
+        "0441013597"
+      ]
+    },
+    {
+      "key": "/books/OL11636763M",
+      "covers": [
+        15202649
+      ],
+      "publish_date": "2002",
+      "publishers": [
+        "Borders"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9781402523601"
+      ],
+      "isbn_10": [
+        "1402523602"
+      ]
+    },
+    {
+      "key": "/books/OL10676668M",
+      "covers": null,
+      "publish_date": "June 2001",
+      "publishers": [
+        "New English Library Ltd"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9780340822548"
+      ],
+      "isbn_10": [
+        "0340822546"
+      ]
+    },
+    {
+      "key": "/books/OL7878673M",
+      "covers": [
+        380097
+      ],
+      "publish_date": "October 25, 2001",
+      "publishers": [
+        "Gollancz",
+        "Orion Publishing Group, Limited"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9780575073340"
+      ],
+      "isbn_10": [
+        "0575073349"
+      ]
+    },
+    {
+      "key": "/books/OL10256517M",
+      "covers": [
+        15250487
+      ],
+      "publish_date": "1967",
+      "publishers": [
+        "Ace Books, Inc."
+      ],
+      "languages": null,
+      "isbn_13": null,
+      "isbn_10": [
+        "0441176208"
+      ]
+    },
+    {
+      "key": "/books/OL7470646M",
+      "covers": [
+        258358
+      ],
+      "publish_date": "April 16, 1984",
+      "publishers": [
+        "Putnam Adult"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780399128967"
+      ],
+      "isbn_10": [
+        "0399128964"
+      ]
+    },
+    {
+      "key": "/books/OL8136410M",
+      "covers": [
+        677696
+      ],
+      "publish_date": "October 1999",
+      "publishers": [
+        "Tandem Library",
+        "Turtleback Books",
+        "Brand: Turtleback"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780881036367"
+      ],
+      "isbn_10": [
+        "0881036366"
+      ]
+    },
+    {
+      "key": "/books/OL7500941M",
+      "covers": [
+        9705237
+      ],
+      "publish_date": "August 1, 1978",
+      "publishers": [
+        "Berkley"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780425038918"
+      ],
+      "isbn_10": [
+        "0425038912"
+      ]
+    },
+    {
+      "key": "/books/OL9309587M",
+      "covers": null,
+      "publish_date": "June 1, 1979",
+      "publishers": [
+        "Perigee Trade"
+      ],
+      "languages": null,
+      "isbn_13": [
+        "9780426038917"
+      ],
+      "isbn_10": [
+        "0426038916"
+      ]
+    },
+    {
+      "key": "/books/OL7502823M",
+      "covers": [
+        15257424,
+        8015404
+      ],
+      "publish_date": "February 15, 1987",
+      "publishers": [
+        "Berkley"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780425103814"
+      ],
+      "isbn_10": [
+        "0425103811"
+      ]
+    },
+    {
+      "key": "/books/OL7525228M",
+      "covers": null,
+      "publish_date": "June 1987",
+      "publishers": [
+        "Ace Books"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780441172665"
+      ],
+      "isbn_10": [
+        "0441172660"
+      ]
+    },
+    {
+      "key": "/books/OL7501953M",
+      "covers": [
+        9499649
+      ],
+      "publish_date": "January 15, 1984",
+      "publishers": [
+        "Berkley"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": [
+        "9780425071601"
+      ],
+      "isbn_10": [
+        "042507160X"
+      ]
+    },
+    {
+      "key": "/books/OL28415017M",
+      "covers": [
+        -1
+      ],
+      "publish_date": "1974",
+      "publishers": [
+        "Ace Books"
+      ],
+      "languages": [
+        {
+          "key": "/languages/eng"
+        }
+      ],
+      "isbn_13": null,
+      "isbn_10": null
+    }
+  ]
+}

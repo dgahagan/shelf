@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role
-from app.config import COVERS_DIR, HTTP_TIMEOUT
+from app.config import BOOK_MEDIA_TYPES, COVERS_DIR, HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.routers import items_common
 from app.services import covers, cover_queue, manual_cover, openlibrary, scan_outcome
@@ -57,15 +57,30 @@ async def cover_status(request: Request, item_id: int, attempt: int = 0, _=Depen
 
 @router.post("/items/{item_id}/retry-cover")
 async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
-    """Re-attempt cover download for an item."""
+    """Re-attempt cover download for an item.
+
+    G29: only a book-family item goes through `resolve_missing_cover`. Its
+    title-search fallback has no media-type guard, and a DVD keeps its UPC in
+    `isbn`, so sending a cover-less DVD down that path installs a novel's
+    cover. Every other type gets the one exact `download_cover` call this
+    route always made — the ISBN (or UPC) lookup and nothing after it.
+    """
     with get_db() as db:
-        item = db.execute("SELECT isbn, cover_path FROM items_live WHERE id = ?", (item_id,)).fetchone()
+        item = db.execute(
+            "SELECT isbn, cover_path, media_type FROM items_live WHERE id = ?", (item_id,)
+        ).fetchone()
     if not item or not item["isbn"]:
         return {"ok": False, "message": "No ISBN"}
     if item["cover_path"]:
         return {"ok": True, "cover_path": item["cover_path"]}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        cover_path = await items_common.resolve_missing_cover(item_id, client)
+        if item["media_type"] in BOOK_MEDIA_TYPES:
+            cover_path = await items_common.resolve_missing_cover(item_id, client)
+        else:
+            cover_path = await covers.download_cover(item_id, item["isbn"], None, None, client)
+            if cover_path:
+                with get_db() as db:
+                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
     if cover_path:
         return {"ok": True, "cover_path": cover_path}
     return {"ok": False, "message": "No cover found"}

@@ -155,3 +155,22 @@ class TestRedirectIsPerTest:
 
         assert tmp_path in covers.COVERS_DIR.parents
         assert covers.COVERS_DIR not in type(self)._seen
+
+
+class TestModuleCachesAreReset:
+    """G13: a module-level cache read at request time is reset per test."""
+
+    def test_first_test_fills_the_librarything_cache(self):
+        from app.services import librarything
+
+        librarything._cache["9780735211292"] = ["leaked"]
+        librarything._credential = b"leaked"
+        assert librarything._cache
+
+    def test_second_test_starts_with_an_empty_librarything_cache(self):
+        """codex-M1: `related_isbns` resets only when the token changes, so
+        without the fixture's reset the previous test's answer would be served."""
+        from app.services import librarything
+
+        assert not librarything._cache
+        assert librarything._credential is None

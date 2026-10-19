@@ -30,7 +30,7 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
-### After upgrading to X.Y.Z
+### After upgrading to 0.62.0
 
 **A `price_history` table is created on first start.** It holds the list
 prices the new [price alerts](user-guide/wishlist-and-store-mode.md#price-alerts)

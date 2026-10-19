@@ -22,8 +22,6 @@ def test_librarything_token_write_only_card(live_server, authed_page):
     expect(token).to_have_value("")
     expect(authed_page.locator('input[name="clear_librarything_token"]')).to_be_visible()
     assert "fake-e2e-librarything-token" not in authed_page.content()
-    token.scroll_into_view_if_needed()
-    authed_page.screenshot(path="/tmp/shelf-librarything-settings.png")
     authed_page.locator('input[name="clear_librarything_token"]').check()
     token.locator("xpath=..").get_by_role("button", name="Save", exact=True).click()
     authed_page.get_by_role("button", name="Integrations").click()
@@ -44,4 +42,3 @@ def test_english_cover_provenance_rendered(live_server, authed_page):
         db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = ?, cover_edition_language = ? WHERE id = ?", ("covers/example.jpg", "9780735211292", "en", item_id))
     authed_page.goto(f"{live_server['url']}/item/{item_id}")
     expect(authed_page.get_by_text("English cover from another edition", exact=True)).to_be_visible()
-    authed_page.screenshot(path="/tmp/shelf-librarything-provenance.png")

@@ -40,6 +40,7 @@ priority** over anything stored:
 | `ISBNDB_API_KEY` | ISBNdb key (valuation, price alerts) |
 | `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray metadata **and** DVD cover search) — either the 32-character v3 API Key or the v4 Read Access Token |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video game metadata **and** game cover search — both fields are required) |
+| `LIBRARYTHING_TOKEN` | LibraryThing API token, for the English related-edition cover fallback (non-commercial use unless LibraryThing grants permission) |
 
 Useful with Docker secrets or a secrets manager. Vision-provider keys (Photo
 Intake) are Settings-only.
@@ -93,6 +94,7 @@ lives:
 | **Movie Database (TMDb)** | API key for DVD / Blu-ray lookups, for **Find cover** on a DVD, and for the lookup a Photo Intake row typed DVD runs when you confirm it |
 | **Photo Intake (Vision)** | Provider: Anthropic (API key + model), OpenAI-compatible (base URL, optional key, model, ingest long-edge), or Ollama (URL, model, ingest long-edge) |
 | **IGDB (Video Games)** | Twitch client ID + secret, for game lookups, for **Find cover** on a video game, and for the lookup a Photo Intake row typed Video Game runs when you confirm it |
+| **LibraryThing** | API token for the English related-edition cover fallback: a book whose own ISBN has no cover gets one from a verified English edition, in **Retry Missing Covers** and as extra **Find cover** tiles. Non-commercial use unless LibraryThing grants permission |
 | **Discogs** | Personal access token for optional exact-pressing lookup on Music item pages. MusicBrainz remains the canonical release identity; Shelf stores only the selected Discogs Release ID and fetches provider details on demand |
 
 Each card has a short inline setup guide for obtaining its credential. Keys

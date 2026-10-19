@@ -6,6 +6,59 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.69.0] - 2026-10-19
+
+For a book Open Library knew, **Find cover** showed one Open Library tile: the
+exact ISBN edition's own scan, and nothing else. The other editions of the same
+work were never offered, and a book whose own edition had no scan fell straight
+to a title search that collapsed each work to one cover. Typing your own query
+did not help when the record's author was wrong, because the stored author was
+combined with whatever you typed. This release opens the picker up to a work's
+other editions, lets a typed query stand on its own, and — with a LibraryThing
+token — finds an English cover for a foreign-language book Open Library has no
+record of. That last part is contributed by
+[@notAnElephant](https://github.com/notAnElephant).
+
+### Added
+
+- **Find cover offers the other editions of the same work.** When Open Library
+  knows the exact ISBN edition, its tile still leads, and up to 24 of the
+  work's other editions that have a cover follow it. Each is marked
+  `Open Library · Check edition` with a second line giving its year, publisher
+  and, when Open Library knows it, language — `1965 · Chilton Book Company`,
+  `2020 · Pocket · fre` — so you can pick the printing you remember. An exact
+  edition with no scan of its own offers its siblings instead of falling to a
+  title search. The gallery does not filter by language, does not page past
+  the first batch, and offers no siblings on a plain title match, where the
+  work would be a guess.
+- **An English cover for a book Open Library does not know**
+  ([#151](https://github.com/dgahagan/shelf/issues/151)). Save a LibraryThing
+  API token under Settings → Integrations (or set `LIBRARYTHING_TOKEN`), and a
+  book whose own ISBN has no cover gets one from a verified English edition of
+  the same work, found through LibraryThing's related ISBNs and fetched from
+  Open Library or Google Books. The catalogued ISBN, title, authors and
+  language are untouched; the item page says the cover came from another
+  edition. It runs in **Retry Missing Covers** and adds up to five tiles to
+  the picker, never replaces a cover you already have, and checks at most 20
+  editions within a 20-second budget. LibraryThing permits non-commercial API
+  use only unless they grant permission. Contributed by
+  [@notAnElephant](https://github.com/notAnElephant) in
+  [#154](https://github.com/dgahagan/shelf/pull/154).
+
+### Changed
+
+- **A typed cover query searches on that text alone.** Previously the stored
+  author was combined with whatever you typed, so a wrong author on the record
+  defeated every query. A typed query now drops both the stored ISBN and the
+  stored author. Keep it to the title: Open Library matches typed text against
+  titles only, so adding the author's name can empty that half of the result.
+
+### Fixed
+
+- **No broken first tile for a book whose Open Library edition has no scan.**
+  Open Library marks a missing scan with a placeholder cover id, which the
+  picker turned into a tile that never loaded, ahead of the real results.
+
 ## [0.68.0] - 2026-10-16
 
 Shelf's stylesheet was built with Tailwind CSS 3, which pinned a build-time
@@ -5118,6 +5171,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.69.0]: https://github.com/dgahagan/shelf/releases/tag/v0.69.0
 [0.68.0]: https://github.com/dgahagan/shelf/releases/tag/v0.68.0
 [0.67.0]: https://github.com/dgahagan/shelf/releases/tag/v0.67.0
 [0.66.0]: https://github.com/dgahagan/shelf/releases/tag/v0.66.0

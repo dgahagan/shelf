@@ -324,6 +324,34 @@ class TestTheSearchRouteExists:
         assert r.status_code == 200
         assert "3 of 3" in r.text
 
+    def test_picking_a_librarything_tile_stores_provenance_and_advances(
+        self, admin_client, db, monkeypatch
+    ):
+        """codex-R2: the queue's own select route records #154's provenance."""
+        from app.services import covers
+
+        _seed(db, title="Other One", isbn=None)
+        item_id = _seed(db, title="Searchable", isbn=None)
+        db.commit()
+
+        async def fake_download(item_id_, url, client):
+            return "covers/fake.jpg"
+
+        monkeypatch.setattr(covers, "_download_to_item", fake_download)
+        r = admin_client.post(
+            f"/api/covers/review/{item_id}/cover-select",
+            data={"url": "https://example.com/c.jpg", "pos": "2", "total": "3",
+                  "edition_isbn": "9780735211292", "edition_language": "en"},
+        )
+        assert r.status_code == 200
+        assert "3 of 3" in r.text
+        row = db.execute(
+            "SELECT cover_path, cover_edition_isbn, cover_edition_language FROM items WHERE id = ?",
+            (item_id,)).fetchone()
+        assert row["cover_path"] == "covers/fake.jpg"
+        assert row["cover_edition_isbn"] == "9780735211292"
+        assert row["cover_edition_language"] == "en"
+
 
 class TestAuthorization:
     def test_the_page_is_not_reachable_unauthenticated(self, client, db):

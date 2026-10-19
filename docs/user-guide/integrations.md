@@ -168,6 +168,20 @@ sent only in the `X-Goog-Api-Key` request header — never in a request URL,
 which keeps it out of URLs that might be logged. Remove it at any time with
 **Remove saved key**; Shelf falls straight back to anonymous requests.
 
+## LibraryThing (English cover fallback)
+
+[LibraryThing](https://www.librarything.com/developer) — a free API token,
+non-commercial use only unless LibraryThing grants permission.
+
+**Adds:** an English cover for a book whose own ISBN has no cover anywhere
+Shelf looks. LibraryThing's thingISBN service lists the other ISBNs of the
+same work; Shelf tries the English ones against Open Library and Google Books
+and keeps the first verified cover. The catalogued ISBN, title, authors and
+language are untouched, and the item page says the cover came from another
+edition. It runs in **Retry Missing Covers** and adds up to five tiles to
+**Find cover**; it never replaces a cover you already have. See
+[Settings](settings.md#librarything-english-cover-fallback) for the limits.
+
 ## Vision providers (Photo Intake)
 
 Anthropic, any OpenAI-compatible endpoint, or Ollama. See
@@ -206,7 +220,7 @@ can be starved at once. See
 
 Every key except the vision providers can come from an environment variable
 (`HARDCOVER_TOKEN`, `GOOGLE_BOOKS_API_KEY`, `ABS_URL`/`ABS_TOKEN`, `ISBNDB_API_KEY`, `TMDB_API_KEY`,
-`IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET`), which overrides whatever is stored. The
+`IGDB_CLIENT_ID`/`IGDB_CLIENT_SECRET`, `LIBRARYTHING_TOKEN`), which overrides whatever is stored. The
 secret field stays blank in Settings — Shelf never echoes a secret back — but
 **Test key** still works against it, so you can confirm the key without pasting
 a second copy in. See [Configuration](../configuration.md#credential-overrides).

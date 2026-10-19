@@ -17,16 +17,19 @@ its home.
 
   | Media type | What it searches | Tiles are labelled |
   |---|---|---|
-  | Books, ebooks, audiobooks, comics | Google Books and Open Library — the exact ISBN edition first, then title matches | by source and match (`Open Library · ISBN match`, `Google Books · Check edition`) |
+  | Books, ebooks, audiobooks, comics | Google Books and Open Library — the exact ISBN edition first, followed by the other editions of the same work Open Library knows; title matches only when neither source has that edition | by source and match (`Open Library · ISBN match`, `Google Books · Check edition`); another edition's tile reads `Open Library · Check edition` with a second line giving its year, publisher and (when known) language, e.g. `1965 · Chilton Book Company` |
   | DVDs and Blu-rays | the film's poster set on TMDb | by language (`TMDb · EN`) — the same film's posters differ mostly by language |
   | Video games | IGDB cover art **and** key artwork, as separate tiles | by game and kind (`IGDB · Portal · cover`) |
 
-  For **books and comics**, the item's stored author is combined with
-  whatever you type, so if the author on the record is wrong no query will
-  find the cover — fix the author with **Edit**, or use **Upload**. The
-  other media types search on the title (or your typed query) alone; a
-  game's stored platform narrows the search when it is set, and a DVD's
-  year is used to pick the right film when several share a title.
+  For **books and comics**, the default search uses the item's stored ISBN
+  and author. A query you type searches on that text alone, without the
+  stored ISBN or author, so a wrong author on the record cannot hide the
+  cover. Keep a typed query to the title: Open Library matches typed text
+  against titles only, so adding the author's name there can empty the
+  Open Library half of the result. The other media
+  types search on the title (or your typed query) alone; a game's stored
+  platform narrows the search when it is set, and a DVD's year is used to
+  pick the right film when several share a title.
 
   **DVD and video game search need credentials.** TMDb needs an API key and
   IGDB needs a Twitch Client ID *and* Client Secret — see
@@ -198,9 +201,13 @@ chain's fallback is a book-catalogue title search, and turning it loose on a
 disc once wrote a novel's cover and ISBN onto it.
 
 For a book with an ISBN, **Find cover** checks that exact edition in Google
-Books and Open Library first. If neither has its cover, the picker shows title
-matches marked **Check edition** so you can choose the right printing. Typing
-a different search query looks for alternate editions directly. A missing
+Books and Open Library first. When Open Library knows the edition, the picker
+also shows the other editions of the same work, each marked **Check edition**
+with its year, publisher and language, so you can choose the printing you
+remember — even when the exact edition has no cover of its own. If neither
+source knows the edition, the picker shows title matches marked **Check
+edition** instead. Typing a different search query looks for alternate
+editions directly, without the stored ISBN or author. A missing
 result, a spent provider quota and a connection failure are reported separately.
 
 ### The review queue

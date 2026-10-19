@@ -95,7 +95,7 @@ class TestTheBookPathIsUnchanged:
         tmdb, igdb = no_providers
 
         result = await covers.search_covers(
-            _item(media_type=media_type), "Dune", object(), creds={}
+            _item(media_type=media_type, title="Dune"), "Dune", object(), creds={}
         )
 
         book_search.assert_awaited_once()
@@ -504,9 +504,29 @@ class TestTheRowShapesItActuallyGets:
     ):
         row = _row(_full=False, media_type="book", title="T", authors="Le Guin, Ursula")
 
-        await covers.search_covers(row, "Q", object(), creds={})
+        await covers.search_covers(row, "T", object(), creds={})
 
         assert book_search.await_args.args[1] == "Le Guin, Ursula"
+
+    async def test_a_typed_query_drops_the_authors_and_the_isbn(
+        self, book_search, no_providers
+    ):
+        item = _item(media_type="book", title="Dune", authors="Frank Herbert", isbn="9780441013593")
+
+        await covers.search_covers(item, "Different edition", object(), creds={})
+
+        assert book_search.await_args.args[1] is None
+        assert book_search.await_args.args[2] is None
+
+    async def test_the_default_query_keeps_authors_and_isbn_despite_whitespace(
+        self, book_search, no_providers
+    ):
+        item = _item(media_type="book", title="Dune", authors="Frank Herbert", isbn="9780441013593")
+
+        await covers.search_covers(item, "  Dune ", object(), creds={})
+
+        assert book_search.await_args.args[1] == "Frank Herbert"
+        assert book_search.await_args.args[2] == "9780441013593"
 
 
 class TestTheCandidateContract:

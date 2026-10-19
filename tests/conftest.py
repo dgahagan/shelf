@@ -111,6 +111,12 @@ def _isolated_db(tmp_path, monkeypatch):
     import app.services.trash as trash_mod
     monkeypatch.setattr(trash_mod, "_cache", None)
 
+    # Reset the LibraryThing related-ISBN cache (G13) — it is keyed by ISBN
+    # and reset only when the token changes, so two tests using the same
+    # token would share one test's cached answers.
+    import app.services.librarything as librarything_mod
+    librarything_mod.reset_cache()
+
     # Reset the IGDB token cache — otherwise one test's cached OAuth token
     # leaks into the next test's credential pair.
     import app.services.igdb as igdb_mod

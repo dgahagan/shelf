@@ -151,7 +151,8 @@ async def edition_cover(isbn, client, google_key=None) -> provider_result.Provid
             for english, identifiers, url in records:
                 if english and _matches(identifiers, isbn) and url and covers.is_allowed_cover_url(url):
                     return provider_result.found(provider, {"url": url, "thumbnail": url, "source": source,
-                            "edition_isbn": isbn, "edition_language": "en"})
+                            "edition_isbn": isbn, "edition_language": "en",
+                            "label": "English cover from another edition"})
             outcomes.append(provider_result.no_match(provider, status=200))
         except Exception:
             outcomes.append(provider_result.transport_failed(provider))

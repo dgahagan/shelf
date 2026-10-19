@@ -680,7 +680,11 @@ Amazon → Google Books → PORBASE (Portuguese ISBNs only, last resort) → IGD
 and film artwork does not run the cascade — IGDB and TMDb each supply one URL
 with the metadata, downloaded directly through the same allow-list and
 post-redirect re-check. Misses are retried by a background **cover queue**
-(`services/cover_queue.py`).
+(`services/cover_queue.py`). With a LibraryThing token saved,
+`resolve_missing_cover` tries one more step after the cascade misses: a
+verified English related edition (`services/librarything.py`, thingISBN →
+Open Library / Google Books), recording that edition's ISBN and language
+with the cover.
 
 The **picker is a separate, human-driven path** and dispatches on the item's
 media type (`covers.search_covers`): `dvd` → TMDb's poster set for the film,
@@ -690,9 +694,16 @@ search over Google Books and Open Library. The book search asks both sources
 for the item's exact ISBN edition first. It accepts a Google result only when
 its identifiers match and an Open Library result only when the ISBN endpoint's
 edition identifiers match; otherwise it offers title matches labelled
-"Check edition" for a person to inspect. A custom picker query skips the ISBN
-stage so the user can look for an alternate edition. Here TMDb and IGDB
-supply *galleries* rather than the single URL the unattended cascade takes,
+"Check edition" for a person to inspect. An Open Library exact match is
+followed by **one** paced `works/{key}/editions.json` call for the same work's
+other editions, offered after the exact tile as "Check edition" tiles with a
+`year · publisher · language` label; a failure there leaves the exact result
+standing rather than demoting it. Every Open Library tile URL is CoverID-keyed
+(`/b/id/…`), never ISBN-keyed, because tiles hotlink unpaced from the browser.
+A custom picker query skips the stored ISBN and the stored author so the user
+can look for an alternate edition. With a LibraryThing token, the English
+related-edition tiles are appended, and the merged gallery is deduped by URL.
+Here TMDb and IGDB supply *galleries* rather than the single URL the unattended cascade takes,
 and the two must not be conflated: the cascade is untouched by the picker's
 dispatch. `MEDIA_TYPE_PROVIDERS` and `CREDENTIAL_KEYS` in `covers.py` are the
 one declaration of which media type reaches which service and what credential

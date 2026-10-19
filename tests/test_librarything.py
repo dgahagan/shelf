@@ -109,6 +109,7 @@ async def test_google_fallback_checks_all_identifiers():
         result = await lt.edition_cover(ENGLISH, client)
     assert result.payload["source"] == "Google Books"
     assert result.payload["edition_language"] == "en"
+    assert result.payload["label"] == "English cover from another edition"
 
 
 @pytest.mark.asyncio
@@ -247,7 +248,7 @@ async def test_retry_logging_redacts_url(monkeypatch, caplog):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("isbn,media,configured,expected", [("9780735211292", "book", True, True), ("9786155420818", "book", True, True), ("9789636140540", "ebook", True, True), ("9786155420818", "book", False, False), (None, "book", True, False), ("9786155420818", "dvd", True, False)])
+@pytest.mark.parametrize("isbn,media,configured,expected", [("9780735211292", "book", True, True), ("9786155420818", "book", True, True), ("9789636140540", "ebook", True, True), ("9786155420818", "book", False, False), (None, "book", True, False)])
 async def test_automatic_eligibility_and_existing_title_recovery(isbn, media, configured, expected, monkeypatch):
     from unittest.mock import AsyncMock
     from app.database import get_db, set_setting
@@ -276,7 +277,7 @@ def test_picker_mapped_candidates_render_and_keep_input_isbn(admin_client, monke
     with get_db() as db:
         item_id = insert_item(db, {"title": "Atomi szokások", "isbn": ORIGINAL, "media_type": "book"})
         set_setting(db, "librarything_token", TOKEN)
-    mapped = AsyncMock(return_value=provider_result.found("librarything", [{"url": "https://books.google.com/cover.jpg", "thumbnail": "https://books.google.com/cover.jpg", "source": "Google Books", "edition_isbn": ENGLISH, "edition_language": "en"}]))
+    mapped = AsyncMock(return_value=provider_result.found("librarything", [{"url": "https://books.google.com/cover.jpg", "thumbnail": "https://books.google.com/cover.jpg", "source": "Google Books", "edition_isbn": ENGLISH, "edition_language": "en", "label": "English cover from another edition"}]))
     monkeypatch.setattr(lt, "search_covers", mapped)
     monkeypatch.setattr(covers, "search_book_covers", AsyncMock(return_value=provider_result.no_match("google")))
     response = admin_client.get(f"/api/items/{item_id}/cover-search")

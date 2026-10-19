@@ -25,7 +25,7 @@ _INTEGRATION_KEYS = (
     "tmdb_api_key",
     "hardcover_token",
     "google_books_api_key",
-        "librarything_token",
+    "librarything_token",
     "igdb_client_id",
     "igdb_client_secret",
     "discogs_token",

@@ -878,6 +878,16 @@ grep -rn 'on("dialog"\|once("dialog"' tests/e2e/
   also closed the latent instance behind CSV import. **Filter at the shared
   choke point, not at each producer** — a fourth producer then arrives safe by
   default.
+- **Fourth instance, a single-item route** (`feat/cover-editions`, 2026-10-19,
+  codex-B2): the sweeps were all filtered, and then #154 rewrote the per-item
+  **Retry ISBN** button (`items_covers.retry_cover`) to call
+  `resolve_missing_cover` for every media type — a route that had always made
+  one exact `download_cover` call. The button shows on every cover-less item
+  with an `isbn`, and a DVD's UPC lives in `isbn` (`items.py`), so one click
+  on a cover-less DVD wrote a novel's cover. **This rule is not about sweeps;
+  it is about the hand-off.** Any caller of `resolve_missing_cover` — sweep,
+  queue, import, or one button — filters to `BOOK_MEDIA_TYPES` first. Pinned
+  by `tests/test_retry_cover.py`, whose title-search stub raises if reached.
 - **Verify:** the permissive match still exists (a failing assert means the
   helper changed and this entry needs re-checking), and no sweep is
   unfiltered:
@@ -6116,6 +6126,37 @@ grep -rn "aspect-\[2/3\]" app/templates static/js           # empty: no old spel
 - **Status:** documented. The negative-pin half is a lint candidate: flag a
   `not in html` assertion on a class string with no positive assertion
   on the same element.
+
+## G143 — When cover-candidate metadata must survive after the user picks the image
+
+- **Rule:** Trace the value through the shared candidate template, **both**
+  cover-selection writers (`items_covers.cover_select` and
+  `cover_review_actions.cover_review_select`), the download-with-provenance
+  path (`items_common.py`, `edition["edition_isbn"]`) and portable-archive
+  export/import. Write metadata that describes a cover only in the statement
+  that installs or replaces that same cover. A kept local cover keeps its own
+  metadata.
+- **Why:** the picker has one fragment (`fragments/cover_search.html`) but two
+  independent POST endpoints, and the portable archive moves cover bytes
+  through a third writer. A candidate-level test can pass while one endpoint
+  drops the form fields, or while export/import keeps the image and silently
+  clears the metadata that explains it. That is live today: `archive.py`'s
+  export whitelist omits `cover_edition_isbn`/`cover_edition_language`, and all
+  three import paths NULL them.
+- **Evidence:** plan `cover-editions` review (codex R1/R2, 2026-10-18).
+  `b615cfc` added the review-queue pin
+  (`test_picking_a_librarything_tile_stores_provenance_and_advances`). The
+  archive gap was deferred, not fixed (`app/services/archive.py:70-79`,
+  `:1741-1745`, `:1785-1789`, `:1925-1929`).
+- **Verify:**
+
+```bash
+grep -n "edition_isbn\|edition_language" app/routers/items_covers.py app/routers/cover_review_actions.py app/routers/items_common.py
+grep -n "cover_edition" app/services/archive.py   # NULL-only hits = archive gap still open
+```
+
+- **Status:** documented; the archive half is an open follow-up ("portable
+  archive should carry cover provenance"). Not a lint candidate.
 
 ## Graveyard
 
