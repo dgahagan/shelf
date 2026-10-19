@@ -43,6 +43,8 @@ async def cover_review_select(
     request: Request,
     item_id: int,
     url: str = Form(...),
+    edition_isbn: str | None = Form(None),
+    edition_language: str | None = Form(None),
     query: str | None = Form(None),
     pos: int = Form(1),
     total: int = Form(0),
@@ -75,12 +77,17 @@ async def cover_review_select(
         cover_path = await covers._download_to_item(item_id, url, client)
 
     if cover_path:
+        from app.services.librarything import selected_provenance
+        provenance = selected_provenance(edition_isbn, edition_language)
         with get_db() as db:
             db.execute(
-                "UPDATE items SET cover_path = ?, updated_at = datetime('now') "
+                "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL, updated_at = datetime('now') "
                 "WHERE id = ?",
                 (cover_path, item_id),
             )
+            if provenance:
+                items_common.update_item_fields(db, item_id, {"cover_edition_isbn": provenance[0],
+                                                           "cover_edition_language": provenance[1]})
             item = next_from_key(db, key)
             resp = render_card(request, db, item, pos + 1, total)
         resp.headers["HX-Trigger"] = items_common._toast_header("Cover updated")
@@ -143,7 +150,7 @@ async def cover_review_upload(
 
     with get_db() as db:
         db.execute(
-            "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL, updated_at = datetime('now') WHERE id = ?",
             (cover_path, item_id),
         )
         nxt = next_from_key(db, key)

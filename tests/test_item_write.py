@@ -52,7 +52,7 @@ RAW_UPDATE_ALLOWLIST: dict[str, set[str]] = {
         "cover_path = ?",
         # Removing a cover also clears any "not available" verdict, so the item
         # returns to the review queue — a flag set by a button, never typed.
-        "cover_path = NULL, cover_review_dismissed = 0, ",
+        "cover_path = NULL, cover_edition_isbn = NULL, cover_edition_language = NULL, cover_review_dismissed = 0, ",
     },
     "app/routers/items_common.py": {"cover_path = ?"},
     # The cover review queue's select/upload verbs — the same fetched-or-

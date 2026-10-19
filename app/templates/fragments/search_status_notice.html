@@ -19,5 +19,5 @@
 {% elif search_status == 'quota' %}
 <p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ search_provider }} is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later.</p>
 {% elif search_status == 'offline' %}
-<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">Could not reach {{ search_provider }} &mdash; check connectivity and try again.</p>
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{% if search_provider == "LibraryThing" %}LibraryThing unavailable. Try again later.{% else %}Could not reach {{ search_provider }} &mdash; check connectivity and try again.{% endif %}</p>
 {% endif %}

@@ -220,7 +220,7 @@ async def store_queue(request: Request, _=Depends(require_role("editor")),
                             )
                             if cover_path:
                                 with get_db() as db:
-                                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                                    db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
                     except Exception:
                         logger.warning("Store queue: cover download failed for %s", isbn13)
                     status = restore_report.restored_status(item_id, "wishlisted")

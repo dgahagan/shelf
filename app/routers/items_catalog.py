@@ -172,7 +172,7 @@ async def add_game_from_search(
             cover_path = await covers._download_to_item(item_id, metadata["cover_url"], client)
         if cover_path:
             with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     items_common._log_scan("", "video_game", "added", item_id)
 
@@ -362,7 +362,7 @@ async def add_book_from_search(
             )
             if cover_path:
                 with get_db() as db:
-                    db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                    db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     status = restore_report.restored_status(item_id, "added")
     items_common._log_scan(isbn13, media_type, status, item_id)
@@ -509,7 +509,7 @@ async def add_dvd_from_search(
             cover_path = await covers._download_to_item(item_id, cover_url, client)
         if cover_path:
             with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     items_common._log_scan("", "dvd", "added", item_id)
 

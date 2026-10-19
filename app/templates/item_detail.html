@@ -21,6 +21,7 @@
             <div class="w-48 shrink-0">
                 {% if item.cover_path %}
                 <img src="/{{ item.cover_path }}" alt="{{ item.title }}" class="w-48 rounded-lg shadow-lg">
+                {% if item.cover_edition_language == "en" %}<p class="text-xs text-shelf-muted mt-2">English cover from another edition</p>{% endif %}
                 {% else %}
                 <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
                     <span>No Cover</span>

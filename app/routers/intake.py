@@ -469,7 +469,7 @@ async def _confirm_one(
         if cover_path:
             with get_db() as db:
                 db.execute(
-                    "UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                    "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     if meta:
         lookup = "matched"

@@ -206,7 +206,8 @@ async def resolve_missing_cover(
 
     An item with an ISBN tries the standard cover chain first (Open Library
     covers -> Amazon -> Google Books). If that fails — or there is no ISBN —
-    a title/author search finds the work's best-known edition instead
+    a title/author search finds the work's best-known edition instead.
+    LibraryThing tries verified English related editions only if that fails
     (imported and print-on-demand edition ISBNs often have no cover
     anywhere). A recovered ISBN is stored on ISBN-less items unless another
     item already holds it.
@@ -224,13 +225,14 @@ async def resolve_missing_cover(
     """
     with get_db() as db:
         row = db.execute(
-            "SELECT title, authors, isbn, cover_path FROM items_live WHERE id = ?",
+            "SELECT title, authors, isbn, cover_path, media_type FROM items_live WHERE id = ?",
             (item_id,),
         ).fetchone()
     if not row or row["cover_path"]:
         return None
 
     cover_path = None
+    edition = None
     if hints:
         cover_path = await covers.download_cover(
             item_id,
@@ -284,12 +286,24 @@ async def resolve_missing_cover(
             cover_path = await covers.download_cover(
                 item_id, found_isbn, None, None, client)
 
+    from app.services import librarything
+    if not cover_path and row["media_type"] in librarything.BOOK_TYPES and row["isbn"]:
+        with get_db() as db:
+            token = get_setting(db, "librarything_token")
+            google_key = get_setting(db, "google_books_api_key")
+        if token:
+            cover_path, edition = await librarything.download_cover(
+                item_id, row["isbn"], token, client, google_key)
+
     if cover_path:
         with get_db() as db:
             db.execute(
-                "UPDATE items SET cover_path = ?, updated_at = datetime('now') WHERE id = ?",
+                "UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL, updated_at = datetime('now') WHERE id = ?",
                 (cover_path, item_id),
             )
+            if edition:
+                update_item_fields(db, item_id, {"cover_edition_isbn": edition["edition_isbn"],
+                                                 "cover_edition_language": edition["edition_language"]})
     return cover_path
 
 async def _enrich_import_covers(item_ids: list[int]) -> None:
@@ -640,7 +654,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
             cover_path = await covers._download_to_item(item_id, metadata["cover_url"], client)
         if cover_path:
             with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     status = restore_report.restored_status(item_id, "wishlisted" if mode == "wishlist" else "added")
     _log_scan(upc_norm, media_type, status, item_id, mode)
@@ -823,7 +837,7 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
             cover_path = await covers._download_to_item(item_id, cover_url, client)
         if cover_path:
             with get_db() as db:
-                db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
+                db.execute("UPDATE items SET cover_path = ?, cover_edition_isbn = NULL, cover_edition_language = NULL WHERE id = ?", (cover_path, item_id))
 
     status = restore_report.restored_status(item_id, "wishlisted" if mode == "wishlist" else "added")
     _log_scan(upc_norm, "video_game", status, item_id, mode)

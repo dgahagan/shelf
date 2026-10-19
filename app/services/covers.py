@@ -238,13 +238,26 @@ async def search_covers(
         return await _tmdb_candidates(item, query, client, creds)
     if provider == "igdb":
         return await _igdb_candidates(item, query, client, creds)
-    return await search_book_covers(
+    result = await search_book_covers(
         query,
         _col(item, "authors"),
         _col(item, "isbn") if query.strip() == (_col(item, "title") or "").strip() else None,
         client,
         google_api_key=creds.get("google_books_api_key"),
     )
+    from app.services import librarything
+    if _col(item, "media_type") in librarything.BOOK_TYPES and _col(item, "isbn") and creds.get("librarything_token"):
+        mapped = await librarything.search_covers(
+            _col(item, "isbn"), creds["librarything_token"], client,
+            creds.get("google_books_api_key"))
+        candidates = (result.payload if result.found else []) + (mapped.payload if mapped.found else [])
+        if candidates:
+            return provider_result.found("librarything", candidates)
+        return provider_result.combine(
+            [provider_result.no_match(result.provider) if result.found else result, mapped],
+            provider="librarything",
+        )
+    return result
 
 
 async def _tmdb_candidates(
