@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Labels — Shelf{% endblock %}
+{% block head %}
+<script src="/static/js/labels.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold">Copy labels</h1>
+        <p class="text-sm text-shelf-muted mt-1">
+            Give copies a barcode, then print the codes on label sheets. Scanning a label in any Scan mode acts on that exact copy.
+            Codes read <span class="font-mono">{{ code_prefix }}-000001</span>{% if user and user.role == 'admin' %} &mdash; <a href="/settings" class="text-shelf-accent2 hover:underline">change the prefix in Settings</a>{% endif %}.
+        </p>
+    </div>
+
+    <!-- Assign -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-1">Assign codes</h2>
+        <p class="text-sm text-shelf-muted mb-4">Copies that already have a barcode — generated or typed — are never changed.</p>
+        <form id="labels-assign-form" hx-post="/api/labels/assign" hx-target="#labels-result" hx-swap="innerHTML" class="space-y-4" data-labels-scope-form>
+            {% with prefix='assign' %}{% include "fragments/labels_scope.html" %}{% endwith %}
+            <p id="labels-count" class="text-sm text-shelf-muted" data-testid="labels-count"
+               hx-get="/api/labels/count" hx-include="closest form" hx-trigger="load, change from:closest form, labels-assigned from:body"
+               hx-target="this" hx-swap="innerHTML"></p>
+            <button type="submit" data-testid="labels-assign"
+                    class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Assign codes
+            </button>
+        </form>
+        <div id="labels-result" class="mt-4" data-testid="labels-result"></div>
+    </div>
+
+    <!-- Print -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-1">Print labels</h2>
+        <p class="text-sm text-shelf-muted mb-4">Prints copies that have a barcode. To print one item's labels, use "Print labels for this item" on its page.</p>
+        <form method="get" action="/labels/sheet" class="space-y-4" data-labels-scope-form data-labels-print-form>
+            {% with prefix='print' %}{% include "fragments/labels_scope.html" %}{% endwith %}
+            <div class="flex flex-wrap gap-4">
+                <div>
+                    <label for="labels-preset" class="block text-sm font-medium text-shelf-muted mb-1">Label sheet</label>
+                    <select id="labels-preset" name="preset" data-labels-preset
+                            class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text">
+                        {% for p in presets %}
+                        <option value="{{ p.key }}" data-per-sheet="{{ p.per_sheet }}" {% if p.key == default_preset %}selected{% endif %}>{{ p.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="labels-start" class="block text-sm font-medium text-shelf-muted mb-1">Start at label</label>
+                    <input type="number" id="labels-start" name="start" min="1" max="30" value="1" data-labels-start
+                           class="w-24 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text">
+                </div>
+            </div>
+            <p class="text-xs text-shelf-muted">Start at a later position to use up a part-used sheet. Print at 100% scale with no fit-to-page.</p>
+            <button type="submit" data-testid="labels-print"
+                    class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+                Print sheet
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

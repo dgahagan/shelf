@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-5334%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-338%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-5430%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-343%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -146,7 +146,8 @@ of this whole directory carries the keys next to the data they protect.
 Camera scanning picks its decoder to suit the device: iOS Safari drives the
 camera with ZXing, every other platform uses html5-qrcode. The scan page and
 Store Mode share one engine, so both behave the same everywhere. Retail
-barcodes are covered — EAN-13, EAN-8, UPC-A and UPC-E. USB and Bluetooth
+barcodes are covered — EAN-13, EAN-8, UPC-A and UPC-E — and so are Shelf's own
+Code 128 copy labels, on iPhone and iPad as well. USB and Bluetooth
 scanners bypass the camera entirely and work regardless.
 
 ### Photo Intake
@@ -183,7 +184,7 @@ photo into overlapping tiles for better accuracy — with a cost estimate for
 each option before anything is sent.
 
 ### Collection Management
-- **Choose your features** — the setup wizard starts you on Minimal, Standard or Everything, and Settings → Features turns any optional part (Lending, Sharing, Valuation, Price alerts, Photo Intake, the integrations, …) on or off later, one at a time or by applying a profile. A feature that is off leaves the pages you use, and its data is kept for when it comes back. See [Configuration → Features](docs/configuration.md#features)
+- **Choose your features** — the setup wizard starts you on Minimal, Standard or Everything, and Settings → Features turns any optional part (Lending, Sharing, Valuation, Price alerts, Photo Intake, Collector tools, the integrations, …) on or off later, one at a time or by applying a profile. A feature that is off leaves the pages you use, and its data is kept for when it comes back. See [Configuration → Features](docs/configuration.md#features)
 - **Home overview** — Shelf opens on a page that answers "what is happening in my library?": catalogue, owned and wishlist totals, what is lent out, missing covers, a media-type breakdown and recent additions. Browse stays the place for searching, filtering and bulk editing. See [Home](docs/user-guide/home.md)
 - **Filter and search** — by media type, location, status (read, watched, played), ownership, lending status, source (which sync, provider or import an item arrived from), and free text
 - **Reading tracking** — want-to-read, reading, and read with start/finish dates, and a default status for a scanning session
@@ -194,6 +195,7 @@ each option before anything is sent.
 - **Locations** — organize by room, shelf, or any system you like, and nest them: a shelf inside a bookcase inside a room. Rename or move a location and everything beneath it follows. See [Locations](docs/user-guide/locations.md)
 - **Shelf Fill** — pick a room, bookcase or shelf and it stays selected while you scan item after item onto it. Items already catalogued move without a fresh metadata lookup; unrecognised barcodes fall through to the normal Add pipeline. See [Shelf Fill](docs/user-guide/shelf-fill.md)
 - **Physical copies** — own two of something and track them apart: add a copy on the item page, give each its own location, condition, acquired date, source, price, provenance and barcode, and remove one when it goes. Removing the copy marked primary promotes the next one and the item's location follows it. A removed copy goes to Trash with its details, not away for good
+  - **Copy labels** — with Collector tools on, give each copy its own barcode in bulk or one at a time, print the codes on Avery 5160 or L7160 sheets, and scan a copy label in any Scan mode: Inventory and Move act on that exact copy, Lookup names it, Add reports the copy you already own. See [Copy labels](docs/user-guide/labels.md)
 - **Trash** — deleted items and removed copies wait in Trash (account menu → Library) with everything attached to them: restore brings them back exactly as they were, and scanning one in Lend, Move or any other existing-item mode says *In Trash* and offers Restore instead of acting on it. Admins delete permanently or empty what has passed the retention window, and get a dismissable banner when there is something to empty. See [Items → Trash](docs/user-guide/items.md#trash)
 - **Arrange a shelf** — any location gets an Arrange page where you drag the physical copies into the order they actually sit in, or order them automatically by title, creator, series, release or issue. The order belongs to the copy, so duplicates stay distinct and can sit side by side
 - **Related media groups** — connect the different forms of one work (a novel, its audiobook, its film adaptation) as `format`, `related` or `adaptation`. Every item shows its whole group in a panel on the item page, with direct links marked apart from the ones reached through a third item; editors search the catalogue to add a relationship, viewers see the group read-only. A group is the connected set of links, so linking A to B and B to C presents all three. Matching is manual by design. See [Related Media](docs/related-media.md)

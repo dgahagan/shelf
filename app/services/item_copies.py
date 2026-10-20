@@ -58,6 +58,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.services import trash
+from app.services.write_targets import validated_location_id
 
 #: Columns a caller may never set on insert — the database owns them.
 #: `deleted_at` is owned by `trash_copy` / `restore_copy` below and by nothing
@@ -216,6 +217,27 @@ def update_copy(
         return True
     return cursor.rowcount > 0
 
+
+def relocate_copy(db, copy: Mapping[str, Any], location_id: int) -> None:
+    """Move one copy — the one a scanned copy label named — to `location_id`.
+
+    `copy` is a live copy row carrying `id`, `item_id` and `is_primary`, read by
+    the caller under the write lock it already holds (G18). The primary copy
+    moves through `update_item_fields`, so the `items.location_id` seam follows
+    it; any other copy moves alone and the seam is left where it was. This is
+    Shelf Fill's `_place_exact_copy` rule without its shelf-position and
+    ownership extras, shared by Scan's Inventory and Move modes.
+
+    Raises `ItemValueError` for a location that does not exist, on either path,
+    before anything is written.
+    """
+    from app.services import item_write
+
+    location_id = validated_location_id(db, location_id)
+    if copy["is_primary"]:
+        item_write.update_item_fields(db, copy["item_id"], {"location_id": location_id})
+    else:
+        update_copy(db, copy["id"], {"location_id": location_id})
 
 def backfill_legacy_locations(db) -> int:
     """Create one primary copy for legacy rows that prove a physical place.

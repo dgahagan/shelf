@@ -282,6 +282,13 @@ async def shelf_fill_scan(
     # fix stays reachable by the barcode printed on it — so do not "fix" it by
     # completing `raw` above this line.
     existing = items_scan_modes._find_item_by_barcode(raw)
+    if existing and existing.get("deleted_at"):
+        # A trashed copy's label (or a trashed item's ISBN) is reported, never
+        # placed: `_copy_by_barcode` reads the live views, so a trashed copy's
+        # label lands here, and `_place_item` would move the item's live
+        # primary — a different physical book from the one in the user's hand.
+        return items_scan_modes._scan_mode_in_trash(
+            request, request.app.state.templates, existing, raw, "move")
     if existing:
         try:
             with get_db() as db:

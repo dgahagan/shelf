@@ -275,6 +275,16 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
                       WHERE key = 'feature.valuation' AND value = '0')"""),
     (42, "Add cover edition ISBN", "ALTER TABLE items ADD COLUMN cover_edition_isbn TEXT"),
     (43, "Add cover edition language", "ALTER TABLE items ADD COLUMN cover_edition_language TEXT"),
+    # A feature with no flag row reads as on, and collector is new in the same
+    # release, so an upgrade would switch it on for every install — even one
+    # that applied Standard or Minimal. Start it off where Valuation is off,
+    # untouched elsewhere (same shape as 41). INSERT OR IGNORE keeps a choice
+    # already made. A fresh database has no feature rows, so this is a no-op.
+    (44, "Start collector tools off where Valuation is off",
+     """INSERT OR IGNORE INTO settings (key, value)
+        SELECT 'feature.collector', '0'
+        WHERE EXISTS (SELECT 1 FROM settings
+                      WHERE key = 'feature.valuation' AND value = '0')"""),
 )
 
 MIGRATION_TABLES = """

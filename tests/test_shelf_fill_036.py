@@ -130,6 +130,36 @@ def test_copy_barcode_moves_exact_secondary_without_moving_primary(db):
     assert result["copy_number"] == 2
 
 
+def test_trashed_copy_label_is_reported_and_moves_nothing(editor_client, db):
+    """qa-copy-labels Obs 1 (review B1): a trashed copy's label must not fall
+    through to the item path, which would move the live primary instead."""
+    from app.services import item_copies
+
+    first = location_svc.create_location(db, "Shelf A")
+    target = location_svc.create_location(db, "Shelf C")
+    item_id = _item(db)
+    db.execute(
+        "INSERT INTO item_copies (item_id, copy_number, location_id, copy_barcode, is_primary) "
+        "VALUES (?, 1, ?, 'COPY-1', 1)", (item_id, first),
+    )
+    secondary_id = db.execute(
+        "INSERT INTO item_copies (item_id, copy_number, location_id, copy_barcode, is_primary) "
+        "VALUES (?, 2, ?, 'COPY-2', 0)", (item_id, first),
+    ).lastrowid
+    db.execute("UPDATE items SET location_id = ? WHERE id = ?", (first, item_id))
+    item_copies.trash_copy(db, secondary_id)
+    db.commit()
+
+    resp = editor_client.post("/api/shelf-fill/scan",
+                              data={"isbn": "COPY-2", "location_id": str(target)})
+
+    assert resp.status_code == 200
+    assert 'data-scan-status="in_trash"' in resp.text
+    locs = db.execute("SELECT location_id FROM item_copies WHERE item_id = ?", (item_id,)).fetchall()
+    assert [r["location_id"] for r in locs] == [first, first]
+    assert db.execute("SELECT location_id FROM items WHERE id = ?", (item_id,)).fetchone()[0] == first
+
+
 def test_moving_a_secondary_copy_clears_its_old_shelf_position(db, monkeypatch):
     """_place_exact_copy's own location-setting write, isolated from the
     append that immediately follows it in the real flow, must clear a moved

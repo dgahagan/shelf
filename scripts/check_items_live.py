@@ -233,15 +233,24 @@ ALLOWLIST: dict[str, dict[str, int]] = {
         "SELECT id FROM items WHERE hardcover_book_id = ? "
         "AND deleted_at IS NOT NULL LIMIT 1": 1,
     },
-    "app/routers/items_scan_modes.py": {
-        # _find_item_by_barcode — the existing-item scan modes must find a
-        # row in Trash so they can report it and offer Restore instead of
+    "app/services/barcode_resolve.py": {
+        # resolve() (moved from items_scan_modes._find_item_by_barcode) —
+        # the existing-item scan modes must find a row in Trash so they can report it and offer Restore instead of
         # "not in your collection". Ordered live-first: an ISBN held by a
         # live row and a trashed one (different media types) answers live.
         "SELECT i.*, l.name as location_name FROM items i "
         "LEFT JOIN locations l ON i.location_id = l.id WHERE i.isbn = ?": 1,
         "SELECT i.*, l.name as location_name FROM items i "
         "LEFT JOIN locations l ON i.location_id = l.id WHERE i.upc = ?": 1,
+        # resolve()'s copy-barcode read — finds the row the view hides, not a
+        # UNIQUE prediction: a trashed copy, or a copy of a trashed item, must
+        # still resolve so the scan reports it. Physical on both tables (G107).
+        "SELECT i.*, l.name AS location_name, c.id AS copy_id, "
+        "c.copy_number, c.location_id AS copy_location_id, "
+        "cl.name AS copy_location_name, "
+        "COALESCE(i.deleted_at, c.deleted_at) AS trash_stamp, "
+        "(i.deleted_at IS NULL AND c.deleted_at IS NOT NULL) AS copy_trashed "
+        "FROM item_copies c JOIN items i ON i.id = c.item_id": 1,
     },
     "app/routers/items_csv.py": {
         # CSV dedup — same reason as _find_item_by_barcode above. `isbn IN
@@ -313,6 +322,23 @@ ALLOWLIST: dict[str, dict[str, int]] = {
 #: both keys here on purpose, and an entry under one must never excuse a
 #: read in the other.
 COPIES_ALLOWLIST: dict[str, dict[str, int]] = {
+    "app/services/copy_labels.py": {
+        # next_number — a trashed copy still holds its copy_barcode UNIQUE
+        # slot, so the next generated number must see it (G107's first
+        # class: predicting the constraint).
+        "SELECT copy_barcode FROM item_copies WHERE copy_barcode LIKE ?": 1,
+    },
+    "app/services/barcode_resolve.py": {
+        # resolve()'s copy-barcode read — finds the row the view hides, not a
+        # UNIQUE prediction: a trashed copy, or a copy of a trashed item, must
+        # still resolve so the scan reports it. Same statement as its ALLOWLIST entry.
+        "SELECT i.*, l.name AS location_name, c.id AS copy_id, "
+        "c.copy_number, c.location_id AS copy_location_id, "
+        "cl.name AS copy_location_name, "
+        "COALESCE(i.deleted_at, c.deleted_at) AS trash_stamp, "
+        "(i.deleted_at IS NULL AND c.deleted_at IS NOT NULL) AS copy_trashed "
+        "FROM item_copies c JOIN items i ON i.id = c.item_id": 1,
+    },
     "app/database.py": {
         # The copies_live view CREATE in get_db() itself — the seam reads
         # the physical table by definition, same reasoning as the

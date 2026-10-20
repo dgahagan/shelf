@@ -1486,6 +1486,14 @@ no cap would not have found this entry under the old title.)
   empty database. The general rule: the more *inclusive* the page's query, the
   less usable the shared server is — a page that shows everything cannot be
   driven against a database that holds everything.
+- **Third face: a bulk *write* over an inclusive scope.** An E2E test that
+  presses a bulk action scoped to "every row" — `/labels`'s Assign with scope
+  **Every copy** — writes to every bare row any earlier file seeded, so its
+  result count is not the test's to assert, and it changes state other tests
+  may later read. Scope the action to something the test owns (a location it
+  created), and assert the exact count. Found in `feat/copy-labels` T9
+  (`ed7d039`, 2026-10-20): the first draft asserted `count >= 2` because the
+  real number depended on run order.
 - **Evidence:** caught on paper by the issue-31 `/plan-review` (R2,
   2026-08-21). The plan's `E2E Unassigned Book` already had at least eight
   earlier-sorting seriesless titles ahead of it (`1984`, `Book To Delete`,
@@ -2348,6 +2356,12 @@ grep -rn 'add_init_script' tests/e2e/
   a local in `archive.apply_plan` (T5, `f95c2fe`, renamed `trash_stamp`).
   Neither was a write. Name locals after what they hold (`trash_stamp`), and
   describe the column's assignment in words.
+  A **result dict's key** trips it too: `match["deleted_at"] = stamp` in
+  `barcode_resolve.resolve` (overwriting a row's key with a copy's stamp, no
+  database write at all) went red in `feat/copy-labels` T2 (`2f000ad`,
+  2026-10-19). Compute the value in SQL (`COALESCE(i.deleted_at,
+  c.deleted_at) AS trash_stamp`) and build the dict in one literal
+  (`{**row, "deleted_at": stamp}`), which the pattern does not match.
 - **Verify:** judgement. When a text-scanning guard fires, read the hit before
   the rule: if it is inside a comment, the guard is not wrong about the file.
 - **Status:** documented. Not a lint candidate — a lint for this would need
@@ -5856,6 +5870,11 @@ grep -cE '(http|\{scheme\})://testserver/' tests/test_auth_cookie_secure.py test
   - a vendored asset → `tests/test_vendor_integrity.py` hashes only the
     **top level** of `static/vendor/` (`iterdir()`), so a file goes flat there
     with its `HASHES` line. A subfolder, or `static/fonts/`, is not checked.
+- **A print view or any other second page counts.** `feat/copy-labels`
+  (2026-10-19) planned `GET /labels` as a nav tab and stated "no `EXEMPT` row
+  needed" — true for that page and silent on its sibling `GET /labels/sheet`,
+  which went red and took an `EXEMPT` reason in T7 (`a0f2198`). Enumerate
+  every new unparameterised `GET`, not just the one the nav links.
 - **Why:** each test fails with a clear message, but only when `make test`
   runs. A plan that leaves the file out of the touch-set leaves the builder a
   red gate on a file it was not given, as with G80.
@@ -6157,6 +6176,31 @@ grep -n "cover_edition" app/services/archive.py   # NULL-only hits = archive gap
 
 - **Status:** documented; the archive half is an open follow-up ("portable
   archive should carry cover provenance"). Not a lint candidate.
+
+## G144 — When a UI-backed selection is capped and the route accepts an offset
+
+- **Rule:** a nonzero offset must be reachable from the rendered page. Fetch
+  one row past the cap to derive `has_next`, render Previous/Next links that
+  keep the active selector, and test by **following the rendered link**, not by
+  requesting the offset URL directly. Also pin that exactly `cap` rows shows no
+  Next.
+- **Why:** an `offset` parameter plus a direct-URL test proves only that a
+  hidden backend path works. If every link into the page omits the offset, the
+  rows past the cap silently never print or export, and the suite stays green.
+- **Evidence:** `plan-copy-labels` codex plan review R2 (2026-10-19): the label
+  sheet capped at 300 and its planned test requested `offset=300` directly,
+  while every entry link (the Assign result, the Print form, the item page)
+  reached offset 0. Fixed before the build in T7 (`a0f2198`):
+  `tests/test_labels_page.py::TestContinuation` walks 301 labels by their Next
+  and Previous links.
+- **Verify:**
+
+```bash
+python -m pytest tests/test_labels_page.py -q -k Continuation
+```
+
+- **Status:** documented. Not a lint candidate — whether a page's cap is
+  reachable is a property of its links, not its route.
 
 ## Graveyard
 

@@ -119,8 +119,12 @@ Add users, set roles, reset passwords. See [Users & roles](user-guide/users-and-
 
 Turn optional parts of Shelf on or off: Lending, Series, Statistics, Store
 Mode, Sharing, Valuation, Price alerts, Music, Periodicals, Shelf Fill, Photo
-Intake, Hardcover, Audiobookshelf sync, Komga and RomM. An upgrade leaves everything
-on. A new install starts with the profile chosen in the setup wizard.
+Intake, Hardcover, Audiobookshelf sync, Komga, RomM and Collector tools. An
+upgrade leaves every existing feature as it was. A feature new in a release
+starts on, except where an upgrade would switch on something the install's
+profile left out: Price alerts and Collector tools start off on an upgrade
+where Valuation is off. A new install starts with the profile chosen in the
+setup wizard.
 Scanning, Browse, items, locations, tags, Trash, settings, users, backups and
 logs are core and cannot be turned off.
 
@@ -130,7 +134,7 @@ logs are core and cannot be turned off.
 |---|---|
 | **Minimal** | None — only the core above |
 | **Standard** | Lending, Series, Statistics, Store Mode, Music, Periodicals, Shelf Fill |
-| **Everything** | Standard, plus Sharing, Valuation, Price alerts, Photo Intake, Hardcover, Audiobookshelf sync, Komga and RomM |
+| **Everything** | Standard, plus Sharing, Valuation, Price alerts, Photo Intake, Hardcover, Audiobookshelf sync, Komga, RomM and Collector tools |
 
 The **Profiles** row at the top of Features applies one in a single step and
 shows which one the install matches. After you turn one feature on or off by

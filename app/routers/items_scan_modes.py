@@ -15,40 +15,14 @@ from app import features
 from app.config import status_labels
 from app.database import get_db
 from app.routers import items_common
-from app.services import isbn as isbn_svc
+from app.services import barcode_resolve
 from app.services import item_copies
-from app.services import upc as upc_svc
 from app.services.item_write import ItemValueError, update_item_fields
 
 
 def _find_item_by_barcode(raw: str) -> dict | None:
-    """Find an existing item by ISBN or UPC barcode. Returns dict or None."""
-    barcode_type = upc_svc.detect_barcode_type(raw)
-    # to_isbn13() zero-pads a UPC-A into an ISBN-shaped string, so a UPC must
-    # not be looked up against items.isbn — that is what mis-filed them (#20).
-    isbn13 = isbn_svc.to_isbn13(raw) if barcode_type != "upc" else None
-    upc_norm = upc_svc.normalize_upc(raw) if barcode_type == "upc" else None
-
-    with get_db() as db:
-        if isbn13:
-            item = db.execute(
-                "SELECT i.*, l.name as location_name FROM items i "
-                "LEFT JOIN locations l ON i.location_id = l.id WHERE i.isbn = ? "
-                "ORDER BY i.deleted_at IS NOT NULL, i.id",  # live wins over Trash
-                (isbn13,),
-            ).fetchone()
-            if item:
-                return dict(item)
-        if upc_norm:
-            item = db.execute(
-                "SELECT i.*, l.name as location_name FROM items i "
-                "LEFT JOIN locations l ON i.location_id = l.id WHERE i.upc = ? "
-                "ORDER BY i.deleted_at IS NOT NULL, i.id",  # live wins over Trash
-                (upc_norm,),
-            ).fetchone()
-            if item:
-                return dict(item)
-    return None
+    """Find an existing item by copy barcode, ISBN or UPC — `barcode_resolve.resolve`."""
+    return barcode_resolve.resolve(raw)
 
 
 #: How many copy locations a scan card names before it says "and N more".
@@ -178,13 +152,34 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
             {"status": "error", "isbn": raw, "message": "No target location selected"},
         )
 
-    old_location = item.get("location_name") or "No location"
+    copy_id = item.get("copy_id")
+    if copy_id:
+        old_location = item.get("copy_location_name") or "no location"
+    else:
+        old_location = item.get("location_name") or "No location"
 
     # A deleted location used to be a foreign-key 500 here (#54).
     value_error = None
     with get_db() as db:
+        if copy_id:
+            # A copy label names the copy in hand: move that one, under one
+            # write lock with the read that decides it (G18).
+            db.execute("BEGIN IMMEDIATE")
+            copy = db.execute(
+                "SELECT id, item_id, copy_number, is_primary FROM copies_live WHERE id = ?",
+                (copy_id,),
+            ).fetchone()
+            if copy is not None:
+                # A merge since the resolver's read moved the copy to another
+                # item: report and log against the item that owns it now.
+                item = barcode_resolve.current_item(db, item, copy)
         try:
-            update_item_fields(db, item["id"], {"location_id": location_id})
+            if not copy_id:
+                update_item_fields(db, item["id"], {"location_id": location_id})
+            elif copy is None:
+                value_error = f"Copy {item['copy_number']} is no longer in the collection"
+            else:
+                item_copies.relocate_copy(db, copy, location_id)
         except ItemValueError as e:
             value_error = str(e)
         new_loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
@@ -196,123 +191,18 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
         )
 
     new_name = new_loc["name"] if new_loc else "Unknown"
+    message = f"{old_location} → {new_name}"
+    if copy_id:
+        message = f"Copy {item['copy_number']}: {message}"
     items_common._log_scan(raw, item.get("media_type", ""), "moved", item["id"], "move")
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "moved", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "media_type": item.get("media_type"),
-         "authors": item.get("authors"), "message": f"{old_location} → {new_name}"},
+         "authors": item.get("authors"), "message": message},
     )
     return resp
-
-
-def _scan_mode_inventory(
-    request,
-    templates,
-    item: dict | None,
-    location_id: int | None,
-    raw: str,
-    *,
-    inventory_confirmation: bool = False,
-):
-    """Handle inventory mode: verify item is at expected location."""
-    if not location_id or location_id <= 0:
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": raw, "message": "No audit location selected"},
-        )
-
-    if not item:
-        # Read before the audit location: nothing here writes, and an
-        # unknown barcode is not worth opening a write transaction for.
-        items_common._log_scan(raw, "", "not_owned", None, "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "not_owned", "isbn": raw, "message": "Not in collection"},
-        )
-
-    # G18 — the decision and the write share one connection and one write
-    # lock. The arm this scan takes now depends on the item's copy
-    # cardinality, not on a single integer, and a copy inserted between a
-    # read on one connection and an UPDATE on another would be acted on
-    # blind. BEGIN IMMEDIATE takes the write lock before the first read.
-    value_error = None
-    with get_db() as db:
-        db.execute("BEGIN IMMEDIATE")
-        loc = db.execute(
-            "SELECT name FROM locations WHERE id = ?", (location_id,)
-        ).fetchone()
-        loc_name = loc["name"] if loc else "Unknown"
-        copies = item_copies.copies_for_item(db, item["id"])
-        # An item with no copy rows at all falls back to the items.location_id
-        # seam, exactly as /api/inventory/missing does — the two must agree
-        # about what is expected on a shelf or an audit contradicts itself.
-        # That state is real rather than a fixture artefact: migration 26 and
-        # backfill_legacy_locations create copies for `owned = 1` rows only,
-        # so an upgraded database's wishlist item with a location has none.
-        here = (
-            any(copy["location_id"] == location_id for copy in copies)
-            if copies
-            else item.get("location_id") == location_id
-        )
-
-        if not here and len(copies) < 2:
-            # Zero copies or exactly one: there is only one object the scan
-            # can mean, so relocating it is the honest reading. Zero is the
-            # common case, not a corner — an item added without a location
-            # has no copy rows at all, and placing it is what Inventory mode
-            # is chiefly for. `update_item_fields` creates the primary copy
-            # through `sync_primary_location`.
-            try:
-                update_item_fields(db, item["id"], {"location_id": location_id})
-            except ItemValueError as e:
-                value_error = str(e)
-
-    if here:
-        items_common._log_scan(raw, item.get("media_type", ""), "confirmed", item["id"], "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "confirmed", "isbn": raw, "title": item["title"],
-             "item_id": item["id"], "cover_path": item.get("cover_path"),
-             "media_type": item.get("media_type"),
-             "authors": item.get("authors"), "message": f"Confirmed at {loc_name}",
-             "inventory_confirmation": inventory_confirmation},
-        )
-
-    if len(copies) >= 2:
-        # The destructive half of #116: an ISBN does not say which copy is in
-        # the user's hand, and moving the primary onto this shelf destroys the
-        # layout a merge preserved. Report instead, and write nothing.
-        items_common._log_scan(raw, item.get("media_type", ""), "elsewhere", item["id"], "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "elsewhere", "isbn": raw, "title": item["title"],
-             "item_id": item["id"], "cover_path": item.get("cover_path"),
-             "media_type": item.get("media_type"),
-             "authors": item.get("authors"),
-             "message": f"Copies at {_format_copy_places(copies)}; none here.",
-             "inventory_confirmation": inventory_confirmation},
-        )
-
-    if value_error:
-        items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], "inventory")
-        return templates.TemplateResponse(
-            request, "fragments/scan_result.html",
-            {"status": "error", "isbn": raw, "message": value_error},
-        )
-
-    old_location = item.get("location_name") or "No location"
-    items_common._log_scan(raw, item.get("media_type", ""), "relocated", item["id"], "inventory")
-    return templates.TemplateResponse(
-        request, "fragments/scan_result.html",
-        {"status": "relocated", "isbn": raw, "title": item["title"],
-         "item_id": item["id"], "cover_path": item.get("cover_path"),
-         "media_type": item.get("media_type"),
-         "authors": item.get("authors"),
-         "message": f"Was at {old_location}, updated to {loc_name}",
-         "inventory_confirmation": inventory_confirmation},
-    )
 
 
 def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
@@ -331,18 +221,24 @@ def _scan_mode_lookup(request, templates, item: dict | None, raw: str):
     # An upgraded database holds located items with no copy rows (G86), so the
     # seam is the fallback before the empty label — otherwise Lookup reports
     # "No location set" for an item whose page shows a location. B5.
-    with get_db() as db:
-        copies = item_copies.copies_for_item(db, item["id"])
-    location_str = (
-        _format_copy_places(copies) or item.get("location_name") or "No location set"
-    )
+    if item.get("copy_id"):
+        # A copy label answers for its own copy, not the item's spread.
+        place = item.get("copy_location_name") or "no location"
+        message = f"Copy {item['copy_number']} · {place}"
+    else:
+        with get_db() as db:
+            copies = item_copies.copies_for_item(db, item["id"])
+        location_str = (
+            _format_copy_places(copies) or item.get("location_name") or "No location set"
+        )
+        message = f"Location: {location_str}"
     items_common._log_scan(raw, item.get("media_type", ""), "found", item["id"], "lookup")
     return templates.TemplateResponse(
         request, "fragments/scan_result.html",
         {"status": "found", "isbn": raw, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "media_type": item.get("media_type"),
-         "authors": item.get("authors"), "message": f"Location: {location_str}"},
+         "authors": item.get("authors"), "message": message},
     )
 
 
@@ -381,5 +277,27 @@ def _scan_mode_in_trash(request, templates, item: dict, raw: str, mode: str):
         {"status": "in_trash", "isbn": raw, "mode": mode, "title": item["title"],
          "item_id": item["id"], "cover_path": item.get("cover_path"),
          "media_type": item.get("media_type"),
-         "authors": item.get("authors"), "deleted_at": item.get("deleted_at")},
+         "authors": item.get("authors"), "deleted_at": item.get("deleted_at"),
+         "copy_in_trash": item.get("copy_in_trash"), "copy_number": item.get("copy_number")},
+    )
+
+
+def _copy_label_duplicate(request, templates, raw: str, mode: str):
+    """Add/Wishlist: a scanned copy label names a copy already owned.
+
+    Runs before the Add path's provider lookups (decision 9 of the copy-labels
+    plan): an exact label match is the more specific claim, so the scan
+    reports the existing item instead of spending a lookup on a code that is
+    not a product barcode. Returns `None` when `raw` is not a copy label, and
+    the caller carries on with the ordinary Add path.
+    """
+    match = barcode_resolve.resolve(raw)
+    if not match or not match.get("copy_id"):
+        return None
+    if match.get("deleted_at"):
+        return _scan_mode_in_trash(request, templates, match, raw, mode)
+    items_common._log_scan(raw, match.get("media_type", ""), "duplicate", match["id"], mode)
+    return templates.TemplateResponse(
+        request, "fragments/scan_result.html",
+        {"status": "duplicate", "isbn": raw, "title": match["title"], "item_id": match["id"]},
     )

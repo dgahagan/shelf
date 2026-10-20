@@ -13,7 +13,7 @@ Each flag is one `settings` row, `feature.<key>`. Only the exact value "0"
 disables a feature: an absent row (every upgraded install) or any other value
 means enabled, so an upgrade changes nothing until an admin turns something
 off. Flags are rows only; no env var overrides them. A new install writes all
-fifteen rows explicitly, from the profile chosen at setup; an upgraded
+sixteen rows explicitly, from the profile chosen at setup; an upgraded
 install has none, and reads as Everything.
 
 `nav.py` imports this module, never the reverse at module level.
@@ -305,6 +305,14 @@ FEATURES: dict[str, Feature] = {
             ("GET", "/api/romm/platforms"): _CONFIG,
             ("POST", "/api/romm/platforms"): _CONFIG,
         },
+    ),
+    "collector": Feature(
+        label="Collector tools",
+        description="Copy barcode labels, shelf audits and the duplicate finder.",
+        profile="everything",
+        nav_tabs=("labels",),
+        entry_path="/labels",
+        modules=("app.routers.labels",),
     ),
 }
 

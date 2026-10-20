@@ -90,6 +90,19 @@ the demote, trashing an item's only primary copy and then adding another would
 collide with the trashed row still holding the slot. A restored copy comes back
 as a secondary, or as the primary when the item has none.
 
+## Copy barcodes
+
+`copy_barcode` is free text and `UNIQUE` across every copy, trashed or live. Two
+kinds share the column:
+
+- **Generated codes** (`app/services/copy_labels.py`, Collector tools) follow
+  `PREFIX-NNNNNN` — the prefix is the `copy_barcode_prefix` setting (`SHF` by
+  default, 1–8 alphanumerics), the number one past the highest any copy has held
+  under it, read from the physical table because a trashed copy still holds its
+  slot. Bulk assignment writes a whole scope in one `BEGIN IMMEDIATE`.
+- **Hand-typed codes** stay exactly as typed. They follow no format, never
+  advance the generated counter, and never fall inside a printed code range.
+
 ## Which surfaces write copies
 
 The **item page** is a writer as well as a reader: a copy can be
@@ -111,6 +124,11 @@ Since 0.38.0 (upstream issue #116) these read `item_copies` directly:
   and, when an item has two or more copies and none is here, reports where they
   are instead of moving one;
 - Scan's **Lookup** mode, which names every distinct copy location;
+- every existing-item Scan mode, through `app/services/barcode_resolve.py`: a
+  scanned **copy barcode** resolves to its copy before any ISBN or UPC read,
+  and Inventory and Move then relocate that one copy (`item_copies.relocate_copy`
+  — the primary through the item funnel so the seam follows, any other copy
+  alone), while Lend, Return and Quick Rate act on its item;
 - the portable archive, which carries a `copies` array per item.
 
 These still read the `items.location_id` seam: **Browse**, Scan's **Move** mode,

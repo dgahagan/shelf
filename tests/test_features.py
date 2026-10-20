@@ -165,10 +165,11 @@ def test_registry_entry_paths_are_local():
         assert f.entry_path.startswith("/") and not f.entry_path.startswith("//"), key
 
 
-def test_registry_has_the_fifteen_designed_features():
+def test_registry_has_the_sixteen_designed_features():
     assert list(FEATURES) == [
         "lending", "series", "stats", "store", "share", "valuation", "price_alerts", "music",
         "periodicals", "shelf_fill", "intake", "hardcover", "abs_sync", "komga", "romm",
+        "collector",
     ]
 
 
@@ -216,7 +217,7 @@ def _profile_rows(db):
 
 
 @pytest.mark.parametrize("name", ["minimal", "standard", "everything"])
-def test_apply_profile_writes_all_fifteen_rows(db, name):
+def test_apply_profile_writes_all_sixteen_rows(db, name):
     apply_profile(db, name)
     db.commit()
     rows = _profile_rows(db)
@@ -463,6 +464,13 @@ def test_price_alerts_is_everything_only():
     assert FEATURES["price_alerts"].profile == "everything"
     assert "price_alerts" in profile_keys("everything")
     assert "price_alerts" not in profile_keys("standard")
+    assert profile_keys("standard") == _STANDARD_KEYS
+
+
+def test_collector_is_everything_only():
+    assert FEATURES["collector"].profile == "everything"
+    assert "collector" in profile_keys("everything")
+    assert "collector" not in profile_keys("standard")
     assert profile_keys("standard") == _STANDARD_KEYS
 
 

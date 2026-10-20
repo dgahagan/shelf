@@ -30,6 +30,18 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.70.0
+
+**Collector tools starts the way Valuation stands.** If Valuation is off — as
+it is under the Standard and Minimal profiles — the upgrade turns the new
+Collector tools feature off too. Otherwise it is on, and the
+[Labels page](user-guide/labels.md) appears in the account menu. Change it
+under Settings → **Features**.
+
+**Existing copy barcodes are kept.** A copy that already has a barcode you
+typed keeps it, and a scan of it now acts on that copy. No copy gets a code
+until you assign one.
+
 ### After upgrading to 0.62.0
 
 **A `price_history` table is created on first start.** It holds the list

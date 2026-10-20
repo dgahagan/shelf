@@ -18,7 +18,7 @@ from app.database import (get_db, get_setting, gc_orphaned_series_meta,
                           get_reading_history)
 from app.routers.series import MAX_SERIES_NAME
 from app.routers import items_common
-from app.routers import items_scan_modes
+from app.routers import items_scan_modes, scan_inventory
 from app.routers import periodicals as periodicals_router
 from app.routers.items_common import SORT_OPTIONS  # re-exported for pages.py
 from app.services import isbn as isbn_svc
@@ -364,7 +364,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
             return items_scan_modes._scan_mode_in_trash(request, templates, item, raw, mode)
         # inventory mode handles not-found specially
         if mode == "inventory":
-            return items_scan_modes._scan_mode_inventory(
+            return scan_inventory._scan_mode_inventory(
                 request,
                 templates,
                 item,
@@ -390,6 +390,8 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
             return items_scan_modes._scan_mode_quick_rate(request, templates, item, raw)
 
     # --- Add / Wishlist modes (create new items) ---
+    if (labelled := items_scan_modes._copy_label_duplicate(request, templates, raw, mode)):
+        return labelled
     if legacy_candidates:
         # The legacy resolver already produced a canonical ISBN and metadata
         # when it had to ask providers.  A learned mapping still needs the

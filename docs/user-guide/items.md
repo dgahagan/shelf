@@ -103,7 +103,11 @@ its home.
   Fair, Poor, Ex-library) — type anything else if you grade your own way.
   Moving a copy to a different shelf clears the position it had on the old one.
   A copy barcode belongs to one copy across your whole collection: reusing one
-  is refused, and the message names the item already holding it.
+  is refused, and the message names the item already holding it. With
+  Collector tools on, **Assign code** beside the barcode field gives a copy the
+  next generated code (`SHF-000001`), each copy's code is shown in the list,
+  and **Print labels for this item** prints them — see
+  [Copy labels](labels.md).
 
   **Remove copy** is in the same panel, behind a confirmation. It moves the
   copy to [Trash](#trash), where it waits with its condition, acquisition

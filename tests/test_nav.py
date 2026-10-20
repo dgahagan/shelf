@@ -37,23 +37,23 @@ VIEWER = {"id": 3, "username": "viewer", "role": "viewer"}
 
 # --- Registry shape ---------------------------------------------------------
 
-def test_registry_covers_the_thirteen_tabs():
+def test_registry_covers_the_fourteen_tabs():
     assert [t["key"] for t in NAV_TABS] == [
         "browse", "scan", "intake", "shelf-fill", "store", "series",
-        "music", "periodicals", "discover", "stats", "trash", "settings", "logs",
+        "music", "periodicals", "discover", "stats", "trash", "labels", "settings", "logs",
     ]
     for tab in NAV_TABS:
         assert tab["label"] and tab["path"].startswith("/")
 
 
-def test_only_trash_settings_and_logs_render_in_the_account_menu():
+def test_only_trash_labels_settings_and_logs_render_in_the_account_menu():
     """`menu` is what base.html asks instead of naming a key.
 
     It is the whole reason a tab can move out of the row without either
     template learning its name, so pin the membership rather than the flag.
     """
     assert [t["key"] for t in NAV_TABS if t.get("menu") == "account"] == [
-        "trash", "settings", "logs",
+        "trash", "labels", "settings", "logs",
     ]
     assert all(t.get("menu", "") in ("", "account") for t in NAV_TABS)
 
@@ -633,6 +633,11 @@ def test_every_top_level_page_is_reachable_from_the_nav():
         "/docs/oauth2-redirect": "FastAPI's own docs UI",
         "/redoc": "FastAPI's own docs UI",
         "/openapi.json": "schema, not a page",
+        "/labels/sheet": (
+            "reached from the Print sheet form and the Assign result on /labels, "
+            "and from the item page's Print-labels link — a print view of a "
+            "selection, not a destination (copy-labels plan)"
+        ),
         "/stats/wrapup": (
             "reached from the Wrap-up link on /stats, not the nav: a recap of the "
             "stats is a stats surface (wrap-ups design). The link is pinned by "

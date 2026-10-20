@@ -80,7 +80,13 @@
             <input type="text" id="copy-barcode-{{ copy.id }}" name="copy_barcode" data-narrow-ok
                    value="{{ copy.copy_barcode or '' }}" autocomplete="off" maxlength="64"
                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
-            <p class="text-xs text-shelf-muted mt-1">Scanned by Shelf Fill to place this exact copy.</p>
+            {%- if feature_on('collector') and not copy.copy_barcode %}
+            <button type="button" data-testid="assign-copy-code"
+                    hx-post="/api/items/{{ item_id }}/copies/{{ copy.id }}/assign-code"
+                    hx-target="#item-copies" hx-swap="outerHTML"
+                    class="mt-1 px-2 py-1 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs hover:bg-shelf-hover transition-colors">Assign code</button>
+            {%- endif %}
+            <p class="text-xs text-shelf-muted mt-1">Scanned by Shelf Fill and every Scan mode to act on this exact copy.</p>
         </div>
         <div class="sm:col-span-2">
             <label for="copy-provenance-{{ copy.id }}" class="block text-xs font-medium text-shelf-muted mb-1">Provenance</label>

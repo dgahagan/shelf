@@ -114,6 +114,18 @@ The nav drops a disabled feature's tab in `visible_tabs`, beside the role and
 integration checks. Manual tab hiding (Settings → Navigation) stays
 presentation only: a hidden tab's routes keep serving.
 
+**Collector tools** (`collector`) is the copy-label feature: three routers in
+`app/routers/labels.py` — the pages (`GET /labels`, `GET /labels/sheet`), the
+API under `/api/labels/` (count, bulk assign) and the per-copy
+`POST /api/items/{item_id}/copies/{copy_id}/assign-code` — every route editor
+then feature. Its domain logic is `app/services/copy_labels.py` (prefix, next
+code, scopes, sheet selection, label presets) and `app/services/code128.py`
+(a pure-Python Code 128 encoder emitting inline SVG `<rect>`s, so the print page
+needs no script under the CSP). Migration 44 starts it off where Valuation is
+off, because a feature with no flag row reads as on. **The prefix is read
+before any write lock**: an invalid stored value logs, and a log under
+`BEGIN IMMEDIATE` waits out the busy timeout and is dropped.
+
 **Trash** is two routers in `app/routers/trash.py`, registered separately: the
 unprefixed page (`GET /trash`, editor) and the API under `/api/trash/` —
 restore an item or copy (editor), delete permanently, **Empty expired** and
@@ -741,6 +753,19 @@ a rejected key, rate limit or transport failure reaches the picker rather
 than being shown as a genuine miss.
 
 ### Scan outcomes
+
+**A scan that resolves to a copy acts on that copy; one that resolves to an
+item acts on the item or reports.** `app/services/barcode_resolve.resolve` is
+the one resolver for every existing-item mode: an exact copy-barcode match
+first (physical tables, so a trashed copy or a copy of a trashed item is still
+found and reported), then the ISBN and UPC reads. Its result is the item row
+plus `copy_id`, `copy_number`, `copy_location_id`, `copy_location_name` and
+`copy_in_trash`, all empty unless a copy barcode matched. Inventory and Move
+relocate that copy alone, Lookup names it, Add and Wishlist report the
+existing item before any provider lookup, and Lend, Return and Quick Rate act
+on the item. No scan status was added for copies: the existing cards carry the
+copy in their `data-scan-detail` text, and a trashed copy of a live item uses
+the `in_trash` card with a Trash link in place of the item-restore form.
 
 The scan-result card is the single source of a scan's outcome, and the
 **client** is the sole owner of the toast that reports it:

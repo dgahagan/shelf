@@ -6,6 +6,48 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.70.0] - 2026-10-20
+
+Shelf could track more than one copy of an item, but a scan could not tell
+the copies apart. An ISBN or UPC names the item, so Inventory and Move acted on
+the item as a whole, and an item with no ISBN or UPC had nothing to scan
+unless you typed a barcode for it by hand. This release gives each physical copy a barcode of its own, prints those
+barcodes on standard label sheets, and makes a scan of a label act on that
+exact copy.
+
+### Added
+
+- **Copy labels.** Give each physical copy its own barcode and print it. The new
+  Labels page (account menu → Library) assigns the next code — `SHF-000001`,
+  `SHF-000002`, … — to every copy without a barcode, to copies of items with no
+  ISBN or UPC, or to the copies at one location, and prints Code 128 labels on
+  Avery 5160 (US Letter) or L7160 (A4) sheets, with a start position for
+  part-used sheets and 300 labels a page. The prefix is a setting
+  (Settings → Library → Copy labels). Hand-typed copy barcodes are left as they
+  are.
+- **Assign code** in a copy's edit panel, each copy's code in the item page's
+  copies list, and **Print labels for this item**.
+- **Scanning a copy label acts on that copy.** Inventory confirms or relocates
+  that copy, Move moves only it, Lookup names it, and Add or Wishlist report the
+  item you already own without a lookup. Lend, Return and Quick Rate act on the
+  item.
+- iPhone and iPad camera scanning reads Code 128, so printed labels scan there
+  too.
+- **Collector tools**, a new optional feature in Settings → Features (on with
+  the Everything profile). On an upgrade it starts off where Valuation is off.
+
+### Changed
+
+- Inventory and Move on a copy barcode now act on that copy instead of the
+  item: Inventory relocates the copy even when the item has several, where an
+  ISBN scan reports "none here" and writes nothing.
+- **A typed copy barcode that is too long to scan at label size prints as
+  text**, with the note "Code too long to print as a barcode". Bars that narrow
+  do not decode, so Shelf does not draw them. Generated codes always fit; a
+  typed code gets bars up to 25 characters on Avery 5160 and 24 on L7160.
+- **Labels match exactly.** A scanner sends `SHF-000001` as printed. Typing
+  `shf-000001` in lower case finds nothing.
+
 ## [0.69.0] - 2026-10-19
 
 For a book Open Library knew, **Find cover** showed one Open Library tile: the
@@ -5171,6 +5213,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.70.0]: https://github.com/dgahagan/shelf/releases/tag/v0.70.0
 [0.69.0]: https://github.com/dgahagan/shelf/releases/tag/v0.69.0
 [0.68.0]: https://github.com/dgahagan/shelf/releases/tag/v0.68.0
 [0.67.0]: https://github.com/dgahagan/shelf/releases/tag/v0.67.0

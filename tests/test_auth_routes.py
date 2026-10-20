@@ -98,7 +98,7 @@ class TestSetupProfile:
                  re.search(r'\schecked\b', t) is not None) for t in tags]
 
     @pytest.mark.parametrize("profile", ["minimal", "standard", "everything"])
-    def test_each_profile_writes_all_fifteen_rows(self, client, profile):
+    def test_each_profile_writes_all_sixteen_rows(self, client, profile):
         from app.auth import get_user_count
         resp = client.post("/setup", data={**self._ACCOUNT, "profile": profile},
                            follow_redirects=False)

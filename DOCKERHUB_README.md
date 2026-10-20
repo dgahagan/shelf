@@ -106,7 +106,7 @@ key material.
 ## Features
 
 ### Scanning and Cataloging
-- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs, on iPhone and iPad as well as Android (EAN-13, EAN-8, UPC-A, UPC-E). Also available from an item's edit form, for correcting a single wrong ISBN
+- **Camera barcode scanning** on mobile — tap to scan ISBNs and UPCs, on iPhone and iPad as well as Android (EAN-13, EAN-8, UPC-A, UPC-E, and Code 128 copy labels). Also available from an item's edit form, for correcting a single wrong ISBN
 - **USB/Bluetooth scanner support** — works with any scanner that sends Enter after the barcode
 - **Photo intake** — bulk-add from a photo of your shelves; a vision model (Anthropic API, any OpenAI-compatible endpoint, or fully local Ollama) reads the spines and you confirm before import. Rows typed DVD or Video Game are looked up on TMDb or IGDB at confirm, on an exact title match
 - **Title search** — search Open Library, TMDb, or IGDB by title when you don't have a barcode
@@ -136,11 +136,11 @@ key material.
 - Video game support with IGDB metadata and 30+ platforms (Atari 2600 to PS5)
 
 ### Collection Management
-- Choose your features — pick Minimal, Standard or Everything in the setup wizard, then turn any optional part (Lending, Sharing, Valuation, Price alerts, the integrations, …) on or off in Settings → Features; data is kept while a feature is off
+- Choose your features — pick Minimal, Standard or Everything in the setup wizard, then turn any optional part (Lending, Sharing, Valuation, Price alerts, Collector tools, the integrations, …) on or off in Settings → Features; data is kept while a feature is off
 - Home overview — totals, what is lent out, missing covers, a media-type breakdown and recent additions, with Browse kept for searching and bulk editing
 - Filter and search by media type, location, status (read, watched, played), ownership, lending status, source (which sync, provider or import an item arrived from), custom tags, and author — every author on an item page is a link to everything by that person, co-authors and translators each counted on their own
 - Shelf Fill — keep one shelf selected and scan item after item onto it; Arrange drags the copies on a shelf into the order they really sit in, or sorts them by title, creator, series, release or issue
-- Physical copies — own two of something and track them apart: add a copy on the item page, give each its own location, condition, acquired date, source, price, provenance and barcode, and remove one when it goes. Removing the copy marked primary promotes the next one and the item's location follows it
+- Physical copies — own two of something and track them apart: add a copy on the item page, give each its own location, condition, acquired date, source, price, provenance and barcode, and remove one when it goes. Removing the copy marked primary promotes the next one and the item's location follows it. With Collector tools, assign each copy a generated barcode, print the codes on Avery label sheets, and scan a label in any Scan mode to act on that exact copy
 - Trash — deleting an item or removing a copy moves it to Trash with its tags, loans, copies and history intact; editors restore, admins empty it, prompted once rows pass a retention window (180 days by default)
 - Reading tracking — want-to-read, reading, and read with start/finish dates, and a default status for a scanning session
 - Series tracking — grouped by series with position numbers, gap detection, and one-click "add missing volumes to wishlist" via Hardcover; series synopses, plus rename/merge/disband from the series card

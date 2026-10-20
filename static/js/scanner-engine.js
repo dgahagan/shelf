@@ -95,7 +95,8 @@
                     formats.EAN_13,
                     formats.UPC_A,
                     formats.EAN_8,
-                    formats.UPC_E
+                    formats.UPC_E,
+                    formats.CODE_128
                 ]);
                 hints.set(HINT_TRY_HARDER, true);
 

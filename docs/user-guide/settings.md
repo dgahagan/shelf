@@ -4,11 +4,11 @@ Open the menu under your username and choose **Settings**. Settings is available
 
 The Settings page is organised into five sections, listed in a sidebar on a wide screen and as a row of buttons above the content on a narrow one:
 
-- **Library** — collection display, lending, locations, **tags**, game platforms, navigation preferences and **Trash** retention.
+- **Library** — collection display, lending, locations, **tags**, game platforms, navigation preferences, **Trash** retention and the **copy label** prefix.
 - **Integrations** — Audiobookshelf, Hardcover, metadata providers, valuation, price alerts and vision services.
 - **Data** — CSV and portable-archive import/export, backups and maintenance tools.
 - **Users** — accounts, roles and access administration.
-- **Features** — turn optional parts of Shelf, such as Lending, Sharing or Hardcover, on or off, one at a time or all at once with a Minimal, Standard or Everything profile. See [Configuration → Features](../configuration.md#features).
+- **Features** — turn optional parts of Shelf, such as Lending, Sharing, Hardcover or Collector tools, on or off, one at a time or all at once with a Minimal, Standard or Everything profile. See [Configuration → Features](../configuration.md#features).
 
 The selected section is remembered in the browser, so returning to Settings opens the area you were working in. The redesign changes navigation and presentation only: existing settings forms, endpoints and stored values keep their current behaviour.
 
@@ -24,6 +24,13 @@ banner across the top of each page — *N items in Trash have been there longer
 than your retention window* — linking to the expired rows, where **Empty
 expired** deletes them permanently. **Dismiss** hides the banner on every
 device until more rows expire. Changing the setting takes effect at once.
+
+## Copy labels
+
+Settings → Library → **Copy labels** sets the prefix generated copy codes use:
+one to eight letters or digits, stored in capitals, `SHF` by default. Codes read
+`PREFIX-000001`. Changing the prefix does not renumber existing labels. The
+card shows only while Collector tools is on. See [Copy labels](labels.md).
 
 ## Price alerts
 

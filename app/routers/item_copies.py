@@ -174,6 +174,26 @@ async def collapsed_block(
         return _render_block(request, db, item_id)
 
 
+def _render_edit_panel(request: Request, db, item_id: int, copy_id: int,
+                       unsaved: dict | None = None):
+    """The edit panel for one live copy, or a 404 refusal; shared with labels.
+
+    `unsaved` overlays values the user typed but has not saved (Assign code
+    re-renders the panel mid-edit), so the re-render does not discard them.
+    """
+    copy = db.execute(
+        "SELECT * FROM copies_live WHERE id = ? AND item_id = ?", (copy_id, item_id),
+    ).fetchone()
+    if copy is None:
+        return _refusal("Copy not found", 404)
+    if unsaved:
+        copy = {**dict(copy), **unsaved}
+    return request.app.state.templates.TemplateResponse(
+        request, "fragments/item_copy_edit.html",
+        {"item_id": item_id, "copy": copy, "locations": _all_locations(db)},
+    )
+
+
 @router.get("/items/{item_id}/copies/{copy_id}/edit")
 async def edit_panel(
     request: Request,
@@ -187,17 +207,7 @@ async def edit_panel(
     minute-per-IP budget, so a field-at-a-time panel would spend it on typing.
     """
     with get_db() as db:
-        copy = db.execute(
-            "SELECT * FROM copies_live WHERE id = ? AND item_id = ?",
-            (copy_id, item_id),
-        ).fetchone()
-        if copy is None:
-            return _refusal("Copy not found", 404)
-        return request.app.state.templates.TemplateResponse(
-            request,
-            "fragments/item_copy_edit.html",
-            {"item_id": item_id, "copy": copy, "locations": _all_locations(db)},
-        )
+        return _render_edit_panel(request, db, item_id, copy_id)
 
 
 @router.post("/items/{item_id}/copies")

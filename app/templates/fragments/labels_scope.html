@@ -1,0 +1,22 @@
+{# The scope selector, shared by the Assign and Print forms on /labels. `prefix`
+   keeps the two forms' ids distinct. labels.js shows the location picker only
+   for the "location" scope. #}
+<fieldset>
+    <legend class="block text-sm font-medium text-shelf-muted mb-2">Which copies</legend>
+    <div class="space-y-1 text-sm">
+        <label class="flex items-center gap-2"><input type="radio" name="scope" value="all" checked> Every copy</label>
+        <label class="flex items-center gap-2"><input type="radio" name="scope" value="no_identifier"> Copies of items with no ISBN or UPC</label>
+        <label class="flex items-center gap-2"><input type="radio" name="scope" value="location"> Copies at one location</label>
+    </div>
+    <div class="mt-2 hidden" data-labels-location>
+        <label for="labels-{{ prefix }}-location" class="sr-only">Location</label>
+        <select id="labels-{{ prefix }}-location" name="location_id" disabled
+                class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text">
+            <option value="">Choose a location…</option>
+            {% for loc in locations %}
+            <option value="{{ loc.id }}">{{ '— ' * loc.depth }}{{ loc.label }}</option>
+            {% endfor %}
+        </select>
+        <p class="text-xs text-shelf-muted mt-1">That location only, not the places inside it.</p>
+    </div>
+</fieldset>

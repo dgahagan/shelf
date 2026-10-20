@@ -8,7 +8,8 @@ plus title search and **Add by hand** for the things a barcode cannot reach.
 
 **Phone or tablet camera.** Tap the camera button. Shelf picks the decoder
 for the device — ZXing on iOS Safari, html5-qrcode everywhere else — and
-reads EAN-13, EAN-8, UPC-A and UPC-E. Requires HTTPS (the default, or a TLS reverse proxy in front) and a
+reads EAN-13, EAN-8, UPC-A, UPC-E and Code 128 copy labels
+([Copy labels](labels.md)). Requires HTTPS (the default, or a TLS reverse proxy in front) and a
 one-time camera permission. Hold steady about 10–15 cm away; the viewfinder
 beeps and fills the field on a read.
 
@@ -68,6 +69,33 @@ separately, and both Inventory and the audit count them:
 A book with only one copy still relocates on a scan, as it always has — there
 is only one object the scan can mean. **Lookup** mode names every room a copy
 is in, for the same reason.
+
+### Scanning a copy label
+
+A [copy label](labels.md) (`SHF-000012`, or any barcode you gave a copy by
+hand) names one copy, so the modes that care about *where a copy is* act on
+that copy:
+
+- **Inventory** confirms the copy if it is at the audited location — *Copy 2
+  confirmed at Loft* — and otherwise moves **that copy** there — *Copy 2 was at
+  Office, updated to Loft* — however many copies the item has. The label
+  settles the question the ISBN cannot.
+- **Move** moves that copy only — *Copy 3: Loft → Office*. Moving the copy
+  marked primary moves the item's location with it; moving any other copy
+  leaves the rest where they are.
+- **Lookup** names the copy and its place — *Copy 2 · Loft*.
+
+**Lend**, **Return** and **Quick Rate** act on the item, as with its ISBN: a
+loan is of the book, not of one physical copy. **Add** and **Wishlist** report
+the item you already own, without any metadata lookup. A label whose copy is in
+Trash shows *Copy N is in Trash* with a link to the Trash page, where the copy
+is restored.
+
+A copy barcode is matched exactly as typed, before Shelf treats a scan as an
+ISBN or UPC. The match is case-sensitive: a scanner sends `SHF-000001` as
+printed, but `shf-000001` typed in lower case finds nothing. One case is not covered: a *hand-typed* copy barcode that looks
+like a 12- or 17-digit legacy book barcode is read as one first. Generated
+codes never have that shape.
 
 ## Default tags
 

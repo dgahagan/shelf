@@ -188,6 +188,13 @@
         {# Status-specific detail line #}
         {% if status == 'restored' %}
         <span data-scan-detail>Restored from Trash</span>
+        {% elif status == 'in_trash' and copy_in_trash %}
+        {# Only the copy is trashed; its item is live, so the item-restore
+           route would answer "already live". Send the user to Trash, where
+           copies are restored one by one. #}
+        <p class="text-xs text-shelf-muted" data-scan-detail>Copy {{ copy_number }} is in Trash &mdash; restore it from the Trash page</p>
+        <a href="/trash" data-testid="scan-copy-in-trash"
+           class="inline-block mt-2 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">Open Trash</a>
         {% elif status == 'in_trash' %}
         <p class="text-xs text-shelf-muted" data-scan-detail>In Trash since {{ (deleted_at or '')[:10] }} &mdash; restore it to lend, move or rate it</p>
         {# A side-trip to a fixed route, so it does not read scan_action

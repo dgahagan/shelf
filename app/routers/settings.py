@@ -242,6 +242,24 @@ async def update_price_alert_settings(
     return RedirectResponse(url="/settings", status_code=303)
 
 
+@router.post("/labels")
+async def update_labels_settings(copy_barcode_prefix: str = Form("")):
+    """Save the copy-label prefix.
+
+    Admin by the router dependency and deliberately not feature-gated, like
+    the price-alert settings: an admin may set the prefix up before turning
+    Collector tools on. Separate from POST /api/settings for the same reason
+    as /trash — a partial form posted there would blank the credentials.
+    """
+    from app.services import copy_labels
+
+    value = copy_labels.normalise_prefix(copy_barcode_prefix)
+    if value is None:
+        return RedirectResponse(url="/settings?labels_prefix_error=invalid", status_code=303)
+    with get_db() as db:
+        _upsert_setting(db, copy_labels.PREFIX_KEY, value)
+    return RedirectResponse(url="/settings", status_code=303)
+
 @router.post("/nav")
 async def update_nav_settings(request: Request):
     """Save which nav tabs are visible.

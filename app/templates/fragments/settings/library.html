@@ -285,6 +285,30 @@
         </form>
     </div>
 
+    <!-- Copy labels -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
+        <h2 class="text-lg font-semibold mb-1">Copy labels</h2>
+        {{ feature_notes.feature_off_note('collector') }}
+        {% if feature_on('collector') %}
+        <p class="text-sm text-shelf-muted mb-4">Generated codes read PREFIX-000001. Changing the prefix does not renumber existing labels.</p>
+        {% if request.query_params.get('labels_prefix_error') %}
+        <p class="text-sm text-shelf-error mb-3" data-testid="labels-prefix-error">The prefix must be 1 to 8 letters or digits.</p>
+        {% endif %}
+        <form method="POST" action="/api/settings/labels" class="space-y-4">
+            <div>
+                <label for="copy_barcode_prefix" class="block text-sm font-medium text-shelf-muted mb-1">Code prefix</label>
+                <input type="text" id="copy_barcode_prefix" name="copy_barcode_prefix" maxlength="8"
+                       pattern="[A-Za-z0-9]{1,8}" required autocomplete="off"
+                       value="{{ settings.get('copy_barcode_prefix') or 'SHF' }}"
+                       class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text font-mono uppercase focus:ring-2 focus:ring-shelf-accent outline-hidden">
+            </div>
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
     <!-- Trash -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-1">Trash</h2>

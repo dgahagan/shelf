@@ -79,17 +79,20 @@
     <span class="text-shelf-muted">Location:</span> <a href="/browse?location_filter={{ item.location_id }}" class="hover:text-shelf-accent transition-colors">{{ item.location_name }}</a>
     {%- elif placed %}
     {%- set copy = copies[0] %}
-    <span class="text-shelf-muted">Location:</span> <a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ single_details }}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
+    <span class="text-shelf-muted">Location:</span> <a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ single_details }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
     {%- elif detailed %}
     {%- set copy = copies[0] %}
-    <span class="text-shelf-muted">No location</span>{{ single_details }}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
+    <span class="text-shelf-muted">No location</span>{{ single_details }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
     {%- elif listed %}
     <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Copies</p>
     <div class="space-y-1">
         {%- for copy in copies %}
-        <div><span class="text-shelf-muted">#{{ copy.copy_number }}</span> {% if copy.location_id %}<a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% else %}<span class="text-shelf-muted">No location</span>{% endif %}{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ detail_suffix(copy) }}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}</div>
+        <div><span class="text-shelf-muted">#{{ copy.copy_number }}</span> {% if copy.location_id %}<a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% else %}<span class="text-shelf-muted">No location</span>{% endif %}{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ detail_suffix(copy) }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}</div>
         {%- endfor %}
     </div>
+    {%- endif %}
+    {%- if may_edit and copies and feature_on('collector') %}
+    <p class="mt-1"><a href="/labels/sheet?item_id={{ item_id }}" data-testid="print-copy-labels" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Print labels for this item</a></p>
     {%- endif %}
     {%- if may_edit %}
     <form hx-post="/api/items/{{ item_id }}/copies"

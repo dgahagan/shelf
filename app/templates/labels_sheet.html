@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Label sheet — Shelf{% endblock %}
+{% block head %}
+{# Millimetre geometry from the preset (copy_labels.PRESETS). In print only
+   the sheets show, pinned to the page origin with no page margin, so the
+   labels land where the stock's die-cuts are. Print at 100% scale. #}
+<style>
+    @page { size: {{ stock.page }}; margin: 0; }
+    .label-sheet { position: relative; width: {{ '%.3f' % (215.9 if stock.page == 'letter' else 210) }}mm;
+                   height: {{ '%.3f' % (279.4 if stock.page == 'letter' else 297) }}mm;
+                   background: #fff; color: #000; box-sizing: border-box; }
+    .label-cell { position: absolute; width: {{ stock.label_w }}mm; height: {{ stock.label_h }}mm;
+                  padding: {{ padding }}mm; box-sizing: border-box; overflow: hidden;
+                  display: flex; flex-direction: column; align-items: center; justify-content: center;
+                  text-align: center; font-family: sans-serif; }
+    .label-cell svg { display: block; max-width: 100%; }
+    .label-code { font-family: monospace; font-size: 8pt; line-height: 1.1; margin-top: 0.5mm;
+                  max-width: 100%; overflow-wrap: anywhere; }
+    .label-title { font-size: 7pt; line-height: 1.1; max-width: 100%; white-space: nowrap; overflow: hidden; }
+    .label-sheet + .label-sheet { break-before: page; }
+    @media screen {
+        .label-sheet { outline: 1px solid #ccc; margin-bottom: 1rem; }
+        .label-cell { outline: 1px dashed #ddd; }
+    }
+    @media print {
+        body * { visibility: hidden; }
+        .label-print, .label-print * { visibility: visible; }
+        .label-print { position: absolute; left: 0; top: 0; }
+        .label-sheet { outline: none; margin: 0; }
+        nav, .no-print { display: none !important; }
+    }
+</style>
+<script src="/static/js/labels.js" defer></script>
+{% endblock %}
+{% block content %}
+<div class="no-print max-w-5xl mx-auto mb-4 space-y-3">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-bold">Label sheet</h1>
+            <p class="text-sm text-shelf-muted" data-testid="labels-sheet-summary">
+                {% if count %}Labels {{ offset + 1 }}&ndash;{{ offset + count }} &middot; {{ stock.label }}{% else %}{{ stock.label }}{% endif %}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            {% if prev_url %}<a href="{{ prev_url }}" data-testid="labels-sheet-prev" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">&larr; Previous</a>{% endif %}
+            {% if next_url %}<a href="{{ next_url }}" data-testid="labels-sheet-next" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Next &rarr;</a>{% endif %}
+            {% if count %}<button type="button" data-print-page class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">Print</button>{% endif %}
+            <a href="/labels" class="px-3 py-2 text-sm text-shelf-muted hover:text-shelf-text">Back to Labels</a>
+        </div>
+    </div>
+    {% if next_url %}
+    <p class="text-xs text-shelf-muted">One page holds at most 300 labels. Print this one, then use Next for the rest.</p>
+    {% endif %}
+    <p class="text-xs text-shelf-muted">Print at 100% scale, with no fit-to-page and no headers or footers.</p>
+</div>
+{% if sheets %}
+<div class="overflow-x-auto"><div class="label-print">
+    {% for sheet in sheets %}
+    <div class="label-sheet" data-sheet>
+        {% for cell in sheet %}{% set i = loop.index0 %}
+        <div class="label-cell" style="left: {{ '%.3f' % (stock.margin_left + (i % stock.cols) * stock.pitch_x) }}mm; top: {{ '%.3f' % (stock.margin_top + (i // stock.cols) * stock.pitch_y) }}mm;"{% if cell %} data-label="{{ cell.code }}"{% else %} data-label-blank{% endif %}>
+            {% if cell %}
+            {% if cell.svg %}{{ cell.svg|safe }}{% else %}<span class="label-title" data-label-note>{{ cell.note }}</span>{% endif %}
+            <span class="label-code">{{ cell.code }}</span>
+            <span class="label-title">{{ cell.title }}{% if cell.copy_number > 1 %} &middot; copy {{ cell.copy_number }}{% endif %}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div></div>
+{% else %}
+<p class="max-w-5xl mx-auto text-sm text-shelf-muted" data-testid="labels-sheet-empty">No labels match this selection.</p>
+{% endif %}
+{% endblock %}

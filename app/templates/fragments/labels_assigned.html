@@ -1,0 +1,7 @@
+{% if count %}
+<p class="text-sm text-shelf-success" data-testid="labels-assigned">{{ count }} code{{ '' if count == 1 else 's' }} assigned, {{ first }}{% if last != first %} to {{ last }}{% endif %}.</p>
+<a href="{{ sheet_url }}" data-testid="labels-assigned-sheet"
+   class="inline-block mt-2 px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Print these labels</a>
+{% else %}
+<p class="text-sm text-shelf-muted" data-testid="labels-assigned">Nothing to assign &mdash; every copy here has a barcode.</p>
+{% endif %}
