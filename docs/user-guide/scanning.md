@@ -34,7 +34,7 @@ device last left in one of them opens in **Add**.
 | **Lend** | Pick a borrower first; each scan checks that item out to them. Optional due date |
 | **Return** | Each scan checks the item back in, whoever had it |
 | **Move** | Pick a location first; each scan relocates the item there. To work along a shelf putting things away in order, use [Shelf Fill](shelf-fill.md) instead — it keeps the shelf selected and numbers each scan's position |
-| **Inventory** | Pick a location; scan everything physically present; then **Check for missing** lists items Shelf thinks are there but you didn't scan. Counts *copies*, not records — see [Auditing a shelf with more than one copy](#auditing-a-shelf-with-more-than-one-copy) |
+| **Inventory** | Pick a location and scan what is physically there: each scan confirms the item, or moves it here. **Start audit** first to get a report — scans then count from any device, survive a reload, and **Finish audit** lists what was found, moved, seen elsewhere, on loan, missing and unexpected. See [Audits](audits.md). Counts *copies*, not records — see [Auditing a shelf with more than one copy](#auditing-a-shelf-with-more-than-one-copy) |
 | **Lookup** | Read-only: tells you whether the item is in your library (and where, and whether it's lent out). Changes nothing |
 | **Quick Rate** | Marks the item finished with today's date — Watched for a disc, Played for a game, Read otherwise |
 
@@ -45,7 +45,8 @@ The Scan tab is for editors and admins; viewers don't see it.
 **Lend, Return, Move, Inventory, Lookup and Quick Rate never act on an item in
 [Trash](items.md#trash).** The card says *In Trash since* the date it was
 deleted, with an amber **in Trash** badge, and nothing else happens: no loan,
-no move, no rating, no inventory mark. A **Restore** button on the card brings
+no move, no rating, no inventory mark (an open audit lists the scan under
+*Unexpected*). A **Restore** button on the card brings
 the item back, and the card turns into *Restored from Trash*; scan it again to
 lend, move or rate it. Both scans appear in Recent scans.
 
@@ -53,14 +54,18 @@ lend, move or rate it. Both scans appear in Recent scans.
 
 A book can exist as two physical objects — you bought a second, or you merged
 two duplicate records that were filed in different rooms. Shelf tracks those
-separately, and both Inventory and the audit count them:
+separately, and both Inventory and the [audit report](audits.md) count them:
 
 - **The audit expects an item on a shelf if any of its copies is there**, not
   only the one Shelf considers primary. A copy in the Loft is expected in the
   Loft even though the record also has a copy in the Office.
 - **Two copies of one book on the same shelf are one line with a count**
-  ("(2 copies)"). A barcode cannot tell two identical books apart, so neither
-  can the audit — scanning either one marks the book accounted for.
+  ("(2 copies)"). An ISBN cannot tell two identical books apart, so neither
+  can the audit — scanning either one by its ISBN marks the book accounted for
+  on that shelf.
+- **A scanned [copy label](#scanning-a-copy-label) confirms that copy only.**
+  Scan copy 2's label and copy 2 is *Found*; copy 1 on the same shelf stays
+  *Missing* until its own label (or the book's ISBN) is scanned.
 - **Scanning a multi-copy book at a shelf where none of its copies live
   reports rather than moves.** You get "Copies at Office and Loft; none here."
   and nothing is changed. The barcode says *which book*, never *which copy*, so
@@ -84,6 +89,10 @@ that copy:
   marked primary moves the item's location with it; moving any other copy
   leaves the rest where they are.
 - **Lookup** names the copy and its place — *Copy 2 · Loft*.
+
+An Inventory or Move scan of a label also clears that copy's
+[missing mark](audits.md#the-missing-mark), if it had one — the copy is in your
+hand.
 
 **Lend**, **Return** and **Quick Rate** act on the item, as with its ISBN: a
 loan is of the book, not of one physical copy. **Add** and **Wishlist** report

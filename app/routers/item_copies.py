@@ -355,3 +355,21 @@ async def remove_copy(
 
         item_copies.trash_copy(db, copy_id)
         return _render_block(request, db, item_id)
+
+
+@router.post("/items/{item_id}/copies/{copy_id}/found")
+async def copy_found(
+    request: Request,
+    item_id: int,
+    copy_id: int,
+    _=Depends(require_role("editor")),
+):
+    """Clear a copy's missing mark (core, not module-gated)."""
+    with get_db() as db:
+        db.execute("BEGIN IMMEDIATE")
+        if not db.execute("SELECT 1 FROM copies_live WHERE id = ? AND item_id = ?",
+                          (copy_id, item_id)).fetchone():
+            db.rollback()
+            return _refusal("Copy not found", 404)
+        item_copies.clear_missing(db, copy_id)
+        return _render_block(request, db, item_id)

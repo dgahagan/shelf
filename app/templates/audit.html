@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Audit: {{ session.label }} — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <p class="text-sm"><a href="/audits" class="text-shelf-accent2 hover:underline">&larr; Audits</a></p>
+        <h1 class="text-2xl font-bold mt-1" data-testid="audit-heading">Audit: {{ session.label }}</h1>
+        <p class="text-sm text-shelf-muted mt-1">
+            Started {{ session.started_at }}{% if session.finished_at %}, finished {{ session.finished_at }}{% endif %}
+            &middot; {{ report.scans }} scan{{ '' if report.scans == 1 else 's' }} recorded.
+            {% if session.finished_at %}Read against the collection as it stands now.{% else %}Still open &mdash; scans from any device land here.{% endif %}
+        </p>
+        {% if session.is_open %}
+        <button type="button" data-testid="audit-finish"
+                hx-post="/api/audits/{{ session.id }}/finish" hx-swap="none"
+                class="mt-3 px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+            Finish audit
+        </button>
+        {% endif %}
+        {% if user and user.role == 'admin' %}
+        <button type="button" data-testid="audit-delete"
+                hx-delete="/api/audits/{{ session.id }}" hx-swap="none"
+                hx-confirm="Delete this audit? Its scans are removed; the copies it marked missing stay marked."
+                class="mt-3 ml-2 px-3 py-1.5 border border-shelf-error text-shelf-error rounded-lg text-sm hover:bg-shelf-hover transition-colors">
+            Delete audit
+        </button>
+        {% endif %}
+    </div>
+
+    <div id="audit-notes" class="mb-4">
+        {% set notes_value = session.notes or '' %}
+        {% include "fragments/audit_notes.html" %}
+    </div>
+
+    <div id="audit-report">
+        {% include "fragments/audit_report.html" %}
+    </div>
+</div>
+{% endblock %}

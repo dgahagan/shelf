@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Audits — Shelf{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold">Audits</h1>
+        <p class="text-sm text-shelf-muted mt-1">
+            Shelf audits, newest first. Start one from Scan &rarr; Inventory; each report reads the collection as it stands now.
+        </p>
+    </div>
+
+    {% if not sessions %}
+    <p class="text-sm text-shelf-muted" data-testid="audits-empty">No audits yet &mdash; start one from Scan &rarr; Inventory.</p>
+    {% else %}
+    <div class="bg-shelf-card rounded-xl border border-shelf-border divide-y divide-shelf-border" data-testid="audits-list">
+        {% for s in sessions %}
+        <a href="/audits/{{ s.id }}" class="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-4 py-3 hover:bg-shelf-hover" data-testid="audit-row-{{ s.id }}">
+            <span class="font-medium">{{ s.label }}</span>
+            <span class="text-xs text-shelf-muted">started {{ s.started_at }}</span>
+            {% if s.finished_at %}
+            <span class="text-xs text-shelf-muted">finished {{ s.finished_at }} &middot; {{ s.minutes }} min</span>
+            {% else %}
+            <span class="text-xs px-2 py-0.5 rounded-full bg-shelf-accent/20 text-shelf-accent2">open</span>
+            {% endif %}
+            <span class="text-xs text-shelf-muted ml-auto">{{ s.scans }} scan{{ '' if s.scans == 1 else 's' }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

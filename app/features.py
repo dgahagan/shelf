@@ -69,6 +69,7 @@ class Feature:
 
 
 _CONFIG = "configuration: an admin can set an integration up before turning it on"
+_AUDIT_STRIP = "the Scan-page audit strip works with Collector tools off — Inventory mode is core"
 
 
 # --- Impact probes: what stops happening, for people other than the admin ---
@@ -310,9 +311,14 @@ FEATURES: dict[str, Feature] = {
         label="Collector tools",
         description="Copy barcode labels, shelf audits and the duplicate finder.",
         profile="everything",
-        nav_tabs=("labels",),
+        nav_tabs=("labels", "audits"),
         entry_path="/labels",
-        modules=("app.routers.labels",),
+        modules=("app.routers.labels", "app.routers.audits"),
+        ungated={
+            ("POST", "/api/audits"): _AUDIT_STRIP,
+            ("GET", "/api/audits/summary"): _AUDIT_STRIP,
+            ("POST", "/api/audits/{audit_id}/finish"): _AUDIT_STRIP,
+        },
     ),
 }
 

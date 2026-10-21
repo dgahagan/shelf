@@ -46,6 +46,8 @@ NAV_TABS = [
      "menu": "account", "heading": "Library"},
     {"key": "labels", "label": "Labels", "path": "/labels", "roles": ("admin", "editor"),
      "menu": "account", "heading": "Library"},
+    {"key": "audits", "label": "Audits", "path": "/audits", "roles": ("admin", "editor"),
+     "menu": "account", "heading": "Library"},
     {"key": "settings", "label": "Settings", "path": "/settings", "roles": ("admin",),
      "menu": "account", "heading": "Administration"},
     {"key": "logs", "label": "Logs", "path": "/logs", "roles": ("admin",),

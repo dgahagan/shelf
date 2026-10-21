@@ -6,6 +6,7 @@
 {% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="scanPage" data-off-modes="{{ off_scan_modes }}"
+     {% if seed_mode %}data-seed-mode="{{ seed_mode }}"{% endif %}{% if seed_code %} data-seed-code="{{ seed_code }}"{% endif %}
      data-status-labels='{{ status_label_sets | tojson }}'>
 
     <!-- Mode Switcher -->
@@ -24,6 +25,12 @@
     <!-- Mode heading + description -->
     <h1 class="text-2xl font-bold mb-1" x-text="modeConfig.heading"></h1>
     <p class="text-sm text-shelf-muted mb-6" x-text="modeConfig.description"></p>
+
+    <!-- Inventory: the audit strip. Outside the scan form, so it adds no field
+         to it (G116). scan.js fills it with htmx.ajax and syncs auditId from
+         the fragment's data-audit-id on htmx:afterSwap (G6). -->
+    <div id="audit-strip" x-show="mode === 'inventory'" style="display:none"
+         class="bg-shelf-card rounded-xl border border-shelf-border p-4 mb-6" data-testid="audit-strip"></div>
 
     <!-- Camera Scanner -->
     <div class="mb-6">
@@ -88,6 +95,10 @@
            the panel lives in its own x-data scope, and a cross-scope Alpine
            read under the CSP build fails silently. #}
         <input type="hidden" id="scan-mode" name="mode" :value="mode">
+        {# The open audit, if any. The camera path builds its FormData from this
+           form, so one input covers both paths; the server reads it only in
+           Inventory mode. #}
+        <input type="hidden" id="audit-id" name="audit_id" :value="auditId">
         {# A default button, visually hidden: Enter in the barcode field submits a
            form implicitly only while it has a single text field or has a
            submit button. The Default tags field is a second text field, so
@@ -264,15 +275,6 @@
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Inventory: Show Missing button -->
-    <div x-show="mode === 'inventory' && inventoryScannedIds.length > 0" x-transition class="mb-6" style="display:none">
-        <button @click="showMissing()" type="button"
-                class="px-4 py-2 bg-shelf-warning/20 text-shelf-warning border border-shelf-warning/40 rounded-lg text-sm hover:bg-shelf-warning/30 transition-colors">
-            Show Missing Items (<span x-text="inventoryScannedIds.length"></span> scanned)
-        </button>
-        <div id="inventory-missing" class="mt-4 space-y-3"></div>
     </div>
 
     <!-- Scan Results -->

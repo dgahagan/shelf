@@ -373,9 +373,11 @@ class TestLegacyBookExistingModes:
             "SELECT COUNT(*) FROM checkouts WHERE item_id = ?", (item_id,)
         ).fetchone()[0] == 0
 
-    def test_inventory_confirmation_marks_the_item_for_camera_accounting(
+    def test_a_legacy_confirmed_inventory_scan_in_an_open_audit_writes_one_entry(
         self, admin_client, db
     ):
+        from app.services import audits
+
         location = _insert_location(db, "Shelf A")
         item_id = _insert_item(
             db,
@@ -383,6 +385,7 @@ class TestLegacyBookExistingModes:
             isbn=HOUND_ISBN13,
             location_id=location,
         )
+        audit_id = audits.create_session(db, scope="location", location_id=location)
         db.commit()
 
         async def lookup(isbn, hc_token, client, *, google_api_key=None):
@@ -402,6 +405,7 @@ class TestLegacyBookExistingModes:
                     "isbn": HOUND_UPC5,
                     "mode": "inventory",
                     "location_id": location,
+                    "audit_id": audit_id,
                 },
             )
             assert "Which book is this?" in ambiguous.text
@@ -413,14 +417,17 @@ class TestLegacyBookExistingModes:
                     "isbn": HOUND_UPC5,
                     "mode": "inventory",
                     "location_id": location,
+                    "audit_id": audit_id,
                     "legacy_confirm_isbn13": HOUND_ISBN13,
                 },
             )
 
         assert confirmed.status_code == 200
         assert "Confirmed at Shelf A" in confirmed.text
-        assert 'data-scan-inventory-confirmed="true"' in confirmed.text
         assert f'href="/item/{item_id}"' in confirmed.text
+        assert [tuple(r) for r in db.execute(
+            "SELECT session_id, item_id, result FROM audit_entries"
+        ).fetchall()] == [(audit_id, item_id, "confirmed")]
 
 
 class TestBareLegacyUpc:

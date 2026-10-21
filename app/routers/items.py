@@ -215,20 +215,26 @@ async def scan_isbn(
     legacy_confirm_isbn13: str = Form(""),
     legacy_supplement: str = Form(""),
     tags: str = Form(""), reading_status: str = Form(""),
+    audit_id: str = Form(""),
     _=Depends(require_role("editor")),
 ):
     """Thin wrapper: whatever `_scan_isbn_inner` files takes the default tags and reading status in its own transaction (G118)."""
+    # Raw text, parsed only in Inventory mode: every mode submits the Scan
+    # page's persisted value, and an int field would 422 on a corrupt one
+    # before the handler could ignore it.
+    raw_audit = audit_id.strip() if mode == "inventory" else ""
+    audit_id = int(raw_audit) if raw_audit.isascii() and raw_audit.isdigit() and int(raw_audit) > 0 else None
     try:
         with tags_svc.default_tags(tags), item_write.default_reading_status(reading_status):
             return await _scan_isbn_inner(request, isbn, media_type, location_id, platform, mode,
-                                          borrower_id, legacy_confirm_isbn13, legacy_supplement, tags, reading_status)
+                                          borrower_id, legacy_confirm_isbn13, legacy_supplement, tags, reading_status, audit_id)
     except item_write.InvalidReadingStatus as e:
         return request.app.state.templates.TemplateResponse(
             request, "fragments/scan_result.html", {"status": "error", "isbn": isbn, "message": str(e)})
 
 
 async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mode, borrower_id,
-                            legacy_confirm_isbn13, legacy_supplement, tags, reading_status):
+                            legacy_confirm_isbn13, legacy_supplement, tags, reading_status, audit_id=None):
     """Scan a barcode: mode-aware dispatch for add, lend, return, move, inventory, lookup, quick_rate."""
     templates = request.app.state.templates
     raw = isbn.strip()
@@ -252,7 +258,6 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
     legacy_source = "manual"
     legacy_hc_ids = {}
     legacy_cascade = None
-    legacy_confirmed = False
 
     if legacy_candidates:
         legacy_isbn13 = _get_confirmed_legacy_mapping(raw)
@@ -301,6 +306,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                         "borrower_id": borrower_id,
                         "tags": tags,
                         "reading_status": reading_status,
+                        "audit_id": audit_id if mode == "inventory" else None,
                     },
                 )
 
@@ -332,7 +338,6 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                 legacy_source = selected.source
                 legacy_hc_ids = selected.hc_ids
                 legacy_cascade = selected.cascade
-                legacy_confirmed = True
                 logger.info(
                     "Learned legacy UPC+5 mapping %s -> %s",
                     legacy_book.mapping_key(raw),
@@ -361,7 +366,9 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
         lookup_barcode = legacy_isbn13 if legacy_candidates else raw
         item = items_scan_modes._find_item_by_barcode(lookup_barcode)
         if item and item.get("deleted_at"):  # in Trash: report, never act
-            return items_scan_modes._scan_mode_in_trash(request, templates, item, raw, mode)
+            return items_scan_modes._scan_mode_in_trash(
+                request, templates, item, raw, mode, location_id=location_id,
+                audit_id=audit_id if mode == "inventory" else None)
         # inventory mode handles not-found specially
         if mode == "inventory":
             return scan_inventory._scan_mode_inventory(
@@ -370,7 +377,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                 item,
                 location_id,
                 raw,
-                inventory_confirmation=legacy_confirmed,
+                audit_id=audit_id,
             )
         if not item:
             items_common._log_scan(raw, "", "not_owned", None, mode)
@@ -1503,54 +1510,6 @@ async def recent_scans(
         ).fetchall()
     return templates.TemplateResponse(
         request, "fragments/recent_scans.html", {"recent_scans": scans},
-    )
-
-
-@router.post("/inventory/missing")
-async def inventory_missing(
-    request: Request,
-    location_id: int = Form(...),
-    scanned_ids: str = Form(""),
-    _=Depends(require_role("editor")),
-):
-    """Find items expected at a location but not scanned during inventory audit."""
-    templates = request.app.state.templates
-    scanned = set()
-    if scanned_ids.strip():
-        scanned = {int(x) for x in scanned_ids.split(",") if x.strip().isdigit()}
-
-    with get_db() as db:
-        loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
-        loc_name = loc["name"] if loc else "Unknown"
-        # item_copies is the source of truth for what is expected on a shelf —
-        # a copy there is expected whether or not it is the primary (issue
-        # #116), and a copy elsewhere is not expected here even when the
-        # items.location_id seam still says it is.
-        #
-        # The fallback arm is for items with no copy row at all, which is a
-        # real state and not only a test artefact: migration 26 and
-        # backfill_legacy_locations both create copies for `owned = 1` rows
-        # only, deliberately, so an upgraded database's *wishlist* item with
-        # a location has none. The audit has never filtered on `owned`, so an
-        # inner join alone would silently drop those rows from every audit.
-        # For an item with no copies the seam is the only answer there is.
-        items = db.execute(
-            "SELECT i.id, i.title, i.authors, i.cover_path, i.media_type, COUNT(c.id) AS copy_count "
-            "FROM items_live i LEFT JOIN copies_live c "
-            "  ON c.item_id = i.id AND c.location_id = ? "
-            "WHERE c.id IS NOT NULL "
-            "   OR (i.location_id = ? "
-            "       AND NOT EXISTS (SELECT 1 FROM copies_live c2 WHERE c2.item_id = i.id)) "
-            "GROUP BY i.id ORDER BY i.title",
-            (location_id, location_id),
-        ).fetchall()
-
-    missing = [dict(i) for i in items if i["id"] not in scanned]
-
-    return templates.TemplateResponse(
-        request,
-        "fragments/inventory_missing.html",
-        {"missing": missing, "loc_name": loc_name},
     )
 
 

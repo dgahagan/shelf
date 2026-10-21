@@ -178,6 +178,8 @@ async def scan(
     request: Request,
     add: str = "",
     from_: str = Query("", alias="from"),
+    mode: str = "",
+    code: str = "",
     _=Depends(require_role("editor")),
 ):
     """The scan surface. `?add=manual` opens the manual entry panel (#120),
@@ -194,6 +196,10 @@ async def scan(
         candidate = int(from_)
     except (TypeError, ValueError):
         candidate = 0
+
+    # An audit report's Add link seeds Add mode and the code. Honoured only
+    # as a pair: mode exactly "add" and a code of at most 64 characters.
+    seed_mode, seed_code = ("add", code) if mode == "add" and len(code) <= 64 else ("", "")
 
     with get_db() as db:
         locations = db.execute(
@@ -225,6 +231,7 @@ async def scan(
          "locations": locations, "borrowers": borrowers,
          "manual_open": add == "manual", "manual_prefill": manual_prefill,
          "off_scan_modes": features.disabled_scan_modes(),
+         "seed_mode": seed_mode, "seed_code": seed_code,
          "status_label_sets": _status_label_sets()},
     )
 

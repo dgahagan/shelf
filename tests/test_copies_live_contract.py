@@ -150,12 +150,22 @@ def test_shelf_fill_summary_excludes_trashed_copy(admin_client, trashed):
     assert "Empty shelf" in resp.text
 
 
-def test_inventory_missing_excludes_trashed_copy(admin_client, trashed):
-    resp = admin_client.post("/api/inventory/missing", data={
-        "location_id": str(trashed["loc_garage"]), "scanned_ids": "",
-    })
-    assert "Pin Item A Two Copies" not in resp.text
-    assert "accounted for" in resp.text
+def _audit_missing(client, location_id):
+    """The Missing section of a fresh audit of `location_id`, started and
+    read through the routes (the strip's start, then the report page)."""
+    import re
+
+    start = client.post("/api/audits", data={"scope": "location",
+                                              "location_id": str(location_id)})
+    audit_id = re.search(r'data-audit-id="(\d+)"', start.text).group(1)
+    html = client.get(f"/audits/{audit_id}").text
+    return html.split('data-audit-section="missing"', 1)[1].split("</section>", 1)[0]
+
+
+def test_audit_report_excludes_trashed_copy(admin_client, trashed):
+    missing = _audit_missing(admin_client, trashed["loc_garage"])
+    assert "Pin Item A Two Copies" not in missing
+    assert ' data-audit-count="0"' in missing
 
 
 def test_cover_review_location_name_follows_the_live_copy_not_the_trashed_one(db, trashed):
@@ -301,19 +311,14 @@ def test_merge_reparents_past_a_trashed_secondary_copy_number(admin_client, db, 
 # 6. Zero-copy fallback (G86)
 # ---------------------------------------------------------------------------
 
-def test_inventory_missing_falls_back_to_items_location_when_only_copy_trashed(
+def test_audit_report_falls_back_to_items_location_when_only_copy_trashed(
     admin_client, trashed
 ):
-    at_the_old_copy_location = admin_client.post("/api/inventory/missing", data={
-        "location_id": str(trashed["loc_boathouse"]), "scanned_ids": "",
-    })
-    assert "Pin Item C Zero Copy Fallback" not in at_the_old_copy_location.text
+    at_the_old_copy_location = _audit_missing(admin_client, trashed["loc_boathouse"])
+    assert "Pin Item C Zero Copy Fallback" not in at_the_old_copy_location
 
-    at_the_seam_location = admin_client.post("/api/inventory/missing", data={
-        "location_id": str(trashed["loc_sunroom"]), "scanned_ids": "",
-    })
-    assert "Pin Item C Zero Copy Fallback" in at_the_seam_location.text
-    assert "missing" in at_the_seam_location.text
+    at_the_seam_location = _audit_missing(admin_client, trashed["loc_sunroom"])
+    assert "Pin Item C Zero Copy Fallback" in at_the_seam_location
 
 
 def test_cover_review_falls_back_to_items_location_when_only_copy_trashed(db, trashed):

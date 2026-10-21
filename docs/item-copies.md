@@ -117,9 +117,10 @@ and the per-copy barcode Shelf Fill scans, had no producer at all.
 Since 0.38.0 (upstream issue #116) these read `item_copies` directly:
 
 - the item page, which lists every copy with its location and shelf position;
-- the shelf audit (`/api/inventory/missing`), which expects an item on a shelf
-  if *any* of its copies is there, primary or not, and shows a count when two
-  copies of one item share a shelf;
+- the [audit report](user-guide/audits.md) (`app/services/audits.py`), which
+  expects a copy on the shelf it is filed at, primary or not, falls back to the
+  item's location only for an item with no copy record, and shows a count when
+  two copies of one item share a shelf and an ISBN confirmed them;
 - Scan's **Inventory** mode, which confirms on any copy at the audited shelf
   and, when an item has two or more copies and none is here, reports where they
   are instead of moving one;

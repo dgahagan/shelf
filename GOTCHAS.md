@@ -551,6 +551,13 @@ PY
   blocks with a decision between them; the cost of the fourth site was the same
   idiom a fourth time, and the cost of finding it late would have been a second
   plan.
+  **Fifth instance, found and not fixed:** Shelf Fill's scan route
+  (`shelf_fill_scan`, `app/routers/shelf_fill.py`) reads the location and the
+  labelled copy and places it inside a bare `with get_db()` — no `BEGIN
+  IMMEDIATE`. Plan `audit-sessions` T4 (`b4d3068`, 2026-10-20) added a
+  missing-mark clear there and deliberately did not widen the task; the clear
+  re-reads `copies_live`, so the worst race clears a mark late. Fix with the
+  route's transaction discipline, not per call.
   **The second thing that instance taught: no test had to fail.** None of the
   three sibling routes had *any* duplicate-outcome test — only rejection-case
   boundary tests — so the guards could have been moved anywhere, or broken
@@ -3141,8 +3148,10 @@ for path, cap in re.findall(r'\"([^\"]+\.(?:py|html))\": \((\d+),', src):
 - **Also `app/routers/items.py`:** 1571/1600 as of plan
   `scan-977-periodicals` (2026-10-15). It reached 1596, then
   `_find_item_by_barcode` was extracted (−30), and the 977 dispatch added +5.
-  29 lines are left. `items_scan_modes.py` now holds `_find_item_by_barcode`,
-  at 385/400.
+  29 lines are left. `items_scan_modes.py` now holds `_find_item_by_barcode`.
+  Plan `audit-sessions` (2026-10-21, `a60780e`) deleted `/api/inventory/missing`
+  from `items.py`: **1527/1600**. `items_scan_modes.py` 317/400,
+  `scan_inventory.py` 212/300, `routers/item_copies.py` 375/400 at that point.
 - **Status:** documented. The cap is already mechanically enforced — what is
   missing is the *warning* before the budget is spent, not the failure after.
   A lint that fails at 95% of a cap would move the signal to the change that
@@ -4179,10 +4188,15 @@ python -m pytest "tests/test_archive.py::TestArchiveCopiesImport::test_a_rejecte
 - **Verify:** the audit and the scan agree about the same shelf:
 
 ```bash
-grep -n "NOT EXISTS" app/routers/items.py          # the audit's fallback
-grep -n "if copies" app/routers/items_scan_modes.py # the scan's
-python -m pytest tests/test_scan_modes.py -q
+grep -n "NOT EXISTS" app/services/audits.py         # the audit's expected set
+grep -n "if copies" app/routers/scan_inventory.py   # the Inventory scan's "here"
+python -m pytest tests/test_scan_modes.py tests/test_audits_service.py -q
 ```
+
+  Since plan `audit-sessions` (2026-10-21) the audit's query lives in
+  `audits.expected_rows` (moved verbatim from the removed
+  `/api/inventory/missing`), widened to one row per copy; the copy-less row has
+  `copy_id` NULL.
 
 - **Status:** documented. **Retire when `items.location_id` is retired** — the
   entry exists only because the seam does. Lint candidate, weakly: a query
@@ -4618,6 +4632,15 @@ stat -c '%s %y' app/services/item_write.py app/services/__pycache__/item_write.c
 python -m pytest tests/test_lists_migration.py -q -k "predates or create_and_seed"
 ```
 
+- **A new table with no seed rows: only *deleting* the numbered entry reds.**
+  Replacing a numbered CREATE's SQL with `SELECT 1` leaves the upgrade test
+  green, because `executescript(MIGRATION_TABLES)` then creates the table from
+  its copy and there is no seed for the fixture to miss. The mutation that
+  catches anything is removing the entry (the `schema_version` row is gone);
+  the numbered body is checked only by `test_schema_parity` against its copy.
+  Plan the mutation instruction accordingly — "break 45's SQL, confirm red"
+  is unsatisfiable for a seedless table. Measured `d1d691d` (2026-10-20, plan
+  `audit-sessions` T1).
 - **Status:** documented. Not a lint candidate — whether a fixture is "pre-N"
   is a judgment about intent, not a grep.
 
@@ -6201,6 +6224,64 @@ python -m pytest tests/test_labels_page.py -q -k Continuation
 
 - **Status:** documented. Not a lint candidate — whether a page's cap is
   reachable is a property of its links, not its route.
+
+## G145 — When an HTMX action's refusal must be seen
+
+- **Rule:** htmx never swaps a 4xx body. A refusal the user can correct
+  answers **200** with the fragment carrying an inline error; a refusal that
+  keeps its 4xx (not found, gone) sets `HX-Trigger` with a toast —
+  `item_copies._refusal` or `items_common._toast_header(message, "error")` —
+  and its body is never claimed to render. Pin the visible channel in the
+  route test: the inline error in a 200 body, or the exact `HX-Trigger` header
+  on the 4xx. A test asserting a 4xx body's text passes over an invisible
+  refusal.
+- **Why:** htmx's default `responseHandling` maps `[45]..` to `swap: false`.
+  The fragment is correct, the test reading it is green, and the user sees a
+  click that did nothing. `HX-Trigger` is read before that rule is consulted,
+  so the toast fires on a refusal; `HX-Trigger-After-Swap` would not, since no
+  swap happens.
+- **Evidence:** codex plan review of `audit-sessions` (R5, 2026-10-20): the
+  plan specified 400/404 refusal fragments for the audit start, notes and
+  report actions; rev 2 moved them to 200-inline / 404-toast, pinned in
+  `tests/test_audits_routes.py` and `tests/test_audits_actions.py`. The rule
+  was already stated in `app/routers/item_copies.py`'s `_refusal` docstring,
+  where a plan author cannot be expected to find it.
+- **Verify:** no `beforeSwap`/`responseHandling` override exists, so the
+  default still applies —
+
+```bash
+grep -rn "responseHandling\|htmx:beforeSwap" static/js/ app/templates/ | grep -v vendor
+```
+
+- **Status:** documented. Lint candidate, weakly: an `HTMLResponse(...,
+  status_code=4xx)` in a router with no `HX-Trigger` beside it.
+
+## G146 — When a NULL foreign key would carry domain meaning
+
+- **Rule:** never let `NULL` in a column with `ON DELETE SET NULL` also mean
+  something — "whole library", "item-level", "unassigned on purpose". Store the
+  meaning in its own column (a `scope`, a `copy_specific` flag, a name
+  snapshot) and read it from there; the FK says only which row, while it lasts.
+- **Why:** deleting the referenced row turns the record into the special
+  case. An audit of a deleted location read as a whole-library audit and
+  offered to mark the entire catalogue missing; an entry naming a purged copy
+  read as item-level and confirmed every sibling. Nothing errors — the history
+  silently changes meaning.
+- **Evidence:** codex plan review of `audit-sessions` (R1, R3, 2026-10-20);
+  fixed in the schema before any code (`d1d691d`): `audit_sessions.scope` +
+  `location_name`, `audit_entries.copy_specific`. Pinned by
+  `tests/test_audits_service.py::TestDeletedLocation` and `TestPurgedCopy`.
+- **Verify:** every scope decision reads the column, not the NULL —
+
+```bash
+grep -n "location_id is None\|location_id IS NULL" app/services/audits.py
+python -m pytest tests/test_audits_service.py -q -k "Deleted or Purged"
+```
+
+  The first grep's hits must each be a parameter only a `scope` check passes
+  (`expected_rows(db, None)` is reached only for `scope = 'library'`).
+- **Status:** documented. Not a lint candidate — which NULLs mean something is
+  a design property.
 
 ## Graveyard
 

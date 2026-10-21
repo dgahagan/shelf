@@ -419,7 +419,7 @@ def test_cover_review_next_render_card_carries_shape_for_a_book(admin_client, db
 
 # --- T4: scan card, its poller, and the inventory audit ---------------------
 # `scan_result.html`'s column-0 `{% else %}` result card, `cover_thumb.html`
-# (both included and polled), `inventory_missing.html` and every
+# (both included and polled), `fragments/audit_report.html` and every
 # `restore_report.restored_card` consumer. One renderer per family, plus the
 # poller, the audit fragment and the book control (G80/G113 in the NOTE).
 
@@ -535,16 +535,18 @@ def test_cover_status_poll_carries_shape_for_a_vinyl(admin_client, db):
     assert _shape_in(html) == "square"
 
 
-def test_inventory_missing_carries_shape_for_a_vinyl(admin_client, db):
-    location_id = _insert_location(db, "Cover Shape Audit Shelf")
-    _insert_item(db, title="Cover Shape Audit Vinyl", isbn="9780000000504",
+def test_audit_report_missing_row_carries_shape_for_a_vinyl(admin_client, db):
+    from app.services import audits
+    location_id = _insert_location(db, "Cover Shape Report Shelf")
+    _insert_item(db, title="Cover Shape Report Vinyl", isbn="9780000000505",
                  media_type="vinyl", cover_path=VINYL_COVER, location_id=location_id)
+    audit_id = audits.create_session(db, scope="location", location_id=location_id)
     db.commit()
 
-    html = admin_client.post(
-        "/api/inventory/missing", data={"location_id": location_id}).text
+    html = admin_client.get(f"/audits/{audit_id}").text
+    missing = html.split('data-audit-section="missing"', 1)[1].split("</section>", 1)[0]
 
-    assert _shape_in(html) == "square"
+    assert _shape_in(missing) == "square"
 
 
 # --- Music item page (music_item.html, T5) ---------------------------------

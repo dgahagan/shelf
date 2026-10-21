@@ -93,37 +93,6 @@ def test_pending_history_does_not_erase_new_scan(live_server, authed_page, histo
     assert_page_clean(pg)
 
 
-def test_confirmed_legacy_inventory_result_is_added_to_scanned_ids(
-    live_server, authed_page
-):
-    """An HTMX ambiguity choice must count the confirmed item for missing checks."""
-    authed_page.goto(f"{live_server['url']}/scan")
-    authed_page.wait_for_load_state("networkidle")
-
-    state = authed_page.evaluate(
-        """() => {
-            const root = document.querySelector('[x-data="scanPage"]');
-            const data = Alpine.$data(root);
-            data.mode = 'inventory';
-            const card = document.createElement('div');
-            card.className = 'scan-result';
-            card.setAttribute('data-scan-inventory-confirmed', 'true');
-            card.innerHTML = '<a href="/item/42">Confirmed book</a>';
-            document.getElementById('scan-results').prepend(card);
-            document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', {
-                detail: {target: card}
-            }));
-            return {
-                ids: data.inventoryScannedIds,
-                marker: card.hasAttribute('data-scan-inventory-confirmed')
-            };
-        }"""
-    )
-
-    assert state == {"ids": [42], "marker": False}
-    assert_page_clean(authed_page)
-
-
 def test_latest_scan_mode_history_wins(live_server, authed_page):
     pg = authed_page
     pg.goto(f"{live_server['url']}/scan")

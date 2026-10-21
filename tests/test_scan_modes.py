@@ -17,6 +17,21 @@ from tests.conftest import (
 )
 
 
+def _audit_missing(client, db, location_id, confirmed=()):
+    """The Missing section of a fresh audit of `location_id`, read from the
+    report page, with `confirmed` item ids scanned in by ISBN (item-level).
+    Starts with ` data-audit-count="N"`, so a count assertion reads it."""
+    from app.services import audits
+
+    audit_id = audits.create_session(db, scope="location", location_id=location_id)
+    for item_id in confirmed:
+        audits.add_entry(db, audit_id, item_id=item_id, copy_id=None,
+                         location_id=location_id, raw_code="scanned", result="confirmed")
+    db.commit()
+    html = client.get(f"/audits/{audit_id}").text
+    return html.split('data-audit-section="missing"', 1)[1].split("</section>", 1)[0]
+
+
 class TestAddMode:
     """Default add mode — existing behavior, smoke tests."""
 
@@ -313,18 +328,13 @@ class TestInventoryMode:
         assert resp.status_code == 200
         assert b"No audit location" in resp.content
 
-    def test_inventory_missing_endpoint(self, admin_client, db):
+    def test_audit_report_lists_the_unscanned_item(self, admin_client, db):
         loc_id = _insert_location(db, "Living Room")
         item1 = _insert_item(db, title="Found", isbn="9780000000507", location_id=loc_id)
-        item2 = _insert_item(db, title="Missing", isbn="9780000000514", location_id=loc_id)
-        db.commit()
-        resp = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(loc_id),
-            "scanned_ids": str(item1),
-        })
-        assert resp.status_code == 200
-        assert b"Missing" in resp.content
-        assert b"1 item" in resp.content
+        _insert_item(db, title="Missing Book", isbn="9780000000514", location_id=loc_id)
+        missing = _audit_missing(admin_client, db, loc_id, confirmed=[item1])
+        assert "Missing Book" in missing
+        assert ' data-audit-count="1"' in missing
 
     def test_non_primary_copy_on_shelf_is_recognized(self, admin_client, db):
         """A merged item's non-primary copy, filed on a different shelf than
@@ -345,17 +355,13 @@ class TestInventoryMode:
                          "location_id": shelf_a, "is_primary": 0})
         db.commit()
 
-        resp = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_a), "scanned_ids": "",
-        })
-        assert b"Merged Item" in resp.content
-        assert b"1 item" in resp.content
+        missing = _audit_missing(admin_client, db, shelf_a)
+        assert "Merged Item" in missing
+        assert ' data-audit-count="1"' in missing
 
-        resp = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_a), "scanned_ids": str(item_id),
-        })
-        assert b"Merged Item" not in resp.content
-        assert b"accounted for" in resp.content
+        missing = _audit_missing(admin_client, db, shelf_a, confirmed=[item_id])
+        assert "Merged Item" not in missing
+        assert ' data-audit-count="0"' in missing
 
     def test_the_audit_trusts_the_copy_over_the_legacy_location_field(
         self, admin_client, db
@@ -372,19 +378,15 @@ class TestInventoryMode:
                          "location_id": shelf_a, "is_primary": 1})
         db.commit()
 
-        at_a = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_a), "scanned_ids": "",
-        })
-        assert b"Relocated" in at_a.content
-        assert b"1 item" in at_a.content
+        at_a = _audit_missing(admin_client, db, shelf_a)
+        assert "Relocated" in at_a
+        assert ' data-audit-count="1"' in at_a
 
         # The half `main` gets wrong in the other direction: the seam still
         # names Shelf B, but no copy is there, so B must report itself clean.
-        at_b = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_b), "scanned_ids": "",
-        })
-        assert b"Relocated" not in at_b.content
-        assert b"accounted for" in at_b.content
+        at_b = _audit_missing(admin_client, db, shelf_b)
+        assert "Relocated" not in at_b
+        assert ' data-audit-count="0"' in at_b
 
     def test_two_copies_on_one_shelf_collapse_to_one_line_with_count(self, admin_client, db):
         """Two copies of one item on the same shelf are one line with a
@@ -399,14 +401,12 @@ class TestInventoryMode:
                          "location_id": shelf_a, "is_primary": 0})
         db.commit()
 
-        resp = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_a), "scanned_ids": "",
-        })
-        assert resp.content.count(b"Twinned") == 1
-        assert b"(2 copies)" in resp.content
-        assert b"1 item" in resp.content
+        missing = _audit_missing(admin_client, db, shelf_a)
+        assert missing.count("Twinned") == 1
+        assert "(2 copies)" in missing
+        assert ' data-audit-count="2"' in missing  # the section counts copies
 
-    def test_inventory_missing_all_accounted_for(self, admin_client, db):
+    def test_audit_report_all_accounted_for(self, admin_client, db):
         shelf_a = _insert_location(db, "Shelf A")
         item_id = _insert_item(db, title="Found Copy", isbn="9780000000552",
                                location_id=shelf_a)
@@ -414,31 +414,9 @@ class TestInventoryMode:
                          "location_id": shelf_a, "is_primary": 1})
         db.commit()
 
-        resp = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_a), "scanned_ids": str(item_id),
-        })
-        assert resp.status_code == 200
-        assert b"accounted for" in resp.content
-        assert b"Found Copy" not in resp.content
-
-    def test_inventory_missing_escapes_an_attacker_controlled_title(self, admin_client, db):
-        """D-1: a title is not always typed by an editor — it can arrive from
-        a provider, an import, or vision output. The audit fragment used to
-        build this HTML with Python f-strings and no escaping, so a title
-        carrying an Alpine directive ran in an admin's browser the moment the
-        admin opened the audit (editor -> admin). Assert the payload reaches
-        the response only in its escaped form."""
-        shelf_a = _insert_location(db, "Shelf A")
-        payload = '<img src=x x-on:error="alert(document.cookie)">'
-        _insert_item(db, title=payload, isbn="9780000000569", location_id=shelf_a)
-        db.commit()
-
-        resp = admin_client.post("/api/inventory/missing", data={
-            "location_id": str(shelf_a), "scanned_ids": "",
-        })
-        assert resp.status_code == 200
-        assert payload not in resp.text
-        assert "&lt;img" in resp.text
+        missing = _audit_missing(admin_client, db, shelf_a, confirmed=[item_id])
+        assert ' data-audit-count="0"' in missing
+        assert "Found Copy" not in missing
 
     def test_a_multi_copy_item_reports_rather_than_moving(self, admin_client, db):
         """#116's destructive half. An ISBN does not say which copy is in the

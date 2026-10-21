@@ -124,7 +124,7 @@ key material.
 | **Lend** | Select a borrower, then scan items to check them out |
 | **Return** | Scan items to check them back in |
 | **Move** | Select a target location, then batch-scan items to relocate them |
-| **Inventory** | Select a location, scan everything there, then check for missing items. Counts physical copies, so a book with copies in two rooms is expected in both; a scan that cannot say *which* copy reports instead of moving one |
+| **Inventory** | Select a location and scan what is there: each scan confirms the item or moves it here. Start an audit to record the scans — from any device, across a reload — and finish it for a report: Found, Moved here, Seen elsewhere, On loan, Missing and Unexpected, with copies you can mark missing. Counts physical copies, so a book with copies in two rooms is expected in both; a scan that cannot say *which* copy reports instead of moving one |
 | **Lookup** | Scan to check if an item is in your collection — no changes made |
 | **Quick Rate** | Scan to mark items read, watched or played |
 

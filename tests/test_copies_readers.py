@@ -53,9 +53,8 @@ def test_a_merged_item_is_visible_in_both_rooms_to_every_reader(admin_client, db
     assert ">Copies<" in page
 
     # T5 — the audit of the SECOND room expects the item there.
-    assert b"Dune" in admin_client.post("/api/inventory/missing", data={
-        "location_id": str(loft), "scanned_ids": "",
-    }).content
+    from app.services import audits
+    assert "Dune" in [r["title"] for r in audits.expected_rows(db, loft)]
 
     # T6 — a scan at a THIRD location writes nothing and names both rooms.
     hall = _insert_location(db, "Hall")

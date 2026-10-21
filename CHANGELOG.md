@@ -6,6 +6,53 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.71.0] - 2026-10-21
+
+Inventory mode could confirm a book was on a shelf, but it kept what you had
+scanned only in the open browser tab: a reload lost it, a second phone could not
+help, typed and USB-scanner entries never counted, and the result was a single
+"show missing" list with nowhere to record what you then did about it. This
+release makes a shelf check a real **audit**: recorded on the server, shared
+between devices, and finished with a report you can act on — including marking a
+copy as missing until it turns up again.
+
+### Added
+
+- **Shelf audits.** Scan → Inventory gains an audit strip: **Start audit** for
+  the selected location or the whole library, scan, and **Finish audit**. Every
+  scan is recorded on the server, so an audit survives a reload and two devices
+  can scan into the same one (**Join**). The report — Audits, in the account
+  menu, part of Collector tools — lists what was **Found**, **Moved here**,
+  **Seen here, filed elsewhere**, **Out on loan**, **Missing** and
+  **Unexpected**, counted by copy: a scanned copy label confirms that copy, an
+  ISBN confirms the book on that shelf. From the report you can move the copy
+  you actually saw (*It was this one — move it here*), mark missing copies,
+  add an unknown barcode, keep notes, and (admins) delete the audit. Past
+  audits stay listed, read against the collection as it stands now.
+  A whole-library audit files each scan at the selected location, and the
+  strip says **Scanning at** that location so you can see it as you move from
+  room to room. The report is a page to read or print: there is no export, and
+  audits are not part of the portable archive.
+- **Missing copies.** *Mark missing* puts a *missing since* date on a copy,
+  shown on the item page with a **Found** button that clears it.
+  Missing is a mark on a copy, not on an item, and Browse has no filter for
+  it — the audit report and the item page are where you find them.
+
+### Changed
+
+- **Inventory scans in an open audit are recorded server-side,** whether they
+  come from the camera, a typed entry or a USB scanner — typed and scanner
+  entry used never to count. A location audit refuses scans made at another
+  location. Without an audit, Inventory confirms and moves items as before.
+- **A scan that names one copy clears its missing mark:** Inventory and Move
+  scans of a copy label, an Inventory scan of a single-copy book's ISBN, and a
+  Shelf Fill placement.
+
+### Removed
+
+- **Show Missing Items** in Inventory mode, and `POST /api/inventory/missing`
+  behind it — replaced by the audit report.
+
 ## [0.70.0] - 2026-10-20
 
 Shelf could track more than one copy of an item, but a scan could not tell
@@ -5213,6 +5260,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.71.0]: https://github.com/dgahagan/shelf/releases/tag/v0.71.0
 [0.70.0]: https://github.com/dgahagan/shelf/releases/tag/v0.70.0
 [0.69.0]: https://github.com/dgahagan/shelf/releases/tag/v0.69.0
 [0.68.0]: https://github.com/dgahagan/shelf/releases/tag/v0.68.0

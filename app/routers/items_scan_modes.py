@@ -15,6 +15,7 @@ from app import features
 from app.config import status_labels
 from app.database import get_db
 from app.routers import items_common
+from app.services import audits
 from app.services import barcode_resolve
 from app.services import item_copies
 from app.services.item_write import ItemValueError, update_item_fields
@@ -180,6 +181,8 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
                 value_error = f"Copy {item['copy_number']} is no longer in the collection"
             else:
                 item_copies.relocate_copy(db, copy, location_id)
+                # The label proves this exact copy is in hand.
+                item_copies.clear_missing(db, copy["id"])
         except ItemValueError as e:
             value_error = str(e)
         new_loc = db.execute("SELECT name FROM locations WHERE id = ?", (location_id,)).fetchone()
@@ -262,7 +265,8 @@ def _scan_mode_quick_rate(request, templates, item: dict, raw: str):
     return resp
 
 
-def _scan_mode_in_trash(request, templates, item: dict, raw: str, mode: str):
+def _scan_mode_in_trash(request, templates, item: dict, raw: str, mode: str, *,
+                        location_id: int | None = None, audit_id: int | None = None):
     """Any existing-item mode, when the barcode names an item in Trash.
 
     Reports it and offers Restore; the mode's own action does **not** run —
@@ -270,7 +274,17 @@ def _scan_mode_in_trash(request, templates, item: dict, raw: str, mode: str):
     collection, and neither does a lend of something the user deleted.
     Restoring is a separate, explicit click (`POST /api/trash/items/{id}/
     restore` with `render=scan`), which answers with the `restored` card.
+    An Inventory scan in an open audit records it as `in_trash` first.
     """
+    if mode == "inventory" and audit_id:
+        refusal = audits.record_standalone(
+            audit_id, item_id=item["id"], copy_id=item.get("copy_id"),
+            location_id=location_id, raw_code=raw, result="in_trash")
+        if refusal:
+            items_common._log_scan(raw, item.get("media_type", ""), "error", item["id"], mode)
+            return templates.TemplateResponse(
+                request, "fragments/scan_result.html",
+                {"status": "error", "isbn": raw, "message": refusal})
     items_common._log_scan(raw, item.get("media_type", ""), "in_trash", item["id"], mode)
     return templates.TemplateResponse(
         request, "fragments/scan_result.html",

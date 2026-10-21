@@ -68,6 +68,11 @@
 {%- for value in [copy.provenance, copy.notes] %}{% if value %}{{ details.append(value) or '' }}{% endif %}{% endfor %}
 {%- for detail in details %} · {{ detail }}{% endfor %}
 {%- endmacro %}
+{#- The missing mark (decision 17: core, not behind a module) and, for an
+    editor, the Found control that clears it. Rendered in all three branches. -#}
+{%- macro missing_mark(copy, can_edit) -%}
+{%- if copy.missing_since %} · <span data-testid="copy-missing-{{ copy.id }}" class="text-shelf-error">missing since {{ copy.missing_since }}</span>{% if can_edit %} <button type="button" data-testid="copy-found-{{ copy.id }}" hx-post="/api/items/{{ item_id }}/copies/{{ copy.id }}/found" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Found</button>{% endif %}{% endif %}
+{%- endmacro %}
 {% set single_details = detail_suffix(copies[0]) if copies|length == 1 else '' %}
 {% set placed = copies|length == 1 and copies[0].location_id %}
 {% set detailed = copies|length == 1 and not copies[0].location_id and single_details|trim %}
@@ -79,15 +84,15 @@
     <span class="text-shelf-muted">Location:</span> <a href="/browse?location_filter={{ item.location_id }}" class="hover:text-shelf-accent transition-colors">{{ item.location_name }}</a>
     {%- elif placed %}
     {%- set copy = copies[0] %}
-    <span class="text-shelf-muted">Location:</span> <a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ single_details }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
+    <span class="text-shelf-muted">Location:</span> <a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ single_details }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{{ missing_mark(copy, may_edit) }}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
     {%- elif detailed %}
     {%- set copy = copies[0] %}
-    <span class="text-shelf-muted">No location</span>{{ single_details }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
+    <span class="text-shelf-muted">No location</span>{{ single_details }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{{ missing_mark(copy, may_edit) }}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}
     {%- elif listed %}
     <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Copies</p>
     <div class="space-y-1">
         {%- for copy in copies %}
-        <div><span class="text-shelf-muted">#{{ copy.copy_number }}</span> {% if copy.location_id %}<a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% else %}<span class="text-shelf-muted">No location</span>{% endif %}{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ detail_suffix(copy) }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}</div>
+        <div><span class="text-shelf-muted">#{{ copy.copy_number }}</span> {% if copy.location_id %}<a href="/browse?location_filter={{ copy.location_id }}" class="hover:text-shelf-accent transition-colors">{{ copy.location_name }}</a>{% else %}<span class="text-shelf-muted">No location</span>{% endif %}{% if copy.position_order is not none %} · position {{ copy.position_order }}{% endif %}{{ detail_suffix(copy) }}{% if copy.copy_barcode %} · <code>{{ copy.copy_barcode }}</code>{% endif %}{{ missing_mark(copy, may_edit) }}{% if may_edit %} <button type="button" data-testid="edit-copy-{{ copy.id }}" hx-get="/api/items/{{ item_id }}/copies/{{ copy.id }}/edit" hx-target="#item-copies" hx-swap="outerHTML" class="text-xs text-shelf-accent hover:text-shelf-accent2 transition-colors">Edit</button>{% endif %}</div>
         {%- endfor %}
     </div>
     {%- endif %}

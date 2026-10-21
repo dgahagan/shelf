@@ -248,3 +248,23 @@ class TestCopyTemplateEndpointIsUnchanged:
         resp = admin_client.get("/api/items/999999/copy-template")
         assert resp.status_code == 404
         assert resp.json() == {"error": "Not found"}
+
+
+class TestAuditSeeds:
+    """An audit report's Add link: /scan?mode=add&code=X seeds Add mode and the code."""
+
+    def test_both_seeds_render(self, editor_client):
+        html = editor_client.get("/scan?mode=add&code=9780000000123").text
+        assert 'data-seed-mode="add"' in html
+        assert 'data-seed-code="9780000000123"' in html
+
+    def test_bad_seeds_are_ignored_with_a_normal_page(self, editor_client):
+        for url in ("/scan?mode=inventory&code=123", "/scan?mode=add&code=" + "9" * 65, "/scan"):
+            resp = editor_client.get(url)
+            assert resp.status_code == 200, url
+            assert "data-seed-mode" not in resp.text and "data-seed-code" not in resp.text, url
+
+    def test_a_hostile_code_is_escaped(self, editor_client):
+        html = editor_client.get('/scan', params={"mode": "add", "code": '"><script>x'}).text
+        assert 'data-seed-code="&#34;&gt;&lt;script&gt;x"' in html
+        assert '"><script>x' not in html

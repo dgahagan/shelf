@@ -239,6 +239,40 @@ def relocate_copy(db, copy: Mapping[str, Any], location_id: int) -> None:
     else:
         update_copy(db, copy["id"], {"location_id": location_id})
 
+def mark_missing(db, copy_id: int) -> bool:
+    """Mark a live copy missing as of today; return whether anything changed.
+
+    An already-marked copy keeps its earlier date — the mark says when the
+    copy was first found gone, not when someone last noticed. Caller holds
+    the write lock (an audit report's Mark missing).
+    """
+    row = db.execute(
+        "SELECT id, missing_since FROM copies_live WHERE id = ?", (copy_id,)
+    ).fetchone()
+    if row is None or row["missing_since"] is not None:
+        return False
+    today = db.execute("SELECT date('now')").fetchone()[0]
+    update_copy(db, copy_id, {"missing_since": today})
+    return True
+
+
+def clear_missing(db, copy_id: int) -> bool:
+    """Clear a live copy's missing mark; return whether anything changed.
+
+    Called on evidence that this exact copy is in hand — an Inventory scan
+    that names it, a Move by its label, a Shelf Fill placement, the item
+    page's *Found*. An unmarked copy is not written at all, so a scan does
+    not bump `updated_at` for nothing. Caller holds the write lock.
+    """
+    row = db.execute(
+        "SELECT id, missing_since FROM copies_live WHERE id = ?", (copy_id,)
+    ).fetchone()
+    if row is None or row["missing_since"] is None:
+        return False
+    update_copy(db, copy_id, {"missing_since": None})
+    return True
+
+
 def backfill_legacy_locations(db) -> int:
     """Create one primary copy for legacy rows that prove a physical place.
 

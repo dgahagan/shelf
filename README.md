@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-5430%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-343%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-5545%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-346%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -31,7 +31,7 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 - **More than books** — catalog audiobooks, eBooks, DVDs, CDs, comics, manga, and video games. Link physical and digital formats together
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges (Atari 2600, NES, SNES, etc.). Cover art, publisher, series, and platform tracking with a customizable platform list
 - **Lend with confidence** — track who borrowed what with the Lend/Return scan modes and a "Lent Out" filter on the browse page
-- **Inventory auditing** — pick a location, scan everything on the shelf, then see what's missing
+- **Shelf audits** — start an audit of a shelf or the whole library, scan from any device (or several at once, or after a reload), and finish for a report: found, moved here, seen elsewhere, on loan, missing and unexpected. Mark the missing copies; the next scan of one clears it. See [Audits](docs/user-guide/audits.md)
 - **Delete without fear** — deleting an item or removing a copy moves it to Trash with its tags, loans, copies and history intact. Editors restore in one click; admins empty it, prompted once rows pass a retention window (180 days by default). Nothing is deleted on a timer
 - **Know what you own** — ISBNdb integration estimates your collection's value and generates a location-grouped, print-ready valuation report for insurance documentation
 
@@ -139,7 +139,7 @@ of this whole directory carries the keys next to the data they protect.
 | **Lend** | Select a borrower, then scan items to check them out |
 | **Return** | Scan items to check them back in |
 | **Move** | Select a target location, then batch-scan items to relocate them |
-| **Inventory** | Select a location, scan everything there, then check for missing items. Counts physical copies, so a book with copies in two rooms is expected in both; a scan that cannot say *which* copy reports instead of moving one |
+| **Inventory** | Select a location and scan what is there: each scan confirms the item or moves it here. Start an audit to record the scans — from any device, across a reload — and finish it for a report: Found, Moved here, Seen elsewhere, On loan, Missing and Unexpected, with copies you can mark missing. Counts physical copies, so a book with copies in two rooms is expected in both; a scan that cannot say *which* copy reports instead of moving one |
 | **Lookup** | Scan to check if an item is in your collection — no changes made |
 | **Quick Rate** | Scan to mark items read, watched or played |
 

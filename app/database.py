@@ -285,6 +285,40 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
         SELECT 'feature.collector', '0'
         WHERE EXISTS (SELECT 1 FROM settings
                       WHERE key = 'feature.valuation' AND value = '0')"""),
+    # 45 and 46 are new tables, so like 40 each is a numbered entry *and* a
+    # MIGRATION_TABLES copy (G1). A NULL foreign key never carries domain
+    # meaning here: ON DELETE SET NULL would turn an audit of a deleted
+    # location into a whole-library one, and a purged copy's entry into an
+    # item-level one. So scope and location_name (45) and copy_specific (46)
+    # are stored explicitly. The 46 index lives in MIGRATION_TABLES alone.
+    (45, "Add audit sessions",
+     "CREATE TABLE IF NOT EXISTS audit_sessions ("
+     " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+     " location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,"
+     " started_at TEXT NOT NULL DEFAULT (datetime('now')),"
+     " finished_at TEXT,"
+     " notes TEXT,"
+     " scope TEXT NOT NULL CHECK (scope IN ('location', 'library')),"
+     " location_name TEXT NOT NULL)"),
+    (46, "Add audit entries",
+     "CREATE TABLE IF NOT EXISTS audit_entries ("
+     " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+     " session_id INTEGER NOT NULL REFERENCES audit_sessions(id) ON DELETE CASCADE,"
+     " item_id INTEGER REFERENCES items(id) ON DELETE SET NULL,"
+     " copy_id INTEGER REFERENCES item_copies(id) ON DELETE SET NULL,"
+     " location_id INTEGER REFERENCES locations(id) ON DELETE SET NULL,"
+     " raw_code TEXT NOT NULL,"
+     " result TEXT NOT NULL,"
+     " copy_specific INTEGER NOT NULL DEFAULT 0 CHECK (copy_specific IN (0, 1)),"
+     " scanned_at TEXT NOT NULL DEFAULT (datetime('now')))"),
+    # MIGRATIONS-only, never in the item_copies CREATE — the deliberate
+    # exception to G1's headline rule, for the reason given at 37/38 above
+    # (and 31's position_order): a CREATE copy makes this ALTER raise
+    # "duplicate column name" on a fresh install, which
+    # _is_benign_migration_error forgives only for versions <= 21, so startup
+    # would abort. test_schema_parity accepts a MIGRATIONS-only column.
+    (47, "Add missing-since mark to item copies",
+     "ALTER TABLE item_copies ADD COLUMN missing_since TEXT DEFAULT NULL"),
 )
 
 MIGRATION_TABLES = """
@@ -364,6 +398,29 @@ CREATE INDEX IF NOT EXISTS idx_item_copies_item ON item_copies(item_id, copy_num
 CREATE INDEX IF NOT EXISTS idx_item_copies_location ON item_copies(location_id, item_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_item_copies_one_primary
     ON item_copies(item_id) WHERE is_primary = 1;
+
+CREATE TABLE IF NOT EXISTS audit_sessions (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    location_id   INTEGER REFERENCES locations(id) ON DELETE SET NULL,
+    started_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    finished_at   TEXT,
+    notes         TEXT,
+    scope         TEXT NOT NULL CHECK (scope IN ('location', 'library')),
+    location_name TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS audit_entries (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id    INTEGER NOT NULL REFERENCES audit_sessions(id) ON DELETE CASCADE,
+    item_id       INTEGER REFERENCES items(id) ON DELETE SET NULL,
+    copy_id       INTEGER REFERENCES item_copies(id) ON DELETE SET NULL,
+    location_id   INTEGER REFERENCES locations(id) ON DELETE SET NULL,
+    raw_code      TEXT NOT NULL,
+    result        TEXT NOT NULL,
+    copy_specific INTEGER NOT NULL DEFAULT 0 CHECK (copy_specific IN (0, 1)),
+    scanned_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_audit_entries_session ON audit_entries(session_id, item_id);
 
 CREATE INDEX IF NOT EXISTS idx_items_upc ON items(upc);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_items_upc_type ON items(upc, media_type) WHERE upc IS NOT NULL;

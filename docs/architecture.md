@@ -125,6 +125,16 @@ needs no script under the CSP). Migration 44 starts it off where Valuation is
 off, because a feature with no flag row reads as on. **The prefix is read
 before any write lock**: an invalid stored value logs, and a log under
 `BEGIN IMMEDIATE` waits out the busy timeout and is dropped.
+It also owns **audits**, two routers in `app/routers/audits.py`: the pages
+(`GET /audits`, `GET /audits/{audit_id}`, editor then feature) and the API
+under `/api/audits/`. Three of those — `POST /api/audits` (start),
+`GET /api/audits/summary` and `POST /api/audits/{audit_id}/finish` — are the
+Scan page's audit strip and are declared `ungated` in the registry, because
+Inventory mode is core: with the feature off an audit still runs and records;
+only the report pages refuse. The report's row actions (`resolve`, `missing`,
+`notes`, and `DELETE`, admin) are gated. The domain logic is
+`app/services/audits.py`; the Inventory scan arm writes entries through it in
+the same `BEGIN IMMEDIATE` as its decision.
 
 **Trash** is two routers in `app/routers/trash.py`, registered separately: the
 unprefixed page (`GET /trash`, editor) and the API under `/api/trash/` —
@@ -160,7 +170,35 @@ barcode -> ISBN-13 choice, constrained in the schema to a 17-digit barcode
 and a 978/979 ISBN), `item_links`, and the per-family side tables described
 below — `music_releases` + `music_media` + `music_tracks` +
 `music_identifiers`, `periodical_publications` + `periodical_issues`,
-`romm_records` and `komga_records`.
+`romm_records` and `komga_records`, and `audit_sessions` + `audit_entries`
+(shelf audits, below).
+
+**Audits: the entries are the record, the report is computed.** An
+`audit_sessions` row is one audit — `scope` (`location` or `library`), its
+`location_id` (`ON DELETE SET NULL`), a `location_name` snapshot taken at
+start, `started_at`/`finished_at`, `notes`. An `audit_entries` row is one scan
+recorded into it (`ON DELETE CASCADE` from the session) — `item_id`, `copy_id`
+and the scan's `location_id`, each `ON DELETE SET NULL`, plus `raw_code`,
+`result` (`confirmed` / `relocated` / `elsewhere` / `not_owned` / `in_trash`)
+and `copy_specific`, set exactly when the scan named one copy. **A NULL foreign
+key never carries domain meaning**: what kind of audit a session is reads from
+`scope`, and whether an entry named a copy reads from `copy_specific`, so a
+deleted location never turns its audit into a whole-library one and a purged
+copy never turns its entry into one that confirms every sibling.
+`item_copies.missing_since` (migration 47, a date) is the per-copy *missing*
+mark an audit report sets; it is MIGRATIONS-only, like `position_order` and
+`deleted_at`. The invariant: **an audit's expected set is computed from the
+catalogue as it stands; its entries are the record.** `audits.build_report`
+reconciles the two each time the report or the Scan-page strip is read —
+nothing is frozen at finish — and `audits.expected_rows` is the one expected-set
+query, which the Inventory scan arm's "is it here?" must agree with (copies
+first, the seam only for an item with no live copy row). A location audit
+whose location was deleted expects nothing, so its `confirmed` entries render
+as Found straight from the entries. An `elsewhere` entry is resolved at most
+once: a later `relocated` entry for the same item and location is its
+resolution, which hides it from the report and makes `/resolve` refuse a
+replay under the same write lock. Audits and the mark are not in the portable
+archive.
 
 **`tags.media_type` is an advisory scope, not a constraint.** NULL means the
 tag is global. Nothing strips or refuses an association whose item is outside
@@ -310,7 +348,7 @@ copy only for an item that is *both* owned and already located; `owned` alone
 is not treated as evidence that a row is physical.
 
 **The seam is no longer the whole story in the UI.** Since 0.38.0 (issue #116)
-the item page, the shelf audit (`/api/inventory/missing`), Scan's Inventory and
+the item page, the audit report (`app/services/audits.py`), Scan's Inventory and
 Lookup modes, and the portable archive all read the copies relation rather than
 the seam, because a merged item legitimately has copies in two rooms and the
 seam names only one. (They read it through `copies_live`, not the physical
@@ -761,7 +799,7 @@ first (physical tables, so a trashed copy or a copy of a trashed item is still
 found and reported), then the ISBN and UPC reads. Its result is the item row
 plus `copy_id`, `copy_number`, `copy_location_id`, `copy_location_name` and
 `copy_in_trash`, all empty unless a copy barcode matched. Inventory and Move
-relocate that copy alone, Lookup names it, Add and Wishlist report the
+relocate that copy alone (and clear its `missing_since` mark), Lookup names it, Add and Wishlist report the
 existing item before any provider lookup, and Lend, Return and Quick Rate act
 on the item. No scan status was added for copies: the existing cards carry the
 copy in their `data-scan-detail` text, and a trashed copy of a live item uses
@@ -1287,8 +1325,8 @@ call through it rather than from-importing its names.
 Two further modules sit beside them and are **not** routers — they hold
 functions the routers call, split out under `items.py`'s 1600-line cap rather
 than to add a surface. `items_scan_modes.py` carries what a scan *does* to an
-item that already exists (lend, return, move, inventory, lookup, quick-rate) as
-plain handlers taking everything but the database and the scan log as arguments;
+item that already exists (lend, return, move, lookup, quick-rate; Inventory
+has its own module, `scan_inventory.py`, since 0.70.0) as plain handlers taking everything but the database and the scan log as arguments;
 `services/item_merge.py` is the same shape for merge. Split on 2026-09-07, when
 two independent changes together pushed the module past the cap.
 
@@ -1617,7 +1655,7 @@ Two details decide whether the guard actually guards:
   (`routers/checkouts.py`, `routers/periodicals.py`, `services/location_order.py`,
   `services/romm_records.py`), so a guard keyed on `FROM` alone would pass them
   while they read deleted rows forever. The same holds on the copies side —
-  the shelf audit's `LEFT JOIN` in `routers/items.py` is a copies read whose
+  the audit's expected-set `LEFT JOIN` in `services/audits.py` is a copies read whose
   only relation keyword is `JOIN`. A `DELETE FROM` on either table matches the
   pattern and is excluded, because it is a write.
 - **It strips a string literal's prefix together with its opening quote.**

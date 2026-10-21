@@ -23,6 +23,7 @@
             <input type="hidden" name="media_type" value="{{ media_type }}">
             <input type="hidden" name="mode" value="{{ mode }}">
             {% if location_id %}<input type="hidden" name="location_id" value="{{ location_id }}">{% endif %}
+            {% if audit_id %}<input type="hidden" name="audit_id" value="{{ audit_id }}">{% endif %}
             {% if platform %}<input type="hidden" name="platform" value="{{ platform }}">{% endif %}
             {% if borrower_id %}<input type="hidden" name="borrower_id" value="{{ borrower_id }}">{% endif %}
             {% if tags %}<input type="hidden" name="tags" value="{{ tags }}">{% endif %}
@@ -156,7 +157,7 @@
 
 {% else %}
 <div class="scan-result bg-shelf-card rounded-lg border border-shelf-border p-4 flex items-center gap-4"
-     data-scan-status="{{ status }}"{% if inventory_confirmation %} data-scan-inventory-confirmed="true"{% endif %}>
+     data-scan-status="{{ status }}">
     {# Cover image or placeholder #}
     {% if cover_pending %}
     {# Scan queues its cover, so the card renders first and this polls it in. #}

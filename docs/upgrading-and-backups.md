@@ -30,6 +30,22 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to X.Y.Z
+
+**Two tables and a column are added on first start.** `audit_sessions` and
+`audit_entries` hold [audits](user-guide/audits.md); each copy gains a
+*missing since* mark, empty until an audit sets it. There is nothing to do.
+
+**Inventory's missing-items button is replaced by audits.** The button that
+listed what you had not scanned is gone: press **Start audit** in the strip
+above the camera, scan, then **Finish audit** for the report. Scanning in
+Inventory mode without an audit still confirms and moves items as before.
+
+**Audits and missing marks are in a database backup, not in a portable
+archive.** Copying `data/` or downloading a Settings backup keeps them. A
+portable archive leaves them out, so a copy restored from an archive is not
+marked missing until the next audit says so.
+
 ### After upgrading to 0.70.0
 
 **Collector tools starts the way Valuation stands.** If Valuation is off — as

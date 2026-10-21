@@ -288,6 +288,24 @@ class TestBuildArchive:
             "deleted_at": None,
         }
 
+    def test_a_copys_missing_mark_is_not_exported(self, db):
+        """Audits and missing marks are history, not catalogue: a restored
+        copy is not missing until the next audit says so."""
+        item_id = _insert_item(db, title="Lost Book", isbn="9780553293364")
+        loc = _insert_location(db, name="Den")
+        copy_id = item_copies.insert_copy(db, {
+            "item_id": item_id, "copy_number": 1, "location_id": loc, "is_primary": 1,
+        })
+        assert item_copies.mark_missing(db, copy_id)
+        db.execute("COMMIT")
+
+        path = build_archive(db)
+        with zipfile.ZipFile(path) as zf:
+            library = json.loads(zf.read("library.json"))
+        copies = library["items"][0]["copies"]
+        assert len(copies) == 1
+        assert "missing_since" not in copies[0]
+
     def test_item_with_no_copies_exports_empty_list(self, db):
         """Absence of the `copies` key is what T8's back-compat branch must
         detect (every archive taken before this ships) — an item that was

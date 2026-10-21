@@ -38,7 +38,12 @@ function scanPage() {
         scanner: false,
         lastScanned: '',
         lastScanTime: 0,
-        inventoryScannedIds: [],
+        // The open audit session's id ('' when none), mirrored to
+        // localStorage so a reload resumes it. The strip is the authority:
+        // syncAuditFromStrip() overwrites this from every fragment it renders.
+        auditId: (function() {
+            try { return localStorage.getItem('shelf_audit_id') || ''; } catch (e) { return ''; }
+        })(),
         isZxingFallback: false,
         manualOpen: false,
         recentScansRequest: 0,
@@ -61,7 +66,7 @@ function scanPage() {
                 lend: {heading: 'Lend Items', description: 'Select a borrower, then scan items to check them out.'},
                 'return': {heading: 'Return Items', description: 'Scan items to check them back in.'},
                 move: {heading: 'Move Items', description: 'Select a target location, then scan items to move them.'},
-                inventory: {heading: 'Inventory Audit', description: 'Select a location and scan every item you find there. Then check for missing items.'},
+                inventory: {heading: 'Inventory Audit', description: 'Select a location and scan every item you find there. Start an audit to get a report.'},
                 lookup: {heading: 'Lookup', description: 'Scan to check if an item is in your collection. No changes are made.'},
                 quick_rate: {heading: 'Quick Rate', description: 'Scan to mark items as read or completed.'},
             };
@@ -97,9 +102,8 @@ function scanPage() {
         setMode(m) {
             this.mode = m;
             localStorage.setItem('shelf_scan_mode', m);
-            document.getElementById('inventory-missing').innerHTML = '';
-            this.inventoryScannedIds = [];
             this.loadRecentScans(m);
+            if (m === 'inventory') this.refreshAudit();
             var si = document.getElementById('title-search-input');
             if (si) si.value = '';
             var sr = document.getElementById('title-search-results');
@@ -157,6 +161,16 @@ function scanPage() {
             var offEl = document.querySelector('[data-off-modes]');
             var offModes = (offEl && offEl.dataset.offModes) ? offEl.dataset.offModes.split(' ') : [];
             this.modes = this.modes.filter(function(m) { return offModes.indexOf(m.id) === -1; });
+            // An audit report's Add link seeds Add mode and a code on the
+            // root. A seeded mode wins over the stored one; the code is
+            // put in the input and never submitted. Absent or empty is fine.
+            var seedEl = document.querySelector('[data-seed-mode]');
+            if (seedEl && seedEl.dataset.seedMode === 'add') {
+                this.mode = 'add';
+                try { localStorage.setItem('shelf_scan_mode', 'add'); } catch (err) { /* private mode */ }
+            }
+            var codeEl = document.querySelector('[data-seed-code]');
+            var seedCode = codeEl ? (codeEl.dataset.seedCode || '') : '';
             if (!this.modes.some(function(m) { return m.id === self.mode; })) {
                 this.mode = 'add';
                 localStorage.setItem('shelf_scan_mode', 'add');
@@ -189,6 +203,14 @@ function scanPage() {
                 localStorage.setItem('shelf_scan_mode', 'add');
             }
             this.loadRecentScans(this.mode);
+
+            if (seedCode) {
+                var isbnInput = document.getElementById('isbn-input');
+                if (isbnInput) {
+                    isbnInput.value = seedCode;
+                    isbnInput.focus();
+                }
+            }
 
             // Both inputs to the default-status control change from more than
             // one place (setMode, auto-detect, the restore above), so watch them.
@@ -229,50 +251,76 @@ function scanPage() {
                 });
             }
 
-            // A legacy ambiguity is submitted by a nested HTMX form rather
-            // than by onScan's fetch. The replacement card carries the item
-            // link only after the user confirms it, so account for that
-            // response here before the inventory missing check runs.
+            // One listener for the audit strip (G6: afterSwap, not
+            // afterSettle). (a) A strip fragment landed: sync auditId from it.
+            // (b) A scan card landed in Inventory mode with an audit open —
+            // typed form or a legacy card's repost, both /api/scan — so the
+            // strip's counts are stale. The camera path refreshes itself.
             document.body.addEventListener('htmx:afterSwap', function(e) {
-                var target = e.detail && e.detail.target;
-                var card = target && target.matches &&
-                    target.matches('.scan-result[data-scan-inventory-confirmed]')
-                    ? target
-                    : document.querySelector('.scan-result[data-scan-inventory-confirmed]');
-                if (!card) return;
-                self.recordInventoryItem(card);
-                card.removeAttribute('data-scan-inventory-confirmed');
+                var detail = e.detail || {};
+                var target = detail.target;
+                if (target && target.id === 'audit-strip') {
+                    self.syncAuditFromStrip(target);
+                    return;
+                }
+                var path = detail.requestConfig && detail.requestConfig.path;
+                if (path === '/api/scan' && self.mode === 'inventory' && self.auditId) {
+                    self.refreshAudit();
+                }
             });
-        },
-
-        recordInventoryItem(root) {
-            if (this.mode !== 'inventory' || !root) return;
-            var linkEl = root.querySelector('a[href^="/item/"]');
-            if (!linkEl) return;
-            var match = linkEl.getAttribute('href').match(/\/item\/(\d+)/);
-            if (!match) return;
-            var itemId = parseInt(match[1]);
-            if (this.inventoryScannedIds.indexOf(itemId) === -1) {
-                this.inventoryScannedIds.push(itemId);
-            }
-        },
-
-        async showMissing() {
-            var form = new FormData();
-            form.set('location_id', this.location);
-            form.set('scanned_ids', this.inventoryScannedIds.join(','));
-            try {
-                var resp = await fetch('/api/inventory/missing', {
-                    method: 'POST',
-                    headers: {'X-CSRF-Token': window.csrfToken()},
-                    body: form
+            var strip = document.getElementById('audit-strip');
+            if (strip) {
+                strip.addEventListener('click', function(e) {
+                    if (e.target.closest && e.target.closest('[data-audit-leave]')) self.leaveAudit();
                 });
-                if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                var html = await resp.text();
-                document.getElementById('inventory-missing').innerHTML = html;
-            } catch (e) {
-                showToast('Could not check missing items', 'error');
             }
+            if (this.mode === 'inventory') this.refreshAudit();
+        },
+
+        // The selected location's name, for the whole-library strip: there
+        // every scan files the book at this location, so it must stay in view
+        // as the user walks from room to room (QA audit-sessions Obs 1).
+        get scanLocationName() {
+            var id = this.location;
+            var select = document.getElementById('location');
+            if (!id || !select) return 'no location';
+            for (var i = 0; i < select.options.length; i++) {
+                if (select.options[i].value === id) return select.options[i].textContent.trim();
+            }
+            return 'no location';
+        },
+
+        // Ask the server for the strip: the open session's summary, or the
+        // start-or-join view when auditId is empty, finished or deleted.
+        refreshAudit() {
+            var url = '/api/audits/summary?audit_id=' + encodeURIComponent(this.auditId || '');
+            htmx.ajax('GET', url, {target: '#audit-strip', swap: 'innerHTML'});
+        },
+
+        syncAuditFromStrip(strip) {
+            var root = strip.firstElementChild;
+            if (!root || !root.dataset) return;
+            var id = root.dataset.auditId || '';
+            var auditLocation = root.dataset.auditLocation || '';
+            this.auditId = id;
+            try {
+                if (id) localStorage.setItem('shelf_audit_id', id);
+                else localStorage.removeItem('shelf_audit_id');
+            } catch (e) { /* private mode */ }
+            // A location audit takes scans only at its own location, so
+            // starting, joining or resuming one selects it — through state,
+            // so x-model keeps the select in step.
+            if (id && auditLocation && this.location !== auditLocation) {
+                this.location = auditLocation;
+                this.persistLocation();
+            }
+        },
+
+        // Leave: this device stops scanning into the audit; the audit stays open.
+        leaveAudit() {
+            this.auditId = '';
+            try { localStorage.removeItem('shelf_audit_id'); } catch (e) { /* private mode */ }
+            this.refreshAudit();
         },
 
         async toggleCamera() {
@@ -428,8 +476,9 @@ function scanPage() {
                     isbn: code
                 };
 
-                // Track item IDs for inventory mode
-                this.recordInventoryItem(tmp);
+                // The server recorded the scan into the open audit; refresh
+                // the strip's counts (the typed path does this on afterSwap).
+                if (this.mode === 'inventory' && this.auditId) this.refreshAudit();
             } catch (err) {
                 this.scanResult = { ok: false, warn: false, info: false, label: 'error', title: 'Scan failed', isbn: code };
             }

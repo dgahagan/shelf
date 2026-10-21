@@ -37,23 +37,24 @@ VIEWER = {"id": 3, "username": "viewer", "role": "viewer"}
 
 # --- Registry shape ---------------------------------------------------------
 
-def test_registry_covers_the_fourteen_tabs():
+def test_registry_covers_the_fifteen_tabs():
     assert [t["key"] for t in NAV_TABS] == [
         "browse", "scan", "intake", "shelf-fill", "store", "series",
-        "music", "periodicals", "discover", "stats", "trash", "labels", "settings", "logs",
+        "music", "periodicals", "discover", "stats", "trash", "labels", "audits",
+        "settings", "logs",
     ]
     for tab in NAV_TABS:
         assert tab["label"] and tab["path"].startswith("/")
 
 
-def test_only_trash_labels_settings_and_logs_render_in_the_account_menu():
+def test_only_trash_labels_audits_settings_and_logs_render_in_the_account_menu():
     """`menu` is what base.html asks instead of naming a key.
 
     It is the whole reason a tab can move out of the row without either
     template learning its name, so pin the membership rather than the flag.
     """
     assert [t["key"] for t in NAV_TABS if t.get("menu") == "account"] == [
-        "trash", "labels", "settings", "logs",
+        "trash", "labels", "audits", "settings", "logs",
     ]
     assert all(t.get("menu", "") in ("", "account") for t in NAV_TABS)
 

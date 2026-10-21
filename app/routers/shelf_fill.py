@@ -101,10 +101,13 @@ def _place_item(db, item_id: int, location_id: int) -> dict:
 
 def _place_exact_copy(db, copy: dict, location_id: int) -> dict:
     if copy["is_primary"]:
-        return _place_item(db, copy["item_id"], location_id)
+        placed = _place_item(db, copy["item_id"], location_id)
+        item_copies.clear_missing(db, copy["copy_id"])
+        return placed
 
     location = _location(db, location_id)
     item_copies.update_copy(db, copy["copy_id"], {"location_id": location_id})
+    item_copies.clear_missing(db, copy["copy_id"])
     position_order = _append_copy_position(db, copy["copy_id"], location_id)
     item = db.execute(
         "SELECT id, title, authors, media_type, cover_path, owned "

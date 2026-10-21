@@ -117,8 +117,13 @@ its home.
   catalogue with no location. A restored copy comes back as a secondary copy
   unless the item has no primary left.
 
-  Adding, editing and removing copies needs an editor or admin account.
-  Viewers see the list and nothing else.
+  A copy an [audit](audits.md) marked missing shows **missing since** the date
+  on its row. **Found** beside it clears the mark; so does scanning that
+  copy's label in Inventory, Move or Shelf Fill — see
+  [The missing mark](audits.md#the-missing-mark).
+
+  Adding, editing and removing copies, and **Found**, need an editor or admin
+  account. Viewers see the list and the mark, and nothing else.
 - **Tags** — add or remove chips inline, here or in the **Tags** section of
   the edit page, where they save as you add or remove them (the edit form's
   **Save** does not touch them). The suggestion list follows the item's type:

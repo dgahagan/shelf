@@ -76,8 +76,9 @@ not need to wait for one lookup to finish before scanning the next.
 
 Settings → Library → **Locations**: add your rooms or shelves ("Office",
 "Kids' room", "Box 3 in the garage"). Then on Scan, switch to **Move** mode,
-pick a location, and scan everything on that shelf. Locations drive the
-inventory audit and the valuation report's grouping.
+pick a location, and scan everything on that shelf. Locations drive
+[audits](audits.md) — Scan → Inventory, **Start audit**, scan a shelf, and the
+report says what is missing — and the valuation report's grouping.
 
 ## 5. Optional next steps
 
