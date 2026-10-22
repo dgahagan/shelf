@@ -114,6 +114,26 @@ def _fold(s: str) -> str:
     )
 
 
+_LEADING_ARTICLES = frozenset({"the", "a", "an"})
+
+
+def fold_title(title: str) -> str:
+    """The duplicate finder's title key: folded, with one leading article dropped.
+
+    The composition `titles_match_exactly` uses — diacritics stripped, then
+    casefolded with punctuation gone — so "Café" and "Cafe" fold alike. One
+    leading "the"/"a"/"an" is dropped only when another token follows, the
+    shape imports produce ("The Hobbit" vs "Hobbit"); "The" alone stays.
+
+    An empty result means "cannot tell" and must never group: every CJK title
+    folds to "", so grouping on it would make one duplicate of them all.
+    """
+    tokens = _normalize(_fold(title)).split()
+    if len(tokens) > 1 and tokens[0] in _LEADING_ARTICLES:
+        tokens = tokens[1:]
+    return " ".join(tokens)
+
+
 def titles_match_exactly(row_title: str, catalog_title: str | None) -> bool:
     """True when the catalogue title is the row title, exactly, after folding.
 

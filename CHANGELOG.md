@@ -6,6 +6,45 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.72.0] - 2026-10-21
+
+Shelf has been able to merge two records of the same book since early on, but
+nothing in the app offered it, and nothing found the records that needed it. An
+import, a sync and a scan could each file the same book once, and the only
+advice was to delete one — which loses that record's copy. This release adds a
+**Duplicates** page that finds the records filed twice and merges them without
+losing a copy.
+
+### Added
+
+- **Duplicates.** A new page in the account menu (Library; admins, part of
+  Collector tools) lists records filed twice: **Same ISBN or barcode** — an
+  ISBN-10 beside its ISBN-13, or a disc whose barcode an early version filed as
+  an ISBN — and, for records with no identifier at all, **Same title and
+  author**, which are only probable. Pick the record to keep, see which values
+  the merge will copy onto it, and **Merge**: every physical copy, tag, loan,
+  list and audit entry comes across, so two records of one book become one
+  record with two copies. **Not duplicates** hides a group until a new record
+  joins it, and **Restore** under Dismissed brings one back. The mis-filed UPC
+  rows 0.7.1 left "for you to merge" now have a page to do it from.
+  Some things it deliberately does not do: Trash cannot undo a merge, and the
+  page says so before the button. It never pairs records of different media
+  types — a paperback and its ebook are Related Media, not duplicates. It
+  leaves periodicals and music alone, and it does not pair a record that has an
+  ISBN with another by title, since two editions of one book are not a
+  duplicate.
+
+### Fixed
+
+- **A merge keeps the merged-away record's audit history.** Merging a record
+  that a shelf audit had scanned used to blank those entries, so the audit
+  report lost its *Found* and *Moved here* rows for it. They now move onto the
+  kept record.
+- **A merge that is refused partway leaves every record as it was.** Merging
+  three or more records at once could stop on a later one (an invalid ISBN to
+  copy, say) after the earlier ones had already been merged away, while the
+  response said the merge had failed. A refusal now undoes the whole merge.
+
 ## [0.71.0] - 2026-10-21
 
 Inventory mode could confirm a book was on a shelf, but it kept what you had
@@ -5260,6 +5299,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.72.0]: https://github.com/dgahagan/shelf/releases/tag/v0.72.0
 [0.71.0]: https://github.com/dgahagan/shelf/releases/tag/v0.71.0
 [0.70.0]: https://github.com/dgahagan/shelf/releases/tag/v0.70.0
 [0.69.0]: https://github.com/dgahagan/shelf/releases/tag/v0.69.0

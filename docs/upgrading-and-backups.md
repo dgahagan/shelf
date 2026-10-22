@@ -425,7 +425,10 @@ a new server or hand your library to someone else, and it imports with a
 preview step that shows what's new, what's already there and how duplicates
 were matched. See [Import & export](user-guide/import-and-export.md).
 The author index is not in the archive either: it is rebuilt from each item's
-authors field on the receiving server. Wishlist price history is left out
+authors field on the receiving server. Neither are **Not duplicates**
+decisions from the Duplicates page: they travel with a database backup, not
+with a portable archive, so after a move a dismissed group shows again until
+you dismiss it once more. Wishlist price history is left out
 too, and is not rebuilt — the receiving server starts recording prices afresh.
 
 A sensible routine: an automated copy of `data/` (e.g. nightly via your

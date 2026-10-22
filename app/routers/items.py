@@ -1094,13 +1094,11 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
             }
 
         merged = 0
-        _MERGE_FILLABLE = frozenset(["subtitle", "authors", "publisher", "publish_year", "page_count",
-                                      "description", "series_name", "narrator", "isbn"])
         for mid in targets:
             other = db.execute("SELECT * FROM items_live WHERE id = ?", (mid,)).fetchone()
             if not other:
                 continue
-            fill = {f: other[f] for f in _MERGE_FILLABLE if not primary[f] and other[f]}
+            fill = {f: other[f] for f in item_merge.MERGE_FILLABLE if not primary[f] and other[f]}
             if fill:
                 # Validate *before* the DELETE: a merge must not delete a row
                 # whose values it failed to copy (#54). The write itself
@@ -1115,6 +1113,9 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
                     # live, so only a third, trashed row can collide.
                     item_write.refuse_trash_collision(db, "id = ?", [keep_id], fill)
                 except ItemValueError as e:
+                    # Undo the targets already merged: a plain return commits,
+                    # and the client is told nothing was (duplicate-audit B1).
+                    db.rollback()
                     # Name the row: the loop stops on the first bad one, and a
                     # multi-row merge otherwise reports a value with no way to
                     # tell which item carried it.

@@ -318,3 +318,78 @@ class TestWishlistMembershipSurvivesAMerge:
         assert db.execute(
             "SELECT COUNT(*) AS c FROM list_items WHERE item_id = ?", (other,)
         ).fetchone()["c"] == 0
+
+
+class TestAuditEntriesSurviveAMerge:
+    """A merge re-points the merged-away record's audit entries (duplicate-audit T2)."""
+
+    def test_entries_follow_the_kept_row_and_prices_go(self, admin_client, db):
+        from app.services import audits, item_copies
+
+        loc = _insert_location(db, "Shelf A")
+        keep = _insert_item(db, title="Keep", isbn=None)
+        husk = _insert_item(db, title="Husk", isbn=None)
+        # The kept copy shelves elsewhere: an item-level entry accounts for
+        # every copy of its item at the audited location, so a second copy
+        # there would legitimately raise Found after the merge.
+        keep_copy = item_copies.insert_copy(
+            db, {"item_id": keep, "copy_number": 1, "location_id": None})
+        husk_copy = item_copies.insert_copy(
+            db, {"item_id": husk, "copy_number": 1, "location_id": loc})
+        audit_id = audits.create_session(db, scope="location", location_id=loc)
+        entries = [
+            audits.add_entry(db, audit_id, item_id=husk, copy_id=husk_copy,
+                             location_id=loc, raw_code="C1", result="confirmed"),
+            audits.add_entry(db, audit_id, item_id=husk, copy_id=None,
+                             location_id=loc, raw_code="I1", result="confirmed"),
+        ]
+        db.execute("INSERT INTO price_history (item_id, price) VALUES (?, 9.5)", (husk,))
+        db.commit()
+
+        assert keep_copy and len(entries) == 2
+        before = audits.build_report(db, audits.get_session(db, audit_id)).counts["found"]
+        assert before > 0
+
+        assert _merge(admin_client, keep, [husk]) == {"ok": True, "merged": 1}
+
+        rows = db.execute(
+            "SELECT item_id FROM audit_entries WHERE session_id = ?", (audit_id,)
+        ).fetchall()
+        assert len(rows) == 2 and {r["item_id"] for r in rows} == {keep}
+
+        report = audits.build_report(db, audits.get_session(db, audit_id))
+        assert report.counts["found"] == before
+        assert not any(line.get("item_id") is None for line in report.found), (
+            "no entry may render as a record since deleted")
+
+        assert db.execute(
+            "SELECT 1 FROM price_history WHERE item_id = ?", (husk,)
+        ).fetchone() is None
+
+
+class TestARefusedMergeChangesNothing:
+    """A later target's refusal must undo the targets merged before it (duplicate-audit B1)."""
+
+    def test_three_way_merge_refused_on_the_last_target(self, admin_client, db):
+        loc = _insert_location(db, "Shelf A")
+        keep = _insert_item(db, title="Atomic triplet", isbn=None)
+        first = _insert_item(db, title="Atomic triplet", isbn=None, publisher="First publisher")
+        bad = _insert_item(db, title="Atomic triplet", isbn=None)
+        # The invalid value is planted under the write funnel, as legacy rows hold it.
+        db.execute("UPDATE items SET isbn = 'not-an-isbn' WHERE id = ?", (bad,))
+        from app.services import item_copies
+        item_copies.insert_copy(db, {"item_id": first, "copy_number": 1, "location_id": loc})
+        db.commit()
+        before = [dict(r) for r in db.execute(
+            "SELECT id, publisher, isbn FROM items ORDER BY id").fetchall()]
+        assert len(before) == 3
+
+        result = _merge(admin_client, keep, [first, bad])
+
+        assert result["ok"] is False and result["item_id"] == bad
+        after = [dict(r) for r in db.execute(
+            "SELECT id, publisher, isbn FROM items ORDER BY id").fetchall()]
+        assert after == before
+        assert db.execute(
+            "SELECT item_id FROM item_copies WHERE item_id = ?", (first,)
+        ).fetchone() is not None

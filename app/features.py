@@ -311,9 +311,9 @@ FEATURES: dict[str, Feature] = {
         label="Collector tools",
         description="Copy barcode labels, shelf audits and the duplicate finder.",
         profile="everything",
-        nav_tabs=("labels", "audits"),
+        nav_tabs=("labels", "audits", "duplicates"),
         entry_path="/labels",
-        modules=("app.routers.labels", "app.routers.audits"),
+        modules=("app.routers.labels", "app.routers.audits", "app.routers.duplicates"),
         ungated={
             ("POST", "/api/audits"): _AUDIT_STRIP,
             ("GET", "/api/audits/summary"): _AUDIT_STRIP,

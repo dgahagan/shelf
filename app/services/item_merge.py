@@ -32,6 +32,11 @@ own conflict rule, and getting one wrong raises ``IntegrityError`` mid-merge:
 
 from app.services import item_copies, lists
 
+# The fields a merge fills on the kept row from the merged-away one when the
+# kept row has none. The merge route applies it; the Duplicates page reads it too.
+MERGE_FILLABLE = frozenset(["subtitle", "authors", "publisher", "publish_year", "page_count",
+                            "description", "series_name", "narrator", "isbn"])
+
 
 def active_loan_ids(db, item_ids) -> set[int]:
     """Which of these items are currently checked out.
@@ -135,12 +140,20 @@ def reparent_children(db, keep_id: int, other_id: int) -> None:
     survive onto another row. They are left to the cascade. So is
     ``item_authors``: it is an index derived from each row's own ``authors``
     string, and the kept row's fill re-derives it through ``item_write``.
-    Everything whose loss the user would notice, and could not reconstruct, is moved here — a
-    trashed copy is restorable, so its loss is exactly what that sentence
-    forbids, and ``_reparent_copies`` selects from the physical table for
+    ``price_history`` is left to the cascade as well: prices are re-fetched
+    for the kept record's identifier, and the merged-away record's series
+    belongs to another barcode. ``duplicate_dismissals`` is left to the
+    cascade too: a dismissal names a pair of records, and the merged-away
+    record's rows go with it (ON DELETE CASCADE).
+    Everything whose loss the user would notice, and could not reconstruct, is
+    moved here. That includes ``audit_entries``: an audit report keeps the
+    merged-away record's *found* and *moved here* rows. It also includes a
+    trashed copy, which is restorable, so losing it is exactly what this
+    rule forbids; ``_reparent_copies`` selects from the physical table for
     that reason.
     """
     db.execute("UPDATE scan_log SET item_id = ? WHERE item_id = ?", (keep_id, other_id))
+    db.execute("UPDATE audit_entries SET item_id = ? WHERE item_id = ?", (keep_id, other_id))
     db.execute("UPDATE reading_log SET item_id = ? WHERE item_id = ?", (keep_id, other_id))
     db.execute("UPDATE checkouts SET item_id = ? WHERE item_id = ?", (keep_id, other_id))
     _reparent_tags(db, keep_id, other_id)

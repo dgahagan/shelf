@@ -564,6 +564,15 @@ PY
   outright, with a green suite. A lock probe pins *where* the guard reads; it
   says nothing about what the route answers. Add the outcome test too, or the
   probe is the only thing standing between the route and a silent regression.
+  **Sixth instance, found and not fixed:** the merge route (`merge_items`,
+  `app/routers/items.py`) reads the kept row and its loan guard
+  (`item_merge.active_loan_ids`) in a deferred transaction and takes the write
+  lock only at its first `UPDATE`. A design plan filed it as "merge holds its
+  own transaction" — it holds *a* transaction, not the lock. Plan
+  `duplicate-audit` (2026-10-21) gave the route its first UI and left the
+  route out of scope; a loan committed between the guard and the reparent can
+  leave the kept row with two open checkouts. Fix with `BEGIN IMMEDIATE` as the
+  route's first statement.
 - **Verify:** all four regression tests must still pass — the migration one
   drives a second runner to completion inside the first runner's snapshot read,
   and the route ones probe from inside the guard that a rival writer is already
@@ -5535,6 +5544,12 @@ grep -n 'type="submit" class="sr-only"' app/templates/scan.html app/templates/sh
   the bare `client` fixture starts with none. An anonymous pin therefore
   needs a user in the DB — request `admin_user` beside `client` — or it
   asserts the setup redirect (`feat/feature-profiles-wizard` T3, 2026-09-29).
+- **A signed-in user below a *page's* role gets 303 to `/browse`, not 403.**
+  `require_role` answers a non-`/api/` path with the redirect home (as
+  `/settings` does for an editor); only the `/api/` routes answer 403. Plan
+  `duplicate-audit` T4 specified "editor gets 403 on `GET /duplicates`" and
+  the probe read 303 (`69b0121`, 2026-10-21). Pin the page with
+  `follow_redirects=False` and `location == "/browse"`.
 - **Verify:** `grep -n "not user" -A3 app/main.py` still shows the
   `RedirectResponse(url="/login", status_code=303)` branch ahead of
   `call_next`.
@@ -6282,6 +6297,46 @@ python -m pytest tests/test_audits_service.py -q -k "Deleted or Purged"
   (`expected_rows(db, None)` is reached only for `scope = 'library'`).
 - **Status:** documented. Not a lint candidate — which NULLs mean something is
   a design property.
+
+## G147 — When adding user-owned state in a relationship table
+
+- **Rule:** decide the portable archive's contract for it explicitly, and say
+  it in `docs/upgrading-and-backups.md` either way. `build_archive`'s payload
+  and `_LIBRARY_KEYS` (`app/services/archive.py`) are a closed list; a table
+  not named there is silently not carried. A full database backup carrying the
+  table (`VACUUM INTO`) is not evidence that the archive does. Carrying a pair
+  needs both endpoints mapped to destination ids — the import's `id_map` covers
+  only created items — so it is a design, not an extra loop.
+- **Why:** schema parity, legacy-upgrade, fresh-bootstrap and backup tests all
+  pass while a move to a new server resets the user's decisions. Today
+  `item_links`, `list_items`, audit history and `duplicate_dismissals` are all
+  outside the archive; the one follow-up that carries them should be designed
+  once for all of them.
+- **Evidence:** codex plan review of `duplicate-audit` (R1, 2026-10-21).
+  Deferred; `docs/upgrading-and-backups.md` names the gap (`63ad3bb`).
+- **Verify:** `grep -n "_LIBRARY_KEYS" -A4 app/services/archive.py`, and every
+  relationship table it lacks is named as not carried in
+  `docs/upgrading-and-backups.md`'s portable-archive section.
+- **Status:** documented.
+
+## G148 — When a mutating `fetch()` takes its method from a variable
+
+- **Rule:** spell the method as a string literal inside each `fetch()` call —
+  `method: 'POST'`, not `method: method` or a shared `send(method, …)` helper.
+  Write one small wrapper per method (`postJson`, `deleteJson`), each with its
+  own `X-CSRF-Token` header.
+- **Why:** `scripts/check_csrf_fetch.py` finds a mutating call by matching a
+  literal `method: 'POST|PUT|PATCH|DELETE'` near the `fetch(`. A computed
+  method reads as a GET, so the lint passes with the header removed, and the
+  route answers a bare 403 in production.
+- **Evidence:** plan `duplicate-audit` T5 (`0445f81`, 2026-10-21): the first
+  `duplicates.js` used one `send(method, …)` helper; deleting its header left
+  `make check-csrf` green. Split into `postJson`/`deleteJson`, the same deletion
+  fails the lint.
+- **Verify:** `grep -n "_MUTATING" scripts/check_csrf_fetch.py` still matches
+  only a quoted method.
+- **Status:** documented. **Lint candidate:** make `check_csrf_fetch.py` flag a
+  `fetch()` whose `method:` value is not a string literal.
 
 ## Graveyard
 

@@ -280,15 +280,44 @@ other.
 ## Duplicates and merging
 
 Scanning an owned ISBN again opens the existing item rather than creating a
-twin. If you end up with duplicates anyway (two different ISBNs for one
-book, or a manual add before a scan), keep the better record and delete the
-other; tags and loan history live on the record, so move anything you need
-first. The deleted record goes to Trash, so a wrong pick can be undone.
+twin. Duplicates still happen — the same book once with its ISBN-10 and once
+with its ISBN-13, a disc whose barcode an early version filed as an ISBN, or a
+manual add before a scan — and the **Duplicates** page (account menu →
+Library) finds them. It is for admins, and part of
+[Collector tools](../configuration.md#features).
 
-Bulk **Merge** copies the fields the kept record lacks from the others
-before removing them. A merge that would copy an invalid ISBN is refused and
-both records are left in place. The message names the record it stopped on,
-by title and id, so a merge of several records tells you which one to fix.
+The page has two lists:
+
+- **Same ISBN or barcode** — records of one media type whose ISBN or barcode
+  is the same number once both are written as 13 digits. These are certain.
+- **Same title and author** — records with **no** ISBN or barcode at all whose
+  titles match once case, punctuation, accents and a leading *The*, *A* or *An*
+  are ignored, and whose first author is the same. These are only probable, so
+  check before merging. Two editions with different ISBNs are never offered:
+  owning both is not a duplicate.
+
+A group never mixes media types — a paperback and its ebook are formats of one
+work, which [Related Media](../related-media.md) links. Magazines and music are
+left out; their identity lives on the issue or release.
+
+In each group, pick the record to **keep** (the oldest is picked for you) and
+press **Merge**. The fields the kept record lacks — subtitle, authors,
+publisher, year, pages, description, series, narrator, ISBN — are copied from
+the others, first by age; the page marks each value that *will be copied*
+before you press. Everything else comes across too: **every physical copy**,
+tags, loans, lists, reading history and audit history. Shelf asks first,
+because **a merged-away record cannot be restored** — Trash does not undo a
+merge.
+
+**Not duplicates** hides a group. It comes back only if a new record joins it,
+and **Restore** under **Dismissed** at the foot of the page brings back one
+dismissed pair. A *Not duplicates* decision travels with a database backup, not
+with a portable archive. **Link instead** opens the first record, where Related
+Media can tie the others to it instead of merging them.
+
+A merge that would copy an invalid ISBN is refused and both records are left in
+place. The message names the record it stopped on, by title and id, so a merge
+of several records tells you which one to fix.
 
 Merging two records that were filed in **different** places keeps both physical
 copies, in both places — the kept record then shows a Copies list naming each

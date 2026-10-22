@@ -168,7 +168,8 @@ configured. The card says the feature is turned off, links back here, and
 keeps only its setup controls: sync, import, export and run buttons go until
 the feature is back on.
 
-**Collector tools** covers copy labels and the **Audits** pages. The audit
+**Collector tools** covers copy labels, the **Audits** pages and the
+**Duplicates** page (admin only). The audit
 strip on Scan → Inventory is not part of it: with Collector tools off you can
 still start an audit, scan into it and finish it, and its scans are kept; only
 reading the report waits until the feature is on. See [Audits](user-guide/audits.md).

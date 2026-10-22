@@ -96,8 +96,9 @@ the title. Per-copy condition, acquisition and provenance fields have shipped,
 and so have printable copy labels: assign each copy its own barcode, print it
 on an Avery sheet, and every Scan mode acts on the exact copy. Shelf audits
 have shipped too: scan a shelf or the whole library from any device, finish for
-a reconciliation report, and mark the copies that are missing. A duplicate audit
-across the whole collection is next.
+a reconciliation report, and mark the copies that are missing. And the duplicate
+finder has shipped: records filed twice, by ISBN/barcode or by title and author,
+side by side, merged with every copy kept.
 
 ## Reading life
 
@@ -128,11 +129,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.71.0](https://github.com/dgahagan/shelf/releases/tag/v0.71.0) | **Shelf audits.** Start an audit of a shelf or the whole library from Scan → Inventory, scan from any device (several at once, or after a reload), and finish for a report: found, moved here, seen elsewhere, on loan, missing and unexpected. Mark the missing copies; a Found button or the next scan of that copy clears the mark. Part of Collector tools. |
 | [0.70.0](https://github.com/dgahagan/shelf/releases/tag/v0.70.0) | **Copy labels.** Give each physical copy its own barcode from the new Labels page or a copy's edit panel, and print the codes on Avery 5160 or L7160 sheets. Scanning a label acts on that exact copy: Inventory and Move act on that copy alone, Lookup names it, and Add reports the copy you already own. Part of the new Collector tools feature. |
 | [0.69.0](https://github.com/dgahagan/shelf/releases/tag/v0.69.0) | **Find cover** now offers the other editions of the same work beside a book's exact ISBN match, each labelled with year, publisher and language, and a query you type searches on that text alone, without the stored author. With a LibraryThing token, a book Open Library does not know gets a verified English edition's cover (contributed by [@notAnElephant](https://github.com/notAnElephant)). |
 | [0.68.0](https://github.com/dgahagan/shelf/releases/tag/v0.68.0) | The stylesheet is built with Tailwind CSS 4, which clears a vulnerable build dependency. Pages look the same, but Shelf now needs Safari 16.4, Chrome 111, Firefox 128 or newer, and hover styles no longer stick on touch screens. A video game's edit form no longer shows the audiobook narrator and duration fields. |
 | [0.67.0](https://github.com/dgahagan/shelf/releases/tag/v0.67.0) | Portuguese books are looked up in PORBASE, the national library catalogue, for ISBNs starting 978-989 or 978-972, with its cover scan as a last resort (contributed by [@JoaoPCAzevedo](https://github.com/JoaoPCAzevedo)). A book you just added on Scan no longer vanishes when a slow history list arrives (contributed by [@notAnElephant](https://github.com/notAnElephant)), and Browse's select bar no longer covers the last item. |
-| [0.66.0](https://github.com/dgahagan/shelf/releases/tag/v0.66.0) | Scan a magazine. A 977 barcode in Add or Wishlist (13, 15 or 18 digits, add-on and all) opens the confirm card, whatever the Media Type says, and rescanning an issue you own says so. Shelf Fill's camera overlay now colours its result instead of showing every scan in green. |
 
 ---
 

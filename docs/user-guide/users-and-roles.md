@@ -5,7 +5,7 @@ logins, three roles.
 
 | Role | Can |
 |---|---|
-| **Admin** | Everything — settings, users, integrations, locations, borrowers, sync, bulk ops, backup/restore, logs, **delete permanently and empty expired Trash**, the Trash retention setting, **rename, scope and delete tags**, plus all editor rights |
+| **Admin** | Everything — settings, users, integrations, locations, borrowers, sync, bulk ops, backup/restore, logs, **delete permanently and empty expired Trash**, the Trash retention setting, **rename, scope and delete tags**, **find and merge duplicate records**, plus all editor rights |
 | **Editor** | Add / edit items, delete them to Trash and restore them from Trash, all scan modes, covers, lend and return, apply tags (one item or a Browse selection), import / export CSV and archives |
 | **Viewer** | Browse, search, Series, Stats, Store Mode, set an item's status (read, watched, played), export CSV (without the items in Trash) |
 

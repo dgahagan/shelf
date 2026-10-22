@@ -319,6 +319,15 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
     # would abort. test_schema_parity accepts a MIGRATIONS-only column.
     (47, "Add missing-since mark to item copies",
      "ALTER TABLE item_copies ADD COLUMN missing_since TEXT DEFAULT NULL"),
+    # A new table, so a numbered entry *and* a MIGRATION_TABLES copy (G1).
+    # One plain single-statement string, like 45/46 (G16).
+    (48, "Add duplicate dismissals",
+     "CREATE TABLE IF NOT EXISTS duplicate_dismissals ("
+     " item_a_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,"
+     " item_b_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,"
+     " created_at TEXT NOT NULL DEFAULT (datetime('now')),"
+     " PRIMARY KEY (item_a_id, item_b_id),"
+     " CHECK (item_a_id < item_b_id))"),
 )
 
 MIGRATION_TABLES = """
@@ -421,6 +430,14 @@ CREATE TABLE IF NOT EXISTS audit_entries (
     scanned_at    TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_audit_entries_session ON audit_entries(session_id, item_id);
+
+CREATE TABLE IF NOT EXISTS duplicate_dismissals (
+    item_a_id  INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    item_b_id  INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (item_a_id, item_b_id),
+    CHECK (item_a_id < item_b_id)
+);
 
 CREATE INDEX IF NOT EXISTS idx_items_upc ON items(upc);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_items_upc_type ON items(upc, media_type) WHERE upc IS NOT NULL;

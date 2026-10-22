@@ -135,6 +135,13 @@ only the report pages refuse. The report's row actions (`resolve`, `missing`,
 `notes`, and `DELETE`, admin) are gated. The domain logic is
 `app/services/audits.py`; the Inventory scan arm writes entries through it in
 the same `BEGIN IMMEDIATE` as its decision.
+And it owns the **duplicate finder**, two routers in
+`app/routers/duplicates.py`: the page (`GET /duplicates`) and
+`POST`/`DELETE /api/duplicates/dismiss`, every route **admin** then feature —
+admin because the merge it fronts, the existing `POST /api/items/merge`, is
+admin. The grouping is `app/services/duplicates.py`. A merge of several records
+is one transaction: a refusal on any target rolls back the targets already
+merged, so an `ok: false` answer means nothing was written.
 
 **Trash** is two routers in `app/routers/trash.py`, registered separately: the
 unprefixed page (`GET /trash`, editor) and the API under `/api/trash/` —
@@ -170,8 +177,11 @@ barcode -> ISBN-13 choice, constrained in the schema to a 17-digit barcode
 and a 978/979 ISBN), `item_links`, and the per-family side tables described
 below — `music_releases` + `music_media` + `music_tracks` +
 `music_identifiers`, `periodical_publications` + `periodical_issues`,
-`romm_records` and `komga_records`, and `audit_sessions` + `audit_entries`
-(shelf audits, below).
+`romm_records` and `komga_records`, `audit_sessions` + `audit_entries`
+(shelf audits, below), and `duplicate_dismissals` (one row per pair of records
+the user called *not duplicates*, stored `(min id, max id)` under a `CHECK`;
+both ids `ON DELETE CASCADE`, so a purge removes the rows and a trash keeps
+them).
 
 **Audits: the entries are the record, the report is computed.** An
 `audit_sessions` row is one audit — `scope` (`location` or `library`), its
@@ -199,6 +209,21 @@ once: a later `relocated` entry for the same item and location is its
 resolution, which hides it from the report and makes `/resolve` refuse a
 replay under the same write lock. Audits and the mark are not in the portable
 archive.
+
+**Duplicates: groups are computed, dismissals are the record.** A duplicate
+group is computed per request from `items_live` — no cache, no stored key —
+on one of two keys: an identifier key (`to_isbn13` of `isbn`, else `isbn10`,
+else `upc` — the permissive helper, so a pre-#20 UPC filed in `isbn` meets its
+correctly filed twin) or, only for rows with no identifier, a title + author
+key (`title_match.fold_title` plus the first author's `name_key`). **A group
+never crosses `media_type`; the periodical and music families are excluded;
+an empty title fold never groups** (every CJK title folds to `""`). A group is
+hidden while every pair in it is in `duplicate_dismissals`, read joined through
+`items_live` on both sides. **A merge moves audit entries onto the kept
+record**: `item_merge.reparent_children` re-points `audit_entries` with the
+other child tables, so an audit report keeps the merged-away record's rows;
+`price_history` and `duplicate_dismissals` are left to the cascade. Dismissals
+are not in the portable archive.
 
 **`tags.media_type` is an advisory scope, not a constraint.** NULL means the
 tag is global. Nothing strips or refuses an association whose item is outside
