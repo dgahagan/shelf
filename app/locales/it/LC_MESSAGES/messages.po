@@ -1,0 +1,323 @@
+# Italian translations for Shelf.
+# Distributed under the same license as Shelf (AGPL-3.0).
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
+"PO-Revision-Date: 2026-10-25 08:24+0100\n"
+"Last-Translator: Andrea Bergamasco\n"
+"Language: it\n"
+"Language-Team: Italian\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit"
+
+#: app/nav.py:34
+msgid "Browse"
+msgstr "Sfoglia"
+
+#: app/nav.py:35
+msgid "Scan"
+msgstr "Scansiona"
+
+#: app/nav.py:36
+msgid "Intake"
+msgstr "Acquisizione"
+
+#: app/nav.py:38
+msgid "Shelf Fill"
+msgstr "Riempi scaffale"
+
+#: app/nav.py:40
+msgid "Store"
+msgstr "Negozio"
+
+#: app/nav.py:41
+msgid "Series"
+msgstr "Serie"
+
+#: app/nav.py:42
+msgid "Music"
+msgstr "Musica"
+
+#: app/nav.py:43
+msgid "Periodicals"
+msgstr "Periodici"
+
+#: app/nav.py:44
+msgid "Discover"
+msgstr "Scopri"
+
+#: app/nav.py:45
+msgid "Stats"
+msgstr "Statistiche"
+
+#: app/nav.py:46
+msgid "Trash"
+msgstr "Cestino"
+
+#: app/nav.py:47 app/nav.py:49 app/nav.py:51 app/nav.py:53
+msgid "Library"
+msgstr "Biblioteca"
+
+#: app/nav.py:48
+msgid "Labels"
+msgstr "Etichette"
+
+#: app/nav.py:50
+msgid "Audits"
+msgstr "Inventari"
+
+#: app/nav.py:52
+msgid "Duplicates"
+msgstr "Duplicati"
+
+#: app/nav.py:54
+msgid "Settings"
+msgstr "Impostazioni"
+
+#: app/nav.py:55 app/nav.py:57
+msgid "Administration"
+msgstr "Amministrazione"
+
+#: app/nav.py:56
+msgid "Logs"
+msgstr "Log"
+
+#: app/routers/auth_routes.py:56 app/routers/auth_routes.py:63
+msgid "Invalid username or password"
+msgstr "Nome utente o password non validi"
+
+#: app/routers/auth_routes.py:121
+msgid "Password must be at least 8 characters"
+msgstr "La password deve contenere almeno 8 caratteri"
+
+#: app/routers/auth_routes.py:123 app/templates/fragments/account_menu.html:147
+#: app/templates/setup.html:53
+msgid "Passwords do not match"
+msgstr "Le password non coincidono"
+
+#: app/routers/auth_routes.py:125
+msgid "Username must be at least 2 characters"
+msgstr "Il nome utente deve contenere almeno 2 caratteri"
+
+#: app/routers/auth_routes.py:127
+msgid "Choose how much of Shelf to start with"
+msgstr "Scegli la configurazione iniziale di Shelf"
+
+#: app/routers/auth_routes.py:264
+msgid "New password must be at least 8 characters"
+msgstr "La nuova password deve contenere almeno 8 caratteri"
+
+#: app/routers/auth_routes.py:270 app/routers/auth_routes.py:285
+msgid "Current password is incorrect"
+msgstr "La password attuale non è corretta"
+
+#: app/routers/auth_routes.py:291
+msgid "Password changed"
+msgstr "Password modificata"
+
+#: app/routers/auth_routes.py:306
+msgid "Display name cannot be empty"
+msgstr "Il nome visualizzato non può essere vuoto"
+
+#: app/routers/auth_routes.py:317
+msgid "Display name updated"
+msgstr "Nome visualizzato aggiornato"
+
+#: app/routers/auth_routes.py:330
+msgid "Unknown language"
+msgstr "Lingua sconosciuta"
+
+#: app/templates/base.html:60
+msgid "Main menu"
+msgstr "Menu principale"
+
+#: app/templates/base.html:109
+msgid "Keyboard shortcuts (?)"
+msgstr "Scorciatoie da tastiera (?)"
+
+#: app/templates/base.html:115
+msgid "Keyboard Shortcuts"
+msgstr "Scorciatoie da tastiera"
+
+#: app/templates/base.html:122
+msgid "Global"
+msgstr "Globali"
+
+#: app/templates/base.html:124
+msgid "Focus search"
+msgstr "Vai alla ricerca"
+
+#: app/templates/base.html:125
+msgid "Go to Scan"
+msgstr "Vai a Scansiona"
+
+#: app/templates/base.html:126
+msgid "Go to Browse"
+msgstr "Vai a Sfoglia"
+
+#: app/templates/base.html:127
+msgid "Show shortcuts"
+msgstr "Mostra scorciatoie"
+
+#: app/templates/base.html:131
+msgid "Browse Page"
+msgstr "Pagina Sfoglia"
+
+#: app/templates/base.html:133
+msgid "Toggle grid / list view"
+msgstr "Alterna griglia / elenco"
+
+#: app/templates/base.html:134
+msgid "Toggle select mode"
+msgstr "Attiva/disattiva selezione"
+
+#: app/templates/base.html:135
+msgid "Toggle filters (mobile)"
+msgstr "Mostra/nascondi filtri (mobile)"
+
+#: app/templates/base.html:136
+msgid "Clear all filters"
+msgstr "Azzera tutti i filtri"
+
+#: app/templates/base.html:137
+msgid "Exit select / blur search"
+msgstr "Esci dalla selezione / dalla ricerca"
+
+#: app/templates/base.html:142
+msgid "Shortcuts are disabled when typing in inputs"
+msgstr "Le scorciatoie sono disattivate mentre scrivi in un campo"
+
+#: app/templates/login.html:6 app/templates/login.html:37
+msgid "Sign In"
+msgstr "Accedi"
+
+#: app/templates/login.html:13
+msgid "Sign in to your library"
+msgstr "Accedi alla tua biblioteca"
+
+#: app/templates/fragments/account_menu.html:96 app/templates/login.html:24
+#: app/templates/setup.html:27
+msgid "Username"
+msgstr "Nome utente"
+
+#: app/templates/fragments/account_menu.html:91 app/templates/login.html:30
+#: app/templates/setup.html:40
+msgid "Password"
+msgstr "Password"
+
+#: app/templates/setup.html:6
+msgid "Welcome"
+msgstr "Configurazione iniziale"
+
+#: app/templates/setup.html:15
+msgid "Welcome to Shelf"
+msgstr "Ti diamo il benvenuto in Shelf"
+
+#: app/templates/setup.html:16
+msgid "Create your admin account to get started."
+msgstr "Crea il tuo account amministratore per iniziare."
+
+#: app/templates/fragments/account_menu.html:101 app/templates/setup.html:33
+msgid "Display Name"
+msgstr "Nome visualizzato"
+
+#: app/templates/setup.html:33
+msgid "(optional)"
+msgstr "(facoltativo)"
+
+#: app/templates/setup.html:35
+msgid "How your name appears in the app"
+msgstr "Come appare il tuo nome nell'app"
+
+#: app/templates/fragments/account_menu.html:140 app/templates/setup.html:44
+msgid "Must be at least 8 characters"
+msgstr "Almeno 8 caratteri"
+
+#: app/templates/setup.html:48
+msgid "Confirm Password"
+msgstr "Conferma password"
+
+#: app/templates/setup.html:60
+msgid "How much of Shelf do you want to start with?"
+msgstr "Con quale configurazione vuoi iniziare?"
+
+#: app/templates/setup.html:70
+#, python-format
+msgid "Adds: %(features)s"
+msgstr "Aggiunge: %(features)s"
+
+#: app/templates/setup.html:75
+msgid "You can change this any time in Settings → Features."
+msgstr "Puoi cambiarlo in qualsiasi momento in Impostazioni → Funzionalità."
+
+#: app/templates/setup.html:81
+msgid "Create Account"
+msgstr "Crea account"
+
+#: app/templates/setup.html:85
+msgid "This will be the admin account with full access to your library."
+msgstr "Sarà l'account amministratore, con accesso completo alla tua biblioteca."
+
+#: app/templates/fragments/account_menu.html:3
+msgid "Account menu"
+msgstr "Menu account"
+
+#: app/templates/fragments/account_menu.html:27
+#: app/templates/fragments/account_menu.html:79
+msgid "Account"
+msgstr "Account"
+
+#: app/templates/fragments/account_menu.html:28
+msgid "Profile and password"
+msgstr "Profilo e password"
+
+#: app/templates/fragments/account_menu.html:65
+msgid "Sign out"
+msgstr "Esci"
+
+#: app/templates/fragments/account_menu.html:80
+msgid "Manage your profile and sign-in details"
+msgstr "Gestisci il profilo e i dati di accesso"
+
+#: app/templates/fragments/account_menu.html:82
+msgid "Close account dialog"
+msgstr "Chiudi la finestra account"
+
+#: app/templates/fragments/account_menu.html:89
+msgid "Profile"
+msgstr "Profilo"
+
+#: app/templates/fragments/account_menu.html:106
+msgid "Role"
+msgstr "Ruolo"
+
+#: app/templates/fragments/account_menu.html:111
+msgid "Language"
+msgstr "Lingua"
+
+#: app/templates/fragments/account_menu.html:115
+msgid "Automatic (browser language)"
+msgstr "Automatica (lingua del browser)"
+
+#: app/templates/fragments/account_menu.html:126
+msgid "Save"
+msgstr "Salva"
+
+#: app/templates/fragments/account_menu.html:132
+msgid "Current Password"
+msgstr "Password attuale"
+
+#: app/templates/fragments/account_menu.html:137
+msgid "New Password"
+msgstr "Nuova password"
+
+#: app/templates/fragments/account_menu.html:143
+msgid "Confirm New Password"
+msgstr "Conferma nuova password"
+
+#: app/templates/fragments/account_menu.html:154
+msgid "Change Password"
+msgstr "Cambia password"
+

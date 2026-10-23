@@ -1,0 +1,22 @@
+# Italian translations for Shelf.
+# Distributed under the same license as Shelf (AGPL-3.0).
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
+"PO-Revision-Date: 2026-10-23 09:29+0200\n"
+"Last-Translator: Andrea Bergamasco\n"
+"Language: it\n"
+"Language-Team: Italian\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit"
+
+#: static/js/app.js:71 static/js/app.js:114 static/js/app.js:124
+msgid "Done"
+msgstr "Fatto"
+
+#: static/js/components.js:82
+msgid "Could not change the language"
+msgstr "Impossibile cambiare la lingua"
+

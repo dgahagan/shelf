@@ -33,7 +33,8 @@ class TestPage:
 
         html = admin_client.get("/duplicates").text
         assert html.count('<script src="/static/js/duplicates.js" defer></script>') == 1
-        assert not re.findall(r"<script(?![^>]*\bsrc=)[^>]*>", html)
+        # A JSON data block (the i18n catalog) is not executable, so CSP allows it.
+        assert not re.findall(r"<script(?![^>]*\b(?:src=|type=\"application/json\"))[^>]*>", html)
 
     @staticmethod
     def _group_html(admin_client, db, n):

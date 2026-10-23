@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ current_locale() }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In - Shelf</title>
+    <title>{{ _('Sign In') }} - Shelf</title>
     <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-sm">
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-shelf-accent2 tracking-tight">Shelf</h1>
-            <p class="text-shelf-muted text-sm mt-1">Sign in to your library</p>
+            <p class="text-shelf-muted text-sm mt-1">{{ _('Sign in to your library') }}</p>
         </div>
 
         <form method="POST" action="/login" class="bg-shelf-card border border-shelf-border rounded-xl p-6 space-y-4">
@@ -21,20 +21,20 @@
             {% endif %}
 
             <div>
-                <label for="username" class="block text-sm font-medium text-shelf-muted mb-1">Username</label>
+                <label for="username" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Username') }}</label>
                 <input type="text" id="username" name="username" required autofocus
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
 
             <div>
-                <label for="password" class="block text-sm font-medium text-shelf-muted mb-1">Password</label>
+                <label for="password" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Password') }}</label>
                 <input type="password" id="password" name="password" required
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
 
             <button type="submit"
                 class="w-full bg-shelf-accent hover:bg-shelf-accent2 text-white font-medium rounded-lg px-4 py-2 transition-colors">
-                Sign In
+                {{ _('Sign In') }}
             </button>
         </form>
     </div>

@@ -80,8 +80,11 @@ Library, and thinner otherwise.
   the Koninklijke Bibliotheek, Hungarian ones to OSZK NEKTÁR and Portuguese
   ones to PORBASE. Other
   countries deserve the same.
-- **A translated interface.** The UI is English-only today. Translating the
-  templates and letting the browser or a per-user setting pick the language.
+- **A translated interface.** In progress. The translation machinery and the
+  first catalog have landed, and each user can pick a language or follow the
+  browser. Other languages come next. The page shell (navigation, sign-in,
+  setup, the Account dialog) is translated; the feature pages follow area by
+  area.
 
 ## Import and migration
 

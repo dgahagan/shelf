@@ -8,3 +8,5 @@ pytest-xdist==3.6.1
 playwright==1.52.0
 pip-audit==2.7.3
 pip-licenses==5.0.0
+# Extracts and compiles the UI catalogs (make i18n); the app reads .mo with stdlib gettext.
+Babel==2.18.0

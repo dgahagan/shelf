@@ -16,7 +16,7 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
-        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-deleted \
+        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-deleted check-i18n i18n \
         badges check-badges check-roadmap \
         checks checks-fast \
         report-review report-security report-test reports \
@@ -51,6 +51,13 @@ setup:
 css:
 	npx @tailwindcss/cli -i static/css/input.css -o static/css/app.css --minify
 	python scripts/stamp_sw_version.py
+
+# UI catalogs (app/i18n.py). Extracts every marked string into each
+# app/locales/<lang>/LC_MESSAGES/*.po and recompiles the committed .mo files.
+# Run it after adding or changing UI text, translate the new entries, run it again.
+i18n:
+	python scripts/i18n.py update
+	python scripts/i18n.py compile
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -136,6 +143,10 @@ check-sw-version:
 check-tests:
 	python scripts/check_test_conventions.py
 
+# Every marked UI string is in each .po, and each committed .mo matches its .po.
+check-i18n:
+	python scripts/i18n.py --check
+
 # README's two test-count badges are generated from `pytest --co`, never
 # hand-edited — the same rule as sw.js's SW_VERSION. Add a test, run this.
 badges:
@@ -151,7 +162,7 @@ check-roadmap:
 	python scripts/check_roadmap_map.py
 
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-badges check-roadmap
+checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-badges check-roadmap check-i18n
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.

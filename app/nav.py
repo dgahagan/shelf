@@ -16,6 +16,7 @@ import json
 import logging
 
 from app.features import FEATURES, feature_enabled
+from app.i18n import N_
 
 logger = logging.getLogger(__name__)
 
@@ -30,30 +31,30 @@ _TAB_FEATURE = {tab: key for key, f in FEATURES.items() for tab in f.nav_tabs}
 # — base.html used to skip `settings` with a hardcoded comparison in two
 # places, which is one place too many the moment a second tab moves.
 NAV_TABS = [
-    {"key": "browse", "label": "Browse", "path": "/browse"},
-    {"key": "scan", "label": "Scan", "path": "/scan", "roles": ("admin", "editor")},
-    {"key": "intake", "label": "Intake", "path": "/intake", "roles": ("admin", "editor"),
+    {"key": "browse", "label": N_("Browse"), "path": "/browse"},
+    {"key": "scan", "label": N_("Scan"), "path": "/scan", "roles": ("admin", "editor")},
+    {"key": "intake", "label": N_("Intake"), "path": "/intake", "roles": ("admin", "editor"),
      "requires": "vision"},
-    {"key": "shelf-fill", "label": "Shelf Fill", "path": "/shelf-fill",
+    {"key": "shelf-fill", "label": N_("Shelf Fill"), "path": "/shelf-fill",
      "roles": ("admin", "editor")},
-    {"key": "store", "label": "Store", "path": "/store"},
-    {"key": "series", "label": "Series", "path": "/series"},
-    {"key": "music", "label": "Music", "path": "/music"},
-    {"key": "periodicals", "label": "Periodicals", "path": "/periodicals"},
-    {"key": "discover", "label": "Discover", "path": "/discover", "requires": "hardcover"},
-    {"key": "stats", "label": "Stats", "path": "/stats"},
-    {"key": "trash", "label": "Trash", "path": "/trash", "roles": ("admin", "editor"),
-     "menu": "account", "heading": "Library"},
-    {"key": "labels", "label": "Labels", "path": "/labels", "roles": ("admin", "editor"),
-     "menu": "account", "heading": "Library"},
-    {"key": "audits", "label": "Audits", "path": "/audits", "roles": ("admin", "editor"),
-     "menu": "account", "heading": "Library"},
-    {"key": "duplicates", "label": "Duplicates", "path": "/duplicates", "roles": ("admin",),
-     "menu": "account", "heading": "Library"},
-    {"key": "settings", "label": "Settings", "path": "/settings", "roles": ("admin",),
-     "menu": "account", "heading": "Administration"},
-    {"key": "logs", "label": "Logs", "path": "/logs", "roles": ("admin",),
-     "menu": "account", "heading": "Administration"},
+    {"key": "store", "label": N_("Store"), "path": "/store"},
+    {"key": "series", "label": N_("Series"), "path": "/series"},
+    {"key": "music", "label": N_("Music"), "path": "/music"},
+    {"key": "periodicals", "label": N_("Periodicals"), "path": "/periodicals"},
+    {"key": "discover", "label": N_("Discover"), "path": "/discover", "requires": "hardcover"},
+    {"key": "stats", "label": N_("Stats"), "path": "/stats"},
+    {"key": "trash", "label": N_("Trash"), "path": "/trash", "roles": ("admin", "editor"),
+     "menu": "account", "heading": N_("Library")},
+    {"key": "labels", "label": N_("Labels"), "path": "/labels", "roles": ("admin", "editor"),
+     "menu": "account", "heading": N_("Library")},
+    {"key": "audits", "label": N_("Audits"), "path": "/audits", "roles": ("admin", "editor"),
+     "menu": "account", "heading": N_("Library")},
+    {"key": "duplicates", "label": N_("Duplicates"), "path": "/duplicates", "roles": ("admin",),
+     "menu": "account", "heading": N_("Library")},
+    {"key": "settings", "label": N_("Settings"), "path": "/settings", "roles": ("admin",),
+     "menu": "account", "heading": N_("Administration")},
+    {"key": "logs", "label": N_("Logs"), "path": "/logs", "roles": ("admin",),
+     "menu": "account", "heading": N_("Administration")},
 ]
 
 # The page that controls visibility must stay reachable, and so must the

@@ -68,7 +68,7 @@ function scanCardToast(root) {
     // The error arm declares its own line; it replaces the assembled string
     // rather than appending to it, because it IS the whole message.
     var errEl = root.querySelector('[data-scan-error]');
-    var label = outcome.label || 'Done';
+    var label = outcome.label || t('Done');
     // The badge reads lower-case ('added', 'lent'); the toast is a sentence,
     // so it opens capitalised the way the server string did.
     label = label.charAt(0).toUpperCase() + label.slice(1);
@@ -91,6 +91,19 @@ function scanCardToast(root) {
     return {text: text, type: type};
 }
 
+// --- Translation ---
+// The UI-language strings for this page, rendered into base.html as the
+// #i18n-catalog JSON block (app/i18n.py js_catalog). Keyed by the English
+// text, so a string with no entry, or any string in English, comes back as is.
+var _i18nCatalog = null;
+function t(message) {
+    if (_i18nCatalog === null) {
+        var el = document.getElementById('i18n-catalog');
+        try { _i18nCatalog = el ? JSON.parse(el.textContent) : {}; } catch (e) { _i18nCatalog = {}; }
+    }
+    return _i18nCatalog[message] || message;
+}
+
 // --- Toast notifications ---
 function showToast(message, type) {
     var container = document.getElementById('toast-container');
@@ -98,7 +111,7 @@ function showToast(message, type) {
     var el = document.createElement('div');
     el.className = (colors[type] || 'bg-shelf-accent') + ' text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-opacity duration-300';
     // Structural, not belt-and-braces: makes a pill with nothing in it impossible from any caller.
-    message = (message || '').toString().trim() || 'Done';
+    message = (message || '').toString().trim() || t('Done');
     el.textContent = message;
     container.appendChild(el);
     setTimeout(function() { el.style.opacity = '0'; }, 2700);
@@ -108,7 +121,7 @@ function showToast(message, type) {
 // Listen for HX-Trigger showToast events from server
 document.body.addEventListener('showToast', function(e) {
     var d = e.detail || {};
-    showToast(d.message || 'Done', d.type || 'success');
+    showToast(d.message || t('Done'), d.type || 'success');
 });
 
 // --- Loading bar ---
@@ -304,8 +317,8 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
         // adding a response branch to /api/scan".
         var card = ok && document.querySelector('#scan-results > :first-child');
         if (card) {
-            var t = scanCardToast(card);
-            showToast(t.text, t.type);
+            var toast = scanCardToast(card);
+            showToast(toast.text, toast.type);
         }
     } else if (action === 'clear-title-search' && ok) {
         var si = document.getElementById('title-search-input') || document.getElementById('game-search-input');
