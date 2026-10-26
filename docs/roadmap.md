@@ -84,7 +84,7 @@ Library, and thinner otherwise.
   first catalog have landed, and each user can pick a language or follow the
   browser. Other languages come next. The page shell (navigation, sign-in,
   setup, the Account dialog) is translated; the feature pages follow area by
-  area.
+  area. Until then it sits behind `SHELF_I18N`, off by default.
 
 ## Import and migration
 

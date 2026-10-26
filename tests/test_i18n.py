@@ -11,6 +11,11 @@ from app import i18n
 ROOT = Path(__file__).resolve().parent.parent
 
 
+@pytest.fixture(autouse=True)
+def _i18n_on(monkeypatch):
+    monkeypatch.setenv("SHELF_I18N", "on")
+
+
 @pytest.mark.parametrize("user_language, header, expected", [
     (None, None, "en"),
     (None, "", "en"),
@@ -89,3 +94,18 @@ def test_catalogs_are_complete_and_compiled():
     r = subprocess.run([sys.executable, "scripts/i18n.py", "--check"],
                        cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("value", [None, "", "off", "0", "nope"])
+def test_off_stays_english_and_hides_the_picker(admin_client, db, monkeypatch, value):
+    """Until every area is translated, the UI is English unless SHELF_I18N is on."""
+    if value is None:
+        monkeypatch.delenv("SHELF_I18N")
+    else:
+        monkeypatch.setenv("SHELF_I18N", value)
+    db.execute("UPDATE users SET language = 'it' WHERE username = 'admin'")
+    db.commit()
+    page = admin_client.get("/browse", headers={"Accept-Language": "it"})
+    assert '<html lang="en"' in page.text
+    assert "Sfoglia" not in page.text
+    assert 'data-testid="account-language"' not in page.text

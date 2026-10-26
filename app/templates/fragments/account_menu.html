@@ -111,6 +111,7 @@
                     <input type="text" value="{{ user.role|capitalize }}" disabled
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-muted cursor-not-allowed">
                 </div>
+                {% if i18n_enabled() %}
                 <div>
                     <label for="account-language" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Language') }}</label>
                     {# Saves on change and reloads: the whole page has to re-render in the new language. #}
@@ -122,6 +123,7 @@
                         {% endfor %}
                     </select>
                 </div>
+                {% endif %}
                 <template x-if="nameResult">
                     <p :class="nameResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="nameResult.message"></p>
                 </template>

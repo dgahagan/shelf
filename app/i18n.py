@@ -12,6 +12,7 @@ so extraction sees them, and translated where they are rendered.
 """
 
 import gettext as _gettext
+import os
 from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
@@ -24,6 +25,13 @@ LOCALE_DIR = Path(__file__).parent / "locales"
 LANGUAGE_NAMES = {"en": "English", "it": "Italiano"}
 
 current_locale: ContextVar[str] = ContextVar("current_locale", default=DEFAULT)
+
+
+def enabled() -> bool:
+    """Whether the translated UI is on. Off unless `SHELF_I18N` says on, while
+    only part of the UI is translated; the flag goes once every area is.
+    Read per call, so a test can flip it with monkeypatch."""
+    return os.environ.get("SHELF_I18N", "").strip().lower() in ("1", "on", "true", "yes")
 
 
 def N_(message: str) -> str:

@@ -229,8 +229,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # The UI locale (app/i18n.py), set before call_next so the route and its
         # templates run in this context and read it. The browser's choice first,
         # so the skipped prefixes below (the public /share/ page) follow it too.
+        # Off (SHELF_I18N unset), nothing is set and every request stays English.
+        i18n_on = i18n.enabled()
         accept_language = request.headers.get("accept-language")
-        i18n.current_locale.set(i18n.resolve(None, accept_language))
+        if i18n_on:
+            i18n.current_locale.set(i18n.resolve(None, accept_language))
 
         # Skip auth for static assets
         if path.startswith(_SKIP_AUTH_PREFIXES):
@@ -249,7 +252,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             user = get_current_user(request)
         # Inject user into request state
         request.state.user = user
-        if user and user.get("language"):
+        if i18n_on and user and user.get("language"):
             i18n.current_locale.set(i18n.resolve(user["language"], accept_language))
 
         # Setup wizard: if no users exist, redirect everything to /setup
@@ -723,6 +726,7 @@ templates.env.install_gettext_callables(
 templates.env.globals["current_locale"] = i18n.current_locale.get
 templates.env.globals["js_catalog"] = i18n.js_catalog
 templates.env.globals["language_names"] = i18n.LANGUAGE_NAMES
+templates.env.globals["i18n_enabled"] = i18n.enabled
 
 templates.env.filters["strip_html"] = strip_html
 templates.env.filters["money"] = format_money

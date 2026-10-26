@@ -55,7 +55,9 @@ Middleware, outermost first (`app/main.py`):
    else English. It lives in a contextvar set before `call_next`, so the
    route, its templates and the JS catalog all read the same value. The
    browser's tag is set before the skip-prefix return, so `/share/` pages,
-   which skip Auth, still follow it.
+   which skip Auth, still follow it. All of this runs only when `SHELF_I18N`
+   is `on` (`i18n.enabled()`); otherwise every request stays English and the
+   Account dialog hides the picker, until every area is translated.
 4. **CSRF** — double-submit cookie; accepts an `X-CSRF-Token` header (HTMX,
    fetch) or `_csrf` form field on mutating requests.
 
