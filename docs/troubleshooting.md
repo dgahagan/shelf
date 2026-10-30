@@ -396,7 +396,9 @@ between a script that never arrived and one that arrived too late.
 ## Rate-limited (HTTP 429) in the UI
 
 This one is Shelf's own inbound limit, not a provider's. Per-IP limits
-protect `/api/`, `/share/`, `/login` and `/setup`. Behind a reverse proxy,
+protect `/api/`, `/share/`, `/login` and `/setup`. A request to `/api/v1/`
+with an API token counts against that token's own limit instead (60 a
+minute), so a dashboard that polls too fast slows only itself. Behind a reverse proxy,
 every client looks like the proxy's IP and shares one bucket unless
 `SHELF_TRUST_PROXY` names that proxy's address. The legacy value `1` means
 `127.0.0.1`, so it has the same effect when the proxy is on another machine or

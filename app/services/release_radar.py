@@ -228,14 +228,24 @@ def prune(db, today: date) -> int:
     return cur.rowcount
 
 
-def visible_rows(db, limit: int = VISIBLE_LIMIT) -> list[dict]:
+def visible_rows(db, limit: int | None = VISIBLE_LIMIT) -> list[dict]:
     """The `/upcoming` rows: undismissed, unheld, dated first by date, then
-    undated, then by series and position."""
+    undated, then by series and position. `limit=None` returns every row."""
     rows = db.execute(
         _ROW_SELECT + "ORDER BY u.release_date IS NULL, u.release_date, "
         "w.series_name COLLATE NOCASE, u.series_position, u.id"
     ).fetchall()
     return _unheld(db, rows)[:limit]
+
+
+def next_release_date(rows: list[dict], today: date) -> str | None:
+    """The first release date on or after `today` among `visible_rows` output,
+    which is already ordered dated-first ascending; None if there is none."""
+    floor = today.isoformat()
+    for r in rows:
+        if r["release_date"] and r["release_date"] >= floor:
+            return r["release_date"]
+    return None
 
 
 _OUTCOME_TEXT = {

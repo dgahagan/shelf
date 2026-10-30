@@ -250,7 +250,7 @@ on the roadmap) and the summary lists them under **Not imported**.
 **Portable archive → Export** produces a zip of your items, tags, locations,
 series, reading log, checkouts, **your physical copies**, **which items are
 on your wishlist** and **the cover images**. No users, passwords, API
-credentials, settings or certificates — so it's safe to hand to someone else
+credentials, [API tokens](../homelab-integration.md), settings or certificates — so it's safe to hand to someone else
 or keep in a shared drive.
 
 **The archive includes [Trash](items.md#trash)** — the items you deleted and

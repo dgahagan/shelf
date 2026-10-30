@@ -137,6 +137,7 @@ key material.
 
 ### Collection Management
 - Choose your features — pick Minimal, Standard or Everything in the setup wizard, then turn any optional part (Lending, Sharing, Valuation, Price alerts, Release radar, Collector tools, the integrations, …) on or off in Settings → Features; data is kept while a feature is off
+- Homelab integration — read-only API tokens and a `/api/v1/stats` document for Homepage, Homarr and Home Assistant dashboards
 - Home overview — totals, what is lent out, missing covers, a media-type breakdown and recent additions, with Browse kept for searching and bulk editing
 - Filter and search by media type, location, status (read, watched, played), ownership, lending status, source (which sync, provider or import an item arrived from), custom tags, and author — every author on an item page is a link to everything by that person, co-authors and translators each counted on their own
 - Shelf Fill — keep one shelf selected and scan item after item onto it; Arrange drags the copies on a shelf into the order they really sit in, or sorts them by title, creator, series, release or issue
@@ -212,7 +213,7 @@ Your data in the `/data` volume is preserved across updates.
 |-------|-----------|
 | Backend | Python 3.12, FastAPI, SQLite (WAL mode) |
 | Frontend | Jinja2, HTMX, Alpine.js, Tailwind CSS |
-| Auth | bcrypt, JWT in HTTP-only cookies, `Secure` whenever the browser connects over HTTPS |
+| Auth | bcrypt, JWT in HTTP-only cookies, `Secure` whenever the browser connects over HTTPS; read-only bearer tokens on `/api/v1` |
 | Container | Non-root user, self-signed HTTPS |
 
 ## Links

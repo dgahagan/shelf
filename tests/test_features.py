@@ -165,11 +165,11 @@ def test_registry_entry_paths_are_local():
         assert f.entry_path.startswith("/") and not f.entry_path.startswith("//"), key
 
 
-def test_registry_has_the_seventeen_designed_features():
+def test_registry_has_the_eighteen_designed_features():
     assert list(FEATURES) == [
         "lending", "series", "stats", "store", "share", "valuation", "price_alerts", "music",
         "periodicals", "shelf_fill", "intake", "hardcover", "abs_sync", "komga", "romm",
-        "collector", "release_radar",
+        "collector", "release_radar", "api",
     ]
 
 
@@ -217,7 +217,7 @@ def _profile_rows(db):
 
 
 @pytest.mark.parametrize("name", ["minimal", "standard", "everything"])
-def test_apply_profile_writes_all_seventeen_rows(db, name):
+def test_apply_profile_writes_all_eighteen_rows(db, name):
     apply_profile(db, name)
     db.commit()
     rows = _profile_rows(db)

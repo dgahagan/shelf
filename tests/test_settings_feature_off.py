@@ -244,3 +244,26 @@ class TestSharingCard:
         assert 'data-testid="share-create"' in html
         assert 'data-testid="share-revoke"' in html
         assert "/share/sweep-tok" in html
+
+
+class TestAdminTokensCard:
+    """api off: the Users tab's tokens card keeps its heading and shows the
+    off note, but loses the panel component. Scoped to the component name
+    and testid, not the heading (G69)."""
+
+    def test_api_off_shows_note_and_drops_panel(self, admin_client):
+        off("api")
+
+        html = admin_client.get("/settings").text
+
+        assert 'data-testid="admin-tokens-card"' in html
+        assert _note("api") in html
+        assert 'x-data="adminTokensPanel"' not in html
+        assert 'data-testid="admin-tokens-empty"' not in html
+
+    def test_api_on_keeps_panel_and_no_note(self, admin_client):
+        html = admin_client.get("/settings").text
+
+        assert _note("api") not in html
+        assert 'x-data="adminTokensPanel"' in html
+        assert 'data-testid="admin-tokens-empty"' in html

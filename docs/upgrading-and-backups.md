@@ -16,9 +16,12 @@ mid-way heals itself on the next start (since 0.8.1). Downgrading is **not**
 supported: a newer schema may not load in an older image, so take a backup
 before upgrading if you might want to roll back.
 
-An upgrade never turns a feature off. Every optional feature in
-Settings → **Features** stays on after an upgrade, including one that did not
-exist before it, until an admin turns it off.
+An upgrade never turns off a feature you were using. Every optional feature
+in Settings → **Features** keeps its setting across an upgrade. A feature new
+in a release usually starts on; the exceptions are named in its release's
+section below and in
+[Configuration → Features](configuration.md#features) — for example, API
+tokens start off on every upgrade.
 
 Watch the first start after an upgrade:
 
@@ -30,7 +33,22 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
-### After upgrading to X.Y.Z
+### After upgrading to 0.74.0
+
+**One table is added on first start.** `api_tokens` holds the
+[API tokens](homelab-integration.md) dashboards use to read Shelf. There is
+nothing to do.
+
+**API tokens start off.** An upgraded install keeps the new API tokens feature
+off until an admin turns it on under Settings → **Features**. A new install
+with the Everything profile has it on.
+
+**Tokens are in a database backup, not in a portable archive.** A database
+backup holds each token's hash, never the token itself. A portable archive
+leaves tokens out, so a new install restored from an archive starts with none:
+make new tokens and update every dashboard that used the old ones.
+
+### After upgrading to 0.73.0
 
 **Two tables are added on first start.** `release_watches` and
 `upcoming_releases` hold the series you watch for new volumes and the

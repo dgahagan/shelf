@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -41,7 +42,7 @@ from fastapi.templating import Jinja2Templates
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import JSONResponse, Response, RedirectResponse
 
 from app import browse_columns, browse_filters
 from app.config import (
@@ -59,8 +60,10 @@ from app.currency import CURRENCIES, format_money, get_currency
 from app.features import feature_enabled
 from app.services.national import SEARCH_LANGS
 from app.database import init_db, get_db
-from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music, related_media, trash, labels, audits, duplicates, upcoming
+from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music, related_media, trash, labels, audits, duplicates, upcoming, api_v1
 from app.routers import auth_routes
+# Aliased: `api_tokens` inside the middlewares is the service module.
+from app.routers import api_tokens as api_token_routes
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -184,6 +187,39 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+def _is_v1(path: str) -> bool:
+    return path == "/api/v1" or path.startswith("/api/v1/")
+
+
+def _v1_unauthorized(message: str) -> JSONResponse:
+    return JSONResponse(
+        {"error": "unauthorized", "ok": False, "message": message},
+        status_code=401,
+        headers={"WWW-Authenticate": "Bearer", "Cache-Control": "no-store"},
+    )
+
+
+async def _bearer_dispatch(request: Request, call_next, header: str) -> Response:
+    """A request under /api/v1 that carries an Authorization header.
+
+    The bearer decides, and any cookie is ignored. Only GET and HEAD pass, as
+    a viewer-capped user (`api_tokens.resolve`). Skipped on purpose (G68): the
+    /setup redirect (no users means no tokens), the /login redirect and the
+    cookie refresh — a cookie minted from the capped dict would demote the
+    session (G10). One header is read, never the body (G9).
+    """
+    from app.services import api_tokens
+
+    if request.method not in ("GET", "HEAD"):
+        return _v1_unauthorized("Tokens are read-only: only GET is accepted with a bearer token")
+    raw = api_tokens.parse_bearer(header)
+    user = api_tokens.resolve(raw) if raw else None
+    if not user:
+        return _v1_unauthorized("Invalid or revoked API token")
+    request.state.user = user
+    return await call_next(request)
+
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         from app.auth import get_current_user, should_refresh_token, set_auth_cookie, get_user_count
@@ -194,8 +230,18 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if path.startswith(_SKIP_AUTH_PREFIXES):
             return await call_next(request)
 
+        # /api/v1 answers machines: a bearer token or a cookie, and 401 JSON
+        # rather than the /login redirect. A bearer is read nowhere else (G117).
+        if _is_v1(path):
+            header = request.headers.get("authorization")
+            if header is not None:
+                return await _bearer_dispatch(request, call_next, header)
+            user = get_current_user(request)
+            if not user:
+                return _v1_unauthorized("Sign in or send an API token")
+        else:
+            user = get_current_user(request)
         # Inject user into request state
-        user = get_current_user(request)
         request.state.user = user
 
         # Setup wizard: if no users exist, redirect everything to /setup
@@ -253,24 +299,61 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         ip = get_client_ip(request)
         now = time.time()
-        window = now - 60
 
-        # Evict this IP's stale timestamps and check the limit
-        hits = [t for t in self._hits.get(ip, []) if t > window]
-        if len(hits) >= self.rpm:
+        # A bearer on /api/v1 draws on its own bucket, so a dashboard behind
+        # the browser's proxy starves itself, not the UI. A refused bearer is
+        # charged to the IP, so rotating random tokens escapes nothing.
+        token_key = self._token_key(request, path)
+        if token_key:
+            if len(self._recent(ip, now)) >= self.rpm:
+                return Response("Rate limit exceeded", status_code=429)
+            if not self._charge(token_key, now):
+                return Response("Rate limit exceeded", status_code=429)
+            response = await call_next(request)
+            if response.status_code == 401:
+                self._charge(ip, now)
+            return response
+
+        if not self._charge(ip, now):
             return Response("Rate limit exceeded", status_code=429)
+        return await call_next(request)
 
+    @staticmethod
+    def _token_key(request: Request, path: str) -> str | None:
+        """The bucket key of a bearer credential on /api/v1, else None.
+
+        Parsed exactly as the auth branch parses it, so one token spelled
+        `Bearer x` or `bearer   x` is one bucket. Hashed: the limiter never
+        holds a token.
+        """
+        if not _is_v1(path):
+            return None
+        from app.services import api_tokens
+
+        credential = api_tokens.parse_bearer(request.headers.get("authorization"))
+        if not credential:
+            return None
+        return "token:" + hashlib.sha256(credential.encode()).hexdigest()[:32]
+
+    def _recent(self, key: str, now: float) -> list[float]:
+        window = now - 60
+        return [t for t in self._hits.get(key, []) if t > window]
+
+    def _charge(self, key: str, now: float) -> bool:
+        """Record one hit on `key`; False (and nothing recorded) when it is full."""
+        hits = self._recent(key, now)
+        if len(hits) >= self.rpm:
+            return False
         hits.append(now)
 
         # Update entry and move to end (most-recently-seen)
-        self._hits[ip] = hits
-        self._hits.move_to_end(ip)
+        self._hits[key] = hits
+        self._hits.move_to_end(key)
 
-        # Evict the oldest IP when the dict exceeds the cap
+        # Evict the oldest key when the dict exceeds the cap
         while len(self._hits) > self.MAX_IPS:
             self._hits.popitem(last=False)
-
-        return await call_next(request)
+        return True
 
 
 async def _abs_sync_pass() -> bool:
@@ -762,6 +845,8 @@ app.include_router(store.router)
 app.include_router(series.router)
 app.include_router(upcoming.router)
 app.include_router(upcoming.page_router)
+app.include_router(api_v1.router)
+app.include_router(api_token_routes.router)
 app.include_router(share.router)
 app.include_router(item_copies.router)
 app.include_router(intake.router)

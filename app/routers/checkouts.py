@@ -48,6 +48,16 @@ def get_overdue_loans(db) -> list[dict]:
     return [dict(row) for row in rows]
 
 
+def count_overdue(db) -> int:
+    """How many checkouts are overdue — the same predicate as get_overdue_loans."""
+    return db.execute(
+        "SELECT COUNT(*) AS c FROM checkouts c "
+        "JOIN items_live i ON c.item_id = i.id "
+        f"WHERE {OVERDUE_CONDITION}",
+        (get_overdue_days(db),),
+    ).fetchone()["c"]
+
+
 # --- Borrowers ---
 
 @router.post("/borrowers")

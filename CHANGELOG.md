@@ -6,6 +6,62 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.74.0] - 2026-10-29
+
+Shelf had no way for a dashboard to read it. Home Assistant, Homepage or
+a script on your network could only see your collection by signing in as a
+person, with a password and that person's full rights. This release adds
+**read-only API tokens** and one JSON document, `GET /api/v1/stats`, with
+tested recipes for Homepage and Home Assistant.
+
+### Added
+
+- **API tokens, from the account menu.** Under **Profile and password** →
+  **API tokens**, any user can create a named token, copy it, see when each
+  one was last used, and revoke it. The token is shown once, when you create
+  it, and Shelf keeps only its hash. If the browser blocks the clipboard
+  (common on a self-signed certificate), Copy selects the token so you can
+  copy it by hand. Each user can have up to 25.
+- **Read-only, and never above viewer.** A token works only for `GET`
+  requests under `/api/v1/`. It always acts with the **viewer** role, even
+  when an admin made it, so it can never download a backup or change a
+  setting. Anywhere else in Shelf it is ignored, as if no credential was
+  sent.
+- **`GET /api/v1/stats`.** One document with item counts (total, owned,
+  wishlist, per media type), open and overdue loans, collection value and
+  currency, and the count and date of upcoming releases. A section whose
+  feature is turned off is `null`, never missing, so a dashboard template does
+  not break when you turn Lending or Valuation off. The field names are a
+  contract: later releases may add fields but will not rename or remove
+  these.
+- **Admins see every token.** Settings → **Users** lists every user's tokens
+  and can revoke any of them, so a leaked token can be stopped without its
+  owner.
+- **Homelab integration guide.** A new docs page has a Homepage `customapi`
+  widget and a Home Assistant `rest` sensor set, including an overdue-loan
+  automation. Each was checked against a running Homepage and Home Assistant
+  with a self-signed Shelf. When a token is revoked, both dashboards show it as
+  unavailable rather than keeping an old number.
+
+### Changed
+
+- **API tokens are a new feature in Settings → Features, and an upgrade
+  leaves it off.** An admin turns it on. A new install with the Everything
+  profile has it on. While it is off, `/api/v1/` answers `403` and the token
+  screens are hidden. Tokens you already made are kept, and they work again
+  when it is turned back on.
+- **A token has its own rate limit.** Each token gets its own 60 requests a
+  minute, so a dashboard that polls too often slows only itself, not the
+  browser behind the same proxy. A request with a wrong token counts against
+  the sender's IP address.
+
+Some things it deliberately does not do: a token cannot write anything, and
+there is no scan-by-API yet. Tokens have no expiry date, because a dashboard
+that dies silently on a forgotten date is worse than a token you revoke. A
+token cannot be renamed; revoke it and make a new one. A database backup
+keeps your tokens (as hashes), but a portable archive does not, so an install
+restored from an archive starts with no tokens.
+
 ## [0.73.0] - 2026-10-25
 
 Shelf could tell you which volumes of a series you were missing, but not that a
@@ -5348,6 +5404,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.74.0]: https://github.com/dgahagan/shelf/releases/tag/v0.74.0
 [0.73.0]: https://github.com/dgahagan/shelf/releases/tag/v0.73.0
 [0.72.0]: https://github.com/dgahagan/shelf/releases/tag/v0.72.0
 [0.71.0]: https://github.com/dgahagan/shelf/releases/tag/v0.71.0

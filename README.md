@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-5792%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-355%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-5952%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-360%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -67,7 +67,7 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 Full docs live in [`docs/`](docs/README.md):
 
 - [Installation](docs/installation.md) · [Configuration](docs/configuration.md) · [HTTPS & reverse proxy](docs/https-and-reverse-proxy.md) · [Upgrading & backups](docs/upgrading-and-backups.md)
-- **User guide:** [Getting started](docs/user-guide/getting-started.md) · [Scanning](docs/user-guide/scanning.md) · [Photo Intake](docs/user-guide/photo-intake.md) · [Browse](docs/user-guide/browse-and-search.md) · [Items](docs/user-guide/items.md) · [Locations](docs/user-guide/locations.md) · [Series](docs/user-guide/series.md) · [Lending](docs/user-guide/lending.md) · [Wishlist & Store Mode](docs/user-guide/wishlist-and-store-mode.md) · [Sharing](docs/user-guide/sharing.md) · [Stats & valuation](docs/user-guide/stats-and-valuation.md) · [Import & export](docs/user-guide/import-and-export.md) · [Integrations](docs/user-guide/integrations.md) · [Users & roles](docs/user-guide/users-and-roles.md)
+- **User guide:** [Getting started](docs/user-guide/getting-started.md) · [Scanning](docs/user-guide/scanning.md) · [Photo Intake](docs/user-guide/photo-intake.md) · [Browse](docs/user-guide/browse-and-search.md) · [Items](docs/user-guide/items.md) · [Locations](docs/user-guide/locations.md) · [Series](docs/user-guide/series.md) · [Lending](docs/user-guide/lending.md) · [Wishlist & Store Mode](docs/user-guide/wishlist-and-store-mode.md) · [Sharing](docs/user-guide/sharing.md) · [Stats & valuation](docs/user-guide/stats-and-valuation.md) · [Import & export](docs/user-guide/import-and-export.md) · [Integrations](docs/user-guide/integrations.md) · [Users & roles](docs/user-guide/users-and-roles.md) · [Homelab integration](docs/homelab-integration.md)
 - [FAQ](docs/faq.md) · [Troubleshooting](docs/troubleshooting.md) · [Development](docs/development.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md)
 
 ## Quick Start
@@ -225,6 +225,7 @@ each option before anything is sent.
 - **[RomM](https://romm.app)** — sync a self-hosted RomM server's digital game library. A RomM game gets its own record rather than being matched onto a physical cartridge you already own; link the two yourself. See [RomM](docs/romm.md)
 - **[Komga](https://komga.org)** — sync a self-hosted Komga server's digital comics and manga, matching on ISBN where one exists. A library's Comic/Manga kind is kept apart from Shelf's own media type, so it never reclassifies an item you catalogued by hand. See [Komga](docs/komga.md)
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation, and wishlist price alerts
+- **Homelab integration** — read-only API tokens and `/api/v1/stats` for Homepage, Homarr and Home Assistant. See [Homelab integration](docs/homelab-integration.md)
 
 ### Store Mode (Offline PWA)
 
@@ -278,7 +279,7 @@ marked `noindex`, and revocable at any time.
 |-------|-----------|
 | Backend | Python 3.12, FastAPI, SQLite (WAL mode) |
 | Frontend | Jinja2, HTMX, Alpine.js, Tailwind CSS |
-| Auth | bcrypt, JWT in HTTP-only cookies, `Secure` whenever the browser connects over HTTPS |
+| Auth | bcrypt, JWT in HTTP-only cookies, `Secure` whenever the browser connects over HTTPS; read-only bearer tokens on `/api/v1` |
 | Container | Docker, non-root user, self-signed HTTPS |
 
 ## Roles

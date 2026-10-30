@@ -109,9 +109,11 @@ selling.
 Yes, Settings → Library → Collection. Formatting only; no conversion.
 
 **Is there an API?**
-Not a documented, token-authenticated one yet — the routes exist for the UI
-(FastAPI) but require the session cookie. A stable `/api/v1` with personal
-access tokens is on the roadmap.
+A small one. Read-only API tokens and `GET /api/v1/stats` — item counts,
+loans, collection value and upcoming releases — feed dashboards such as
+Homepage and Home Assistant; see [Homelab integration](homelab-integration.md).
+The rest of `/api/v1` (items, loans, wishlist, series) is on the roadmap.
+Every other route serves the UI and needs the session cookie.
 
 **Kobo / Kindle / OPDS / reading ebooks in the browser?**
 Out of scope. Shelf catalogs physical media (and links to your

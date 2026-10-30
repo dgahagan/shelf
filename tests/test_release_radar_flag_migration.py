@@ -92,7 +92,7 @@ def test_fresh_database_has_no_release_radar_row(db):
 # --- Registry entry ----------------------------------------------------------
 
 def test_release_radar_is_registered_last_and_everything_only():
-    assert list(FEATURES)[-2:] == ["collector", "release_radar"]
+    assert list(FEATURES)[-3:-1] == ["collector", "release_radar"]
     assert FEATURES["release_radar"].profile == "everything"
     assert FEATURES["release_radar"].entry_path == "/upcoming"
 

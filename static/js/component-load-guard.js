@@ -56,6 +56,8 @@
         sharePanel: 'components-settings.js',
         backupRestore: 'components-settings.js',
         usersPanel: 'components-settings.js',
+        apiTokensPanel: 'components-settings.js',
+        adminTokensPanel: 'components-settings.js',
 
         browsePage: 'browse.js',
         scanPage: 'scan.js',

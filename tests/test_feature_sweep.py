@@ -38,6 +38,8 @@ _URL_ATTRS = {"href", "action", "src", "hx-get", "hx-post", "hx-put", "hx-patch"
 #   which nav.visible_tabs filters and the negative half still reads. Photo
 #   Intake's and Discogs' Settings cards are configuration only.
 SWEPT = frozenset({
+    "api",        # account modal tokens tab (client apiTokensPanel);
+                  # Settings → Users card (client adminTokensPanel)
     "hardcover",  # item page push (client hardcoverPush)
     "komga",      # item page komga-item.js (client)
     "lending",    # item page check-in form, Settings borrower forms

@@ -2,6 +2,7 @@
    which was 1,517 lines: the largest template with the thinnest E2E
    coverage. Included by settings.html inside its `settingsTabs` x-data,
    so `tab` and `setTab()` resolve from the parent scope. #}
+{% import "fragments/settings/feature_off_note.html" as feature_notes %}
     <!-- Users Tab -->
     <div x-show="tab === 'users'" class="space-y-8">
 
@@ -62,6 +63,37 @@
                 </template>
             </div>
         </div>
+    </div>
+
+    <!-- API Tokens (all users) -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" data-testid="admin-tokens-card">
+        <h2 class="text-lg font-semibold mb-4">API tokens</h2>
+        {{ feature_notes.feature_off_note('api') }}
+        {% if feature_on('api') %}
+        <div x-data="adminTokensPanel" x-init="load()" data-testid="admin-tokens-panel">
+            <template x-if="result">
+                <p class="text-sm text-shelf-error mb-2" data-testid="admin-tokens-result" x-text="result.message"></p>
+            </template>
+            <p x-show="loaded && !tokens.length" class="text-shelf-muted text-sm" data-testid="admin-tokens-empty">No API tokens yet.</p>
+            <div class="space-y-2">
+                <template x-for="t in tokens" :key="t.id">
+                    <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-3" data-testid="admin-token-row">
+                        <div class="min-w-0 text-sm">
+                            <span class="font-medium text-shelf-text" data-testid="admin-token-user" x-text="'@' + t.username"></span>
+                            <span class="text-shelf-text break-all" x-text="'· ' + t.name"></span>
+                            <span class="text-shelf-muted text-xs font-mono" x-text="'· ' + t.prefix + '…'"></span>
+                            <span class="text-shelf-muted text-xs" x-text="'· created ' + when(t.created_at)"></span>
+                            <span class="text-shelf-muted text-xs" x-text="'· last used ' + when(t.last_used_at)"></span>
+                        </div>
+                        <button type="button" @click="revoke(t.id, t.name)" data-testid="admin-token-revoke"
+                                class="text-shelf-error/60 hover:text-shelf-error text-sm transition-colors">
+                            Revoke
+                        </button>
+                    </div>
+                </template>
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     </div><!-- /Users Tab -->

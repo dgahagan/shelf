@@ -43,6 +43,7 @@ New here? Start with **[Installation](installation.md)**, then
 | [Integrations](user-guide/integrations.md) | Hardcover, Audiobookshelf, IGDB, TMDb, ISBNdb, Google Books, vision providers — what each adds and how to connect it |
 | [RomM](romm.md) | Connecting a self-hosted RomM server for digital games |
 | [Komga](komga.md) | Connecting a self-hosted Komga server for digital comics and manga |
+| [Homelab integration](homelab-integration.md) | API tokens, the `/api/v1/stats` document, Homepage and Home Assistant recipes |
 | [Users & roles](user-guide/users-and-roles.md) | Admin / editor / viewer, adding users, passwords, the log viewer |
 | [Settings](user-guide/settings.md) | The five Settings sections and what lives in each |
 

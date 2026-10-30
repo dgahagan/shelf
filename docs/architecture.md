@@ -12,13 +12,29 @@ Middleware, outermost first (`app/main.py`):
    third-party origins), frame/denial headers, and HSTS only when
    `request.url.scheme` is `https`.
 2. **RateLimit** — per-IP sliding window on `/api/`, `/share/`, `/login`,
-   `/setup`. The client IP is the socket peer and no header is read in app
-   code. uvicorn's proxy-headers middleware rewrites the peer for proxies
+   `/setup`. The client IP is the socket peer, and the one header the limiter
+   reads is `Authorization`, on `/api/v1/` only: a bearer credential there
+   draws on its own bucket, keyed on a hash of the credential as the auth
+   branch parses it (60 a minute), while the IP bucket is checked but not
+   charged; a request the auth branch refuses with `401` is then charged to
+   the IP, so rotating random tokens escapes nothing. The limiter never holds
+   a raw token. uvicorn's proxy-headers middleware rewrites the peer for proxies
    listed in `SHELF_TRUST_PROXY` (handed to it as `FORWARDED_ALLOW_IPS` by
    `entrypoint.sh`), walking `X-Forwarded-For` right to left and skipping
    every trusted hop.
-3. **Auth** — JWT in an HTTP-only cookie, `Secure` only when
-   `request.url.scheme` is `https`; redirects to `/setup` when
+3. **Auth** — under `/api/v1/` a request carrying an `Authorization` header
+   takes the **bearer branch** first: only `GET`/`HEAD` with a valid
+   `Bearer` token passes (`api_tokens.resolve`), as its user capped at
+   viewer, and the cookie is ignored. Anything else there — another method, a
+   bad or revoked token, another scheme — answers `401` JSON with
+   `WWW-Authenticate: Bearer`, never a redirect, and so does a `/api/v1/`
+   request with neither header nor session. The bearer branch skips the
+   `/setup` and `/login` redirects and the sliding refresh (a cookie minted
+   from the capped user would demote the session). **A bearer token
+   authenticates only `GET` under `/api/v1/` and never above viewer**; on
+   every other path the header is not read. Otherwise: JWT in an HTTP-only
+   cookie, `Secure` only when `request.url.scheme` is `https`; redirects to
+   `/setup` when
    no users exist, `/login` when unauthenticated; sliding refresh past the
    token's half-life. Identity and role are read from the `users` row on
    every request: the JWT proves the session and does not carry it, so a token
@@ -155,6 +171,20 @@ above every `{name:path}` route), each gated `series`, `release_radar`,
 `hardcover`. Its settings route, `POST /api/settings/release-radar`, is
 configuration and ungated. The pass is under *Background tasks*.
 
+**API tokens** (`api`, Everything profile) owns two modules:
+`app/routers/api_v1.py` (`GET /api/v1/stats`, viewer — the versioned JSON
+surface, every route declaring a `response_model`, which a test enforces) and
+`app/routers/api_tokens.py` (`/api/tokens`: list own and create, viewer;
+revoke own, viewer, or any, admin; `GET /api/tokens/all`, admin). Its client
+components are the account modal's `apiTokensPanel` and Settings → Users'
+`adminTokensPanel`. It starts **off on upgrade**: migration 53 writes
+`feature.api = '0'` with `INSERT OR IGNORE … WHERE EXISTS (SELECT 1 FROM
+users)`. On a fresh install `users` does not exist yet when the numbered
+migrations replay, the `no such table` is forgiven (it is a
+`MIGRATION_TABLES` table), and the setup wizard's profile writes the row.
+`stats` does not gate `/api/v1/stats`; its sections are `null` when
+`lending`, `valuation`, or `release_radar`/`hardcover` are off.
+
 **Trash** is two routers in `app/routers/trash.py`, registered separately: the
 unprefixed page (`GET /trash`, editor) and the API under `/api/trash/` —
 restore an item or copy (editor), delete permanently, **Empty expired** and
@@ -191,10 +221,18 @@ below — `music_releases` + `music_media` + `music_tracks` +
 `music_identifiers`, `periodical_publications` + `periodical_issues`,
 `romm_records` and `komga_records`, `audit_sessions` + `audit_entries`
 (shelf audits, below), `release_watches` + `upcoming_releases` (the release
-radar, under *Background tasks*), and `duplicate_dismissals` (one row per pair of records
+radar, under *Background tasks*), `api_tokens` (below), and `duplicate_dismissals` (one row per pair of records
 the user called *not duplicates*, stored `(min id, max id)` under a `CHECK`;
 both ids `ON DELETE CASCADE`, so a purge removes the rows and a trash keeps
 them).
+
+**API tokens are stored as hashes.** An `api_tokens` row holds the SHA-256 of
+the token (`token_hash`, unique — the lookup key, so no secret is compared in
+Python), its first 12 characters for display, a name, and a `last_used_at`
+that `resolve` rewrites at most once a minute and only when due. It carries
+the first foreign key to `users` (`ON DELETE CASCADE`), so deleting a user
+deletes their tokens; password and role changes do not. Revoking is a hard
+delete. The table is not in the portable archive.
 
 **Audits: the entries are the record, the report is computed.** An
 `audit_sessions` row is one audit — `scope` (`location` or `library`), its
@@ -1854,7 +1892,7 @@ not wait for it.
 Non-root container, HTTPS from first boot by default (`SHELF_TLS=off` hands TLS to a proxy), strict CSP, CSRF everywhere,
 bcrypt with a constant-cost login path (an unknown username costs the same
 as a wrong password, so timing does not enumerate accounts), short-lived
-sliding JWTs, per-IP rate limiting, encrypted secrets,
+sliding JWTs, per-IP rate limiting (and per-token on `/api/v1`), encrypted secrets,
 write-only credential fields, allow-listed image hosts for cover downloads,
 `noindex` + unguessable tokens on share links.
 
@@ -1863,7 +1901,9 @@ through the thread pool, and never while a write transaction is open, so a
 burst of logins cannot stall other requests or hold SQLite's write lock.
 **A restore outranks every earlier session:** it sets each user's token version
 above the highest version this install issued before the restore, so no cookie
-from before it authenticates afterwards.
+from before it authenticates afterwards. A restore does **not** revoke API
+tokens: they are rows, not cookies, so a database backup brings its tokens
+back with it.
 
 **The database holds no key material.** The credential-encryption key
 (`data/encryption.key`, or `SHELF_ENCRYPTION_KEY`) and the session-signing key

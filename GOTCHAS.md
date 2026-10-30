@@ -5555,9 +5555,16 @@ grep -n 'type="submit" class="sr-only"' app/templates/scan.html app/templates/sh
   `duplicate-audit` T4 specified "editor gets 403 on `GET /duplicates`" and
   the probe read 303 (`69b0121`, 2026-10-21). Pin the page with
   `follow_redirects=False` and `location == "/browse"`.
+- **`/api/v1/` is the one exception: it answers 401 JSON, never the 303.**
+  The bearer branch in `AuthMiddleware` (`_is_v1`) refuses a v1 request with
+  no cookie and no token with `401` + `WWW-Authenticate: Bearer`, and a bad
+  token or a non-GET bearer the same way. Every other `/api/` path keeps the
+  redirect, so a route moved under `/api/v1` changes its anonymous answer
+  (`feat/homelab-citizen` T6, `4e5f780`, 2026-10-27).
 - **Verify:** `grep -n "not user" -A3 app/main.py` still shows the
   `RedirectResponse(url="/login", status_code=303)` branch ahead of
-  `call_next`.
+  `call_next`, and `grep -n "def _is_v1" app/main.py` still names the
+  one prefix that answers 401 instead.
 - **Status:** documented.
 
 ## G118 — When a response-required write runs after the primary row commits
@@ -6364,6 +6371,74 @@ python -m pytest tests/test_audits_service.py -q -k "Deleted or Purged"
 - **Verify:** `grep -n "foreign_keys=ON" app/database.py` still shows the
   pragma inside `get_db()`, and `grep -rn "sqlite3.connect" tests/e2e/ | head`
   still finds the raw helpers.
+- **Status:** documented.
+
+## G150 — When a route must answer `HEAD`
+
+- **Rule:** register it with `@router.api_route(path, methods=["GET", "HEAD"])`.
+  FastAPI's `@router.get` serves `GET` only, so a `HEAD` gets **405**.
+- **Why:** Starlette's plain `Route` adds `HEAD` to a `GET` route, and FastAPI's
+  `APIRoute` does not. A monitor's or uptime checker's `HEAD` probe on a
+  `@router.get` route fails while a browser or curl `GET` works.
+- **Evidence:** plan `homelab-citizen` triage (claude R1 / codex R3, measured on
+  `HEAD /health` → 405); `GET /api/v1/stats` registered for both in T5
+  (`a15a8a5`, 2026-10-27). `tests/test_features.py::_route_census` skips
+  `HEAD`, so the registry lints are unaffected.
+- **Verify:** `python -m pytest tests/test_api_v1_stats.py -k head -q` passes,
+  and `grep -rn "methods=\[\"GET\", \"HEAD\"\]" app/routers/` finds the route.
+- **Status:** documented.
+
+## G151 — When a test needs the live instance of a middleware
+
+- **Rule:** `app.middleware_stack` is `None` until the first request. Build it
+  once **and assign it** — `if app.middleware_stack is None:
+  app.middleware_stack = app.build_middleware_stack()` — then walk `.app` with
+  `isinstance`. Never call `build_middleware_stack()` and walk the result
+  without assigning it.
+- **Why:** each `build_middleware_stack()` call returns a **new** chain with
+  new middleware instances. State cleared on an unassigned copy (a rate
+  limiter's `_hits`) is not the state the app serves from, so the test
+  passes or fails depending on test order.
+- **Evidence:** plan `homelab-citizen` triage (claude R2 / codex R4, measured);
+  `tests/test_api_v1_rate_limit.py::_limiter` (`4e5f780`, 2026-10-27).
+- **Verify:** `grep -n "app.middleware_stack = app.build_middleware_stack()"
+  tests/test_api_v1_rate_limit.py` still matches.
+- **Status:** documented.
+
+## G152 — When two layers each parse the same credential header
+
+- **Rule:** parse it in one helper that both call. The rate limiter's
+  per-token bucket and the auth branch both read `Authorization` through
+  `api_tokens.parse_bearer` (scheme `casefold`, credential `strip`), and the
+  bucket key is a hash of the **parsed credential**, never of the raw header.
+- **Why:** auth accepts `Bearer x`, `bearer x` and `Bearer   x` as one token;
+  a limiter keyed on the raw header gives each spelling a fresh bucket, so one
+  token can multiply its rate limit by respelling the header.
+- **Evidence:** plan `homelab-citizen` triage (codex R1); fixed in T3/T6
+  (`e4db74e`, `4e5f780`, 2026-10-27).
+  `tests/test_api_v1_rate_limit.py::test_spellings_of_one_token_share_one_bucket`
+  goes red against a raw-header key.
+- **Verify:** `grep -n "parse_bearer" app/main.py` shows both the auth branch
+  and `RateLimitMiddleware._token_key`.
+- **Status:** documented.
+
+## G153 — When a hot read path "touches" a timestamp with a guarded UPDATE
+
+- **Rule:** select whether the touch is due first (a computed column on the
+  read you already make), and run the `UPDATE` only when it is. Keep the
+  guard in the `UPDATE`'s `WHERE` as the race re-check. A guard in the `WHERE`
+  alone is not enough.
+- **Why:** on this Python/SQLite stack a zero-row `UPDATE` still opens a write
+  transaction and takes the writer lock until commit, and under another open
+  writer it waits the 5 s default timeout and raises. A dashboard polling
+  every few seconds would contend for the lock on every request and could 500
+  during a long write, even though no row changes.
+- **Evidence:** plan `homelab-citizen` triage (codex R2, measured: rowcount 0,
+  `in_transaction True`, a second `BEGIN IMMEDIATE` → `database is locked`).
+  `api_tokens.resolve` selects `touch_due` (`e4db74e`, 2026-10-27); a
+  statement-spy test pins that no `UPDATE` runs inside the window.
+- **Verify:** `python -m pytest tests/test_api_tokens_service.py -k "no_update" -q`
+  passes.
 - **Status:** documented.
 
 ## Graveyard

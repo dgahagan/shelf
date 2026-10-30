@@ -365,6 +365,28 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
         SELECT 'feature.release_radar', '0'
         WHERE EXISTS (SELECT 1 FROM settings
                       WHERE key = 'feature.hardcover' AND value = '0')"""),
+    (52, "Add API tokens",
+     "CREATE TABLE IF NOT EXISTS api_tokens ("
+     " id INTEGER PRIMARY KEY AUTOINCREMENT,"
+     " user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+     " name TEXT NOT NULL,"
+     " token_hash TEXT NOT NULL UNIQUE,"
+     " prefix TEXT NOT NULL,"
+     " last_used_at TEXT,"
+     " created_at TEXT NOT NULL DEFAULT (datetime('now')))"),
+    # A feature with no flag row reads as on, so an upgrade would switch the
+    # new, Everything-only `api` feature on for every install (G135). Start it
+    # off wherever an install exists, keyed on `users` having a row. INSERT OR
+    # IGNORE keeps a choice already made. On a fresh install `users` does not
+    # exist yet during `_backfill_versions` (MIGRATION_TABLES creates it
+    # afterwards), so the statement raises `no such table: users`; that is
+    # benign via `_is_benign_migration_error` because `users` is a
+    # MIGRATION_TABLES table, and the setup wizard's apply_profile writes the
+    # row.
+    (53, "Start API tokens off on upgrade",
+     """INSERT OR IGNORE INTO settings (key, value)
+        SELECT 'feature.api', '0'
+        WHERE EXISTS (SELECT 1 FROM users)"""),
 )
 
 MIGRATION_TABLES = """
@@ -753,6 +775,19 @@ CREATE TABLE IF NOT EXISTS upcoming_releases (
     dismissed       INTEGER NOT NULL DEFAULT 0,
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE (watch_id, hc_book_id)
+);
+
+-- API tokens: per-user bearer credentials, stored as a hash. Also created by
+-- migration 52 for upgrades. Not in the portable archive (G147): credentials
+-- belong to the server they were minted on.
+CREATE TABLE IF NOT EXISTS api_tokens (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name         TEXT NOT NULL,
+    token_hash   TEXT NOT NULL UNIQUE,
+    prefix       TEXT NOT NULL,
+    last_used_at TEXT,
+    created_at   TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """
 

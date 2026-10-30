@@ -13,7 +13,7 @@ Each flag is one `settings` row, `feature.<key>`. Only the exact value "0"
 disables a feature: an absent row (every upgraded install) or any other value
 means enabled, so an upgrade changes nothing until an admin turns something
 off. Flags are rows only; no env var overrides them. A new install writes all
-seventeen rows explicitly, from the profile chosen at setup; an upgraded
+eighteen rows explicitly, from the profile chosen at setup; an upgraded
 install has none, and reads as Everything.
 
 `nav.py` imports this module, never the reverse at module level.
@@ -339,6 +339,13 @@ FEATURES: dict[str, Feature] = {
             ("POST", "/api/series/watch-all"),
         ),
         configured=_hardcover_configured,
+    ),
+    "api": Feature(
+        label="API tokens",
+        description="Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read.",
+        profile="everything",
+        modules=("app.routers.api_v1", "app.routers.api_tokens"),
+        client=("apiTokensPanel", "adminTokensPanel"),
     ),
 }
 

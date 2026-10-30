@@ -758,6 +758,100 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
+    // fragments/account_menu.html — API tokens tab of the account modal.
+    // Loaded on first open of the tab: `tab` is the enclosing accountModal's.
+    // The raw token lives only in `created`, from the create response.
+    // api_tokens stamps are SQLite datetime('now'): UTC, no zone marker.
+    // Shown in the reader's own time, since "last used" is read by the hour.
+    function tokenTime(stamp) {
+        if (!stamp) return 'Never';
+        const d = new Date(stamp.replace(' ', 'T') + 'Z');
+        if (isNaN(d)) return stamp;
+        return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    Alpine.data('apiTokensPanel', function () {
+        return {
+            tokens: [], loaded: false,
+            when: tokenTime,
+            newName: '', creating: false,
+            created: false, copied: false, result: false,
+            init() {
+                const self = this;
+                this.$watch('tab', function (v) {
+                    if (v === 'tokens' && !self.loaded) self.load();
+                });
+            },
+            async load() {
+                const self = this;
+                const d = await postJSON('/api/tokens', {});
+                if (d.ok) self.tokens = d.tokens;
+                else self.result = d;
+                self.loaded = true;
+            },
+            async create() {
+                const self = this;
+                self.creating = true; self.result = false; self.created = false; self.copied = false;
+                const form = new FormData();
+                form.append('name', self.newName.trim());
+                const d = await postJSON('/api/tokens', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                self.creating = false;
+                if (!d.ok) { self.result = d; return; }
+                self.created = d;
+                self.newName = '';
+                await self.load();
+            },
+            async revoke(id, name) {
+                const self = this;
+                if (!confirm('Revoke token ' + name + '?')) return;
+                const d = await postJSON('/api/tokens/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
+                if (!d.ok) { self.result = d; return; }
+                if (self.created && self.created.id === id) self.created = false;
+                self.result = false;
+                await self.load();
+            },
+            selectPlaintext() {
+                if (this.$refs.plaintext) this.$refs.plaintext.select();
+            },
+            copy() {
+                const self = this;
+                const input = self.$refs.plaintext;
+                // navigator.clipboard is absent off a secure context, so the
+                // .catch below would never be reached.
+                if (!navigator.clipboard) { if (input) input.select(); return; }
+                navigator.clipboard.writeText(self.created.token).then(function () {
+                    self.copied = true;
+                }).catch(function () {
+                    // No clipboard (plain HTTP, or denied): select it for a hand copy.
+                    if (input) input.select();
+                });
+            }
+        };
+    });
+
+    // fragments/settings/users.html — every user's API tokens (admin only).
+    Alpine.data('adminTokensPanel', function () {
+        return {
+            tokens: [], loaded: false, result: false,
+            when: tokenTime,
+            async load() {
+                const self = this;
+                const d = await postJSON('/api/tokens/all', {});
+                if (d.ok) { self.tokens = d.tokens; self.result = false; }
+                else self.result = d;
+                self.loaded = true;
+            },
+            async revoke(id, name) {
+                const self = this;
+                if (!confirm('Revoke token ' + name + '?')) return;
+                const d = await postJSON('/api/tokens/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
+                if (!d.ok) { self.result = d; return; }
+                self.result = false;
+                await self.load();
+            }
+        };
+    });
+
 });
 
 // Delete confirmations for the plain <form method="post"> deletes on the

@@ -28,13 +28,23 @@ be at least one admin.
 
 Settings → **Users** (admin): add a user with username, display name, role
 and initial password; change a role; reset a password; delete a user.
-Deleting a user doesn't touch the catalog — items are shared, not owned.
+Deleting a user doesn't touch the catalog — items are shared, not owned. It
+does delete that user's API tokens. The **API tokens** card on the same tab
+lists every user's tokens, and an admin can revoke any of them — the way to
+stop a leaked token without its owner.
 
 Every user changes their **own** display name and password from the account
 menu in the nav. The menu's trigger shows your name and your role, and the
 panel opens with both, so it is always clear which account you are signed in
 as. Its entries fall into three groups — **Account** (profile and password),
 **Administration** (Settings and Logs, shown to admins only) and **Sign out**.
+
+With the API tokens feature on, the account dialog also has an **API tokens**
+tab, for every role. A token lets a dashboard or script read `/api/v1/`. It
+is read-only, it never acts above **viewer** whatever your role, and it is
+shown once, when you create it. A password or role change does not end a
+token; revoke it from the same tab. See
+[Homelab integration](../homelab-integration.md).
 
 ## Sessions
 
@@ -55,7 +65,7 @@ lookups, errors. Handy for "why didn't that cover load" without touching
 
 ## What's per-user today
 
-Only your login, display name and password. Reading status, tags, wishlist
+Only your login, display name, password and API tokens. Reading status, tags, wishlist
 and everything else are shared across the household. Per-user reading
 tracking and per-household libraries are on the roadmap (see
 [FUTURE_FEATURES in the repo issues](https://github.com/dgahagan/shelf/issues)).

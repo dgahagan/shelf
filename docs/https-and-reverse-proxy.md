@@ -34,6 +34,10 @@ certificate trusted for `shelf` still warns for `192.168.1.100`. To
 regenerate: stop Shelf, delete `data/certs/`, set `CERT_SAN`, start again,
 then re-install the new cert on your devices.
 
+Dashboards and scripts that read Shelf's API (Homepage, Home Assistant,
+`curl`) meet the same certificate; see
+[Homelab integration → Self-signed certificates](homelab-integration.md#self-signed-certificates).
+
 ### 2. Reverse proxy with a real certificate
 
 Put Caddy, Traefik, nginx or Nginx Proxy Manager in front of Shelf and let it

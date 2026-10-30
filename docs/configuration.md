@@ -20,7 +20,7 @@ Set these in your `.env` file next to `docker-compose.yml`, or with `-e` on
 | `SHELF_SESSION_DAYS` | `7` | How long a login lasts, in whole days, `1`–`365`. The window slides: a session in use is renewed once it is past half its length, so someone who opens Shelf every few days is never logged out. A value that is not a whole number in range logs a warning at startup and uses 7. Existing sessions keep their old expiry until their next renewal |
 | `SHELF_ENCRYPTION_KEY` | *(auto)* | Key for API credentials stored in the database. If unset, generated at `data/encryption.key`. Set it (`openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
 | `DATA_DIR` | `/data` | Where the database, covers and certs live. Only relevant outside Docker |
-| `SHELF_DISABLE_RATE_LIMIT` | *(unset)* | Turns off per-IP rate limiting. For tests and local development only |
+| `SHELF_DISABLE_RATE_LIMIT` | *(unset)* | Turns off rate limiting — the per-IP limit and the per-token limit on `/api/v1`. For tests and local development only |
 | `SHELF_DISABLE_PRICE_ALERTS` | *(unset)* | Stops the nightly wishlist price-alert check from starting, so it never calls ISBNdb. For tests only — the test suite sets it; leave it unset in production |
 | `SHELF_DISABLE_RELEASE_RADAR` | *(unset)* | Stops the daily release-radar check from starting, so it never calls Hardcover. For tests only — the test suite sets it; leave it unset in production |
 | `SHELF_UPC_LOOKUP_URL` | *(unset)* | Overrides the UPC Item DB lookup endpoint. For the test suite only — the E2E gate points it at a local stub. Leave it unset in production; the trial endpoint is used and paced when it is |
@@ -120,13 +120,15 @@ Add users, set roles, reset passwords. See [Users & roles](user-guide/users-and-
 
 Turn optional parts of Shelf on or off: Lending, Series, Statistics, Store
 Mode, Sharing, Valuation, Price alerts, Music, Periodicals, Shelf Fill, Photo
-Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM and
-Collector tools. An
+Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM,
+Collector tools and API tokens. An
 upgrade leaves every existing feature as it was. A feature new in a release
 starts on, except where an upgrade would switch on something the install's
 profile left out: Price alerts and Collector tools start off on an upgrade
 where Valuation is off, and Release radar starts off on an upgrade where
-Hardcover is off. Release radar also needs Hardcover on to do anything. A new
+Hardcover is off. API tokens start off on every upgrade: turn them on to use
+[Homelab integration](homelab-integration.md). Release radar also needs
+Hardcover on to do anything. A new
 install starts with the profile chosen in the
 setup wizard.
 Scanning, Browse, items, locations, tags, Trash, settings, users, backups and
@@ -138,7 +140,7 @@ logs are core and cannot be turned off.
 |---|---|
 | **Minimal** | None — only the core above |
 | **Standard** | Lending, Series, Statistics, Store Mode, Music, Periodicals, Shelf Fill |
-| **Everything** | Standard, plus Sharing, Valuation, Price alerts, Photo Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM and Collector tools |
+| **Everything** | Standard, plus Sharing, Valuation, Price alerts, Photo Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM, Collector tools and API tokens |
 
 The **Profiles** row at the top of Features applies one in a single step and
 shows which one the install matches. After you turn one feature on or off by
@@ -185,8 +187,8 @@ pause.
 
 ## Account settings
 
-Every user (any role) can change their own display name and password from
-the account menu — not from Settings.
+Every user (any role) can change their own display name and password, and
+manage their own API tokens, from the account menu — not from Settings.
 
 ## Where things are *not* configurable
 

@@ -13,6 +13,7 @@ from app.config import (
 from app.services.synopsis import SYNOPSIS_MEDIA_TYPES
 from app.currency import get_currency
 from app.services import author_index
+from app.services import collection_value
 from app.services import browse_counts
 from app.services import lists
 from app.services import isbn as isbn_svc
@@ -524,10 +525,7 @@ async def stats(request: Request, _=Depends(require_role("viewer")),
             "ORDER BY created_at"
         ).fetchall()
         # The valuation concerns what you own (#125) — owned = 1.
-        current_value = db.execute(
-            "SELECT COALESCE(SUM(COALESCE(manual_value, estimated_value)), 0) as v FROM items_live "
-            "WHERE COALESCE(manual_value, estimated_value) IS NOT NULL AND owned = 1"
-        ).fetchone()["v"]
+        current_value = collection_value.owned_total(db)
 
     today = _today()
     current_year = str(today.year)

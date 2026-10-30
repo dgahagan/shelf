@@ -7,7 +7,7 @@ The Settings page is organised into five sections, listed in a sidebar on a wide
 - **Library** — collection display, lending, locations, **tags**, game platforms, navigation preferences, **Trash** retention and the **copy label** prefix.
 - **Integrations** — Audiobookshelf, Hardcover (with its release radar), metadata providers, valuation, price alerts and vision services.
 - **Data** — CSV and portable-archive import/export, backups and maintenance tools.
-- **Users** — accounts, roles and access administration.
+- **Users** — accounts, roles and access administration, and every user's API tokens.
 - **Features** — turn optional parts of Shelf, such as Lending, Sharing, Hardcover or Collector tools, on or off, one at a time or all at once with a Minimal, Standard or Everything profile. Collector tools gates the copy-label, **Audits** and **Duplicates** pages (Duplicates is admin only); the Scan page's audit strip works without it. See [Configuration → Features](../configuration.md#features).
 
 The selected section is remembered in the browser, so returning to Settings opens the area you were working in. The redesign changes navigation and presentation only: existing settings forms, endpoints and stored values keep their current behaviour.

@@ -3585,6 +3585,39 @@ class TestReleaseRadarStaysOut:
         assert "Dune Messiah Unreleased" not in raw
 
 
+class TestApiTokensStayOut:
+    """API tokens are credentials bound to this server; the portable archive
+    neither exports nor imports them (G147)."""
+
+    def _token(self, db):
+        user_id = db.execute(
+            "INSERT INTO users (username, password, display_name, role)"
+            " VALUES ('tok', 'x', 'Tok', 'admin')"
+        ).lastrowid
+        db.execute(
+            "INSERT INTO api_tokens (user_id, name, token_hash, prefix)"
+            " VALUES (?, 'Archive Probe Token', 'hash-probe-1', 'shf_probe')",
+            (user_id,),
+        )
+        db.execute("COMMIT")
+
+    def test_table_absent_from_the_archive(self, db):
+        self._token(db)
+        with zipfile.ZipFile(build_archive(db)) as zf:
+            raw = b"".join(zf.read(n) for n in zf.namelist()).decode(errors="replace")
+        assert "api_tokens" not in raw
+        assert "Archive Probe Token" not in raw
+        assert "hash-probe-1" not in raw
+
+    def test_a_token_survives_an_import_untouched(self, db):
+        self._token(db)
+        before = [tuple(r) for r in db.execute("SELECT * FROM api_tokens")]
+        with read_archive(build_archive(db)) as reader:
+            merge_archive(db, reader, mode="skip")
+        after = [tuple(r) for r in db.execute("SELECT * FROM api_tokens")]
+        assert before and after == before
+
+
 class TestPriceHistoryStaysOut:
     """Price-alert history is an observation cache for one feature, not part
     of the catalog: the portable archive neither exports nor imports it, and
