@@ -36,14 +36,15 @@ halves of the same problem, so they are being designed together.
 
 ## Homelab integration
 
-**Planned.** Shelf should behave like the rest of your stack.
+**Planned.** Shelf should behave like the rest of your stack. The first part shipped in 0.74.0.
 
-- **API tokens and a documented JSON API.** Shelf is FastAPI, so a schema exists
-  in principle, but every endpoint today wants a browser session cookie — no use
-  from `curl`, a script, or a dashboard. A revocable token you paste into another
-  tool, and a stable read-mostly surface that will not move under you.
-- **Dashboard widgets** — Homepage and Homarr — and a **Home Assistant** recipe.
-  Both are thin layers over the token-authed API, so they follow it directly.
+- **API tokens and a dashboard document — shipped in 0.74.0.** Read-only
+  tokens you make from your account menu, `GET /api/v1/stats`, and tested
+  recipes for Homepage and Home Assistant. See
+  [Homelab integration](homelab-integration.md).
+- **The rest of the read API** — items, loans, wishlist, series and upcoming
+  releases under the same tokens, with a published schema. A stable
+  read-mostly surface that will not move under you.
 - **SSO via OIDC** ([#89](https://github.com/dgahagan/shelf/issues/89)) — sign in
   with the identity provider you already run instead of Shelf keeping its own
   user list. This one builds on the account rework in *Multi-user & households*,
@@ -118,11 +119,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.74.0](https://github.com/dgahagan/shelf/releases/tag/v0.74.0) | **API tokens for dashboards.** Make a read-only token in your account menu and point Homepage, Homarr or Home Assistant at `/api/v1/stats` for item counts, loans, value and upcoming releases. Tokens never act above viewer; admins can revoke anyone's from Settings → Users. |
 | [0.73.0](https://github.com/dgahagan/shelf/releases/tag/v0.73.0) | **Release radar.** Watch a series — or every complete one at once — and Shelf checks Hardcover daily for newly announced volumes. An Upcoming releases page, linked from Series, lists them soonest first with + Wishlist, Dismiss and Stop watching, and a daily digest goes to the notification URL you already use for loans. |
 | [0.72.0](https://github.com/dgahagan/shelf/releases/tag/v0.72.0) | **Duplicates.** Admins get a page of records filed twice — by ISBN or barcode, or by title and author for records with no identifier — side by side. Pick the one to keep and merge: every physical copy, tag, loan and audit entry comes across, so two records of one book become one record with two copies. **Not duplicates** hides a group, and Restore brings it back. Part of Collector tools. |
 | [0.71.0](https://github.com/dgahagan/shelf/releases/tag/v0.71.0) | **Shelf audits.** Start an audit of a shelf or the whole library from Scan → Inventory, scan from any device (several at once, or after a reload), and finish for a report: found, moved here, seen elsewhere, on loan, missing and unexpected. Mark the missing copies; a Found button or the next scan of that copy clears the mark. Part of Collector tools. |
 | [0.70.0](https://github.com/dgahagan/shelf/releases/tag/v0.70.0) | **Copy labels.** Give each physical copy its own barcode from the new Labels page or a copy's edit panel, and print the codes on Avery 5160 or L7160 sheets. Scanning a label acts on that exact copy: Inventory and Move act on that copy alone, Lookup names it, and Add reports the copy you already own. Part of the new Collector tools feature. |
-| [0.69.0](https://github.com/dgahagan/shelf/releases/tag/v0.69.0) | **Find cover** now offers the other editions of the same work beside a book's exact ISBN match, each labelled with year, publisher and language, and a query you type searches on that text alone, without the stored author. With a LibraryThing token, a book Open Library does not know gets a verified English edition's cover (contributed by [@notAnElephant](https://github.com/notAnElephant)). |
 
 ---
 

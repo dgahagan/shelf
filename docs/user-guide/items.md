@@ -315,6 +315,9 @@ dismissed pair. A *Not duplicates* decision travels with a database backup, not
 with a portable archive. **Link instead** opens the first record, where Related
 Media can tie the others to it instead of merging them.
 
+A group of more than 200 records can be merged but not dismissed. The page
+says so in place of the **Not duplicates** button.
+
 A merge that would copy an invalid ISBN is refused and both records are left in
 place. The message names the record it stopped on, by title and id, so a merge
 of several records tells you which one to fix.

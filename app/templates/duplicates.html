@@ -59,8 +59,12 @@
             <div class="flex flex-wrap items-center gap-3">
                 <button type="button" data-dup-action="merge"
                         class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">Merge</button>
+                {% if group.members|length <= max_ids %}
                 <button type="button" data-dup-action="dismiss"
                         class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Not duplicates</button>
+                {% else %}
+                <span data-dup-dismiss-capped class="text-sm text-shelf-muted">Groups larger than {{ max_ids }} records can be merged but not dismissed.</span>
+                {% endif %}
                 <span class="text-sm text-shelf-muted"><a href="/item/{{ group.member_ids[0] }}" data-dup-link class="text-shelf-accent2 hover:underline">Link instead</a> — add the others under Related Media</span>
             </div>
             <p role="alert" data-dup-error class="text-sm text-red-400"></p>

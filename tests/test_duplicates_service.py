@@ -173,7 +173,7 @@ class TestDismissals:
     @pytest.mark.parametrize("raw, exact, answer", [
         ([1], None, "Pick at least two records"),
         ([1, 1], None, "Pick at least two records"),
-        (list(range(1, 52)), None, "Too many records in one group"),
+        (list(range(1, duplicates.MAX_IDS + 2)), None, "Too many records in one group"),
         ([1, "2"], None, "Invalid request"),
         ([1, True], None, "Invalid request"),
         ([1, 0], None, "Invalid request"),
@@ -183,7 +183,8 @@ class TestDismissals:
         ([1, 2, 3], 2, "Invalid request"),
         ([3, 1, 2], None, [1, 2, 3]),
         ([2, 1], 2, [1, 2]),
-        (list(range(1, 51)), None, list(range(1, 51))),
+        (list(range(1, duplicates.MAX_IDS + 1)), None, list(range(1, duplicates.MAX_IDS + 1))),
+        (list(range(1, 201)), None, list(range(1, 201))),  # issue #163: the cap is 200, argued from the per-render _dismissed() read
     ])
     def test_parse_ids(self, raw, exact, answer):
         assert duplicates.parse_ids(raw, exact=exact) == answer

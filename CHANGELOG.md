@@ -6,6 +6,27 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.74.1] - 2026-10-30
+
+The Duplicates page showed a group of any size, but **Not duplicates** worked
+only up to 50 records. A larger group still offered the button. Pressing it
+only ever produced "Too many records in one group", and nothing on the page
+explained why.
+
+### Fixed
+
+- **Not duplicates now works on a group of up to 200 records**, up from 50
+  ([#163](https://github.com/dgahagan/shelf/issues/163)).
+
+### Changed
+
+- **A group larger than 200 records says it cannot be dismissed**, in place of
+  a button that could only fail. Merge and **Link instead** still work on it.
+  The limit is deliberate. Shelf keeps one row for every pair in a dismissed
+  group and reads all of them each time the Duplicates page opens. A group that
+  large is almost always an import that gave many records the same title, and
+  merging is the way to clear it.
+
 ## [0.74.0] - 2026-10-29
 
 Shelf had no way for a dashboard to read it. Home Assistant, Homepage or
@@ -5404,6 +5425,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.74.1]: https://github.com/dgahagan/shelf/releases/tag/v0.74.1
 [0.74.0]: https://github.com/dgahagan/shelf/releases/tag/v0.74.0
 [0.73.0]: https://github.com/dgahagan/shelf/releases/tag/v0.73.0
 [0.72.0]: https://github.com/dgahagan/shelf/releases/tag/v0.72.0

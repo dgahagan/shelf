@@ -42,7 +42,11 @@ from app.services import authors, item_merge
 from app.services.isbn import to_isbn13
 from app.services.title_match import fold_title
 
-MAX_IDS = 50
+# One dismissal writes n(n-1)/2 pair rows, and every later /duplicates render
+# reads them all back through _dismissed(): 19,900 rows at 200 (about 21 ms to
+# write once, about 8 ms per render after). It is also the pair bound, so no
+# second constant is wanted.
+MAX_IDS = 200
 _EXCLUDED_MEDIA_TYPES = PERIODICAL_MEDIA_TYPES | MUSIC_MEDIA_TYPES
 _IDENTIFIER_COLUMNS = ("isbn", "isbn10", "upc")
 _COLUMNS = (

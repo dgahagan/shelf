@@ -6,7 +6,7 @@ with `{"ok": false, "message": …}` and nothing is written.
 
 import pytest
 
-from app.services import item_copies, item_write
+from app.services import duplicates, item_copies, item_write
 from tests.conftest import _insert_item
 from tests.test_audits_routes import _first_endpoint
 from tests.test_features_gate import NAV, assert_disabled_page, off
@@ -35,6 +35,33 @@ class TestPage:
         assert html.count('<script src="/static/js/duplicates.js" defer></script>') == 1
         assert not re.findall(r"<script(?![^>]*\bsrc=)[^>]*>", html)
 
+    @staticmethod
+    def _group_html(admin_client, db, n):
+        ids = [_book(db, "Same Title") for _ in range(n)]
+        db.commit()
+        assert db.execute("SELECT COUNT(*) FROM items").fetchone()[0] == n
+        html = admin_client.get("/duplicates").text
+        start = html.index(f'data-member-ids="{",".join(map(str, ids))}"')
+        return ids, html[start:html.index("</article>", start)]
+
+    def test_group_at_the_dismissal_cap_can_be_dismissed(self, admin_client, db):
+        ids, group = self._group_html(admin_client, db, duplicates.MAX_IDS)
+        for i in ids:
+            assert f'data-dup-member="{i}"' in group
+        assert 'data-dup-action="dismiss"' in group
+        assert 'data-dup-action="merge"' in group
+        assert "data-dup-dismiss-capped" not in group
+
+    def test_group_past_the_dismissal_cap_says_so_instead(self, admin_client, db):
+        ids, group = self._group_html(admin_client, db, duplicates.MAX_IDS + 1)
+        for i in ids:
+            assert f'data-dup-member="{i}"' in group
+        assert 'data-dup-action="merge"' in group
+        assert "data-dup-link" in group
+        assert 'data-dup-action="dismiss"' not in group
+        assert (f"Groups larger than {duplicates.MAX_IDS} records can be merged "
+                "but not dismissed.") in group
+
     def test_admin_sees_both_lists(self, admin_client, db):
         a = _insert_item(db, title="Dune", isbn="0441013597")
         b = _insert_item(db, title="Dune", isbn="9780441013593")
@@ -60,7 +87,6 @@ class TestPage:
         assert "No pairs dismissed." in html
 
     def test_over_cap_line(self, admin_client, db, monkeypatch):
-        from app.services import duplicates
         real = duplicates.groups
         monkeypatch.setattr(duplicates, "groups", lambda db: real(db, cap=1))
         for t in ("One", "Two"):
@@ -170,7 +196,7 @@ class TestDismissAndRestore:
 
     @pytest.mark.parametrize("method, body, message", [
         ("POST", {"item_ids": [1]}, "Pick at least two records"),
-        ("POST", {"item_ids": list(range(1, 52))}, "Too many records in one group"),
+        ("POST", {"item_ids": list(range(1, duplicates.MAX_IDS + 2))}, "Too many records in one group"),
         ("POST", {"item_ids": [1, "x"]}, "Invalid request"),
         ("POST", {"nothing": True}, "Invalid request"),
         ("POST", [1, 2], "Invalid request"),

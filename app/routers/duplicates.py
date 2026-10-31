@@ -52,6 +52,7 @@ async def duplicates_page(
             "dismissed": dismissed,
             "media_types": MEDIA_TYPES,
             "fillable": sorted(item_merge.MERGE_FILLABLE),
+            "max_ids": duplicates.MAX_IDS,
         })
 
 
