@@ -91,7 +91,7 @@
                         class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">{{ _('Password') }}</button>
                 {% if feature_on('api') %}
                 <button type="button" @click="tab = 'tokens'" data-testid="account-tab-tokens" :class="tab === 'tokens' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">API tokens</button>
+                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">{{ _('API tokens') }}</button>
                 {% endif %}
             </div>
 
@@ -163,13 +163,13 @@
 
             {% if feature_on('api') %}
             <div x-show="tab === 'tokens'" x-data="apiTokensPanel" data-testid="api-tokens-pane" class="space-y-4">
-                <p class="text-xs text-shelf-muted">Read-only tokens for dashboards and scripts. A token reads <code>/api/v1</code> only, and never more than a viewer can see.</p>
+                <p class="text-xs text-shelf-muted">{{ _('Read-only tokens for dashboards and scripts. A token reads <code>/api/v1</code> only, and never more than a viewer can see.') }}</p>
                 <div class="flex flex-wrap gap-2">
-                    <input x-model="newName" type="text" maxlength="64" placeholder="Token name, e.g. homepage" data-testid="api-token-name-input"
+                    <input x-model="newName" type="text" maxlength="64" placeholder="{{ _('Token name, e.g. homepage') }}" data-testid="api-token-name-input"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                     <button type="button" @click="create()" :disabled="creating || !newName.trim()" data-testid="api-token-create"
                             class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
-                        Create
+                        {{ _('Create') }}
                     </button>
                 </div>
                 <template x-if="result">
@@ -177,17 +177,17 @@
                 </template>
                 <template x-if="created">
                     <div class="space-y-2 rounded-lg border border-shelf-border bg-shelf-bg p-3" data-testid="api-token-created">
-                        <p class="text-sm font-medium">This is the only time the token is shown.</p>
+                        <p class="text-sm font-medium">{{ _('This is the only time the token is shown.') }}</p>
                         <div class="flex flex-wrap gap-2">
                             <input type="text" readonly :value="created.token" x-ref="plaintext" @focus="selectPlaintext()" data-testid="api-token-plaintext"
                                    class="flex-1 min-w-0 bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-xs font-mono text-shelf-text">
                             <button type="button" @click="copy()" data-testid="api-token-copy"
                                     class="px-3 py-2 border border-shelf-border rounded-lg text-sm hover:bg-shelf-hover transition-colors"
-                                    x-text="copied ? 'Copied' : 'Copy'">Copy</button>
+                                    x-text="copyLabel">{{ _('Copy') }}</button>
                         </div>
                     </div>
                 </template>
-                <p x-show="loaded && !tokens.length" class="text-sm text-shelf-muted" data-testid="api-tokens-empty">No tokens yet.</p>
+                <p x-show="loaded && !tokens.length" class="text-sm text-shelf-muted" data-testid="api-tokens-empty">{{ _('No tokens yet.') }}</p>
                 <ul class="divide-y divide-shelf-border" x-show="tokens.length">
                     <template x-for="t in tokens" :key="t.id">
                         <li class="flex flex-wrap items-center justify-between gap-2 py-2" data-testid="api-token-row">
@@ -195,13 +195,13 @@
                                 <p class="text-sm font-medium break-all" data-testid="api-token-name" x-text="t.name"></p>
                                 <p class="text-xs text-shelf-muted">
                                     <span class="font-mono" x-text="t.prefix + '…'"></span>
-                                    · created <span x-text="when(t.created_at)"></span>
-                                    · last used <span x-text="when(t.last_used_at)"></span>
+                                    · {{ _('created') }} <span x-text="when(t.created_at)"></span>
+                                    · {{ _('last used') }} <span x-text="when(t.last_used_at)"></span>
                                 </p>
                             </div>
                             <button type="button" @click="revoke(t.id, t.name)" data-testid="api-token-revoke"
                                     class="px-3 py-1 text-xs border border-shelf-border rounded-lg text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
-                                Revoke
+                                {{ _('Revoke') }}
                             </button>
                         </li>
                     </template>

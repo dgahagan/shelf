@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from app import i18n
+from app.services import api_tokens
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -87,6 +88,17 @@ def test_unknown_language_is_refused(admin_client, db):
     r = admin_client.post("/api/account/language", data={"language": "xx"})
     assert r.json()["ok"] is False
     assert db.execute("SELECT language FROM users WHERE username = 'admin'").fetchone()[0] is None
+
+
+def test_api_tokens_tab_and_its_errors_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/browse").text
+    assert "Token API" in page
+    assert '"Revoke token {name}?": "Revocare il token {name}?"' in page
+    long_name = "x" * (api_tokens.MAX_NAME + 1)
+    assert admin_client.post("/api/tokens", data={"name": long_name}).json()["message"] == (
+        f"Il nome può avere al massimo {api_tokens.MAX_NAME} caratteri")
 
 
 def test_catalogs_are_complete_and_compiled():

@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-10-23 09:29+0200\n"
+"PO-Revision-Date: 2026-11-01 18:58+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -15,6 +15,23 @@ msgstr ""
 #: static/js/app.js:71 static/js/app.js:114 static/js/app.js:124
 msgid "Done"
 msgstr "Fatto"
+
+#: static/js/components-settings.js:767
+msgid "Never"
+msgstr "Mai"
+
+#: static/js/components-settings.js:779
+msgid "Copied"
+msgstr "Copiato"
+
+#: static/js/components-settings.js:779
+msgid "Copy"
+msgstr "Copia"
+
+#: static/js/components-settings.js:807
+#, python-brace-format
+msgid "Revoke token {name}?"
+msgstr "Revocare il token {name}?"
 
 #: static/js/components.js:82
 msgid "Could not change the language"

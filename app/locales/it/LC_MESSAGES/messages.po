@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-10-25 08:24+0100\n"
+"PO-Revision-Date: 2026-11-01 18:58+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -84,6 +84,24 @@ msgstr "Amministrazione"
 msgid "Logs"
 msgstr "Log"
 
+#: app/routers/api_tokens.py:63
+msgid "Give the token a name"
+msgstr "Dai un nome al token"
+
+#: app/routers/api_tokens.py:66
+#, python-format
+msgid "Keep the name to %(max)s characters or fewer"
+msgstr "Il nome può avere al massimo %(max)s caratteri"
+
+#: app/routers/api_tokens.py:72
+#, python-format
+msgid "You already have %(max)s tokens — revoke one first"
+msgstr "Hai già %(max)s token: revocane uno prima"
+
+#: app/routers/api_tokens.py:90
+msgid "Token not found"
+msgstr "Token non trovato"
+
 #: app/routers/auth_routes.py:56 app/routers/auth_routes.py:63
 msgid "Invalid username or password"
 msgstr "Nome utente o password non validi"
@@ -92,7 +110,7 @@ msgstr "Nome utente o password non validi"
 msgid "Password must be at least 8 characters"
 msgstr "La password deve contenere almeno 8 caratteri"
 
-#: app/routers/auth_routes.py:123 app/templates/fragments/account_menu.html:147
+#: app/routers/auth_routes.py:123 app/templates/fragments/account_menu.html:153
 #: app/templates/setup.html:53
 msgid "Passwords do not match"
 msgstr "Le password non coincidono"
@@ -197,7 +215,7 @@ msgstr "Accedi"
 msgid "Sign in to your library"
 msgstr "Accedi alla tua biblioteca"
 
-#: app/templates/fragments/account_menu.html:96 app/templates/login.html:24
+#: app/templates/fragments/account_menu.html:100 app/templates/login.html:24
 #: app/templates/setup.html:27
 msgid "Username"
 msgstr "Nome utente"
@@ -219,7 +237,7 @@ msgstr "Ti diamo il benvenuto in Shelf"
 msgid "Create your admin account to get started."
 msgstr "Crea il tuo account amministratore per iniziare."
 
-#: app/templates/fragments/account_menu.html:101 app/templates/setup.html:33
+#: app/templates/fragments/account_menu.html:105 app/templates/setup.html:33
 msgid "Display Name"
 msgstr "Nome visualizzato"
 
@@ -231,7 +249,7 @@ msgstr "(facoltativo)"
 msgid "How your name appears in the app"
 msgstr "Come appare il tuo nome nell'app"
 
-#: app/templates/fragments/account_menu.html:140 app/templates/setup.html:44
+#: app/templates/fragments/account_menu.html:146 app/templates/setup.html:44
 msgid "Must be at least 8 characters"
 msgstr "Almeno 8 caratteri"
 
@@ -289,35 +307,75 @@ msgstr "Chiudi la finestra account"
 msgid "Profile"
 msgstr "Profilo"
 
-#: app/templates/fragments/account_menu.html:106
+#: app/templates/fragments/account_menu.html:94
+msgid "API tokens"
+msgstr "Token API"
+
+#: app/templates/fragments/account_menu.html:110
 msgid "Role"
 msgstr "Ruolo"
 
-#: app/templates/fragments/account_menu.html:111
+#: app/templates/fragments/account_menu.html:116
 msgid "Language"
 msgstr "Lingua"
 
-#: app/templates/fragments/account_menu.html:115
+#: app/templates/fragments/account_menu.html:120
 msgid "Automatic (browser language)"
 msgstr "Automatica (lingua del browser)"
 
-#: app/templates/fragments/account_menu.html:126
+#: app/templates/fragments/account_menu.html:132
 msgid "Save"
 msgstr "Salva"
 
-#: app/templates/fragments/account_menu.html:132
+#: app/templates/fragments/account_menu.html:138
 msgid "Current Password"
 msgstr "Password attuale"
 
-#: app/templates/fragments/account_menu.html:137
+#: app/templates/fragments/account_menu.html:143
 msgid "New Password"
 msgstr "Nuova password"
 
-#: app/templates/fragments/account_menu.html:143
+#: app/templates/fragments/account_menu.html:149
 msgid "Confirm New Password"
 msgstr "Conferma nuova password"
 
-#: app/templates/fragments/account_menu.html:154
+#: app/templates/fragments/account_menu.html:160
 msgid "Change Password"
 msgstr "Cambia password"
+
+#: app/templates/fragments/account_menu.html:166
+msgid "Read-only tokens for dashboards and scripts. A token reads <code>/api/v1</code> only, and never more than a viewer can see."
+msgstr "Token di sola lettura per dashboard e script. Un token legge solo <code>/api/v1</code> e non vede mai più di un visualizzatore."
+
+#: app/templates/fragments/account_menu.html:168
+msgid "Token name, e.g. homepage"
+msgstr "Nome del token, es. homepage"
+
+#: app/templates/fragments/account_menu.html:172
+msgid "Create"
+msgstr "Crea"
+
+#: app/templates/fragments/account_menu.html:180
+msgid "This is the only time the token is shown."
+msgstr "Il token viene mostrato solo questa volta."
+
+#: app/templates/fragments/account_menu.html:186
+msgid "Copy"
+msgstr "Copia"
+
+#: app/templates/fragments/account_menu.html:190
+msgid "No tokens yet."
+msgstr "Ancora nessun token."
+
+#: app/templates/fragments/account_menu.html:198
+msgid "created"
+msgstr "creato"
+
+#: app/templates/fragments/account_menu.html:199
+msgid "last used"
+msgstr "ultimo uso"
+
+#: app/templates/fragments/account_menu.html:204
+msgid "Revoke"
+msgstr "Revoca"
 
