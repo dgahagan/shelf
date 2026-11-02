@@ -63,7 +63,7 @@
                         <label class="flex items-center gap-2">
                             <input type="checkbox" name="{{ tab.key }}" class="rounded-sm border-shelf-border"
                                    {% if not tab.hidden %}checked{% endif %}>
-                            {{ tab.label }}
+                            {{ _(tab.label) }}
                         </label>
                         {% if tab.feature_off %}
                         <span class="text-xs text-shelf-muted">

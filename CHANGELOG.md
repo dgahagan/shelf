@@ -6,6 +6,15 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Shelf starts to speak Italian, starting with the page shell.** The 
+  navigation, sign-in, first-run setup and the Account dialog are translated. 
+  Each user picks a language under Account → Profile → Language; the default, 
+  Automatic, follows the browser, so an Italian browser gets Italian with no 
+  setup. The feature pages are still in English and follow in later releases, 
+  so for now it is off unless `SHELF_I18N=on` is set in `.env`.
+
 ## [0.74.1] - 2026-10-30
 
 The Duplicates page showed a group of any size, but **Not duplicates** worked

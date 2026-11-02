@@ -764,7 +764,7 @@ document.addEventListener('alpine:init', function () {
     // api_tokens stamps are SQLite datetime('now'): UTC, no zone marker.
     // Shown in the reader's own time, since "last used" is read by the hour.
     function tokenTime(stamp) {
-        if (!stamp) return 'Never';
+        if (!stamp) return t('Never');
         const d = new Date(stamp.replace(' ', 'T') + 'Z');
         if (isNaN(d)) return stamp;
         return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
@@ -776,6 +776,7 @@ document.addEventListener('alpine:init', function () {
             when: tokenTime,
             newName: '', creating: false,
             created: false, copied: false, result: false,
+            get copyLabel() { return this.copied ? t('Copied') : t('Copy'); },
             init() {
                 const self = this;
                 this.$watch('tab', function (v) {
@@ -803,7 +804,7 @@ document.addEventListener('alpine:init', function () {
             },
             async revoke(id, name) {
                 const self = this;
-                if (!confirm('Revoke token ' + name + '?')) return;
+                if (!confirm(t('Revoke token {name}?').replace('{name}', function () { return name; }))) return;
                 const d = await postJSON('/api/tokens/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) { self.result = d; return; }
                 if (self.created && self.created.id === id) self.created = false;

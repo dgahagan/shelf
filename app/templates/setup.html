@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="{{ current_locale() }}" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome - Shelf</title>
+    <title>{{ _('Welcome') }} - Shelf</title>
     <link rel="stylesheet" href="/static/css/app.css">
     <script src="/static/js/component-load-guard.js"></script>
     <script src="/static/js/components.js"></script>
@@ -12,8 +12,8 @@
 <body class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md" x-data="setupForm">
         <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-shelf-accent2 tracking-tight">Welcome to Shelf</h1>
-            <p class="text-shelf-muted text-sm mt-2">Create your admin account to get started.</p>
+            <h1 class="text-3xl font-bold text-shelf-accent2 tracking-tight">{{ _('Welcome to Shelf') }}</h1>
+            <p class="text-shelf-muted text-sm mt-2">{{ _('Create your admin account to get started.') }}</p>
         </div>
 
         <form method="POST" action="/setup" class="bg-shelf-card border border-shelf-border rounded-xl p-6 space-y-4">
@@ -24,40 +24,40 @@
             {% endif %}
 
             <div>
-                <label for="username" class="block text-sm font-medium text-shelf-muted mb-1">Username</label>
+                <label for="username" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Username') }}</label>
                 <input type="text" id="username" name="username" required autofocus minlength="2"
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
 
             <div>
-                <label for="display_name" class="block text-sm font-medium text-shelf-muted mb-1">Display Name <span class="text-shelf-muted/50">(optional)</span></label>
+                <label for="display_name" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Display Name') }} <span class="text-shelf-muted/50">{{ _('(optional)') }}</span></label>
                 <input type="text" id="display_name" name="display_name"
-                    placeholder="How your name appears in the app"
+                    placeholder="{{ _('How your name appears in the app') }}"
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
             </div>
 
             <div>
-                <label for="password" class="block text-sm font-medium text-shelf-muted mb-1">Password</label>
+                <label for="password" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Password') }}</label>
                 <input type="password" id="password" name="password" required minlength="8"
                     x-model="password"
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
-                <p x-show="tooShort" x-cloak class="text-shelf-error text-xs mt-1">Must be at least 8 characters</p>
+                <p x-show="tooShort" x-cloak class="text-shelf-error text-xs mt-1">{{ _('Must be at least 8 characters') }}</p>
             </div>
 
             <div>
-                <label for="password_confirm" class="block text-sm font-medium text-shelf-muted mb-1">Confirm Password</label>
+                <label for="password_confirm" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Confirm Password') }}</label>
                 <input type="password" id="password_confirm" name="password_confirm" required
                     x-model="confirm"
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
                     :class="mismatch ? 'border-shelf-error' : ''">
-                <p x-show="mismatch" x-cloak class="text-shelf-error text-xs mt-1">Passwords do not match</p>
+                <p x-show="mismatch" x-cloak class="text-shelf-error text-xs mt-1">{{ _('Passwords do not match') }}</p>
             </div>
 
             {# Plain radios, no Alpine state: setupForm's getters gate the submit
                on the passwords only. The list and each "Adds:" line come from
                the registry (features.profile_choices), never a hand-written list. #}
             <fieldset data-testid="setup-profiles" class="space-y-2">
-                <legend class="block text-sm font-medium text-shelf-muted mb-1">How much of Shelf do you want to start with?</legend>
+                <legend class="block text-sm font-medium text-shelf-muted mb-1">{{ _('How much of Shelf do you want to start with?') }}</legend>
                 {% for p in profiles %}
                 <label class="flex items-start gap-3 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 cursor-pointer has-checked:border-shelf-accent">
                     <input type="radio" name="profile" value="{{ p.name }}" data-testid="setup-profile-{{ p.name }}"
@@ -67,22 +67,22 @@
                         <span class="block font-medium text-shelf-text">{{ p.label }}</span>
                         <span class="block text-shelf-muted">{{ p.description }}</span>
                         {% if p.adds %}
-                        <span class="block text-shelf-muted text-xs mt-1">Adds: {{ p.adds | join(", ") }}</span>
+                        <span class="block text-shelf-muted text-xs mt-1">{{ _('Adds: %(features)s', features=p.adds | join(", ")) }}</span>
                         {% endif %}
                     </span>
                 </label>
                 {% endfor %}
-                <p class="text-shelf-muted text-xs">You can change this any time in Settings → Features.</p>
+                <p class="text-shelf-muted text-xs">{{ _('You can change this any time in Settings → Features.') }}</p>
             </fieldset>
 
             <button type="submit"
                 :disabled="mismatch || tooShort"
                 class="w-full bg-shelf-accent hover:bg-shelf-accent2 text-white font-medium rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                Create Account
+                {{ _('Create Account') }}
             </button>
 
             <p class="text-center text-shelf-muted text-xs mt-4">
-                This will be the admin account with full access to your library.
+                {{ _('This will be the admin account with full access to your library.') }}
             </p>
         </form>
     </div>

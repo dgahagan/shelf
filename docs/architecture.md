@@ -50,6 +50,14 @@ Middleware, outermost first (`app/main.py`):
    the GET event streams there (Hardcover export and import, synopsis
    backfill, cover bulk retry, Komga / RomM / Audiobookshelf sync, valuation)
    do real work, and CSRF does not check GETs.
+   Auth also sets the request's **UI locale** (`app/i18n.py`): the user's
+   `users.language` if set, else the best supported `Accept-Language` tag,
+   else English. It lives in a contextvar set before `call_next`, so the
+   route, its templates and the JS catalog all read the same value. The
+   browser's tag is set before the skip-prefix return, so `/share/` pages,
+   which skip Auth, still follow it. All of this runs only when `SHELF_I18N`
+   is `on` (`i18n.enabled()`); otherwise every request stays English and the
+   Account dialog hides the picker, until every area is translated.
 4. **CSRF** — double-submit cookie; accepts an `X-CSRF-Token` header (HTMX,
    fetch) or `_csrf` form field on mutating requests.
 
@@ -1227,6 +1235,25 @@ stated rather than incidental:
   user catalogued by hand.
 
 ## Frontend
+
+**The UI is translated with gettext.** English is the source language: every
+msgid is the English text and `en` has no catalog, so an unmarked or
+untranslated string renders as written. Templates mark text with
+`{{ _('...') }}` (Jinja's `i18n` extension, newstyle, so output is autoescaped
+and `%(name)s` is formatted for you: a literal percent sign is written `%%`
+even with no variables, which `make check-i18n` enforces) and plurals with
+`{% trans count=n %}...{% pluralize %}...{% endtrans %}`. Python marks route
+messages with `i18n.gettext(...)` (never a `_` alias: many routes take a
+`_=Depends(...)` parameter that would shadow it), and registry strings
+rendered elsewhere with `N_()`, translating them at the render site
+(`{{ _(tab.label) }}`). JS uses `t('...')` from `static/js/app.js`, which
+reads the `js` domain from base.html's `#i18n-catalog` JSON block, the same
+CSP-safe pattern as Browse's filter config. Catalogs live in
+`app/locales/<lang>/LC_MESSAGES/{messages,js}.po`; the compiled `.mo` files
+are committed so the image needs no Babel. `make i18n` extracts and compiles,
+and `make check-i18n` fails when a marked string is missing from a `.po` or a
+`.mo` is stale. Each user picks a language in the Account dialog (any role);
+"Automatic" stores NULL and follows the browser.
 
 Jinja2 templates; HTMX for partial updates (Browse pagination, filter
 counts via out-of-band swaps, scan results); Alpine.js **CSP build** for

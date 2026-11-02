@@ -241,7 +241,7 @@ def get_current_user(request: Request) -> dict | None:
     user_id = int(payload["sub"])
     with get_db() as db:
         row = db.execute(
-            "SELECT username, role, display_name, token_version FROM users WHERE id = ?",
+            "SELECT username, role, display_name, token_version, language FROM users WHERE id = ?",
             (user_id,),
         ).fetchone()
     if not row or row["token_version"] != payload.get("tv", 1):
@@ -255,6 +255,7 @@ def get_current_user(request: Request) -> dict | None:
         "role": row["role"],
         "display_name": row["display_name"] or row["username"],
         "token_version": row["token_version"],
+        "language": row["language"],
     }
 
 

@@ -123,6 +123,16 @@ Notes:
   changes to those files are untouched. You may still edit `sw.js` and
   `README.md` freely — the rule is about those specific generated values, not
   about the files.
+- UI text is translated with gettext (`docs/architecture.md`, Frontend). Mark 
+  new text with `{{ _('...') }}` in templates, `i18n.gettext(...)` in Python and
+  `t('...')` in JS, then run `make i18n` and commit the updated `.po` and `.mo` files 
+  (`make check-i18n` fails otherwise). Leaving the untranslated `msgstr` empty 
+  is fine; the English shows until someone translates it. To add a language, add 
+  its code to `SUPPORTED` and `LANGUAGE_NAMES` in `app/i18n.py` and to `LANGUAGES` 
+  in `scripts/i18n.py`, then run `make i18n`.
+- Phrase a translation so it doesn't depend on the reader's gender: Shelf doesn't
+  ask for it, and the setup page runs before any user exists. Rewrite the
+  sentence rather than pick a form ("Ti diamo il benvenuto", not "Benvenuto").
 - `GOTCHAS.md` lists the project's known traps; skim the headings before
   touching migrations, Alpine components, covers or the service worker.
 

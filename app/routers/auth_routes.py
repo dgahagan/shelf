@@ -11,7 +11,7 @@ from app.auth import (
     set_auth_cookie, clear_auth_cookie, get_user_count,
     require_role,
 )
-from app import features
+from app import features, i18n
 from app.config import get_client_ip
 from app.database import get_db
 
@@ -53,14 +53,14 @@ async def login(request: Request, username: str = Form(...), password: str = For
         logger.warning("Failed login attempt for username=%s from %s", username, get_client_ip(request))
         return templates.TemplateResponse(
             request, "login.html",
-            {"error": "Invalid username or password"},
+            {"error": i18n.gettext("Invalid username or password")},
             status_code=401,
         )
     if not await run_in_threadpool(verify_password, password, user["password"]):
         logger.warning("Failed login attempt for username=%s from %s", username, get_client_ip(request))
         return templates.TemplateResponse(
             request, "login.html",
-            {"error": "Invalid username or password"},
+            {"error": i18n.gettext("Invalid username or password")},
             status_code=401,
         )
 
@@ -118,13 +118,13 @@ async def setup(
     display_name = display_name.strip() or username
 
     if len(password) < 8:
-        return _setup_page(request, "Password must be at least 8 characters", profile)
+        return _setup_page(request, i18n.gettext("Password must be at least 8 characters"), profile)
     if password != password_confirm:
-        return _setup_page(request, "Passwords do not match", profile)
+        return _setup_page(request, i18n.gettext("Passwords do not match"), profile)
     if not username or len(username) < 2:
-        return _setup_page(request, "Username must be at least 2 characters", profile)
+        return _setup_page(request, i18n.gettext("Username must be at least 2 characters"), profile)
     if profile not in features.PROFILES:
-        return _setup_page(request, "Choose how much of Shelf to start with")
+        return _setup_page(request, i18n.gettext("Choose how much of Shelf to start with"))
 
     # bcrypt never runs while a write transaction is open.
     hashed = await run_in_threadpool(hash_password, password)
@@ -261,13 +261,13 @@ async def change_own_password(
     """Any authenticated user can change their own password."""
     user = request.state.user
     if len(new_password) < 8:
-        return {"ok": False, "message": "New password must be at least 8 characters"}
+        return {"ok": False, "message": i18n.gettext("New password must be at least 8 characters")}
 
     with get_db() as db:
         row = db.execute("SELECT password FROM users WHERE id = ?", (user["id"],)).fetchone()
     if not row or not await run_in_threadpool(verify_password, current_password, row["password"]):
         logger.warning("Failed password change attempt for user '%s'", user["username"])
-        return {"ok": False, "message": "Current password is incorrect"}
+        return {"ok": False, "message": i18n.gettext("Current password is incorrect")}
     stored_hash = row["password"]
     new_hash = await run_in_threadpool(hash_password, new_password)
     with get_db() as db:
@@ -282,13 +282,13 @@ async def change_own_password(
             new_tv = db.execute("SELECT token_version FROM users WHERE id = ?", (user["id"],)).fetchone()["token_version"]
     if new_tv is None:
         logger.warning("Failed password change attempt for user '%s'", user["username"])
-        return {"ok": False, "message": "Current password is incorrect"}
+        return {"ok": False, "message": i18n.gettext("Current password is incorrect")}
 
     logger.info("User '%s' changed their password", user["username"])
     # Issue a new token with updated version so the user stays logged in
     new_token = create_token(user["id"], user["username"], user["role"], user.get("display_name"), new_tv)
     from fastapi.responses import JSONResponse
-    resp = JSONResponse({"ok": True, "message": "Password changed"})
+    resp = JSONResponse({"ok": True, "message": i18n.gettext("Password changed")})
     set_auth_cookie(request, resp, new_token)
     return resp
 
@@ -303,7 +303,7 @@ async def change_display_name(
     user = request.state.user
     display_name = display_name.strip()
     if not display_name:
-        return {"ok": False, "message": "Display name cannot be empty"}
+        return {"ok": False, "message": i18n.gettext("Display name cannot be empty")}
 
     with get_db() as db:
         db.execute(
@@ -314,9 +314,26 @@ async def change_display_name(
     # The display-name update does not bump the version, so the resolved one is current (G10).
     token = create_token(user["id"], user["username"], user["role"], display_name, user["token_version"])
     from fastapi.responses import JSONResponse
-    resp = JSONResponse({"ok": True, "message": "Display name updated", "display_name": display_name})
+    resp = JSONResponse({"ok": True, "message": i18n.gettext("Display name updated"), "display_name": display_name})
     set_auth_cookie(request, resp, token)
     return resp
+
+
+@router.post("/api/account/language")
+async def change_language(
+    request: Request,
+    language: str = Form(""),
+    _=Depends(require_role("viewer")),
+):
+    """Any authenticated user picks their UI language; "" follows the browser."""
+    if language and language not in i18n.SUPPORTED:
+        return {"ok": False, "message": i18n.gettext("Unknown language")}
+    with get_db() as db:
+        db.execute(
+            "UPDATE users SET language = ?, updated_at = datetime('now') WHERE id = ?",
+            (language or None, request.state.user["id"]),
+        )
+    return {"ok": True}
 
 
 @router.delete("/api/users/{user_id}")

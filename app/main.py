@@ -44,7 +44,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, RedirectResponse
 
-from app import browse_columns, browse_filters
+from app import browse_columns, browse_filters, i18n
 from app.config import (
     COVERS_DIR,
     CREATOR_LABELS,
@@ -226,6 +226,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         path = request.url.path
 
+        # The UI locale (app/i18n.py), set before call_next so the route and its
+        # templates run in this context and read it. The browser's choice first,
+        # so the skipped prefixes below (the public /share/ page) follow it too.
+        # Off (SHELF_I18N unset), nothing is set and every request stays English.
+        i18n_on = i18n.enabled()
+        accept_language = request.headers.get("accept-language")
+        if i18n_on:
+            i18n.current_locale.set(i18n.resolve(None, accept_language))
+
         # Skip auth for static assets
         if path.startswith(_SKIP_AUTH_PREFIXES):
             return await call_next(request)
@@ -243,6 +252,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
             user = get_current_user(request)
         # Inject user into request state
         request.state.user = user
+        if i18n_on and user and user.get("language"):
+            i18n.current_locale.set(i18n.resolve(user["language"], accept_language))
 
         # Setup wizard: if no users exist, redirect everything to /setup
         if path not in _SKIP_AUTH_PATHS:
@@ -705,6 +716,17 @@ def strip_html(value: str) -> str:
     value = re.sub(r"(?<!\w)(__?)(?=\S)(.+?)(?<=\S)\1(?!\w)", r"\2", value)
     value = re.sub(r"\n{3,}", "\n\n", value)
     return html_mod.unescape(value).strip()
+
+# UI translation (app/i18n.py). Newstyle gettext autoescapes and formats
+# `_('%(n)s items', n=3)` itself, and every callable reads the request's locale.
+templates.env.add_extension("jinja2.ext.i18n")
+templates.env.install_gettext_callables(
+    i18n.gettext, i18n.ngettext, newstyle=True, pgettext=i18n.pgettext,
+)
+templates.env.globals["current_locale"] = i18n.current_locale.get
+templates.env.globals["js_catalog"] = i18n.js_catalog
+templates.env.globals["language_names"] = i18n.LANGUAGE_NAMES
+templates.env.globals["i18n_enabled"] = i18n.enabled
 
 templates.env.filters["strip_html"] = strip_html
 templates.env.filters["money"] = format_money

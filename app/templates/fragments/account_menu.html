@@ -1,6 +1,6 @@
 <div class="relative" x-data="accountMenu" @click.outside="close()" @keydown.escape.window="closeAll()">
     <button type="button" @click="toggle()"
-            data-testid="account-menu-button" aria-label="Account menu" aria-haspopup="menu" :aria-expanded="open"
+            data-testid="account-menu-button" aria-label="{{ _('Account menu') }}" aria-haspopup="menu" :aria-expanded="open"
             class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
         <span class="w-8 h-8 rounded-full bg-shelf-hover border border-shelf-border flex items-center justify-center text-shelf-accent2">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
@@ -24,8 +24,8 @@
                     class="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A9.969 9.969 0 0112 15c2.61 0 4.986 1.002 6.765 2.643M15 11a3 3 0 11-6 0 3 3 0 016 0zM12 21a9 9 0 100-18 9 9 0 000 18z"/></svg>
                 <span>
-                    <span class="block font-medium text-shelf-text">Account</span>
-                    <span class="block text-xs text-shelf-muted">Profile and password</span>
+                    <span class="block font-medium text-shelf-text">{{ _('Account') }}</span>
+                    <span class="block text-xs text-shelf-muted">{{ _('Profile and password') }}</span>
                 </span>
             </button>
         </div>
@@ -40,7 +40,7 @@
         {% if account_tabs %}
         {% for heading, tabs in account_tabs | groupby('heading') %}
         <div class="py-1 border-t border-shelf-border">
-            <p class="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-shelf-muted">{{ heading }}</p>
+            <p class="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-shelf-muted">{{ _(heading) }}</p>
             {% for tab in tabs %}
             <a href="{{ tab.path }}" data-testid="account-menu-{{ tab.key }}" data-nav-tab="{{ tab.key }}" data-nav-menu-tab="{{ tab.key }}" role="menuitem"
                class="flex items-center gap-3 px-4 py-2.5 text-sm {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
@@ -51,7 +51,7 @@
                 {% else %}
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6M9 8h6m2 13H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg>
                 {% endif %}
-                <span>{{ tab.label }}</span>
+                <span>{{ _(tab.label) }}</span>
             </a>
             {% endfor %}
         </div>
@@ -62,7 +62,7 @@
             <button type="submit" data-testid="account-menu-logout" role="menuitem"
                     class="w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
                 <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
-                <span>Sign out</span>
+                <span>{{ _('Sign out') }}</span>
             </button>
         </form>
     </div>
@@ -72,90 +72,104 @@
          class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center">
         <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl max-h-[calc(100dvh-2rem)] overflow-y-auto"
              data-display-name="{{ user.display_name or user.username }}"
+             data-language="{{ user.language or '' }}"
              x-data="accountModal">
             <div class="flex items-center justify-between mb-5">
                 <div>
-                    <h3 class="text-lg font-bold">Account</h3>
-                    <p class="text-xs text-shelf-muted mt-0.5">Manage your profile and sign-in details</p>
+                    <h3 class="text-lg font-bold">{{ _('Account') }}</h3>
+                    <p class="text-xs text-shelf-muted mt-0.5">{{ _('Manage your profile and sign-in details') }}</p>
                 </div>
-                <button type="button" @click="closeAccount()" aria-label="Close account dialog" class="text-shelf-muted hover:text-white">
+                <button type="button" @click="closeAccount()" aria-label="{{ _('Close account dialog') }}" class="text-shelf-muted hover:text-white">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>
 
             <div class="flex gap-1 mb-5 border-b border-shelf-border">
                 <button type="button" @click="tab = 'profile'" :class="tab === 'profile' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Profile</button>
+                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">{{ _('Profile') }}</button>
                 <button type="button" @click="tab = 'password'" :class="tab === 'password' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">Password</button>
+                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">{{ _('Password') }}</button>
                 {% if feature_on('api') %}
                 <button type="button" @click="tab = 'tokens'" data-testid="account-tab-tokens" :class="tab === 'tokens' ? 'text-white border-shelf-accent' : 'text-shelf-muted border-transparent hover:text-white'"
-                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">API tokens</button>
+                        class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors">{{ _('API tokens') }}</button>
                 {% endif %}
             </div>
 
             <div x-show="tab === 'profile'" class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">Username</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Username') }}</label>
                     <input type="text" value="{{ user.username }}" disabled
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-muted cursor-not-allowed">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">Display Name</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Display Name') }}</label>
                     <input x-model="displayName" type="text"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">Role</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Role') }}</label>
                     <input type="text" value="{{ user.role|capitalize }}" disabled
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-muted cursor-not-allowed">
                 </div>
+                {% if i18n_enabled() %}
+                <div>
+                    <label for="account-language" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Language') }}</label>
+                    {# Saves on change and reloads: the whole page has to re-render in the new language. #}
+                    <select id="account-language" x-model="language" @change="saveLanguage()" data-testid="account-language"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
+                        <option value="">{{ _('Automatic (browser language)') }}</option>
+                        {% for code, name in language_names.items() %}
+                        <option value="{{ code }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <template x-if="nameResult">
                     <p :class="nameResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="nameResult.message"></p>
                 </template>
                 <button type="button" @click="saveName()" :disabled="nameSaving || !displayName.trim()"
                         class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
-                    Save
+                    {{ _('Save') }}
                 </button>
             </div>
 
             <div x-show="tab === 'password'" class="space-y-3">
                 <div>
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">Current Password</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Current Password') }}</label>
                     <input x-model="current" type="password"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">New Password</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('New Password') }}</label>
                     <input x-model="newPw" type="password"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
-                    <p x-show="tooShort" class="text-shelf-error text-xs mt-1">Must be at least 8 characters</p>
+                    <p x-show="tooShort" class="text-shelf-error text-xs mt-1">{{ _('Must be at least 8 characters') }}</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">Confirm New Password</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Confirm New Password') }}</label>
                     <input x-model="confirm" type="password"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent"
                            :class="mismatch ? 'border-shelf-error' : ''">
-                    <p x-show="mismatch" class="text-shelf-error text-xs mt-1">Passwords do not match</p>
+                    <p x-show="mismatch" class="text-shelf-error text-xs mt-1">{{ _('Passwords do not match') }}</p>
                 </div>
                 <template x-if="pwResult">
                     <p :class="pwResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="pwResult.message"></p>
                 </template>
                 <button type="button" @click="savePw()" :disabled="!current || !newPw || mismatch || tooShort || pwSaving"
                         class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
-                    Change Password
+                    {{ _('Change Password') }}
                 </button>
             </div>
 
             {% if feature_on('api') %}
             <div x-show="tab === 'tokens'" x-data="apiTokensPanel" data-testid="api-tokens-pane" class="space-y-4">
-                <p class="text-xs text-shelf-muted">Read-only tokens for dashboards and scripts. A token reads <code>/api/v1</code> only, and never more than a viewer can see.</p>
+                <p class="text-xs text-shelf-muted">{{ _('Read-only tokens for dashboards and scripts. A token reads <code>/api/v1</code> only, and never more than a viewer can see.') }}</p>
                 <div class="flex flex-wrap gap-2">
-                    <input x-model="newName" type="text" maxlength="64" placeholder="Token name, e.g. homepage" data-testid="api-token-name-input"
+                    <input x-model="newName" type="text" maxlength="64" placeholder="{{ _('Token name, e.g. homepage') }}" data-testid="api-token-name-input"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent focus:ring-1 focus:ring-shelf-accent">
                     <button type="button" @click="create()" :disabled="creating || !newName.trim()" data-testid="api-token-create"
                             class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
-                        Create
+                        {{ _('Create') }}
                     </button>
                 </div>
                 <template x-if="result">
@@ -163,17 +177,17 @@
                 </template>
                 <template x-if="created">
                     <div class="space-y-2 rounded-lg border border-shelf-border bg-shelf-bg p-3" data-testid="api-token-created">
-                        <p class="text-sm font-medium">This is the only time the token is shown.</p>
+                        <p class="text-sm font-medium">{{ _('This is the only time the token is shown.') }}</p>
                         <div class="flex flex-wrap gap-2">
                             <input type="text" readonly :value="created.token" x-ref="plaintext" @focus="selectPlaintext()" data-testid="api-token-plaintext"
                                    class="flex-1 min-w-0 bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-xs font-mono text-shelf-text">
                             <button type="button" @click="copy()" data-testid="api-token-copy"
                                     class="px-3 py-2 border border-shelf-border rounded-lg text-sm hover:bg-shelf-hover transition-colors"
-                                    x-text="copied ? 'Copied' : 'Copy'">Copy</button>
+                                    x-text="copyLabel">{{ _('Copy') }}</button>
                         </div>
                     </div>
                 </template>
-                <p x-show="loaded && !tokens.length" class="text-sm text-shelf-muted" data-testid="api-tokens-empty">No tokens yet.</p>
+                <p x-show="loaded && !tokens.length" class="text-sm text-shelf-muted" data-testid="api-tokens-empty">{{ _('No tokens yet.') }}</p>
                 <ul class="divide-y divide-shelf-border" x-show="tokens.length">
                     <template x-for="t in tokens" :key="t.id">
                         <li class="flex flex-wrap items-center justify-between gap-2 py-2" data-testid="api-token-row">
@@ -181,13 +195,13 @@
                                 <p class="text-sm font-medium break-all" data-testid="api-token-name" x-text="t.name"></p>
                                 <p class="text-xs text-shelf-muted">
                                     <span class="font-mono" x-text="t.prefix + '…'"></span>
-                                    · created <span x-text="when(t.created_at)"></span>
-                                    · last used <span x-text="when(t.last_used_at)"></span>
+                                    · {{ _('created') }} <span x-text="when(t.created_at)"></span>
+                                    · {{ _('last used') }} <span x-text="when(t.last_used_at)"></span>
                                 </p>
                             </div>
                             <button type="button" @click="revoke(t.id, t.name)" data-testid="api-token-revoke"
                                     class="px-3 py-1 text-xs border border-shelf-border rounded-lg text-shelf-muted hover:text-white hover:bg-shelf-hover transition-colors">
-                                Revoke
+                                {{ _('Revoke') }}
                             </button>
                         </li>
                     </template>

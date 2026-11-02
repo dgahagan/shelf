@@ -17,6 +17,7 @@ import logging
 
 from fastapi import APIRouter, Depends, Form, Request
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.features import require_feature
@@ -59,15 +60,17 @@ async def mint_token(
     # refuse a name with nothing visible in it, such as zero-width spaces.
     name = " ".join(name.split())
     if not any(c.isprintable() and not c.isspace() for c in name):
-        return {"ok": False, "message": "Give the token a name"}
+        return {"ok": False, "message": i18n.gettext("Give the token a name")}
     if len(name) > api_tokens.MAX_NAME:
         return {"ok": False,
-                "message": f"Keep the name to {api_tokens.MAX_NAME} characters or fewer"}
+                "message": i18n.gettext("Keep the name to %(max)s characters or fewer")
+                % {"max": api_tokens.MAX_NAME}}
     with get_db() as db:
         created = api_tokens.create(db, user["id"], name)
     if created is None:
         return {"ok": False,
-                "message": f"You already have {api_tokens.MAX_PER_USER} tokens — revoke one first"}
+                "message": i18n.gettext("You already have %(max)s tokens — revoke one first")
+                % {"max": api_tokens.MAX_PER_USER}}
     logger.info("API token %r created for user '%s'", name, user["username"])
     return {"ok": True, **created}
 
@@ -84,6 +87,6 @@ async def revoke_token(
     with get_db() as db:
         revoked = api_tokens.revoke(db, token_id, user_id=owner)
     if not revoked:
-        return {"ok": False, "message": "Token not found"}
+        return {"ok": False, "message": i18n.gettext("Token not found")}
     logger.info("API token id=%d revoked by '%s'", token_id, user["username"])
     return {"ok": True}

@@ -71,6 +71,8 @@ def _isolated_db(tmp_path, monkeypatch):
     # A developer shell that exports the E2E stub URL must not reach the unit suite.
     monkeypatch.delenv("SHELF_UPC_LOOKUP_URL", raising=False)
     monkeypatch.delenv("SHELF_ISSN_PORTAL_URL", raising=False)
+    # Nor one that turns the translated UI on: tests opt in (tests/test_i18n.py).
+    monkeypatch.delenv("SHELF_I18N", raising=False)
 
     # Reset cached secret key so each test gets a fresh one
     import app.auth as auth_mod

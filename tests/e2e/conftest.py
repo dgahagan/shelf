@@ -268,7 +268,9 @@ def live_server(upc_stub):
     Passes no `clear_env`, which is what preserves the pre-extraction contract
     byte for byte: the whole parent environment, then the fixed E2E values.
     """
-    with _boot_server(upc_stub_url=upc_stub["url"]) as server:
+    # The translated UI is off by default; turn it on so test_language.py can
+    # drive the picker. Playwright sends en-US, so every other test stays English.
+    with _boot_server({"SHELF_I18N": "on"}, upc_stub_url=upc_stub["url"]) as server:
         yield server
 
 

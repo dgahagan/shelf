@@ -6441,6 +6441,30 @@ python -m pytest tests/test_audits_service.py -q -k "Deleted or Purged"
   passes.
 - **Status:** documented.
 
+## G154 — When a UI string is translated outside a request
+
+- **Rule:** call `i18n.gettext()` where the string is rendered or returned, 
+  never at module level. A registry that stores display text (`NAV_TABS`, 
+  label dicts) keeps the English wrapped in `N_()` and the template translates 
+  it: `{{ _(tab.label) }}`. In a router, call `i18n.gettext(...)` by its full 
+  name; don't import it as `_`.
+- **Why:** the locale is a per-request contextvar (`app/i18n.py`). 
+  A module-level `gettext("Browse")` runs at import, before any request, and 
+  freezes to English for every user. A `_` alias breaks differently: most 
+  routes take `_=Depends(require_role(...))`, so inside those functions 
+  `_("...")` calls the dependency's return value.
+- **Evidence:** caught while building the first translation catalog, 2026-10-20 
+  (`auth_routes.change_own_password` takes `_=Depends`).
+- **Verify:**
+
+```bash
+grep -rnE "^[A-Z_]+ *= *.*\bgettext\(" app/          # module-level translation: expect no hits
+grep -rn "import gettext as _" app/routers/            # expect no hits
+```
+
+- **Status:** documented. `make check-i18n` catches unextracted strings but 
+  not import-time translation.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
