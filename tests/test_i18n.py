@@ -244,3 +244,9 @@ def test_series_page_is_translated(admin_client, db):
     for text in ("La tua biblioteca raggruppata per serie", "2 posseduti", "forse mancano", '"1 book": "1 libro"'):
         assert text in page, text
 
+
+def test_music_and_periodicals_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    assert "La tua musica" in admin_client.get("/music").text
+    assert "Ancora nessun periodico in catalogo" in admin_client.get("/periodicals").text

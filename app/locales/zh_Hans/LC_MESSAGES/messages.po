@@ -236,7 +236,8 @@ msgstr "开发商"
 msgid "Director"
 msgstr "导演"
 
-#: app/config.py:131
+#: app/config.py:131 app/templates/fragments/music_discogs.html:74
+#: app/templates/music.html:22 app/templates/music.html:23
 msgid "Artist"
 msgstr "艺术家"
 
@@ -262,11 +263,13 @@ msgstr "定位上架"
 msgid "Store"
 msgstr "书店模式"
 
-#: app/nav.py:42
+#: app/nav.py:42 app/templates/music.html:2 app/templates/music.html:8
+#: app/templates/music_item.html:2
 msgid "Music"
 msgstr "音乐"
 
-#: app/nav.py:43
+#: app/nav.py:43 app/templates/periodical_publication.html:2
+#: app/templates/periodicals.html:2 app/templates/periodicals.html:8
 msgid "Periodicals"
 msgstr "期刊"
 
@@ -643,7 +646,7 @@ msgstr ""
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/item_copies.html:108
 #: app/templates/fragments/item_copy_edit.html:40 app/templates/intake.html:56
-#: app/templates/intake.html:203
+#: app/templates/intake.html:203 app/templates/music.html:75
 msgid "No location"
 msgstr ""
 
@@ -679,6 +682,10 @@ msgstr ""
 #: app/routers/items_scan_modes.py:264
 #, python-format
 msgid "Marked as %(status)s"
+msgstr ""
+
+#: app/routers/periodicals.py:120
+msgid "This periodical issue is already in the collection"
 msgstr ""
 
 #: app/routers/related_media.py:99
@@ -1059,6 +1066,7 @@ msgid "Type or pick a series..."
 msgstr "输入或选择系列…"
 
 #: app/templates/browse.html:61 app/templates/browse.html:76
+#: app/templates/music.html:36
 msgid "Clear"
 msgstr "清除"
 
@@ -1890,7 +1898,7 @@ msgstr ""
 msgid "Close scanner"
 msgstr ""
 
-#: app/templates/item_edit.html:266
+#: app/templates/item_edit.html:266 app/templates/music.html:27
 msgid "UPC / EAN"
 msgstr ""
 
@@ -1971,6 +1979,192 @@ msgstr "用户名"
 #: app/templates/setup.html:40
 msgid "Password"
 msgstr "密码"
+
+#: app/templates/music.html:7 app/templates/periodicals.html:7
+msgid "Catalogue"
+msgstr ""
+
+#: app/templates/music.html:9
+msgid "Search exact MusicBrainz releases and keep the pressing, medium and track list you actually own."
+msgstr ""
+
+#: app/templates/music.html:11
+msgid "Browse all media"
+msgstr ""
+
+#: app/templates/music.html:15
+msgid "Find a release"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:69 app/templates/music.html:18
+#: app/templates/music.html:19
+msgid "Release title"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:79 app/templates/music.html:26
+msgid "Barcode"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:84 app/templates/music.html:30
+#: app/templates/music.html:31
+msgid "Catalogue number"
+msgstr ""
+
+#: app/templates/music.html:35
+msgid "Search MusicBrainz"
+msgstr ""
+
+#: app/templates/music.html:46
+msgid "Matching releases"
+msgstr ""
+
+#: app/templates/music.html:68
+msgid "Choose format"
+msgstr ""
+
+#: app/templates/music.html:78
+msgid "Add release"
+msgstr ""
+
+#: app/templates/music.html:90
+msgid "Your music"
+msgstr ""
+
+#: app/templates/music.html:91
+#, python-format
+msgid "%(n)s shown"
+msgstr ""
+
+#: app/templates/music.html:102 app/templates/periodical_publication.html:36
+msgid "View"
+msgstr ""
+
+#: app/templates/music.html:108
+msgid "No music releases are catalogued yet. Search above to add an exact release."
+msgstr ""
+
+#: app/templates/music_item.html:6
+msgid "Back to music"
+msgstr ""
+
+#: app/templates/music_item.html:11
+msgid "Restored from Trash &mdash; this release was in Trash and has been brought back."
+msgstr ""
+
+#: app/templates/music_item.html:32
+msgid "Catalogue item"
+msgstr ""
+
+#: app/templates/music_item.html:35
+msgid "Refresh metadata"
+msgstr ""
+
+#: app/templates/music_item.html:45
+msgid "Release:"
+msgstr ""
+
+#: app/templates/music_item.html:46
+msgid "Date:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:38
+#: app/templates/music_item.html:47
+msgid "Country:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:39
+#: app/templates/music_item.html:48
+msgid "Label:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:40
+#: app/templates/music_item.html:49
+msgid "Catalogue #:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:41
+#: app/templates/music_item.html:50
+msgid "Format:"
+msgstr ""
+
+#: app/templates/music_item.html:51
+msgid "Packaging:"
+msgstr ""
+
+#: app/templates/music_item.html:52
+msgid "Barcode:"
+msgstr ""
+
+#: app/templates/music_item.html:60
+#, python-format
+msgid "Medium %(n)s"
+msgstr ""
+
+#: app/templates/music_item.html:60
+msgid "Track listing"
+msgstr ""
+
+#: app/templates/music_item.html:84
+msgid "MusicBrainz release:"
+msgstr ""
+
+#: app/templates/music_item.html:87
+msgid "This music item does not have an exact MusicBrainz release attached yet."
+msgstr ""
+
+#: app/templates/music_item.html:96
+msgid "Loading Discogs pressing information…"
+msgstr ""
+
+#: app/templates/periodical_publication.html:5
+msgid "Back to periodicals"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:47
+#: app/templates/periodical_publication.html:8
+msgid "Publication"
+msgstr ""
+
+#: app/templates/periodical_publication.html:18
+msgid "Issues"
+msgstr ""
+
+#: app/templates/periodical_publication.html:30
+#, python-format
+msgid "Vol. %(n)s"
+msgstr ""
+
+#: app/templates/periodical_publication.html:31
+#, python-format
+msgid "No. %(n)s"
+msgstr ""
+
+#: app/templates/periodical_publication.html:33
+#, python-format
+msgid "add-on %(code)s"
+msgstr ""
+
+#: app/templates/periodical_publication.html:42
+msgid "No issues are attached to this publication."
+msgstr ""
+
+#: app/templates/periodicals.html:9
+msgid "Browse magazines by continuing publication while keeping every concrete issue as its own Shelf item."
+msgstr ""
+
+#: app/templates/periodicals.html:12
+msgid "Scan an issue"
+msgstr ""
+
+#: app/templates/periodicals.html:25
+#, python-format
+msgid "%(num)s issue"
+msgid_plural "%(num)s issues"
+msgstr[0] ""
+
+#: app/templates/periodicals.html:31
+msgid "No periodical publications are catalogued yet. Scan a 977 barcode from the Scan page to begin."
+msgstr ""
 
 #: app/templates/scan.html:40 app/templates/shelf_fill.html:67
 #: app/templates/store.html:36
@@ -2856,6 +3050,75 @@ msgstr ""
 msgid "Add to Collection"
 msgstr ""
 
+#: app/templates/fragments/music_discogs.html:4
+msgid "Discogs exact pressing"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:5
+msgid "Optional pressing-level enrichment. MusicBrainz remains Shelf's canonical release identity."
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:9
+msgid "Open in Discogs ↗"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:17
+msgid "Selected Discogs release"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:25
+msgid "Load fresh details"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:27
+msgid "Clear selection"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:37
+msgid "Released:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:44
+msgid "Collector identifiers"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:89
+msgid "Search Discogs"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:93
+msgid "Configure a Discogs personal access token in"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:93
+msgid "Settings → Integrations"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:93
+msgid "to identify the exact pressing."
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:110
+#, python-format
+msgid "Barcode: %(codes)s"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:111
+msgid "View release ↗"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:116
+msgid "Use this pressing"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:126
+msgid "Data provided by Discogs"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:126
+msgid ". Provider data shown here is requested live and is not copied into Shelf's release metadata."
+msgstr ""
+
 #: app/templates/fragments/periodical_assisted_results.html:19
 msgid "Use result"
 msgstr ""
@@ -2890,10 +3153,6 @@ msgstr ""
 
 #: app/templates/fragments/periodical_scan_result.html:33
 msgid "Search exact barcode on the web ↗"
-msgstr ""
-
-#: app/templates/fragments/periodical_scan_result.html:47
-msgid "Publication"
 msgstr ""
 
 #: app/templates/fragments/periodical_scan_result.html:48
