@@ -2198,10 +2198,12 @@ msgstr "取消"
 msgid "Provider:"
 msgstr "数据源："
 
+#: app/templates/fragments/settings/integrations.html:751
 #: app/templates/intake.html:52
 msgid "OpenAI-compatible"
 msgstr "OpenAI 兼容接口"
 
+#: app/templates/fragments/settings/integrations.html:752
 #: app/templates/intake.html:52
 msgid "Ollama (local)"
 msgstr "Ollama（本地）"
@@ -2870,6 +2872,9 @@ msgstr "时长（分钟）"
 #: app/templates/fragments/settings/integrations.html:523
 #: app/templates/fragments/settings/integrations.html:664
 #: app/templates/fragments/settings/integrations.html:733
+#: app/templates/fragments/settings/integrations.html:833
+#: app/templates/fragments/settings/integrations.html:909
+#: app/templates/fragments/settings/integrations.html:924
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
@@ -5580,6 +5585,7 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:607
 #: app/templates/fragments/settings/integrations.html:683
 #: app/templates/fragments/settings/integrations.html:684
+#: app/templates/fragments/settings/integrations.html:852
 msgid "Go to"
 msgstr ""
 
@@ -5622,6 +5628,7 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:481
 #: app/templates/fragments/settings/integrations.html:617
 #: app/templates/fragments/settings/integrations.html:693
+#: app/templates/fragments/settings/integrations.html:862
 msgid "Got it"
 msgstr ""
 
@@ -5654,6 +5661,10 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:491
 #: app/templates/fragments/settings/integrations.html:630
 #: app/templates/fragments/settings/integrations.html:702
+#: app/templates/fragments/settings/integrations.html:759
+#: app/templates/fragments/settings/integrations.html:786
+#: app/templates/fragments/settings/integrations.html:870
+#: app/templates/fragments/settings/integrations.html:877
 msgid "Saved — leave blank to keep"
 msgstr ""
 
@@ -5664,6 +5675,7 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:70
 #: app/templates/fragments/settings/integrations.html:230
 #: app/templates/fragments/settings/integrations.html:252
+#: app/templates/fragments/settings/integrations.html:883
 #: app/templates/fragments/settings/library.html:280
 msgid "Test"
 msgstr ""
@@ -5673,11 +5685,13 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:498
 #: app/templates/fragments/settings/integrations.html:637
 #: app/templates/fragments/settings/integrations.html:709
+#: app/templates/fragments/settings/integrations.html:884
 msgid "Testing..."
 msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:91
 #: app/templates/fragments/settings/integrations.html:273
+#: app/templates/fragments/settings/integrations.html:923
 msgid "Remove saved token"
 msgstr ""
 
@@ -5910,6 +5924,8 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:519
 #: app/templates/fragments/settings/integrations.html:660
 #: app/templates/fragments/settings/integrations.html:729
+#: app/templates/fragments/settings/integrations.html:764
+#: app/templates/fragments/settings/integrations.html:791
 msgid "Remove saved key"
 msgstr ""
 
@@ -6006,6 +6022,7 @@ msgid "Optional. Google Books continues to work anonymously without a key. When 
 msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:626
+#: app/templates/fragments/settings/integrations.html:784
 msgid "API Key"
 msgstr ""
 
@@ -6091,6 +6108,199 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:702
 msgid "Your TMDb API key or read access token"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:741
+msgid "Photo Intake (Vision)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:743
+msgid "Bulk-add books by photographing a shelf, a stack, or covers face-up &mdash; a vision model reads spines and recognizes covers. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:746
+msgid "Provider"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:749
+msgid "Disabled"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:750
+msgid "Anthropic API"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:757
+msgid "Anthropic API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:761
+msgid "Get one at console.anthropic.com. Stored encrypted; only used server-side."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:769
+#: app/templates/fragments/settings/integrations.html:796
+#: app/templates/fragments/settings/integrations.html:818
+msgid "Model"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:771
+msgid "claude-opus-4-8 (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:777
+msgid "Base URL"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:781
+msgid "Any OpenAI-compatible"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:781
+msgid "endpoint &mdash; OpenAI, OpenRouter, or a local server (vLLM, LM Studio, LocalAI&hellip;)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:788
+msgid "Stored encrypted; only used server-side. Local servers that need no key can leave this blank."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:798
+msgid "gpt-4o-mini (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:800
+msgid "Must be a vision-capable model. Match this to whatever your endpoint serves."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:803
+#: app/templates/fragments/settings/integrations.html:825
+msgid "Image size (long edge, px)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:805
+msgid "2048 (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:807
+#: app/templates/fragments/settings/integrations.html:829
+msgid "Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:812
+msgid "Ollama URL"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:820
+msgid "gemma3:12b (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:822
+msgid "Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:827
+msgid "1024 (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:843
+msgid "IGDB (Video Games)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:844
+msgid "How to get credentials?"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:850
+msgid "Getting IGDB Credentials"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:852
+msgid "dev.twitch.tv/console"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:852
+msgid "and log in with a Twitch account"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:853
+#: app/templates/fragments/settings/integrations.html:856
+msgid "Click"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:853
+msgid "Register Your Application"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:854
+msgid "Set any name, use"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:854
+msgid "as the OAuth redirect, and category"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "Copy the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "Client ID"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "from the app listing"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:856
+msgid "New Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:856
+msgid "to generate a Client Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:859
+msgid "About IGDB"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:860
+msgid "IGDB (Internet Game Database) is the community standard game database, owned by Twitch. It provides game metadata, cover art, platform info, and more. Authentication is via Twitch developer credentials (free)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:868
+msgid "Twitch Client ID"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:870
+msgid "Your Twitch Client ID"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:874
+msgid "Twitch Client Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:877
+msgid "Your Twitch Client Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:905
+msgid "Remove saved credentials"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:916
+msgid "Find English covers from related editions when existing cover sources fail. Your book's ISBN and metadata stay unchanged."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:917
+msgid "Non-commercial use only unless LibraryThing grants permission. Get a token from"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:917
+msgid "LibraryThing Developer Hub"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:919
+msgid "API token"
 msgstr ""
 
 #: app/templates/fragments/settings/library.html:12

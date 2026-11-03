@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-28 14:15+0100\n"
+"PO-Revision-Date: 2026-11-28 14:16+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -2199,10 +2199,12 @@ msgstr "Annulla"
 msgid "Provider:"
 msgstr "Servizio:"
 
+#: app/templates/fragments/settings/integrations.html:751
 #: app/templates/intake.html:52
 msgid "OpenAI-compatible"
 msgstr "Compatibile con OpenAI"
 
+#: app/templates/fragments/settings/integrations.html:752
 #: app/templates/intake.html:52
 msgid "Ollama (local)"
 msgstr "Ollama (locale)"
@@ -2871,6 +2873,9 @@ msgstr "Durata (min)"
 #: app/templates/fragments/settings/integrations.html:523
 #: app/templates/fragments/settings/integrations.html:664
 #: app/templates/fragments/settings/integrations.html:733
+#: app/templates/fragments/settings/integrations.html:833
+#: app/templates/fragments/settings/integrations.html:909
+#: app/templates/fragments/settings/integrations.html:924
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
@@ -5597,6 +5602,7 @@ msgstr "Apri la tua istanza di Audiobookshelf nel browser"
 #: app/templates/fragments/settings/integrations.html:607
 #: app/templates/fragments/settings/integrations.html:683
 #: app/templates/fragments/settings/integrations.html:684
+#: app/templates/fragments/settings/integrations.html:852
 msgid "Go to"
 msgstr "Vai a"
 
@@ -5639,6 +5645,7 @@ msgstr "La sincronizzazione importa in Shelf audiolibri ed ebook da Audiobookshe
 #: app/templates/fragments/settings/integrations.html:481
 #: app/templates/fragments/settings/integrations.html:617
 #: app/templates/fragments/settings/integrations.html:693
+#: app/templates/fragments/settings/integrations.html:862
 msgid "Got it"
 msgstr "Ho capito"
 
@@ -5671,6 +5678,10 @@ msgstr ". Impostalo quando Shelf raggiunge Audiobookshelf tramite un indirizzo D
 #: app/templates/fragments/settings/integrations.html:491
 #: app/templates/fragments/settings/integrations.html:630
 #: app/templates/fragments/settings/integrations.html:702
+#: app/templates/fragments/settings/integrations.html:759
+#: app/templates/fragments/settings/integrations.html:786
+#: app/templates/fragments/settings/integrations.html:870
+#: app/templates/fragments/settings/integrations.html:877
 msgid "Saved — leave blank to keep"
 msgstr "Salvato: lascia vuoto per conservarlo"
 
@@ -5681,6 +5692,7 @@ msgstr "Token bearer dalle impostazioni di ABS"
 #: app/templates/fragments/settings/integrations.html:70
 #: app/templates/fragments/settings/integrations.html:230
 #: app/templates/fragments/settings/integrations.html:252
+#: app/templates/fragments/settings/integrations.html:883
 #: app/templates/fragments/settings/library.html:280
 msgid "Test"
 msgstr "Prova"
@@ -5690,11 +5702,13 @@ msgstr "Prova"
 #: app/templates/fragments/settings/integrations.html:498
 #: app/templates/fragments/settings/integrations.html:637
 #: app/templates/fragments/settings/integrations.html:709
+#: app/templates/fragments/settings/integrations.html:884
 msgid "Testing..."
 msgstr "Prova in corso..."
 
 #: app/templates/fragments/settings/integrations.html:91
 #: app/templates/fragments/settings/integrations.html:273
+#: app/templates/fragments/settings/integrations.html:923
 msgid "Remove saved token"
 msgstr "Rimuovi il token salvato"
 
@@ -5927,6 +5941,8 @@ msgstr "Prova la chiave"
 #: app/templates/fragments/settings/integrations.html:519
 #: app/templates/fragments/settings/integrations.html:660
 #: app/templates/fragments/settings/integrations.html:729
+#: app/templates/fragments/settings/integrations.html:764
+#: app/templates/fragments/settings/integrations.html:791
 msgid "Remove saved key"
 msgstr "Rimuovi la chiave salvata"
 
@@ -6023,6 +6039,7 @@ msgid "Optional. Google Books continues to work anonymously without a key. When 
 msgstr "Facoltativa. Google Books continua a funzionare in forma anonima senza chiave. Se configurata, la chiave viene usata solo per le richieste all'API di Google Books."
 
 #: app/templates/fragments/settings/integrations.html:626
+#: app/templates/fragments/settings/integrations.html:784
 msgid "API Key"
 msgstr "Chiave API"
 
@@ -6109,6 +6126,199 @@ msgstr "Credenziale TMDb (API Key o Read Access Token)"
 #: app/templates/fragments/settings/integrations.html:702
 msgid "Your TMDb API key or read access token"
 msgstr "La tua API key o read access token di TMDb"
+
+#: app/templates/fragments/settings/integrations.html:741
+msgid "Photo Intake (Vision)"
+msgstr "Acquisizione da foto (visione)"
+
+#: app/templates/fragments/settings/integrations.html:743
+msgid "Bulk-add books by photographing a shelf, a stack, or covers face-up &mdash; a vision model reads spines and recognizes covers. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3)."
+msgstr "Aggiungi molti libri insieme fotografando uno scaffale, una pila o le copertine a faccia in su: un modello di visione legge i dorsi e riconosce le copertine. Usa l'API Anthropic (la più precisa, si paga a foto), un qualsiasi endpoint compatibile con OpenAI (OpenAI, OpenRouter o un server locale come vLLM / LM Studio) o un modello Ollama locale (gratuito e privato, serve un modello con visione come gemma3)."
+
+#: app/templates/fragments/settings/integrations.html:746
+msgid "Provider"
+msgstr "Servizio"
+
+#: app/templates/fragments/settings/integrations.html:749
+msgid "Disabled"
+msgstr "Disattivato"
+
+#: app/templates/fragments/settings/integrations.html:750
+msgid "Anthropic API"
+msgstr "API Anthropic"
+
+#: app/templates/fragments/settings/integrations.html:757
+msgid "Anthropic API Key"
+msgstr "Chiave API Anthropic"
+
+#: app/templates/fragments/settings/integrations.html:761
+msgid "Get one at console.anthropic.com. Stored encrypted; only used server-side."
+msgstr "Ottienila su console.anthropic.com. Salvata cifrata; usata solo dal server."
+
+#: app/templates/fragments/settings/integrations.html:769
+#: app/templates/fragments/settings/integrations.html:796
+#: app/templates/fragments/settings/integrations.html:818
+msgid "Model"
+msgstr "Modello"
+
+#: app/templates/fragments/settings/integrations.html:771
+msgid "claude-opus-4-8 (default)"
+msgstr "claude-opus-4-8 (predefinito)"
+
+#: app/templates/fragments/settings/integrations.html:777
+msgid "Base URL"
+msgstr "URL di base"
+
+#: app/templates/fragments/settings/integrations.html:781
+msgid "Any OpenAI-compatible"
+msgstr "Qualsiasi endpoint"
+
+#: app/templates/fragments/settings/integrations.html:781
+msgid "endpoint &mdash; OpenAI, OpenRouter, or a local server (vLLM, LM Studio, LocalAI&hellip;)."
+msgstr "compatibile con OpenAI: OpenAI, OpenRouter o un server locale (vLLM, LM Studio, LocalAI&hellip;)."
+
+#: app/templates/fragments/settings/integrations.html:788
+msgid "Stored encrypted; only used server-side. Local servers that need no key can leave this blank."
+msgstr "Salvata cifrata; usata solo dal server. I server locali che non richiedono una chiave possono lasciarla vuota."
+
+#: app/templates/fragments/settings/integrations.html:798
+msgid "gpt-4o-mini (default)"
+msgstr "gpt-4o-mini (predefinito)"
+
+#: app/templates/fragments/settings/integrations.html:800
+msgid "Must be a vision-capable model. Match this to whatever your endpoint serves."
+msgstr "Deve essere un modello con visione. Fallo corrispondere a quello che offre il tuo endpoint."
+
+#: app/templates/fragments/settings/integrations.html:803
+#: app/templates/fragments/settings/integrations.html:825
+msgid "Image size (long edge, px)"
+msgstr "Dimensione dell'immagine (lato lungo, px)"
+
+#: app/templates/fragments/settings/integrations.html:805
+msgid "2048 (default)"
+msgstr "2048 (predefinito)"
+
+#: app/templates/fragments/settings/integrations.html:807
+#: app/templates/fragments/settings/integrations.html:829
+msgid "Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling."
+msgstr "La risoluzione che il modello vede davvero: stabilisce la dimensione che Acquisizione da foto carica quando invii una foto così com'è e quando propone i riquadri in alta risoluzione."
+
+#: app/templates/fragments/settings/integrations.html:812
+msgid "Ollama URL"
+msgstr "URL di Ollama"
+
+#: app/templates/fragments/settings/integrations.html:820
+msgid "gemma3:12b (default)"
+msgstr "gemma3:12b (predefinito)"
+
+#: app/templates/fragments/settings/integrations.html:822
+msgid "Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;)."
+msgstr "Deve essere un modello con visione (gemma3, qwen2.5vl, llama3.2-vision&hellip;)."
+
+#: app/templates/fragments/settings/integrations.html:827
+msgid "1024 (default)"
+msgstr "1024 (predefinito)"
+
+#: app/templates/fragments/settings/integrations.html:843
+msgid "IGDB (Video Games)"
+msgstr "IGDB (videogiochi)"
+
+#: app/templates/fragments/settings/integrations.html:844
+msgid "How to get credentials?"
+msgstr "Come ottenere le credenziali?"
+
+#: app/templates/fragments/settings/integrations.html:850
+msgid "Getting IGDB Credentials"
+msgstr "Ottenere le credenziali IGDB"
+
+#: app/templates/fragments/settings/integrations.html:852
+msgid "dev.twitch.tv/console"
+msgstr "dev.twitch.tv/console"
+
+#: app/templates/fragments/settings/integrations.html:852
+msgid "and log in with a Twitch account"
+msgstr "e accedi con un account Twitch"
+
+#: app/templates/fragments/settings/integrations.html:853
+#: app/templates/fragments/settings/integrations.html:856
+msgid "Click"
+msgstr "Fai clic su"
+
+#: app/templates/fragments/settings/integrations.html:853
+msgid "Register Your Application"
+msgstr "Register Your Application"
+
+#: app/templates/fragments/settings/integrations.html:854
+msgid "Set any name, use"
+msgstr "Scegli un nome qualsiasi, usa"
+
+#: app/templates/fragments/settings/integrations.html:854
+msgid "as the OAuth redirect, and category"
+msgstr "come redirect OAuth e la categoria"
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "Copy the"
+msgstr "Copia il"
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "Client ID"
+msgstr "Client ID"
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "from the app listing"
+msgstr "dall'elenco delle app"
+
+#: app/templates/fragments/settings/integrations.html:856
+msgid "New Secret"
+msgstr "New Secret"
+
+#: app/templates/fragments/settings/integrations.html:856
+msgid "to generate a Client Secret"
+msgstr "per generare un Client Secret"
+
+#: app/templates/fragments/settings/integrations.html:859
+msgid "About IGDB"
+msgstr "Cos'è IGDB"
+
+#: app/templates/fragments/settings/integrations.html:860
+msgid "IGDB (Internet Game Database) is the community standard game database, owned by Twitch. It provides game metadata, cover art, platform info, and more. Authentication is via Twitch developer credentials (free)."
+msgstr "IGDB (Internet Game Database) è il database di giochi di riferimento della community, di proprietà di Twitch. Fornisce dati, copertine, piattaforme e altro. L'autenticazione avviene con le credenziali sviluppatore di Twitch (gratuite)."
+
+#: app/templates/fragments/settings/integrations.html:868
+msgid "Twitch Client ID"
+msgstr "Client ID di Twitch"
+
+#: app/templates/fragments/settings/integrations.html:870
+msgid "Your Twitch Client ID"
+msgstr "Il tuo Client ID di Twitch"
+
+#: app/templates/fragments/settings/integrations.html:874
+msgid "Twitch Client Secret"
+msgstr "Client Secret di Twitch"
+
+#: app/templates/fragments/settings/integrations.html:877
+msgid "Your Twitch Client Secret"
+msgstr "Il tuo Client Secret di Twitch"
+
+#: app/templates/fragments/settings/integrations.html:905
+msgid "Remove saved credentials"
+msgstr "Rimuovi le credenziali salvate"
+
+#: app/templates/fragments/settings/integrations.html:916
+msgid "Find English covers from related editions when existing cover sources fail. Your book's ISBN and metadata stay unchanged."
+msgstr "Trova copertine inglesi di edizioni correlate quando le fonti di copertine esistenti non bastano. L'ISBN e i dati del libro restano invariati."
+
+#: app/templates/fragments/settings/integrations.html:917
+msgid "Non-commercial use only unless LibraryThing grants permission. Get a token from"
+msgstr "Solo per uso non commerciale, salvo permesso di LibraryThing. Ottieni un token da"
+
+#: app/templates/fragments/settings/integrations.html:917
+msgid "LibraryThing Developer Hub"
+msgstr "LibraryThing Developer Hub"
+
+#: app/templates/fragments/settings/integrations.html:919
+msgid "API token"
+msgstr "Token API"
 
 #: app/templates/fragments/settings/library.html:12
 #, python-format

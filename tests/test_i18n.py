@@ -432,3 +432,10 @@ def test_settings_provider_integrations_are_translated(admin_client):
         assert text in page, text
 
 
+def test_settings_vision_and_igdb_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/settings").text
+    for text in ("Acquisizione da foto (visione)", "Ottenere le credenziali IGDB"):
+        assert text in page, text
+
