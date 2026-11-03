@@ -26,6 +26,7 @@ A confirm or relocate that names one copy (a label, or the item's only copy)
 clears that copy's missing mark, audit or not: it is in the user's hand.
 """
 
+from app import i18n
 from app.database import get_db
 from app.routers import items_common
 from app.routers.items_scan_modes import _format_copy_places
@@ -59,7 +60,7 @@ def _decide(db, item: dict, location_id: int) -> dict:
     one copy the scan names (`copy_id`, else None) and any `value_error`.
     """
     copy_id = item.get("copy_id")
-    copy_label = f"Copy {item['copy_number']} " if copy_id else ""
+    copy_label = i18n.gettext("Copy %(n)s ") % {"n": item["copy_number"]} if copy_id else ""
     copies = []
     if copy_id:
         # Re-read the labelled copy under the lock: the resolver's read
@@ -72,11 +73,11 @@ def _decide(db, item: dict, location_id: int) -> dict:
         if copy is None:
             return {"status": "error", "item": item, "copies": copies, "copy_id": None,
                     "copy_label": copy_label,
-                    "value_error": f"{copy_label}is no longer in the collection"}
+                    "value_error": copy_label + i18n.gettext("is no longer in the collection")}
         # A merge since the resolver's read moved the copy to another
         # item: report and log against the item that owns it now.
         item = barcode_resolve.current_item(db, item, copy)
-        copy_label = f"Copy {item['copy_number']} "
+        copy_label = i18n.gettext("Copy %(n)s ") % {"n": item["copy_number"]}
         if copy["location_id"] == location_id:
             status = "confirmed"
         else:
@@ -139,7 +140,7 @@ def _scan_mode_inventory(
 ):
     """Handle inventory mode: verify item is at expected location."""
     if not location_id or location_id <= 0:
-        return _error(request, templates, raw, "No audit location selected")
+        return _error(request, templates, raw, i18n.gettext("No audit location selected"))
 
     if not item:
         # Read before the audit location: nothing here writes, and an
@@ -155,7 +156,7 @@ def _scan_mode_inventory(
         items_common._log_scan(raw, "", "not_owned", None, "inventory")
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "not_owned", "isbn": raw, "message": "Not in collection"},
+            {"status": "not_owned", "isbn": raw, "message": i18n.gettext("Not in collection")},
         )
 
     # G18 — the decision, the write and the audit entry share one connection
@@ -177,7 +178,7 @@ def _scan_mode_inventory(
             loc = db.execute(
                 "SELECT name FROM locations WHERE id = ?", (location_id,)
             ).fetchone()
-            loc_name = loc["name"] if loc else "Unknown"
+            loc_name = loc["name"] if loc else i18n.gettext("Unknown")
             outcome = _decide(db, item, location_id)
             item = outcome["item"]
             if outcome["status"] in ("confirmed", "relocated") and outcome["copy_id"]:
@@ -197,16 +198,16 @@ def _scan_mode_inventory(
     if status == "confirmed":
         labelled = bool(item.get("copy_id"))
         return _card(request, templates, "confirmed", raw, item,
-                     f"{copy_label}{'confirmed' if labelled else 'Confirmed'} at {loc_name}")
+                     copy_label + (i18n.gettext("confirmed at %(place)s") if labelled else i18n.gettext("Confirmed at %(place)s")) % {"place": loc_name})
     if status == "elsewhere":
         return _card(request, templates, "elsewhere", raw, item,
-                     f"Copies at {_format_copy_places(outcome['copies'])}; none here.")
+                     i18n.gettext("Copies at %(places)s; none here.") % {"places": _format_copy_places(outcome["copies"])})
     if status == "error":
         return _error(request, templates, raw, outcome["value_error"])
     if item.get("copy_id"):
-        old_location = item.get("copy_location_name") or "no location"
-        message = f"{copy_label}was at {old_location}, updated to {loc_name}"
+        old_location = item.get("copy_location_name") or i18n.gettext("no location")
+        message = copy_label + i18n.gettext("was at %(old)s, updated to %(new)s") % {"old": old_location, "new": loc_name}
     else:
-        old_location = item.get("location_name") or "No location"
-        message = f"Was at {old_location}, updated to {loc_name}"
+        old_location = item.get("location_name") or i18n.gettext("No location")
+        message = i18n.gettext("Was at %(old)s, updated to %(new)s") % {"old": old_location, "new": loc_name}
     return _card(request, templates, "relocated", raw, item, message)

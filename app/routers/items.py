@@ -192,13 +192,13 @@ def _legacy_choice_context(
 
 def _legacy_resolution_message(resolution: legacy_book.LegacyBookResolution) -> str:
     if resolution.outcome == "ambiguous":
-        return "Older book barcode matches more than one book — scan the printed ISBN"
+        return i18n.gettext("Older book barcode matches more than one book — scan the printed ISBN")
     if resolution.outcome == "inconclusive":
-        return (
+        return i18n.gettext(
             "Couldn’t safely verify this older book barcode right now — "
             "try again later or scan the printed ISBN"
         )
-    return (
+    return i18n.gettext(
         "Older book barcode recognized, but no unique book match was found — "
         "scan the printed ISBN instead"
     )
@@ -384,7 +384,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
             items_common._log_scan(raw, "", "not_owned", None, mode)
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
-                {"status": "not_owned", "isbn": raw, "message": "Not in your collection"},
+                {"status": "not_owned", "isbn": raw, "message": i18n.gettext("Not in your collection")},
             )
         if mode == "lend":
             return items_scan_modes._scan_mode_lend(request, templates, item, borrower_id, raw)
@@ -474,7 +474,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                 # `status == 'error'`: manual_add's own four validation
                 # errors render the same arm, and a link back into the form
                 # they came from is a loop. Exactly one branch sets it.
-                {"status": "error", "isbn": isbn, "message": "Invalid ISBN",
+                {"status": "error", "isbn": isbn, "message": i18n.gettext("Invalid ISBN"),
                  "offer_manual": True, "manual_add_text": raw},
             )
         isbn13 = pair[0]
@@ -565,7 +565,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                 return templates.TemplateResponse(
                     request, "fragments/scan_result.html",
                     {"status": "error", "isbn": isbn13,
-                     "message": "Network error during lookup — check connectivity"},
+                     "message": i18n.gettext("Network error during lookup — check connectivity")},
                 )
 
             preview_cover = await items_common._fetch_preview_cover(isbn13, client)
@@ -581,7 +581,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                 request, "fragments/scan_result.html",
                 {
                     "status": "not_found", "isbn": isbn13, "media_type": media_type,
-                    "message": "Not found — add manually below",
+                    "message": i18n.gettext("Not found — add manually below"),
                     "preview_cover": preview_cover,
                     "enrich_status": scan_outcome.not_found_status(cascade),
                     "enrich_provider": scan_outcome.provider_label(cascade),
@@ -642,7 +642,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
             **card,
             "item_id": item_id,
             "source": source,
-            "media_type_label": MEDIA_TYPES.get(media_type, media_type), "media_type": media_type,
+            "media_type_label": i18n.gettext(MEDIA_TYPES.get(media_type, media_type)), "media_type": media_type,
             # T5 renders these; T4 only has to carry them.
             "detect_reason": detect_reason,
             "detect_overrode": detect_overrode,
@@ -665,7 +665,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
     if not title:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "error", "isbn": form.get("isbn", ""), "message": "Title is required"},
+            {"status": "error", "isbn": form.get("isbn", ""), "message": i18n.gettext("Title is required")},
         )
 
     isbn = form.get("isbn", "").strip()
@@ -694,7 +694,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         if isbn and pair is None:
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
-                {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
+                {"status": "error", "isbn": isbn, "message": i18n.gettext("Invalid ISBN")},
             )
         isbn13 = pair[0] if pair else None
 
@@ -705,7 +705,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
         except (TypeError, ValueError):
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
-                {"status": "error", "isbn": isbn, "message": "Invalid publish year"},
+                {"status": "error", "isbn": isbn, "message": i18n.gettext("Invalid publish year")},
             )
     else:
         pub_year = None
@@ -852,7 +852,7 @@ async def manual_add(request: Request, _=Depends(require_role("editor"))):
                      **({"cover_path": cover_path} if cover_path else {})}),
             "item_id": item_id,
             "source": "manual",
-            "media_type_label": MEDIA_TYPES.get(media_type, media_type), "media_type": media_type,
+            "media_type_label": i18n.gettext(MEDIA_TYPES.get(media_type, media_type)), "media_type": media_type,
         },
     )
     toast_message = f"Added to wishlist: {title[:50]}" if mode == "wishlist" else f"Added: {title[:50]}"
