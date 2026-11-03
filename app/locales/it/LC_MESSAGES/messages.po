@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-12 17:44-0500\n"
+"PO-Revision-Date: 2026-11-13 20:30+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -12,7 +12,8 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit"
 
-#: app/browse_columns.py:62 app/templates/item_edit.html:103
+#: app/browse_columns.py:62 app/templates/intake.html:181
+#: app/templates/item_edit.html:103
 msgid "Title"
 msgstr "Titolo"
 
@@ -27,8 +28,8 @@ msgstr "Tipo"
 #: app/browse_columns.py:65 app/browse_filters.py:211
 #: app/templates/fragments/item_copy_edit.html:37
 #: app/templates/fragments/manual_add_form.html:160
-#: app/templates/item_edit.html:81 app/templates/item_edit.html:301
-#: app/templates/item_edit.html:306
+#: app/templates/intake.html:202 app/templates/item_edit.html:81
+#: app/templates/item_edit.html:301 app/templates/item_edit.html:306
 msgid "Location"
 msgstr "Posizione"
 
@@ -68,7 +69,7 @@ msgstr "Pagine"
 msgid "Language"
 msgstr "Lingua"
 
-#: app/browse_columns.py:73
+#: app/browse_columns.py:73 app/templates/intake.html:233
 msgid "Added"
 msgstr "Aggiunto il"
 
@@ -237,6 +238,7 @@ msgid "Browse"
 msgstr "Sfoglia"
 
 #: app/nav.py:35 app/templates/scan.html:2 app/templates/scan.html:107
+#: app/templates/shelf_fill.html:88
 msgid "Scan"
 msgstr "Scansiona"
 
@@ -244,7 +246,8 @@ msgstr "Scansiona"
 msgid "Intake"
 msgstr "Acquisizione"
 
-#: app/nav.py:38
+#: app/nav.py:38 app/templates/shelf_fill.html:2
+#: app/templates/shelf_fill.html:9
 msgid "Shelf Fill"
 msgstr "Riempi scaffale"
 
@@ -288,7 +291,7 @@ msgstr "Inventari"
 msgid "Duplicates"
 msgstr "Duplicati"
 
-#: app/nav.py:54
+#: app/nav.py:54 app/templates/intake.html:11
 msgid "Settings"
 msgstr "Impostazioni"
 
@@ -397,6 +400,44 @@ msgstr "Prestito non trovato"
 #: app/routers/checkouts.py:171 app/routers/checkouts.py:180
 msgid "Checkout already checked in"
 msgstr "Prestito già chiuso"
+
+#: app/routers/intake.py:64
+msgid "Invalid photo dimensions"
+msgstr "Dimensioni della foto non valide"
+
+#: app/routers/intake.py:69 app/templates/intake.html:10
+msgid "No vision provider configured"
+msgstr "Nessun servizio di visione configurato"
+
+#: app/routers/intake.py:106
+msgid "Please upload a JPEG, PNG, or WebP photo"
+msgstr "Carica una foto JPEG, PNG o WebP"
+
+#: app/routers/intake.py:109
+msgid "Photo is too large (max 10 MB)"
+msgstr "La foto è troppo grande (massimo 10 MB)"
+
+#: app/routers/intake.py:111 app/routers/intake.py:120
+msgid "Empty upload"
+msgstr "Caricamento vuoto"
+
+#: app/routers/intake.py:116
+msgid "This upload is too large to analyze (over 300 MB in total)"
+msgstr "Il caricamento è troppo grande da analizzare (oltre 300 MB in totale)"
+
+#: app/routers/intake.py:133
+msgid "No books were recognized in this photo"
+msgstr "Nessun libro riconosciuto in questa foto"
+
+#: app/routers/intake.py:221 app/routers/intake.py:392
+#: app/routers/intake.py:407
+msgid "already in library"
+msgstr "già in biblioteca"
+
+#: app/routers/intake.py:229 app/routers/intake.py:258
+#: app/routers/intake.py:416 app/routers/intake.py:452
+msgid "ISBN already in library"
+msgstr "ISBN già in biblioteca"
 
 #: app/routers/item_copies.py:157
 #, python-format
@@ -545,7 +586,8 @@ msgstr "Nessuna posizione di destinazione selezionata"
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/item_copies.html:108
-#: app/templates/fragments/item_copy_edit.html:40
+#: app/templates/fragments/item_copy_edit.html:40 app/templates/intake.html:56
+#: app/templates/intake.html:203
 msgid "No location"
 msgstr "Nessuna posizione"
 
@@ -633,6 +675,18 @@ msgstr "era in %(old)s, spostato in %(new)s"
 msgid "Was at %(old)s, updated to %(new)s"
 msgstr "Era in %(old)s, spostato in %(new)s"
 
+#: app/routers/shelf_fill.py:22
+msgid "Shelf location no longer exists"
+msgstr "La posizione dello scaffale non esiste più"
+
+#: app/routers/shelf_fill.py:73
+msgid "Item no longer exists"
+msgstr "L'elemento non esiste più"
+
+#: app/routers/shelf_fill.py:266
+msgid "Enter or scan a barcode"
+msgstr "Scrivi o scansiona un codice a barre"
+
 #: app/routers/tags.py:78
 msgid "No items selected"
 msgstr "Nessun elemento selezionato"
@@ -659,7 +713,8 @@ msgstr "Manuale"
 msgid "Audible import"
 msgstr ""
 
-#: app/services/browse_counts.py:32
+#: app/services/browse_counts.py:32 app/templates/intake.html:2
+#: app/templates/intake.html:5 app/templates/intake.html:11
 msgid "Photo Intake"
 msgstr "Acquisizione da foto"
 
@@ -982,6 +1037,220 @@ msgstr "Anno (dal meno recente)"
 #: app/templates/browse.html:329
 msgid "Clear all"
 msgstr "Azzera tutto"
+
+#: app/templates/intake.html:6
+msgid "Photograph books on a shelf, in a stack, or face-up &mdash; front cover is fine. The vision model reads spines and recognizes covers; a readable back-cover barcode gives exact-edition metadata. Review the list, then confirm."
+msgstr "Fotografa i libri su uno scaffale, in pila o a faccia in su (va bene anche la copertina). Il modello di visione legge i dorsi e riconosce le copertine; un codice a barre leggibile sul retro dà i dati dell'edizione esatta. Controlla l'elenco, poi conferma."
+
+#: app/templates/intake.html:11
+msgid "Set one up under"
+msgstr "Configurane uno in"
+
+#: app/templates/intake.html:11
+msgid "Integrations"
+msgstr "Integrazioni"
+
+#: app/templates/intake.html:11
+msgid "— an Anthropic API key (best accuracy), any OpenAI-compatible endpoint, or a local Ollama model (free, private)."
+msgstr ": una chiave API Anthropic (la più precisa), un qualsiasi endpoint compatibile con OpenAI o un modello Ollama locale (gratuito e privato)."
+
+#: app/templates/intake.html:28
+msgid "Take photo"
+msgstr "Scatta una foto"
+
+#: app/templates/intake.html:31
+msgid "Choose photo"
+msgstr "Scegli una foto"
+
+#: app/templates/intake.html:34
+msgid "Read Photo"
+msgstr "Leggi la foto"
+
+#: app/templates/intake.html:35 app/templates/intake.html:86
+#: app/templates/intake.html:91
+msgid "Reading…"
+msgstr "Lettura in corso…"
+
+#: app/templates/intake.html:47
+msgid "Capture"
+msgstr "Scatta"
+
+#: app/templates/fragments/item_copy_edit.html:103 app/templates/intake.html:49
+#: app/templates/item_edit.html:377
+msgid "Cancel"
+msgstr "Annulla"
+
+#: app/templates/intake.html:52
+msgid "Provider:"
+msgstr "Servizio:"
+
+#: app/templates/intake.html:52
+msgid "OpenAI-compatible"
+msgstr "Compatibile con OpenAI"
+
+#: app/templates/intake.html:52
+msgid "Ollama (local)"
+msgstr "Ollama (locale)"
+
+#: app/templates/intake.html:52
+msgid "photos are analyzed in memory and not stored."
+msgstr "le foto vengono analizzate in memoria e non vengono salvate."
+
+#: app/templates/intake.html:54
+msgid "Add books to"
+msgstr "Aggiungi i libri in"
+
+#: app/templates/intake.html:63 app/templates/intake.html:219
+msgid "Owned (uncheck for wishlist)"
+msgstr "Posseduti (deseleziona per la lista desideri)"
+
+#: app/templates/intake.html:67
+msgid "Shelf photo preview"
+msgstr "Anteprima della foto dello scaffale"
+
+#: app/templates/intake.html:75
+msgid "This is what the AI will see"
+msgstr "Ecco cosa vedrà l'IA"
+
+#: app/templates/intake.html:77
+msgid "Your photo is"
+msgstr "La tua foto è"
+
+#: app/templates/intake.html:77
+msgid "larger than what the model receives. Below is the downscaled version at actual size &mdash; pan around: if you can't read the spines here, neither can it."
+msgstr "più grande di quella che riceve il modello. Qui sotto c'è la versione ridotta a grandezza reale: scorrila, e se qui non riesci a leggere i dorsi, non ci riuscirà nemmeno il modello."
+
+#: app/templates/intake.html:85
+msgid "Send as-is ("
+msgstr "Invia così com'è ("
+
+#: app/templates/intake.html:90
+msgid "Send high-res &mdash;"
+msgstr "Invia in alta risoluzione:"
+
+#: app/templates/intake.html:90
+msgid "tiles ("
+msgstr "riquadri ("
+
+#: app/templates/intake.html:94
+msgid "High-res splits the original into overlapping full-resolution tiles so every spine stays legible. Cost estimates are approximate."
+msgstr "L'alta risoluzione divide l'originale in riquadri sovrapposti a piena risoluzione, così ogni dorso resta leggibile. I costi sono stime approssimative."
+
+#: app/templates/intake.html:103
+msgid "This photo may be too small to read"
+msgstr "Questa foto potrebbe essere troppo piccola da leggere"
+
+#: app/templates/intake.html:105
+msgid "This photo is"
+msgstr "Questa foto è"
+
+#: app/templates/intake.html:106
+msgid "Spines this small often don't read well &mdash; take or choose another photo, or click Read Photo anyway."
+msgstr "Dorsi così piccoli spesso non si leggono bene: scatta o scegli un'altra foto, oppure fai comunque clic su Leggi la foto."
+
+#: app/templates/intake.html:111
+msgid "Take another photo"
+msgstr "Scatta un'altra foto"
+
+#: app/templates/intake.html:114
+msgid "Choose another photo"
+msgstr "Scegli un'altra foto"
+
+#: app/templates/intake.html:128
+msgid "Reading your photo…"
+msgstr "Lettura della foto…"
+
+#: app/templates/intake.html:129
+msgid "The vision model is analyzing your photo &mdash; large shelves can take a minute."
+msgstr "Il modello di visione sta analizzando la foto: gli scaffali grandi possono richiedere un minuto."
+
+#: app/templates/intake.html:139
+msgid "Adding books…"
+msgstr "Aggiunta dei libri…"
+
+#: app/templates/intake.html:140
+msgid "Looking up metadata for each selected book &mdash; a few seconds per book."
+msgstr "Ricerca dei dati per ogni libro selezionato: qualche secondo per libro."
+
+#: app/templates/fragments/item_copies.html:74 app/templates/intake.html:147
+msgid "Found"
+msgstr "Ritrovato"
+
+#: app/templates/intake.html:147
+msgid "books"
+msgstr "libri"
+
+#: app/templates/intake.html:149
+msgid "Select all"
+msgstr "Seleziona tutti"
+
+#: app/templates/intake.html:150
+msgid "Deselect all"
+msgstr "Deseleziona tutti"
+
+#: app/templates/intake.html:184
+msgid "Identified from the cover, not read — double-check"
+msgstr "Riconosciuto dalla copertina, non letto: controlla"
+
+#: app/templates/intake.html:185
+msgid "recognized"
+msgstr "riconosciuto"
+
+#: app/templates/intake.html:194 app/templates/shelf_fill.html:28
+msgid "Media type"
+msgstr "Tipo di media"
+
+#: app/templates/intake.html:212 app/templates/scan.html:190
+#: app/templates/shelf_fill.html:51
+msgid "Default tags"
+msgstr "Tag predefiniti"
+
+#: app/templates/intake.html:214
+msgid "Default tags — e.g. Cookbook; Signed"
+msgstr "Tag predefiniti, es. Ricettario; Autografato"
+
+#: app/templates/fragments/book_search_results.html:31
+#: app/templates/fragments/dvd_search_results.html:29
+#: app/templates/fragments/game_search_results.html:31
+#: app/templates/intake.html:223
+msgid "Add"
+msgstr "Aggiungi"
+
+#: app/templates/intake.html:223
+msgid "to Library"
+msgstr "alla biblioteca"
+
+#: app/templates/intake.html:224
+msgid "Adding…"
+msgstr "Aggiunta in corso…"
+
+#: app/templates/intake.html:231
+msgid "Done"
+msgstr "Fatto"
+
+#: app/templates/intake.html:235
+msgid "skipped"
+msgstr "saltati"
+
+#: app/templates/intake.html:237
+msgid "&mdash; covers are fetched in the background."
+msgstr ": le copertine vengono scaricate in background."
+
+#: app/templates/intake.html:248
+msgid "&mdash; restored from Trash"
+msgstr " (ripristinato dal cestino)"
+
+#: app/templates/intake.html:248
+msgid "&mdash; title didn't match the catalogue, added title only &mdash; fix it on the item page"
+msgstr " (il titolo non corrisponde al catalogo, aggiunto solo il titolo: correggilo nella pagina dell'elemento)"
+
+#: app/templates/intake.html:248
+msgid "&mdash; no metadata found, added title only"
+msgstr " (nessun dato trovato, aggiunto solo il titolo)"
+
+#: app/templates/intake.html:255
+msgid "Scan Another Shelf"
+msgstr "Scansiona un altro scaffale"
 
 #: app/templates/item_detail.html:24
 msgid "English cover from another edition"
@@ -1488,11 +1757,6 @@ msgstr "Durata (min)"
 msgid "Save"
 msgstr "Salva"
 
-#: app/templates/fragments/item_copy_edit.html:103
-#: app/templates/item_edit.html:377
-msgid "Cancel"
-msgstr "Annulla"
-
 #: app/templates/item_edit.html:391
 msgid "Tags save as you add or remove them."
 msgstr "I tag si salvano mentre li aggiungi o li rimuovi."
@@ -1515,11 +1779,12 @@ msgstr "Nome utente"
 msgid "Password"
 msgstr "Password"
 
-#: app/templates/scan.html:40
+#: app/templates/scan.html:40 app/templates/shelf_fill.html:67
+#: app/templates/store.html:36
 msgid "Scan with Camera"
 msgstr "Scansiona con la fotocamera"
 
-#: app/templates/scan.html:40
+#: app/templates/scan.html:40 app/templates/shelf_fill.html:67
 msgid "Stop Camera"
 msgstr "Ferma la fotocamera"
 
@@ -1527,7 +1792,7 @@ msgstr "Ferma la fotocamera"
 msgid "Looking up barcode..."
 msgstr "Ricerca del codice a barre..."
 
-#: app/templates/scan.html:85
+#: app/templates/scan.html:85 app/templates/shelf_fill.html:77
 msgid "Scan Next"
 msgstr "Scansiona il prossimo"
 
@@ -1555,11 +1820,7 @@ msgstr "Scegli chi prende in prestito..."
 msgid "No borrowers yet. Add them in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Settings</a>."
 msgstr "Ancora nessuno a cui prestare. Aggiungilo in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Impostazioni</a>."
 
-#: app/templates/scan.html:190
-msgid "Default tags"
-msgstr "Tag predefiniti"
-
-#: app/templates/scan.html:194
+#: app/templates/scan.html:194 app/templates/shelf_fill.html:54
 msgid "e.g. Cookbook; Signed"
 msgstr "es. Ricettario; Autografato"
 
@@ -1676,6 +1937,98 @@ msgstr "Crea account"
 msgid "This will be the admin account with full access to your library."
 msgstr "Sarà l'account amministratore, con accesso completo alla tua biblioteca."
 
+#: app/templates/shelf_fill.html:10
+msgid "Choose the physical shelf once, then scan items onto it in the order they sit there — each scan takes the next position on that shelf. Pick a different shelf and its numbering starts again. Items already catalogued move without a fresh metadata lookup; unknown barcodes go through Shelf's normal Add pipeline first. Reorder any shelf later on its <span class=\"text-shelf-text\">Arrange</span> page."
+msgstr "Scegli una volta lo scaffale fisico, poi scansiona gli elementi nell'ordine in cui sono disposti: ogni scansione prende la posizione successiva su quello scaffale. Se scegli un altro scaffale, la numerazione riparte. Gli elementi già catalogati si spostano senza una nuova ricerca dei dati; i codici a barre sconosciuti passano prima per la normale aggiunta di Shelf. Puoi riordinare qualsiasi scaffale in seguito dalla sua pagina <span class=\"text-shelf-text\">Disponi</span>."
+
+#: app/templates/shelf_fill.html:15
+msgid "Shelf location"
+msgstr "Posizione dello scaffale"
+
+#: app/templates/shelf_fill.html:21
+msgid "Choose a location…"
+msgstr "Scegli una posizione…"
+
+#: app/templates/shelf_fill.html:32
+msgid "Auto — detect from barcode"
+msgstr "Automatico (dal codice a barre)"
+
+#: app/templates/shelf_fill.html:37
+msgid "Game platform"
+msgstr "Piattaforma di gioco"
+
+#: app/templates/shelf_fill.html:41
+msgid "Any / unknown"
+msgstr "Qualsiasi / sconosciuta"
+
+#: app/templates/shelf_fill.html:57
+msgid "Added to every item filed this session. Separate several with <code>;</code>."
+msgstr "Aggiunti a ogni elemento sistemato in questa sessione. Separali con <code>;</code>."
+
+#: app/templates/shelf_fill.html:59
+msgid "Choose a physical location before scanning."
+msgstr "Scegli una posizione fisica prima di scansionare."
+
+#: app/templates/shelf_fill.html:75
+msgid "Filing item…"
+msgstr "Sistemazione dell'elemento…"
+
+#: app/templates/shelf_fill.html:90
+msgid "ISBN / UPC / copy barcode"
+msgstr "ISBN / UPC / codice della copia"
+
+#: app/templates/shelf_fill.html:91
+msgid "Scan or type a barcode…"
+msgstr "Scansiona o scrivi un codice a barre…"
+
+#: app/templates/shelf_fill.html:96
+msgid "Filed this session"
+msgstr "Sistemati in questa sessione"
+
+#: app/templates/store.html:6
+msgid "Store Mode - Shelf"
+msgstr "Modalità negozio - Shelf"
+
+#: app/templates/store.html:19
+msgid "Back to Shelf"
+msgstr "Torna a Shelf"
+
+#: app/templates/store.html:20
+msgid "Store Mode"
+msgstr "Modalità negozio"
+
+#: app/templates/store.html:21
+msgid "Connection status"
+msgstr "Stato della connessione"
+
+#: app/templates/store.html:27
+msgid "Loading library data…"
+msgstr "Caricamento dei dati della biblioteca…"
+
+#: app/templates/store.html:42
+msgid "Type or paste ISBN..."
+msgstr "Scrivi o incolla l'ISBN..."
+
+#: app/templates/store.html:46
+msgid "Check"
+msgstr "Controlla"
+
+#: app/templates/store.html:61
+msgid "Pending sync ("
+msgstr "In attesa di sincronizzazione ("
+
+#: app/templates/store.html:64
+msgid "Sync now"
+msgstr "Sincronizza ora"
+
+#: app/templates/store.html:80
+msgid "Install Shelf on this device"
+msgstr "Installa Shelf su questo dispositivo"
+
+#: app/templates/store.html:84
+msgid "Scans of books not in your library are added to your wishlist automatically when you're back online."
+msgstr "I libri scansionati che non sono in biblioteca vengono aggiunti alla lista desideri appena torni online."
+
 #: app/templates/fragments/account_menu.html:3
 msgid "Account menu"
 msgstr "Menu account"
@@ -1768,12 +2121,6 @@ msgstr "ultimo uso"
 #: app/templates/fragments/account_menu.html:204
 msgid "Revoke"
 msgstr "Revoca"
-
-#: app/templates/fragments/book_search_results.html:31
-#: app/templates/fragments/dvd_search_results.html:29
-#: app/templates/fragments/game_search_results.html:31
-msgid "Add"
-msgstr "Aggiungi"
 
 #: app/templates/fragments/book_search_results.html:43
 #, python-format
@@ -1954,10 +2301,6 @@ msgstr "Apri in RomM"
 #, python-format
 msgid "missing since %(date)s"
 msgstr "mancante dal %(date)s"
-
-#: app/templates/fragments/item_copies.html:74
-msgid "Found"
-msgstr "Ritrovato"
 
 #: app/templates/fragments/item_copies.html:84
 #: app/templates/fragments/item_copies.html:87
@@ -2495,4 +2838,57 @@ msgstr "LibraryThing non è disponibile. Riprova più tardi."
 #, python-format
 msgid "Could not reach %(provider)s &mdash; check connectivity and try again."
 msgstr "Impossibile raggiungere %(provider)s: controlla la connessione e riprova."
+
+#: app/templates/fragments/shelf_fill_result.html:12
+#, python-format
+msgid "Added and shelved at %(place)s"
+msgstr "Aggiunto e sistemato in %(place)s"
+
+#: app/templates/fragments/shelf_fill_result.html:12
+#, python-format
+msgid "Moved from wishlist and shelved at %(place)s"
+msgstr "Spostato dalla lista desideri e sistemato in %(place)s"
+
+#: app/templates/fragments/shelf_fill_result.html:12
+#, python-format
+msgid "Shelved at %(place)s"
+msgstr "Sistemato in %(place)s"
+
+#: app/templates/fragments/shelf_fill_result.html:12
+#, python-format
+msgid "copy %(n)s"
+msgstr "copia %(n)s"
+
+#: app/templates/fragments/shelf_fill_result.html:20
+msgid "Position on this shelf"
+msgstr "Posizione su questo scaffale"
+
+#: app/templates/fragments/shelf_fill_result.html:22
+msgid "shelved"
+msgstr "sistemato"
+
+#: app/templates/fragments/shelf_fill_summary.html:10
+msgid "Empty shelf — the next scan goes to position 1."
+msgstr "Scaffale vuoto: la prossima scansione va in posizione 1."
+
+#: app/templates/fragments/shelf_fill_summary.html:12
+#, python-format
+msgid "<strong class=\"text-shelf-text\">%(num)s</strong> item on this shelf"
+msgid_plural "<strong class=\"text-shelf-text\">%(num)s</strong> items on this shelf"
+msgstr[0] "<strong class=\"text-shelf-text\">%(num)s</strong> elemento su questo scaffale"
+msgstr[1] "<strong class=\"text-shelf-text\">%(num)s</strong> elementi su questo scaffale"
+
+#: app/templates/fragments/shelf_fill_summary.html:12
+#, python-format
+msgid "next scan goes to position <strong class=\"text-shelf-text\">%(n)s</strong>"
+msgstr "la prossima scansione va in posizione <strong class=\"text-shelf-text\">%(n)s</strong>"
+
+#: app/templates/fragments/shelf_fill_summary.html:12
+#, python-format
+msgid "%(n)s not yet ordered"
+msgstr "%(n)s ancora da ordinare"
+
+#: app/templates/fragments/shelf_fill_summary.html:16
+msgid "Arrange"
+msgstr "Disponi"
 

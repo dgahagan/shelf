@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-12 17:44-0500\n"
+"PO-Revision-Date: 2026-11-13 20:30+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -102,6 +102,32 @@ msgstr "Revocare il token {name}?"
 msgid "Could not change the language"
 msgstr "Impossibile cambiare la lingua"
 
+#: static/js/intake.js:186
+msgid "No camera found. Use Choose photo instead."
+msgstr "Nessuna fotocamera trovata. Usa invece Scegli una foto."
+
+#: static/js/intake.js:187 static/js/item_edit.js:55 static/js/item_edit.js:142
+#: static/js/scan.js:386
+msgid "Camera access denied. Check browser permissions for this site."
+msgstr "Accesso alla fotocamera negato. Controlla i permessi del browser per questo sito."
+
+#: static/js/intake.js:197
+msgid "Could not capture a frame — try again."
+msgstr "Impossibile catturare l'immagine: riprova."
+
+#: static/js/intake.js:362 static/js/intake.js:366
+msgid "Analysis failed"
+msgstr "Analisi non riuscita"
+
+#: static/js/intake.js:440
+#, python-brace-format
+msgid "Added {count} items"
+msgstr "Elementi aggiunti: {count}"
+
+#: static/js/intake.js:442 static/js/intake.js:445
+msgid "Add failed"
+msgstr "Aggiunta non riuscita"
+
 #: static/js/item_edit.js:28 static/js/item_edit.js:46
 msgid "Point the camera at a 978 or 979 ISBN barcode."
 msgstr "Inquadra un codice a barre ISBN che inizi con 978 o 979."
@@ -113,10 +139,6 @@ msgstr "Avvio della fotocamera…"
 #: static/js/item_edit.js:53 static/js/item_edit.js:140 static/js/scan.js:384
 msgid "Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on."
 msgstr "La fotocamera richiede HTTPS. Apri Shelf tramite un reverse proxy HTTPS o lascia attivo SHELF_TLS."
-
-#: static/js/item_edit.js:55 static/js/item_edit.js:142 static/js/scan.js:386
-msgid "Camera access denied. Check browser permissions for this site."
-msgstr "Accesso alla fotocamera negato. Controlla i permessi del browser per questo sito."
 
 #: static/js/item_edit.js:71
 msgid "That barcode is not a 978/979 ISBN. Try again."
@@ -338,11 +360,112 @@ msgstr "Scegli il libro corrispondente qui sotto"
 msgid "Type the five digits below"
 msgstr "Scrivi le cinque cifre qui sotto"
 
-#: static/js/scan.js:507
+#: static/js/scan.js:507 static/js/shelf-fill.js:135
 msgid "error"
 msgstr "errore"
 
-#: static/js/scan.js:507
+#: static/js/scan.js:507 static/js/shelf-fill.js:135
 msgid "Scan failed"
 msgstr "Scansione non riuscita"
+
+#: static/js/shelf-fill.js:4
+msgid "shelved"
+msgstr "sistemato"
+
+#: static/js/shelf-fill.js:33 static/js/shelf-fill.js:51
+msgid "Choose a shelf location first"
+msgstr "Prima scegli la posizione dello scaffale"
+
+#: static/js/shelf-fill.js:70
+msgid "Camera access failed. Check browser permissions and HTTPS."
+msgstr "Accesso alla fotocamera non riuscito. Controlla i permessi del browser e l'HTTPS."
+
+#: static/js/store.js:155
+msgid "Store Mode is turned off on this Shelf. Your queued scans are kept."
+msgstr "La modalità negozio è disattivata su questo Shelf. Le scansioni in coda vengono conservate."
+
+#: static/js/store.js:156
+msgid "Sign in to Shelf to sync your queued scans."
+msgstr "Accedi a Shelf per sincronizzare le scansioni in coda."
+
+#: static/js/store.js:201
+msgid "1 barcode didn't scan cleanly — saved to your wishlist to fix later."
+msgstr "1 codice a barre non è stato letto bene: è nella lista desideri, da sistemare dopo."
+
+#: static/js/store.js:202
+#, python-brace-format
+msgid "{count} barcodes didn't scan cleanly — saved to your wishlist to fix later."
+msgstr "{count} codici a barre non sono stati letti bene: sono nella lista desideri, da sistemare dopo."
+
+#: static/js/store.js:206
+msgid "1 restored from Trash."
+msgstr "1 ripristinato dal cestino."
+
+#: static/js/store.js:207
+#, python-brace-format
+msgid "{count} restored from Trash."
+msgstr "{count} ripristinati dal cestino."
+
+#: static/js/store.js:237
+msgid "Already queued for your wishlist."
+msgstr "Già in coda nella lista desideri."
+
+#: static/js/store.js:241
+msgid "Added to sync queue — syncing now…"
+msgstr "Aggiunto alla coda di sincronizzazione: sincronizzazione in corso…"
+
+#: static/js/store.js:242
+msgid "Queued — will be added to your wishlist when back online."
+msgstr "In coda: verrà aggiunto alla lista desideri quando torni online."
+
+#: static/js/store.js:266
+msgid "OWNED"
+msgstr "POSSEDUTO"
+
+#: static/js/store.js:272
+msgid "ON WISHLIST"
+msgstr "IN LISTA DESIDERI"
+
+#: static/js/store.js:278
+msgid "NOT IN LIBRARY"
+msgstr "NON IN BIBLIOTECA"
+
+#: static/js/store.js:279
+#, python-brace-format
+msgid "ISBN {code}"
+msgstr "ISBN {code}"
+
+#: static/js/store.js:295 static/js/store.js:317
+msgid "Scan with Camera"
+msgstr "Scansiona con la fotocamera"
+
+#: static/js/store.js:313
+msgid "Stop Camera"
+msgstr "Ferma la fotocamera"
+
+#: static/js/store.js:323
+msgid "Camera unavailable — use manual entry."
+msgstr "Fotocamera non disponibile: inserisci il codice a mano."
+
+#: static/js/store.js:363
+#, python-brace-format
+msgid "{count} titles cached"
+msgstr "{count} titoli in memoria"
+
+#: static/js/store.js:363
+msgid "No library data cached yet"
+msgstr "Ancora nessun dato della biblioteca in memoria"
+
+#: static/js/store.js:365
+#, python-brace-format
+msgid "synced {when}"
+msgstr "sincronizzato il {when}"
+
+#: static/js/store.js:367
+msgid "online"
+msgstr "online"
+
+#: static/js/store.js:367
+msgid "offline"
+msgstr "offline"
 

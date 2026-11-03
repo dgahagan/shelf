@@ -7,13 +7,13 @@
     {% elif summary %}
     <span data-testid="shelf-fill-summary-counts">
         {% if summary.total == 0 %}
-        Empty shelf — the next scan goes to position 1.
+        {{ _('Empty shelf — the next scan goes to position 1.') }}
         {% else %}
-        <strong class="text-shelf-text">{{ summary.total }}</strong> item{{ '' if summary.total == 1 else 's' }} on this shelf{% if summary.next_position %} · next scan goes to position <strong class="text-shelf-text">{{ summary.next_position }}</strong>{% endif %}{% if summary.placed < summary.total %} · {{ summary.total - summary.placed }} not yet ordered{% endif %}
+        {{ ngettext('<strong class="text-shelf-text">%(num)s</strong> item on this shelf', '<strong class="text-shelf-text">%(num)s</strong> items on this shelf', summary.total) }}{% if summary.next_position %} · {{ _('next scan goes to position <strong class="text-shelf-text">%(n)s</strong>', n=summary.next_position) }}{% endif %}{% if summary.placed < summary.total %} · {{ _('%(n)s not yet ordered', n=summary.total - summary.placed) }}{% endif %}
         {% endif %}
     </span>
     {% if summary.next_position and summary.total %}
-    <a href="/locations/{{ location_id }}/arrange" class="ml-2 text-shelf-accent2 hover:text-shelf-accent">Arrange</a>
+    <a href="/locations/{{ location_id }}/arrange" class="ml-2 text-shelf-accent2 hover:text-shelf-accent">{{ _('Arrange') }}</a>
     {% endif %}
     {% endif %}
 </div>

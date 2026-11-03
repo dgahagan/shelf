@@ -7,6 +7,16 @@
 (function () {
     'use strict';
 
+    // app.js's t(): Store Mode loads no app.js, so the same lookup lives here.
+    var catalog = null;
+    function t(message) {
+        if (catalog === null) {
+            var el = document.getElementById('i18n-catalog');
+            try { catalog = el ? JSON.parse(el.textContent) : {}; } catch (e) { catalog = {}; }
+        }
+        return catalog[message] || message;
+    }
+
     var DATA_KEY = 'shelf-store-data';
     var QUEUE_KEY = 'shelf-store-queue';
 
@@ -142,8 +152,8 @@
                 var hint = $('sync-hint');
                 return r.json().catch(function () { return null; }).then(function (body) {
                     hint.textContent = (r.status === 403 && body && body.error === 'feature_disabled')
-                        ? 'Store Mode is turned off on this Shelf. Your queued scans are kept.'
-                        : 'Sign in to Shelf to sync your queued scans.';
+                        ? t('Store Mode is turned off on this Shelf. Your queued scans are kept.')
+                        : t('Sign in to Shelf to sync your queued scans.');
                     hint.classList.remove('hidden');
                     throw new Error('auth');
                 });
@@ -188,13 +198,13 @@
         var parts = [];
         if (unreadable) {
             parts.push(unreadable === 1
-                ? "1 barcode didn't scan cleanly — saved to your wishlist to fix later."
-                : unreadable + " barcodes didn't scan cleanly — saved to your wishlist to fix later.");
+                ? t("1 barcode didn't scan cleanly — saved to your wishlist to fix later.")
+                : t("{count} barcodes didn't scan cleanly — saved to your wishlist to fix later.").replace('{count}', unreadable));
         }
         if (restored) {
             parts.push(restored === 1
-                ? '1 restored from Trash.'
-                : restored + ' restored from Trash.');
+                ? t('1 restored from Trash.')
+                : t('{count} restored from Trash.').replace('{count}', restored));
         }
         if (!parts.length) { el.classList.add('hidden'); el.textContent = ''; return; }
         el.textContent = parts.join(' ');
@@ -224,12 +234,12 @@
 
         var note = $('verdict-note');
         if (isQueued(code)) {
-            note.textContent = 'Already queued for your wishlist.';
+            note.textContent = t('Already queued for your wishlist.');
         } else {
             enqueue(code);
             note.textContent = navigator.onLine
-                ? 'Added to sync queue — syncing now…'
-                : 'Queued — will be added to your wishlist when back online.';
+                ? t('Added to sync queue — syncing now…')
+                : t('Queued — will be added to your wishlist when back online.');
             if (navigator.onLine) flushQueue();
         }
     }
@@ -253,20 +263,20 @@
         if (hit && hit.owned) {
             card.classList.add('border-shelf-success', 'bg-shelf-success/10');
             label.classList.add('text-shelf-success');
-            label.textContent = 'OWNED';
+            label.textContent = t('OWNED');
             title.textContent = hit.title;
             authors.textContent = hit.authors || '';
         } else if (hit) {
             card.classList.add('border-shelf-warning', 'bg-shelf-warning/10');
             label.classList.add('text-shelf-warning');
-            label.textContent = 'ON WISHLIST';
+            label.textContent = t('ON WISHLIST');
             title.textContent = hit.title;
             authors.textContent = hit.authors || '';
         } else {
             card.classList.add('border-shelf-border', 'bg-shelf-card');
             label.classList.add('text-shelf-muted');
-            label.textContent = 'NOT IN LIBRARY';
-            title.textContent = 'ISBN ' + code;
+            label.textContent = t('NOT IN LIBRARY');
+            title.textContent = t('ISBN {code}').replace('{code}', code);
         }
         return !!hit;
     }
@@ -282,7 +292,7 @@
                 scanner = null;
                 readerEl.classList.add('hidden');
                 zxingEl.classList.add('hidden');
-                btn.textContent = 'Scan with Camera';
+                btn.textContent = t('Scan with Camera');
             });
             return;
         }
@@ -300,17 +310,17 @@
         });
         var activeEl = scanner.engine === 'zxing' ? zxingEl : readerEl;
         activeEl.classList.remove('hidden');
-        btn.textContent = 'Stop Camera';
+        btn.textContent = t('Stop Camera');
         scanner.start().catch(function () {
             readerEl.classList.add('hidden');
             zxingEl.classList.add('hidden');
-            btn.textContent = 'Scan with Camera';
+            btn.textContent = t('Scan with Camera');
             scanner = null;
             var note = $('verdict-note');
             var card = $('verdict');
             card.classList.remove('hidden');
             card.classList.add('border-shelf-border');
-            note.textContent = 'Camera unavailable — use manual entry.';
+            note.textContent = t('Camera unavailable — use manual entry.');
         });
     }
 
@@ -350,11 +360,11 @@
         dot.classList.remove('bg-shelf-muted');
 
         var parts = [];
-        parts.push(dataMeta.count > 0 ? dataMeta.count + ' titles cached' : 'No library data cached yet');
+        parts.push(dataMeta.count > 0 ? t('{count} titles cached').replace('{count}', dataMeta.count) : t('No library data cached yet'));
         if (dataMeta.generated_at) {
-            parts.push('synced ' + new Date(dataMeta.generated_at).toLocaleString());
+            parts.push(t('synced {when}').replace('{when}', new Date(dataMeta.generated_at).toLocaleString()));
         }
-        parts.push(online ? 'online' : 'offline');
+        parts.push(online ? t('online') : t('offline'));
         $('status-line').textContent = parts.join(' · ');
         renderQueue();
     }
