@@ -7,8 +7,8 @@
    delegated submit listener shows it. Turning a feature on never asks. #}
     <div x-show="tab === 'features'" class="space-y-8" style="display:none">
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-1">Features</h2>
-        <p class="text-sm text-shelf-muted mb-4">Turn optional parts of Shelf on or off. A feature that is off hides its tab, refuses its pages and actions, and pauses its background job. Its data is kept, and turning it back on shows everything again. To hide a tab without turning its feature off, use Navigation under Library.</p>
+        <h2 class="text-lg font-semibold mb-1">{{ _('Features') }}</h2>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('Turn optional parts of Shelf on or off. A feature that is off hides its tab, refuses its pages and actions, and pauses its background job. Its data is kept, and turning it back on shows everything again. To hide a tab without turning its feature off, use Navigation under Library.') }}</p>
         {# Profiles: one plain form per preset, posting to /api/settings/profile.
            The matching profile's button is disabled and marked with a neutral
            accent border, never a status colour (G126); "Custom" shows when none
@@ -17,7 +17,7 @@
            something that stops for other people. #}
         <div data-testid="feature-profiles" data-profile-current="{{ current_profile or 'custom' }}"
              class="mb-4 pb-4 border-b border-shelf-border">
-            <p class="text-sm text-shelf-muted mb-3">Apply a profile to set every feature below at once.</p>
+            <p class="text-sm text-shelf-muted mb-3">{{ _('Apply a profile to set every feature below at once.') }}</p>
             {# Each profile's description and its "Turns on:" / "Turns off:" lines
                are visible text, not a title tooltip: a touch screen has no hover.
                The lines are the change from the current flags, not setup's
@@ -30,13 +30,13 @@
                       {% if p.confirm %}data-confirm="{{ p.confirm }}"{% endif %}>
                     <input type="hidden" name="profile" value="{{ p.name }}">
                     <p class="text-sm">
-                        <span class="block font-medium">{{ p.label }}</span>
-                        <span class="block text-shelf-muted">{{ p.description }}</span>
+                        <span class="block font-medium">{{ _(p.label) }}</span>
+                        <span class="block text-shelf-muted">{{ _(p.description) }}</span>
                         {% if p.turns_on %}
-                        <span data-testid="profile-turns-on-{{ p.name }}" class="block text-xs text-shelf-muted mt-1">Turns on: {{ p.turns_on | join(", ") }}</span>
+                        <span data-testid="profile-turns-on-{{ p.name }}" class="block text-xs text-shelf-muted mt-1">{{ _('Turns on: %(features)s', features=p.turns_on | join(", ")) }}</span>
                         {% endif %}
                         {% if p.turns_off %}
-                        <span data-testid="profile-turns-off-{{ p.name }}" class="block text-xs text-shelf-muted mt-1">Turns off: {{ p.turns_off | join(", ") }}</span>
+                        <span data-testid="profile-turns-off-{{ p.name }}" class="block text-xs text-shelf-muted mt-1">{{ _('Turns off: %(features)s', features=p.turns_off | join(", ")) }}</span>
                         {% endif %}
                     </p>
                     <button type="submit" data-testid="profile-apply-{{ p.name }}"
@@ -48,7 +48,7 @@
                 {% endfor %}
             </div>
             {% if not current_profile %}
-            <p data-testid="profile-custom" class="text-sm text-shelf-muted mt-2">Custom — the switches below match none of these.</p>
+            <p data-testid="profile-custom" class="text-sm text-shelf-muted mt-2">{{ _('Custom — the switches below match none of these.') }}</p>
             {% endif %}
         </div>
         <div class="divide-y divide-shelf-border">
@@ -56,16 +56,16 @@
             <div data-testid="feature-row-{{ row.key }}" class="flex flex-col sm:flex-row sm:items-center gap-3 py-4">
                 <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
-                        <span class="font-medium">{{ row.label }}</span>
+                        <span class="font-medium">{{ _(row.label) }}</span>
                         {% if row.enabled %}
-                        <span class="text-xs px-2 py-0.5 rounded-sm border border-shelf-success/50 text-shelf-text" data-feature-state="on">On</span>
+                        <span class="text-xs px-2 py-0.5 rounded-sm border border-shelf-success/50 text-shelf-text" data-feature-state="on">{{ _('On') }}</span>
                         {% else %}
-                        <span class="text-xs px-2 py-0.5 rounded-sm bg-shelf-hover text-shelf-muted" data-feature-state="off">Off</span>
+                        <span class="text-xs px-2 py-0.5 rounded-sm bg-shelf-hover text-shelf-muted" data-feature-state="off">{{ _('Off') }}</span>
                         {% endif %}
                     </div>
-                    <p class="text-sm text-shelf-muted mt-1">{{ row.description }}</p>
+                    <p class="text-sm text-shelf-muted mt-1">{{ _(row.description) }}</p>
                     {% if row.configured is false %}
-                    <p class="text-xs text-shelf-muted mt-1" data-feature-needs-setup>Needs setup — configure it under Integrations before it can do anything.</p>
+                    <p class="text-xs text-shelf-muted mt-1" data-feature-needs-setup>{{ _('Needs setup — configure it under Integrations before it can do anything.') }}</p>
                     {% endif %}
                 </div>
                 <form method="post" action="/api/settings/features/{{ row.key }}"

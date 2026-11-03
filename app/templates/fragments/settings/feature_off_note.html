@@ -12,8 +12,8 @@
 {% macro feature_off_note(key) %}
 {% if not feature_on(key) %}
 <p class="text-xs text-shelf-muted mb-3" data-testid="feature-off-note" data-feature="{{ key }}">
-    Turned off in Features —
-    <button type="button" @click="setTab('features')" class="text-shelf-accent2 hover:underline">Features</button>
+    {{ _('Turned off in Features —') }}
+    <button type="button" @click="setTab('features')" class="text-shelf-accent2 hover:underline">{{ _('Features') }}</button>
 </p>
 {% endif %}
 {% endmacro %}

@@ -91,7 +91,8 @@ msgid "ISBN/UPC"
 msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
-#: app/templates/item_edit.html:83 app/templates/item_edit.html:390
+#: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
+#: app/templates/item_edit.html:390
 msgid "Tags"
 msgstr "Tag"
 
@@ -464,12 +465,37 @@ msgid "Watch series for newly announced volumes and send a daily digest."
 msgstr "Segui le serie per i nuovi volumi annunciati e invia un riepilogo giornaliero."
 
 #: app/features.py:362 app/templates/fragments/account_menu.html:94
+#: app/templates/fragments/settings/users.html:70
 msgid "API tokens"
 msgstr "Token API"
 
 #: app/features.py:363
 msgid "Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read."
 msgstr "Token API di sola lettura per dashboard e script, e gli endpoint /api/v1 che leggono."
+
+#: app/features.py:374
+msgid "Minimal"
+msgstr "Essenziale"
+
+#: app/features.py:374
+msgid "Scan, catalogue and browse. Nothing optional."
+msgstr "Scansiona, cataloga e sfoglia. Niente di facoltativo."
+
+#: app/features.py:375
+msgid "Standard"
+msgstr "Standard"
+
+#: app/features.py:375
+msgid "The everyday extras for a home library."
+msgstr "Gli extra di tutti i giorni per una biblioteca di casa."
+
+#: app/features.py:377
+msgid "Everything"
+msgstr "Tutto"
+
+#: app/features.py:378
+msgid "Every feature, including sharing, valuation, photo intake and the integrations."
+msgstr "Ogni funzionalità, compresi condivisione, valutazione, acquisizione da foto e integrazioni."
 
 #: app/features.py:583 app/templates/feature_disabled.html:7
 #, python-format
@@ -2416,6 +2442,7 @@ msgstr "in prestito"
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/settings/library.html:134
+#: app/templates/fragments/settings/tags.html:29
 #: app/templates/item_detail.html:309
 msgid "Edit"
 msgstr "Modifica"
@@ -2424,6 +2451,8 @@ msgstr "Modifica"
 msgid "Add another like this"
 msgstr "Aggiungine un altro simile"
 
+#: app/templates/fragments/settings/tags.html:24
+#: app/templates/fragments/settings/users.html:33
 #: app/templates/item_detail.html:318
 msgid "Delete"
 msgstr "Elimina"
@@ -2832,7 +2861,8 @@ msgstr "Accedi"
 msgid "Sign in to your library"
 msgstr "Accedi alla tua biblioteca"
 
-#: app/templates/fragments/account_menu.html:100 app/templates/login.html:24
+#: app/templates/fragments/account_menu.html:100
+#: app/templates/fragments/settings/users.html:44 app/templates/login.html:24
 #: app/templates/setup.html:27
 msgid "Username"
 msgstr "Nome utente"
@@ -3857,6 +3887,7 @@ msgid "last used"
 msgstr "ultimo uso"
 
 #: app/templates/fragments/account_menu.html:204
+#: app/templates/fragments/settings/users.html:90
 msgid "Revoke"
 msgstr "Revoca"
 
@@ -4919,6 +4950,52 @@ msgstr[1] "%(num)s elementi sono nel cestino da più del periodo di conservazion
 msgid "Review expired items"
 msgstr "Rivedi gli elementi scaduti"
 
+#: app/templates/fragments/settings/feature_off_note.html:15
+#: app/templates/fragments/settings/library.html:81
+msgid "Turned off in Features —"
+msgstr "Disattivata in Funzionalità:"
+
+#: app/templates/fragments/settings/feature_off_note.html:16
+#: app/templates/fragments/settings/features.html:10
+#: app/templates/fragments/settings/library.html:84
+#: app/templates/fragments/settings/sidebar.html:30
+msgid "Features"
+msgstr "Funzionalità"
+
+#: app/templates/fragments/settings/features.html:11
+msgid "Turn optional parts of Shelf on or off. A feature that is off hides its tab, refuses its pages and actions, and pauses its background job. Its data is kept, and turning it back on shows everything again. To hide a tab without turning its feature off, use Navigation under Library."
+msgstr "Attiva o disattiva le parti facoltative di Shelf. Una funzionalità disattivata nasconde la sua scheda, rifiuta le sue pagine e azioni e mette in pausa le sue attività in background. I suoi dati restano, e riattivandola torna tutto com'era. Per nascondere una scheda senza disattivare la funzionalità, usa Navigazione in Biblioteca."
+
+#: app/templates/fragments/settings/features.html:20
+msgid "Apply a profile to set every feature below at once."
+msgstr "Applica un profilo per impostare insieme tutte le funzionalità qui sotto."
+
+#: app/templates/fragments/settings/features.html:36
+#, python-format
+msgid "Turns on: %(features)s"
+msgstr "Attiva: %(features)s"
+
+#: app/templates/fragments/settings/features.html:39
+#, python-format
+msgid "Turns off: %(features)s"
+msgstr "Disattiva: %(features)s"
+
+#: app/templates/fragments/settings/features.html:51
+msgid "Custom — the switches below match none of these."
+msgstr "Personalizzato: gli interruttori qui sotto non corrispondono a nessuno di questi."
+
+#: app/templates/fragments/settings/features.html:61
+msgid "On"
+msgstr "Attiva"
+
+#: app/templates/fragments/settings/features.html:63
+msgid "Off"
+msgstr "Disattiva"
+
+#: app/templates/fragments/settings/features.html:68
+msgid "Needs setup — configure it under Integrations before it can do anything."
+msgstr "Da configurare: impostala in Integrazioni prima che possa fare qualcosa."
+
 #: app/templates/fragments/settings/library.html:12
 #, python-format
 msgid "%(num)s item in your library"
@@ -4953,15 +5030,6 @@ msgstr "Scegli quali schede mostrare nella barra di navigazione. Sfoglia e Impos
 #: app/templates/fragments/settings/library.html:65
 msgid "Show in navigation"
 msgstr "Mostra nella navigazione"
-
-#: app/templates/fragments/settings/library.html:81
-msgid "Turned off in Features —"
-msgstr "Disattivata in Funzionalità:"
-
-#: app/templates/fragments/settings/library.html:84
-#: app/templates/fragments/settings/sidebar.html:30
-msgid "Features"
-msgstr "Funzionalità"
 
 #: app/templates/fragments/settings/library.html:88
 #, python-format
@@ -5003,6 +5071,7 @@ msgid "Remove"
 msgstr "Rimuovi"
 
 #: app/templates/fragments/settings/library.html:137
+#: app/templates/fragments/settings/tags.html:32
 msgid "Name"
 msgstr "Nome"
 
@@ -5227,6 +5296,7 @@ msgid "Import, export, backups and maintenance."
 msgstr "Importazione, esportazione, backup e manutenzione."
 
 #: app/templates/fragments/settings/sidebar.html:24
+#: app/templates/fragments/settings/users.html:13
 msgid "Users"
 msgstr "Utenti"
 
@@ -5237,4 +5307,82 @@ msgstr "Account, ruoli e accessi."
 #: app/templates/fragments/settings/sidebar.html:31
 msgid "Turn optional parts of Shelf on or off."
 msgstr "Attiva o disattiva le parti facoltative di Shelf."
+
+#: app/templates/fragments/settings/tags.html:7
+msgid "A tag is created by applying it to an item — nothing here creates one. Scoping a tag to a type only narrows suggestions elsewhere; it never removes the tag from an item outside that type."
+msgstr "Un tag nasce quando lo applichi a un elemento: qui non se ne creano. Limitare un tag a un tipo restringe solo i suggerimenti altrove; non toglie mai il tag da un elemento di un altro tipo."
+
+#: app/templates/fragments/settings/tags.html:16
+#, python-format
+msgid "%(n)s active item(s)"
+msgstr "Elementi attivi: %(n)s"
+
+#: app/templates/fragments/settings/tags.html:18
+#, python-format
+msgid "%(n)s outside %(type)s"
+msgstr "%(n)s fuori da %(type)s"
+
+#: app/templates/fragments/settings/tags.html:37
+msgid "Scope"
+msgstr "Ambito"
+
+#: app/templates/fragments/settings/tags.html:40
+msgid "All types"
+msgstr "Tutti i tipi"
+
+#: app/templates/fragments/settings/tags.html:47
+msgid "Save tag"
+msgstr "Salva il tag"
+
+#: app/templates/fragments/settings/tags.html:55
+msgid "No tags yet. Add one to an item, or from the Browse bulk bar."
+msgstr "Ancora nessun tag. Aggiungine uno a un elemento o dalla barra delle azioni in blocco di Sfoglia."
+
+#: app/templates/fragments/settings/users.html:25
+#: app/templates/fragments/settings/users.html:54
+msgid "Admin"
+msgstr "Amministratore"
+
+#: app/templates/fragments/settings/users.html:26
+#: app/templates/fragments/settings/users.html:53
+msgid "Editor"
+msgstr "Editor"
+
+#: app/templates/fragments/settings/users.html:27
+#: app/templates/fragments/settings/users.html:52
+msgid "Viewer"
+msgstr "Visualizzatore"
+
+#: app/templates/fragments/settings/users.html:29
+msgid "Reset password"
+msgstr "Reimposta la password"
+
+#: app/templates/fragments/settings/users.html:30
+msgid "Reset PW"
+msgstr "Reimposta PW"
+
+#: app/templates/fragments/settings/users.html:32
+msgid "Delete user"
+msgstr "Elimina l'utente"
+
+#: app/templates/fragments/settings/users.html:37
+msgid "No users found."
+msgstr "Nessun utente trovato."
+
+#: app/templates/fragments/settings/users.html:42
+#: app/templates/fragments/settings/users.html:59
+msgid "Add User"
+msgstr "Aggiungi utente"
+
+#: app/templates/fragments/settings/users.html:46
+msgid "Display Name (optional)"
+msgstr "Nome visualizzato (facoltativo)"
+
+#: app/templates/fragments/settings/users.html:48
+msgid "Password (min 8 chars)"
+msgstr "Password (minimo 8 caratteri)"
+
+#: app/templates/fragments/settings/users.html:77
+msgid "No API tokens yet."
+msgstr "Ancora nessun token API."
 

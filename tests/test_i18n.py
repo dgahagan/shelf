@@ -287,3 +287,10 @@ def test_settings_library_tab_is_translated(admin_client):
     for text in ("Posizioni", "Dollaro statunitense", "Persone per i prestiti", "Ultima esecuzione"):
         assert text in page, text
 
+
+def test_settings_features_tags_and_users_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/settings").text
+    for text in ("Essenziale", "Strumenti da collezionista", "Aggiungi utente", "Ancora nessun tag"):
+        assert text in page, text

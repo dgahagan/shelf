@@ -94,7 +94,8 @@ msgid "ISBN/UPC"
 msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
-#: app/templates/item_edit.html:83 app/templates/item_edit.html:390
+#: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
+#: app/templates/item_edit.html:390
 msgid "Tags"
 msgstr "标签"
 
@@ -467,11 +468,36 @@ msgid "Watch series for newly announced volumes and send a daily digest."
 msgstr ""
 
 #: app/features.py:362 app/templates/fragments/account_menu.html:94
+#: app/templates/fragments/settings/users.html:70
 msgid "API tokens"
 msgstr "API 令牌"
 
 #: app/features.py:363
 msgid "Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read."
+msgstr ""
+
+#: app/features.py:374
+msgid "Minimal"
+msgstr ""
+
+#: app/features.py:374
+msgid "Scan, catalogue and browse. Nothing optional."
+msgstr ""
+
+#: app/features.py:375
+msgid "Standard"
+msgstr ""
+
+#: app/features.py:375
+msgid "The everyday extras for a home library."
+msgstr ""
+
+#: app/features.py:377
+msgid "Everything"
+msgstr ""
+
+#: app/features.py:378
+msgid "Every feature, including sharing, valuation, photo intake and the integrations."
 msgstr ""
 
 #: app/features.py:583 app/templates/feature_disabled.html:7
@@ -2416,6 +2442,7 @@ msgstr "未归还"
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/settings/library.html:134
+#: app/templates/fragments/settings/tags.html:29
 #: app/templates/item_detail.html:309
 msgid "Edit"
 msgstr "编辑"
@@ -2424,6 +2451,8 @@ msgstr "编辑"
 msgid "Add another like this"
 msgstr "照此再添加一条"
 
+#: app/templates/fragments/settings/tags.html:24
+#: app/templates/fragments/settings/users.html:33
 #: app/templates/item_detail.html:318
 msgid "Delete"
 msgstr "删除"
@@ -2831,7 +2860,8 @@ msgstr "登录"
 msgid "Sign in to your library"
 msgstr "登录你的书库"
 
-#: app/templates/fragments/account_menu.html:100 app/templates/login.html:24
+#: app/templates/fragments/account_menu.html:100
+#: app/templates/fragments/settings/users.html:44 app/templates/login.html:24
 #: app/templates/setup.html:27
 msgid "Username"
 msgstr "用户名"
@@ -3850,6 +3880,7 @@ msgid "last used"
 msgstr "最近使用"
 
 #: app/templates/fragments/account_menu.html:204
+#: app/templates/fragments/settings/users.html:90
 msgid "Revoke"
 msgstr "撤销"
 
@@ -4905,6 +4936,52 @@ msgstr[0] ""
 msgid "Review expired items"
 msgstr ""
 
+#: app/templates/fragments/settings/feature_off_note.html:15
+#: app/templates/fragments/settings/library.html:81
+msgid "Turned off in Features —"
+msgstr ""
+
+#: app/templates/fragments/settings/feature_off_note.html:16
+#: app/templates/fragments/settings/features.html:10
+#: app/templates/fragments/settings/library.html:84
+#: app/templates/fragments/settings/sidebar.html:30
+msgid "Features"
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:11
+msgid "Turn optional parts of Shelf on or off. A feature that is off hides its tab, refuses its pages and actions, and pauses its background job. Its data is kept, and turning it back on shows everything again. To hide a tab without turning its feature off, use Navigation under Library."
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:20
+msgid "Apply a profile to set every feature below at once."
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:36
+#, python-format
+msgid "Turns on: %(features)s"
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:39
+#, python-format
+msgid "Turns off: %(features)s"
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:51
+msgid "Custom — the switches below match none of these."
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:61
+msgid "On"
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:63
+msgid "Off"
+msgstr ""
+
+#: app/templates/fragments/settings/features.html:68
+msgid "Needs setup — configure it under Integrations before it can do anything."
+msgstr ""
+
 #: app/templates/fragments/settings/library.html:12
 #, python-format
 msgid "%(num)s item in your library"
@@ -4937,15 +5014,6 @@ msgstr ""
 
 #: app/templates/fragments/settings/library.html:65
 msgid "Show in navigation"
-msgstr ""
-
-#: app/templates/fragments/settings/library.html:81
-msgid "Turned off in Features —"
-msgstr ""
-
-#: app/templates/fragments/settings/library.html:84
-#: app/templates/fragments/settings/sidebar.html:30
-msgid "Features"
 msgstr ""
 
 #: app/templates/fragments/settings/library.html:88
@@ -4988,6 +5056,7 @@ msgid "Remove"
 msgstr ""
 
 #: app/templates/fragments/settings/library.html:137
+#: app/templates/fragments/settings/tags.html:32
 msgid "Name"
 msgstr ""
 
@@ -5212,6 +5281,7 @@ msgid "Import, export, backups and maintenance."
 msgstr ""
 
 #: app/templates/fragments/settings/sidebar.html:24
+#: app/templates/fragments/settings/users.html:13
 msgid "Users"
 msgstr ""
 
@@ -5221,5 +5291,83 @@ msgstr ""
 
 #: app/templates/fragments/settings/sidebar.html:31
 msgid "Turn optional parts of Shelf on or off."
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:7
+msgid "A tag is created by applying it to an item — nothing here creates one. Scoping a tag to a type only narrows suggestions elsewhere; it never removes the tag from an item outside that type."
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:16
+#, python-format
+msgid "%(n)s active item(s)"
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:18
+#, python-format
+msgid "%(n)s outside %(type)s"
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:37
+msgid "Scope"
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:40
+msgid "All types"
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:47
+msgid "Save tag"
+msgstr ""
+
+#: app/templates/fragments/settings/tags.html:55
+msgid "No tags yet. Add one to an item, or from the Browse bulk bar."
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:25
+#: app/templates/fragments/settings/users.html:54
+msgid "Admin"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:26
+#: app/templates/fragments/settings/users.html:53
+msgid "Editor"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:27
+#: app/templates/fragments/settings/users.html:52
+msgid "Viewer"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:29
+msgid "Reset password"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:30
+msgid "Reset PW"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:32
+msgid "Delete user"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:37
+msgid "No users found."
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:42
+#: app/templates/fragments/settings/users.html:59
+msgid "Add User"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:46
+msgid "Display Name (optional)"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:48
+msgid "Password (min 8 chars)"
+msgstr ""
+
+#: app/templates/fragments/settings/users.html:77
+msgid "No API tokens yet."
 msgstr ""
 

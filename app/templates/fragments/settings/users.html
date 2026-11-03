@@ -10,7 +10,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6"
          x-data="usersPanel"
          x-init="loadUsers()">
-        <h2 class="text-lg font-semibold mb-4">Users</h2>
+        <h2 class="text-lg font-semibold mb-4">{{ _('Users') }}</h2>
 
         <!-- User list -->
         <div class="space-y-2 mb-6">
@@ -22,41 +22,41 @@
                     </div>
                     <select :value="u.role" @change="updateRole(u.id, $event.target.value)"
                         class="bg-shelf-card border border-shelf-border rounded-sm px-2 py-1 text-sm text-shelf-text">
-                        <option value="admin">Admin</option>
-                        <option value="editor">Editor</option>
-                        <option value="viewer">Viewer</option>
+                        <option value="admin">{{ _('Admin') }}</option>
+                        <option value="editor">{{ _('Editor') }}</option>
+                        <option value="viewer">{{ _('Viewer') }}</option>
                     </select>
-                    <button @click="resetPassword(u.id)" class="text-shelf-muted hover:text-shelf-text text-sm transition-colors" title="Reset password">
-                        Reset PW
+                    <button @click="resetPassword(u.id)" class="text-shelf-muted hover:text-shelf-text text-sm transition-colors" title="{{ _('Reset password') }}">
+                        {{ _('Reset PW') }}
                     </button>
-                    <button @click="deleteUser(u.id, u.display_name || u.username)" class="text-shelf-error/60 hover:text-shelf-error text-sm transition-colors" title="Delete user">
-                        Delete
+                    <button @click="deleteUser(u.id, u.display_name || u.username)" class="text-shelf-error/60 hover:text-shelf-error text-sm transition-colors" title="{{ _('Delete user') }}">
+                        {{ _('Delete') }}
                     </button>
                 </div>
             </template>
-            <p x-show="users.length === 0" class="text-shelf-muted text-sm">No users found.</p>
+            <p x-show="users.length === 0" class="text-shelf-muted text-sm">{{ _('No users found.') }}</p>
         </div>
 
         <!-- Add user -->
         <div class="border-t border-shelf-border pt-4">
-            <h3 class="text-sm font-semibold text-shelf-muted mb-3">Add User</h3>
+            <h3 class="text-sm font-semibold text-shelf-muted mb-3">{{ _('Add User') }}</h3>
             <div class="grid grid-cols-2 gap-3">
-                <input x-model="newUsername" type="text" placeholder="Username" required
+                <input x-model="newUsername" type="text" placeholder="{{ _('Username') }}" required
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent">
-                <input x-model="newDisplayName" type="text" placeholder="Display Name (optional)"
+                <input x-model="newDisplayName" type="text" placeholder="{{ _('Display Name (optional)') }}"
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent">
-                <input x-model="newPassword" type="password" placeholder="Password (min 8 chars)" required
+                <input x-model="newPassword" type="password" placeholder="{{ _('Password (min 8 chars)') }}" required
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text placeholder-shelf-muted/40 focus:outline-hidden focus:border-shelf-accent">
                 <select x-model="newRole"
                     class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:outline-hidden focus:border-shelf-accent">
-                    <option value="viewer">Viewer</option>
-                    <option value="editor">Editor</option>
-                    <option value="admin">Admin</option>
+                    <option value="viewer">{{ _('Viewer') }}</option>
+                    <option value="editor">{{ _('Editor') }}</option>
+                    <option value="admin">{{ _('Admin') }}</option>
                 </select>
             </div>
             <div class="mt-3 flex items-center gap-3">
                 <button @click="addUser()" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                    Add User
+                    {{ _('Add User') }}
                 </button>
                 <template x-if="addResult">
                     <span :class="addResult.ok ? 'text-shelf-success' : 'text-shelf-error'" class="text-sm" x-text="addResult.message"></span>
@@ -67,14 +67,14 @@
 
     <!-- API Tokens (all users) -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" data-testid="admin-tokens-card">
-        <h2 class="text-lg font-semibold mb-4">API tokens</h2>
+        <h2 class="text-lg font-semibold mb-4">{{ _('API tokens') }}</h2>
         {{ feature_notes.feature_off_note('api') }}
         {% if feature_on('api') %}
         <div x-data="adminTokensPanel" x-init="load()" data-testid="admin-tokens-panel">
             <template x-if="result">
                 <p class="text-sm text-shelf-error mb-2" data-testid="admin-tokens-result" x-text="result.message"></p>
             </template>
-            <p x-show="loaded && !tokens.length" class="text-shelf-muted text-sm" data-testid="admin-tokens-empty">No API tokens yet.</p>
+            <p x-show="loaded && !tokens.length" class="text-shelf-muted text-sm" data-testid="admin-tokens-empty">{{ _('No API tokens yet.') }}</p>
             <div class="space-y-2">
                 <template x-for="t in tokens" :key="t.id">
                     <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-3" data-testid="admin-token-row">
@@ -87,7 +87,7 @@
                         </div>
                         <button type="button" @click="revoke(t.id, t.name)" data-testid="admin-token-revoke"
                                 class="text-shelf-error/60 hover:text-shelf-error text-sm transition-colors">
-                            Revoke
+                            {{ _('Revoke') }}
                         </button>
                     </div>
                 </template>

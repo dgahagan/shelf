@@ -3,8 +3,8 @@
    nothing here creates one. Rename/delete are admin-only. #}
     <!-- Tags -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-4">Tags</h2>
-        <p class="text-sm text-shelf-muted mb-4">A tag is created by applying it to an item — nothing here creates one. Scoping a tag to a type only narrows suggestions elsewhere; it never removes the tag from an item outside that type.</p>
+        <h2 class="text-lg font-semibold mb-4">{{ _('Tags') }}</h2>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('A tag is created by applying it to an item — nothing here creates one. Scoping a tag to a type only narrows suggestions elsewhere; it never removes the tag from an item outside that type.') }}</p>
 
         {% if tags %}
         <div class="space-y-2 mb-4">
@@ -13,38 +13,38 @@
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <span>
                         {{ tag.name }}
-                        <span class="text-shelf-muted text-xs">{{ tag.count }} active item(s)</span>
+                        <span class="text-shelf-muted text-xs">{{ _('%(n)s active item(s)', n=tag.count) }}</span>
                         {% if tag.media_type and tag.out_of_scope_count > 0 %}
-                        <span class="text-shelf-muted text-xs">{{ tag.out_of_scope_count }} outside {{ media_types.get(tag.media_type, tag.media_type) }}</span>
+                        <span class="text-shelf-muted text-xs">{{ _('%(n)s outside %(type)s', n=tag.out_of_scope_count, type=(_(media_types[tag.media_type]) if tag.media_type in media_types else tag.media_type)) }}</span>
                         {% endif %}
                     </span>
                     <form action="/api/tags/{{ tag.id }}/delete" method="post" class="inline"
                           data-confirm="Delete tag '{{ tag.name }}' from every item, including items in Trash?">
                         <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
-                            Delete
+                            {{ _('Delete') }}
                         </button>
                     </form>
                 </div>
                 <details>
-                    <summary class="text-shelf-muted text-sm">Edit</summary>
+                    <summary class="text-shelf-muted text-sm">{{ _('Edit') }}</summary>
                     <form action="/api/tags/{{ tag.id }}/update" method="post" class="space-y-2">
                         <div>
-                            <label for="tag-name-{{ tag.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Name</label>
+                            <label for="tag-name-{{ tag.id }}" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Name') }}</label>
                             <input id="tag-name-{{ tag.id }}" type="text" name="name" value="{{ tag.name }}" required maxlength="40"
                                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                         </div>
                         <div>
-                            <label for="tag-scope-{{ tag.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Scope</label>
+                            <label for="tag-scope-{{ tag.id }}" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Scope') }}</label>
                             <select id="tag-scope-{{ tag.id }}" name="media_type"
                                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                                <option value="" {% if not tag.media_type %}selected{% endif %}>All types</option>
+                                <option value="" {% if not tag.media_type %}selected{% endif %}>{{ _('All types') }}</option>
                                 {% for code, label in media_types.items() %}
                                 <option value="{{ code }}" {% if tag.media_type == code %}selected{% endif %}>{{ label }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                            Save tag
+                            {{ _('Save tag') }}
                         </button>
                     </form>
                 </details>
@@ -52,6 +52,6 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-sm text-shelf-muted">No tags yet. Add one to an item, or from the Browse bulk bar.</p>
+        <p class="text-sm text-shelf-muted">{{ _('No tags yet. Add one to an item, or from the Browse bulk bar.') }}</p>
         {% endif %}
     </div>
