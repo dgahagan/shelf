@@ -244,7 +244,88 @@ msgstr "Regista"
 msgid "Artist"
 msgstr "Artista"
 
-#: app/features.py:159 app/templates/item_detail.html:240
+#: app/currency.py:35
+msgid "US Dollar"
+msgstr "Dollaro statunitense"
+
+#: app/currency.py:36
+msgid "Euro"
+msgstr "Euro"
+
+#: app/currency.py:37
+msgid "British Pound"
+msgstr "Sterlina britannica"
+
+#: app/currency.py:38
+msgid "Canadian Dollar"
+msgstr "Dollaro canadese"
+
+#: app/currency.py:39
+msgid "Australian Dollar"
+msgstr "Dollaro australiano"
+
+#: app/currency.py:40
+msgid "New Zealand Dollar"
+msgstr "Dollaro neozelandese"
+
+#: app/currency.py:41
+msgid "Swiss Franc"
+msgstr "Franco svizzero"
+
+#: app/currency.py:42
+msgid "Japanese Yen"
+msgstr "Yen giapponese"
+
+#: app/currency.py:43
+msgid "Chinese Yuan"
+msgstr "Yuan cinese"
+
+#: app/currency.py:44
+msgid "South Korean Won"
+msgstr "Won sudcoreano"
+
+#: app/currency.py:45
+msgid "Indian Rupee"
+msgstr "Rupia indiana"
+
+#: app/currency.py:46
+msgid "Swedish Krona"
+msgstr "Corona svedese"
+
+#: app/currency.py:47
+msgid "Norwegian Krone"
+msgstr "Corona norvegese"
+
+#: app/currency.py:48
+msgid "Danish Krone"
+msgstr "Corona danese"
+
+#: app/currency.py:49
+msgid "Polish Złoty"
+msgstr "Złoty polacco"
+
+#: app/currency.py:50
+msgid "Czech Koruna"
+msgstr "Corona ceca"
+
+#: app/currency.py:51
+msgid "Hungarian Forint"
+msgstr "Fiorino ungherese"
+
+#: app/currency.py:52
+msgid "Brazilian Real"
+msgstr "Real brasiliano"
+
+#: app/currency.py:53
+msgid "Mexican Peso"
+msgstr "Peso messicano"
+
+#: app/currency.py:54
+msgid "South African Rand"
+msgstr "Rand sudafricano"
+
+#: app/features.py:159 app/templates/fragments/settings/library.html:255
+#: app/templates/item_detail.html:240
 msgid "Lending"
 msgstr "Prestiti"
 
@@ -288,7 +369,7 @@ msgstr "Valutazione"
 msgid "Price lookups and the insurance valuation report."
 msgstr "Ricerca dei prezzi e resoconto del valore per l'assicurazione."
 
-#: app/features.py:215
+#: app/features.py:215 app/templates/fragments/settings/price_alerts.html:7
 msgid "Price alerts"
 msgstr "Avvisi di prezzo"
 
@@ -374,7 +455,7 @@ msgstr "Strumenti da collezionista"
 msgid "Copy barcode labels, shelf audits and the duplicate finder."
 msgstr "Etichette con codice a barre per le copie, inventari degli scaffali e ricerca dei duplicati."
 
-#: app/features.py:349
+#: app/features.py:349 app/templates/fragments/settings/release_radar.html:8
 msgid "Release radar"
 msgstr "Radar delle uscite"
 
@@ -421,11 +502,13 @@ msgstr "Scopri"
 msgid "Stats"
 msgstr "Statistiche"
 
-#: app/nav.py:46 app/templates/trash.html:2 app/templates/trash.html:6
+#: app/nav.py:46 app/templates/fragments/settings/library.html:327
+#: app/templates/trash.html:2 app/templates/trash.html:6
 msgid "Trash"
 msgstr "Cestino"
 
 #: app/nav.py:47 app/nav.py:49 app/nav.py:51 app/nav.py:53
+#: app/templates/fragments/settings/sidebar.html:6
 msgid "Library"
 msgstr "Biblioteca"
 
@@ -443,17 +526,27 @@ msgstr "Inventari"
 msgid "Duplicates"
 msgstr "Duplicati"
 
-#: app/nav.py:54 app/templates/intake.html:11
+#: app/nav.py:54 app/templates/fragments/settings/page_header.html:3
+#: app/templates/intake.html:11 app/templates/settings.html:2
 msgid "Settings"
 msgstr "Impostazioni"
 
 #: app/nav.py:55 app/nav.py:57
+#: app/templates/fragments/settings/page_header.html:2
 msgid "Administration"
 msgstr "Amministrazione"
 
 #: app/nav.py:56 app/templates/logs.html:2 app/templates/logs.html:16
 msgid "Logs"
 msgstr "Log"
+
+#: app/nav.py:130
+msgid "a vision provider"
+msgstr "un servizio di visione"
+
+#: app/nav.py:131
+msgid "a Hardcover token"
+msgstr "un token Hardcover"
 
 #: app/nav.py:221
 msgid "Back to series"
@@ -967,6 +1060,67 @@ msgstr "La serie si chiama già così"
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr "Hardcover non ha una sinossi per questa serie: aggiungila qui sotto"
 
+#: app/routers/settings.py:90 app/routers/settings.py:92
+#: app/routers/settings.py:96 app/routers/settings.py:424
+#: app/routers/settings.py:426 app/routers/settings.py:434
+msgid "Invalid request"
+msgstr "Richiesta non valida"
+
+#: app/routers/settings.py:102
+msgid "No API key configured"
+msgstr "Nessuna chiave API configurata"
+
+#: app/routers/settings.py:127
+msgid "Unknown vision provider"
+msgstr "Servizio di visione sconosciuto"
+
+#: app/routers/settings.py:130
+msgid "Ollama image size must be a whole number of pixels"
+msgstr "La dimensione dell'immagine per Ollama deve essere un numero intero di pixel"
+
+#: app/routers/settings.py:133
+msgid "OpenAI image size must be a whole number of pixels"
+msgstr "La dimensione dell'immagine per OpenAI deve essere un numero intero di pixel"
+
+#: app/routers/settings.py:172
+msgid "Overdue days must be a whole number"
+msgstr "I giorni di ritardo devono essere un numero intero"
+
+#: app/routers/settings.py:175
+msgid "Unknown notification format"
+msgstr "Formato di notifica sconosciuto"
+
+#: app/routers/settings.py:204
+msgid "Retention days must be a whole number"
+msgstr "I giorni di conservazione devono essere un numero intero"
+
+#: app/routers/settings.py:236
+#, python-format
+msgid "Drop threshold must be a whole number from 1 to %(max)s"
+msgstr "La soglia di ribasso deve essere un numero intero da 1 a %(max)s"
+
+#: app/routers/settings.py:238
+#, python-format
+msgid "Books per night must be a whole number from 1 to %(max)s"
+msgstr "I libri per notte devono essere un numero intero da 1 a %(max)s"
+
+#: app/routers/settings.py:298
+#, python-format
+msgid "Series per day must be a whole number from 1 to %(max)s"
+msgstr "Le serie al giorno devono essere un numero intero da 1 a %(max)s"
+
+#: app/routers/settings.py:443
+msgid "No URL provided"
+msgstr "Nessun URL indicato"
+
+#: app/routers/settings.py:446
+msgid "Test notification sent"
+msgstr "Notifica di prova inviata"
+
+#: app/routers/settings.py:446
+msgid "Send failed — check the URL and server logs"
+msgstr "Invio non riuscito: controlla l'URL e i log del server"
+
 #: app/routers/share.py:36
 msgid "Not found"
 msgstr "Non trovato"
@@ -1455,6 +1609,7 @@ msgid "Delete Selected"
 msgstr "Elimina selezionati"
 
 #: app/templates/browse.html:111
+#: app/templates/fragments/settings/library.html:11
 msgid "Collection"
 msgstr "Collezione"
 
@@ -1827,6 +1982,7 @@ msgstr "Fotografa i libri su uno scaffale, in pila o a faccia in su (va bene anc
 msgid "Set one up under"
 msgstr "Configurane uno in"
 
+#: app/templates/fragments/settings/sidebar.html:12
 #: app/templates/intake.html:11
 msgid "Integrations"
 msgstr "Integrazioni"
@@ -1996,6 +2152,9 @@ msgstr "Tag predefiniti, es. Ricettario; Autografato"
 #: app/templates/fragments/book_search_results.html:31
 #: app/templates/fragments/dvd_search_results.html:29
 #: app/templates/fragments/game_search_results.html:31
+#: app/templates/fragments/settings/library.html:174
+#: app/templates/fragments/settings/library.html:216
+#: app/templates/fragments/settings/library.html:247
 #: app/templates/intake.html:223
 msgid "Add"
 msgstr "Aggiungi"
@@ -2256,6 +2415,7 @@ msgstr "in prestito"
 #: app/templates/fragments/item_copies.html:87
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
+#: app/templates/fragments/settings/library.html:134
 #: app/templates/item_detail.html:309
 msgid "Edit"
 msgstr "Modifica"
@@ -2521,6 +2681,11 @@ msgstr "Durata (min)"
 
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
+#: app/templates/fragments/settings/library.html:54
+#: app/templates/fragments/settings/library.html:319
+#: app/templates/fragments/settings/library.html:338
+#: app/templates/fragments/settings/price_alerts.html:35
+#: app/templates/fragments/settings/release_radar.html:27
 #: app/templates/item_edit.html:374 app/templates/series.html:199
 msgid "Save"
 msgstr "Salva"
@@ -2529,6 +2694,7 @@ msgstr "Salva"
 msgid "Tags save as you add or remove them."
 msgstr "I tag si salvano mentre li aggiungi o li rimuovi."
 
+#: app/templates/fragments/settings/library.html:303
 #: app/templates/labels.html:9
 msgid "Copy labels"
 msgstr "Etichette delle copie"
@@ -3962,6 +4128,7 @@ msgstr "In prestito presso %(name)s"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58
+#: app/templates/fragments/settings/library.html:257
 msgid "Overdue"
 msgstr "In ritardo"
 
@@ -4679,6 +4846,7 @@ msgstr "la prossima scansione va in posizione <strong class=\"text-shelf-text\">
 msgid "%(n)s not yet ordered"
 msgstr "%(n)s ancora da ordinare"
 
+#: app/templates/fragments/settings/library.html:125
 #: app/templates/fragments/shelf_fill_summary.html:16
 msgid "Arrange"
 msgstr "Disponi"
@@ -4750,4 +4918,323 @@ msgstr[1] "%(num)s elementi sono nel cestino da più del periodo di conservazion
 #: app/templates/fragments/trash_nag.html:13
 msgid "Review expired items"
 msgstr "Rivedi gli elementi scaduti"
+
+#: app/templates/fragments/settings/library.html:12
+#, python-format
+msgid "%(num)s item in your library"
+msgid_plural "%(num)s items in your library"
+msgstr[0] "%(num)s elemento nella tua biblioteca"
+msgstr[1] "%(num)s elementi nella tua biblioteca"
+
+#: app/templates/fragments/settings/library.html:15
+msgid "Display currency"
+msgstr "Valuta mostrata"
+
+#: app/templates/fragments/settings/library.html:27
+msgid "Display only — Shelf never converts amounts between currencies."
+msgstr "Solo per la visualizzazione: Shelf non converte mai gli importi tra valute."
+
+#: app/templates/fragments/settings/library.html:30
+msgid "Metadata search language"
+msgstr "Lingua di ricerca dei dati"
+
+#: app/templates/fragments/settings/library.html:40
+msgid "Preferred language for Open Library title searches — browse search, CSV-import ISBN recovery, and shelf-photo intake."
+msgstr "Lingua preferita per le ricerche per titolo su Open Library: ricerca in Sfoglia, recupero degli ISBN nell'importazione CSV e acquisizione da foto."
+
+#: app/templates/fragments/settings/library.html:61
+msgid "Navigation"
+msgstr "Navigazione"
+
+#: app/templates/fragments/settings/library.html:62
+msgid "Choose which tabs show in the nav bar. Browse and Settings always stay visible. Tabs for integrations that aren't set up stay hidden until you configure them, and a tab whose feature is turned off is turned off in Features, not here."
+msgstr "Scegli quali schede mostrare nella barra di navigazione. Sfoglia e Impostazioni restano sempre visibili. Le schede delle integrazioni non configurate restano nascoste finché non le imposti, e una scheda la cui funzionalità è disattivata si gestisce in Funzionalità, non qui."
+
+#: app/templates/fragments/settings/library.html:65
+msgid "Show in navigation"
+msgstr "Mostra nella navigazione"
+
+#: app/templates/fragments/settings/library.html:81
+msgid "Turned off in Features —"
+msgstr "Disattivata in Funzionalità:"
+
+#: app/templates/fragments/settings/library.html:84
+#: app/templates/fragments/settings/sidebar.html:30
+msgid "Features"
+msgstr "Funzionalità"
+
+#: app/templates/fragments/settings/library.html:88
+#, python-format
+msgid "Hidden until %(what)s is set —"
+msgstr "Nascosta finché non imposti %(what)s:"
+
+#: app/templates/fragments/settings/library.html:91
+msgid "Configure"
+msgstr "Configura"
+
+#: app/templates/fragments/settings/library.html:99
+msgid "Save Navigation"
+msgstr "Salva la navigazione"
+
+#: app/templates/fragments/settings/library.html:106
+msgid "Locations"
+msgstr "Posizioni"
+
+#: app/templates/fragments/settings/library.html:107
+msgid "Locations can be nested to whatever depth your collection needs, for example Living Room → Bookcase 1 → Shelf 3. A parent can also be used as a location itself."
+msgstr "Le posizioni si possono annidare quanto serve alla tua collezione, per esempio Soggiorno → Libreria 1 → Ripiano 3. Anche una posizione che ne contiene altre si può usare come posizione."
+
+#: app/templates/fragments/settings/library.html:113
+msgid "The selected parent location no longer exists."
+msgstr "La posizione superiore scelta non esiste più."
+
+#: app/templates/fragments/settings/library.html:114
+msgid "A location cannot be moved inside itself or one of its children."
+msgstr "Una posizione non può essere spostata dentro se stessa o in una delle sue sotto-posizioni."
+
+#: app/templates/fragments/settings/library.html:115
+msgid "Move or remove this location's child locations before deleting it."
+msgstr "Sposta o rimuovi le sotto-posizioni prima di eliminare questa posizione."
+
+#: app/templates/fragments/settings/library.html:129
+#: app/templates/fragments/settings/library.html:202
+#: app/templates/fragments/settings/library.html:235
+msgid "Remove"
+msgstr "Rimuovi"
+
+#: app/templates/fragments/settings/library.html:137
+msgid "Name"
+msgstr "Nome"
+
+#: app/templates/fragments/settings/library.html:142
+msgid "Parent"
+msgstr "Superiore"
+
+#: app/templates/fragments/settings/library.html:145
+#: app/templates/fragments/settings/library.html:168
+msgid "Top level"
+msgstr "Primo livello"
+
+#: app/templates/fragments/settings/library.html:148
+#: app/templates/fragments/settings/library.html:170
+#, python-format
+msgid "Inside %(place)s"
+msgstr "Dentro %(place)s"
+
+#: app/templates/fragments/settings/library.html:154
+msgid "Save location"
+msgstr "Salva la posizione"
+
+#: app/templates/fragments/settings/library.html:164
+msgid "New location name..."
+msgstr "Nome della nuova posizione..."
+
+#: app/templates/fragments/settings/library.html:183
+msgid "Borrowers"
+msgstr "Persone per i prestiti"
+
+#: app/templates/fragments/settings/library.html:213
+msgid "Add borrower..."
+msgstr "Aggiungi una persona..."
+
+#: app/templates/fragments/settings/library.html:224
+msgid "Game Platforms"
+msgstr "Piattaforme di gioco"
+
+#: app/templates/fragments/settings/library.html:225
+msgid "Platforms available when adding video games. Custom platforms can be added for niche or retro systems."
+msgstr "Piattaforme disponibili quando aggiungi videogiochi. Puoi aggiungerne di personalizzate per sistemi di nicchia o retro."
+
+#: app/templates/fragments/settings/library.html:233
+#, python-format
+msgid "Delete platform '%(name)s'? Items using it will have their platform cleared."
+msgstr "Eliminare la piattaforma '%(name)s'? Gli elementi che la usano resteranno senza piattaforma."
+
+#: app/templates/fragments/settings/library.html:244
+msgid "Platform name (e.g. TurboGrafx-16)..."
+msgstr "Nome della piattaforma (es. TurboGrafx-16)..."
+
+#: app/templates/fragments/settings/library.html:257
+msgid "Loans past their due date — or, when no due date was set, out longer than the window below — show an"
+msgstr "I prestiti oltre la scadenza (o, se non c'è una scadenza, fuori da più del periodo qui sotto) mostrano il badge"
+
+#: app/templates/fragments/settings/library.html:257
+msgid "badge. Configure a notification URL to get a daily digest of overdue loans."
+msgstr ". Configura un URL di notifica per ricevere ogni giorno un riepilogo dei prestiti in ritardo."
+
+#: app/templates/fragments/settings/library.html:260
+msgid "Overdue after (days, for loans without a due date — 0 disables)"
+msgstr "In ritardo dopo (giorni, per prestiti senza scadenza; 0 disattiva)"
+
+#: app/templates/fragments/settings/library.html:266
+msgid "Notification URL (ntfy topic or webhook)"
+msgstr "URL di notifica (topic ntfy o webhook)"
+
+#: app/templates/fragments/settings/library.html:270
+msgid "ntfy"
+msgstr "ntfy"
+
+#: app/templates/fragments/settings/library.html:271
+msgid "Webhook (JSON)"
+msgstr "Webhook (JSON)"
+
+#: app/templates/fragments/settings/library.html:280
+msgid "Test"
+msgstr "Prova"
+
+#: app/templates/fragments/settings/library.html:281
+msgid "Sending..."
+msgstr "Invio in corso..."
+
+#: app/templates/fragments/settings/library.html:289
+msgid "Remove saved URL (disables reminders)"
+msgstr "Rimuovi l'URL salvato (disattiva i promemoria)"
+
+#: app/templates/fragments/settings/library.html:294
+msgid "Save Lending Settings"
+msgstr "Salva le impostazioni dei prestiti"
+
+#: app/templates/fragments/settings/library.html:306
+msgid "Generated codes read PREFIX-000001. Changing the prefix does not renumber existing labels."
+msgstr "I codici generati hanno la forma PREFISSO-000001. Cambiare il prefisso non rinumera le etichette esistenti."
+
+#: app/templates/fragments/settings/library.html:308
+msgid "The prefix must be 1 to 8 letters or digits."
+msgstr "Il prefisso deve essere di 1-8 lettere o cifre."
+
+#: app/templates/fragments/settings/library.html:312
+msgid "Code prefix"
+msgstr "Prefisso dei codici"
+
+#: app/templates/fragments/settings/library.html:328
+msgid "Deleted items and copies stay in Trash until someone restores them or an admin deletes them permanently. Nothing is deleted on a timer: past this window, an admin is prompted to empty them."
+msgstr "Gli elementi e le copie eliminati restano nel cestino finché qualcuno non li ripristina o un amministratore non li elimina definitivamente. Niente viene eliminato a tempo: oltre questo periodo, a un amministratore viene chiesto di svuotarli."
+
+#: app/templates/fragments/settings/library.html:331
+msgid "Prompt to empty Trash after (days — 0 never prompts)"
+msgstr "Chiedi di svuotare il cestino dopo (giorni; 0 non chiede mai)"
+
+#: app/templates/fragments/settings/library.html:336
+msgid "Browse the deleted items and copies themselves from the account menu → Library → Trash."
+msgstr "Puoi sfogliare gli elementi e le copie eliminati dal menu account → Biblioteca → Cestino."
+
+#: app/templates/fragments/settings/page_header.html:4
+msgid "Manage your library, connected services, data and user access."
+msgstr "Gestisci la biblioteca, i servizi collegati, i dati e l'accesso degli utenti."
+
+#: app/templates/fragments/settings/page_header.html:13
+msgid "Location name is required."
+msgstr "Il nome della posizione è obbligatorio."
+
+#: app/templates/fragments/settings/page_header.html:15
+msgid "A location with that name already exists."
+msgstr "Esiste già una posizione con questo nome."
+
+#: app/templates/fragments/settings/page_header.html:17
+msgid "That location no longer exists."
+msgstr "Questa posizione non esiste più."
+
+#: app/templates/fragments/settings/page_header.html:27
+msgid "Tag name is required."
+msgstr "Il nome del tag è obbligatorio."
+
+#: app/templates/fragments/settings/page_header.html:29
+msgid "A tag with that name already exists — merging tags is not supported yet."
+msgstr "Esiste già un tag con questo nome; l'unione dei tag non è ancora supportata."
+
+#: app/templates/fragments/settings/page_header.html:31
+msgid "That tag no longer exists."
+msgstr "Questo tag non esiste più."
+
+#: app/templates/fragments/settings/page_header.html:33
+msgid "Choose a media type from the list."
+msgstr "Scegli un tipo di media dall'elenco."
+
+#: app/templates/fragments/settings/price_alerts.html:9
+msgid "Tracks the publisher's list price. Good for spotting reprints and price cuts, not used-market deals."
+msgstr "Segue il prezzo di listino dell'editore. Utile per scoprire ristampe e ribassi, non le occasioni dell'usato."
+
+#: app/templates/fragments/settings/price_alerts.html:13
+#, python-format
+msgid "Alert when the price drops by (%%)"
+msgstr "Avvisa quando il prezzo scende del (%%)"
+
+#: app/templates/fragments/settings/price_alerts.html:20
+msgid "Books checked per night"
+msgstr "Libri controllati per notte"
+
+#: app/templates/fragments/settings/price_alerts.html:27
+msgid "Each night Shelf checks the wishlisted books it looked at longest ago, up to this many, so a large wishlist is covered over several nights."
+msgstr "Ogni notte Shelf controlla, fino a questo numero, i libri della lista desideri guardati meno di recente, così una lista grande viene coperta in più notti."
+
+#: app/templates/fragments/settings/price_alerts.html:28
+#: app/templates/fragments/settings/release_radar.html:20
+#, python-format
+msgid "Last run: %(when)s"
+msgstr "Ultima esecuzione: %(when)s"
+
+#: app/templates/fragments/settings/price_alerts.html:30
+msgid "Alerts are sent through the notification URL on the Library tab's Lending card — none is set yet."
+msgstr "Gli avvisi vengono inviati tramite l'URL di notifica nella scheda Prestiti della sezione Biblioteca: non ne è ancora impostato nessuno."
+
+#: app/templates/fragments/settings/price_alerts.html:31
+#: app/templates/fragments/settings/release_radar.html:23
+msgid "Set one under Library → Lending"
+msgstr "Impostalo in Biblioteca → Prestiti"
+
+#: app/templates/fragments/settings/price_alerts.html:31
+msgid "Alerts are sent through the notification URL on the Library tab's Lending card."
+msgstr "Gli avvisi vengono inviati tramite l'URL di notifica nella scheda Prestiti della sezione Biblioteca."
+
+#: app/templates/fragments/settings/release_radar.html:10
+msgid "Announcements come from Hardcover. If none is found, that does not mean nothing is coming."
+msgstr "Gli annunci arrivano da Hardcover. Se non se ne trova nessuno, non significa che non arrivi nulla."
+
+#: app/templates/fragments/settings/release_radar.html:13
+msgid "Series checked per day"
+msgstr "Serie controllate al giorno"
+
+#: app/templates/fragments/settings/release_radar.html:19
+msgid "Each day Shelf checks the watched series it looked at longest ago, up to this many, so many watches are covered over several days."
+msgstr "Ogni giorno Shelf controlla, fino a questo numero, le serie seguite guardate meno di recente, così molte serie vengono coperte in più giorni."
+
+#: app/templates/fragments/settings/release_radar.html:22
+msgid "Announcements are sent through the notification URL on the Library tab's Lending card — none is set yet."
+msgstr "Gli annunci vengono inviati tramite l'URL di notifica nella scheda Prestiti della sezione Biblioteca: non ne è ancora impostato nessuno."
+
+#: app/templates/fragments/settings/release_radar.html:23
+msgid "Announcements are sent through the notification URL on the Library tab's Lending card."
+msgstr "Gli annunci vengono inviati tramite l'URL di notifica nella scheda Prestiti della sezione Biblioteca."
+
+#: app/templates/fragments/settings/sidebar.html:2
+msgid "Settings sections"
+msgstr "Sezioni delle impostazioni"
+
+#: app/templates/fragments/settings/sidebar.html:7
+msgid "Display, navigation, locations and lending."
+msgstr "Visualizzazione, navigazione, posizioni e prestiti."
+
+#: app/templates/fragments/settings/sidebar.html:13
+msgid "Connected services, sync and external providers."
+msgstr "Servizi collegati, sincronizzazione e fornitori esterni."
+
+#: app/templates/fragments/settings/sidebar.html:18
+msgid "Data"
+msgstr "Dati"
+
+#: app/templates/fragments/settings/sidebar.html:19
+msgid "Import, export, backups and maintenance."
+msgstr "Importazione, esportazione, backup e manutenzione."
+
+#: app/templates/fragments/settings/sidebar.html:24
+msgid "Users"
+msgstr "Utenti"
+
+#: app/templates/fragments/settings/sidebar.html:25
+msgid "Accounts, roles and access."
+msgstr "Account, ruoli e accessi."
+
+#: app/templates/fragments/settings/sidebar.html:31
+msgid "Turn optional parts of Shelf on or off."
+msgstr "Attiva o disattiva le parti facoltative di Shelf."
 

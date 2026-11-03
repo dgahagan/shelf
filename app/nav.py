@@ -127,8 +127,8 @@ def _is_configured(requirement: str, settings: dict[str, str]) -> bool:
 
 # What each requirement needs, for the settings UI's explanatory hint.
 REQUIREMENT_LABELS = {
-    "vision": "a vision provider",
-    "hardcover": "a Hardcover token",
+    "vision": N_("a vision provider"),
+    "hardcover": N_("a Hardcover token"),
 }
 
 

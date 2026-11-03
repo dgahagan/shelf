@@ -4,35 +4,35 @@
    calls goToField() from the enclosing settingsTabs scope. #}
 {% import "fragments/settings/feature_off_note.html" as feature_notes %}
 <div class="border-t border-shelf-border pt-4 space-y-3" data-testid="price-alerts-block">
-    <h3 class="text-sm font-semibold">Price alerts</h3>
+    <h3 class="text-sm font-semibold">{{ _('Price alerts') }}</h3>
     {{ feature_notes.feature_off_note('price_alerts') }}
-    <p class="text-xs text-shelf-muted" data-testid="price-alert-honesty">Tracks the publisher's list price. Good for spotting reprints and price cuts, not used-market deals.</p>
+    <p class="text-xs text-shelf-muted" data-testid="price-alert-honesty">{{ _("Tracks the publisher's list price. Good for spotting reprints and price cuts, not used-market deals.") }}</p>
     <form method="POST" action="/api/settings/price-alerts" class="space-y-3">
         <div class="flex flex-wrap gap-4">
             <div>
-                <label for="price_alert_threshold_pct" class="block text-sm font-medium text-shelf-muted mb-1">Alert when the price drops by (%)</label>
+                <label for="price_alert_threshold_pct" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Alert when the price drops by (%%)') }}</label>
                 <input type="number" id="price_alert_threshold_pct" name="price_alert_threshold_pct" min="1" max="{{ price_alert_max_threshold }}" step="1" required
                        value="{{ settings.get('price_alert_threshold_pct', price_alert_default_threshold) }}"
                        data-testid="price-alert-threshold"
                        class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
-                <label for="price_alert_nightly_cap" class="block text-sm font-medium text-shelf-muted mb-1">Books checked per night</label>
+                <label for="price_alert_nightly_cap" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Books checked per night') }}</label>
                 <input type="number" id="price_alert_nightly_cap" name="price_alert_nightly_cap" min="1" max="{{ price_alert_max_cap }}" step="1" required
                        value="{{ settings.get('price_alert_nightly_cap', price_alert_default_cap) }}"
                        data-testid="price-alert-cap"
                        class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
         </div>
-        <p class="text-xs text-shelf-muted">Each night Shelf checks the wishlisted books it looked at longest ago, up to this many, so a large wishlist is covered over several nights.</p>
-        <p class="text-xs text-shelf-muted" data-testid="price-alert-last-run">Last run: {{ price_alert_last_run_display }}</p>
+        <p class="text-xs text-shelf-muted">{{ _('Each night Shelf checks the wishlisted books it looked at longest ago, up to this many, so a large wishlist is covered over several nights.') }}</p>
+        <p class="text-xs text-shelf-muted" data-testid="price-alert-last-run">{{ _('Last run: %(when)s', when=price_alert_last_run_display) }}</p>
         <p class="text-xs text-shelf-muted" data-testid="price-alert-notify-hint">
-            Alerts are sent through the notification URL on the Library tab's Lending card{% if not secrets_present['notify_url'] %} — none is set yet.
-            <button type="button" @click="goToField('library', 'notify-url-input')" class="text-shelf-accent2 hover:underline" data-testid="price-alert-notify-link">Set one under Library → Lending</button>{% else %}.{% endif %}
+            {% if not secrets_present['notify_url'] %}{{ _("Alerts are sent through the notification URL on the Library tab's Lending card — none is set yet.") }}
+            <button type="button" @click="goToField('library', 'notify-url-input')" class="text-shelf-accent2 hover:underline" data-testid="price-alert-notify-link">{{ _('Set one under Library → Lending') }}</button>{% else %}{{ _("Alerts are sent through the notification URL on the Library tab's Lending card.") }}{% endif %}
         </p>
         <button type="submit" data-testid="price-alert-save"
                 class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-            Save
+            {{ _('Save') }}
         </button>
     </form>
 </div>

@@ -18,12 +18,12 @@ async function postJSON(url, opts) {
     try {
         r = await fetch(url, opts);
     } catch {
-        return { ok: false, message: 'Network error — check your connection' };
+        return { ok: false, message: t('Network error — check your connection') };
     }
     try {
         return await r.json();
     } catch {
-        return { ok: false, message: r.ok ? 'Unexpected response from server' : `Request failed (${r.status})` };
+        return { ok: false, message: r.ok ? t('Unexpected response from server') : t('Request failed ({status})').replace('{status}', r.status) };
     }
 }
 
@@ -79,7 +79,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ url: this.$refs.notifyUrl.value, format: this.$refs.notifyFormat.value })
                 }).then(r => r.json())
                   .then(d => { this.ntStatus = d; this.ntTesting = false; })
-                  .catch(() => { this.ntStatus = { ok: false, message: 'Request failed' }; this.ntTesting = false; });
+                  .catch(() => { this.ntStatus = { ok: false, message: t('Request failed') }; this.ntTesting = false; });
             }
         };
     });
@@ -750,7 +750,7 @@ document.addEventListener('alpine:init', function () {
                 alert(d.message);
             },
             async deleteUser(id, name) {
-                if (!confirm('Delete user ' + name + '?')) return;
+                if (!confirm(t('Delete user {name}?').replace('{name}', function () { return name; }))) return;
                 const d = await postJSON('/api/users/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();
@@ -844,7 +844,7 @@ document.addEventListener('alpine:init', function () {
             },
             async revoke(id, name) {
                 const self = this;
-                if (!confirm('Revoke token ' + name + '?')) return;
+                if (!confirm(t('Revoke token {name}?').replace('{name}', function () { return name; }))) return;
                 const d = await postJSON('/api/tokens/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) { self.result = d; return; }
                 self.result = false;
@@ -886,7 +886,7 @@ document.addEventListener('submit', async function (e) {
     const originalLabel = button ? button.textContent : '';
     if (button) {
         button.disabled = true;
-        button.textContent = 'Saving…';
+        button.textContent = t('Saving…');
     }
 
     try {
@@ -907,7 +907,7 @@ document.addEventListener('submit', async function (e) {
         const refreshed = new DOMParser().parseFromString(html, 'text/html');
         const currentPanel = document.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
         const updatedPanel = refreshed.querySelector('[data-testid="settings-section-content"] [x-show="tab === \'features\'"]');
-        if (!currentPanel || !updatedPanel) throw new Error('Could not refresh feature settings');
+        if (!currentPanel || !updatedPanel) throw new Error(t('Could not refresh feature settings'));
 
         // Feature flags also decide which tabs the server renders in the
         // desktop and mobile navigation. Keep those in sync with the saved
@@ -923,6 +923,6 @@ document.addEventListener('submit', async function (e) {
             button.disabled = false;
             button.textContent = originalLabel;
         }
-        alert(error.message || 'Could not save feature settings');
+        alert(error.message || t('Could not save feature settings'));
     }
 });
