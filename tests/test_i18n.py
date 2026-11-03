@@ -141,6 +141,16 @@ def test_values_with_a_percent_sign_reach_browse_unformatted(admin_client, db, l
     assert "100%d" in admin_client.get("/browse").text
 
 
+def test_item_page_is_translated(admin_client, db):
+    item_id = _insert_item(db, title="Dettaglio", isbn="9780000000064", source="50%d off")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get(f"/item/{item_id}").text
+    for text in ("Torna alla collezione", "Tipo:</span> Libro", "Aggiunto il", "tramite 50%D Off", "Prestiti"):
+        assert text in page, text
+
+
 def test_catalogs_are_complete_and_compiled():
     """Same check as `make check-i18n`, so a stale .mo fails the suite too."""
     r = subprocess.run([sys.executable, "scripts/i18n.py", "--check"],

@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-02 22:44+0100\n"
+"PO-Revision-Date: 2026-11-03 06:48+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -52,6 +52,14 @@ msgstr "Elementi da spostare nel cestino: {count}. Confermi?"
 #, python-brace-format
 msgid "Moved {count} items to Trash"
 msgstr "Elementi spostati nel cestino: {count}"
+
+#: static/js/components-item.js:419
+msgid "Synced to Hardcover"
+msgstr "Sincronizzato con Hardcover"
+
+#: static/js/components-item.js:420
+msgid "Connection failed"
+msgstr "Connessione non riuscita"
 
 #: static/js/components-settings.js:767
 msgid "Never"

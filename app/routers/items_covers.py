@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
+from app import i18n
 from app.auth import require_role
 from app.config import BOOK_MEDIA_TYPES, COVERS_DIR, HTTP_TIMEOUT
 from app.database import get_db, get_setting
@@ -70,7 +71,7 @@ async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
             "SELECT isbn, cover_path, media_type FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
     if not item or not item["isbn"]:
-        return {"ok": False, "message": "No ISBN"}
+        return {"ok": False, "message": i18n.gettext("No ISBN")}
     if item["cover_path"]:
         return {"ok": True, "cover_path": item["cover_path"]}
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -83,7 +84,7 @@ async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
                     db.execute("UPDATE items SET cover_path = ? WHERE id = ?", (cover_path, item_id))
     if cover_path:
         return {"ok": True, "cover_path": cover_path}
-    return {"ok": False, "message": "No cover found"}
+    return {"ok": False, "message": i18n.gettext("No cover found")}
 
 # The picker's empty state must not report "nothing found" when the provider
 # was never configured. Keyed by provider, and the key list the gate checks is

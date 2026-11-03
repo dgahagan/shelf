@@ -1,6 +1,6 @@
 <div id="item-tags" class="mb-6">
     {% if item_tags or (user and user.role in ('admin', 'editor')) %}
-    <p data-tags-label class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Tags</p>
+    <p data-tags-label class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">{{ _('Tags') }}</p>
     <div class="flex flex-wrap items-center gap-2">
         {% for tag in item_tags %}
         <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-shelf-accent/10 text-shelf-accent2 border border-shelf-accent/20 rounded-full text-xs">
@@ -8,7 +8,7 @@
             {% if user and user.role in ('admin', 'editor') %}
             <button hx-delete="/api/items/{{ item_id }}/tags/{{ tag.id }}"
                     hx-target="#item-tags" hx-swap="outerHTML"
-                    class="inline-flex items-center justify-center w-6 h-6 -my-1 -mr-2 hover:text-shelf-error" title="Remove tag">&times;</button>
+                    class="inline-flex items-center justify-center w-6 h-6 -my-1 -mr-2 hover:text-shelf-error" title="{{ _('Remove tag') }}">&times;</button>
             {% endif %}
         </span>
         {% endfor %}
@@ -16,7 +16,7 @@
         <form hx-post="/api/items/{{ item_id }}/tags"
               hx-target="#item-tags" hx-swap="outerHTML"
               class="inline-flex items-center gap-1">
-            <input type="text" name="name" list="tag-suggestions" placeholder="+ tag"
+            <input type="text" name="name" list="tag-suggestions" placeholder="{{ _('+ tag') }}"
                    maxlength="40" autocomplete="off" data-narrow-ok
                    class="w-24 bg-shelf-bg border border-shelf-border rounded-full px-2.5 py-1 text-xs text-shelf-text focus:ring-1 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
             <datalist id="tag-suggestions">

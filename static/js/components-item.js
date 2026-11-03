@@ -416,8 +416,8 @@ document.addEventListener('alpine:init', function () {
                 this.hcPushing = true; this.hcResult = false;
                 fetch('/api/hardcover/push/' + this.itemId, { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() } })
                     .then(r => r.json())
-                    .then(d => { this.hcResult = d; this.hcPushing = false; if (d.ok) showToast('Synced to Hardcover'); })
-                    .catch(() => { this.hcResult = { ok: false, message: 'Connection failed' }; this.hcPushing = false; });
+                    .then(d => { this.hcResult = d; this.hcPushing = false; if (d.ok) showToast(t('Synced to Hardcover')); })
+                    .catch(() => { this.hcResult = { ok: false, message: t('Connection failed') }; this.hcPushing = false; });
             }
         };
     });

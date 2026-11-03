@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.services import media_groups
@@ -32,7 +33,7 @@ def _render_panel(request: Request, item_id: int):
     with get_db() as db:
         context = _panel_context(db, item_id)
     if context is None:
-        return HTMLResponse("Item not found", status_code=404)
+        return HTMLResponse(i18n.gettext("Item not found"), status_code=404)
     return request.app.state.templates.TemplateResponse(
         request, "fragments/related_media_panel.html", context
     )
@@ -63,7 +64,7 @@ async def related_media_search(
 ):
     with get_db() as db:
         if not db.execute("SELECT 1 FROM items_live WHERE id = ?", (item_id,)).fetchone():
-            return HTMLResponse("Item not found", status_code=404)
+            return HTMLResponse(i18n.gettext("Item not found"), status_code=404)
         candidates = media_groups.search_candidates(db, item_id, q, limit=20)
     return request.app.state.templates.TemplateResponse(
         request,
@@ -81,11 +82,11 @@ async def related_media_link(
     _=Depends(require_role("editor")),
 ):
     if item_id == other_item_id:
-        return HTMLResponse("An item cannot be related to itself", status_code=400)
+        return HTMLResponse(i18n.gettext("An item cannot be related to itself"), status_code=400)
 
     with get_db() as db:
         if not _both_items_exist(db, item_id, other_item_id):
-            return HTMLResponse("Item not found", status_code=404)
+            return HTMLResponse(i18n.gettext("Item not found"), status_code=404)
         try:
             media_groups.link_items(db, item_id, other_item_id, link_type=link_type)
         except ValueError as exc:
@@ -102,7 +103,7 @@ async def related_media_unlink(
 ):
     with get_db() as db:
         if not _both_items_exist(db, item_id, other_item_id):
-            return HTMLResponse("Item not found", status_code=404)
+            return HTMLResponse(i18n.gettext("Item not found"), status_code=404)
         if not media_groups.unlink_items(db, item_id, other_item_id):
-            return HTMLResponse("Related-media link not found", status_code=404)
+            return HTMLResponse(i18n.gettext("Related-media link not found"), status_code=404)
     return _render_panel(request, item_id)

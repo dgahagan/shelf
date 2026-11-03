@@ -11,7 +11,7 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <!-- Back link -->
-    <a href="{{ back.path }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; {{ back.label }}</a>
+    <a href="{{ back.path }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; {{ _(back.label) }}</a>
 
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <div class="flex flex-col sm:flex-row gap-6">
@@ -21,10 +21,10 @@
             <div class="w-48 shrink-0">
                 {% if item.cover_path %}
                 <img src="/{{ item.cover_path }}" alt="{{ item.title }}" class="w-48 rounded-lg shadow-lg">
-                {% if item.cover_edition_language == "en" %}<p class="text-xs text-shelf-muted mt-2">English cover from another edition</p>{% endif %}
+                {% if item.cover_edition_language == "en" %}<p class="text-xs text-shelf-muted mt-2">{{ _('English cover from another edition') }}</p>{% endif %}
                 {% else %}
                 <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
-                    <span>No Cover</span>
+                    <span>{{ _('No Cover') }}</span>
                     {# …and it keys on the ISBN because the route does: retry-cover
                        answers "No ISBN" without one, and the reload would hide that. #}
                     {% if item.isbn %}
@@ -34,7 +34,7 @@
                     <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
                             data-after-request="reload"
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
-                        Retry ISBN
+                        {{ _('Retry ISBN') }}
                     </button>
                     {% endif %}
                     {% endif %}
@@ -45,7 +45,7 @@
                 <div class="flex flex-col gap-1 mt-2" data-testid="cover-controls">
                     <button hx-get="/api/items/{{ item.id }}/cover-search" hx-target="#cover-candidates" hx-swap="innerHTML"
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
-                        Find cover
+                        {{ _('Find cover') }}
                     </button>
                 </div>
                 <div id="cover-candidates"></div>
@@ -54,8 +54,8 @@
 
             <!-- Metadata -->
             <div class="flex-1 min-w-0">
-                <h1 class="text-2xl font-bold mb-1">{{ item.title }}{% if item.wishlisted %} <span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0 align-middle" data-testid="wishlist-badge">Wishlist</span>{% endif %}</h1>
-                {% if item.wishlisted and price_line and feature_on('price_alerts') %}<p class="text-sm text-shelf-muted mb-2" data-testid="list-price-line">List price {{ price_line.current|money }}{% if price_line.stale %} as of {{ price_line.current_on }}{% endif %}{% if price_line.was is not none %} &middot; was {{ price_line.was|money }} on {{ price_line.was_on }}{% endif %}</p>{% endif %}
+                <h1 class="text-2xl font-bold mb-1">{{ item.title }}{% if item.wishlisted %} <span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0 align-middle" data-testid="wishlist-badge">{{ _('Wishlist') }}</span>{% endif %}</h1>
+                {% if item.wishlisted and price_line and feature_on('price_alerts') %}<p class="text-sm text-shelf-muted mb-2" data-testid="list-price-line">{{ _('List price %(price)s', price=price_line.current|money) }}{% if price_line.stale %} {{ _('as of %(date)s', date=price_line.current_on) }}{% endif %}{% if price_line.was is not none %} &middot; {{ _('was %(price)s on %(date)s', price=price_line.was|money, date=price_line.was_on) }}{% endif %}</p>{% endif %}
                 {% if item.wishlisted and buy_links and feature_on('buy_links') %}<div class="mb-2" data-testid="buy-links">
                     <p class="text-sm"><span class="text-shelf-muted">Buy:</span>{% for l in buy_links %} <a href="{{ l.url }}" target="_blank" rel="noopener sponsored" data-testid="buy-link-{{ l.store }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ l.label }}</a>{% if not loop.last %} &middot;{% endif %}{% endfor %}</p>
                     <p class="text-xs text-shelf-muted" data-testid="buy-links-disclosure">Affiliate links carrying your own tags (Settings &rarr; Library &rarr; Buy links).{% for l in buy_links %}{% if l.store == 'bookshop' %} Bookshop.org supports independent bookstores.{% endif %}{% endfor %}</p>
@@ -73,63 +73,63 @@
 
                 <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm mb-6">
                     {% if item.media_type %}
-                    <div><span class="text-shelf-muted">Type:</span> {{ media_types.get(item.media_type, item.media_type) }}</div>
+                    <div><span class="text-shelf-muted">{{ _('Type:') }}</span> {{ (_(media_types[item.media_type]) if item.media_type in media_types else item.media_type) }}</div>
                     {% endif %}
                     {% if item.language %}
-                    <div><span class="text-shelf-muted">Language:</span> {{ search_langs.get(item.language, item.language) }}</div>
+                    <div><span class="text-shelf-muted">{{ _('Language:') }}</span> {{ search_langs.get(item.language, item.language) }}</div>
                     {% endif %}
                     {% if item.platform %}
-                    <div><span class="text-shelf-muted">Platform:</span> {{ game_platforms.get(item.platform, item.platform) }}</div>
+                    <div><span class="text-shelf-muted">{{ _('Platform:') }}</span> {{ game_platforms.get(item.platform, item.platform) }}</div>
                     {% endif %}
                     {% if item.publisher %}
-                    <div><span class="text-shelf-muted">Publisher:</span> {{ item.publisher }}</div>
+                    <div><span class="text-shelf-muted">{{ _('Publisher:') }}</span> {{ item.publisher }}</div>
                     {% endif %}
                     {% if item.publish_year %}
-                    <div><span class="text-shelf-muted">Year:</span> {{ item.publish_year }}</div>
+                    <div><span class="text-shelf-muted">{{ _('Year:') }}</span> {{ item.publish_year }}</div>
                     {% endif %}
                     {% if item.page_count %}
-                    <div><span class="text-shelf-muted">Pages:</span> {{ item.page_count }}</div>
+                    <div><span class="text-shelf-muted">{{ _('Pages:') }}</span> {{ item.page_count }}</div>
                     {% endif %}
                     {% if item.isbn %}
-                    <div><span class="text-shelf-muted">ISBN:</span> <span class="font-mono">{{ item.isbn }}</span></div>
+                    <div><span class="text-shelf-muted">{{ _('ISBN:') }}</span> <span class="font-mono">{{ item.isbn }}</span></div>
                     {% endif %}
                     {% if item.series_name %}
-                    <div><span class="text-shelf-muted">Series:</span>
+                    <div><span class="text-shelf-muted">{{ _('Series:') }}</span>
                         {% if feature_on('series') %}
                         <a href="/series" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.series_name }}</a>{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}
                         {% else %}
                         <span data-testid="series-name">{{ item.series_name }}</span>{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}
                         {% endif %}
                         {% if series_progress and feature_on('series') %}<span class="text-xs text-shelf-muted" data-testid="series-progress">
-                            {%- if series_progress.top and (series_progress.count >= 2 or series_progress.gaps) %} · you own {{ series_progress.owned }} of 1–{{ series_progress.top }}{% if series_progress.gaps %}, missing {% for g in series_progress.gaps[:8] %}#{{ g }}{% if not loop.last %}, {% endif %}{% endfor %}{% if series_progress.gaps|length > 8 %}…{% endif %}{% endif %}{% endif %}
-                            {%- if series_progress.hc_total and feature_on('hardcover') %} · <span data-testid="series-hc-total">{{ series_progress.hc_total }} in series (Hardcover)</span>{% endif %}
+                            {%- if series_progress.top and (series_progress.count >= 2 or series_progress.gaps) %} · {{ _('you own %(owned)s of 1–%(top)s', owned=series_progress.owned, top=series_progress.top) }}{% if series_progress.gaps %}, {{ _('missing') }} {% for g in series_progress.gaps[:8] %}#{{ g }}{% if not loop.last %}, {% endif %}{% endfor %}{% if series_progress.gaps|length > 8 %}…{% endif %}{% endif %}{% endif %}
+                            {%- if series_progress.hc_total and feature_on('hardcover') %} · <span data-testid="series-hc-total">{{ _('%(count)s in series (Hardcover)', count=series_progress.hc_total) }}</span>{% endif %}
                         </span>{% endif %}
                     </div>
                     {% endif %}
                     {% if item.narrator %}
-                    <div><span class="text-shelf-muted">Narrator:</span> <a href="/browse?q={{ item.narrator|urlencode }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.narrator }}</a></div>
+                    <div><span class="text-shelf-muted">{{ _('Narrator:') }}</span> <a href="/browse?q={{ item.narrator|urlencode }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.narrator }}</a></div>
                     {% endif %}
                     {% if item.duration_mins %}
-                    <div><span class="text-shelf-muted">Duration:</span> {{ (item.duration_mins // 60) }}h {{ item.duration_mins % 60 }}m</div>
+                    <div><span class="text-shelf-muted">{{ _('Duration:') }}</span> {{ (item.duration_mins // 60) }}h {{ item.duration_mins % 60 }}m</div>
                     {% endif %}
                     {% include "fragments/item_copies.html" %}
                     {% if item.manual_value is not none %}
-                    <div><span class="text-shelf-muted">Value:</span> <span class="text-shelf-success">{{ item.manual_value|money }}</span> <span class="text-xs text-shelf-muted">(manual)</span></div>
+                    <div><span class="text-shelf-muted">{{ _('Value:') }}</span> <span class="text-shelf-success">{{ item.manual_value|money }}</span> <span class="text-xs text-shelf-muted">{{ _('(manual)') }}</span></div>
                     {% elif item.estimated_value and feature_on('valuation') %}
-                    <div data-testid="estimated-value"><span class="text-shelf-muted">Est. Value:</span> <span class="text-shelf-success">{{ item.estimated_value|money }}</span>{% if item.value_updated_at %} <span class="text-xs text-shelf-muted" data-testid="value-as-of">(as of {{ item.value_updated_at[:10] }})</span>{% endif %}</div>
+                    <div data-testid="estimated-value"><span class="text-shelf-muted">{{ _('Est. Value:') }}</span> <span class="text-shelf-success">{{ item.estimated_value|money }}</span>{% if item.value_updated_at %} <span class="text-xs text-shelf-muted" data-testid="value-as-of">({{ _('as of %(date)s', date=item.value_updated_at[:10]) }})</span>{% endif %}</div>
                     {% endif %}
                 </div>
 
                 {% if item.description %}
                 <div class="mb-6" x-data="{ expanded: false }">
-                    <h3 class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">Synopsis</h3>
+                    <h3 class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">{{ _('Synopsis') }}</h3>
                     {% set clean_desc = item.description|strip_html %}
                     <div class="text-sm text-shelf-text leading-relaxed whitespace-pre-line"
                          :class="expanded ? '' : 'line-clamp-5'">{{ clean_desc }}</div>
                     {% if clean_desc|length > 350 %}
                     <button @click="expanded = !expanded"
                             class="mt-1.5 text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors"
-                            x-text="expanded ? 'Show less' : 'Read more'"></button>
+                            ><span x-show="!expanded">{{ _('Read more') }}</span><span x-show="expanded">{{ _('Show less') }}</span></button>
                     {% endif %}
                 </div>
                 {% elif user and user.role in ('admin', 'editor') and item.media_type in synopsis_media_types %}
@@ -138,10 +138,10 @@
                             :disabled="fetching"
                             data-testid="fetch-synopsis"
                             class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:bg-shelf-border hover:text-shelf-text transition-colors disabled:opacity-50">
-                        <span x-show="!fetching">Fetch synopsis</span>
-                        <span x-show="fetching">Searching&hellip;</span>
+                        <span x-show="!fetching">{{ _('Fetch synopsis') }}</span>
+                        <span x-show="fetching">{{ _('Searching…') }}</span>
                     </button>
-                    <p x-show="failed" x-cloak class="text-xs text-shelf-muted mt-1.5">No synopsis found on Open Library or Google Books.</p>
+                    <p x-show="failed" x-cloak class="text-xs text-shelf-muted mt-1.5">{{ _('No synopsis found on Open Library or Google Books.') }}</p>
                 </div>
                 {% endif %}
 
@@ -151,12 +151,12 @@
                    whole, and a loader inside it would reload (and briefly
                    duplicate) this panel on every add/remove. #}
                 <div hx-get="/api/related-media/items/{{ item_id }}/panel" hx-trigger="load" hx-swap="outerHTML">
-                    <div class="mt-4 text-xs text-shelf-muted">Loading related media…</div>
+                    <div class="mt-4 text-xs text-shelf-muted">{{ _('Loading related media…') }}</div>
                 </div>
 
                 {% if item.notes %}
                 <div class="text-sm bg-shelf-bg rounded-lg p-3 mb-6">
-                    <span class="text-shelf-muted">Notes:</span> {{ item.notes }}
+                    <span class="text-shelf-muted">{{ _('Notes:') }}</span> {{ item.notes }}
                 </div>
                 {% endif %}
 
@@ -165,7 +165,7 @@
                 <div class="mb-4" data-testid="abs-playback">
                     <a href="{{ abs_url }}" target="_blank" rel="noopener"
                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-sm hover:bg-shelf-accent/30 transition-colors">
-                        {% if item.media_type == 'ebook' %}&#128214; Read on Audiobookshelf{% else %}&#9654; Listen on Audiobookshelf{% endif %}
+                        {% if item.media_type == 'ebook' %}&#128214; {{ _('Read on Audiobookshelf') }}{% else %}&#9654; {{ _('Listen on Audiobookshelf') }}{% endif %}
                     </a>
                 </div>
                 {% endif %}
@@ -181,14 +181,14 @@
                             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors
                                    {% if item.hardcover_user_book_id %}bg-shelf-success/20 text-shelf-success hover:bg-shelf-success/30
                                    {% else %}bg-shelf-accent/20 text-shelf-accent2 hover:bg-shelf-accent/30{% endif %}">
-                        <span x-show="!hcPushing">{% if item.hardcover_user_book_id %}Synced to Hardcover{% else %}Push to Hardcover{% endif %}</span>
-                        <span x-show="hcPushing">Syncing...</span>
+                        <span x-show="!hcPushing">{% if item.hardcover_user_book_id %}{{ _('Synced to Hardcover') }}{% else %}{{ _('Push to Hardcover') }}{% endif %}</span>
+                        <span x-show="hcPushing">{{ _('Syncing...') }}</span>
                     </button>
                     <template x-if="hcResult && !hcResult.ok">
                         <p class="text-xs text-shelf-error mt-1" x-text="hcResult.message"></p>
                     </template>
                     <template x-if="hcResult && hcResult.ok && hcResult.status === 'added'">
-                        <p class="text-xs text-shelf-success mt-1">Added to your Hardcover library</p>
+                        <p class="text-xs text-shelf-success mt-1">{{ _('Added to your Hardcover library') }}</p>
                     </template>
                 </div>
                 {% endif %}
@@ -200,7 +200,7 @@
                     {% for la in linked_abs_items %}
                     <a href="{{ la.abs_url }}" target="_blank" rel="noopener"
                        class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-sm hover:bg-shelf-accent/30 transition-colors mr-2">
-                        {% if la.media_type == 'ebook' %}&#128214;{% else %}&#9654;{% endif %} Also in Audiobookshelf ({{ media_types.get(la.media_type, la.media_type) }})
+                        {% if la.media_type == 'ebook' %}&#128214;{% else %}&#9654;{% endif %} {{ _('Also in Audiobookshelf (%(type)s)', type=(_(media_types[la.media_type]) if la.media_type in media_types else la.media_type)) }}
                     </a>
                     {% endfor %}
                 </div>
@@ -209,11 +209,11 @@
                 <!-- Linked Items (other formats) -->
                 {% if linked_items %}
                 <div class="mb-4">
-                    <p class="text-xs text-shelf-muted mb-1">Also available as:</p>
+                    <p class="text-xs text-shelf-muted mb-1">{{ _('Also available as:') }}</p>
                     <div class="flex flex-wrap gap-2">
                         {% for li in linked_items %}
                         <a href="/item/{{ li.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="px-2 py-1 bg-shelf-hover rounded-sm text-xs text-shelf-text hover:bg-shelf-border transition-colors">
-                            {{ media_types.get(li.media_type, li.media_type) }}
+                            {{ (_(media_types[li.media_type]) if li.media_type in media_types else li.media_type) }}
                         </a>
                         {% endfor %}
                     </div>
@@ -227,7 +227,7 @@
                 {% if item.media_type in status_media_types or item.reading_status %}
                 <!-- Status -->
                 <div class="mb-6">
-                    <p class="text-sm font-medium text-shelf-muted mb-2">Status</p>
+                    <p class="text-sm font-medium text-shelf-muted mb-2">{{ _('Status') }}</p>
                     {% include "fragments/reading_status.html" %}
                 </div>
                 {% endif %}
@@ -235,19 +235,19 @@
                 {% if feature_on('lending') and ((user and user.role in ('admin', 'editor')) or current_checkout or checkout_history) %}
                 <!-- Lending -->
                 <div class="mb-6" x-data="{ showLendForm: false }">
-                    <p class="text-sm font-medium text-shelf-muted mb-2">Lending</p>
+                    <p class="text-sm font-medium text-shelf-muted mb-2">{{ _('Lending') }}</p>
                     {% if current_checkout %}
                     <div class="bg-shelf-warning/10 border border-shelf-warning/30 rounded-lg p-3 text-sm">
-                        <p>Lent to <span class="font-medium text-shelf-warning">{{ current_checkout.borrower_name }}</span>
-                        on {{ current_checkout.checked_out[:10] }}
+                        <p>{{ _('Lent to') }} <span class="font-medium text-shelf-warning">{{ current_checkout.borrower_name }}</span>
+                        {{ _('on %(date)s', date=current_checkout.checked_out[:10]) }}
                         {% if current_checkout.due_date %}
-                         · Due: <span class="{% if current_checkout.due_date < now_date %}text-shelf-error{% endif %}">{{ current_checkout.due_date }}</span>
+                         · {{ _('Due:') }} <span class="{% if current_checkout.due_date < now_date %}text-shelf-error{% endif %}">{{ current_checkout.due_date }}</span>
                         {% endif %}
                         </p>
                         {% if user and user.role in ('admin', 'editor') %}
                         <form action="/api/checkouts/{{ current_checkout.id }}/checkin" method="post" class="mt-2">
                             <button type="submit" class="px-3 py-1 bg-shelf-success/20 text-shelf-success rounded-sm text-xs hover:bg-shelf-success/30 transition-colors">
-                                Check In
+                                {{ _('Check In') }}
                             </button>
                         </form>
                         {% endif %}
@@ -255,7 +255,7 @@
                     {% elif user and user.role in ('admin', 'editor') %}
                     <button @click="showLendForm = !showLendForm"
                             class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:border-shelf-accent/50 transition-colors">
-                        Lend this item
+                        {{ _('Lend this item') }}
                     </button>
                     <div x-show="showLendForm" x-transition class="mt-2" style="display:none">
                         {% if borrowers %}
@@ -266,31 +266,31 @@
                                 {% endfor %}
                             </select>
                             <select name="due_days" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                                <option value="14">2 weeks</option>
-                                <option value="7">1 week</option>
-                                <option value="30">1 month</option>
-                                <option value="0">No due date</option>
+                                <option value="14">{{ _('2 weeks') }}</option>
+                                <option value="7">{{ _('1 week') }}</option>
+                                <option value="30">{{ _('1 month') }}</option>
+                                <option value="0">{{ _('No due date') }}</option>
                             </select>
-                            <button type="submit" class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Check Out</button>
+                            <button type="submit" class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Check Out') }}</button>
                         </form>
                         {% else %}
-                        <p class="text-xs text-shelf-muted">Add borrowers in <a href="/settings" class="text-shelf-accent2">Settings</a> first.</p>
+                        <p class="text-xs text-shelf-muted">{{ _('Add borrowers in <a href="/settings" class="text-shelf-accent2">Settings</a> first.') }}</p>
                         {% endif %}
                     </div>
                     {% endif %}
 
                     {% if checkout_history %}
                     <details class="mt-3">
-                        <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">Checkout history ({{ checkout_history|length }})</summary>
+                        <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">{{ _('Checkout history') }} ({{ checkout_history|length }})</summary>
                         <div class="mt-2 space-y-1">
                             {% for co in checkout_history %}
                             <div class="text-xs text-shelf-muted flex gap-2">
                                 <span>{{ co.borrower_name }}</span>
                                 <span>{{ co.checked_out[:10] }}</span>
                                 {% if co.checked_in %}
-                                <span class="text-shelf-success">returned {{ co.checked_in[:10] }}</span>
+                                <span class="text-shelf-success">{{ _('returned %(date)s', date=co.checked_in[:10]) }}</span>
                                 {% else %}
-                                <span class="text-shelf-warning">out</span>
+                                <span class="text-shelf-warning">{{ _('out') }}</span>
                                 {% endif %}
                             </div>
                             {% endfor %}
@@ -304,27 +304,27 @@
                 <div class="flex gap-3">
                     {% if user and user.role in ('admin', 'editor') %}
                     <a href="/item/{{ item.id }}/edit{% if back.key %}?from={{ back.key }}{% endif %}" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                        Edit
+                        {{ _('Edit') }}
                     </a>
                     <a href="/scan?add=manual&from={{ item.id }}" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">
-                        Add another like this
+                        {{ _('Add another like this') }}
                     </a>
                     {% endif %}
                     {% if user and user.role in ('admin', 'editor') %}
                     <button hx-delete="/api/items/{{ item.id }}" hx-confirm="Move '{{ item.title }}' to Trash?" data-after-request="goto-browse"
                             class="px-4 py-2 bg-shelf-error/20 text-shelf-error rounded-lg text-sm hover:bg-shelf-error/30 transition-colors">
-                        Delete
+                        {{ _('Delete') }}
                     </button>
                     {% endif %}
                 </div>
 
                 <p class="mt-4 pt-4 border-t border-shelf-border text-xs text-shelf-muted" data-testid="record-footer">
-                    Added {{ item.created_at[:10] }} · Updated {{ item.updated_at[:10] }}{% if item.source %} · via {{ source_label(item.source) }}{% endif %}
+                    {{ _('Added %(date)s', date=item.created_at[:10]) }} · {{ _('Updated %(date)s', date=item.updated_at[:10]) }}{% if item.source %} · {{ _('via %(source)s', source=source_label(item.source)) }}{% endif %}
                 </p>
 
                 {% if user and user.role == 'admin' %}
                 <details class="mt-3" data-testid="integration-ids">
-                    <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">Integration IDs</summary>
+                    <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">{{ _('Integration IDs') }}</summary>
                     <dl class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs font-mono break-all">
                         <dt class="text-shelf-muted">id</dt><dd>{{ item.id }}</dd>
                         <dt class="text-shelf-muted">isbn10</dt><dd>{{ item.isbn10 or '—' }}</dd>

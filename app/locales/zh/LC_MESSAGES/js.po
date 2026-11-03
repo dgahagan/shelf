@@ -56,6 +56,14 @@ msgstr ""
 msgid "Moved {count} items to Trash"
 msgstr ""
 
+#: static/js/components-item.js:419
+msgid "Synced to Hardcover"
+msgstr ""
+
+#: static/js/components-item.js:420
+msgid "Connection failed"
+msgstr ""
+
 #: static/js/components-settings.js:767
 msgid "Never"
 msgstr "从未"
