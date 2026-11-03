@@ -72,18 +72,18 @@ document.addEventListener('alpine:init', function () {
                 return !this.complete && this.hcMissing > 0;
             },
             get missingLabel() {
-                var label = this.hcMissing + ' missing';
+                var label = t('{count} missing').replace('{count}', this.hcMissing);
                 // Stored counts age; saying when it was checked keeps an old
                 // number from reading as current truth.
-                return this.hcCheckedAt ? label + ' · checked ' + this.hcCheckedAt.slice(0, 10) : label;
+                return this.hcCheckedAt ? label + ' · ' + t('checked {date}').replace('{date}', this.hcCheckedAt.slice(0, 10)) : label;
             },
             get completeLabel() {
-                if (this.markingComplete) return 'Saving…';
-                return this.complete ? 'Unmark complete' : 'Mark complete';
+                if (this.markingComplete) return t('Saving…');
+                return this.complete ? t('Unmark complete') : t('Mark complete');
             },
             get watchLabel() {
-                if (this.watching) return 'Saving…';
-                return this.watched ? 'Watching' : 'Watch for new volumes';
+                if (this.watching) return t('Saving…');
+                return this.watched ? t('Watching') : t('Watch for new volumes');
             },
             get watchPressed() {
                 return this.watched ? 'true' : 'false';
@@ -101,13 +101,13 @@ document.addEventListener('alpine:init', function () {
                     .then(r => r.json())
                     .then(d => {
                         self.watching = false;
-                        if (!d.ok) { showToast(d.message || 'Failed', 'error'); return; }
+                        if (!d.ok) { showToast(d.message || t('Failed'), 'error'); return; }
                         self.watched = d.watched;
-                        showToast(d.watched ? 'Watching for new volumes' : 'Stopped watching');
+                        showToast(d.watched ? t('Watching for new volumes') : t('Stopped watching'));
                         // Reload so the not-found line and the filter read fresh state.
                         setTimeout(() => location.reload(), 600);
                     })
-                    .catch(() => { self.watching = false; showToast('Failed', 'error'); });
+                    .catch(() => { self.watching = false; showToast(t('Failed'), 'error'); });
             },
             toggleComplete() {
                 this.markingComplete = true;
@@ -124,13 +124,13 @@ document.addEventListener('alpine:init', function () {
                     .then(d => {
                         self.markingComplete = false;
                         self.menuOpen = false;
-                        if (!d.ok) { showToast(d.message || 'Failed', 'error'); return; }
-                        showToast(d.complete ? 'Marked complete' : 'Completeness cleared');
+                        if (!d.ok) { showToast(d.message || t('Failed'), 'error'); return; }
+                        showToast(d.complete ? t('Marked complete') : t('Completeness cleared'));
                         // Reload for the same reason rename/disband do: the
                         // badge and the filter both read server-rendered state.
                         setTimeout(() => location.reload(), 600);
                     })
-                    .catch(() => { self.markingComplete = false; showToast('Failed', 'error'); });
+                    .catch(() => { self.markingComplete = false; showToast(t('Failed'), 'error'); });
             },
             startRename() {
                 this.menuOpen = false;
@@ -151,8 +151,8 @@ document.addEventListener('alpine:init', function () {
                 return this.seriesNames.find(n => n.trim().toLowerCase() === draft) || '';
             },
             get renameLabel() {
-                if (this.renameSaving) return 'Saving…';
-                return this.mergeTarget ? 'Merge into ' + this.mergeTarget : 'Rename';
+                if (this.renameSaving) return t('Saving…');
+                return this.mergeTarget ? t('Merge into {name}').replace('{name}', this.mergeTarget) : t('Rename');
             },
             submitRename() {
                 this.renameSaving = true;
@@ -169,18 +169,18 @@ document.addEventListener('alpine:init', function () {
                     .then(d => {
                         if (!d.ok) {
                             self.renameSaving = false;
-                            self.renameError = d.message || 'Rename failed';
+                            self.renameError = d.message || t('Rename failed');
                             return;
                         }
                         showToast(d.merged
-                            ? 'Merged ' + self._books(d.count) + ' into ' + d.name
-                            : 'Series renamed to ' + d.name);
+                            ? t('Merged {books} into {name}').replace('{books}', self._books(d.count)).replace('{name}', d.name)
+                            : t('Series renamed to {name}').replace('{name}', d.name));
                         // The card list is server-rendered and the grouping
                         // just changed — reload rather than regroup client-side
                         // (same call bulkUpdate() makes).
                         setTimeout(() => location.reload(), 600);
                     })
-                    .catch(() => { self.renameSaving = false; self.renameError = 'Rename failed'; });
+                    .catch(() => { self.renameSaving = false; self.renameError = t('Rename failed'); });
             },
             startRemoveAll() {
                 this.menuOpen = false;
@@ -207,16 +207,16 @@ document.addEventListener('alpine:init', function () {
                     .then(d => {
                         if (!d.ok) {
                             self.removing = false;
-                            self.removeError = d.message || 'Remove failed';
+                            self.removeError = d.message || t('Remove failed');
                             return;
                         }
-                        showToast('Removed ' + self._books(d.count) + ' from the series');
+                        showToast(t('Removed {books} from the series').replace('{books}', self._books(d.count)));
                         setTimeout(() => location.reload(), 600);
                     })
-                    .catch(() => { self.removing = false; self.removeError = 'Remove failed'; });
+                    .catch(() => { self.removing = false; self.removeError = t('Remove failed'); });
             },
             _books(n) {
-                return n + (n === 1 ? ' book' : ' books');
+                return n === 1 ? t('1 book') : t('{count} books').replace('{count}', n);
             },
             startEdit() {
                 this.draft = this.description;
@@ -245,12 +245,12 @@ document.addEventListener('alpine:init', function () {
                         if (d.ok) {
                             self.description = d.description || '';
                             self.editing = false;
-                            showToast('Synopsis saved');
+                            showToast(t('Synopsis saved'));
                         } else {
-                            self.descError = d.message || 'Save failed';
+                            self.descError = d.message || t('Save failed');
                         }
                     })
-                    .catch(() => { self.saving = false; self.descError = 'Save failed'; });
+                    .catch(() => { self.saving = false; self.descError = t('Save failed'); });
             },
             fetchDescription() {
                 this.fetching = true;
@@ -264,7 +264,7 @@ document.addEventListener('alpine:init', function () {
                         self.fetching = false;
                         if (d.ok) {
                             self.description = d.description || '';
-                            showToast('Synopsis fetched from Hardcover');
+                            showToast(t('Synopsis fetched from Hardcover'));
                         } else if (d.empty) {
                             // Hardcover simply has no description for this
                             // series — a normal outcome, not a failure. Open
@@ -272,10 +272,10 @@ document.addEventListener('alpine:init', function () {
                             showToast(d.message, 'info');
                             self.startEdit();
                         } else {
-                            showToast(d.message || 'No synopsis found', 'error');
+                            showToast(d.message || t('No synopsis found'), 'error');
                         }
                     })
-                    .catch(() => { self.fetching = false; showToast('Fetch failed', 'error'); });
+                    .catch(() => { self.fetching = false; showToast(t('Fetch failed'), 'error'); });
             },
             get missingBooks() {
                 return this.result ? this.result.books.filter(x => x.status === 'missing') : [];
@@ -300,7 +300,7 @@ document.addEventListener('alpine:init', function () {
                             rootEl.dataset.hcTotal = String(d.total);
                         }
                     })
-                    .catch(() => { self.checking = false; self.error = 'Check failed'; });
+                    .catch(() => { self.checking = false; self.error = t('Check failed'); });
             },
             addToWishlist(b) {
                 fetch('/api/hardcover/add-to-shelf', {
@@ -309,8 +309,8 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ title: b.title, authors: b.authors, cover_url: b.cover_url, hardcover_book_id: b.hardcover_book_id, series_name: b.series_name, series_position: b.series_position })
                 })
                     .then(r => r.json())
-                    .then(d => { if (d.ok || d.item_id) { this.added[b.hardcover_book_id] = true; showToast(d.restored ? 'Restored from Trash' : 'Added to wishlist'); } else { showToast(d.message || 'Failed', 'error'); } })
-                    .catch(() => showToast('Failed', 'error'));
+                    .then(d => { if (d.ok || d.item_id) { this.added[b.hardcover_book_id] = true; showToast(d.restored ? t('Restored from Trash') : t('Added to wishlist')); } else { showToast(d.message || t('Failed'), 'error'); } })
+                    .catch(() => showToast(t('Failed'), 'error'));
             }
         };
     });
@@ -339,14 +339,14 @@ document.addEventListener('alpine:init', function () {
                     .then(r => r.json())
                     .then(res => {
                         if (res.ok || res.item_id) {
-                            showToast(res.restored ? 'Restored from Trash' : 'Added to wishlist');
+                            showToast(res.restored ? t('Restored from Trash') : t('Added to wishlist'));
                             window.location.reload();
                         } else {
                             self.busy = false;
-                            showToast(res.message || 'Failed', 'error');
+                            showToast(res.message || t('Failed'), 'error');
                         }
                     })
-                    .catch(() => { self.busy = false; showToast('Failed', 'error'); });
+                    .catch(() => { self.busy = false; showToast(t('Failed'), 'error'); });
             }
         };
     });

@@ -232,3 +232,15 @@ def test_intake_shelf_fill_and_store_are_translated(admin_client):
     store = admin_client.get("/store").text
     assert '<html lang="it"' in store and "Modalità negozio" in store
     assert '"OWNED": "POSSEDUTO"' in store  # store.js reads the catalog itself
+
+
+def test_series_page_is_translated(admin_client, db):
+    for n, isbn in ((1, "9780000000095"), (3, "9780000000101")):
+        _insert_item(db, title=f"Saga {n}", isbn=isbn, series_name="Saga", series_position=n)
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/series").text
+    for text in ("La tua biblioteca raggruppata per serie", "2 posseduti", "forse mancano", '"1 book": "1 libro"'):
+        assert text in page, text
+
