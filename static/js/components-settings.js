@@ -96,6 +96,9 @@ document.addEventListener('alpine:init', function () {
                 this.absSaved = this.$el.dataset.absSaved === '1';
             },
             get syncPct() { return Math.round(this.syncCurrent / this.syncTotal * 100) + '%'; },
+            // Wording a CSP-build expression can't build: it can't call t().
+            get syncLogToggle() { return this.logToggle(this.showSyncLog, this.syncLog.length); },
+            logToggle(open, n) { return open ? t('Hide details') : t('Show details ({count} items)').replace('{count}', n); },
             // One source for "Test has something to send". The template's
             // :disabled and testAbs()'s early return both read this getter —
             // when the same decision lived in two places, reverting only the
@@ -114,9 +117,9 @@ document.addEventListener('alpine:init', function () {
                 return Boolean(this.absUrlPresent && this.absSaved);
             },
             get syncLabel() {
-                if (this.absSyncReady) return 'Sync Now';
-                if (this.absUrl || this.absToken) return 'Save your settings to sync';
-                return 'Enter URL and token to sync';
+                if (this.absSyncReady) return t('Sync Now');
+                if (this.absUrl || this.absToken) return t('Save your settings to sync');
+                return t('Enter URL and token to sync');
             },
             testAbs() {
                 if (!this.absTestReady) return;
@@ -127,7 +130,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ url: this.absUrl, token: this.absToken })
                 }).then(r => r.json())
                   .then(d => { this.absStatus = d; this.absTesting = false; })
-                  .catch(() => { this.absStatus = { ok: false, message: 'Connection failed' }; this.absTesting = false; });
+                  .catch(() => { this.absStatus = { ok: false, message: t('Connection failed') }; this.absTesting = false; });
             },
             startSync() {
                 if (!this.absSyncReady) return;
@@ -148,7 +151,7 @@ document.addEventListener('alpine:init', function () {
                         self.result = {error: d.message}; self.syncing = false; es.close();
                     }
                 };
-                es.onerror = function () { self.result = {error: 'Connection lost'}; self.syncing = false; es.close(); };
+                es.onerror = function () { self.result = {error: t('Connection lost')}; self.syncing = false; es.close(); };
             }
         };
     });
@@ -169,7 +172,7 @@ document.addEventListener('alpine:init', function () {
                 fetch('/api/sync/audiobookshelf/libraries')
                     .then(r => r.json())
                     .then(d => { if (d.ok) { this.libs = d.libraries } else { this.libsError = d.message } this.libsLoading = false })
-                    .catch(() => { this.libsError = 'Failed to load libraries'; this.libsLoading = false });
+                    .catch(() => { this.libsError = t('Failed to load libraries'); this.libsLoading = false });
             },
             saveLibs() {
                 this.libsSaving = true;
@@ -179,7 +182,7 @@ document.addEventListener('alpine:init', function () {
                     .catch(() => { this.libsSaving = false; showToast('Save failed', 'error') });
             },
             cleanup() {
-                if (!confirm('Move all Shelf items that came from unchecked libraries to Trash? Audiobookshelf itself is not touched, and you can restore them from Trash. A later sync does not re-import an item that is in Trash: restore it first.')) return;
+                if (!confirm(t('Move all Shelf items that came from unchecked libraries to Trash? Audiobookshelf itself is not touched, and you can restore them from Trash. A later sync does not re-import an item that is in Trash: restore it first.'))) return;
                 this.cleaning = true; this.cleanResult = false;
                 // Persist the current selection first so the cleanup matches what's on screen
                 fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
@@ -196,6 +199,13 @@ document.addEventListener('alpine:init', function () {
         return {
             hcStatus: false, hcTesting: false, showHcHelp: false,
             hcToken: '', hcSaved: false,
+            // Wording a CSP-build expression can't build: it can't call t().
+            get importButtonLabel() { return (this.hcToken || this.hcSaved) ? t('Import from Hardcover') : t('Enter token to import'); },
+            get importProgressLabel() { return this.importLastTitle || t('Connecting to Hardcover...'); },
+            get importLogToggle() { return this.logToggle(this.showImportLog, this.importLog.length); },
+            get exportButtonLabel() { return (this.hcToken || this.hcSaved) ? t('Export to Hardcover') : t('Enter token to export'); },
+            get exportLogToggle() { return this.logToggle(this.showExportLog, this.exportLog.length); },
+            logToggle(open, n) { return open ? t('Hide details') : t('Show details ({count} items)').replace('{count}', n); },
             importing: false, importResult: false,
             importCurrent: 0, importTotal: 0, importLastTitle: '',
             importLog: [], showImportLog: false,
@@ -221,7 +231,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ token: this.hcToken })
                 }).then(r => r.json())
                   .then(d => { this.hcStatus = d; this.hcTesting = false; })
-                  .catch(() => { this.hcStatus = { ok: false, message: 'Connection failed' }; this.hcTesting = false; });
+                  .catch(() => { this.hcStatus = { ok: false, message: t('Connection failed') }; this.hcTesting = false; });
             },
             startExport() {
                 this.exporting = true; this.exportResult = false;
@@ -243,7 +253,7 @@ document.addEventListener('alpine:init', function () {
                         self.exportResult = {error: d.message}; self.exporting = false; es.close();
                     }
                 };
-                es.onerror = function () { self.exportResult = {error: 'Connection lost'}; self.exporting = false; es.close(); };
+                es.onerror = function () { self.exportResult = {error: t('Connection lost')}; self.exporting = false; es.close(); };
             },
             startImport() {
                 this.importing = true; this.importResult = false;
@@ -269,7 +279,7 @@ document.addEventListener('alpine:init', function () {
                         self.importResult = {error: d.message}; self.importing = false; es.close();
                     }
                 };
-                es.onerror = function () { self.importResult = {error: 'Connection lost'}; self.importing = false; es.close(); };
+                es.onerror = function () { self.importResult = {error: t('Connection lost')}; self.importing = false; es.close(); };
             }
         };
     });

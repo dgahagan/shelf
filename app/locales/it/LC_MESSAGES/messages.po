@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-25 13:16-0500\n"
+"PO-Revision-Date: 2026-11-26 09:54+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -163,15 +163,15 @@ msgstr "Manga"
 msgid "Video Game"
 msgstr "Videogioco"
 
-#: app/config.py:54
+#: app/config.py:54 app/templates/fragments/settings/integrations.html:290
 msgid "Want to Read"
 msgstr "Da leggere"
 
-#: app/config.py:54
+#: app/config.py:54 app/templates/fragments/settings/integrations.html:294
 msgid "Reading"
 msgstr "In lettura"
 
-#: app/config.py:54
+#: app/config.py:54 app/templates/fragments/settings/integrations.html:298
 msgid "Read"
 msgstr "Letto"
 
@@ -682,6 +682,10 @@ msgstr "Prestito non trovato"
 msgid "Checkout already checked in"
 msgstr "Prestito già chiuso"
 
+#: app/routers/hardcover.py:46
+msgid "No token provided"
+msgstr "Nessun token indicato"
+
 #: app/routers/hardcover.py:92
 msgid "Title required"
 msgstr "Il titolo è obbligatorio"
@@ -694,9 +698,25 @@ msgstr "Aggiunto alla lista desideri"
 msgid "Already in your library"
 msgstr "Già nella tua biblioteca"
 
+#: app/routers/hardcover.py:228 app/routers/sync.py:268
+msgid "Invalid sync interval"
+msgstr "Intervallo di sincronizzazione non valido"
+
 #: app/routers/hardcover.py:248
 msgid "Hardcover API token required"
 msgstr "Serve il token API di Hardcover"
+
+#: app/routers/hardcover.py:334
+msgid "Export failed — check server logs"
+msgstr "Esportazione non riuscita: controlla i log del server"
+
+#: app/routers/hardcover.py:381
+msgid "Could not get Hardcover user ID"
+msgstr "Impossibile ottenere l'ID utente di Hardcover"
+
+#: app/routers/hardcover.py:445
+msgid "Import failed — check server logs"
+msgstr "Importazione non riuscita: controlla i log del server"
 
 #: app/routers/intake.py:64
 msgid "Invalid photo dimensions"
@@ -1062,13 +1082,13 @@ msgstr "era in %(old)s, spostato in %(new)s"
 msgid "Was at %(old)s, updated to %(new)s"
 msgstr "Era in %(old)s, spostato in %(new)s"
 
-#: app/routers/series.py:174 app/routers/series.py:380
-#: app/routers/series.py:435 app/routers/series.py:530
-#: app/routers/series.py:626 app/routers/series.py:657
+#: app/routers/series.py:174 app/routers/series.py:381
+#: app/routers/series.py:436 app/routers/series.py:531
+#: app/routers/series.py:627 app/routers/series.py:658
 msgid "Series name required"
 msgstr "Il nome della serie è obbligatorio"
 
-#: app/routers/series.py:179 app/routers/series.py:662
+#: app/routers/series.py:179 app/routers/series.py:663
 msgid "Hardcover integration not configured"
 msgstr "L'integrazione con Hardcover non è configurata"
 
@@ -1076,39 +1096,39 @@ msgstr "L'integrazione con Hardcover non è configurata"
 msgid "Series not found on Hardcover (or lookup failed)"
 msgstr "Serie non trovata su Hardcover (o ricerca non riuscita)"
 
-#: app/routers/series.py:439
+#: app/routers/series.py:440
 msgid "complete must be '0' or '1'"
 msgstr "complete deve essere '0' o '1'"
 
-#: app/routers/series.py:448 app/routers/series.py:547
-#: app/routers/series.py:635
+#: app/routers/series.py:449 app/routers/series.py:548
+#: app/routers/series.py:636
 msgid "Series not found"
 msgstr "Serie non trovata"
 
-#: app/routers/series.py:503
+#: app/routers/series.py:504
 #, python-format
 msgid "Watching %(name)s"
 msgstr "Segui %(name)s"
 
-#: app/routers/series.py:503
+#: app/routers/series.py:504
 #, python-format
 msgid "Stopped watching %(name)s"
 msgstr "Non segui più %(name)s"
 
-#: app/routers/series.py:532
+#: app/routers/series.py:533
 msgid "New series name required"
 msgstr "Il nuovo nome della serie è obbligatorio"
 
-#: app/routers/series.py:535
+#: app/routers/series.py:536
 #, python-format
 msgid "Series name too long (max %(max)s chars)"
 msgstr "Nome della serie troppo lungo (massimo %(max)s caratteri)"
 
-#: app/routers/series.py:539
+#: app/routers/series.py:540
 msgid "That is already the series name"
 msgstr "La serie si chiama già così"
 
-#: app/routers/series.py:670
+#: app/routers/series.py:671
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr "Hardcover non ha una sinossi per questa serie: aggiungila qui sotto"
 
@@ -1239,6 +1259,60 @@ msgstr "L'elemento non esiste più"
 msgid "Enter or scan a barcode"
 msgstr "Scrivi o scansiona un codice a barre"
 
+#: app/routers/sync.py:40 app/routers/sync.py:46 app/routers/sync.py:117
+#: app/routers/sync.py:121 app/routers/valuation.py:36
+#: app/routers/valuation.py:40
+msgid "Invalid request body"
+msgstr "Richiesta non valida"
+
+#: app/routers/sync.py:58
+msgid "URL and token are required"
+msgstr "L'URL e il token sono obbligatori"
+
+#: app/routers/sync.py:72
+#, python-format
+msgid "Connected — %(n)s library(ies) found"
+msgstr "Connesso: librerie trovate: %(n)s"
+
+#: app/routers/sync.py:74
+msgid "Invalid or expired API token"
+msgstr "Token API non valido o scaduto"
+
+#: app/routers/sync.py:76 app/routers/valuation.py:72
+#, python-format
+msgid "Unexpected response: HTTP %(code)s"
+msgstr "Risposta inattesa: HTTP %(code)s"
+
+#: app/routers/sync.py:78 app/routers/sync.py:97 app/routers/sync.py:166
+#, python-format
+msgid "Cannot connect to %(url)s"
+msgstr "Impossibile connettersi a %(url)s"
+
+#: app/routers/sync.py:80
+msgid "Connection failed — check URL and network"
+msgstr "Connessione non riuscita: controlla l'URL e la rete"
+
+#: app/routers/sync.py:90 app/routers/sync.py:150
+msgid "Audiobookshelf is not configured"
+msgstr "Audiobookshelf non è configurato"
+
+#: app/routers/sync.py:99
+#, python-format
+msgid "ABS returned HTTP %(code)s"
+msgstr "ABS ha risposto HTTP %(code)s"
+
+#: app/routers/sync.py:144
+msgid "No libraries are excluded"
+msgstr "Nessuna libreria esclusa"
+
+#: app/routers/sync.py:201
+msgid "Audiobookshelf URL and API token must be configured in Settings"
+msgstr "L'URL e il token API di Audiobookshelf vanno configurati nelle Impostazioni"
+
+#: app/routers/sync.py:246
+msgid "Sync failed — check server logs"
+msgstr "Sincronizzazione non riuscita: controlla i log del server"
+
 #: app/routers/tags.py:78
 msgid "No items selected"
 msgstr "Nessun elemento selezionato"
@@ -1261,10 +1335,6 @@ msgstr "Tag rimosso (%(tags)s). Elementi: %(count)s"
 msgid "That item no longer exists"
 msgstr "L'elemento non esiste più"
 
-#: app/routers/valuation.py:36 app/routers/valuation.py:40
-msgid "Invalid request body"
-msgstr "Richiesta non valida"
-
 #: app/routers/valuation.py:56 app/routers/valuation.py:95
 msgid "No key configured"
 msgstr "Nessuna chiave configurata"
@@ -1276,11 +1346,6 @@ msgstr "La chiave è valida"
 #: app/routers/valuation.py:70
 msgid "Invalid or expired key"
 msgstr "Chiave non valida o scaduta"
-
-#: app/routers/valuation.py:72
-#, python-format
-msgid "Unexpected response: HTTP %(code)s"
-msgstr "Risposta inattesa: HTTP %(code)s"
 
 #: app/routers/valuation.py:74
 msgid "Connection failed — check network"
@@ -1961,6 +2026,7 @@ msgid "Dismissed"
 msgstr "Ignorati"
 
 #: app/templates/duplicates.html:86
+#: app/templates/fragments/settings/integrations.html:57
 msgid "and"
 msgstr "e"
 
@@ -2421,6 +2487,7 @@ msgstr "Caricamento dei media collegati…"
 msgid "Notes:"
 msgstr "Note:"
 
+#: app/templates/fragments/settings/integrations.html:57
 #: app/templates/item_detail.html:181
 msgid "Read on Audiobookshelf"
 msgstr "Leggi su Audiobookshelf"
@@ -2437,6 +2504,7 @@ msgstr "Sincronizzato con Hardcover"
 msgid "Push to Hardcover"
 msgstr "Invia a Hardcover"
 
+#: app/templates/fragments/settings/integrations.html:106
 #: app/templates/item_detail.html:198
 msgid "Syncing..."
 msgstr "Sincronizzazione..."
@@ -2780,6 +2848,10 @@ msgstr "Durata (min)"
 
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
+#: app/templates/fragments/settings/integrations.html:95
+#: app/templates/fragments/settings/integrations.html:160
+#: app/templates/fragments/settings/integrations.html:277
+#: app/templates/fragments/settings/integrations.html:387
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
@@ -3407,6 +3479,7 @@ msgstr "+ Aggiungi sinossi"
 msgid "What is this series about?"
 msgstr "Di cosa parla questa serie?"
 
+#: app/templates/fragments/settings/integrations.html:191
 #: app/templates/series.html:200
 msgid "Saving…"
 msgstr "Salvataggio…"
@@ -3479,6 +3552,7 @@ msgstr "Crea il tuo account amministratore per iniziare."
 msgid "Display Name"
 msgstr "Nome visualizzato"
 
+#: app/templates/fragments/settings/integrations.html:48
 #: app/templates/setup.html:33
 msgid "(optional)"
 msgstr "(facoltativo)"
@@ -5177,6 +5251,7 @@ msgstr "Importa"
 
 #: app/templates/fragments/settings/data.html:166
 #: app/templates/fragments/settings/data.html:443
+#: app/templates/fragments/settings/integrations.html:320
 msgid "Importing..."
 msgstr "Importazione in corso..."
 
@@ -5217,6 +5292,8 @@ msgstr "Importati:"
 
 #: app/templates/fragments/settings/data.html:202
 #: app/templates/fragments/settings/data.html:460
+#: app/templates/fragments/settings/integrations.html:129
+#: app/templates/fragments/settings/integrations.html:347
 msgid ", Skipped:"
 msgstr ", saltati:"
 
@@ -5238,6 +5315,8 @@ msgstr "copertine in background"
 
 #: app/templates/fragments/settings/data.html:216
 #: app/templates/fragments/settings/data.html:474
+#: app/templates/fragments/settings/integrations.html:352
+#: app/templates/fragments/settings/integrations.html:430
 msgid "· Errors:"
 msgstr "· Errori:"
 
@@ -5391,6 +5470,9 @@ msgid "Start over"
 msgstr "Ricomincia"
 
 #: app/templates/fragments/settings/data.html:460
+#: app/templates/fragments/settings/integrations.html:129
+#: app/templates/fragments/settings/integrations.html:347
+#: app/templates/fragments/settings/integrations.html:428
 msgid ", Updated:"
 msgstr ", aggiornati:"
 
@@ -5454,6 +5536,8 @@ msgid "On"
 msgstr "Attiva"
 
 #: app/templates/fragments/settings/features.html:63
+#: app/templates/fragments/settings/integrations.html:156
+#: app/templates/fragments/settings/integrations.html:383
 msgid "Off"
 msgstr "Disattiva"
 
@@ -5468,6 +5552,274 @@ msgstr "Disattiva"
 #: app/templates/fragments/settings/features.html:76
 msgid "Turn on"
 msgstr "Attiva"
+
+#: app/templates/fragments/settings/integrations.html:16
+msgid "Audiobookshelf Sync"
+msgstr "Sincronizzazione Audiobookshelf"
+
+#: app/templates/fragments/settings/integrations.html:17
+#: app/templates/fragments/settings/integrations.html:218
+msgid "Setup guide"
+msgstr "Guida alla configurazione"
+
+#: app/templates/fragments/settings/integrations.html:24
+msgid "Connecting to Audiobookshelf"
+msgstr "Collegare Audiobookshelf"
+
+#: app/templates/fragments/settings/integrations.html:26
+msgid "Open your Audiobookshelf instance in a browser"
+msgstr "Apri la tua istanza di Audiobookshelf nel browser"
+
+#: app/templates/fragments/settings/integrations.html:27
+#: app/templates/fragments/settings/integrations.html:228
+msgid "Go to"
+msgstr "Vai a"
+
+#: app/templates/fragments/settings/integrations.html:27
+msgid "and select your user"
+msgstr "e scegli il tuo utente"
+
+#: app/templates/fragments/settings/integrations.html:28
+msgid "Scroll to"
+msgstr "Scorri fino a"
+
+#: app/templates/fragments/settings/integrations.html:28
+#: app/templates/fragments/settings/integrations.html:61
+#: app/templates/fragments/settings/integrations.html:243
+msgid "API Token"
+msgstr "API Token"
+
+#: app/templates/fragments/settings/integrations.html:28
+msgid "— copy the token"
+msgstr "e copia il token"
+
+#: app/templates/fragments/settings/integrations.html:29
+msgid "Enter your ABS server URL (e.g."
+msgstr "Inserisci l'URL del server ABS (es."
+
+#: app/templates/fragments/settings/integrations.html:29
+msgid ") and paste the token below"
+msgstr ") e incolla il token qui sotto"
+
+#: app/templates/fragments/settings/integrations.html:32
+msgid "What does sync do?"
+msgstr "A cosa serve la sincronizzazione?"
+
+#: app/templates/fragments/settings/integrations.html:33
+msgid "Sync imports your audiobooks and ebooks from Audiobookshelf into Shelf, including metadata and cover art. It also auto-links digital items to matching physical books in your collection."
+msgstr "La sincronizzazione importa in Shelf audiolibri ed ebook da Audiobookshelf, con dati e copertine. Collega anche automaticamente gli elementi digitali ai libri fisici corrispondenti nella tua collezione."
+
+#: app/templates/fragments/settings/integrations.html:35
+#: app/templates/fragments/settings/integrations.html:237
+msgid "Got it"
+msgstr "Ho capito"
+
+#: app/templates/fragments/settings/integrations.html:41
+msgid "Audiobookshelf URL"
+msgstr "URL di Audiobookshelf"
+
+#: app/templates/fragments/settings/integrations.html:48
+msgid "Browser URL"
+msgstr "URL per il browser"
+
+#: app/templates/fragments/settings/integrations.html:51
+msgid "Browser URL must be a valid http:// or https:// URL."
+msgstr "L'URL per il browser deve essere un URL http:// o https:// valido."
+
+#: app/templates/fragments/settings/integrations.html:57
+msgid "Used only for"
+msgstr "Usato solo per i link"
+
+#: app/templates/fragments/settings/integrations.html:57
+msgid "Listen"
+msgstr "Ascolta"
+
+#: app/templates/fragments/settings/integrations.html:57
+msgid "links. Set it when Shelf reaches Audiobookshelf over a Docker or LAN address but your browser uses a reverse-proxy domain. Leave blank to use the URL above."
+msgstr ". Impostalo quando Shelf raggiunge Audiobookshelf tramite un indirizzo Docker o di rete locale ma il tuo browser usa il dominio di un reverse proxy. Lascialo vuoto per usare l'URL qui sopra."
+
+#: app/templates/fragments/settings/integrations.html:64
+#: app/templates/fragments/settings/integrations.html:246
+msgid "Saved — leave blank to keep"
+msgstr "Salvato: lascia vuoto per conservarlo"
+
+#: app/templates/fragments/settings/integrations.html:64
+msgid "Bearer token from ABS settings"
+msgstr "Token bearer dalle impostazioni di ABS"
+
+#: app/templates/fragments/settings/integrations.html:70
+#: app/templates/fragments/settings/integrations.html:230
+#: app/templates/fragments/settings/integrations.html:252
+#: app/templates/fragments/settings/library.html:280
+msgid "Test"
+msgstr "Prova"
+
+#: app/templates/fragments/settings/integrations.html:71
+#: app/templates/fragments/settings/integrations.html:253
+msgid "Testing..."
+msgstr "Prova in corso..."
+
+#: app/templates/fragments/settings/integrations.html:91
+#: app/templates/fragments/settings/integrations.html:273
+msgid "Remove saved token"
+msgstr "Rimuovi il token salvato"
+
+#: app/templates/fragments/settings/integrations.html:129
+#: app/templates/fragments/settings/integrations.html:347
+msgid "Added:"
+msgstr "Aggiunti:"
+
+#: app/templates/fragments/settings/integrations.html:129
+msgid ", Unchanged:"
+msgstr ", invariati:"
+
+#: app/templates/fragments/settings/integrations.html:131
+#: app/templates/fragments/settings/integrations.html:349
+msgid "· In Trash:"
+msgstr "· Nel cestino:"
+
+#: app/templates/fragments/settings/integrations.html:154
+#: app/templates/fragments/settings/integrations.html:381
+msgid "Auto-sync:"
+msgstr "Sincronizzazione automatica:"
+
+#: app/templates/fragments/settings/integrations.html:157
+#: app/templates/fragments/settings/integrations.html:384
+msgid "Daily"
+msgstr "Ogni giorno"
+
+#: app/templates/fragments/settings/integrations.html:158
+#: app/templates/fragments/settings/integrations.html:385
+msgid "Weekly"
+msgstr "Ogni settimana"
+
+#: app/templates/fragments/settings/integrations.html:167
+msgid "Libraries to sync"
+msgstr "Librerie da sincronizzare"
+
+#: app/templates/fragments/settings/integrations.html:168
+msgid "Uncheck libraries you don't want in Shelf (e.g. a dump of files you're not cataloging)."
+msgstr "Deseleziona le librerie che non vuoi in Shelf (per esempio un archivio di file che non stai catalogando)."
+
+#: app/templates/fragments/settings/integrations.html:172
+msgid "Manage Libraries"
+msgstr "Gestisci le librerie"
+
+#: app/templates/fragments/settings/integrations.html:173
+msgid "Loading…"
+msgstr "Caricamento…"
+
+#: app/templates/fragments/settings/integrations.html:190
+msgid "Save Selection"
+msgstr "Salva la selezione"
+
+#: app/templates/fragments/settings/integrations.html:197
+msgid "Move Excluded Items to Trash"
+msgstr "Sposta gli elementi esclusi nel cestino"
+
+#: app/templates/fragments/settings/integrations.html:198
+msgid "Moving…"
+msgstr "Spostamento…"
+
+#: app/templates/fragments/settings/integrations.html:202
+msgid "Saves the selection, then moves items already synced from unchecked libraries to Trash."
+msgstr "Salva la selezione, poi sposta nel cestino gli elementi già sincronizzati dalle librerie deselezionate."
+
+#: app/templates/fragments/settings/integrations.html:204
+msgid "Moved"
+msgstr "Spostati"
+
+#: app/templates/fragments/settings/integrations.html:204
+msgid "items to Trash."
+msgstr "elementi nel cestino."
+
+#: app/templates/fragments/settings/integrations.html:225
+msgid "Connecting to Hardcover"
+msgstr "Collegare Hardcover"
+
+#: app/templates/fragments/settings/integrations.html:227
+msgid "Create a free account at"
+msgstr "Crea un account gratuito su"
+
+#: app/templates/fragments/settings/integrations.html:227
+msgid "hardcover.app"
+msgstr "hardcover.app"
+
+#: app/templates/fragments/settings/integrations.html:229
+msgid "Copy the API token shown at the top of the page"
+msgstr "Copia il token API mostrato in cima alla pagina"
+
+#: app/templates/fragments/settings/integrations.html:230
+msgid "Paste it into the field below and click"
+msgstr "Incollalo nel campo qui sotto e fai clic su"
+
+#: app/templates/fragments/settings/integrations.html:233
+msgid "What does Hardcover do?"
+msgstr "A cosa serve Hardcover?"
+
+#: app/templates/fragments/settings/integrations.html:234
+msgid "Hardcover is a modern book tracking platform (like Goodreads). With an API token, Shelf can use Hardcover as a metadata source for richer book data including series info, descriptions, and cover art. Future updates will add library import/export and reading status sync."
+msgstr "Hardcover è una piattaforma per tenere traccia dei libri (come Goodreads). Con un token API, Shelf può usare Hardcover come fonte di dati più ricchi, con serie, descrizioni e copertine. I prossimi aggiornamenti aggiungeranno importazione/esportazione della biblioteca e sincronizzazione dello stato di lettura."
+
+#: app/templates/fragments/settings/integrations.html:235
+msgid "The API is completely free. Tokens expire after one year."
+msgstr "L'API è del tutto gratuita. I token scadono dopo un anno."
+
+#: app/templates/fragments/settings/integrations.html:246
+msgid "Your Hardcover API token"
+msgstr "Il tuo token API di Hardcover"
+
+#: app/templates/fragments/settings/integrations.html:260
+msgid "Connected as"
+msgstr "Connesso come"
+
+#: app/templates/fragments/settings/integrations.html:284
+msgid "Import Library from Hardcover"
+msgstr "Importa la biblioteca da Hardcover"
+
+#: app/templates/fragments/settings/integrations.html:302
+msgid "Paused"
+msgstr "In pausa"
+
+#: app/templates/fragments/settings/integrations.html:306
+msgid "Did Not Finish"
+msgstr "Abbandonati"
+
+#: app/templates/fragments/settings/integrations.html:313
+msgid "Overwrite existing items with Hardcover data"
+msgstr "Sovrascrivi gli elementi esistenti con i dati di Hardcover"
+
+#: app/templates/fragments/settings/integrations.html:378
+msgid "Reading Status Sync"
+msgstr "Sincronizzazione dello stato di lettura"
+
+#: app/templates/fragments/settings/integrations.html:379
+msgid "Pull reading status changes from Hardcover automatically. Status changes made in Shelf are pushed to Hardcover instantly."
+msgstr "Recupera automaticamente da Hardcover le modifiche allo stato di lettura. Le modifiche fatte in Shelf vengono inviate subito a Hardcover."
+
+#: app/templates/fragments/settings/integrations.html:394
+msgid "Export to Hardcover"
+msgstr "Esporta su Hardcover"
+
+#: app/templates/fragments/settings/integrations.html:395
+msgid "Push your Shelf collection to your Hardcover library. Only items with an ISBN can be exported."
+msgstr "Invia la tua collezione Shelf alla tua libreria Hardcover. Si possono esportare solo elementi con un ISBN."
+
+#: app/templates/fragments/settings/integrations.html:399
+msgid "Owned items only (exclude wishlist)"
+msgstr "Solo elementi posseduti (esclusa la lista desideri)"
+
+#: app/templates/fragments/settings/integrations.html:406
+msgid "Exporting..."
+msgstr "Esportazione in corso..."
+
+#: app/templates/fragments/settings/integrations.html:428
+msgid "Pushed:"
+msgstr "Inviati:"
+
+#: app/templates/fragments/settings/integrations.html:428
+msgid ", Not found:"
+msgstr ", non trovati:"
 
 #: app/templates/fragments/settings/library.html:12
 #, python-format
@@ -5619,10 +5971,6 @@ msgstr "ntfy"
 #: app/templates/fragments/settings/library.html:271
 msgid "Webhook (JSON)"
 msgstr "Webhook (JSON)"
-
-#: app/templates/fragments/settings/library.html:280
-msgid "Test"
-msgstr "Prova"
 
 #: app/templates/fragments/settings/library.html:281
 msgid "Sending..."
