@@ -17,7 +17,7 @@
     <div class="flex-1 min-w-0">
         <p class="text-sm font-medium truncate">
             {% if line.deleted %}
-            <span class="text-shelf-muted">a record since deleted</span>
+            <span class="text-shelf-muted">{{ _('a record since deleted') }}</span>
             {% elif line.item_id %}
             <a href="/item/{{ line.item_id }}" class="hover:text-shelf-accent2">{{ line.title or "Untitled" }}</a>
             {% else %}
@@ -28,9 +28,9 @@
         <p class="text-xs text-shelf-muted truncate">
             {% if line.authors %}{{ line.authors }}{% endif %}
             {% for c in line.copies %}
-            &middot; Copy {{ c.copy_number }}{% if c.copy_barcode %} <span class="font-mono">{{ c.copy_barcode }}</span>{% endif %}{% if c.missing_since %} &middot; <span class="text-shelf-error">missing since {{ c.missing_since }}</span>{% endif %}
+            &middot; {{ _('Copy %(n)s', n=c.copy_number) }}{% if c.copy_barcode %} <span class="font-mono">{{ c.copy_barcode }}</span>{% endif %}{% if c.missing_since %} &middot; <span class="text-shelf-error">{{ _('missing since %(date)s', date=c.missing_since) }}</span>{% endif %}
             {% endfor %}
-            {% if line.copy_number %}&middot; Copy {{ line.copy_number }}{% endif %}
+            {% if line.copy_number %}&middot; {{ _('Copy %(n)s', n=line.copy_number) }}{% endif %}
             {% if line.raw_code and not line.copies %}&middot; <span class="font-mono">{{ line.raw_code }}</span>{% endif %}
             {% if line.location_name and session.scope == 'library' %}&middot; {{ line.location_name }}{% endif %}
             {% if note %}&middot; {{ note }}{% endif %}
@@ -56,7 +56,7 @@
 <p class="text-sm text-shelf-error mb-3" data-testid="audit-error">{{ error }}</p>
 {% endif %}
 {% if session.location_deleted %}
-<p class="text-sm text-shelf-warning mb-3">This audit's location was deleted, so nothing is expected here any more. Its scans are still listed.</p>
+<p class="text-sm text-shelf-warning mb-3">{{ _("This audit's location was deleted, so nothing is expected here any more. Its scans are still listed.") }}</p>
 {% endif %}
 
 {% call section('found', 'Found', report.found, 'Nothing confirmed yet.') %}
@@ -78,7 +78,7 @@
             hx-vals='{"entry_id": {{ line.entry_id }}, "copy_id": {{ c.copy_id }}}'
             hx-target="#audit-report" hx-swap="innerHTML"
             class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">
-        It was this one &mdash; move it here (Copy {{ c.copy_number }}, now at {{ c.location_name or 'no location' }})
+        {{ _('It was this one &mdash; move it here (Copy %(n)s, now at %(place)s)', n=c.copy_number, place=c.location_name or _('no location')) }}
     </button>
     {% endfor %}
 </div>
@@ -95,7 +95,7 @@
 {% if all_missing and not session.location_deleted %}
 <form hx-post="/api/audits/{{ session.id }}/missing" hx-target="#audit-report" hx-swap="innerHTML" class="mb-2 text-right">
     {% for cid in all_missing %}<input type="hidden" name="copy_id" value="{{ cid }}">{% endfor %}
-    <button type="submit" data-testid="audit-mark-all" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">Mark all missing</button>
+    <button type="submit" data-testid="audit-mark-all" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Mark all missing') }}</button>
 </form>
 {% endif %}
 {% call section('missing', 'Missing', report.missing, 'Nothing missing.' if not session.location_deleted else 'Nothing is expected here.') %}
@@ -104,7 +104,7 @@
 {% if line.copies and not session.location_deleted %}
 <form hx-post="/api/audits/{{ session.id }}/missing" hx-target="#audit-report" hx-swap="innerHTML" class="shrink-0">
     {% for c in line.copies %}<input type="hidden" name="copy_id" value="{{ c.copy_id }}">{% endfor %}
-    <button type="submit" data-testid="audit-mark-missing-{{ line.item_id }}-{{ line.location_id }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">Mark missing</button>
+    <button type="submit" data-testid="audit-mark-missing-{{ line.item_id }}-{{ line.location_id }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Mark missing') }}</button>
 </form>
 {% endif %}
 {% endcall %}
@@ -115,9 +115,9 @@
 {% for line in report.unexpected %}
 {% call row(line, '' if line.deleted else '(in Trash)' if line.kind == 'in_trash' else 'not in the collection') %}
 {% if line.kind == 'not_owned' %}
-<a href="/scan?mode=add&amp;code={{ line.raw_code|urlencode }}" data-testid="audit-add-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">Add</a>
+<a href="/scan?mode=add&amp;code={{ line.raw_code|urlencode }}" data-testid="audit-add-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Add') }}</a>
 {% elif line.kind == 'in_trash' and not line.deleted %}
-<a href="/trash" data-testid="audit-trash-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">Open Trash</a>
+<a href="/trash" data-testid="audit-trash-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Open Trash') }}</a>
 {% endif %}
 {% endcall %}
 {% endfor %}

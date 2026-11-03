@@ -12,19 +12,19 @@
     <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
         {% if expired_only %}
         <a href="/trash" data-testid="trash-filter-all"
-           class="text-sm text-shelf-accent2 hover:underline">Show all</a>
+           class="text-sm text-shelf-accent2 hover:underline">{{ _('Show all') }}</a>
         {% else %}
         <a href="/trash?expired=1" data-testid="trash-filter-expired"
-           class="text-sm text-shelf-accent2 hover:underline">Show expired only</a>
+           class="text-sm text-shelf-accent2 hover:underline">{{ _('Show expired only') }}</a>
         {% endif %}
 
         {% if user and user.role == 'admin' and expired_count > 0 %}
         <button type="button" data-testid="trash-empty-expired"
                 hx-post="/api/trash/empty-expired"
                 hx-target="#trash-list" hx-swap="outerHTML"
-                hx-confirm="Delete {{ expired_count }} expired items and copies permanently?"
+                hx-confirm="{{ _('Delete %(n)s expired items and copies permanently?', n=expired_count) }}"
                 class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors">
-            Empty expired ({{ expired_count }})
+            {{ _('Empty expired (%(n)s)', n=expired_count) }}
         </button>
         {% endif %}
     </div>
@@ -32,19 +32,19 @@
     {% if purged is defined %}
     <div data-testid="trash-purged-notice" role="status"
          class="mb-4 rounded-lg border border-shelf-success/40 bg-shelf-success/10 px-4 py-3 text-sm text-shelf-success">
-        Permanently deleted {{ purged }} row{{ '' if purged == 1 else 's' }}.
+        {{ ngettext('Permanently deleted %(num)s row.', 'Permanently deleted %(num)s rows.', purged) }}
     </div>
     {% endif %}
 
     {% if notice == 'not_found' %}
     <div data-testid="trash-notice-not-found" role="alert"
          class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
-        That row is not in Trash anymore.
+        {{ _('That row is not in Trash anymore.') }}
     </div>
     {% elif notice == 'restore_item_first' %}
     <div data-testid="trash-notice-restore-item-first" role="alert"
          class="mb-4 rounded-lg border border-shelf-warning/40 bg-shelf-warning/10 px-4 py-3 text-sm text-shelf-warning">
-        This copy's item is in Trash too — restore the item and its copies come back with it.
+        {{ _("This copy's item is in Trash too — restore the item and its copies come back with it.") }}
     </div>
     {% endif %}
 
@@ -66,21 +66,21 @@
                     <span class="text-shelf-text text-sm font-medium truncate">{{ row.title }}</span>
                     {% if row.has_open_loan and feature_on('lending') %}
                     <span data-testid="trash-loaned-{{ row.id }}"
-                          class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-orange-500/90 text-white shrink-0">Loaned</span>
+                          class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-orange-500/90 text-white shrink-0">{{ _('Loaned') }}</span>
                     {% endif %}
                     {% if row.expired %}
                     <span data-testid="trash-expired-{{ row.id }}"
-                          class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-error/20 text-shelf-error shrink-0">Expired</span>
+                          class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-error/20 text-shelf-error shrink-0">{{ _('Expired') }}</span>
                     {% endif %}
                 </div>
-                <p class="text-xs text-shelf-muted mt-0.5">Deleted {{ row.deleted_at[:10] }}</p>
+                <p class="text-xs text-shelf-muted mt-0.5">{{ _('Deleted %(date)s', date=row.deleted_at[:10]) }}</p>
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <button type="button" data-testid="trash-restore-item-{{ row.id }}"
                         hx-post="/api/trash/items/{{ row.id }}/restore"
                         hx-target="#trash-list" hx-swap="outerHTML"
                         class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">
-                    Restore
+                    {{ _('Restore') }}
                 </button>
                 {% if user and user.role == 'admin' %}
                 <button type="button" data-testid="trash-delete-item-{{ row.id }}"
@@ -88,7 +88,7 @@
                         hx-target="#trash-list" hx-swap="outerHTML"
                         hx-confirm="Delete '{{ row.title }}' permanently? This cannot be undone."
                         class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors">
-                    Delete permanently
+                    {{ _('Delete permanently') }}
                 </button>
                 {% endif %}
             </div>
@@ -114,20 +114,20 @@
                 <div class="flex flex-wrap items-center gap-3" data-testid="trash-copy-row-{{ copy.id }}">
                     <div class="min-w-0 basis-full sm:flex-1">
                         <p class="text-sm text-shelf-text flex items-center gap-2 flex-wrap">
-                            <span>Copy #{{ copy.copy_number }}</span>
+                            <span>{{ _('Copy #%(n)s', n=copy.copy_number) }}</span>
                             {% if copy.expired %}
                             <span data-testid="trash-expired-copy-{{ copy.id }}"
-                                  class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-error/20 text-shelf-error">Expired</span>
+                                  class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-error/20 text-shelf-error">{{ _('Expired') }}</span>
                             {% endif %}
                         </p>
-                        <p class="text-xs text-shelf-muted mt-0.5">{{ copy.location_name or 'No location' }} · Deleted {{ copy.deleted_at[:10] }}</p>
+                        <p class="text-xs text-shelf-muted mt-0.5">{{ copy.location_name or _('No location') }} · {{ _('Deleted %(date)s', date=copy.deleted_at[:10]) }}</p>
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <button type="button" data-testid="trash-restore-copy-{{ copy.id }}"
                                 hx-post="/api/trash/copies/{{ copy.id }}/restore"
                                 hx-target="#trash-list" hx-swap="outerHTML"
                                 class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">
-                            Restore
+                            {{ _('Restore') }}
                         </button>
                         {% if user and user.role == 'admin' %}
                         <button type="button" data-testid="trash-delete-copy-{{ copy.id }}"
@@ -135,7 +135,7 @@
                                 hx-target="#trash-list" hx-swap="outerHTML"
                                 hx-confirm="Delete copy #{{ copy.copy_number }} of '{{ group.item_title }}' permanently? This cannot be undone."
                                 class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors">
-                            Delete permanently
+                            {{ _('Delete permanently') }}
                         </button>
                         {% endif %}
                     </div>
@@ -150,9 +150,9 @@
     {% if not items and not copy_groups %}
     <div data-testid="trash-empty" class="text-shelf-muted text-sm py-8 text-center">
         {% if expired_only %}
-        Nothing in Trash has passed the retention window yet.
+        {{ _('Nothing in Trash has passed the retention window yet.') }}
         {% else %}
-        Trash is empty.
+        {{ _('Trash is empty.') }}
         {% endif %}
     </div>
     {% endif %}

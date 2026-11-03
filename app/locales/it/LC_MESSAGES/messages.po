@@ -283,7 +283,7 @@ msgstr "Scopri"
 msgid "Stats"
 msgstr "Statistiche"
 
-#: app/nav.py:46
+#: app/nav.py:46 app/templates/trash.html:2 app/templates/trash.html:6
 msgid "Trash"
 msgstr "Cestino"
 
@@ -295,7 +295,8 @@ msgstr "Biblioteca"
 msgid "Labels"
 msgstr "Etichette"
 
-#: app/nav.py:50
+#: app/nav.py:50 app/templates/audit.html:6 app/templates/audits.html:2
+#: app/templates/audits.html:6
 msgid "Audits"
 msgstr "Inventari"
 
@@ -604,6 +605,7 @@ msgstr "Nessuna copertina trovata"
 
 #: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:159
 #: app/routers/items_scan_modes.py:230 app/routers/scan_inventory.py:208
+#: app/templates/fragments/audit_report.html:81
 msgid "no location"
 msgstr "nessuna posizione"
 
@@ -648,7 +650,8 @@ msgstr "Nessuna posizione di destinazione selezionata"
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/item_copies.html:108
-#: app/templates/fragments/item_copy_edit.html:40 app/templates/intake.html:56
+#: app/templates/fragments/item_copy_edit.html:40
+#: app/templates/fragments/trash_list.html:123 app/templates/intake.html:56
 #: app/templates/intake.html:203 app/templates/music.html:75
 msgid "No location"
 msgstr "Nessuna posizione"
@@ -833,6 +836,10 @@ msgstr "Tag aggiunto (%(tags)s). Elementi: %(count)s"
 msgid "Removed %(tags)s from %(count)s item(s)"
 msgstr "Tag rimosso (%(tags)s). Elementi: %(count)s"
 
+#: app/routers/trash.py:113
+msgid "That item no longer exists"
+msgstr "L'elemento non esiste più"
+
 #: app/routers/valuation.py:36 app/routers/valuation.py:40
 msgid "Invalid request body"
 msgstr "Richiesta non valida"
@@ -865,6 +872,32 @@ msgstr "Chiave API di ISBNdb non configurata"
 #: app/routers/valuation.py:128
 msgid "No price found"
 msgstr "Nessun prezzo trovato"
+
+#: app/services/audits.py:68
+#, python-format
+msgid "%(name)s (deleted)"
+msgstr "%(name)s (eliminata)"
+
+#: app/services/audits.py:91 app/services/audits.py:94
+msgid "Pick a location to audit, or start a whole-library audit"
+msgstr "Scegli una posizione da inventariare o avvia l'inventario dell'intera biblioteca"
+
+#: app/services/audits.py:174
+msgid "That audit was deleted — start a new one"
+msgstr "Questo inventario è stato eliminato: avviane uno nuovo"
+
+#: app/services/audits.py:175
+msgid "That audit is finished — start a new one"
+msgstr "Questo inventario è concluso: avviane uno nuovo"
+
+#: app/services/audits.py:188
+msgid "That audit's location was deleted — start a new one"
+msgstr "La posizione di questo inventario è stata eliminata: avviane uno nuovo"
+
+#: app/services/audits.py:191
+#, python-format
+msgid "This audit is for %(place)s — switch the location back, or finish it and start a new one"
+msgstr "Questo inventario riguarda %(place)s: torna a quella posizione, oppure concludilo e avviane uno nuovo"
 
 #: app/services/audnexus.py:52
 msgid "Australia"
@@ -1062,6 +1095,73 @@ msgstr "novembre"
 #: app/services/wrapups.py:36
 msgid "December"
 msgstr "dicembre"
+
+#: app/templates/audit.html:2 app/templates/audit.html:7
+#, python-format
+msgid "Audit: %(name)s"
+msgstr "Inventario: %(name)s"
+
+#: app/templates/audit.html:9
+#, python-format
+msgid "Started %(date)s"
+msgstr "Iniziato il %(date)s"
+
+#: app/templates/audit.html:9 app/templates/audits.html:21
+#, python-format
+msgid "finished %(date)s"
+msgstr "concluso il %(date)s"
+
+#: app/templates/audit.html:10
+#, python-format
+msgid "%(num)s scan recorded."
+msgid_plural "%(num)s scans recorded."
+msgstr[0] "%(num)s scansione registrata."
+msgstr[1] "%(num)s scansioni registrate."
+
+#: app/templates/audit.html:11
+msgid "Read against the collection as it stands now."
+msgstr "Confrontato con la collezione così com'è ora."
+
+#: app/templates/audit.html:11
+msgid "Still open &mdash; scans from any device land here."
+msgstr "Ancora aperto: qui arrivano le scansioni da qualsiasi dispositivo."
+
+#: app/templates/audit.html:17 app/templates/fragments/audit_strip.html:39
+msgid "Finish audit"
+msgstr "Concludi l'inventario"
+
+#: app/templates/audit.html:25
+msgid "Delete audit"
+msgstr "Elimina l'inventario"
+
+#: app/templates/audits.html:8
+msgid "Shelf audits, newest first. Start one from Scan &rarr; Inventory; each report reads the collection as it stands now."
+msgstr "Inventari degli scaffali, dal più recente. Avviane uno da Scansiona &rarr; Inventario; ogni resoconto legge la collezione così com'è ora."
+
+#: app/templates/audits.html:13
+msgid "No audits yet &mdash; start one from Scan &rarr; Inventory."
+msgstr "Ancora nessun inventario: avviane uno da Scansiona &rarr; Inventario."
+
+#: app/templates/audits.html:19 app/templates/fragments/audit_strip.html:17
+#, python-format
+msgid "started %(date)s"
+msgstr "avviato il %(date)s"
+
+#: app/templates/audits.html:21
+#, python-format
+msgid "%(n)s min"
+msgstr "%(n)s min"
+
+#: app/templates/audits.html:23
+msgid "open"
+msgstr "aperto"
+
+#: app/templates/audits.html:25
+#, python-format
+msgid "%(num)s scan"
+msgid_plural "%(num)s scans"
+msgstr[0] "%(num)s scansione"
+msgstr[1] "%(num)s scansioni"
 
 #: app/templates/base.html:60
 msgid "Main menu"
@@ -1569,6 +1669,7 @@ msgstr "Aggiunta dei libri…"
 msgid "Looking up metadata for each selected book &mdash; a few seconds per book."
 msgstr "Ricerca dei dati per ogni libro selezionato: qualche secondo per libro."
 
+#: app/templates/fragments/audit_strip.html:27
 #: app/templates/fragments/item_copies.html:74 app/templates/intake.html:147
 msgid "Found"
 msgstr "Ritrovato"
@@ -1606,6 +1707,7 @@ msgstr "Tag predefiniti"
 msgid "Default tags — e.g. Cookbook; Signed"
 msgstr "Tag predefiniti, es. Ricettario; Autografato"
 
+#: app/templates/fragments/audit_report.html:118
 #: app/templates/fragments/book_search_results.html:31
 #: app/templates/fragments/dvd_search_results.html:29
 #: app/templates/fragments/game_search_results.html:31
@@ -2021,7 +2123,7 @@ msgstr "Data di fine"
 msgid "Description"
 msgstr "Descrizione"
 
-#: app/templates/item_edit.html:161
+#: app/templates/fragments/audit_notes.html:4 app/templates/item_edit.html:161
 msgid "Notes"
 msgstr "Note"
 
@@ -2268,6 +2370,8 @@ msgstr "Salva l'ordine"
 msgid "Drag copies into their physical left-to-right/top-to-bottom order, then save. Optional Periodicals and Music metadata is used automatically when available."
 msgstr "Trascina le copie nell'ordine fisico (da sinistra a destra, dall'alto in basso), poi salva. I dati facoltativi di Periodici e Musica vengono usati automaticamente quando ci sono."
 
+#: app/templates/fragments/audit_report.html:31
+#: app/templates/fragments/audit_report.html:33
 #: app/templates/location_order.html:55
 #, python-format
 msgid "Copy %(n)s"
@@ -3017,6 +3121,15 @@ msgstr "Installa Shelf su questo dispositivo"
 msgid "Scans of books not in your library are added to your wishlist automatically when you're back online."
 msgstr "I libri scansionati che non sono in biblioteca vengono aggiunti alla lista desideri appena torni online."
 
+#: app/templates/trash.html:9
+#, python-format
+msgid "Deleted items and copies wait here until you restore them. After %(days)s days they are marked expired, and an admin is prompted to empty them."
+msgstr "Gli elementi e le copie eliminati restano qui finché non li ripristini. Dopo %(days)s giorni vengono segnati come scaduti e a un amministratore viene chiesto di svuotarli."
+
+#: app/templates/trash.html:11
+msgid "Deleted items and copies wait here until you restore them. Nothing is ever marked expired — the retention setting is 0."
+msgstr "Gli elementi e le copie eliminati restano qui finché non li ripristini. Niente viene mai segnato come scaduto: l'impostazione di conservazione è 0."
+
 #: app/templates/upcoming.html:8
 msgid "Announced volumes in the series you watch, checked once a day."
 msgstr "I volumi annunciati delle serie che segui, controllati una volta al giorno."
@@ -3033,7 +3146,7 @@ msgstr "Non significa che non arrivi nulla: Hardcover potrebbe non elencare anco
 msgid "announced — date TBA"
 msgstr "annunciato, data da definire"
 
-#: app/templates/upcoming.html:46
+#: app/templates/fragments/trash_nag.html:18 app/templates/upcoming.html:46
 msgid "Dismiss"
 msgstr "Ignora"
 
@@ -3238,6 +3351,116 @@ msgstr "Revoca"
 msgid "Also available as:"
 msgstr "Disponibile anche come:"
 
+#: app/templates/fragments/audit_notes.html:9
+msgid "Save notes"
+msgstr "Salva le note"
+
+#: app/templates/fragments/audit_report.html:20
+msgid "a record since deleted"
+msgstr "una scheda poi eliminata"
+
+#: app/templates/fragments/audit_report.html:31
+#: app/templates/fragments/item_copies.html:74
+#, python-format
+msgid "missing since %(date)s"
+msgstr "mancante dal %(date)s"
+
+#: app/templates/fragments/audit_report.html:59
+msgid "This audit's location was deleted, so nothing is expected here any more. Its scans are still listed."
+msgstr "La posizione di questo inventario è stata eliminata, quindi qui non è più atteso nulla. Le sue scansioni restano elencate."
+
+#: app/templates/fragments/audit_report.html:81
+#, python-format
+msgid "It was this one &mdash; move it here (Copy %(n)s, now at %(place)s)"
+msgstr "Era questa: spostala qui (copia %(n)s, ora in %(place)s)"
+
+#: app/templates/fragments/audit_report.html:98
+msgid "Mark all missing"
+msgstr "Segna tutti come mancanti"
+
+#: app/templates/fragments/audit_report.html:107
+msgid "Mark missing"
+msgstr "Segna come mancante"
+
+#: app/templates/fragments/audit_report.html:120
+#: app/templates/fragments/scan_result.html:198
+msgid "Open Trash"
+msgstr "Apri il cestino"
+
+#: app/templates/fragments/audit_strip.html:16
+#, python-format
+msgid "Auditing %(name)s"
+msgstr "Inventario di %(name)s"
+
+#: app/templates/fragments/audit_strip.html:22
+msgid "Scanning at"
+msgstr "Scansione in"
+
+#: app/templates/fragments/audit_strip.html:22
+msgid "&mdash; each scan files the book there."
+msgstr ": ogni scansione sistema il libro lì."
+
+#: app/templates/fragments/audit_strip.html:26
+msgid "scanned"
+msgstr "scansionati"
+
+#: app/templates/fragments/audit_strip.html:28
+msgid "Moved here"
+msgstr "Spostati qui"
+
+#: app/templates/fragments/audit_strip.html:29
+msgid "Elsewhere"
+msgstr "Altrove"
+
+#: app/templates/fragments/audit_strip.html:30
+msgid "Unexpected"
+msgstr "Inattesi"
+
+#: app/templates/fragments/audit_strip.html:32
+msgid "still unaccounted"
+msgstr "ancora da trovare"
+
+#: app/templates/fragments/audit_strip.html:43
+msgid "Leave"
+msgstr "Esci"
+
+#: app/templates/fragments/audit_strip.html:46
+msgid "Report so far"
+msgstr "Resoconto finora"
+
+#: app/templates/fragments/audit_strip.html:52
+#, python-format
+msgid "Audit finished &mdash; %(num)s scan recorded. Turn on Collector tools to read the report."
+msgid_plural "Audit finished &mdash; %(num)s scans recorded. Turn on Collector tools to read the report."
+msgstr[0] "Inventario concluso: %(num)s scansione registrata. Attiva gli Strumenti da collezionista per leggere il resoconto."
+msgstr[1] "Inventario concluso: %(num)s scansioni registrate. Attiva gli Strumenti da collezionista per leggere il resoconto."
+
+#: app/templates/fragments/audit_strip.html:55
+msgid "Start an audit to get a report. Scans without one still confirm and move items, but record nothing."
+msgstr "Avvia un inventario per avere un resoconto. Senza inventario, le scansioni confermano e spostano comunque gli elementi, ma non registrano nulla."
+
+#: app/templates/fragments/audit_strip.html:61
+msgid "Start audit of the selected location"
+msgstr "Avvia l'inventario della posizione scelta"
+
+#: app/templates/fragments/audit_strip.html:67
+msgid "Start whole-library audit"
+msgstr "Avvia l'inventario dell'intera biblioteca"
+
+#: app/templates/fragments/audit_strip.html:72
+msgid "Open audits:"
+msgstr "Inventari aperti:"
+
+#: app/templates/fragments/audit_strip.html:79
+#, python-format
+msgid "Join %(name)s"
+msgstr "Partecipa: %(name)s"
+
+#: app/templates/fragments/audit_strip.html:79
+#, python-format
+msgid "%(n)s scanned"
+msgstr "%(n)s scansionati"
+
 #: app/templates/fragments/audnexus_fill_result.html:1
 msgid "Reload to see them"
 msgstr ""
@@ -3402,6 +3625,7 @@ msgstr "In ritardo"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58
+#: app/templates/fragments/trash_list.html:69
 msgid "Loaned"
 msgstr "In prestito"
 
@@ -3420,11 +3644,6 @@ msgstr "Nuovo"
 #: app/templates/fragments/item_card.html:53
 msgid "Open in RomM"
 msgstr "Apri in RomM"
-
-#: app/templates/fragments/item_copies.html:74
-#, python-format
-msgid "missing since %(date)s"
-msgstr "mancante dal %(date)s"
 
 #: app/templates/fragments/item_copies.html:84
 #: app/templates/fragments/item_copies.html:87
@@ -3454,6 +3673,7 @@ msgid "+ Add copy"
 msgstr "+ Aggiungi copia"
 
 #: app/templates/fragments/item_copy_edit.html:31
+#: app/templates/fragments/trash_list.html:117
 #, python-format
 msgid "Copy #%(n)s"
 msgstr "Copia n. %(n)s"
@@ -3919,16 +4139,14 @@ msgstr "Ripristinato dal cestino"
 msgid "Copy %(n)s is in Trash &mdash; restore it from the Trash page"
 msgstr "La copia %(n)s è nel cestino: ripristinala dalla pagina Cestino"
 
-#: app/templates/fragments/scan_result.html:198
-msgid "Open Trash"
-msgstr "Apri il cestino"
-
 #: app/templates/fragments/scan_result.html:200
 #, python-format
 msgid "In Trash since %(date)s &mdash; restore it to lend, move or rate it"
 msgstr "Nel cestino dal %(date)s: ripristinalo per prestarlo, spostarlo o valutarlo"
 
 #: app/templates/fragments/scan_result.html:211
+#: app/templates/fragments/trash_list.html:83
+#: app/templates/fragments/trash_list.html:130
 msgid "Restore"
 msgstr "Ripristina"
 
@@ -4113,4 +4331,72 @@ msgstr "%(n)s ancora da ordinare"
 #: app/templates/fragments/shelf_fill_summary.html:16
 msgid "Arrange"
 msgstr "Disponi"
+
+#: app/templates/fragments/trash_list.html:15
+msgid "Show all"
+msgstr "Mostra tutto"
+
+#: app/templates/fragments/trash_list.html:18
+msgid "Show expired only"
+msgstr "Mostra solo gli scaduti"
+
+#: app/templates/fragments/trash_list.html:25
+#, python-format
+msgid "Delete %(n)s expired items and copies permanently?"
+msgstr "Eliminare definitivamente %(n)s elementi e copie scaduti?"
+
+#: app/templates/fragments/trash_list.html:27
+#, python-format
+msgid "Empty expired (%(n)s)"
+msgstr "Svuota gli scaduti (%(n)s)"
+
+#: app/templates/fragments/trash_list.html:35
+#, python-format
+msgid "Permanently deleted %(num)s row."
+msgid_plural "Permanently deleted %(num)s rows."
+msgstr[0] "Eliminata definitivamente %(num)s voce."
+msgstr[1] "Eliminate definitivamente %(num)s voci."
+
+#: app/templates/fragments/trash_list.html:42
+msgid "That row is not in Trash anymore."
+msgstr "Questa voce non è più nel cestino."
+
+#: app/templates/fragments/trash_list.html:47
+msgid "This copy's item is in Trash too — restore the item and its copies come back with it."
+msgstr "Anche l'elemento di questa copia è nel cestino: ripristina l'elemento e le sue copie torneranno con lui."
+
+#: app/templates/fragments/trash_list.html:73
+#: app/templates/fragments/trash_list.html:120
+msgid "Expired"
+msgstr "Scaduto"
+
+#: app/templates/fragments/trash_list.html:76
+#: app/templates/fragments/trash_list.html:123
+#, python-format
+msgid "Deleted %(date)s"
+msgstr "Eliminato il %(date)s"
+
+#: app/templates/fragments/trash_list.html:91
+#: app/templates/fragments/trash_list.html:138
+msgid "Delete permanently"
+msgstr "Elimina definitivamente"
+
+#: app/templates/fragments/trash_list.html:153
+msgid "Nothing in Trash has passed the retention window yet."
+msgstr "Nel cestino non c'è ancora nulla oltre il periodo di conservazione."
+
+#: app/templates/fragments/trash_list.html:155
+msgid "Trash is empty."
+msgstr "Il cestino è vuoto."
+
+#: app/templates/fragments/trash_nag.html:10
+#, python-format
+msgid "%(num)s item in Trash has been there longer than your retention window."
+msgid_plural "%(num)s items in Trash have been there longer than your retention window."
+msgstr[0] "%(num)s elemento è nel cestino da più del periodo di conservazione."
+msgstr[1] "%(num)s elementi sono nel cestino da più del periodo di conservazione."
+
+#: app/templates/fragments/trash_nag.html:13
+msgid "Review expired items"
+msgstr "Rivedi gli elementi scaduti"
 

@@ -7,16 +7,15 @@
      class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
     <div class="flex flex-wrap items-center gap-3 rounded-lg border border-shelf-warning/40 bg-shelf-warning/10 px-4 py-3 text-sm text-shelf-warning">
         <span class="flex-1 min-w-0">
-            {% if trash_nag.count == 1 %}1 item in Trash has been there longer than your retention window.
-            {% else %}{{ trash_nag.count }} items in Trash have been there longer than your retention window.{% endif %}
+            {{ ngettext('%(num)s item in Trash has been there longer than your retention window.', '%(num)s items in Trash have been there longer than your retention window.', trash_nag.count) }}
         </span>
         <a href="/trash?expired=1" data-testid="trash-nag-link"
-           class="underline hover:text-white">Review expired items</a>
+           class="underline hover:text-white">{{ _('Review expired items') }}</a>
         <button type="button" data-testid="trash-nag-dismiss"
                 hx-post="/api/trash/nag/dismiss"
                 hx-target="#trash-nag" hx-swap="outerHTML"
                 class="px-3 py-1 rounded-lg border border-shelf-warning/40 text-xs hover:bg-shelf-warning/20 transition-colors">
-            Dismiss
+            {{ _('Dismiss') }}
         </button>
     </div>
 </div>

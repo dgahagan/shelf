@@ -20,6 +20,7 @@ import logging
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.routers import items_common
@@ -109,7 +110,7 @@ async def restore_item(
     if live is None:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "error", "isbn": isbn, "message": "That item no longer exists"},
+            {"status": "error", "isbn": isbn, "message": i18n.gettext("That item no longer exists")},
             status_code=404,
         )
     items_common._log_scan(isbn, live["media_type"], "restored", item_id, mode or "add")

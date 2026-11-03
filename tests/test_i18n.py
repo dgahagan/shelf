@@ -259,3 +259,11 @@ def test_home_stats_and_labels_are_translated(admin_client):
     assert "Statistiche della collezione" in admin_client.get("/stats").text
     assert "Riepilogo: ottobre 2026" in admin_client.get("/stats/wrapup?period=2026-10").text
     assert "Etichette delle copie" in admin_client.get("/labels").text
+
+
+def test_trash_and_audits_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    assert "Il cestino è vuoto." in admin_client.get("/trash").text
+    assert "Ancora nessun inventario" in admin_client.get("/audits").text
+

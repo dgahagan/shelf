@@ -30,6 +30,7 @@ Nothing in this module logs (G3).
 from dataclasses import dataclass, field
 from typing import Any
 
+from app import i18n
 from app.database import get_db
 
 SCOPES = ("location", "library")
@@ -64,7 +65,7 @@ def _session_dict(row) -> dict[str, Any] | None:
         session["scope"] == "location" and session["location_id"] is None
     )
     session["label"] = (
-        f"{session['location_name']} (deleted)"
+        i18n.gettext("%(name)s (deleted)") % {"name": session["location_name"]}
         if session["location_deleted"] else session["location_name"]
     )
     session["is_open"] = session["finished_at"] is None
@@ -87,10 +88,10 @@ def create_session(db, *, scope: str, location_id: int | None) -> int:
                 "SELECT name FROM locations WHERE id = ?", (location_id,)
             ).fetchone()
         if row is None:
-            raise AuditError("Pick a location to audit, or start a whole-library audit")
+            raise AuditError(i18n.gettext("Pick a location to audit, or start a whole-library audit"))
         name = row["name"]
     else:
-        raise AuditError("Pick a location to audit, or start a whole-library audit")
+        raise AuditError(i18n.gettext("Pick a location to audit, or start a whole-library audit"))
     cursor = db.execute(
         "INSERT INTO audit_sessions (scope, location_id, location_name) VALUES (?, ?, ?)",
         (scope, location_id, name),
@@ -170,8 +171,8 @@ def open_session_for_write(db, audit_id: int | None) -> dict[str, Any] | None:
 def closed_session_message(db, audit_id: int | None) -> str:
     """The refusal for a scan into a session `open_session_for_write` refused."""
     if get_session(db, audit_id) is None:
-        return "That audit was deleted — start a new one"
-    return "That audit is finished — start a new one"
+        return i18n.gettext("That audit was deleted — start a new one")
+    return i18n.gettext("That audit is finished — start a new one")
 
 
 def scan_location_refusal(session: dict[str, Any], location_id: int | None) -> str | None:
@@ -184,12 +185,12 @@ def scan_location_refusal(session: dict[str, Any], location_id: int | None) -> s
     if session["scope"] != "location":
         return None
     if session["location_deleted"]:
-        return "That audit's location was deleted — start a new one"
+        return i18n.gettext("That audit's location was deleted — start a new one")
     if location_id != session["location_id"]:
-        return (
-            f"This audit is for {session['location_name']} — switch the location "
+        return i18n.gettext(
+            "This audit is for %(place)s — switch the location "
             "back, or finish it and start a new one"
-        )
+        ) % {"place": session["location_name"]}
     return None
 
 
