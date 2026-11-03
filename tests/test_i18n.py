@@ -250,3 +250,12 @@ def test_music_and_periodicals_are_translated(admin_client):
 
     assert "La tua musica" in admin_client.get("/music").text
     assert "Ancora nessun periodico in catalogo" in admin_client.get("/periodicals").text
+
+
+def test_home_stats_and_labels_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    assert "La tua collezione è vuota." in admin_client.get("/").text
+    assert "Statistiche della collezione" in admin_client.get("/stats").text
+    assert "Riepilogo: ottobre 2026" in admin_client.get("/stats/wrapup?period=2026-10").text
+    assert "Etichette delle copie" in admin_client.get("/labels").text

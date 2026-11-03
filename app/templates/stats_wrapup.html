@@ -1,28 +1,28 @@
 {% extends "base.html" %}
-{% block title %}{{ period.label }} Wrap-up — Shelf{% endblock %}
+{% block title %}{{ _('%(period)s Wrap-up', period=period.label) }} — Shelf{% endblock %}
 {% block head %}
 <script src="/static/js/wrapup.js"></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="flex flex-wrap items-baseline justify-between gap-3 mb-6">
-        <h1 class="text-2xl font-bold">{{ period.label }} Wrap-up</h1>
-        <a href="/stats" class="text-sm text-shelf-accent hover:underline">&larr; Stats</a>
+        <h1 class="text-2xl font-bold">{{ _('%(period)s Wrap-up', period=period.label) }}</h1>
+        <a href="/stats" class="text-sm text-shelf-accent hover:underline">&larr; {{ _('Stats') }}</a>
     </div>
 
     <form method="get" action="/stats/wrapup" class="flex flex-wrap items-center gap-2 mb-6" data-testid="wrapup-picker">
-        <label for="wrapup-period" class="text-sm text-shelf-muted">Period</label>
+        <label for="wrapup-period" class="text-sm text-shelf-muted">{{ _('Period') }}</label>
         <select id="wrapup-period" name="period" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
             {% for key, label in period_options %}
             <option value="{{ key }}"{% if key == period.key %} selected{% endif %}>{{ label }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-sm">Show</button>
+        <button type="submit" class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-sm">{{ _('Show') }}</button>
     </form>
 
     {% if summary.showing is none %}
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-8 text-center" data-testid="wrapup-empty">
-        <p class="text-shelf-muted">Nothing was finished or added in {{ period.label }}.</p>
+        <p class="text-shelf-muted">{{ _('Nothing was finished or added in %(period)s.', period=period.label) }}</p>
     </div>
     {% else %}
     <div id="wrapup-data" class="bg-shelf-card border border-shelf-border rounded-lg p-5 mb-6" data-testid="wrapup-data"
@@ -33,16 +33,16 @@
          data-top-author-count="{{ summary.top_author[1] if summary.top_author else '' }}">
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
-                <p class="text-shelf-muted text-sm">Finished</p>
+                <p class="text-shelf-muted text-sm">{{ _('Finished') }}</p>
                 <p class="text-2xl font-bold flex flex-wrap gap-x-4">{% if summary.finished %}{% for n, word in summary.finished %}<span class="whitespace-nowrap" data-wrapup-finished data-count="{{ n }}" data-word="{{ word }}">{{ n }} <span class="text-sm text-shelf-muted font-normal">{{ word }}</span></span>{% endfor %}{% else %}0{% endif %}</p>
             </div>
             <div>
-                <p class="text-shelf-muted text-sm">Added</p>
+                <p class="text-shelf-muted text-sm">{{ _('Added') }}</p>
                 <p class="text-2xl font-bold">{{ summary.added_total }}</p>
             </div>
             {% if summary.top_author %}
             <div>
-                <p class="text-shelf-muted text-sm">Top author</p>
+                <p class="text-shelf-muted text-sm">{{ _('Top author') }}</p>
                 <p class="text-lg font-semibold">{{ summary.top_author[0] }} <span class="text-sm text-shelf-muted font-normal">({{ summary.top_author[1] }})</span></p>
             </div>
             {% endif %}
@@ -51,17 +51,17 @@
 
     <div class="flex flex-col items-center gap-3 mb-8">
         <canvas id="wrapup-canvas" class="w-full max-w-sm rounded-lg border border-shelf-border" data-testid="wrapup-canvas"
-                aria-label="Wrap-up image for {{ period.label }}"></canvas>
-        <p id="wrapup-status" class="text-sm text-shelf-muted">Drawing&hellip;</p>
+                aria-label="{{ _('Wrap-up image for %(period)s', period=period.label) }}"></canvas>
+        <p id="wrapup-status" class="text-sm text-shelf-muted">{{ _('Drawing…') }}</p>
         <div class="flex gap-3">
-            <a id="wrapup-download" href="#" class="hidden px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors" data-testid="wrapup-download">Download image</a>
-            <button id="wrapup-share" type="button" class="hidden px-4 py-2 border border-shelf-border rounded-lg text-sm hover:bg-shelf-hover transition-colors" data-testid="wrapup-share">Share</button>
+            <a id="wrapup-download" href="#" class="hidden px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors" data-testid="wrapup-download">{{ _('Download image') }}</a>
+            <button id="wrapup-share" type="button" class="hidden px-4 py-2 border border-shelf-border rounded-lg text-sm hover:bg-shelf-hover transition-colors" data-testid="wrapup-share">{{ _('Share') }}</button>
         </div>
-        <p class="text-xs text-shelf-muted">Drawn in your browser. Nothing is stored or published.</p>
+        <p class="text-xs text-shelf-muted">{{ _('Drawn in your browser. Nothing is stored or published.') }}</p>
     </div>
 
     {% set tile_total = summary.finished_total if summary.showing == 'finished' else summary.added_total %}
-    <h2 class="text-lg font-semibold mb-3">{% if summary.showing == 'finished' %}Finished{% else %}Added{% endif %} in {{ period.label }}{% if tile_total > summary.tiles|length %} <span class="text-sm text-shelf-muted font-normal" data-testid="wrapup-tiles-capped">latest {{ summary.tiles|length }} of {{ tile_total }}</span>{% endif %}</h2>
+    <h2 class="text-lg font-semibold mb-3">{% if summary.showing == 'finished' %}{{ _('Finished in %(period)s', period=period.label) }}{% else %}{{ _('Added in %(period)s', period=period.label) }}{% endif %}{% if tile_total > summary.tiles|length %} <span class="text-sm text-shelf-muted font-normal" data-testid="wrapup-tiles-capped">{{ _('latest %(shown)s of %(total)s', shown=summary.tiles|length, total=tile_total) }}</span>{% endif %}</h2>
     <ul class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3" data-testid="wrapup-tiles">
         {% for tile in summary.tiles %}
         <li data-wrapup-tile data-cover="{{ '/' ~ tile.cover_path if tile.cover_path else '' }}" data-title="{{ tile.title }}">

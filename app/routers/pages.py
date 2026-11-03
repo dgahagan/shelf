@@ -543,7 +543,7 @@ async def stats(request: Request, _=Depends(require_role("viewer")),
 
     read_pairs = sorted(book_by_year.items())
     finished_this_year = [
-        (by_key.get(k, {}).get(current_year, 0), labels.done_lower)
+        (by_key.get(k, {}).get(current_year, 0), i18n.gettext(labels.done_lower))
         for k, labels in (("read", READ_LABELS), ("watch", WATCH_LABELS), ("play", PLAY_LABELS))
     ]
     finished_this_year = [(n, word) for n, word in finished_this_year if n > 0]

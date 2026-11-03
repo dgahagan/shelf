@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Arrange {{ location.label or location.name }} — Shelf{% endblock %}
+{% block title %}{{ _('Arrange %(place)s', place=location.label or location.name) }} — Shelf{% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto" data-location-order data-location-id="{{ location.id }}" data-can-edit="{{ '1' if can_edit else '0' }}">
     <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-            <a href="/settings" class="text-sm text-shelf-muted hover:text-shelf-text">← Settings</a>
+            <a href="/settings" class="text-sm text-shelf-muted hover:text-shelf-text">{{ _('← Settings') }}</a>
             <h1 class="text-2xl font-bold mt-2">{{ location.name }}</h1>
-            <p class="text-sm text-shelf-muted mt-1">{{ copies|length }} physical cop{{ 'y' if copies|length == 1 else 'ies' }} stored directly here.</p>
+            <p class="text-sm text-shelf-muted mt-1">{{ ngettext('%(num)s physical copy stored directly here.', '%(num)s physical copies stored directly here.', copies|length) }}</p>
         </div>
     </div>
 
     {% if children %}
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-4 mb-5">
-        <h2 class="font-semibold mb-2">Inside this location</h2>
+        <h2 class="font-semibold mb-2">{{ _('Inside this location') }}</h2>
         <div class="flex flex-wrap gap-2">
             {% for child in children %}
             <a href="/locations/{{ child.id }}/arrange" class="px-3 py-1.5 rounded-lg bg-shelf-bg text-sm hover:bg-shelf-hover">{{ child.label or child.name }}</a>
@@ -24,13 +24,13 @@
     {% if can_edit and copies %}
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-4 mb-5">
         <div class="flex flex-wrap items-center gap-2">
-            <span class="text-sm text-shelf-muted mr-1">Auto order:</span>
+            <span class="text-sm text-shelf-muted mr-1">{{ _('Auto order:') }}</span>
             {% for key, label in [('title', 'Title'), ('author', 'Creator'), ('series', 'Series'), ('release', 'Release'), ('issue', 'Issue')] %}
             <button type="button" data-auto-order="{{ key }}" class="px-3 py-1.5 rounded-lg bg-shelf-bg text-sm hover:bg-shelf-hover">{{ label }}</button>
             {% endfor %}
-            <button type="button" data-save-order class="ml-auto px-4 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2">Save order</button>
+            <button type="button" data-save-order class="ml-auto px-4 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2">{{ _('Save order') }}</button>
         </div>
-        <p class="text-xs text-shelf-muted mt-2">Drag copies into their physical left-to-right/top-to-bottom order, then save. Optional Periodicals and Music metadata is used automatically when available.</p>
+        <p class="text-xs text-shelf-muted mt-2">{{ _('Drag copies into their physical left-to-right/top-to-bottom order, then save. Optional Periodicals and Music metadata is used automatically when available.') }}</p>
         <p data-order-status class="text-xs text-shelf-muted mt-2" aria-live="polite"></p>
     </div>
     {% endif %}
@@ -52,14 +52,14 @@
                     {% if copy.authors %}{{ copy.authors }}{% endif %}
                     {% if copy.series_name %} · {{ copy.series_name }}{% if copy.series_position is not none %} #{{ copy.series_position|int if copy.series_position == copy.series_position|int else copy.series_position }}{% endif %}{% endif %}
                 </div>
-                <div class="text-xs text-shelf-muted mt-1">Copy {{ copy.copy_number }}{% if copy.copy_barcode %} · {{ copy.copy_barcode }}{% endif %}</div>
+                <div class="text-xs text-shelf-muted mt-1">{{ _('Copy %(n)s', n=copy.copy_number) }}{% if copy.copy_barcode %} · {{ copy.copy_barcode }}{% endif %}</div>
             </div>
             {% if copy.position_order is not none %}<span class="text-xs text-shelf-muted">#{{ copy.position_order }}</span>{% endif %}
         </div>
         {% endfor %}
     </div>
     {% else %}
-    <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center text-shelf-muted">No physical copies are stored directly at this location yet.</div>
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center text-shelf-muted">{{ _('No physical copies are stored directly at this location yet.') }}</div>
     {% endif %}
 </div>
 <script src="/static/js/location-order.js" defer></script>

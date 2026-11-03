@@ -64,7 +64,7 @@ msgid "checked {date}"
 msgstr "verificata il {date}"
 
 #: static/js/components-item.js:81 static/js/components-item.js:85
-#: static/js/components-item.js:154
+#: static/js/components-item.js:154 static/js/location-order.js:67
 msgid "Saving…"
 msgstr "Salvataggio…"
 
@@ -269,6 +269,22 @@ msgstr "Inquadra un codice a barre commerciale UPC-A o EAN-13."
 #: static/js/item_edit.js:158
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
 msgstr "Questo non è un codice a barre commerciale UPC-A / EAN-13 valido. Riprova."
+
+#: static/js/location-order.js:32
+msgid "Order changed — save when ready."
+msgstr "Ordine cambiato: salva quando hai finito."
+
+#: static/js/location-order.js:60
+msgid "Could not save shelf order"
+msgstr "Impossibile salvare l'ordine dello scaffale"
+
+#: static/js/location-order.js:70
+msgid "Shelf order saved."
+msgstr "Ordine dello scaffale salvato."
+
+#: static/js/location-order.js:81
+msgid "Ordering…"
+msgstr "Ordinamento in corso…"
 
 #: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165
 msgid "Want to"
@@ -586,4 +602,27 @@ msgstr "online"
 #: static/js/store.js:367
 msgid "offline"
 msgstr "offline"
+
+#: static/js/wrapup.js:128
+msgid "Untitled"
+msgstr "Senza titolo"
+
+#: static/js/wrapup.js:205
+#, python-brace-format
+msgid "Finished in {period}"
+msgstr "Finiti ({period})"
+
+#: static/js/wrapup.js:205
+#, python-brace-format
+msgid "Added in {period}"
+msgstr "Aggiunti ({period})"
+
+#: static/js/wrapup.js:206
+#, python-brace-format
+msgid "Latest {shown} of {total}"
+msgstr "Ultimi {shown} di {total}"
+
+#: static/js/wrapup.js:250
+msgid "This browser could not export the image."
+msgstr "Questo browser non è riuscito a esportare l'immagine."
 

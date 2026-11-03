@@ -29,7 +29,7 @@
             row.addEventListener('dragend', function () {
                 row.removeAttribute('aria-grabbed');
                 dragging = null;
-                message('Order changed — save when ready.', false);
+                message(t('Order changed — save when ready.'), false);
             });
         });
 
@@ -57,17 +57,17 @@
             });
             let data = {};
             try { data = await response.json(); } catch (_) {}
-            if (!response.ok || !data.ok) throw new Error(data.message || 'Could not save shelf order');
+            if (!response.ok || !data.ok) throw new Error(data.message || t('Could not save shelf order'));
             return data;
         }
 
         const save = root.querySelector('[data-save-order]');
         if (save) save.addEventListener('click', async function () {
             save.disabled = true;
-            message('Saving…', false);
+            message(t('Saving…'), false);
             try {
                 await post('/api/locations/' + locationId + '/order', {copy_ids: ids()});
-                message('Shelf order saved.', false);
+                message(t('Shelf order saved.'), false);
             } catch (error) {
                 message(error.message, true);
             } finally {
@@ -78,7 +78,7 @@
         root.querySelectorAll('[data-auto-order]').forEach(function (button) {
             button.addEventListener('click', async function () {
                 button.disabled = true;
-                message('Ordering…', false);
+                message(t('Ordering…'), false);
                 try {
                     await post('/api/locations/' + locationId + '/auto-order', {sort_key: button.dataset.autoOrder});
                     window.location.reload();
