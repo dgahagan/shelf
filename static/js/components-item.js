@@ -440,8 +440,8 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify(d)
                 })
                     .then(r => r.json())
-                    .then(r => { this.adding = false; if (r.ok) { this.added = true; showToast(r.restored ? 'Restored from Trash' : 'Added to wishlist'); } else { this.error = r.message; if (r.item_id) this.added = true; } })
-                    .catch(() => { this.adding = false; this.error = 'Failed'; });
+                    .then(r => { this.adding = false; if (r.ok) { this.added = true; showToast(r.restored ? t('Restored from Trash') : t('Added to wishlist')); } else { this.error = r.message; if (r.item_id) this.added = true; } })
+                    .catch(() => { this.adding = false; this.error = t('Failed'); });
             }
         };
     });
@@ -534,7 +534,7 @@ document.addEventListener('alpine:init', function () {
             // rather than a computed field — scanPage.modeConfig is the
             // precedent for one under the CSP build.
             get creatorLabel() {
-                return creatorLabels[this.mediaType] || 'Author(s)';
+                return creatorLabels[this.mediaType] || t('Author(s)');
             },
 
             // Every programmatic type change goes through here, so
@@ -575,11 +575,11 @@ document.addEventListener('alpine:init', function () {
                 })
                     .then(r => r.json())
                     .then(d => {
-                        if (!d || d.error) { self.copyError = 'Could not copy from that item.'; return; }
+                        if (!d || d.error) { self.copyError = t('Could not copy from that item.'); return; }
                         self.applyTemplate(d);
                         self.copiedFrom = s.title;
                     })
-                    .catch(() => { self.copyError = 'Could not copy from that item.'; });
+                    .catch(() => { self.copyError = t('Could not copy from that item.'); });
             },
             applyTemplate(d) {
                 var root = rootEl;

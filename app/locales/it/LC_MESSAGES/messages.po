@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-10 09:12+0100\n"
+"PO-Revision-Date: 2026-11-10 17:30+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -12,7 +12,7 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit"
 
-#: app/browse_columns.py:62
+#: app/browse_columns.py:62 app/templates/item_edit.html:103
 msgid "Title"
 msgstr "Titolo"
 
@@ -26,11 +26,14 @@ msgstr "Tipo"
 
 #: app/browse_columns.py:65 app/browse_filters.py:197
 #: app/templates/fragments/item_copy_edit.html:37
+#: app/templates/fragments/manual_add_form.html:160
+#: app/templates/item_edit.html:81 app/templates/item_edit.html:301
+#: app/templates/item_edit.html:306
 msgid "Location"
 msgstr "Posizione"
 
 #: app/browse_columns.py:66 app/browse_filters.py:199
-#: app/templates/item_detail.html:230
+#: app/templates/item_detail.html:230 app/templates/item_edit.html:138
 msgid "Status"
 msgstr "Stato"
 
@@ -39,23 +42,29 @@ msgid "Value"
 msgstr "Valore"
 
 #: app/browse_columns.py:68 app/nav.py:41 app/templates/browse.html:49
+#: app/templates/fragments/manual_add_form.html:155
+#: app/templates/item_edit.html:79 app/templates/item_edit.html:217
+#: app/templates/item_edit.html:221
 msgid "Series"
 msgstr "Serie"
 
-#: app/browse_columns.py:69
+#: app/browse_columns.py:69 app/templates/fragments/manual_add_form.html:96
+#: app/templates/item_edit.html:118
 msgid "Publisher"
 msgstr "Editore"
 
-#: app/browse_columns.py:70
+#: app/browse_columns.py:70 app/templates/fragments/manual_add_form.html:99
+#: app/templates/item_edit.html:119
 msgid "Year"
 msgstr "Anno"
 
-#: app/browse_columns.py:71
+#: app/browse_columns.py:71 app/templates/item_edit.html:223
 msgid "Pages"
 msgstr "Pagine"
 
 #: app/browse_columns.py:72 app/browse_filters.py:207
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
+#: app/templates/item_edit.html:123
 msgid "Language"
 msgstr "Lingua"
 
@@ -63,7 +72,7 @@ msgstr "Lingua"
 msgid "Added"
 msgstr "Aggiunto il"
 
-#: app/browse_columns.py:74
+#: app/browse_columns.py:74 app/templates/item_edit.html:355
 msgid "Platform"
 msgstr "Piattaforma"
 
@@ -72,6 +81,7 @@ msgid "ISBN/UPC"
 msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
+#: app/templates/item_edit.html:83 app/templates/item_edit.html:390
 msgid "Tags"
 msgstr "Tag"
 
@@ -403,7 +413,36 @@ msgstr "Nessun campo valido da aggiornare"
 msgid "Series name cannot be empty"
 msgstr "Il nome della serie non può essere vuoto"
 
+#: app/routers/items_catalog.py:93
+msgid "Unrecognised game platform — pick one and try again"
+msgstr "Piattaforma di gioco non riconosciuta: scegline una e riprova"
+
+#: app/routers/items_catalog.py:110
+msgid "Failed to fetch game details from IGDB"
+msgstr "Impossibile recuperare i dettagli del gioco da IGDB"
+
+#: app/routers/items_catalog.py:269
+msgid "Unrecognised media type — pick one and try again"
+msgstr "Tipo di media non riconosciuto: scegline uno e riprova"
+
+#: app/routers/items_catalog.py:277
+msgid "Invalid ISBN"
+msgstr "ISBN non valido"
+
+#: app/routers/items_catalog.py:319
+msgid "Could not fetch metadata for this ISBN"
+msgstr "Impossibile recuperare i dati per questo ISBN"
+
+#: app/routers/items_catalog.py:439
+msgid "Title is required"
+msgstr "Il titolo è obbligatorio"
+
+#: app/routers/items_catalog.py:447
+msgid "Invalid publish year"
+msgstr "Anno di pubblicazione non valido"
+
 #: app/routers/items_covers.py:74
+#: app/templates/fragments/book_search_results.html:35
 msgid "No ISBN"
 msgstr "Nessun ISBN"
 
@@ -773,6 +812,7 @@ msgstr "Azzera tutto"
 msgid "English cover from another edition"
 msgstr "Copertina inglese di un'altra edizione"
 
+#: app/templates/fragments/hardcover_search_results.html:15
 #: app/templates/item_detail.html:27
 msgid "No Cover"
 msgstr "Nessuna copertina"
@@ -1027,6 +1067,264 @@ msgstr "tramite %(source)s"
 msgid "Integration IDs"
 msgstr "ID integrazioni"
 
+#: app/templates/item_edit.html:2
+#, python-format
+msgid "Edit %(title)s"
+msgstr "Modifica %(title)s"
+
+#: app/templates/item_edit.html:9
+msgid "Back to item"
+msgstr "Torna all'elemento"
+
+#: app/templates/item_edit.html:13
+msgid "Edit item"
+msgstr "Modifica elemento"
+
+#: app/templates/item_edit.html:24
+msgid "That ISBN's check digit doesn't add up — correct it or clear the field. Nothing else you typed was saved."
+msgstr "La cifra di controllo dell'ISBN non torna: correggilo o svuota il campo. Nient'altro di quanto hai scritto è stato salvato."
+
+#: app/templates/item_edit.html:28
+msgid "That UPC / EAN isn't a valid retail barcode — correct it or clear the field. Nothing was saved."
+msgstr "Questo UPC / EAN non è un codice a barre commerciale valido: correggilo o svuota il campo. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:32
+msgid "An ASIN is ten letters or digits, like B0D1234567."
+msgstr "Un ASIN è composto da dieci lettere o cifre, come B0D1234567."
+
+#: app/templates/item_edit.html:37
+#, python-format
+msgid "“%(title)s” is in Trash and already uses that identifier. Restore it from Trash, or delete it permanently, before using it here. Nothing was saved."
+msgstr "“%(title)s” è nel cestino e usa già questo identificativo. Ripristinalo dal cestino o eliminalo definitivamente prima di usarlo qui. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:39
+msgid "That identifier belongs to an item in Trash. Restore that item, or delete it permanently, before using it here. Nothing was saved."
+msgstr "Questo identificativo appartiene a un elemento nel cestino. Ripristinalo o eliminalo definitivamente prima di usarlo qui. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:44
+msgid "That UPC / EAN is already assigned to another item of this media type. Nothing was saved."
+msgstr "Questo UPC / EAN è già assegnato a un altro elemento dello stesso tipo. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:48
+msgid "That media type isn't one Shelf knows — pick one from the list. Nothing was saved."
+msgstr "Shelf non conosce questo tipo di media: scegline uno dall'elenco. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:52
+msgid "That location no longer exists — pick another, or none. Nothing was saved."
+msgstr "Questa posizione non esiste più: scegline un'altra o nessuna. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:56
+msgid "That game platform isn't in your platform list — pick one, or add it under Settings first. Nothing was saved."
+msgstr "Questa piattaforma non è nel tuo elenco: scegline una o aggiungila prima in Impostazioni. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:60
+msgid "That status isn't one Shelf recognises. Nothing was saved."
+msgstr "Shelf non riconosce questo stato. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:64
+msgid "Owned must be on or off. Nothing was saved."
+msgstr "\"Posseduto\" deve essere attivo o disattivo. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:68
+msgid "An item you own can't also be on your wishlist. Nothing was saved."
+msgstr "Un elemento che possiedi non può essere anche nella lista desideri. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:72
+msgid "A number field (year, pages, minutes, series #, value) had something that isn't a number. Nothing was saved."
+msgstr "Un campo numerico (anno, pagine, minuti, n. nella serie, valore) contiene qualcosa che non è un numero. Non è stato salvato nulla."
+
+#: app/templates/item_edit.html:76
+msgid "Edit sections"
+msgstr "Sezioni da modificare"
+
+#: app/templates/item_edit.html:77 app/templates/item_edit.html:99
+msgid "General"
+msgstr "Generale"
+
+#: app/templates/item_edit.html:78 app/templates/item_edit.html:168
+msgid "Artwork"
+msgstr "Copertina"
+
+#: app/templates/item_edit.html:80 app/templates/item_edit.html:229
+msgid "Identifiers"
+msgstr "Identificativi"
+
+#: app/templates/item_edit.html:82 app/templates/item_edit.html:350
+msgid "Media Details"
+msgstr "Dettagli del media"
+
+#: app/templates/item_edit.html:100
+msgid "Core catalogue metadata and reading details."
+msgstr "Dati principali del catalogo e della lettura."
+
+#: app/templates/item_edit.html:104
+msgid "Subtitle"
+msgstr "Sottotitolo"
+
+#: app/templates/fragments/manual_add_form.html:40
+#: app/templates/item_edit.html:108
+msgid "Media Type"
+msgstr "Tipo di media"
+
+#: app/templates/item_edit.html:126
+msgid "Unknown"
+msgstr "Sconosciuto"
+
+#: app/templates/item_edit.html:142 app/templates/item_edit.html:178
+#: app/templates/item_edit.html:309 app/templates/item_edit.html:358
+msgid "None"
+msgstr "Nessuno"
+
+#: app/templates/item_edit.html:149
+msgid "Date Started"
+msgstr "Data di inizio"
+
+#: app/templates/item_edit.html:150
+msgid "Date Finished"
+msgstr "Data di fine"
+
+#: app/templates/item_edit.html:155
+msgid "Description"
+msgstr "Descrizione"
+
+#: app/templates/item_edit.html:161
+msgid "Notes"
+msgstr "Note"
+
+#: app/templates/item_edit.html:169
+msgid "Preview the current cover, upload a replacement, or use a public image URL."
+msgstr "Guarda la copertina attuale, caricane una nuova o usa l'URL di un'immagine pubblica."
+
+#: app/templates/fragments/cover_search.html:40
+#: app/templates/item_edit.html:175
+msgid "Current cover"
+msgstr "Copertina attuale"
+
+#: app/templates/item_edit.html:177
+msgid "Cover preview"
+msgstr "Anteprima copertina"
+
+#: app/templates/item_edit.html:188
+msgid "Drop an image here or click to browse"
+msgstr "Trascina qui un'immagine o fai clic per sceglierla"
+
+#: app/templates/item_edit.html:190
+msgid "The replacement is applied when you save the item."
+msgstr "La nuova copertina viene applicata quando salvi l'elemento."
+
+#: app/templates/item_edit.html:196
+msgid "Cover image URL"
+msgstr "URL dell'immagine di copertina"
+
+#: app/templates/item_edit.html:208
+msgid "Use URL"
+msgstr "Usa l'URL"
+
+#: app/templates/item_edit.html:211
+msgid "Public HTTPS image links only. Use URL applies the cover immediately; your other edits are still saved with Save Changes."
+msgstr "Solo link HTTPS pubblici. \"Usa l'URL\" applica subito la copertina; le altre modifiche si salvano comunque con Salva modifiche."
+
+#: app/templates/item_edit.html:218
+msgid "Series membership, position and page count."
+msgstr "Serie di appartenenza, posizione e numero di pagine."
+
+#: app/templates/item_edit.html:222
+msgid "Series #"
+msgstr "N. nella serie"
+
+#: app/templates/item_edit.html:230
+msgid "Identifiers printed on this edition."
+msgstr "Identificativi stampati su questa edizione."
+
+#: app/templates/item_edit.html:233
+msgid "ISBN"
+msgstr "ISBN"
+
+#: app/templates/item_edit.html:237
+msgid "The stored ISBN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
+msgstr "L'ISBN salvato non supera la cifra di controllo. Resta così finché non lo cambi qui; se lo correggi o lo svuoti, viene verificato come al solito."
+
+#: app/templates/item_edit.html:242 app/templates/item_edit.html:249
+msgid "Scan ISBN"
+msgstr "Scansiona ISBN"
+
+#: app/templates/item_edit.html:250 app/templates/item_edit.html:283
+msgid "Close scanner"
+msgstr "Chiudi scanner"
+
+#: app/templates/item_edit.html:266
+msgid "UPC / EAN"
+msgstr "UPC / EAN"
+
+#: app/templates/item_edit.html:266
+msgid "UPC-A or EAN-13"
+msgstr "UPC-A o EAN-13"
+
+#: app/templates/item_edit.html:270
+msgid "The stored UPC / EAN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
+msgstr "L'UPC / EAN salvato non supera la cifra di controllo. Resta così finché non lo cambi qui; se lo correggi o lo svuoti, viene verificato come al solito."
+
+#: app/templates/item_edit.html:275 app/templates/item_edit.html:282
+msgid "Scan UPC / EAN"
+msgstr "Scansiona UPC / EAN"
+
+#: app/templates/item_edit.html:302
+msgid "Ownership, physical location and collection value."
+msgstr "Possesso, posizione fisica e valore nella collezione."
+
+#: app/templates/item_edit.html:323
+msgid "I own this item"
+msgstr "Possiedo questo elemento"
+
+#: app/templates/item_edit.html:334
+msgid "On my wishlist"
+msgstr "Nella mia lista desideri"
+
+#: app/templates/item_edit.html:336
+msgid "Uncheck both for a book you read but don't own — reading history stays."
+msgstr "Deseleziona entrambi per un libro letto ma non posseduto (la cronologia di lettura resta)."
+
+#: app/templates/item_edit.html:341
+#, python-format
+msgid "Value (%(symbol)s)"
+msgstr "Valore (%(symbol)s)"
+
+#: app/templates/item_edit.html:344
+msgid "Overrides the ISBNdb estimate everywhere it's shown"
+msgstr "Sostituisce ovunque la stima di ISBNdb"
+
+#: app/templates/item_edit.html:344
+#, python-format
+msgid "ISBNdb estimate: %(value)s"
+msgstr "Stima ISBNdb: %(value)s"
+
+#: app/templates/item_edit.html:351
+msgid "Fields specific to the selected media type."
+msgstr "Campi specifici del tipo di media scelto."
+
+#: app/templates/item_edit.html:366
+msgid "Narrator"
+msgstr "Voce narrante"
+
+#: app/templates/item_edit.html:367
+msgid "Duration (min)"
+msgstr "Durata (min)"
+
+#: app/templates/fragments/account_menu.html:132
+#: app/templates/fragments/item_copy_edit.html:99
+#: app/templates/item_edit.html:374
+msgid "Save"
+msgstr "Salva"
+
+#: app/templates/fragments/item_copy_edit.html:103
+#: app/templates/item_edit.html:377
+msgid "Cancel"
+msgstr "Annulla"
+
+#: app/templates/item_edit.html:391
+msgid "Tags save as you add or remove them."
+msgstr "I tag si salvano mentre li aggiungi o li rimuovi."
+
 #: app/templates/login.html:6 app/templates/login.html:37
 msgid "Sign In"
 msgstr "Accedi"
@@ -1139,11 +1437,6 @@ msgstr "Ruolo"
 msgid "Automatic (browser language)"
 msgstr "Automatica (lingua del browser)"
 
-#: app/templates/fragments/account_menu.html:132
-#: app/templates/fragments/item_copy_edit.html:99
-msgid "Save"
-msgstr "Salva"
-
 #: app/templates/fragments/account_menu.html:138
 msgid "Current Password"
 msgstr "Password attuale"
@@ -1196,6 +1489,23 @@ msgstr "ultimo uso"
 msgid "Revoke"
 msgstr "Revoca"
 
+#: app/templates/fragments/book_search_results.html:31
+#: app/templates/fragments/dvd_search_results.html:29
+#: app/templates/fragments/game_search_results.html:31
+msgid "Add"
+msgstr "Aggiungi"
+
+#: app/templates/fragments/book_search_results.html:43
+#, python-format
+msgid "No books found for \"%(query)s\". Try a different search."
+msgstr "Nessun libro trovato per \"%(query)s\". Prova una ricerca diversa."
+
+#: app/templates/fragments/book_search_results.html:48
+#: app/templates/fragments/dvd_search_results.html:43
+#: app/templates/fragments/game_search_results.html:45
+msgid "Add it by hand"
+msgstr "Aggiungilo a mano"
+
 #: app/templates/fragments/cover_review_item.html:18
 msgid "That's the end of this pass"
 msgstr "Il giro è finito"
@@ -1234,6 +1544,7 @@ msgid "No cover"
 msgstr "Nessuna copertina"
 
 #: app/templates/fragments/cover_review_item.html:100
+#: app/templates/fragments/manual_add_form.html:188
 msgid "Skip"
 msgstr "Salta"
 
@@ -1248,10 +1559,6 @@ msgstr "Cerca copertine…"
 #: app/templates/fragments/cover_search.html:29
 msgid "Select a cover:"
 msgstr "Scegli una copertina:"
-
-#: app/templates/fragments/cover_search.html:40
-msgid "Current cover"
-msgstr "Copertina attuale"
 
 #: app/templates/fragments/cover_search.html:42
 msgid "Current: English cover from another edition"
@@ -1296,6 +1603,37 @@ msgstr "Carica"
 #: app/templates/fragments/cover_search.html:129
 msgid "Remove cover"
 msgstr "Rimuovi copertina"
+
+#: app/templates/fragments/dvd_search_results.html:38
+#, python-format
+msgid "No movies found for \"%(query)s\". Try a different search."
+msgstr "Nessun film trovato per \"%(query)s\". Prova una ricerca diversa."
+
+#: app/templates/fragments/game_search_results.html:40
+msgid "No games found. Try a different title or remove the platform filter."
+msgstr "Nessun gioco trovato. Prova un altro titolo o togli il filtro piattaforma."
+
+#: app/templates/fragments/hardcover_search_results.html:3
+#, python-format
+msgid "No results for \"%(query)s\""
+msgstr "Nessun risultato per \"%(query)s\""
+
+#: app/templates/fragments/hardcover_search_results.html:42
+msgid "Add to Wishlist"
+msgstr "Aggiungi alla lista desideri"
+
+#: app/templates/fragments/hardcover_search_results.html:43
+msgid "Adding..."
+msgstr "Aggiunta in corso..."
+
+#: app/templates/fragments/hardcover_search_results.html:45
+#: app/templates/fragments/hardcover_search_results.html:50
+msgid "In your library"
+msgstr "Nella tua biblioteca"
+
+#: app/templates/fragments/hardcover_search_results.html:52
+msgid "Not in your library"
+msgstr "Non nella tua biblioteca"
 
 #: app/templates/fragments/item_card.html:12
 #: app/templates/fragments/item_row.html:57
@@ -1431,10 +1769,6 @@ msgstr "Letto da Riempi scaffale e da ogni modalità di Scansiona per agire prop
 msgid "Provenance"
 msgstr "Provenienza"
 
-#: app/templates/fragments/item_copy_edit.html:103
-msgid "Cancel"
-msgstr "Annulla"
-
 #: app/templates/fragments/item_copy_edit.html:108
 msgid "Remove copy"
 msgstr "Rimuovi copia"
@@ -1454,6 +1788,50 @@ msgstr "Inizia a scansionare i libri"
 #: app/templates/fragments/item_tags.html:19
 msgid "+ tag"
 msgstr "+ tag"
+
+#: app/templates/fragments/manual_add_form.html:51
+msgid "ISBN or barcode (optional)"
+msgstr "ISBN o codice a barre (facoltativo)"
+
+#: app/templates/fragments/manual_add_form.html:58
+msgid "Add this item manually:"
+msgstr "Aggiungi questo elemento a mano:"
+
+#: app/templates/fragments/manual_add_form.html:65
+msgid "Copy from an existing item (optional)"
+msgstr "Copia da un elemento esistente (facoltativo)"
+
+#: app/templates/fragments/manual_add_form.html:78
+msgid "Copied fields from"
+msgstr "Campi copiati da"
+
+#: app/templates/fragments/manual_add_form.html:78
+msgid "— edit anything below before adding."
+msgstr ": puoi modificare tutto qui sotto prima di aggiungere."
+
+#: app/templates/fragments/manual_add_form.html:84
+msgid "Title *"
+msgstr "Titolo *"
+
+#: app/templates/fragments/manual_add_form.html:117
+msgid "Platform (optional)"
+msgstr "Piattaforma (facoltativa)"
+
+#: app/templates/fragments/manual_add_form.html:147
+msgid "Other"
+msgstr "Altro"
+
+#: app/templates/fragments/manual_add_form.html:168
+msgid "Language (unknown)"
+msgstr "Lingua (sconosciuta)"
+
+#: app/templates/fragments/manual_add_form.html:175
+msgid "Cover image (optional)"
+msgstr "Immagine di copertina (facoltativa)"
+
+#: app/templates/fragments/manual_add_form.html:181
+msgid "Add to Collection"
+msgstr "Aggiungi alla collezione"
 
 #: app/templates/fragments/reading_status.html:22
 msgid "Clear status"
@@ -1522,4 +1900,23 @@ msgstr "Adattamento"
 #: app/templates/fragments/related_media_search.html:19
 msgid "Link"
 msgstr "Collega"
+
+#: app/templates/fragments/search_status_notice.html:18
+#, python-format
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
+msgstr "%(provider)s ha rifiutato la chiave configurata, quindi il risultato potrebbe non essere affidabile. Controllala in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Impostazioni</a> &rarr; Integrazioni."
+
+#: app/templates/fragments/search_status_notice.html:20
+#, python-format
+msgid "%(provider)s is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later."
+msgstr "%(provider)s sta limitando le richieste in questo momento, quindi il risultato potrebbe non essere affidabile. Riprova più tardi."
+
+#: app/templates/fragments/search_status_notice.html:22
+msgid "LibraryThing unavailable. Try again later."
+msgstr "LibraryThing non è disponibile. Riprova più tardi."
+
+#: app/templates/fragments/search_status_notice.html:22
+#, python-format
+msgid "Could not reach %(provider)s &mdash; check connectivity and try again."
+msgstr "Impossibile raggiungere %(provider)s: controlla la connessione e riprova."
 

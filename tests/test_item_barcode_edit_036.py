@@ -79,7 +79,7 @@ def test_upc_camera_is_scan_only_and_reuses_shared_engine():
     source = Path("static/js/item_edit.js").read_text()
     assert "data-upc-editor" in template
     assert 'x-data="upcCamera"' in template
-    assert 'field("upc", "UPC / EAN", item.upc' in template
+    assert 'field("upc", _("UPC / EAN"), item.upc' in template
     assert 'id="edit-upc-camera-reader"' in template
     assert 'id="edit-upc-zxing-video"' in template
     assert "window.createBarcodeScanner" in source

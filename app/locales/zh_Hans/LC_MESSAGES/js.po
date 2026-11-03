@@ -64,6 +64,26 @@ msgstr ""
 msgid "Connection failed"
 msgstr ""
 
+#: static/js/components-item.js:443
+msgid "Restored from Trash"
+msgstr ""
+
+#: static/js/components-item.js:443
+msgid "Added to wishlist"
+msgstr ""
+
+#: static/js/components-item.js:444
+msgid "Failed"
+msgstr ""
+
+#: static/js/components-item.js:537 static/js/intake.js:400
+msgid "Author(s)"
+msgstr ""
+
+#: static/js/components-item.js:578 static/js/components-item.js:582
+msgid "Could not copy from that item."
+msgstr ""
+
 #: static/js/components-settings.js:767
 msgid "Never"
 msgstr "从未"
@@ -84,4 +104,32 @@ msgstr "撤销令牌 {name}？"
 #: static/js/components.js:82
 msgid "Could not change the language"
 msgstr "无法切换语言"
+
+#: static/js/item_edit.js:28 static/js/item_edit.js:46
+msgid "Point the camera at a 978 or 979 ISBN barcode."
+msgstr ""
+
+#: static/js/item_edit.js:34 static/js/item_edit.js:121
+msgid "Starting camera…"
+msgstr ""
+
+#: static/js/item_edit.js:53 static/js/item_edit.js:140
+msgid "Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on."
+msgstr ""
+
+#: static/js/item_edit.js:55 static/js/item_edit.js:142
+msgid "Camera access denied. Check browser permissions for this site."
+msgstr ""
+
+#: static/js/item_edit.js:71
+msgid "That barcode is not a 978/979 ISBN. Try again."
+msgstr ""
+
+#: static/js/item_edit.js:115 static/js/item_edit.js:133
+msgid "Point the camera at a UPC-A or EAN-13 retail barcode."
+msgstr ""
+
+#: static/js/item_edit.js:158
+msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
+msgstr ""
 

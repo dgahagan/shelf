@@ -397,7 +397,7 @@ function intakePage() {
         // Mirrors components-item.js's manualAddForm.creatorLabel getter, but
         // as a method since this needs a per-row argument.
         creatorLabelFor(mediaType) {
-            return this.creatorLabels[mediaType] || 'Author(s)';
+            return this.creatorLabels[mediaType] || t('Author(s)');
         },
 
         selectAll() {

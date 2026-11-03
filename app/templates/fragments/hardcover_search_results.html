@@ -1,6 +1,6 @@
 {% set can_edit = user and user.role in ('admin', 'editor') %}
 {% if not results and query %}
-<p class="text-shelf-muted text-sm text-center py-8">No results for "{{ query }}"</p>
+<p class="text-shelf-muted text-sm text-center py-8">{{ _('No results for "%(query)s"', query=query) }}</p>
 {% elif results %}
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     {% for book in results %}
@@ -12,7 +12,7 @@
             {% if book.cover_url %}
             <img src="{{ book.cover_url }}" alt="" class="w-20 rounded-sm shadow-sm" loading="lazy">
             {% else %}
-            <div class="w-20 h-28 bg-shelf-hover rounded-sm flex items-center justify-center text-xs text-shelf-muted">No Cover</div>
+            <div class="w-20 h-28 bg-shelf-hover rounded-sm flex items-center justify-center text-xs text-shelf-muted">{{ _('No Cover') }}</div>
             {% endif %}
         </div>
 
@@ -39,17 +39,17 @@
                         data-book='{{ book|tojson }}'
                         :disabled="adding"
                         class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50">
-                    <span x-show="!adding">Add to Wishlist</span>
-                    <span x-show="adding">Adding...</span>
+                    <span x-show="!adding">{{ _('Add to Wishlist') }}</span>
+                    <span x-show="adding">{{ _('Adding...') }}</span>
                 </button>
-                <span x-show="added" class="text-xs text-shelf-success">In your library</span>
+                <span x-show="added" class="text-xs text-shelf-success">{{ _('In your library') }}</span>
                 <template x-if="error && !added">
                     <span class="text-xs text-shelf-error" x-text="error"></span>
                 </template>
                 {% elif book.in_shelf %}
-                <span class="text-xs text-shelf-success">In your library</span>
+                <span class="text-xs text-shelf-success">{{ _('In your library') }}</span>
                 {% else %}
-                <span class="text-xs text-shelf-muted">Not in your library</span>
+                <span class="text-xs text-shelf-muted">{{ _('Not in your library') }}</span>
                 {% endif %}
             </div>
         </div>
