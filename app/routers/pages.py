@@ -20,6 +20,7 @@ from app.services import isbn as isbn_svc
 from app.services import upc as upc_svc
 from app.services import tags as tags_svc
 from app.services import price_alerts
+from app.services import buy_links as buy_links_svc
 from app.services import release_radar
 from app.services import wrapups
 from app.database import get_db, get_setting, get_game_platforms, get_reading_history
@@ -390,6 +391,7 @@ async def item_detail(
         # The list-price line reads history only for the live item on screen;
         # the template also gates it on feature_on('price_alerts').
         price_line = price_alerts.price_line(db, item_id) if item["wishlisted"] else None
+        buy_links = buy_links_svc.for_item(db, item) if item["wishlisted"] else []
 
     return request.app.state.templates.TemplateResponse(
         request,
@@ -419,6 +421,7 @@ async def item_detail(
             "series_progress": series_progress,
             "item_authors": item_authors,
             "price_line": price_line,
+            "buy_links": buy_links,
         },
     )
 
@@ -794,5 +797,7 @@ async def settings(request: Request, _=Depends(require_role("admin"))):
          "price_alert_max_cap": price_alerts.MAX_NIGHTLY_CAP,
          "release_radar_last_run_display": release_radar_last_run_display,
          "release_radar_default_cap": release_radar.DEFAULT_CAP,
-         "release_radar_max_cap": release_radar.MAX_CAP},
+         "release_radar_max_cap": release_radar.MAX_CAP,
+         "buy_links_bookshop_hosts": buy_links_svc.BOOKSHOP_HOSTS,
+         "buy_links_amazon_hosts": buy_links_svc.AMAZON_HOSTS},
     )

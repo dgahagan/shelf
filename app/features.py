@@ -13,7 +13,7 @@ Each flag is one `settings` row, `feature.<key>`. Only the exact value "0"
 disables a feature: an absent row (every upgraded install) or any other value
 means enabled, so an upgrade changes nothing until an admin turns something
 off. Flags are rows only; no env var overrides them. A new install writes all
-eighteen rows explicitly, from the profile chosen at setup; an upgraded
+nineteen rows explicitly, from the profile chosen at setup; an upgraded
 install has none, and reads as Everything.
 
 `nav.py` imports this module, never the reverse at module level.
@@ -122,6 +122,14 @@ def _price_alerts_configured() -> bool:
     return _settings_present("isbndb_api_key")
 
 
+def _buy_links_configured() -> bool:
+    # Either affiliate id counts, so this is `any`, not `_settings_present`'s `all`.
+    from app.database import get_db, get_setting
+    with get_db() as db:
+        return any((get_setting(db, k) or "").strip()
+                   for k in ("buy_links_bookshop_id", "buy_links_amazon_tag"))
+
+
 def _abs_configured() -> bool:
     return _settings_present("abs_url", "abs_token")
 
@@ -207,6 +215,13 @@ FEATURES: dict[str, Feature] = {
         job="price_alerts",
         entry_path="/settings",
         configured=_price_alerts_configured,
+    ),
+    "buy_links": Feature(
+        label="Buy links",
+        description="Bookshop.org and Amazon links on wishlisted books and missing series volumes, carrying your own affiliate tags.",
+        profile="everything",
+        entry_path="/settings",
+        configured=_buy_links_configured,
     ),
     "music": Feature(
         label="Music",

@@ -236,6 +236,68 @@ class TestSeriesCheck:
         db.execute("COMMIT")
         assert admin_client.get("/api/series/check").json()["ok"] is False
 
+    # --- buy links on missing rows -------------------------------------
+
+    def _set_settings(self, db, **kv):
+        for k, v in kv.items():
+            db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (k, v))
+        db.execute("COMMIT")
+
+    def _check(self, client):
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=self._hc_books())):
+            return client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+
+    def test_amazon_tag_links_on_missing_rows(self, admin_client, db):
+        self._seed(db)
+        self._set_settings(db, buy_links_amazon_tag="shelf-20")
+        data = self._check(admin_client)
+        missing = [b for b in data["books"] if b["status"] == "missing"]
+        assert len(missing) == 2
+        for b in missing:
+            assert len(b["buy_links"]) == 1
+            assert b["buy_links"][0]["store"] == "amazon"
+            assert "tag=shelf-20" in b["buy_links"][0]["url"]
+        assert data["buy_links_disclosure"] == {"bookshop": False}
+
+    def test_non_missing_rows_have_no_buy_links_key(self, admin_client, db):
+        self._seed(db)
+        self._set_settings(db, buy_links_amazon_tag="shelf-20")
+        data = self._check(admin_client)
+        for b in data["books"]:
+            assert ("buy_links" in b) == (b["status"] == "missing")
+
+    def test_flag_off_empty_links_and_null_disclosure(self, admin_client, db):
+        from tests.test_features_gate import off
+        self._seed(db)
+        self._set_settings(db, buy_links_amazon_tag="shelf-20")
+        off("buy_links")
+        data = self._check(admin_client)
+        assert [b["buy_links"] for b in data["books"] if b["status"] == "missing"] == [[], []]
+        assert data["buy_links_disclosure"] is None
+
+    def test_no_tag_empty_links(self, admin_client, db):
+        self._seed(db)
+        data = self._check(admin_client)
+        assert [b["buy_links"] for b in data["books"] if b["status"] == "missing"] == [[], []]
+        assert data["buy_links_disclosure"] is None
+
+    def test_bookshop_id_untagged_search_link_and_disclosure(self, admin_client, db):
+        self._seed(db)
+        self._set_settings(db, buy_links_bookshop_id="513")
+        data = self._check(admin_client)
+        for b in data["books"]:
+            if b["status"] == "missing":
+                assert [l["store"] for l in b["buy_links"]] == ["bookshop"]
+                assert "/search?keywords=" in b["buy_links"][0]["url"]
+                assert "513" not in b["buy_links"][0]["url"]
+        assert data["buy_links_disclosure"] == {"bookshop": True}
+
+    def test_viewer_gets_same_payload(self, admin_client, viewer_client, db):
+        self._seed(db)
+        self._set_settings(db, buy_links_amazon_tag="shelf-20", buy_links_bookshop_id="513")
+        assert self._check(viewer_client) == self._check(admin_client)
+
 
 class TestSeriesCheckPersistence:
     """A successful /api/series/check call persists hc_total/hc_missing/

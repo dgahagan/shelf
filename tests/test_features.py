@@ -165,9 +165,9 @@ def test_registry_entry_paths_are_local():
         assert f.entry_path.startswith("/") and not f.entry_path.startswith("//"), key
 
 
-def test_registry_has_the_eighteen_designed_features():
+def test_registry_has_the_nineteen_designed_features():
     assert list(FEATURES) == [
-        "lending", "series", "stats", "store", "share", "valuation", "price_alerts", "music",
+        "lending", "series", "stats", "store", "share", "valuation", "price_alerts", "buy_links", "music",
         "periodicals", "shelf_fill", "intake", "hardcover", "abs_sync", "komga", "romm",
         "collector", "release_radar", "api",
     ]
@@ -217,7 +217,7 @@ def _profile_rows(db):
 
 
 @pytest.mark.parametrize("name", ["minimal", "standard", "everything"])
-def test_apply_profile_writes_all_eighteen_rows(db, name):
+def test_apply_profile_writes_all_nineteen_rows(db, name):
     apply_profile(db, name)
     db.commit()
     rows = _profile_rows(db)
@@ -467,6 +467,13 @@ def test_price_alerts_is_everything_only():
     assert profile_keys("standard") == _STANDARD_KEYS
 
 
+def test_buy_links_is_everything_only():
+    assert FEATURES["buy_links"].profile == "everything"
+    assert "buy_links" in profile_keys("everything")
+    assert "buy_links" not in profile_keys("standard")
+    assert profile_keys("standard") == _STANDARD_KEYS
+
+
 def test_collector_is_everything_only():
     assert FEATURES["collector"].profile == "everything"
     assert "collector" in profile_keys("everything")
@@ -486,3 +493,18 @@ def test_price_alerts_needs_an_isbndb_key(monkeypatch):
 def test_price_alerts_configured_by_env_only_key(monkeypatch):
     monkeypatch.setenv("ISBNDB_API_KEY", "env-only-isbndb-key")
     assert _price_alerts_row()["configured"] is True
+
+
+def _buy_links_row():
+    return next(r for r in features.feature_rows() if r["key"] == "buy_links")
+
+
+def test_buy_links_unconfigured_with_no_tag():
+    assert _buy_links_row()["configured"] is False
+
+
+def test_buy_links_configured_by_just_an_amazon_tag(db):
+    from app.database import set_setting
+    set_setting(db, "buy_links_amazon_tag", "shelf-20")
+    db.commit()
+    assert _buy_links_row()["configured"] is True

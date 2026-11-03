@@ -328,7 +328,7 @@ def test_profile_cards_name_what_applying_turns_off(admin_client):
     never setup's "Adds:", which is relative to the next-smaller profile."""
     page = admin_client.get("/settings").text
     assert "Adds:" not in _profiles_block(page)
-    assert "Turns off: Sharing, Valuation, Price alerts, Photo Intake, Hardcover, " \
+    assert "Turns off: Sharing, Valuation, Price alerts, Buy links, Photo Intake, Hardcover, " \
         "Audiobookshelf sync, Komga, RomM" in _visible(page, "standard")
     assert "Turns on:" not in _visible(page, "standard")
     assert "Turns off: Lending, Series" in _visible(page, "minimal")

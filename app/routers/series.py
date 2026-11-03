@@ -5,6 +5,7 @@
 can be added to the wishlist via the existing add-to-shelf endpoint.
 """
 import logging
+from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import Response
@@ -15,7 +16,7 @@ from app.config import BOOK_MEDIA_TYPES
 from app.database import gc_orphaned_series_meta, get_db, get_setting
 from app.routers import items_common
 from app.services import lists
-from app.services import hardcover
+from app.services import buy_links, hardcover
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,8 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
         token = get_setting(db, "hardcover_token")
         if not token:
             return {"ok": False, "message": "Hardcover integration not configured"}
+        on = feature_enabled("buy_links")
+        cfg = buy_links.configured(db) if on else None
         local = db.execute(
             "SELECT title, owned, hardcover_book_id, "
             f"{lists.WISHLISTED_SQL} AS wishlisted FROM items_live i "
@@ -179,7 +182,13 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
             status = "owned" if match["owned"] else "wishlist" if match["wishlisted"] else "missing"
         else:
             status = "missing"
-        out.append({**b, "status": status, "series_name": name})
+        row = {**b, "status": status, "series_name": name}
+        if status == "missing":
+            row["buy_links"] = [
+                asdict(l) for l in buy_links.for_book(
+                    cfg, title=b["title"], authors=b.get("authors") or "", isbn13=None)
+            ] if cfg else []
+        out.append(row)
 
     missing = sum(1 for b in out if b["status"] == "missing")
 
@@ -192,7 +201,13 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
         with get_db() as db:
             _upsert_series_check(db, name, len(out), missing)
 
-    return {"ok": True, "series": name, "total": len(out), "missing": missing, "books": out}
+    # The CSP build refuses arrow functions, so the template cannot ask
+    # "does any row carry a Bookshop link"; the server answers it here.
+    links = [l for b in out for l in b.get("buy_links", ())]
+    disclosure = {"bookshop": any(l["store"] == "bookshop" for l in links)} if links else None
+
+    return {"ok": True, "series": name, "total": len(out), "missing": missing,
+            "books": out, "buy_links_disclosure": disclosure}
 
 
 @router.post("/api/series/watch-all")

@@ -56,6 +56,10 @@
             <div class="flex-1 min-w-0">
                 <h1 class="text-2xl font-bold mb-1">{{ item.title }}{% if item.wishlisted %} <span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0 align-middle" data-testid="wishlist-badge">Wishlist</span>{% endif %}</h1>
                 {% if item.wishlisted and price_line and feature_on('price_alerts') %}<p class="text-sm text-shelf-muted mb-2" data-testid="list-price-line">List price {{ price_line.current|money }}{% if price_line.stale %} as of {{ price_line.current_on }}{% endif %}{% if price_line.was is not none %} &middot; was {{ price_line.was|money }} on {{ price_line.was_on }}{% endif %}</p>{% endif %}
+                {% if item.wishlisted and buy_links and feature_on('buy_links') %}<div class="mb-2" data-testid="buy-links">
+                    <p class="text-sm"><span class="text-shelf-muted">Buy:</span>{% for l in buy_links %} <a href="{{ l.url }}" target="_blank" rel="noopener sponsored" data-testid="buy-link-{{ l.store }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ l.label }}</a>{% if not loop.last %} &middot;{% endif %}{% endfor %}</p>
+                    <p class="text-xs text-shelf-muted" data-testid="buy-links-disclosure">Affiliate links carrying your own tags (Settings &rarr; Library &rarr; Buy links).{% for l in buy_links %}{% if l.store == 'bookshop' %} Bookshop.org supports independent bookstores.{% endif %}{% endfor %}</p>
+                </div>{% endif %}
                 {% if item.subtitle %}<p class="text-lg text-shelf-muted mb-2">{{ item.subtitle }}</p>{% endif %}
                 {% if item.authors %}
                 <p class="text-lg mb-4 wrap-break-word">

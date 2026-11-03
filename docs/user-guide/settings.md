@@ -4,7 +4,7 @@ Open the menu under your username and choose **Settings**. Settings is available
 
 The Settings page is organised into five sections, listed in a sidebar on a wide screen and as a row of buttons above the content on a narrow one:
 
-- **Library** — collection display, lending, locations, **tags**, game platforms, navigation preferences, **Trash** retention and the **copy label** prefix.
+- **Library** — collection display, lending, locations, **tags**, game platforms, navigation preferences, **buy links**, **Trash** retention and the **copy label** prefix.
 - **Integrations** — Audiobookshelf, Hardcover (with its release radar), metadata providers, valuation, price alerts and vision services.
 - **Data** — CSV and portable-archive import/export, backups and maintenance tools.
 - **Users** — accounts, roles and access administration, and every user's API tokens.
@@ -31,6 +31,23 @@ Settings → Library → **Copy labels** sets the prefix generated copy codes us
 one to eight letters or digits, stored in capitals, `SHF` by default. Codes read
 `PREFIX-000001`. Changing the prefix does not renumber existing labels. The
 card shows only while Collector tools is on. See [Copy labels](labels.md).
+
+## Buy links
+
+Settings → Library → **Buy links** holds your own affiliate tags for the
+[buy links](wishlist-and-store-mode.md#buy-links) on wishlisted books and
+missing series volumes:
+
+- **Bookshop.org affiliate id** — digits only, up to 12.
+- **Bookshop.org site** — `bookshop.org` (default) or `uk.bookshop.org`.
+- **Amazon Associates tag** — letters, digits and hyphens, up to 40.
+- **Amazon marketplace** — `www.amazon.com` (default), `.co.uk`, `.ca`, `.de`,
+  `.fr`, `.es`, `.it`, `.com.au`, `.co.jp` or `.in`.
+
+A blank tag turns that store off. A value that breaks a rule is refused with
+the rule named, and nothing on the card is saved. The tags are not secrets:
+they appear in every link, so the card shows them as saved. The feature itself
+is the **Buy links** row in Features.
 
 ## Price alerts
 

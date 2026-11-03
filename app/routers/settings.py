@@ -242,6 +242,42 @@ async def update_price_alert_settings(
     return RedirectResponse(url="/settings", status_code=303)
 
 
+@router.post("/buy-links")
+async def update_buy_links_settings(
+    buy_links_bookshop_id: str = Form(""),
+    buy_links_bookshop_host: str = Form(""),
+    buy_links_amazon_tag: str = Form(""),
+    buy_links_amazon_host: str = Form(""),
+):
+    """Save the owner's own affiliate tags for the buy links.
+
+    Separate from POST /api/settings for the same reason as /price-alerts. A
+    blank tag is valid and turns that store off. Nothing is written unless all
+    four values pass, so a refusal leaves every saved value as it was.
+    """
+    from app.services import buy_links
+
+    bookshop_id = buy_links_bookshop_id.strip()
+    amazon_tag = buy_links_amazon_tag.strip()
+    bookshop_host = buy_links_bookshop_host.strip() or buy_links.DEFAULT_BOOKSHOP_HOST
+    amazon_host = buy_links_amazon_host.strip() or buy_links.DEFAULT_AMAZON_HOST
+    if bookshop_id and not buy_links.BOOKSHOP_ID_RE.fullmatch(bookshop_id):
+        return {"ok": False, "message": "Bookshop.org affiliate id is digits only, up to 12"}
+    if amazon_tag and not buy_links.AMAZON_TAG_RE.fullmatch(amazon_tag):
+        return {"ok": False, "message": "Amazon tag may use letters, digits and hyphens, up to 40 characters"}
+    if bookshop_host not in buy_links.BOOKSHOP_HOSTS:
+        return {"ok": False, "message": "Unknown Bookshop.org site"}
+    if amazon_host not in buy_links.AMAZON_HOSTS:
+        return {"ok": False, "message": "Unknown Amazon marketplace"}
+
+    with get_db() as db:
+        _upsert_setting(db, "buy_links_bookshop_id", bookshop_id)
+        _upsert_setting(db, "buy_links_bookshop_host", bookshop_host)
+        _upsert_setting(db, "buy_links_amazon_tag", amazon_tag)
+        _upsert_setting(db, "buy_links_amazon_host", amazon_host)
+    return RedirectResponse(url="/settings", status_code=303)
+
+
 @router.post("/release-radar")
 async def update_release_radar_settings(release_radar_cap: str = Form("50")):
     """Save the release-radar daily series cap.

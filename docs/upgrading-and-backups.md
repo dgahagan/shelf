@@ -33,6 +33,15 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to X.Y.Z
+
+**Buy links starts the way Valuation stands.** If Valuation is off — as it is
+under the Standard and Minimal profiles — the upgrade turns the new
+[Buy links](user-guide/wishlist-and-store-mode.md#buy-links) feature off too.
+Otherwise it is on, but it shows nothing until you enter an affiliate tag
+under Settings → Library → **Buy links**. Change it under Settings →
+**Features**.
+
 ### After upgrading to 0.74.0
 
 **One table is added on first start.** `api_tokens` holds the

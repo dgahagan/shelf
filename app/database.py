@@ -389,6 +389,17 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
         WHERE EXISTS (SELECT 1 FROM users)"""),
     # The UI language this user picked; NULL follows the browser (app/i18n.py).
     (54, "Add users language", "ALTER TABLE users ADD COLUMN language TEXT"),
+    # A feature with no flag row reads as on, and buy_links is new in the same
+    # release, so an upgrade would switch it on for every install — even one
+    # that applied Standard or Minimal (G135). Start it off where Valuation is
+    # off, untouched elsewhere (same shape as 41). INSERT OR IGNORE keeps a
+    # choice already made. A fresh database has no feature rows, so this is a
+    # no-op there.
+    (55, "Start buy links off where Valuation is off",
+     """INSERT OR IGNORE INTO settings (key, value)
+        SELECT 'feature.buy_links', '0'
+        WHERE EXISTS (SELECT 1 FROM settings
+                      WHERE key = 'feature.valuation' AND value = '0')"""),
 )
 
 MIGRATION_TABLES = """

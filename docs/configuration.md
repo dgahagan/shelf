@@ -83,6 +83,7 @@ lives:
 | **Borrowers** | People you lend to. Deleting a borrower keeps their loan history |
 | **Game Platforms** | The platform list used for video games — 30 built in, add your own |
 | **Lending** | "Overdue after N days" for loans without a due date (0 disables). Notification URL (ntfy topic or JSON webhook) for the daily overdue digest, the wishlist price-drop digest and the release-radar digest, with a **Send test** button |
+| **Buy links** | Your own affiliate tags for the [buy links](user-guide/wishlist-and-store-mode.md#buy-links): `buy_links_bookshop_id` (digits, up to 12), `buy_links_bookshop_host` (`bookshop.org` or `uk.bookshop.org`), `buy_links_amazon_tag` (letters, digits and hyphens, up to 40) and `buy_links_amazon_host` (one of ten Amazon marketplaces, default `www.amazon.com`). A blank tag turns that store off. Not secrets: they are shown as saved |
 | **Trash** | "Prompt to empty Trash after N days" (`trash_retention_days`, default 180; 0 never prompts). Past the window, admins see a dismissable banner linking to the expired rows; nothing is deleted automatically. See [Trash](user-guide/items.md#trash) |
 
 ### Integrations
@@ -120,13 +121,13 @@ Add users, set roles, reset passwords. See [Users & roles](user-guide/users-and-
 ### Features
 
 Turn optional parts of Shelf on or off: Lending, Series, Statistics, Store
-Mode, Sharing, Valuation, Price alerts, Music, Periodicals, Shelf Fill, Photo
+Mode, Sharing, Valuation, Price alerts, Buy links, Music, Periodicals, Shelf Fill, Photo
 Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM,
 Collector tools and API tokens. An
 upgrade leaves every existing feature as it was. A feature new in a release
 starts on, except where an upgrade would switch on something the install's
-profile left out: Price alerts and Collector tools start off on an upgrade
-where Valuation is off, and Release radar starts off on an upgrade where
+profile left out: Price alerts, Buy links and Collector tools start off on an
+upgrade where Valuation is off, and Release radar starts off on an upgrade where
 Hardcover is off. API tokens start off on every upgrade: turn them on to use
 [Homelab integration](homelab-integration.md). Release radar also needs
 Hardcover on to do anything. A new
@@ -134,6 +135,8 @@ install starts with the profile chosen in the
 setup wizard.
 Scanning, Browse, items, locations, tags, Trash, settings, users, backups and
 logs are core and cannot be turned off.
+Buy links can be on and still show nothing: no link appears until a tag is
+saved under Library → **Buy links**.
 
 **Profiles.** A profile is a starting set of features:
 
@@ -141,7 +144,7 @@ logs are core and cannot be turned off.
 |---|---|
 | **Minimal** | None — only the core above |
 | **Standard** | Lending, Series, Statistics, Store Mode, Music, Periodicals, Shelf Fill |
-| **Everything** | Standard, plus Sharing, Valuation, Price alerts, Photo Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM, Collector tools and API tokens |
+| **Everything** | Standard, plus Sharing, Valuation, Price alerts, Buy links, Photo Intake, Hardcover, Release radar, Audiobookshelf sync, Komga, RomM, Collector tools and API tokens |
 
 The **Profiles** row at the top of Features applies one in a single step and
 shows which one the install matches. After you turn one feature on or off by

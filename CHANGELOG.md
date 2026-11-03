@@ -6,14 +6,61 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.75.0] - 2026-11-02
+
+A wishlist said what you wanted but not where to get it. Finding a copy meant
+leaving Shelf, searching a store by hand and retyping the ISBN. Wishlisted books
+and the missing volumes of a series can now carry Bookshop.org and Amazon links,
+built from the book's own ISBN and tagged with **your** affiliate ids, never
+Shelf's. This release also carries the first step of a translated interface,
+contributed by [@vjandrea](https://github.com/vjandrea): the page shell in
+Italian.
+
 ### Added
 
-- **Shelf starts to speak Italian, starting with the page shell.** The 
-  navigation, sign-in, first-run setup and the Account dialog are translated. 
-  Each user picks a language under Account → Profile → Language; the default, 
-  Automatic, follows the browser, so an Italian browser gets Italian with no 
-  setup. The feature pages are still in English and follow in later releases, 
-  so for now it is off unless `SHELF_I18N=on` is set in `.env`.
+- **Buy links on wishlisted books.** A wishlisted book, audiobook, ebook, comic
+  or manga shows **Buy: Bookshop.org · Amazon** under its title. A 978 ISBN
+  links straight to the edition on both stores. A 979 ISBN, which Amazon's
+  product pages cannot take, links to the Bookshop.org edition and to an Amazon
+  search. A book with no ISBN gets a title-and-author search on both. Every
+  link opens in a new tab and is marked as sponsored.
+- **Buy links on a series card's missing volumes.** After **Check
+  completeness**, each volume Hardcover lists and you do not hold carries the
+  same two links, so a gap in a series is one tap from a copy.
+- **A Buy links card under Settings → Library.** Enter a Bookshop.org affiliate
+  id and an Amazon Associates tag, and choose each store's site: Bookshop.org US
+  or UK, and ten Amazon marketplaces. Each store is independent. Leave a field
+  blank and that store's links disappear. A malformed id or tag is refused with
+  the rule it broke, and nothing is saved.
+- **A disclosure line beside every set of links** says they are affiliate
+  links carrying your own tags. It adds that Bookshop.org supports independent
+  bookstores when a Bookshop.org link is shown.
+- **The Settings card says who gets paid.** The links pay you, through your own
+  affiliate accounts, and Shelf earns nothing. A Bookshop.org search link (a
+  book with no ISBN) pays nobody.
+- **Shelf starts to speak Italian, starting with the page shell.** The
+  navigation, sign-in, first-run setup and the Account dialog are translated.
+  Each user picks a language under Account → Profile → Language. The default,
+  Automatic, follows the browser, so an Italian browser gets Italian with no
+  setup. The feature pages are still in English and follow in later releases,
+  so for now the translation is off unless `SHELF_I18N=on` is set in `.env`.
+  Contributed by [@vjandrea](https://github.com/vjandrea) in
+  [#164](https://github.com/dgahagan/shelf/pull/164).
+
+### Changed
+
+- **Buy links are a feature you can switch off.** They appear under Settings →
+  Features. On upgrade they start **off** where Valuation is off, so an install
+  set up with the Standard or Minimal profile does not gain a new feature
+  overnight, and stay on elsewhere. Nothing shows anyway until you enter a tag.
+- **A series card's missing rows wrap on a phone.** On a narrow screen the store
+  links and **+ Wishlist** move to a second line, so the volume's title stays
+  readable.
+
+Buy links deliberately stop at books. Games and discs wait for a store whose
+links fit a UPC. Links are not shown on the public share page, on
+**Upcoming**, in Store Mode or on owned items. Shelf records no clicks and
+makes no call to either store: your browser does, when you follow a link.
 
 ## [0.74.1] - 2026-10-30
 
@@ -5434,6 +5481,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.75.0]: https://github.com/dgahagan/shelf/releases/tag/v0.75.0
 [0.74.1]: https://github.com/dgahagan/shelf/releases/tag/v0.74.1
 [0.74.0]: https://github.com/dgahagan/shelf/releases/tag/v0.74.0
 [0.73.0]: https://github.com/dgahagan/shelf/releases/tag/v0.73.0

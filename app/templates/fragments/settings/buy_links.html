@@ -1,0 +1,50 @@
+{% import "fragments/settings/feature_off_note.html" as feature_notes %}
+{# Buy links: the owner's own affiliate tags. A plain form, no Alpine. The
+   host options come from the settings context (buy_links_*_hosts), never a
+   Jinja global (G92). A blank tag is valid and turns that store off. #}
+    <!-- Buy links -->
+    <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" data-testid="buy-links-block">
+        <h2 class="text-lg font-semibold mb-1">Buy links</h2>
+        {{ feature_notes.feature_off_note('buy_links') }}
+        <p class="text-sm text-shelf-muted mb-4" data-testid="buy-links-honesty">These links pay you, through your own affiliate accounts. Shelf earns nothing. A Bookshop.org link without an ISBN is a plain search and pays nobody.</p>
+        {% set bs_host = settings.get('buy_links_bookshop_host') or buy_links_bookshop_hosts[0] %}
+        {% set amz_host = settings.get('buy_links_amazon_host') or buy_links_amazon_hosts[0] %}
+        <form method="POST" action="/api/settings/buy-links" class="space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="buy_links_bookshop_id" class="block text-sm font-medium text-shelf-muted mb-1">Bookshop.org affiliate id (blank turns it off)</label>
+                    <input type="text" id="buy_links_bookshop_id" name="buy_links_bookshop_id" inputmode="numeric" maxlength="12" autocomplete="off"
+                           value="{{ settings.get('buy_links_bookshop_id', '') }}" data-testid="buy-links-bookshop-id"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text font-mono focus:ring-2 focus:ring-shelf-accent outline-hidden">
+                </div>
+                <div>
+                    <label for="buy_links_bookshop_host" class="block text-sm font-medium text-shelf-muted mb-1">Bookshop.org site</label>
+                    <select id="buy_links_bookshop_host" name="buy_links_bookshop_host" data-testid="buy-links-bookshop-host"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
+                        {% for h in buy_links_bookshop_hosts %}
+                        <option value="{{ h }}" {% if h == bs_host %}selected{% endif %}>{{ h }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="buy_links_amazon_tag" class="block text-sm font-medium text-shelf-muted mb-1">Amazon Associates tag (blank turns it off)</label>
+                    <input type="text" id="buy_links_amazon_tag" name="buy_links_amazon_tag" maxlength="40" autocomplete="off"
+                           value="{{ settings.get('buy_links_amazon_tag', '') }}" data-testid="buy-links-amazon-tag"
+                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text font-mono focus:ring-2 focus:ring-shelf-accent outline-hidden">
+                </div>
+                <div>
+                    <label for="buy_links_amazon_host" class="block text-sm font-medium text-shelf-muted mb-1">Amazon marketplace</label>
+                    <select id="buy_links_amazon_host" name="buy_links_amazon_host" data-testid="buy-links-amazon-host"
+                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
+                        {% for h in buy_links_amazon_hosts %}
+                        <option value="{{ h }}" {% if h == amz_host %}selected{% endif %}>{{ h }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                Save
+            </button>
+        </form>
+    </div>
+

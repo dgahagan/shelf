@@ -156,6 +156,7 @@ key material.
 - Bulk editing — select items in Browse to move them, change type or status, add to or remove from the wishlist, set and clear series, or add and remove a tag in one go
 - Valuation report — location-grouped, print-ready collection value report for insurance (via ISBNdb)
 - Price alerts — Shelf checks the list price of wishlisted books nightly through ISBNdb and sends a digest when one drops past your threshold; list price, not used-market price
+- Buy links — wishlisted books and missing series volumes can show Bookshop.org and Amazon links carrying your own affiliate tags; nothing shows until you enter a tag
 - Display currency — 20 currencies for every value surface (formatting, not conversion)
 - CSV import/export, plus a portable archive — export the whole collection as one zip **including physical copies and cover art** and merge it into any Shelf instance without refetching a cover
 

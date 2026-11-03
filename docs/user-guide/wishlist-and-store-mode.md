@@ -31,7 +31,9 @@ mode: Shelf marks the existing record owned and takes it off the wishlist
 (the scan card says *Now owned — was on your wishlist*) instead of
 duplicating it. Scanning it in **Wishlist** mode changes nothing.
 
-Share it as a gift list with a public link — see [Sharing](sharing.md).
+Share it as a gift list with a public link — see [Sharing](sharing.md). A
+wishlisted book can also carry [buy links](#buy-links), and its list price
+can be watched for [price alerts](#price-alerts).
 
 ## Price alerts
 
@@ -75,6 +77,34 @@ checked again first next time — see
 [Settings → Price alerts](settings.md#price-alerts). Price history is kept in
 the database and is **not** included in a portable archive export — see
 [Upgrading and backups](../upgrading-and-backups.md).
+
+## Buy links
+
+Shelf can show **Bookshop.org** and **Amazon** links that carry *your own*
+affiliate tags. Shelf earns nothing from them: the links pay you, through your
+own affiliate accounts.
+
+They appear in two places, and nowhere else:
+
+- a **wishlisted book's page**, under the title;
+- the **missing volumes** of a series, after **Check completeness** on the
+  [Series](series.md#with-hardcover-connected) page.
+
+Owned items, Browse, share links and Store Mode never show them. Wishlisted
+items that are not books — games, discs, music — get none.
+
+Bookshop.org comes first. It supports independent bookstores. A book with an
+ISBN gets a link straight to its product page. A book without one gets a store
+search on its title instead. A Bookshop.org search carries no affiliate id, so
+it **pays nobody**. Missing series volumes have no ISBN in Shelf, so their
+links are always searches.
+
+Each set of links has a short line under it saying they are affiliate links.
+
+To turn them on, enter a tag in Settings → Library → **Buy links** (see
+[Settings → Buy links](settings.md#buy-links)). Nothing shows until you enter
+one, and a store whose tag is blank shows no link. The **Buy links** row in
+Settings → Features turns the feature off entirely.
 
 ## Store Mode (offline)
 

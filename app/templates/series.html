@@ -243,10 +243,21 @@
                 </p>
                 <div class="space-y-1.5">
                     <template x-for="b in missingBooks" :key="b.hardcover_book_id">
-                        <div class="flex items-center gap-2 text-sm">
+                        <!-- Wraps on a narrow screen: the title group keeps at least
+                             12rem, so the store links and + Wishlist drop to a second
+                             line instead of squeezing the title to one letter. -->
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" data-testid="series-missing-row">
                             <span class="text-shelf-muted w-10 shrink-0 text-right" x-text="b.series_position !== null ? '#' + b.series_position : ''"></span>
-                            <span class="text-shelf-text truncate" x-text="b.title"></span>
-                            <span class="text-shelf-muted text-xs truncate" x-text="b.authors || ''"></span>
+                            <div class="flex min-w-0 flex-1 basis-48 items-center gap-2">
+                                <span class="text-shelf-text truncate" x-text="b.title"></span>
+                                <span class="text-shelf-muted text-xs truncate" x-text="b.authors || ''"></span>
+                            </div>
+                            <div class="ml-auto flex shrink-0 items-center gap-2">
+                            <template x-for="l in b.buy_links" :key="l.store">
+                                <a :href="l.url" x-text="l.label" target="_blank" rel="noopener sponsored"
+                                   data-testid="series-buy-link"
+                                   class="text-xs text-shelf-accent2 hover:underline shrink-0"></a>
+                            </template>
                             {% if can_edit %}
                             <button x-show="!added[b.hardcover_book_id]"
                                     @click="addToWishlist(b)"
@@ -255,9 +266,16 @@
                             </button>
                             <span x-show="added[b.hardcover_book_id]" style="display:none" class="ml-auto text-xs text-shelf-success shrink-0">Wishlisted</span>
                             {% endif %}
+                            </div>
                         </div>
                     </template>
                 </div>
+                <template x-if="result.buy_links_disclosure">
+                    <p class="text-xs text-shelf-muted mt-2" data-testid="series-buy-links-disclosure">
+                        Affiliate links carrying your own tags (Settings → Library → Buy links).
+                        <span x-show="result.buy_links_disclosure.bookshop">Bookshop.org supports independent bookstores.</span>
+                    </p>
+                </template>
             </div>
         </template>
     </div>

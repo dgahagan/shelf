@@ -135,7 +135,7 @@ def test_apply_profile_writes_the_api_row(db):
 
 def test_api_is_registered_last_and_everything_only():
     assert list(FEATURES)[-1] == "api"
-    assert len(FEATURES) == 18
+    assert len(FEATURES) == 19
     assert FEATURES["api"].profile == "everything"
     assert "api" in profile_keys("everything")
     assert "api" not in profile_keys("standard")
