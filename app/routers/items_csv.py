@@ -12,6 +12,7 @@ import os
 
 from fastapi import APIRouter, Depends, Request
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.routers import items_common
@@ -98,7 +99,7 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     mode = form.get("mode", "skip")  # skip or update; anything else is rejected below
     if mode not in ("skip", "update"):
         return {
-            "error": f"Unknown import mode '{mode}' (use skip or update)",
+            "error": i18n.gettext("Unknown import mode '%(mode)s' (use skip or update)") % {"mode": mode},
             "imported": 0,
             "skipped": 0,
             "errors": [],
@@ -107,11 +108,11 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     enrich_covers = form.get("enrich_covers") in ("1", "true", "on")
     csv_file = form.get("file")
     if not csv_file or not hasattr(csv_file, "read"):
-        return {"error": "No file uploaded", "imported": 0, "skipped": 0, "errors": []}
+        return {"error": i18n.gettext("No file uploaded"), "imported": 0, "skipped": 0, "errors": []}
 
     raw = await csv_file.read(MAX_CSV_UPLOAD_SIZE + 1)
     if len(raw) > MAX_CSV_UPLOAD_SIZE:  # 50 MB cap
-        return {"error": "File too large (max 50 MB)", "imported": 0, "skipped": 0, "errors": []}
+        return {"error": i18n.gettext("File too large (max 50 MB)"), "imported": 0, "skipped": 0, "errors": []}
     try:
         content = raw.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -120,9 +121,9 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
         # silently, which is worse than refusing (design plan-imports-lt-libib
         # §"Reading the file").
         return {
-            "error": "The file is not UTF-8 text. Re-export it as UTF-8 "
-                      "(in a spreadsheet app: Save As → CSV UTF-8) and "
-                      "upload it again.",
+            "error": i18n.gettext("The file is not UTF-8 text. Re-export it as UTF-8 "
+                                  "(in a spreadsheet app: Save As → CSV UTF-8) and "
+                                  "upload it again."),
             "imported": 0,
             "skipped": 0,
             "errors": [],
