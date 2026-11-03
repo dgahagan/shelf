@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import RedirectResponse
 
-from app import browse_filters, features, nav
+from app import browse_filters, features, i18n, nav
 from app.auth import require_role
 from app.features import require_feature
 from app.config import (
@@ -244,7 +244,7 @@ def _status_label_sets():
     neutral set, and every status-capable type its own. The keys other than
     `auto` are the types the control is enabled for."""
     def words(labels):
-        return [labels.want, labels.doing, labels.done]
+        return [i18n.gettext(labels.want), i18n.gettext(labels.doing), i18n.gettext(labels.done)]
     sets = {t: words(status_labels(t)) for t in sorted(STATUS_MEDIA_TYPES)}
     return {"auto": words(status_labels(None)), **sets}
 

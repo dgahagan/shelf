@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Scan — Shelf{% endblock %}
+{% block title %}{{ _('Scan') }} — Shelf{% endblock %}
 {% block head %}
 <script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
 <script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
@@ -37,7 +37,7 @@
         <button @click="toggleCamera()" type="button"
                 :class="cameraActive ? 'bg-shelf-error/20 text-shelf-error border-shelf-error/40' : 'bg-shelf-card text-shelf-muted border-shelf-border hover:text-shelf-text hover:border-shelf-accent/50'"
                 class="border rounded-lg px-4 py-2 text-sm transition-colors mb-3">
-            <span x-text="cameraActive ? 'Stop Camera' : 'Scan with Camera'"></span>
+            <span x-show="!cameraActive">{{ _('Scan with Camera') }}</span><span x-show="cameraActive">{{ _('Stop Camera') }}</span>
         </button>
         <div x-show="cameraActive" x-transition class="relative max-w-md mx-auto" style="display:none">
             <div id="camera-reader"
@@ -64,7 +64,7 @@
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                     </svg>
-                    Looking up barcode...
+                    {{ _('Looking up barcode...') }}
                 </div>
                 <template x-if="scanResult">
                     <div>
@@ -82,11 +82,11 @@
                 </template>
                 <button @click="resumeScanning()" type="button"
                         class="mt-2 px-6 py-2.5 bg-shelf-accent text-white rounded-lg text-sm font-medium hover:bg-shelf-accent2 transition-colors">
-                    Scan Next
+                    {{ _('Scan Next') }}
                 </button>
             </div>
         </div>
-        <p x-show="cameraActive && !scanPaused" class="text-xs text-shelf-muted text-center mt-2">Point your camera at a barcode</p>
+        <p x-show="cameraActive && !scanPaused" class="text-xs text-shelf-muted text-center mt-2">{{ _('Point your camera at a barcode') }}</p>
     </div>
 
     <!-- Scan Form -->
@@ -104,22 +104,22 @@
            submit button. The Default tags field is a second text field, so
            without this Enter would do nothing (tag-suggest.js stops Enter in
            the tags field itself from submitting a blank scan). #}
-        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Scan</button>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">{{ _('Scan') }}</button>
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
                 <!-- Media Type (add/wishlist only) -->
                 <div x-show="mode === 'add' || mode === 'wishlist'" x-transition>
-                    <label for="media-type" class="block text-sm font-medium text-shelf-muted mb-1">Media Type</label>
+                    <label for="media-type" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Media Type') }}</label>
                     <select id="media-type" name="media_type"
                             x-model="mediaType" @change="persistMediaType()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
                         {# Auto is a scan-form option, never a stored type —
                            it is deliberately NOT in config.MEDIA_TYPES, and
                            the routes normalise it away before any save. #}
-                        <option value="auto">Auto &mdash; detect from the barcode</option>
+                        <option value="auto">{{ _('Auto &mdash; detect from the barcode') }}</option>
                         {% for key, label in media_types.items() %}
-                        <option value="{{ key }}">{{ label }}</option>
+                        <option value="{{ key }}">{{ _(label) }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -127,11 +127,11 @@
                 <!-- Location (add/move/inventory) -->
                 <div x-show="['add', 'move', 'inventory'].includes(mode)" x-transition>
                     <label for="location" class="block text-sm font-medium text-shelf-muted mb-1"
-                           x-text="mode === 'move' ? 'Target Location' : mode === 'inventory' ? 'Auditing Location' : 'Location'"></label>
+                           x-text="locationLabel"></label>
                     <select id="location" name="location_id"
                             x-model="location" @change="persistLocation()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
-                        <option value="">None</option>
+                        <option value="">{{ _('None') }}</option>
                         {% for loc in locations %}
                         <option value="{{ loc.id }}">{{ loc.name }}</option>
                         {% endfor %}
@@ -145,11 +145,11 @@
                    a hidden picker still submits whatever it last held. Leaving
                    it hidden meant filing a wrong platform invisibly. #}
                 <div x-show="(mode === 'add' || mode === 'wishlist') && (mediaType === 'video_game' || mediaType === 'auto')" x-transition style="display:none">
-                    <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">Platform</label>
+                    <label for="platform" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Platform') }}</label>
                     <select id="platform" name="platform"
                             x-model="platform" @change="persistPlatform()"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
-                        <option value="">Any / Unknown</option>
+                        <option value="">{{ _('Any / Unknown') }}</option>
                         {% for key, label in game_platforms.items() %}
                         <option value="{{ key }}">{{ label }}</option>
                         {% endfor %}
@@ -158,25 +158,25 @@
 
                 <!-- Borrower (lend only) -->
                 <div x-show="mode === 'lend'" x-transition style="display:none">
-                    <label class="block text-sm font-medium text-shelf-muted mb-1">Borrower</label>
+                    <label class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Borrower') }}</label>
                     <select name="borrower_id" x-model="borrowerId" :disabled="mode !== 'lend'"
                             class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
-                        <option value="">Select borrower...</option>
+                        <option value="">{{ _('Select borrower...') }}</option>
                         {% for b in borrowers %}
                         <option value="{{ b.id }}">{{ b.name }}</option>
                         {% endfor %}
                     </select>
                     {% if not borrowers %}
-                    <p class="text-xs text-shelf-muted mt-1">No borrowers yet. Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>
+                    <p class="text-xs text-shelf-muted mt-1">{{ _('No borrowers yet. Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.') }}</p>
                     {% endif %}
                 </div>
 
                 <!-- ISBN / Barcode Input (always shown) -->
                 <div>
                     <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1"
-                           x-text="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Barcode' : 'ISBN / UPC'"></label>
+                           x-text="barcodeLabel"></label>
                     <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off"
-                           :placeholder="['lend','return','move','inventory','lookup','quick_rate'].includes(mode) ? 'Scan barcode...' : mediaType === 'auto' ? 'Scan any barcode...' : mediaType === 'video_game' ? 'Scan UPC barcode...' : 'Scan or type ISBN...'"
+                           :placeholder="barcodePlaceholder"
                            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
                 </div>
             </div>
@@ -187,14 +187,14 @@
                out of other modes' submissions (G90). No x-model: every reader
                reads the DOM value (G91). #}
             <div x-show="mode === 'add' || mode === 'wishlist'" x-transition class="mt-4">
-                <label for="default-tags" class="block text-sm font-medium text-shelf-muted mb-1">Default tags</label>
+                <label for="default-tags" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Default tags') }}</label>
                 <input type="text" id="default-tags" name="tags" list="tag-suggestions"
                        data-tag-suggest data-storage-key="shelf_tags" data-type-source="#media-type"
                        :disabled="mode !== 'add' && mode !== 'wishlist'" autocomplete="off"
-                       placeholder="e.g. Cookbook; Signed"
+                       placeholder="{{ _('e.g. Cookbook; Signed') }}"
                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
                 <datalist id="tag-suggestions"></datalist>
-                <p class="text-xs text-shelf-muted mt-1">Added to every new item. Separate several with <code>;</code>.</p>
+                <p class="text-xs text-shelf-muted mt-1">{{ _('Added to every new item. Separate several with <code>;</code>.') }}</p>
             </div>
 
             <!-- Default reading status (add/wishlist only) -->
@@ -203,39 +203,39 @@
                the server checks the type again. The option words follow the
                media type, from data-status-labels on the root. #}
             <div x-show="mode === 'add' || mode === 'wishlist'" x-transition class="mt-4">
-                <label for="default-reading-status" class="block text-sm font-medium text-shelf-muted mb-1">Default status</label>
+                <label for="default-reading-status" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Default status') }}</label>
                 <select id="default-reading-status" name="reading_status"
                         x-model="readingStatus" @change="persistReadingStatus()"
                         :disabled="statusDisabled"
                         class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden disabled:opacity-50">
-                    <option value="">None</option>
-                    <option value="want_to_read" x-text="statusWant">Want to</option>
-                    <option value="reading" x-text="statusDoing">In progress</option>
-                    <option value="read" x-text="statusDone">Finished</option>
+                    <option value="">{{ _('None') }}</option>
+                    <option value="want_to_read" x-text="statusWant">{{ _('Want to') }}</option>
+                    <option value="reading" x-text="statusDoing">{{ _('In progress') }}</option>
+                    <option value="read" x-text="statusDone">{{ _('Finished') }}</option>
                 </select>
-                <p class="text-xs text-shelf-muted mt-1">Set on every new item. No dates are recorded.</p>
+                <p class="text-xs text-shelf-muted mt-1">{{ _('Set on every new item. No dates are recorded.') }}</p>
             </div>
 
             <!-- Validation warnings -->
-            <p x-show="mode === 'lend' && !borrowerId" class="text-xs text-shelf-warning mt-3" style="display:none">Select a borrower before scanning.</p>
-            <p x-show="mode === 'move' && !location" class="text-xs text-shelf-warning mt-3" style="display:none">Select a target location before scanning.</p>
-            <p x-show="mode === 'inventory' && !location" class="text-xs text-shelf-warning mt-3" style="display:none">Select the location you are auditing before scanning.</p>
+            <p x-show="mode === 'lend' && !borrowerId" class="text-xs text-shelf-warning mt-3" style="display:none">{{ _('Select a borrower before scanning.') }}</p>
+            <p x-show="mode === 'move' && !location" class="text-xs text-shelf-warning mt-3" style="display:none">{{ _('Select a target location before scanning.') }}</p>
+            <p x-show="mode === 'inventory' && !location" class="text-xs text-shelf-warning mt-3" style="display:none">{{ _('Select the location you are auditing before scanning.') }}</p>
         </div>
     </form>
 
     <!-- Title Search (add/wishlist only) -->
     <div x-show="mode === 'add' || mode === 'wishlist'" x-transition class="mb-6" style="display:none">
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-            <h2 class="text-lg font-semibold mb-3">Search by Title</h2>
-            <p x-show="mediaType === 'video_game'" class="text-xs text-shelf-muted mb-4" style="display:none">For cartridges or games without a barcode — search IGDB by name and platform.</p>
-            <p x-show="mediaType === 'dvd'" class="text-xs text-shelf-muted mb-4" style="display:none">Search TMDb for movies by title.</p>
+            <h2 class="text-lg font-semibold mb-3">{{ _('Search by Title') }}</h2>
+            <p x-show="mediaType === 'video_game'" class="text-xs text-shelf-muted mb-4" style="display:none">{{ _('For cartridges or games without a barcode — search IGDB by name and platform.') }}</p>
+            <p x-show="mediaType === 'dvd'" class="text-xs text-shelf-muted mb-4" style="display:none">{{ _('Search TMDb for movies by title.') }}</p>
             {# Was true under Auto, which asserted a book search under a
                setting that means "I don't know". Auto gets its own arm. #}
-            <p x-show="mediaType !== 'video_game' && mediaType !== 'dvd' && mediaType !== 'auto'" class="text-xs text-shelf-muted mb-4">Search Open Library for books by title, author, or keyword.</p>
-            <p x-show="mediaType === 'auto'" class="text-xs text-shelf-muted mb-4" style="display:none">Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead.</p>
+            <p x-show="mediaType !== 'video_game' && mediaType !== 'dvd' && mediaType !== 'auto'" class="text-xs text-shelf-muted mb-4">{{ _('Search Open Library for books by title, author, or keyword.') }}</p>
+            <p x-show="mediaType === 'auto'" class="text-xs text-shelf-muted mb-4" style="display:none">{{ _('Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead.') }}</p>
             <div class="flex gap-3">
                 <input type="text" id="title-search-input"
-                       :placeholder="mediaType === 'auto' ? 'Title or author...' : mediaType === 'video_game' ? 'Game title...' : mediaType === 'dvd' ? 'Movie title...' : 'Book title or author...'"
+                       :placeholder="titlePlaceholder"
                        class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50"
                        hx-get="/api/title-search" hx-trigger="keyup changed delay:400ms"
                        hx-target="#title-search-results" hx-swap="innerHTML"
@@ -255,15 +255,15 @@
         <button type="button" @click="toggleManual()"
                 class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:border-shelf-accent transition-colors"
                 data-manual-toggle>
-            <span x-text="manualOpen ? 'Hide manual entry' : 'Add by hand'">Add by hand</span>
+            <span x-text="manualOpen ? 'Hide manual entry' : 'Add by hand'">{{ _('Add by hand') }}</span>
         </button>
 
         <div x-show="manualOpen" x-transition class="mt-4"
              data-manual-open="{{ 'true' if manual_open else 'false' }}"
              {% if not manual_open %}style="display:none"{% endif %}>
             <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-                <h2 class="text-lg font-semibold mb-3">Add by Hand</h2>
-                <p class="text-xs text-shelf-muted mb-4">No lookup involved — a title is all you need. Everything else is optional and editable afterwards.</p>
+                <h2 class="text-lg font-semibold mb-3">{{ _('Add by Hand') }}</h2>
+                <p class="text-xs text-shelf-muted mb-4">{{ _('No lookup involved — a title is all you need. Everything else is optional and editable afterwards.') }}</p>
                 {# Its own component instance. `data-manual-host` is what gates
                    the panel-only behaviour inside manualAddForm: the same
                    component is mounted by every not_found card, and several
@@ -279,14 +279,7 @@
 
     <!-- Scan Results -->
     <h2 class="text-lg font-semibold mb-3"
-        x-text="mode === 'add' ? 'Recently Added' :
-                mode === 'wishlist' ? 'Added to Wishlist' :
-                mode === 'lend' ? 'Checked Out' :
-                mode === 'return' ? 'Returned' :
-                mode === 'move' ? 'Moved' :
-                mode === 'inventory' ? 'Scanned Items' :
-                mode === 'lookup' ? 'Lookup Results' :
-                mode === 'quick_rate' ? 'Marked as finished' : 'Results'">
+        x-text="resultsHeading">
     </h2>
     <div id="scan-results" class="space-y-3">
     </div>

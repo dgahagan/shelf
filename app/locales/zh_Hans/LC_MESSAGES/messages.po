@@ -76,6 +76,7 @@ msgid "Added"
 msgstr "添加日期"
 
 #: app/browse_columns.py:74 app/templates/item_edit.html:355
+#: app/templates/scan.html:148
 msgid "Platform"
 msgstr "平台"
 
@@ -89,6 +90,7 @@ msgid "Tags"
 msgstr "标签"
 
 #: app/browse_filters.py:208
+#: app/templates/fragments/periodical_scan_result.html:29
 msgid "Search"
 msgstr "搜索"
 
@@ -116,7 +118,7 @@ msgstr "有声书"
 msgid "eBook"
 msgstr "电子书"
 
-#: app/config.py:18
+#: app/config.py:18 app/templates/fragments/periodical_scan_result.html:8
 msgid "Magazine"
 msgstr "杂志"
 
@@ -188,15 +190,15 @@ msgstr "在玩"
 msgid "Played"
 msgstr "已玩"
 
-#: app/config.py:58
+#: app/config.py:58 app/templates/scan.html:212
 msgid "Want to"
 msgstr "想要"
 
-#: app/config.py:58
+#: app/config.py:58 app/templates/scan.html:213
 msgid "In progress"
 msgstr "进行中"
 
-#: app/config.py:58
+#: app/config.py:58 app/templates/scan.html:214
 msgid "Finished"
 msgstr "已完成"
 
@@ -220,7 +222,7 @@ msgstr "艺术家"
 msgid "Browse"
 msgstr "浏览"
 
-#: app/nav.py:35
+#: app/nav.py:35 app/templates/scan.html:2 app/templates/scan.html:107
 msgid "Scan"
 msgstr "扫码"
 
@@ -1174,7 +1176,7 @@ msgid "Subtitle"
 msgstr ""
 
 #: app/templates/fragments/manual_add_form.html:40
-#: app/templates/item_edit.html:108
+#: app/templates/item_edit.html:108 app/templates/scan.html:113
 msgid "Media Type"
 msgstr ""
 
@@ -1184,6 +1186,7 @@ msgstr ""
 
 #: app/templates/item_edit.html:142 app/templates/item_edit.html:178
 #: app/templates/item_edit.html:309 app/templates/item_edit.html:358
+#: app/templates/scan.html:134 app/templates/scan.html:211
 msgid "None"
 msgstr ""
 
@@ -1354,6 +1357,110 @@ msgstr "用户名"
 #: app/templates/setup.html:40
 msgid "Password"
 msgstr "密码"
+
+#: app/templates/scan.html:40
+msgid "Scan with Camera"
+msgstr ""
+
+#: app/templates/scan.html:40
+msgid "Stop Camera"
+msgstr ""
+
+#: app/templates/scan.html:67
+msgid "Looking up barcode..."
+msgstr ""
+
+#: app/templates/scan.html:85
+msgid "Scan Next"
+msgstr ""
+
+#: app/templates/scan.html:89
+msgid "Point your camera at a barcode"
+msgstr ""
+
+#: app/templates/scan.html:120
+msgid "Auto &mdash; detect from the barcode"
+msgstr ""
+
+#: app/templates/scan.html:152
+msgid "Any / Unknown"
+msgstr ""
+
+#: app/templates/scan.html:161
+msgid "Borrower"
+msgstr ""
+
+#: app/templates/scan.html:164
+msgid "Select borrower..."
+msgstr ""
+
+#: app/templates/scan.html:170
+msgid "No borrowers yet. Add them in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Settings</a>."
+msgstr ""
+
+#: app/templates/scan.html:190
+msgid "Default tags"
+msgstr ""
+
+#: app/templates/scan.html:194
+msgid "e.g. Cookbook; Signed"
+msgstr ""
+
+#: app/templates/scan.html:197
+msgid "Added to every new item. Separate several with <code>;</code>."
+msgstr ""
+
+#: app/templates/scan.html:206
+msgid "Default status"
+msgstr ""
+
+#: app/templates/scan.html:216
+msgid "Set on every new item. No dates are recorded."
+msgstr ""
+
+#: app/templates/scan.html:220
+msgid "Select a borrower before scanning."
+msgstr ""
+
+#: app/templates/scan.html:221
+msgid "Select a target location before scanning."
+msgstr ""
+
+#: app/templates/scan.html:222
+msgid "Select the location you are auditing before scanning."
+msgstr ""
+
+#: app/templates/scan.html:229
+msgid "Search by Title"
+msgstr ""
+
+#: app/templates/scan.html:230
+msgid "For cartridges or games without a barcode — search IGDB by name and platform."
+msgstr ""
+
+#: app/templates/scan.html:231
+msgid "Search TMDb for movies by title."
+msgstr ""
+
+#: app/templates/scan.html:234
+msgid "Search Open Library for books by title, author, or keyword."
+msgstr ""
+
+#: app/templates/scan.html:235
+msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
+msgstr ""
+
+#: app/templates/scan.html:258
+msgid "Add by hand"
+msgstr ""
+
+#: app/templates/scan.html:265
+msgid "Add by Hand"
+msgstr ""
+
+#: app/templates/scan.html:266
+msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
+msgstr ""
 
 #: app/templates/setup.html:6
 msgid "Welcome"
@@ -1837,6 +1944,87 @@ msgstr ""
 msgid "Add to Collection"
 msgstr ""
 
+#: app/templates/fragments/periodical_assisted_results.html:19
+msgid "Use result"
+msgstr ""
+
+#: app/templates/fragments/periodical_assisted_results.html:25
+msgid "No matching Google Books magazine titles were found. Try a shorter publication title or use the exact-barcode links below."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:4
+msgid "Confirm the issue below"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:6
+msgid "unknown"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:15
+msgid "The printed carrier and add-on identify the scan. Confirm the publication and concrete issue separately; Shelf will not guess what a publisher-specific supplement means."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:18
+msgid "Wrong or missing publication? Search magazines"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:19
+msgid "Search Google Books by magazine title. Selecting a candidate only fills this card; nothing is added until you confirm below."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:27
+msgid "Magazine title…"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:33
+msgid "Search exact barcode on the web ↗"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:47
+msgid "Publication"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:48
+msgid "Publication title"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:52
+msgid "Publication ISSN"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:55
+msgid "This may differ from the 977-derived hint when a trusted result or the printed masthead proves otherwise."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:60
+msgid "Volume"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:61
+#: app/templates/fragments/periodical_scan_result.html:65
+msgid "Optional"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:64
+msgid "Issue number"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:68
+msgid "Issue date"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:74
+msgid "Cover date / label"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:75
+msgid "September 2026, Summer Special…"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:79
+msgid "Add confirmed issue"
+msgstr ""
+
 #: app/templates/fragments/reading_status.html:22
 msgid "Clear status"
 msgstr ""
@@ -1854,6 +2042,10 @@ msgstr ""
 #: app/templates/fragments/reading_status.html:36
 #, python-format
 msgid "%(status)s %(count)s times"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:30
+msgid "No recent activity for this mode."
 msgstr ""
 
 #: app/templates/fragments/related_media_panel.html:4

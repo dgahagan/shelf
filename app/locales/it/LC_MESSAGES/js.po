@@ -110,11 +110,11 @@ msgstr "Inquadra un codice a barre ISBN che inizi con 978 o 979."
 msgid "Starting camera…"
 msgstr "Avvio della fotocamera…"
 
-#: static/js/item_edit.js:53 static/js/item_edit.js:140
+#: static/js/item_edit.js:53 static/js/item_edit.js:140 static/js/scan.js:384
 msgid "Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on."
 msgstr "La fotocamera richiede HTTPS. Apri Shelf tramite un reverse proxy HTTPS o lascia attivo SHELF_TLS."
 
-#: static/js/item_edit.js:55 static/js/item_edit.js:142
+#: static/js/item_edit.js:55 static/js/item_edit.js:142 static/js/scan.js:386
 msgid "Camera access denied. Check browser permissions for this site."
 msgstr "Accesso alla fotocamera negato. Controlla i permessi del browser per questo sito."
 
@@ -129,4 +129,220 @@ msgstr "Inquadra un codice a barre commerciale UPC-A o EAN-13."
 #: static/js/item_edit.js:158
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
 msgstr "Questo non è un codice a barre commerciale UPC-A / EAN-13 valido. Riprova."
+
+#: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165
+msgid "Want to"
+msgstr "Da iniziare"
+
+#: static/js/scan.js:29 static/js/scan.js:163 static/js/scan.js:165
+msgid "In progress"
+msgstr "In corso"
+
+#: static/js/scan.js:30 static/js/scan.js:163 static/js/scan.js:165
+msgid "Finished"
+msgstr "Finito"
+
+#: static/js/scan.js:52
+msgid "Add"
+msgstr "Aggiungi"
+
+#: static/js/scan.js:53
+msgid "Wishlist"
+msgstr "Lista desideri"
+
+#: static/js/scan.js:54
+msgid "Lend"
+msgstr "Presta"
+
+#: static/js/scan.js:55
+msgid "Return"
+msgstr "Restituisci"
+
+#: static/js/scan.js:56
+msgid "Move"
+msgstr "Sposta"
+
+#: static/js/scan.js:57
+msgid "Inventory"
+msgstr "Inventario"
+
+#: static/js/scan.js:58 static/js/scan.js:94
+msgid "Lookup"
+msgstr "Consulta"
+
+#: static/js/scan.js:59 static/js/scan.js:95
+msgid "Quick Rate"
+msgstr "Segna come finito"
+
+#: static/js/scan.js:65
+msgid "Target Location"
+msgstr "Posizione di destinazione"
+
+#: static/js/scan.js:65
+msgid "Auditing Location"
+msgstr "Posizione da inventariare"
+
+#: static/js/scan.js:65
+msgid "Location"
+msgstr "Posizione"
+
+#: static/js/scan.js:70
+msgid "Barcode"
+msgstr "Codice a barre"
+
+#: static/js/scan.js:70
+msgid "ISBN / UPC"
+msgstr "ISBN / UPC"
+
+#: static/js/scan.js:72
+msgid "Scan barcode..."
+msgstr "Scansiona il codice a barre..."
+
+#: static/js/scan.js:73
+msgid "Scan any barcode..."
+msgstr "Scansiona un codice a barre..."
+
+#: static/js/scan.js:74
+msgid "Scan UPC barcode..."
+msgstr "Scansiona il codice UPC..."
+
+#: static/js/scan.js:74
+msgid "Scan or type ISBN..."
+msgstr "Scansiona o scrivi l'ISBN..."
+
+#: static/js/scan.js:77
+msgid "Title or author..."
+msgstr "Titolo o autore..."
+
+#: static/js/scan.js:77
+msgid "Game title..."
+msgstr "Titolo del gioco..."
+
+#: static/js/scan.js:77
+msgid "Movie title..."
+msgstr "Titolo del film..."
+
+#: static/js/scan.js:78
+msgid "Book title or author..."
+msgstr "Titolo o autore del libro..."
+
+#: static/js/scan.js:81
+msgid "Recently Added"
+msgstr "Aggiunti di recente"
+
+#: static/js/scan.js:81
+msgid "Added to Wishlist"
+msgstr "Aggiunti alla lista desideri"
+
+#: static/js/scan.js:81
+msgid "Checked Out"
+msgstr "Prestati"
+
+#: static/js/scan.js:81
+msgid "Returned"
+msgstr "Restituiti"
+
+#: static/js/scan.js:82
+msgid "Moved"
+msgstr "Spostati"
+
+#: static/js/scan.js:82
+msgid "Scanned Items"
+msgstr "Elementi scansionati"
+
+#: static/js/scan.js:82
+msgid "Lookup Results"
+msgstr "Risultati della consultazione"
+
+#: static/js/scan.js:83
+msgid "Marked as finished"
+msgstr "Segnati come finiti"
+
+#: static/js/scan.js:83
+msgid "Results"
+msgstr "Risultati"
+
+#: static/js/scan.js:88
+msgid "Add Items"
+msgstr "Aggiungi elementi"
+
+#: static/js/scan.js:88
+msgid "Scan barcodes to add items to your collection."
+msgstr "Scansiona i codici a barre per aggiungere elementi alla collezione."
+
+#: static/js/scan.js:89
+msgid "Add to Wishlist"
+msgstr "Aggiungi alla lista desideri"
+
+#: static/js/scan.js:89
+msgid "Scan to save items you want but haven't bought yet."
+msgstr "Scansiona per salvare gli elementi che vuoi ma non hai ancora comprato."
+
+#: static/js/scan.js:90
+msgid "Lend Items"
+msgstr "Presta elementi"
+
+#: static/js/scan.js:90
+msgid "Select a borrower, then scan items to check them out."
+msgstr "Scegli a chi prestare, poi scansiona gli elementi da prestare."
+
+#: static/js/scan.js:91
+msgid "Return Items"
+msgstr "Restituzione"
+
+#: static/js/scan.js:91
+msgid "Scan items to check them back in."
+msgstr "Scansiona gli elementi restituiti."
+
+#: static/js/scan.js:92
+msgid "Move Items"
+msgstr "Sposta elementi"
+
+#: static/js/scan.js:92
+msgid "Select a target location, then scan items to move them."
+msgstr "Scegli la posizione di destinazione, poi scansiona gli elementi da spostare."
+
+#: static/js/scan.js:93
+msgid "Inventory Audit"
+msgstr "Inventario"
+
+#: static/js/scan.js:93
+msgid "Select a location and scan every item you find there. Start an audit to get a report."
+msgstr "Scegli una posizione e scansiona ogni elemento che trovi lì. Avvia un inventario per ottenere un resoconto."
+
+#: static/js/scan.js:94
+msgid "Scan to check if an item is in your collection. No changes are made."
+msgstr "Scansiona per controllare se un elemento è nella collezione. Non viene modificato nulla."
+
+#: static/js/scan.js:95
+msgid "Scan to mark items as read or completed."
+msgstr "Scansiona per segnare gli elementi come letti o completati."
+
+#: static/js/scan.js:118
+msgid "Could not load recent scans"
+msgstr "Impossibile caricare le scansioni recenti"
+
+#: static/js/scan.js:267 static/js/scan.js:416
+msgid "Select a borrower first"
+msgstr "Prima scegli a chi prestare"
+
+#: static/js/scan.js:272 static/js/scan.js:420
+msgid "Select a location first"
+msgstr "Prima scegli una posizione"
+
+#: static/js/scan.js:488
+msgid "Choose the matching book below"
+msgstr "Scegli il libro corrispondente qui sotto"
+
+#: static/js/scan.js:488
+msgid "Type the five digits below"
+msgstr "Scrivi le cinque cifre qui sotto"
+
+#: static/js/scan.js:507
+msgid "error"
+msgstr "errore"
+
+#: static/js/scan.js:507
+msgid "Scan failed"
+msgstr "Scansione non riuscita"
 

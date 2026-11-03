@@ -206,3 +206,12 @@ def test_item_edit_and_manual_add_are_translated(admin_client, db):
         assert text in page, text
     scan = admin_client.get("/scan").text
     assert '"dvd": "Regista"' in scan  # the creator labels the manual-add form reads
+
+
+def test_scan_page_is_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/scan").text
+    assert "Scansiona con la fotocamera" in page and "Automatico (dal codice a barre)" in page
+    assert '"Recently Added": "Aggiunti di recente"' in page  # the results heading getter
+    assert '"auto": ["Da iniziare", "In corso", "Finito"]' in page  # default-status words
