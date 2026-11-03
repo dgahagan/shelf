@@ -6,6 +6,12 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Browse speaks Italian too.** The translated interface now covers Browse:
+  its filters and their counts, sorting, the bulk action bar, the grid and list
+  views and the filter chips. It is still behind `SHELF_I18N=on`.
+
 ## [0.75.0] - 2026-11-02
 
 A wishlist said what you wanted but not where to get it. Finding a copy meant

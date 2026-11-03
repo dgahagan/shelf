@@ -26,7 +26,7 @@
                 {% for col in browse_columns %}
                 <th {% if col.name == 'select' %}x-show="selectMode"{% elif not col.locked %}x-show="visibleCols.{{ col.name }}"{% endif %}
                     data-col="{{ col.name }}"
-                    class="px-3 py-2{% if col.name == 'select' %} w-8{% elif col.name == 'cover' %} w-10{% endif %}">{{ browse_creator_label(active_type) if col.name == 'author' else col.label }}</th>
+                    class="px-3 py-2{% if col.name == 'select' %} w-8{% elif col.name == 'cover' %} w-10{% endif %}">{{ _(browse_creator_label(active_type) if col.name == 'author' else col.label) }}</th>
                 {% endfor %}
             </tr>
         </thead>
@@ -56,12 +56,12 @@
         {% endif %}
     </svg>
     {% if has_filters %}
-    <p class="text-shelf-muted text-lg mb-2">No items match your filters</p>
+    <p class="text-shelf-muted text-lg mb-2">{{ _('No items match your filters') }}</p>
     <button @click="clearAllFilters()"
-            class="text-shelf-accent2 hover:text-shelf-accent inline-block cursor-pointer">Clear all filters</button>
+            class="text-shelf-accent2 hover:text-shelf-accent inline-block cursor-pointer">{{ _('Clear all filters') }}</button>
     {% else %}
-    <p class="text-shelf-muted text-lg mb-2">No items found</p>
-    <a href="/scan" class="text-shelf-accent2 hover:text-shelf-accent inline-block">Start scanning books</a>
+    <p class="text-shelf-muted text-lg mb-2">{{ _('No items found') }}</p>
+    <a href="/scan" class="text-shelf-accent2 hover:text-shelf-accent inline-block">{{ _('Start scanning books') }}</a>
     {% endif %}
 </div>
 {% endif %}

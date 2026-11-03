@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Browse — Shelf{% endblock %}
+{% block title %}{{ _('Browse') }} — Shelf{% endblock %}
 {% block content %}
 <div x-data="browsePage" data-initial-query="{{ initial_query or '' }}" class="flex flex-col">
     <!-- Bulk Action Bar. order-last + sticky, not fixed: it takes its own height in the
@@ -8,47 +8,47 @@
     <div x-show="selectMode && selectedIds.length > 0" x-transition
          class="order-last sticky bottom-0 z-40 -mx-4 sm:-mx-6 lg:-mx-8 -mb-6 bg-shelf-card border-t border-shelf-border py-3 px-4 sm:px-6 lg:px-8 shadow-lg">
         <div class="max-w-7xl mx-auto flex items-center gap-3 flex-wrap">
-            <span class="text-sm text-shelf-muted" x-text="selectedIds.length + ' selected'"></span>
+            <span class="text-sm text-shelf-muted" x-text="selectedLabel"></span>
             <select x-model="bulkLocationVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                <option value="">Move to location...</option>
+                <option value="">{{ _('Move to location...') }}</option>
                 {% for loc in locations %}
                 <option value="{{ loc.id }}">{{ loc.name }}</option>
                 {% endfor %}
             </select>
             <button @click="bulkUpdate({location_id: parseInt(bulkLocationVal) || null})" x-show="bulkLocationVal"
-                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Apply') }}</button>
             <select x-model="bulkTypeVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                <option value="">Change type...</option>
+                <option value="">{{ _('Change type...') }}</option>
                 {% for key, label in media_types.items() %}
-                <option value="{{ key }}">{{ label }}</option>
+                <option value="{{ key }}">{{ _(label) }}</option>
                 {% endfor %}
             </select>
             <button @click="bulkUpdate({media_type: bulkTypeVal})" x-show="bulkTypeVal"
-                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Apply') }}</button>
             {% set bsl = status_labels(none) %}
             <select x-model="bulkStatusVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                <option value="">Set status...</option>
-                <option value="want_to_read">{{ bsl.want }}</option>
-                <option value="reading">{{ bsl.doing }}</option>
-                <option value="read">{{ bsl.done }}</option>
-                <option value="__clear__">Clear Status</option>
+                <option value="">{{ _('Set status...') }}</option>
+                <option value="want_to_read">{{ _(bsl.want) }}</option>
+                <option value="reading">{{ _(bsl.doing) }}</option>
+                <option value="read">{{ _(bsl.done) }}</option>
+                <option value="__clear__">{{ _('Clear Status') }}</option>
             </select>
             <button @click="bulkUpdate({reading_status: bulkStatusVal === '__clear__' ? '' : bulkStatusVal})" x-show="bulkStatusVal"
-                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Apply') }}</button>
             <select x-model="bulkWishlistVal" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                <option value="">Wishlist...</option>
-                <option value="add">Add to wishlist</option>
-                <option value="remove">Remove from wishlist</option>
+                <option value="">{{ _('Wishlist...') }}</option>
+                <option value="add">{{ _('Add to wishlist') }}</option>
+                <option value="remove">{{ _('Remove from wishlist') }}</option>
             </select>
             <button @click="bulkUpdate({wishlisted: bulkWishlistVal === 'add'})" x-show="bulkWishlistVal"
-                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">Apply</button>
+                    class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Apply') }}</button>
             <!-- Series is a text input rather than a <select> (any name is
                  valid, existing ones autocomplete), so it needs an explicit
                  label — unlabelled it reads as a gap between the dropdowns. -->
             <div class="flex items-center flex-wrap gap-1.5 pl-3 border-l border-shelf-border">
-                <label for="bulk-series" class="text-sm text-shelf-muted shrink-0">Series</label>
+                <label for="bulk-series" class="text-sm text-shelf-muted shrink-0">{{ _('Series') }}</label>
                 <input type="text" id="bulk-series" x-model="bulkSeriesVal" list="bulk-series-options"
-                       placeholder="Type or pick a series..."
+                       placeholder="{{ _('Type or pick a series...') }}"
                        class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text w-52">
                 <datalist id="bulk-series-options">
                     {% for name in series_names %}
@@ -56,33 +56,33 @@
                     {% endfor %}
                 </datalist>
                 <button @click="bulkUpdate({series_name: bulkSeriesVal})" :disabled="!bulkSeriesVal"
-                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">Apply</button>
+                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">{{ _('Apply') }}</button>
                 <button @click="bulkUpdate({series_name: '__clear__'})"
-                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text">Clear</button>
+                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text">{{ _('Clear') }}</button>
             </div>
             {% if user and user.role == 'admin' %}
             <div class="flex items-center flex-wrap gap-1.5 sm:pl-3 sm:border-l border-shelf-border" data-testid="bulk-language">
-                <label for="bulk-language-select" class="text-sm text-shelf-muted shrink-0">Language</label>
+                <label for="bulk-language-select" class="text-sm text-shelf-muted shrink-0">{{ _('Language') }}</label>
                 <select id="bulk-language-select" x-model="bulkLanguageVal"
                         class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text w-32">
-                    <option value="">Choose…</option>
+                    <option value="">{{ _('Choose…') }}</option>
                     {% for code, label in search_langs.items() %}
-                    <option value="{{ code }}">{{ label }}</option>
+                    <option value="{{ code }}">{{ _(label) }}</option>
                     {% endfor %}
                 </select>
                 <button @click="bulkUpdate({language: bulkLanguageVal})" :disabled="!bulkLanguageVal" data-testid="bulk-language-apply"
-                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">Apply</button>
+                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">{{ _('Apply') }}</button>
                 <button @click="bulkUpdate({language: '__clear__'})" data-testid="bulk-language-clear"
-                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text">Clear</button>
+                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text">{{ _('Clear') }}</button>
             </div>
             {% endif %}
             {% if user and user.role in ('admin', 'editor') %}
             <!-- Tags: same input+datalist shape as Series, but two buttons --
                  a name can be added or removed rather than set/cleared. -->
             <div class="flex items-center flex-wrap gap-1.5 pl-3 border-l border-shelf-border">
-                <label for="bulk-tag" class="text-sm text-shelf-muted shrink-0">Tag</label>
+                <label for="bulk-tag" class="text-sm text-shelf-muted shrink-0">{{ _('Tag') }}</label>
                 <input type="text" id="bulk-tag" x-model="bulkTagVal" list="bulk-tag-options"
-                       maxlength="40" placeholder="Type or pick a tag..."
+                       maxlength="40" placeholder="{{ _('Type or pick a tag...') }}"
                        data-testid="bulk-tag-input"
                        class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text w-32">
                 <datalist id="bulk-tag-options">
@@ -91,12 +91,12 @@
                     {% endfor %}
                 </datalist>
                 <button @click="bulkTags('add')" :disabled="!bulkTagVal" data-testid="bulk-tag-add"
-                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">Add tag</button>
+                        class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-40 disabled:cursor-not-allowed">{{ _('Add tag') }}</button>
                 <button @click="bulkTags('remove')" :disabled="!bulkTagVal" data-testid="bulk-tag-remove"
-                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text disabled:opacity-40 disabled:cursor-not-allowed">Remove tag</button>
+                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text disabled:opacity-40 disabled:cursor-not-allowed">{{ _('Remove tag') }}</button>
             </div>
             {% endif %}
-            <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">Delete Selected</button>
+            <button @click="bulkDelete()" class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs ml-auto">{{ _('Delete Selected') }}</button>
         </div>
     </div>
 
@@ -108,15 +108,15 @@
              fitted. Wrapping makes the row count-independent instead of
              fitting only until the library grows. -->
         <div class="flex flex-wrap items-center gap-3">
-            <h1 class="text-2xl font-bold whitespace-nowrap">Collection <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span></h1>
+            <h1 class="text-2xl font-bold whitespace-nowrap">{{ _('Collection') }} <span id="collection-count" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span></h1>
             <!-- View toggle -->
             <div class="flex items-center shrink-0 bg-shelf-card border border-shelf-border rounded-lg overflow-hidden" data-testid="view-toggle">
                 <button @click="setView('grid')" :class="viewMode === 'grid' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-                        class="p-1.5 transition-colors" title="Grid view" data-testid="view-grid">
+                        class="p-1.5 transition-colors" title="{{ _('Grid view') }}" data-testid="view-grid">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
                 </button>
                 <button @click="setView('list')" :class="viewMode === 'list' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-                        class="p-1.5 transition-colors" title="List view" data-testid="view-list">
+                        class="p-1.5 transition-colors" title="{{ _('List view') }}" data-testid="view-list">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
                 </button>
             </div>
@@ -127,18 +127,18 @@
                         @mouseleave="showSelectTip = false"
                         :class="selectMode ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
                         class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors">
-                    <span x-text="selectMode ? 'Done' : 'Select'"></span>
+                    <span x-text="selectModeLabel"></span>
                 </button>
                 <!-- First-use tooltip -->
                 <div x-show="showSelectTip" x-transition
                      class="absolute top-full left-0 mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg p-2 shadow-xl z-50 text-xs text-shelf-muted">
-                    Tap items to select them for bulk actions such as moving, type/status/series changes, tagging, or deleting.
+                    {{ _('Tap items to select them for bulk actions such as moving, type/status/series changes, tagging, or deleting.') }}
                 </div>
             </div>
             <template x-if="selectMode">
                 <div class="flex items-center gap-1">
-                    <button @click="selectAll()" class="px-2 py-1 rounded-sm text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Select All</button>
-                    <button @click="deselectAll()" x-show="selectedIds.length > 0" class="px-2 py-1 rounded-sm text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">Deselect All</button>
+                    <button @click="selectAll()" class="px-2 py-1 rounded-sm text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">{{ _('Select All') }}</button>
+                    <button @click="deselectAll()" x-show="selectedIds.length > 0" class="px-2 py-1 rounded-sm text-xs text-shelf-muted hover:text-shelf-accent2 transition-colors">{{ _('Deselect All') }}</button>
                 </div>
             </template>
             <!-- Column picker (list view only) -->
@@ -148,7 +148,7 @@
                         :class="columnsOpen ? 'bg-shelf-accent/20 text-shelf-accent2' : 'bg-shelf-card text-shelf-muted'"
                         class="px-3 py-1 rounded-lg text-xs border border-shelf-border hover:border-shelf-accent/50 transition-colors"
                         data-testid="column-picker">
-                    Columns
+                    {{ _('Columns') }}
                 </button>
                 <!-- Column visibility panel -->
                 <div x-show="columnsOpen" x-transition
@@ -160,14 +160,14 @@
                         <input type="checkbox" :checked="visibleCols.{{ col.name }}" @change="toggleCol('{{ col.name }}')"
                                data-col="{{ col.name }}"
                                class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                        <span>{{ col.label }}</span>
+                        <span>{{ _(col.label) }}</span>
                     </label>
                     {% endfor %}
                     <div class="border-t border-shelf-border my-1"></div>
                     <button @click="resetColumns()"
                             class="w-full text-left px-2 py-1.5 rounded-sm text-xs text-shelf-muted hover:text-shelf-accent2 hover:bg-shelf-hover transition-colors"
                             data-testid="columns-reset">
-                        Reset to defaults
+                        {{ _('Reset to defaults') }}
                     </button>
                 </div>
             </div>
@@ -177,11 +177,11 @@
             <button @click="filtersOpen = !filtersOpen"
                     class="flex items-center gap-1.5 px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text transition-colors">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                <span>Filters</span>
+                <span>{{ _('Filters') }}</span>
                 <span x-show="filterPills.length > 0" class="bg-shelf-accent text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center" x-text="filterPills.length"></span>
             </button>
             <!-- Search always visible on mobile -->
-            <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
+            <input type="search" name="q" data-testid="search-input" placeholder="{{ _('Search...') }}" value="{{ initial_query or '' }}"
                    x-model="searchQuery"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="{{ filter_includes('q') }}"
@@ -189,7 +189,7 @@
         </div>
         <div :class="filtersOpen ? 'flex' : 'hidden sm:flex'" class="flex-wrap items-center gap-3">
             <!-- Search (hidden on mobile since it's shown above) -->
-            <input type="search" name="q" data-testid="search-input" placeholder="Search..." value="{{ initial_query or '' }}"
+            <input type="search" name="q" data-testid="search-input" placeholder="{{ _('Search...') }}" value="{{ initial_query or '' }}"
                    x-model="searchQuery"
                    hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="{{ filter_includes('q') }}"
@@ -201,11 +201,11 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('media_type_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.media_type_filter else '' }}>All Types ({{ type_total }})</option>
+                <option value="" {{ 'selected' if not f.media_type_filter else '' }}>{{ _('All Types') }} ({{ type_total }})</option>
                 {% for key, label in media_types.items() %}
                 {% set count = type_counts.get(key, 0) %}
                 {% if count > 0 %}
-                <option value="{{ key }}" {{ 'selected' if f.media_type_filter == key else '' }}>{{ label }} ({{ count }})</option>
+                <option value="{{ key }}" {{ 'selected' if f.media_type_filter == key else '' }}>{{ _(label) }} ({{ count }})</option>
                 {% endif %}
                 {% endfor %}
             </select>
@@ -215,7 +215,7 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('location_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.location_filter else '' }}>All Locations ({{ filtered_total }})</option>
+                <option value="" {{ 'selected' if not f.location_filter else '' }}>{{ _('All Locations') }} ({{ filtered_total }})</option>
                 {% for loc in locations %}
                 {% set lcount = location_counts.get(loc.id, 0) %}
                 <option value="{{ loc.id }}" {{ 'selected' if f.location_filter == loc.id|string else '' }}>{{ loc.name }}{% if lcount %} ({{ lcount }}){% endif %}</option>
@@ -227,10 +227,10 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('owned') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.owned else '' }}>All ({{ owned_count + wishlist_count + neither_count }})</option>
-                <option value="1" {{ 'selected' if f.owned == '1' else '' }}>Owned ({{ owned_count }})</option>
-                <option value="0" {{ 'selected' if f.owned == '0' else '' }}>Wishlist ({{ wishlist_count }})</option>
-                <option value="none" {{ 'selected' if f.owned == 'none' else '' }}>Not owned or wishlisted ({{ neither_count }})</option>
+                <option value="" {{ 'selected' if not f.owned else '' }}>{{ _('All') }} ({{ owned_count + wishlist_count + neither_count }})</option>
+                <option value="1" {{ 'selected' if f.owned == '1' else '' }}>{{ _('Owned') }} ({{ owned_count }})</option>
+                <option value="0" {{ 'selected' if f.owned == '0' else '' }}>{{ _('Wishlist') }} ({{ wishlist_count }})</option>
+                <option value="none" {{ 'selected' if f.owned == 'none' else '' }}>{{ _('Not owned or wishlisted') }} ({{ neither_count }})</option>
             </select>
 
             {% if feature_on('lending') %}
@@ -239,8 +239,8 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('lent_out') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.lent_out else '' }}>All Items</option>
-                <option value="1" {{ 'selected' if f.lent_out == '1' else '' }}>Lent Out{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
+                <option value="" {{ 'selected' if not f.lent_out else '' }}>{{ _('All Items') }}</option>
+                <option value="1" {{ 'selected' if f.lent_out == '1' else '' }}>{{ _('Lent Out') }}{% if lent_out_count %} ({{ lent_out_count }}){% endif %}</option>
             </select>
             {% endif %}
 
@@ -250,11 +250,11 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('reading_status') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.reading_status else '' }}>All Statuses</option>
+                <option value="" {{ 'selected' if not f.reading_status else '' }}>{{ _('All Statuses') }}</option>
                 {% set rsc = reading_status_counts or {} %}
-                <option value="want_to_read" {{ 'selected' if f.reading_status == 'want_to_read' else '' }}>{{ sl.want }}{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>
-                <option value="reading" {{ 'selected' if f.reading_status == 'reading' else '' }}>{{ sl.doing }}{% if rsc.get('reading') %} ({{ rsc.reading }}){% endif %}</option>
-                <option value="read" {{ 'selected' if f.reading_status == 'read' else '' }}>{{ sl.done }}{% if rsc.get('read') %} ({{ rsc.read }}){% endif %}</option>
+                <option value="want_to_read" {{ 'selected' if f.reading_status == 'want_to_read' else '' }}>{{ _(sl.want) }}{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>
+                <option value="reading" {{ 'selected' if f.reading_status == 'reading' else '' }}>{{ _(sl.doing) }}{% if rsc.get('reading') %} ({{ rsc.reading }}){% endif %}</option>
+                <option value="read" {{ 'selected' if f.reading_status == 'read' else '' }}>{{ _(sl.done) }}{% if rsc.get('read') %} ({{ rsc.read }}){% endif %}</option>
             </select>
 
             <!-- Tag Filter (only when tags exist) -->
@@ -263,7 +263,7 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('tag') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.tag else '' }}>All Tags</option>
+                <option value="" {{ 'selected' if not f.tag else '' }}>{{ _('All Tags') }}</option>
                 {% for t in all_tags %}
                 <option value="{{ t.name }}" {{ 'selected' if f.tag == t.name else '' }}>{{ t.name }} ({{ t.count }})</option>
                 {% endfor %}
@@ -276,9 +276,9 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('language') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.language else '' }}>All Languages</option>
+                <option value="" {{ 'selected' if not f.language else '' }}>{{ _('All Languages') }}</option>
                 {% for code in item_languages %}
-                <option value="{{ code }}" {{ 'selected' if f.language == code else '' }}>{{ search_langs.get(code, code) }}</option>
+                <option value="{{ code }}" {{ 'selected' if f.language == code else '' }}>{{ _(search_langs[code]) if code in search_langs else code }}</option>
                 {% endfor %}
             </select>
             {% endif %}
@@ -288,7 +288,7 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('source_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="" {{ 'selected' if not f.source_filter else '' }}>All Sources</option>
+                <option value="" {{ 'selected' if not f.source_filter else '' }}>{{ _('All Sources') }}</option>
                 {% for key, count in source_counts.items() %}
                 <option value="{{ key }}" {{ 'selected' if f.source_filter == key else '' }}>{{ source_labels.get(key, key | replace('_', ' ') | title) }} ({{ count }})</option>
                 {% endfor %}
@@ -303,14 +303,14 @@
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('sort') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="newest" {{ 'selected' if f.sort == 'newest' or not f.sort else '' }}>Most Recent</option>
-                <option value="oldest" {{ 'selected' if f.sort == 'oldest' else '' }}>Oldest First</option>
-                <option value="title_asc" {{ 'selected' if f.sort == 'title_asc' else '' }}>Title A–Z</option>
-                <option value="title_desc" {{ 'selected' if f.sort == 'title_desc' else '' }}>Title Z–A</option>
+                <option value="newest" {{ 'selected' if f.sort == 'newest' or not f.sort else '' }}>{{ _('Most Recent') }}</option>
+                <option value="oldest" {{ 'selected' if f.sort == 'oldest' else '' }}>{{ _('Oldest First') }}</option>
+                <option value="title_asc" {{ 'selected' if f.sort == 'title_asc' else '' }}>{{ _('Title A–Z') }}</option>
+                <option value="title_desc" {{ 'selected' if f.sort == 'title_desc' else '' }}>{{ _('Title Z–A') }}</option>
                 {# Re-rendered out of band by every page-1 search (filter_counts_oob.html). #}
-                <option id="sort-option-author" value="author" {{ 'selected' if f.sort == 'author' else '' }}>{{ browse_creator_label(f.media_type_filter) }}</option>
-                <option value="year_desc" {{ 'selected' if f.sort == 'year_desc' else '' }}>Year (Newest)</option>
-                <option value="year_asc" {{ 'selected' if f.sort == 'year_asc' else '' }}>Year (Oldest)</option>
+                <option id="sort-option-author" value="author" {{ 'selected' if f.sort == 'author' else '' }}>{{ _(browse_creator_label(f.media_type_filter)) }}</option>
+                <option value="year_desc" {{ 'selected' if f.sort == 'year_desc' else '' }}>{{ _('Year (Newest)') }}</option>
+                <option value="year_asc" {{ 'selected' if f.sort == 'year_asc' else '' }}>{{ _('Year (Oldest)') }}</option>
             </select>
         </div>
     </div>
@@ -323,7 +323,7 @@
                 <button @click="clearFilter(pill.name)" class="hover:text-shelf-text ml-0.5">&times;</button>
             </span>
         </template>
-        <button @click="clearAllFilters()" class="text-xs text-shelf-muted hover:text-shelf-error transition-colors ml-1">Clear all</button>
+        <button @click="clearAllFilters()" class="text-xs text-shelf-muted hover:text-shelf-error transition-colors ml-1">{{ _('Clear all') }}</button>
     </div>
 
     <!-- Hidden view mode input for HTMX requests -->

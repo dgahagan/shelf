@@ -5,14 +5,15 @@ filter options cannot disagree between the first paint and the first swap. The
 filters themselves are declared in `app/browse_filters.py`.
 """
 
-from app import browse_filters
+from app import browse_filters, i18n
+from app.i18n import N_
 from app.services import lists
 
 # Display names for `items.source` in the Browse Source filter. The dropdown is
 # built from the values actually present, so a source missing here still
 # appears — under a title-cased fallback — rather than being unreachable.
 SOURCE_LABELS = {
-    "manual": "Manual",
+    "manual": N_("Manual"),
     "romm": "RomM",
     "komga": "Komga",
     "audiobookshelf": "Audiobookshelf",
@@ -25,9 +26,9 @@ SOURCE_LABELS = {
     "oszk": "OSZK NEKTÁR",
     "porbase": "PORBASE",
     "google": "Google Books",
-    "photo_intake": "Photo Intake",
-    "store_queue": "Store Queue",
-    "csv_import": "CSV Import",
+    "photo_intake": N_("Photo Intake"),
+    "store_queue": N_("Store Queue"),
+    "csv_import": N_("CSV Import"),
 }
 
 
@@ -113,7 +114,9 @@ def filter_counts(db, values: dict, total: int) -> dict:
         "no_location_count": no_location_count,
         "reading_status_counts": reading_status_counts,
         "source_counts": source_counts,
-        "source_labels": SOURCE_LABELS,
+        # Translated here, not with _() in the template: its fallback there is a
+        # query-string value, and _() would %-format and mark it safe.
+        "source_labels": {key: i18n.gettext(label) for key, label in SOURCE_LABELS.items()},
         "locations": locations,
         "filtered_total": total,
         "active_type": values["media_type_filter"],

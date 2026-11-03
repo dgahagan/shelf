@@ -25,6 +25,8 @@ import re
 from dataclasses import dataclass
 from typing import Callable, Mapping, Sequence
 
+from app import i18n
+from app.i18n import N_
 from app.services import lists
 from urllib.parse import quote
 
@@ -189,20 +191,20 @@ class BrowseFilter:
 # user-visible in the URL bar. SQL condition order follows from it and is
 # immaterial (AND commutes, and each condition's params travel with it).
 FILTERS: tuple[BrowseFilter, ...] = (
-    BrowseFilter("q", prefix="Search", condition=_search),
-    BrowseFilter("media_type_filter", prefix="Type", condition=_column("i.media_type")),
-    BrowseFilter("source_filter", prefix="Source", condition=_column("i.source")),
-    BrowseFilter("location_filter", prefix="Location", condition=_column("i.location_id", cast=int)),
-    BrowseFilter("sort", prefix="Sort", default="newest", clear_to="newest"),
-    BrowseFilter("reading_status", prefix="Status", condition=_column("i.reading_status")),
+    BrowseFilter("q", prefix=N_("Search"), condition=_search),
+    BrowseFilter("media_type_filter", prefix=N_("Type"), condition=_column("i.media_type")),
+    BrowseFilter("source_filter", prefix=N_("Source"), condition=_column("i.source")),
+    BrowseFilter("location_filter", prefix=N_("Location"), condition=_column("i.location_id", cast=int)),
+    BrowseFilter("sort", prefix=N_("Sort"), default="newest", clear_to="newest"),
+    BrowseFilter("reading_status", prefix=N_("Status"), condition=_column("i.reading_status")),
     BrowseFilter("owned", condition=_owned),
     BrowseFilter("lent_out", condition=_lent_out),
-    BrowseFilter("tag", prefix="Tag", condition=_tag, quote_in_qs=True),
+    BrowseFilter("tag", prefix=N_("Tag"), condition=_tag, quote_in_qs=True),
     # Set from an item page's author link; a hidden control, since hundreds
     # of authors make no usable dropdown. The chip shows the author's name
     # (the control's data-label), never the id.
-    BrowseFilter("author_filter", prefix="Author", condition=_author),
-    BrowseFilter("language", prefix="Language", condition=_column("i.language")),
+    BrowseFilter("author_filter", prefix=N_("Author"), condition=_author),
+    BrowseFilter("language", prefix=N_("Language"), condition=_column("i.language")),
     # `view` is the odd one: client-owned state (localStorage) that is sent to
     # the server so it can pick the grid or list template. It is not a filter
     # the user clears, chips, or reads out of the URL — hence all three opt-outs.
@@ -326,7 +328,7 @@ def client_config() -> list[dict]:
     return [
         {
             "name": f.name,
-            "prefix": f.prefix,
+            "prefix": i18n.gettext(f.prefix),
             "default": f.default,
             "chip": f.chip,
             "clearTo": f.clear_to,
