@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app import i18n
+from app import features, i18n
 from app.services import api_tokens
 from tests.conftest import _insert_item
 
@@ -267,3 +267,14 @@ def test_trash_and_audits_are_translated(admin_client):
     assert "Il cestino è vuoto." in admin_client.get("/trash").text
     assert "Ancora nessun inventario" in admin_client.get("/audits").text
 
+
+def test_duplicates_logs_and_feature_pages_are_translated(admin_client, db):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    assert "Pagina" in admin_client.get("/logs").text or "Ancora nessuna voce nel log" in admin_client.get("/logs").text
+    assert "Non sono duplicati" in admin_client.get("/duplicates").text or "Niente qui." in admin_client.get("/duplicates").text
+    db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('feature.series', '0')")
+    db.commit()
+    features.invalidate_cache()
+    off = admin_client.get("/series")
+    assert "Serie" in off.text and "è disattivato su questo Shelf" in off.text

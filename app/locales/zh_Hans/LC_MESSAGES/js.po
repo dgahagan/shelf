@@ -223,6 +223,16 @@ msgstr "撤销令牌 {name}？"
 msgid "Could not change the language"
 msgstr "无法切换语言"
 
+#: static/js/duplicates.js:53
+#, python-brace-format
+msgid "That did not go through ({why}) — reload and try again"
+msgstr ""
+
+#: static/js/duplicates.js:152
+#, python-brace-format
+msgid "Merge {count} records into \"{title}\"? The merged-away records cannot be restored."
+msgstr ""
+
 #: static/js/intake.js:186
 msgid "No camera found. Use Choose photo instead."
 msgstr "未找到摄像头。请改用“选择照片”。"

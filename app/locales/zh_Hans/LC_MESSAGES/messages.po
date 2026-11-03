@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-23 22:44-0500\n"
+"PO-Revision-Date: 2026-11-24 09:37+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -48,8 +48,8 @@ msgstr "状态"
 msgid "Value"
 msgstr "价值"
 
-#: app/browse_columns.py:68 app/nav.py:41 app/services/audnexus.py:210
-#: app/templates/browse.html:49
+#: app/browse_columns.py:68 app/features.py:168 app/nav.py:41
+#: app/services/audnexus.py:210 app/templates/browse.html:49
 #: app/templates/fragments/manual_add_form.html:155 app/templates/home.html:89
 #: app/templates/item_edit.html:79 app/templates/item_edit.html:217
 #: app/templates/item_edit.html:221 app/templates/series.html:2
@@ -100,6 +100,7 @@ msgstr "标签"
 
 #: app/browse_filters.py:208
 #: app/templates/fragments/periodical_scan_result.html:29
+#: app/templates/logs.html:32
 msgid "Search"
 msgstr "搜索"
 
@@ -246,6 +247,157 @@ msgstr "导演"
 msgid "Artist"
 msgstr "艺术家"
 
+#: app/features.py:159 app/templates/item_detail.html:240
+msgid "Lending"
+msgstr "借出"
+
+#: app/features.py:160
+msgid "Lend items to borrowers, track loans and send overdue reminders."
+msgstr ""
+
+#: app/features.py:169
+msgid "Track series, find gaps and mark series complete."
+msgstr ""
+
+#: app/features.py:176 app/templates/home.html:17 app/templates/home.html:95
+msgid "Statistics"
+msgstr ""
+
+#: app/features.py:177
+msgid "Charts and counts about your collection."
+msgstr ""
+
+#: app/features.py:184 app/templates/store.html:20
+msgid "Store Mode"
+msgstr "书店模式"
+
+#: app/features.py:185
+msgid "An offline page for checking what you own while out shopping."
+msgstr ""
+
+#: app/features.py:195
+msgid "Sharing"
+msgstr ""
+
+#: app/features.py:196
+msgid "Public read-only links to your collection."
+msgstr ""
+
+#: app/features.py:205
+msgid "Valuation"
+msgstr ""
+
+#: app/features.py:206
+msgid "Price lookups and the insurance valuation report."
+msgstr ""
+
+#: app/features.py:215
+msgid "Price alerts"
+msgstr ""
+
+#: app/features.py:216
+msgid "Watch wishlist list prices nightly and send a drop digest."
+msgstr ""
+
+#: app/features.py:230 app/nav.py:42 app/templates/music.html:2
+#: app/templates/music.html:8 app/templates/music_item.html:2
+msgid "Music"
+msgstr "音乐"
+
+#: app/features.py:231
+msgid "Music releases with Discogs details."
+msgstr ""
+
+#: app/features.py:238 app/nav.py:43
+#: app/templates/periodical_publication.html:2 app/templates/periodicals.html:2
+#: app/templates/periodicals.html:8
+msgid "Periodicals"
+msgstr "期刊"
+
+#: app/features.py:239
+msgid "Magazines and other periodicals, grouped by publication."
+msgstr ""
+
+#: app/features.py:251 app/nav.py:38 app/templates/shelf_fill.html:2
+#: app/templates/shelf_fill.html:9
+msgid "Shelf Fill"
+msgstr "定位上架"
+
+#: app/features.py:252
+msgid "Place items on shelves and see how full each location is."
+msgstr ""
+
+#: app/features.py:259 app/services/browse_counts.py:32
+#: app/templates/intake.html:2 app/templates/intake.html:5
+#: app/templates/intake.html:11
+msgid "Photo Intake"
+msgstr "拍照入库"
+
+#: app/features.py:260
+msgid "Add many books at once from a photo of a shelf."
+msgstr ""
+
+#: app/features.py:269
+msgid "Hardcover"
+msgstr ""
+
+#: app/features.py:270
+msgid "Discover, reading-status sync and transfers with Hardcover."
+msgstr ""
+
+#: app/features.py:292
+msgid "Audiobookshelf sync"
+msgstr ""
+
+#: app/features.py:293
+msgid "Import and link items from Audiobookshelf libraries."
+msgstr ""
+
+#: app/features.py:306
+msgid "Komga"
+msgstr ""
+
+#: app/features.py:307
+msgid "Link comics and manga to a Komga server."
+msgstr ""
+
+#: app/features.py:321
+msgid "RomM"
+msgstr ""
+
+#: app/features.py:322
+msgid "Link video games to a RomM server."
+msgstr ""
+
+#: app/features.py:336
+msgid "Collector tools"
+msgstr ""
+
+#: app/features.py:337
+msgid "Copy barcode labels, shelf audits and the duplicate finder."
+msgstr ""
+
+#: app/features.py:349
+msgid "Release radar"
+msgstr ""
+
+#: app/features.py:350
+msgid "Watch series for newly announced volumes and send a daily digest."
+msgstr ""
+
+#: app/features.py:362 app/templates/fragments/account_menu.html:94
+msgid "API tokens"
+msgstr "API 令牌"
+
+#: app/features.py:363
+msgid "Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read."
+msgstr ""
+
+#: app/features.py:583 app/templates/feature_disabled.html:7
+#, python-format
+msgid "%(feature)s is turned off on this Shelf."
+msgstr ""
+
 #: app/nav.py:34 app/templates/browse.html:2 app/templates/home.html:84
 msgid "Browse"
 msgstr "浏览"
@@ -260,24 +412,9 @@ msgstr "扫码"
 msgid "Intake"
 msgstr "拍照入库"
 
-#: app/nav.py:38 app/templates/shelf_fill.html:2
-#: app/templates/shelf_fill.html:9
-msgid "Shelf Fill"
-msgstr "定位上架"
-
 #: app/nav.py:40
 msgid "Store"
 msgstr "书店模式"
-
-#: app/nav.py:42 app/templates/music.html:2 app/templates/music.html:8
-#: app/templates/music_item.html:2
-msgid "Music"
-msgstr "音乐"
-
-#: app/nav.py:43 app/templates/periodical_publication.html:2
-#: app/templates/periodicals.html:2 app/templates/periodicals.html:8
-msgid "Periodicals"
-msgstr "期刊"
 
 #: app/nav.py:44 app/templates/discover.html:2
 msgid "Discover"
@@ -304,7 +441,8 @@ msgstr "条码标签"
 msgid "Audits"
 msgstr "盘点记录"
 
-#: app/nav.py:52
+#: app/nav.py:52 app/templates/duplicates.html:2
+#: app/templates/duplicates.html:7
 msgid "Duplicates"
 msgstr "重复项"
 
@@ -316,7 +454,7 @@ msgstr "设置"
 msgid "Administration"
 msgstr "管理"
 
-#: app/nav.py:56
+#: app/nav.py:56 app/templates/logs.html:2 app/templates/logs.html:16
 msgid "Logs"
 msgstr "日志"
 
@@ -544,6 +682,28 @@ msgstr "没有可更新的有效字段"
 #: app/routers/items.py:1017
 msgid "Series name cannot be empty"
 msgstr "系列名称不能为空"
+
+#: app/routers/items.py:1069
+msgid "Specify keep_id and merge_ids"
+msgstr ""
+
+#: app/routers/items.py:1076
+msgid "Cannot merge an item into itself"
+msgstr ""
+
+#: app/routers/items.py:1081
+msgid "Primary item not found"
+msgstr ""
+
+#: app/routers/items.py:1097
+#, python-format
+msgid "Cannot merge items that are both on loan: %(titles)s. Check one in first."
+msgstr ""
+
+#: app/routers/items.py:1129
+#, python-format
+msgid "Cannot merge \"%(title)s\" (#%(id)s): %(reason)s"
+msgstr ""
 
 #: app/routers/items_catalog.py:92
 msgid "Unrecognised game platform — pick one and try again"
@@ -809,6 +969,18 @@ msgstr ""
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr ""
 
+#: app/routers/share.py:36
+msgid "Not found"
+msgstr ""
+
+#: app/routers/share.py:71
+msgid "Invalid share scope"
+msgstr ""
+
+#: app/routers/share.py:89
+msgid "Share link not found"
+msgstr ""
+
 #: app/routers/shelf_fill.py:22
 msgid "Shelf location no longer exists"
 msgstr "该书架位置已不存在"
@@ -973,11 +1145,6 @@ msgstr "手动添加"
 #: app/services/browse_counts.py:31
 msgid "Audible import"
 msgstr "Audible 导入"
-
-#: app/services/browse_counts.py:32 app/templates/intake.html:2
-#: app/templates/intake.html:5 app/templates/intake.html:11
-msgid "Photo Intake"
-msgstr "拍照入库"
 
 #: app/services/browse_counts.py:33
 msgid "Store Queue"
@@ -1263,7 +1430,7 @@ msgid "Type or pick a series..."
 msgstr "输入或选择系列…"
 
 #: app/templates/browse.html:61 app/templates/browse.html:76
-#: app/templates/music.html:36
+#: app/templates/logs.html:63 app/templates/music.html:36
 msgid "Clear"
 msgstr "清除"
 
@@ -1418,6 +1585,28 @@ msgstr "年份（从旧到新）"
 msgid "Clear all"
 msgstr "全部清除"
 
+#: app/templates/cover_review.html:2
+msgid "Cover review"
+msgstr ""
+
+#: app/templates/cover_review.html:14
+msgid "Covers needing attention"
+msgstr ""
+
+#: app/templates/cover_review.html:16
+msgid "Every item with no cover — including discs, games and music, which the automatic sweep cannot reach."
+msgstr ""
+
+#: app/templates/cover_review.html:20
+#: app/templates/fragments/cover_review_item.html:31
+#: app/templates/fragments/cover_review_item.html:44
+msgid "Back to Settings"
+msgstr "返回设置"
+
+#: app/templates/cover_review.html:27
+msgid "Slow down for a moment — Shelf is limiting requests. Wait a few seconds, then try again."
+msgstr ""
+
 #: app/templates/discover.html:5
 msgid "Discover Books"
 msgstr ""
@@ -1446,6 +1635,105 @@ msgstr ""
 msgid "Search Hardcover's catalog to explore books."
 msgstr ""
 
+#: app/templates/duplicates.html:8
+msgid "Merging keeps every physical copy — two records of one book become one record with two copies. The merged-away record cannot be restored."
+msgstr ""
+
+#: app/templates/duplicates.html:17
+msgid "Nothing here."
+msgstr ""
+
+#: app/templates/duplicates.html:28
+msgid "Keep this record"
+msgstr ""
+
+#: app/templates/duplicates.html:40
+#, python-format
+msgid "added %(date)s"
+msgstr ""
+
+#: app/templates/duplicates.html:44 app/templates/item_detail.html:95
+msgid "ISBN:"
+msgstr "ISBN："
+
+#: app/templates/duplicates.html:44 app/templates/duplicates.html:53
+msgid "— will be copied"
+msgstr ""
+
+#: app/templates/duplicates.html:45
+msgid "ISBN-10:"
+msgstr ""
+
+#: app/templates/duplicates.html:46
+msgid "UPC:"
+msgstr ""
+
+#: app/templates/duplicates.html:47
+msgid "Copies:"
+msgstr ""
+
+#: app/templates/duplicates.html:48
+msgid "Tags:"
+msgstr ""
+
+#: app/templates/duplicates.html:49
+msgid "On loan"
+msgstr ""
+
+#: app/templates/duplicates.html:61
+msgid "Merge"
+msgstr ""
+
+#: app/templates/duplicates.html:64
+msgid "Not duplicates"
+msgstr ""
+
+#: app/templates/duplicates.html:66
+#, python-format
+msgid "Groups larger than %(n)s records can be merged but not dismissed."
+msgstr ""
+
+#: app/templates/duplicates.html:68
+msgid "Link instead"
+msgstr ""
+
+#: app/templates/duplicates.html:68
+msgid "— add the others under Related Media"
+msgstr ""
+
+#: app/templates/duplicates.html:74
+#, python-format
+msgid "%(n)s more groups not shown — merge or dismiss these first."
+msgstr ""
+
+#: app/templates/duplicates.html:80
+msgid "Dismissed"
+msgstr ""
+
+#: app/templates/duplicates.html:86
+msgid "and"
+msgstr ""
+
+#: app/templates/duplicates.html:89
+#: app/templates/fragments/scan_result.html:216
+#: app/templates/fragments/trash_list.html:83
+#: app/templates/fragments/trash_list.html:130
+msgid "Restore"
+msgstr "恢复"
+
+#: app/templates/duplicates.html:95
+msgid "No pairs dismissed."
+msgstr ""
+
+#: app/templates/feature_disabled.html:11
+#, python-format
+msgid "Turn on %(feature)s"
+msgstr ""
+
+#: app/templates/feature_disabled.html:14
+msgid "Ask your administrator to turn it on."
+msgstr ""
+
 #: app/templates/home.html:2 app/templates/home.html:7
 msgid "Home"
 msgstr ""
@@ -1465,10 +1753,6 @@ msgstr ""
 #: app/templates/home.html:14 app/templates/scan.html:266
 msgid "Add by hand"
 msgstr "手动添加"
-
-#: app/templates/home.html:17 app/templates/home.html:95
-msgid "Statistics"
-msgstr ""
 
 #: app/templates/home.html:28 app/templates/music.html:7
 #: app/templates/periodicals.html:7
@@ -1812,10 +2096,6 @@ msgstr "年份："
 msgid "Pages:"
 msgstr "页数："
 
-#: app/templates/item_detail.html:95
-msgid "ISBN:"
-msgstr "ISBN："
-
 #: app/templates/item_detail.html:98
 msgid "Series:"
 msgstr "系列："
@@ -1914,10 +2194,6 @@ msgstr "已添加到你的 Hardcover 书库"
 #, python-format
 msgid "Also in Audiobookshelf (%(type)s)"
 msgstr "Audiobookshelf 中也有（%(type)s）"
-
-#: app/templates/item_detail.html:240
-msgid "Lending"
-msgstr "借出"
 
 #: app/templates/item_detail.html:243
 msgid "Lent to"
@@ -2304,11 +2580,11 @@ msgstr ""
 msgid "Labels %(first)s&ndash;%(last)s"
 msgstr ""
 
-#: app/templates/labels_sheet.html:45
+#: app/templates/labels_sheet.html:45 app/templates/logs.html:108
 msgid "Previous"
 msgstr ""
 
-#: app/templates/labels_sheet.html:46
+#: app/templates/labels_sheet.html:46 app/templates/logs.html:114
 msgid "Next"
 msgstr ""
 
@@ -2398,6 +2674,61 @@ msgstr "用户名"
 #: app/templates/setup.html:40
 msgid "Password"
 msgstr "密码"
+
+#: app/templates/logs.html:18
+#, python-format
+msgid "%(num)s entry"
+msgid_plural "%(num)s entries"
+msgstr[0] ""
+
+#: app/templates/logs.html:22
+msgid "Auto-refresh"
+msgstr ""
+
+#: app/templates/logs.html:33
+msgid "Search log messages..."
+msgstr ""
+
+#: app/templates/logs.html:37 app/templates/logs.html:78
+msgid "Level"
+msgstr ""
+
+#: app/templates/logs.html:40
+msgid "All Levels"
+msgstr ""
+
+#: app/templates/logs.html:47 app/templates/logs.html:79
+msgid "Module"
+msgstr ""
+
+#: app/templates/logs.html:50
+msgid "All Modules"
+msgstr ""
+
+#: app/templates/logs.html:59
+msgid "Filter"
+msgstr ""
+
+#: app/templates/logs.html:77
+msgid "Timestamp"
+msgstr ""
+
+#: app/templates/logs.html:80
+msgid "Message"
+msgstr ""
+
+#: app/templates/logs.html:102
+#, python-format
+msgid "Page %(page)s (%(shown)s of %(total)s)"
+msgstr ""
+
+#: app/templates/logs.html:124
+msgid "No log entries match your filters."
+msgstr ""
+
+#: app/templates/logs.html:126
+msgid "No log entries yet. Activity will appear here as the app runs."
+msgstr ""
 
 #: app/templates/music.html:9
 msgid "Search exact MusicBrainz releases and keep the pressing, medium and track list you actually own."
@@ -2907,6 +3238,26 @@ msgstr "创建账号"
 msgid "This will be the admin account with full access to your library."
 msgstr "这将是管理员账号，拥有书库的全部权限。"
 
+#: app/templates/share.html:15
+#, python-format
+msgid "%(num)s book on this wishlist"
+msgid_plural "%(num)s books on this wishlist"
+msgstr[0] ""
+
+#: app/templates/share.html:15
+#, python-format
+msgid "%(num)s item in this collection"
+msgid_plural "%(num)s items in this collection"
+msgstr[0] ""
+
+#: app/templates/share.html:16
+msgid "shared read-only via"
+msgstr ""
+
+#: app/templates/share.html:23
+msgid "Nothing here yet."
+msgstr ""
+
 #: app/templates/shelf_fill.html:10
 msgid "Choose the physical shelf once, then scan items onto it in the order they sit there — each scan takes the next position on that shelf. Pick a different shelf and its numbering starts again. Items already catalogued move without a fresh metadata lookup; unknown barcodes go through Shelf's normal Add pipeline first. Reorder any shelf later on its <span class=\"text-shelf-text\">Arrange</span> page."
 msgstr "先选定一层实体书架，再按书在架上的排列顺序逐本扫码——每扫一本就占用该层的下一个位置。换一层书架，编号重新开始。已编目的条目直接移动，不重新查资料；未知条码会先走 Shelf 的常规添加流程。之后可在各层的<span class=\"text-shelf-text\">排架</span>页重新排序。"
@@ -3082,10 +3433,6 @@ msgstr "书店模式 - Shelf"
 #: app/templates/store.html:19
 msgid "Back to Shelf"
 msgstr "返回 Shelf"
-
-#: app/templates/store.html:20
-msgid "Store Mode"
-msgstr "书店模式"
 
 #: app/templates/store.html:21
 msgid "Connection status"
@@ -3279,10 +3626,6 @@ msgstr "关闭账号窗口"
 #: app/templates/fragments/account_menu.html:89
 msgid "Profile"
 msgstr "个人资料"
-
-#: app/templates/fragments/account_menu.html:94
-msgid "API tokens"
-msgstr "API 令牌"
 
 #: app/templates/fragments/account_menu.html:110
 msgid "Role"
@@ -3487,11 +3830,6 @@ msgstr[0] "你跳过的 %(num)s 个条目仍在等待封面。"
 #: app/templates/fragments/cover_review_item.html:27
 msgid "Start another pass"
 msgstr "再来一轮"
-
-#: app/templates/fragments/cover_review_item.html:31
-#: app/templates/fragments/cover_review_item.html:44
-msgid "Back to Settings"
-msgstr "返回设置"
 
 #: app/templates/fragments/cover_review_item.html:38
 msgid "No covers need attention"
@@ -4145,12 +4483,6 @@ msgstr "第 %(n)s 册在回收站中 &mdash; 请在回收站页面恢复"
 #, python-format
 msgid "In Trash since %(date)s &mdash; restore it to lend, move or rate it"
 msgstr "自 %(date)s 起在回收站中 &mdash; 恢复后才能借出、移动或评分"
-
-#: app/templates/fragments/scan_result.html:216
-#: app/templates/fragments/trash_list.html:83
-#: app/templates/fragments/trash_list.html:130
-msgid "Restore"
-msgstr "恢复"
 
 #: app/templates/fragments/scan_result.html:220
 #: app/templates/fragments/scan_result.html:222

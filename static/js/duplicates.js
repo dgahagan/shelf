@@ -50,7 +50,7 @@
     }
 
     function failure(why) {
-        return 'That did not go through (' + why + ') — reload and try again';
+        return t('That did not go through ({why}) — reload and try again').replace('{why}', why);
     }
 
     // Each mutating fetch spells its method out, so `make check-csrf` can see it.
@@ -149,8 +149,8 @@
             var keepId = memberId(kept);
             var mergeIds = ids.filter(function (id) { return id !== keepId; });
             var title = kept.getAttribute('data-title') || '';
-            if (!window.confirm('Merge ' + ids.length + ' records into "' + title +
-                    '"? The merged-away records cannot be restored.')) return;
+            if (!window.confirm(t('Merge {count} records into "{title}"? The merged-away records cannot be restored.')
+                    .replace('{count}', ids.length).replace('{title}', title))) return;
             run(group, postJson('/api/items/merge', {keep_id: keepId, merge_ids: mergeIds}), function () { removeGroup(group); });
         }
     });

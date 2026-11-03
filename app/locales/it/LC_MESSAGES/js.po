@@ -220,6 +220,16 @@ msgstr "Revocare il token {name}?"
 msgid "Could not change the language"
 msgstr "Impossibile cambiare la lingua"
 
+#: static/js/duplicates.js:53
+#, python-brace-format
+msgid "That did not go through ({why}) — reload and try again"
+msgstr "Non è andata a buon fine ({why}): ricarica e riprova"
+
+#: static/js/duplicates.js:152
+#, python-brace-format
+msgid "Merge {count} records into \"{title}\"? The merged-away records cannot be restored."
+msgstr "Unire {count} schede in \"{title}\"? Le schede unite non si potranno ripristinare."
+
 #: static/js/intake.js:186
 msgid "No camera found. Use Choose photo instead."
 msgstr "Nessuna fotocamera trovata. Usa invece Scegli una foto."

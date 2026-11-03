@@ -12,15 +12,15 @@
         <div class="max-w-6xl mx-auto px-4 py-5">
             <h1 class="text-2xl font-bold">{{ link.label or ('Wishlist' if scope == 'wishlist' else 'Library') }}</h1>
             <p class="text-sm text-shelf-muted mt-1">
-                {{ items|length }} {{ 'book on this wishlist' if items|length == 1 else ('books on this wishlist' if scope == 'wishlist' else 'items in this collection') }}
-                · shared read-only via <span class="text-shelf-accent2 font-medium">Shelf</span>
+                {% if scope == 'wishlist' %}{{ ngettext('%(num)s book on this wishlist', '%(num)s books on this wishlist', items|length) }}{% else %}{{ ngettext('%(num)s item in this collection', '%(num)s items in this collection', items|length) }}{% endif %}
+                · {{ _('shared read-only via') }} <span class="text-shelf-accent2 font-medium">Shelf</span>
             </p>
         </div>
     </header>
 
     <main class="max-w-6xl mx-auto px-4 py-6">
         {% if not items %}
-        <p class="text-center text-shelf-muted py-16">Nothing here yet.</p>
+        <p class="text-center text-shelf-muted py-16">{{ _('Nothing here yet.') }}</p>
         {% endif %}
         <div class="cover-grid">
             {% for item in items %}
