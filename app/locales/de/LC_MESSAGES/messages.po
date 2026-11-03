@@ -1273,7 +1273,7 @@ msgstr "Der Regal-Ort existiert nicht mehr"
 msgid "Item no longer exists"
 msgstr "Der Eintrag existiert nicht mehr"
 
-#: app/routers/shelf_fill.py:266
+#: app/routers/shelf_fill.py:267
 msgid "Enter or scan a barcode"
 msgstr "Barcode eingeben oder scannen"
 
@@ -2871,6 +2871,9 @@ msgstr "Dauer (Min.)"
 #: app/templates/fragments/settings/integrations.html:160
 #: app/templates/fragments/settings/integrations.html:277
 #: app/templates/fragments/settings/integrations.html:387
+#: app/templates/fragments/settings/integrations.html:523
+#: app/templates/fragments/settings/integrations.html:664
+#: app/templates/fragments/settings/integrations.html:733
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
@@ -4043,6 +4046,7 @@ msgid "This is the only time the token is shown."
 msgstr "Das Token wird nur dieses eine Mal angezeigt."
 
 #: app/templates/fragments/account_menu.html:186
+#: app/templates/fragments/settings/integrations.html:686
 msgid "Copy"
 msgstr "Kopieren"
 
@@ -5592,6 +5596,10 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:27
 #: app/templates/fragments/settings/integrations.html:228
+#: app/templates/fragments/settings/integrations.html:471
+#: app/templates/fragments/settings/integrations.html:607
+#: app/templates/fragments/settings/integrations.html:683
+#: app/templates/fragments/settings/integrations.html:684
 msgid "Go to"
 msgstr ""
 
@@ -5631,6 +5639,9 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:35
 #: app/templates/fragments/settings/integrations.html:237
+#: app/templates/fragments/settings/integrations.html:481
+#: app/templates/fragments/settings/integrations.html:617
+#: app/templates/fragments/settings/integrations.html:693
 msgid "Got it"
 msgstr ""
 
@@ -5660,6 +5671,9 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:64
 #: app/templates/fragments/settings/integrations.html:246
+#: app/templates/fragments/settings/integrations.html:491
+#: app/templates/fragments/settings/integrations.html:630
+#: app/templates/fragments/settings/integrations.html:702
 msgid "Saved — leave blank to keep"
 msgstr ""
 
@@ -5676,6 +5690,9 @@ msgstr "Testen"
 
 #: app/templates/fragments/settings/integrations.html:71
 #: app/templates/fragments/settings/integrations.html:253
+#: app/templates/fragments/settings/integrations.html:498
+#: app/templates/fragments/settings/integrations.html:637
+#: app/templates/fragments/settings/integrations.html:709
 msgid "Testing..."
 msgstr ""
 
@@ -5839,6 +5856,261 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:428
 msgid ", Not found:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:461
+msgid "Collection Valuation"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:462
+#: app/templates/fragments/settings/integrations.html:596
+#: app/templates/fragments/settings/integrations.html:675
+msgid "How to get a key?"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:469
+msgid "Getting an ISBNdb API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:471
+msgid "isbndb.com"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:471
+msgid "and create an account"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:472
+msgid "Subscribe to a plan that includes API access (Basic or higher)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "Navigate to your account dashboard and find the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "API Keys"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "section"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:474
+msgid "Generate a new key, copy it, and paste it into the field below"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:477
+msgid "About ISBNdb"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:478
+msgid "ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:479
+msgid "API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:487
+msgid "ISBNdb API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:491
+msgid "Your ISBNdb API key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:497
+#: app/templates/fragments/settings/integrations.html:609
+#: app/templates/fragments/settings/integrations.html:636
+#: app/templates/fragments/settings/integrations.html:708
+msgid "Test Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:519
+#: app/templates/fragments/settings/integrations.html:660
+#: app/templates/fragments/settings/integrations.html:729
+msgid "Remove saved key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:534
+msgid "Valuating..."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:539
+msgid "ISBNdb prices are USD list prices. Shelf applies no conversion — batch valuation will store USD amounts displayed with your configured currency symbol."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:561
+msgid "Priced:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:563
+msgid "· Total:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:585
+msgid "View Valuation Report"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:602
+msgid "Getting a Google Books API key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:603
+msgid "The key comes from Google Cloud, not from a Google Books account."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "Open the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "Google Cloud console"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "and select a project, or create one — a personal project is fine and the Books API needs no billing"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "Enable the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "Books API"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "for that project"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:607
+msgid "and copy the key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:608
+msgid "Recommended:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:608
+msgid ", so a leaked key can do nothing else"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:609
+msgid "Paste it below and press"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:609
+msgid "before saving"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:612
+msgid "Why bother?"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:613
+msgid "Anonymous Google Books requests are rate-limited per source IP address, and that budget is shared with everyone else calling from the same address. A key gives you a quota of your own."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:614
+msgid "Google Books is the last book source tried on an ISBN scan, behind Open Library and Hardcover, so a key matters most if your scans often come back thin or you run bulk operations like the synopsis backfill."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:615
+msgid "Do not set an HTTP referrer restriction — Shelf calls the API from the server, not the browser, and a referrer restriction rejects every request."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:622
+msgid "Optional. Google Books continues to work anonymously without a key. When configured, the key is used only for Google Books API requests."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:626
+msgid "API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:630
+msgid "Optional Google Books API key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "Stored encrypted and sent only in the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "X-Goog-Api-Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "request header."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:674
+msgid "Movie Database (TMDb)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:681
+msgid "Getting a TMDb credential"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:683
+msgid "themoviedb.org"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:683
+msgid "and create a free account"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:684
+msgid "in your profile"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:685
+msgid "Request access (select \"Developer\" — it's instant for personal use)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "either"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "credential shown and paste it below: the 32-character"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "API Key (v3 auth)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "or the long"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "API Read Access Token (v4 auth)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid ". Shelf detects which one you pasted."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:689
+msgid "About TMDb"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:690
+msgid "The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:691
+msgid "TMDb's API is free for personal use with generous rate limits."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:699
+msgid "TMDb credential (API Key or Read Access Token)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:702
+msgid "Your TMDb API key or read access token"
 msgstr ""
 
 #: app/templates/fragments/settings/library.html:12

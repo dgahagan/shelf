@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-27 23:58-0500\n"
+"PO-Revision-Date: 2026-11-28 14:15+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -1270,7 +1270,7 @@ msgstr "La posizione dello scaffale non esiste più"
 msgid "Item no longer exists"
 msgstr "L'elemento non esiste più"
 
-#: app/routers/shelf_fill.py:266
+#: app/routers/shelf_fill.py:267
 msgid "Enter or scan a barcode"
 msgstr "Scrivi o scansiona un codice a barre"
 
@@ -2868,6 +2868,9 @@ msgstr "Durata (min)"
 #: app/templates/fragments/settings/integrations.html:160
 #: app/templates/fragments/settings/integrations.html:277
 #: app/templates/fragments/settings/integrations.html:387
+#: app/templates/fragments/settings/integrations.html:523
+#: app/templates/fragments/settings/integrations.html:664
+#: app/templates/fragments/settings/integrations.html:733
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
@@ -4040,6 +4043,7 @@ msgid "This is the only time the token is shown."
 msgstr "Il token viene mostrato solo questa volta."
 
 #: app/templates/fragments/account_menu.html:186
+#: app/templates/fragments/settings/integrations.html:686
 msgid "Copy"
 msgstr "Copia"
 
@@ -5589,6 +5593,10 @@ msgstr "Apri la tua istanza di Audiobookshelf nel browser"
 
 #: app/templates/fragments/settings/integrations.html:27
 #: app/templates/fragments/settings/integrations.html:228
+#: app/templates/fragments/settings/integrations.html:471
+#: app/templates/fragments/settings/integrations.html:607
+#: app/templates/fragments/settings/integrations.html:683
+#: app/templates/fragments/settings/integrations.html:684
 msgid "Go to"
 msgstr "Vai a"
 
@@ -5628,6 +5636,9 @@ msgstr "La sincronizzazione importa in Shelf audiolibri ed ebook da Audiobookshe
 
 #: app/templates/fragments/settings/integrations.html:35
 #: app/templates/fragments/settings/integrations.html:237
+#: app/templates/fragments/settings/integrations.html:481
+#: app/templates/fragments/settings/integrations.html:617
+#: app/templates/fragments/settings/integrations.html:693
 msgid "Got it"
 msgstr "Ho capito"
 
@@ -5657,6 +5668,9 @@ msgstr ". Impostalo quando Shelf raggiunge Audiobookshelf tramite un indirizzo D
 
 #: app/templates/fragments/settings/integrations.html:64
 #: app/templates/fragments/settings/integrations.html:246
+#: app/templates/fragments/settings/integrations.html:491
+#: app/templates/fragments/settings/integrations.html:630
+#: app/templates/fragments/settings/integrations.html:702
 msgid "Saved — leave blank to keep"
 msgstr "Salvato: lascia vuoto per conservarlo"
 
@@ -5673,6 +5687,9 @@ msgstr "Prova"
 
 #: app/templates/fragments/settings/integrations.html:71
 #: app/templates/fragments/settings/integrations.html:253
+#: app/templates/fragments/settings/integrations.html:498
+#: app/templates/fragments/settings/integrations.html:637
+#: app/templates/fragments/settings/integrations.html:709
 msgid "Testing..."
 msgstr "Prova in corso..."
 
@@ -5837,6 +5854,261 @@ msgstr "Inviati:"
 #: app/templates/fragments/settings/integrations.html:428
 msgid ", Not found:"
 msgstr ", non trovati:"
+
+#: app/templates/fragments/settings/integrations.html:461
+msgid "Collection Valuation"
+msgstr "Valutazione della collezione"
+
+#: app/templates/fragments/settings/integrations.html:462
+#: app/templates/fragments/settings/integrations.html:596
+#: app/templates/fragments/settings/integrations.html:675
+msgid "How to get a key?"
+msgstr "Come ottenere una chiave?"
+
+#: app/templates/fragments/settings/integrations.html:469
+msgid "Getting an ISBNdb API Key"
+msgstr "Ottenere una chiave API ISBNdb"
+
+#: app/templates/fragments/settings/integrations.html:471
+msgid "isbndb.com"
+msgstr "isbndb.com"
+
+#: app/templates/fragments/settings/integrations.html:471
+msgid "and create an account"
+msgstr "e crea un account"
+
+#: app/templates/fragments/settings/integrations.html:472
+msgid "Subscribe to a plan that includes API access (Basic or higher)"
+msgstr "Abbonati a un piano che includa l'accesso all'API (Basic o superiore)"
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "Navigate to your account dashboard and find the"
+msgstr "Apri la dashboard del tuo account e trova la voce"
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "API Keys"
+msgstr "API Keys"
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "section"
+msgstr "nel menu"
+
+#: app/templates/fragments/settings/integrations.html:474
+msgid "Generate a new key, copy it, and paste it into the field below"
+msgstr "Genera una nuova chiave, copiala e incollala nel campo qui sotto"
+
+#: app/templates/fragments/settings/integrations.html:477
+msgid "About ISBNdb"
+msgstr "Cos'è ISBNdb"
+
+#: app/templates/fragments/settings/integrations.html:478
+msgid "ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes."
+msgstr "ISBNdb è un servizio di dati sui libri che fornisce i prezzi di listino degli editori. Questi prezzi servono a stimare il valore di sostituzione della collezione per l'assicurazione."
+
+#: app/templates/fragments/settings/integrations.html:479
+msgid "API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices."
+msgstr "L'accesso all'API richiede un abbonamento a pagamento (piano Basic: $14.99 al mese o $149 all'anno). I risultati della valutazione restano in memoria per un anno, quindi puoi abbonarti per un mese, valutare la collezione e poi disdire: le esecuzioni successive useranno i prezzi in memoria."
+
+#: app/templates/fragments/settings/integrations.html:487
+msgid "ISBNdb API Key"
+msgstr "Chiave API ISBNdb"
+
+#: app/templates/fragments/settings/integrations.html:491
+msgid "Your ISBNdb API key"
+msgstr "La tua chiave API ISBNdb"
+
+#: app/templates/fragments/settings/integrations.html:497
+#: app/templates/fragments/settings/integrations.html:609
+#: app/templates/fragments/settings/integrations.html:636
+#: app/templates/fragments/settings/integrations.html:708
+msgid "Test Key"
+msgstr "Prova la chiave"
+
+#: app/templates/fragments/settings/integrations.html:519
+#: app/templates/fragments/settings/integrations.html:660
+#: app/templates/fragments/settings/integrations.html:729
+msgid "Remove saved key"
+msgstr "Rimuovi la chiave salvata"
+
+#: app/templates/fragments/settings/integrations.html:534
+msgid "Valuating..."
+msgstr "Valutazione in corso..."
+
+#: app/templates/fragments/settings/integrations.html:539
+msgid "ISBNdb prices are USD list prices. Shelf applies no conversion — batch valuation will store USD amounts displayed with your configured currency symbol."
+msgstr "I prezzi di ISBNdb sono prezzi di listino in USD. Shelf non li converte: la valutazione in blocco salverà importi in USD mostrati con il simbolo di valuta configurato."
+
+#: app/templates/fragments/settings/integrations.html:561
+msgid "Priced:"
+msgstr "Con prezzo:"
+
+#: app/templates/fragments/settings/integrations.html:563
+msgid "· Total:"
+msgstr "· Totale:"
+
+#: app/templates/fragments/settings/integrations.html:585
+msgid "View Valuation Report"
+msgstr "Vedi il resoconto del valore"
+
+#: app/templates/fragments/settings/integrations.html:602
+msgid "Getting a Google Books API key"
+msgstr "Ottenere una chiave API di Google Books"
+
+#: app/templates/fragments/settings/integrations.html:603
+msgid "The key comes from Google Cloud, not from a Google Books account."
+msgstr "La chiave arriva da Google Cloud, non da un account Google Books."
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "Open the"
+msgstr "Apri la"
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "Google Cloud console"
+msgstr "console di Google Cloud"
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "and select a project, or create one — a personal project is fine and the Books API needs no billing"
+msgstr "e scegli un progetto o creane uno: va bene un progetto personale e la Books API non richiede fatturazione"
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "Enable the"
+msgstr "Attiva la"
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "Books API"
+msgstr "Books API"
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "for that project"
+msgstr "per quel progetto"
+
+#: app/templates/fragments/settings/integrations.html:607
+msgid "and copy the key"
+msgstr "e copia la chiave"
+
+#: app/templates/fragments/settings/integrations.html:608
+msgid "Recommended:"
+msgstr "Consigliato:"
+
+#: app/templates/fragments/settings/integrations.html:608
+msgid ", so a leaked key can do nothing else"
+msgstr ", così una chiave trapelata non può fare altro"
+
+#: app/templates/fragments/settings/integrations.html:609
+msgid "Paste it below and press"
+msgstr "Incollala qui sotto e premi"
+
+#: app/templates/fragments/settings/integrations.html:609
+msgid "before saving"
+msgstr "prima di salvare"
+
+#: app/templates/fragments/settings/integrations.html:612
+msgid "Why bother?"
+msgstr "Perché farlo?"
+
+#: app/templates/fragments/settings/integrations.html:613
+msgid "Anonymous Google Books requests are rate-limited per source IP address, and that budget is shared with everyone else calling from the same address. A key gives you a quota of your own."
+msgstr "Le richieste anonime a Google Books sono limitate per indirizzo IP, e quel limite è condiviso con chiunque altro chiami dallo stesso indirizzo. Una chiave ti dà una quota tutta tua."
+
+#: app/templates/fragments/settings/integrations.html:614
+msgid "Google Books is the last book source tried on an ISBN scan, behind Open Library and Hardcover, so a key matters most if your scans often come back thin or you run bulk operations like the synopsis backfill."
+msgstr "Google Books è l'ultima fonte provata nella scansione di un ISBN, dopo Open Library e Hardcover, quindi una chiave conta soprattutto se le scansioni tornano spesso con pochi dati o se esegui operazioni in blocco come il recupero delle sinossi."
+
+#: app/templates/fragments/settings/integrations.html:615
+msgid "Do not set an HTTP referrer restriction — Shelf calls the API from the server, not the browser, and a referrer restriction rejects every request."
+msgstr "Non impostare una restrizione sul referrer HTTP: Shelf chiama l'API dal server, non dal browser, e una restrizione sul referrer rifiuta ogni richiesta."
+
+#: app/templates/fragments/settings/integrations.html:622
+msgid "Optional. Google Books continues to work anonymously without a key. When configured, the key is used only for Google Books API requests."
+msgstr "Facoltativa. Google Books continua a funzionare in forma anonima senza chiave. Se configurata, la chiave viene usata solo per le richieste all'API di Google Books."
+
+#: app/templates/fragments/settings/integrations.html:626
+msgid "API Key"
+msgstr "Chiave API"
+
+#: app/templates/fragments/settings/integrations.html:630
+msgid "Optional Google Books API key"
+msgstr "Chiave API di Google Books facoltativa"
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "Stored encrypted and sent only in the"
+msgstr "Salvata cifrata e inviata solo nell'intestazione"
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "X-Goog-Api-Key"
+msgstr "X-Goog-Api-Key"
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "request header."
+msgstr "della richiesta."
+
+#: app/templates/fragments/settings/integrations.html:674
+msgid "Movie Database (TMDb)"
+msgstr "Movie Database (TMDb)"
+
+#: app/templates/fragments/settings/integrations.html:681
+msgid "Getting a TMDb credential"
+msgstr "Ottenere una credenziale TMDb"
+
+#: app/templates/fragments/settings/integrations.html:683
+msgid "themoviedb.org"
+msgstr "themoviedb.org"
+
+#: app/templates/fragments/settings/integrations.html:683
+msgid "and create a free account"
+msgstr "e crea un account gratuito"
+
+#: app/templates/fragments/settings/integrations.html:684
+msgid "in your profile"
+msgstr "nel tuo profilo"
+
+#: app/templates/fragments/settings/integrations.html:685
+msgid "Request access (select \"Developer\" — it's instant for personal use)"
+msgstr "Chiedi l'accesso (scegli \"Developer\": per uso personale è immediato)"
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "either"
+msgstr "una delle due"
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "credential shown and paste it below: the 32-character"
+msgstr "credenziali mostrate e incollala qui sotto: la"
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "API Key (v3 auth)"
+msgstr "API Key (v3 auth)"
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "or the long"
+msgstr "di 32 caratteri o il lungo"
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "API Read Access Token (v4 auth)"
+msgstr "API Read Access Token (v4 auth)"
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid ". Shelf detects which one you pasted."
+msgstr ". Shelf riconosce quale hai incollato."
+
+#: app/templates/fragments/settings/integrations.html:689
+msgid "About TMDb"
+msgstr "Cos'è TMDb"
+
+#: app/templates/fragments/settings/integrations.html:690
+msgid "The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb."
+msgstr "The Movie Database (TMDb) fornisce dati su film e serie TV, locandine comprese. Si usa quando scansioni i codici UPC di DVD o Blu-ray: Shelf cerca l'UPC per avere il titolo, poi recupera dati e locandina da TMDb."
+
+#: app/templates/fragments/settings/integrations.html:691
+msgid "TMDb's API is free for personal use with generous rate limits."
+msgstr "L'API di TMDb è gratuita per uso personale, con limiti generosi."
+
+#: app/templates/fragments/settings/integrations.html:699
+msgid "TMDb credential (API Key or Read Access Token)"
+msgstr "Credenziale TMDb (API Key o Read Access Token)"
+
+#: app/templates/fragments/settings/integrations.html:702
+msgid "Your TMDb API key or read access token"
+msgstr "La tua API key o read access token di TMDb"
 
 #: app/templates/fragments/settings/library.html:12
 #, python-format

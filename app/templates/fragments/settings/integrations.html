@@ -458,44 +458,44 @@
          x-data="valuationPanel"
          data-api-key-saved="{{ '1' if secrets_present['isbndb_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold">Collection Valuation</h2>
-            <button @click="showHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+            <h2 class="text-lg font-semibold">{{ _('Collection Valuation') }}</h2>
+            <button @click="showHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ _('How to get a key?') }}</button>
         </div>
         {{ feature_notes.feature_off_note('valuation') }}
 
         <!-- Help Modal -->
         <div x-show="showHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-                <h3 class="text-lg font-bold mb-3">Getting an ISBNdb API Key</h3>
+                <h3 class="text-lg font-bold mb-3">{{ _('Getting an ISBNdb API Key') }}</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
-                    <li>Go to <span class="text-shelf-accent2">isbndb.com</span> and create an account</li>
-                    <li>Subscribe to a plan that includes API access (Basic or higher)</li>
-                    <li>Navigate to your account dashboard and find the <span class="text-shelf-text">API Keys</span> section</li>
-                    <li>Generate a new key, copy it, and paste it into the field below</li>
+                    <li>{{ _('Go to') }} <span class="text-shelf-accent2">{{ _('isbndb.com') }}</span> {{ _('and create an account') }}</li>
+                    <li>{{ _('Subscribe to a plan that includes API access (Basic or higher)') }}</li>
+                    <li>{{ _('Navigate to your account dashboard and find the') }} <span class="text-shelf-text">{{ _('API Keys') }}</span> {{ _('section') }}</li>
+                    <li>{{ _('Generate a new key, copy it, and paste it into the field below') }}</li>
                 </ol>
                 <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
-                    <p class="font-medium text-shelf-text mb-1">About ISBNdb</p>
-                    <p>ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes.</p>
-                    <p class="mt-1">API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices.</p>
+                    <p class="font-medium text-shelf-text mb-1">{{ _('About ISBNdb') }}</p>
+                    <p>{{ _('ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes.') }}</p>
+                    <p class="mt-1">{{ _('API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices.') }}</p>
                 </div>
-                <button @click="showHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+                <button @click="showHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Got it') }}</button>
             </div>
         </div>
 
         <form action="{{ base_path }}/api/settings" method="post" class="space-y-3 mb-4">
             <div>
-                <label for="isbndb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">ISBNdb API Key</label>
+                <label for="isbndb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('ISBNdb API Key') }}</label>
                 <div class="flex gap-2">
                     <input type="password" id="isbndb_api_key" name="isbndb_api_key"
                            x-model="apiKey" autocomplete="new-password"
-                           placeholder="{% if secrets_saved['isbndb_api_key'] %}Saved — leave blank to keep{% else %}Your ISBNdb API key{% endif %}"
+                           placeholder="{% if secrets_saved['isbndb_api_key'] %}{{ _('Saved — leave blank to keep') }}{% else %}{{ _('Your ISBNdb API key') }}{% endif %}"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testKey"
                             :disabled="testing || (!apiKey && !apiKeySaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
-                        <span x-show="!testing">Test Key</span>
-                        <span x-show="testing">Testing...</span>
+                        <span x-show="!testing">{{ _('Test Key') }}</span>
+                        <span x-show="testing">{{ _('Testing...') }}</span>
                     </button>
                 </div>
                 <!-- Key status indicator -->
@@ -516,11 +516,11 @@
             </div>
             {% if secrets_saved['isbndb_api_key'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_isbndb_api_key" class="rounded-sm border-shelf-border"> Remove saved key
+                <input type="checkbox" name="clear_isbndb_api_key" class="rounded-sm border-shelf-border"> {{ _('Remove saved key') }}
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
         {% include "fragments/settings/price_alerts.html" %}
@@ -530,13 +530,13 @@
                     :disabled="valuating || (!apiKey && !apiKeySaved)"
                     data-testid="valuation-run"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!valuating" x-text="(apiKey || apiKeySaved) ? 'Valuate Collection' : 'Enter API key to valuate'"></span>
-                <span x-show="valuating">Valuating...</span>
+                <span x-show="!valuating" x-text="valuateButtonLabel"></span>
+                <span x-show="valuating">{{ _('Valuating...') }}</span>
             </button>
             {% endif %}
 
             {% if currency().code != "USD" %}
-            <p class="text-xs text-shelf-muted">ISBNdb prices are USD list prices. Shelf applies no conversion — batch valuation will store USD amounts displayed with your configured currency symbol.</p>
+            <p class="text-xs text-shelf-muted">{{ _('ISBNdb prices are USD list prices. Shelf applies no conversion — batch valuation will store USD amounts displayed with your configured currency symbol.') }}</p>
             {% endif %}
 
             <!-- Progress bar -->
@@ -558,9 +558,9 @@
                 </template>
                 <template x-if="valResult && valResult.priced !== undefined">
                     <p class="text-shelf-muted">
-                        Priced: <span x-text="valResult.priced" class="text-shelf-success"></span> /
+                        {{ _('Priced:') }} <span x-text="valResult.priced" class="text-shelf-success"></span> /
                         <span x-text="valResult.total"></span>
-                        · Total: <span x-text="valResult.total_display" class="text-shelf-success"></span>
+                        {{ _('· Total:') }} <span x-text="valResult.total_display" class="text-shelf-success"></span>
                     </p>
                 </template>
             </div>
@@ -568,7 +568,7 @@
             <!-- Detail log toggle -->
             <div x-show="valLog.length > 0">
                 <button @click="showValLog = !showValLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
-                    <span x-text="showValLog ? 'Hide details' : 'Show details (' + valLog.length + ' items)'"></span>
+                    <span x-text="valLogToggle"></span>
                 </button>
                 <div x-show="showValLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
                     <template x-for="entry in valLog" :key="entry.i">
@@ -582,7 +582,7 @@
             </div>
 
             {% if feature_on('valuation') %}
-            <a href="{{ base_path }}/api/valuation/report" data-testid="valuation-report" class="text-shelf-accent2 hover:text-shelf-accent text-sm inline-block">View Valuation Report</a>
+            <a href="{{ base_path }}/api/valuation/report" data-testid="valuation-report" class="text-shelf-accent2 hover:text-shelf-accent text-sm inline-block">{{ _('View Valuation Report') }}</a>
             {% endif %}
         </div>
     </div>
@@ -593,53 +593,52 @@
          data-google-books-saved="{{ '1' if secrets_present['google_books_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-1">
             <h2 class="text-lg font-semibold">Google Books</h2>
-            <button @click="showGoogleBooksHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+            <button @click="showGoogleBooksHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ _('How to get a key?') }}</button>
         </div>
 
         <!-- Help Modal -->
         <div x-show="showGoogleBooksHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showGoogleBooksHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-                <h3 class="text-lg font-bold mb-3">Getting a Google Books API key</h3>
-                <p class="text-sm text-shelf-muted mb-3">The key comes from Google Cloud, not from a Google Books account.</p>
+                <h3 class="text-lg font-bold mb-3">{{ _('Getting a Google Books API key') }}</h3>
+                <p class="text-sm text-shelf-muted mb-3">{{ _('The key comes from Google Cloud, not from a Google Books account.') }}</p>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
-                    <li>Open the <span class="text-shelf-accent2">Google Cloud console</span> and select a project, or create one — a personal project is fine and the Books API needs no billing</li>
-                    <li>Enable the <span class="text-shelf-text">Books API</span> for that project</li>
-                    <li>Go to <span class="text-shelf-text">APIs &amp; Services &rarr; Credentials &rarr; Create credentials &rarr; API key</span> and copy the key</li>
-                    <li>Recommended: <span class="text-shelf-text">Edit API key &rarr; API restrictions &rarr; Restrict key &rarr; Books API</span>, so a leaked key can do nothing else</li>
-                    <li>Paste it below and press <span class="text-shelf-text">Test Key</span> before saving</li>
+                    <li>{{ _('Open the') }} <span class="text-shelf-accent2">{{ _('Google Cloud console') }}</span> {{ _('and select a project, or create one — a personal project is fine and the Books API needs no billing') }}</li>
+                    <li>{{ _('Enable the') }} <span class="text-shelf-text">{{ _('Books API') }}</span> {{ _('for that project') }}</li>
+                    <li>{{ _('Go to') }} <span class="text-shelf-text">APIs &amp; Services &rarr; Credentials &rarr; Create credentials &rarr; API key</span> {{ _('and copy the key') }}</li>
+                    <li>{{ _('Recommended:') }} <span class="text-shelf-text">Edit API key &rarr; API restrictions &rarr; Restrict key &rarr; Books API</span>{{ _(', so a leaked key can do nothing else') }}</li>
+                    <li>{{ _('Paste it below and press') }} <span class="text-shelf-text">{{ _('Test Key') }}</span> {{ _('before saving') }}</li>
                 </ol>
                 <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
-                    <p class="font-medium text-shelf-text mb-1">Why bother?</p>
-                    <p>Anonymous Google Books requests are rate-limited per source IP address, and that budget is shared with everyone else calling from the same address. A key gives you a quota of your own.</p>
-                    <p class="mt-1">Google Books is the last book source tried on an ISBN scan, behind Open Library and Hardcover, so a key matters most if your scans often come back thin or you run bulk operations like the synopsis backfill.</p>
-                    <p class="mt-1 text-shelf-text">Do not set an HTTP referrer restriction — Shelf calls the API from the server, not the browser, and a referrer restriction rejects every request.</p>
+                    <p class="font-medium text-shelf-text mb-1">{{ _('Why bother?') }}</p>
+                    <p>{{ _('Anonymous Google Books requests are rate-limited per source IP address, and that budget is shared with everyone else calling from the same address. A key gives you a quota of your own.') }}</p>
+                    <p class="mt-1">{{ _('Google Books is the last book source tried on an ISBN scan, behind Open Library and Hardcover, so a key matters most if your scans often come back thin or you run bulk operations like the synopsis backfill.') }}</p>
+                    <p class="mt-1 text-shelf-text">{{ _('Do not set an HTTP referrer restriction — Shelf calls the API from the server, not the browser, and a referrer restriction rejects every request.') }}</p>
                 </div>
-                <button @click="showGoogleBooksHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+                <button @click="showGoogleBooksHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Got it') }}</button>
             </div>
         </div>
 
         <p class="text-sm text-shelf-muted mb-4">
-            Optional. Google Books continues to work anonymously without a key.
-            When configured, the key is used only for Google Books API requests.
+            {{ _('Optional. Google Books continues to work anonymously without a key. When configured, the key is used only for Google Books API requests.') }}
         </p>
         <form action="{{ base_path }}/api/settings" method="post" class="space-y-3">
             <div>
-                <label for="google_books_api_key" class="block text-sm font-medium text-shelf-muted mb-1">API Key</label>
+                <label for="google_books_api_key" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('API Key') }}</label>
                 <div class="flex gap-2">
                     <input type="password" id="google_books_api_key" name="google_books_api_key"
                            x-model="googleBooksKey" autocomplete="new-password"
-                           placeholder="{% if secrets_saved['google_books_api_key'] %}Saved — leave blank to keep{% else %}Optional Google Books API key{% endif %}"
+                           placeholder="{% if secrets_saved['google_books_api_key'] %}{{ _('Saved — leave blank to keep') }}{% else %}{{ _('Optional Google Books API key') }}{% endif %}"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testGoogleBooks"
                             :disabled="googleBooksTesting || (!googleBooksKey && !googleBooksSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
-                        <span x-show="!googleBooksTesting">Test Key</span>
-                        <span x-show="googleBooksTesting">Testing...</span>
+                        <span x-show="!googleBooksTesting">{{ _('Test Key') }}</span>
+                        <span x-show="googleBooksTesting">{{ _('Testing...') }}</span>
                     </button>
                 </div>
                 <p class="text-xs text-shelf-muted mt-1">
-                    Stored encrypted and sent only in the <span class="font-mono">X-Goog-Api-Key</span> request header.
+                    {{ _('Stored encrypted and sent only in the') }} <span class="font-mono">{{ _('X-Goog-Api-Key') }}</span> {{ _('request header.') }}
                 </p>
                 <div class="mt-1.5 h-5">
                     <template x-if="googleBooksStatus && googleBooksStatus.ok">
@@ -658,11 +657,11 @@
             </div>
             {% if secrets_saved['google_books_api_key'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_google_books_api_key" class="rounded-sm border-shelf-border"> Remove saved key
+                <input type="checkbox" name="clear_google_books_api_key" class="rounded-sm border-shelf-border"> {{ _('Remove saved key') }}
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
     </div>
@@ -672,42 +671,42 @@
          x-data="tmdbPanel"
          data-tmdb-saved="{{ '1' if secrets_present['tmdb_api_key'] else '' }}">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold">Movie Database (TMDb)</h2>
-            <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">How to get a key?</button>
+            <h2 class="text-lg font-semibold">{{ _('Movie Database (TMDb)') }}</h2>
+            <button @click="showTmdbHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ _('How to get a key?') }}</button>
         </div>
 
         <!-- Help Modal -->
         <div x-show="showTmdbHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showTmdbHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-                <h3 class="text-lg font-bold mb-3">Getting a TMDb credential</h3>
+                <h3 class="text-lg font-bold mb-3">{{ _('Getting a TMDb credential') }}</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
-                    <li>Go to <span class="text-shelf-accent2">themoviedb.org</span> and create a free account</li>
-                    <li>Go to <span class="text-shelf-text">Settings &rarr; API</span> in your profile</li>
-                    <li>Request access (select "Developer" — it's instant for personal use)</li>
-                    <li>Copy <span class="text-shelf-text">either</span> credential shown and paste it below: the 32-character <span class="text-shelf-text">API Key (v3 auth)</span> or the long <span class="text-shelf-text">API Read Access Token (v4 auth)</span>. Shelf detects which one you pasted.</li>
+                    <li>{{ _('Go to') }} <span class="text-shelf-accent2">{{ _('themoviedb.org') }}</span> {{ _('and create a free account') }}</li>
+                    <li>{{ _('Go to') }} <span class="text-shelf-text">Settings &rarr; API</span> {{ _('in your profile') }}</li>
+                    <li>{{ _('Request access (select "Developer" — it\'s instant for personal use)') }}</li>
+                    <li>{{ _('Copy') }} <span class="text-shelf-text">{{ _('either') }}</span> {{ _('credential shown and paste it below: the 32-character') }} <span class="text-shelf-text">{{ _('API Key (v3 auth)') }}</span> {{ _('or the long') }} <span class="text-shelf-text">{{ _('API Read Access Token (v4 auth)') }}</span>{{ _('. Shelf detects which one you pasted.') }}</li>
                 </ol>
                 <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
-                    <p class="font-medium text-shelf-text mb-1">About TMDb</p>
-                    <p>The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb.</p>
-                    <p class="mt-1">TMDb's API is free for personal use with generous rate limits.</p>
+                    <p class="font-medium text-shelf-text mb-1">{{ _('About TMDb') }}</p>
+                    <p>{{ _("The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb.") }}</p>
+                    <p class="mt-1">{{ _("TMDb's API is free for personal use with generous rate limits.") }}</p>
                 </div>
-                <button @click="showTmdbHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+                <button @click="showTmdbHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Got it') }}</button>
             </div>
         </div>
 
         <form action="{{ base_path }}/api/settings" method="post" class="space-y-3">
             <div>
-                <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">TMDb credential (API Key or Read Access Token)</label>
+                <label for="tmdb_api_key" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('TMDb credential (API Key or Read Access Token)') }}</label>
                 <div class="flex gap-2">
                     <input type="password" id="tmdb_api_key" name="tmdb_api_key" x-model="tmdbKey" autocomplete="new-password"
-                           placeholder="{% if secrets_saved['tmdb_api_key'] %}Saved — leave blank to keep{% else %}Your TMDb API key or read access token{% endif %}"
+                           placeholder="{% if secrets_saved['tmdb_api_key'] %}{{ _('Saved — leave blank to keep') }}{% else %}{{ _('Your TMDb API key or read access token') }}{% endif %}"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testTmdb"
                             :disabled="tmdbTesting || (!tmdbKey && !tmdbSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
-                        <span x-show="!tmdbTesting">Test Key</span>
-                        <span x-show="tmdbTesting">Testing...</span>
+                        <span x-show="!tmdbTesting">{{ _('Test Key') }}</span>
+                        <span x-show="tmdbTesting">{{ _('Testing...') }}</span>
                     </button>
                 </div>
                 <div class="mt-1.5 h-5">
@@ -727,11 +726,11 @@
             </div>
             {% if secrets_saved['tmdb_api_key'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_tmdb_api_key" class="rounded-sm border-shelf-border"> Remove saved key
+                <input type="checkbox" name="clear_tmdb_api_key" class="rounded-sm border-shelf-border"> {{ _('Remove saved key') }}
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
     </div>

@@ -422,3 +422,13 @@ def test_settings_sync_integrations_are_translated(admin_client):
     page = admin_client.get("/settings").text
     for text in ("Sincronizzazione Audiobookshelf", "Importa la biblioteca da Hardcover", '"Import from Hardcover": "Importa da Hardcover"'):
         assert text in page, text
+
+
+def test_settings_provider_integrations_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/settings").text
+    for text in ("Valutazione della collezione", "Ottenere una chiave API di Google Books", '"Valuate Collection": "Valuta la collezione"'):
+        assert text in page, text
+
+
