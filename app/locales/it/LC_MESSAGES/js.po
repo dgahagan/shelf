@@ -155,6 +155,8 @@ msgid "Synopsis saved"
 msgstr "Sinossi salvata"
 
 #: static/js/components-item.js:250 static/js/components-item.js:253
+#: static/js/komga-settings.js:55 static/js/komga-settings.js:131
+#: static/js/romm-settings.js:45 static/js/romm-settings.js:93
 msgid "Save failed"
 msgstr "Salvataggio non riuscito"
 
@@ -191,7 +193,8 @@ msgstr "Sincronizzato con Hardcover"
 #: static/js/components-item.js:420 static/js/components-settings.js:133
 #: static/js/components-settings.js:234 static/js/components-settings.js:310
 #: static/js/components-settings.js:352 static/js/components-settings.js:374
-#: static/js/components-settings.js:396
+#: static/js/components-settings.js:396 static/js/komga-settings.js:70
+#: static/js/romm-settings.js:55
 msgid "Connection failed"
 msgstr "Connessione non riuscita"
 
@@ -216,7 +219,8 @@ msgstr "Risposta inattesa dal server"
 msgid "Request failed ({status})"
 msgstr "Richiesta non riuscita ({status})"
 
-#: static/js/components-settings.js:82
+#: static/js/components-settings.js:82 static/js/komga-settings.js:11
+#: static/js/romm-settings.js:10
 msgid "Request failed"
 msgstr "Richiesta non riuscita"
 
@@ -625,6 +629,73 @@ msgstr "Inquadra un codice a barre commerciale UPC-A o EAN-13."
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
 msgstr "Questo non è un codice a barre commerciale UPC-A / EAN-13 valido. Riprova."
 
+#: static/js/komga-settings.js:40 static/js/romm-settings.js:36
+msgid "Saved — leave blank to keep"
+msgstr "Salvato: lascia vuoto per conservarlo"
+
+#: static/js/komga-settings.js:40
+msgid "Komga API key"
+msgstr "Chiave API di Komga"
+
+#: static/js/komga-settings.js:55 static/js/romm-settings.js:45
+msgid "Saved"
+msgstr "Salvato"
+
+#: static/js/komga-settings.js:70 static/js/romm-settings.js:55
+msgid "Connected"
+msgstr "Connesso"
+
+#: static/js/komga-settings.js:96
+msgid "Manga"
+msgstr "Manga"
+
+#: static/js/komga-settings.js:96
+msgid "Comics"
+msgstr "Fumetti"
+
+#: static/js/komga-settings.js:108
+msgid "Loading libraries…"
+msgstr "Caricamento delle librerie…"
+
+#: static/js/komga-settings.js:111
+msgid "Could not load libraries"
+msgstr "Impossibile caricare le librerie"
+
+#: static/js/komga-settings.js:131
+msgid "Library selection saved"
+msgstr "Selezione delle librerie salvata"
+
+#: static/js/komga-settings.js:141
+msgid "Starting Komga sync…"
+msgstr "Avvio della sincronizzazione Komga…"
+
+#: static/js/komga-settings.js:152 static/js/romm-settings.js:112
+msgid "Sync complete"
+msgstr "Sincronizzazione completata"
+
+#: static/js/komga-settings.js:153
+#, python-brace-format
+msgid "Created: {created}, adopted: {adopted}, updated: {updated}, skipped: {skipped}"
+msgstr "Creati: {created}, adottati: {adopted}, aggiornati: {updated}, saltati: {skipped}"
+
+#: static/js/komga-settings.js:153 static/js/romm-settings.js:113
+#, python-brace-format
+msgid ", in Trash: {count}"
+msgstr ", nel cestino: {count}"
+
+#: static/js/komga-settings.js:153 static/js/romm-settings.js:113
+#, python-brace-format
+msgid ", errors: {count}"
+msgstr ", errori: {count}"
+
+#: static/js/komga-settings.js:157 static/js/romm-settings.js:116
+msgid "Sync failed"
+msgstr "Sincronizzazione non riuscita"
+
+#: static/js/komga-settings.js:163 static/js/romm-settings.js:121
+msgid "Connection to sync stream was lost"
+msgstr "Connessione al flusso di sincronizzazione persa"
+
 #: static/js/location-order.js:32
 msgid "Order changed — save when ready."
 msgstr "Ordine cambiato: salva quando hai finito."
@@ -640,6 +711,31 @@ msgstr "Ordine dello scaffale salvato."
 #: static/js/location-order.js:81
 msgid "Ordering…"
 msgstr "Ordinamento in corso…"
+
+#: static/js/romm-settings.js:36
+msgid "RomM client API token"
+msgstr "Token API del client RomM"
+
+#: static/js/romm-settings.js:79
+msgid "Loading platforms…"
+msgstr "Caricamento delle piattaforme…"
+
+#: static/js/romm-settings.js:81
+msgid "Could not load platforms"
+msgstr "Impossibile caricare le piattaforme"
+
+#: static/js/romm-settings.js:93
+msgid "Platform selection saved"
+msgstr "Selezione delle piattaforme salvata"
+
+#: static/js/romm-settings.js:103
+msgid "Starting RomM sync…"
+msgstr "Avvio della sincronizzazione RomM…"
+
+#: static/js/romm-settings.js:113
+#, python-brace-format
+msgid "Created: {created}, updated: {updated}, skipped: {skipped}"
+msgstr "Creati: {created}, aggiornati: {updated}, saltati: {skipped}"
 
 #: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165
 msgid "Want to"

@@ -158,6 +158,8 @@ msgid "Synopsis saved"
 msgstr ""
 
 #: static/js/components-item.js:250 static/js/components-item.js:253
+#: static/js/komga-settings.js:55 static/js/komga-settings.js:131
+#: static/js/romm-settings.js:45 static/js/romm-settings.js:93
 msgid "Save failed"
 msgstr ""
 
@@ -194,7 +196,8 @@ msgstr "已同步到 Hardcover"
 #: static/js/components-item.js:420 static/js/components-settings.js:133
 #: static/js/components-settings.js:234 static/js/components-settings.js:310
 #: static/js/components-settings.js:352 static/js/components-settings.js:374
-#: static/js/components-settings.js:396
+#: static/js/components-settings.js:396 static/js/komga-settings.js:70
+#: static/js/romm-settings.js:55
 msgid "Connection failed"
 msgstr "连接失败"
 
@@ -219,7 +222,8 @@ msgstr ""
 msgid "Request failed ({status})"
 msgstr ""
 
-#: static/js/components-settings.js:82
+#: static/js/components-settings.js:82 static/js/komga-settings.js:11
+#: static/js/romm-settings.js:10
 msgid "Request failed"
 msgstr ""
 
@@ -628,6 +632,73 @@ msgstr "请将摄像头对准 UPC-A 或 EAN-13 商品条码。"
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
 msgstr "这不是有效的 UPC-A / EAN-13 商品条码，请重试。"
 
+#: static/js/komga-settings.js:40 static/js/romm-settings.js:36
+msgid "Saved — leave blank to keep"
+msgstr ""
+
+#: static/js/komga-settings.js:40
+msgid "Komga API key"
+msgstr ""
+
+#: static/js/komga-settings.js:55 static/js/romm-settings.js:45
+msgid "Saved"
+msgstr ""
+
+#: static/js/komga-settings.js:70 static/js/romm-settings.js:55
+msgid "Connected"
+msgstr ""
+
+#: static/js/komga-settings.js:96
+msgid "Manga"
+msgstr ""
+
+#: static/js/komga-settings.js:96
+msgid "Comics"
+msgstr ""
+
+#: static/js/komga-settings.js:108
+msgid "Loading libraries…"
+msgstr ""
+
+#: static/js/komga-settings.js:111
+msgid "Could not load libraries"
+msgstr ""
+
+#: static/js/komga-settings.js:131
+msgid "Library selection saved"
+msgstr ""
+
+#: static/js/komga-settings.js:141
+msgid "Starting Komga sync…"
+msgstr ""
+
+#: static/js/komga-settings.js:152 static/js/romm-settings.js:112
+msgid "Sync complete"
+msgstr ""
+
+#: static/js/komga-settings.js:153
+#, python-brace-format
+msgid "Created: {created}, adopted: {adopted}, updated: {updated}, skipped: {skipped}"
+msgstr ""
+
+#: static/js/komga-settings.js:153 static/js/romm-settings.js:113
+#, python-brace-format
+msgid ", in Trash: {count}"
+msgstr ""
+
+#: static/js/komga-settings.js:153 static/js/romm-settings.js:113
+#, python-brace-format
+msgid ", errors: {count}"
+msgstr ""
+
+#: static/js/komga-settings.js:157 static/js/romm-settings.js:116
+msgid "Sync failed"
+msgstr ""
+
+#: static/js/komga-settings.js:163 static/js/romm-settings.js:121
+msgid "Connection to sync stream was lost"
+msgstr ""
+
 #: static/js/location-order.js:32
 msgid "Order changed — save when ready."
 msgstr ""
@@ -642,6 +713,31 @@ msgstr ""
 
 #: static/js/location-order.js:81
 msgid "Ordering…"
+msgstr ""
+
+#: static/js/romm-settings.js:36
+msgid "RomM client API token"
+msgstr ""
+
+#: static/js/romm-settings.js:79
+msgid "Loading platforms…"
+msgstr ""
+
+#: static/js/romm-settings.js:81
+msgid "Could not load platforms"
+msgstr ""
+
+#: static/js/romm-settings.js:93
+msgid "Platform selection saved"
+msgstr ""
+
+#: static/js/romm-settings.js:103
+msgid "Starting RomM sync…"
+msgstr ""
+
+#: static/js/romm-settings.js:113
+#, python-brace-format
+msgid "Created: {created}, updated: {updated}, skipped: {skipped}"
 msgstr ""
 
 #: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165

@@ -1031,6 +1031,36 @@ msgstr "Posizione: %(place)s"
 msgid "Marked as %(status)s"
 msgstr "Segnato come %(status)s"
 
+#: app/routers/komga.py:50 app/routers/komga.py:52 app/routers/komga.py:71
+#: app/routers/komga.py:73 app/routers/komga.py:97 app/routers/romm.py:50
+#: app/routers/romm.py:52 app/routers/romm.py:71 app/routers/romm.py:73
+#: app/routers/romm.py:97 app/routers/settings.py:90 app/routers/settings.py:92
+#: app/routers/settings.py:96 app/routers/settings.py:424
+#: app/routers/settings.py:426 app/routers/settings.py:434
+msgid "Invalid request"
+msgstr "Richiesta non valida"
+
+#: app/routers/komga.py:62
+msgid "Komga settings saved"
+msgstr "Impostazioni di Komga salvate"
+
+#: app/routers/komga.py:79
+msgid "Could not connect to Komga"
+msgstr "Impossibile connettersi a Komga"
+
+#: app/routers/komga.py:80 app/routers/sync.py:72
+#, python-format
+msgid "Connected — %(n)s library(ies) found"
+msgstr "Connesso: librerie trovate: %(n)s"
+
+#: app/routers/komga.py:102
+msgid "Komga library selection saved"
+msgstr "Selezione delle librerie Komga salvata"
+
+#: app/routers/komga.py:128
+msgid "Komga sync failed — check server logs"
+msgstr "Sincronizzazione Komga non riuscita: controlla i log del server"
+
 #: app/routers/location_order.py:66
 msgid "Invalid copy order"
 msgstr "Ordine delle copie non valido"
@@ -1043,6 +1073,39 @@ msgstr "Posizione non trovata"
 msgid "Invalid sort order"
 msgstr "Ordinamento non valido"
 
+#: app/routers/music.py:225
+msgid "Choose a music format before adding this release"
+msgstr "Scegli un formato musicale prima di aggiungere quest'uscita"
+
+#: app/routers/music.py:256
+msgid "Selected location no longer exists"
+msgstr "La posizione scelta non esiste più"
+
+#: app/routers/music.py:323 app/routers/music.py:376 app/routers/music.py:455
+#: app/routers/music.py:492
+msgid "Music release not found"
+msgstr "Uscita musicale non trovata"
+
+#: app/routers/music.py:327
+msgid "MusicBrainz release ID is missing"
+msgstr "Manca l'ID dell'uscita MusicBrainz"
+
+#: app/routers/music.py:384
+msgid "Editor role required"
+msgstr "Serve il ruolo di editor"
+
+#: app/routers/music.py:457
+msgid "Discogs is not configured"
+msgstr "Discogs non è configurato"
+
+#: app/routers/music.py:462 app/routers/music.py:464
+msgid "Invalid Discogs release id"
+msgstr "ID dell'uscita Discogs non valido"
+
+#: app/routers/music.py:473
+msgid "Discogs did not return a concrete release"
+msgstr "Discogs non ha restituito un'uscita precisa"
+
 #: app/routers/periodicals.py:120
 msgid "This periodical issue is already in the collection"
 msgstr "Questo numero del periodico è già nella collezione"
@@ -1054,6 +1117,27 @@ msgstr "Un elemento non può essere collegato a se stesso"
 #: app/routers/related_media.py:122
 msgid "Related-media link not found"
 msgstr "Collegamento non trovato"
+
+#: app/routers/romm.py:62
+msgid "RomM settings saved"
+msgstr "Impostazioni di RomM salvate"
+
+#: app/routers/romm.py:79
+msgid "Could not connect to RomM"
+msgstr "Impossibile connettersi a RomM"
+
+#: app/routers/romm.py:80
+#, python-format
+msgid "Connected — %(n)s platform(s) found"
+msgstr "Connesso: piattaforme trovate: %(n)s"
+
+#: app/routers/romm.py:102
+msgid "RomM platform selection saved"
+msgstr "Selezione delle piattaforme RomM salvata"
+
+#: app/routers/romm.py:128
+msgid "RomM sync failed — check server logs"
+msgstr "Sincronizzazione RomM non riuscita: controlla i log del server"
 
 #: app/routers/scan_inventory.py:63 app/routers/scan_inventory.py:80
 #, python-format
@@ -1146,12 +1230,6 @@ msgstr "La serie si chiama già così"
 #: app/routers/series.py:671
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr "Hardcover non ha una sinossi per questa serie: aggiungila qui sotto"
-
-#: app/routers/settings.py:90 app/routers/settings.py:92
-#: app/routers/settings.py:96 app/routers/settings.py:424
-#: app/routers/settings.py:426 app/routers/settings.py:434
-msgid "Invalid request"
-msgstr "Richiesta non valida"
 
 #: app/routers/settings.py:102
 msgid "No API key configured"
@@ -1283,11 +1361,6 @@ msgstr "Richiesta non valida"
 #: app/routers/sync.py:58
 msgid "URL and token are required"
 msgstr "L'URL e il token sono obbligatori"
-
-#: app/routers/sync.py:72
-#, python-format
-msgid "Connected — %(n)s library(ies) found"
-msgstr "Connesso: librerie trovate: %(n)s"
 
 #: app/routers/sync.py:74
 msgid "Invalid or expired API token"
@@ -2866,6 +2939,7 @@ msgstr "Durata (min)"
 
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
+#: app/templates/fragments/settings/discogs.html:22
 #: app/templates/fragments/settings/integrations.html:95
 #: app/templates/fragments/settings/integrations.html:160
 #: app/templates/fragments/settings/integrations.html:277
@@ -2876,11 +2950,13 @@ msgstr "Durata (min)"
 #: app/templates/fragments/settings/integrations.html:833
 #: app/templates/fragments/settings/integrations.html:909
 #: app/templates/fragments/settings/integrations.html:924
+#: app/templates/fragments/settings/komga.html:33
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
 #: app/templates/fragments/settings/price_alerts.html:35
 #: app/templates/fragments/settings/release_radar.html:27
+#: app/templates/fragments/settings/romm.html:32
 #: app/templates/item_edit.html:374 app/templates/series.html:199
 msgid "Save"
 msgstr "Salva"
@@ -3578,7 +3654,8 @@ msgid "Display Name"
 msgstr "Nome visualizzato"
 
 #: app/templates/fragments/settings/integrations.html:48
-#: app/templates/setup.html:35
+#: app/templates/fragments/settings/komga.html:19
+#: app/templates/fragments/settings/romm.html:17 app/templates/setup.html:35
 msgid "(optional)"
 msgstr "(facoltativo)"
 
@@ -5518,6 +5595,30 @@ msgstr "· Copertine installate:"
 msgid "· Covers replaced:"
 msgstr "· Copertine sostituite:"
 
+#: app/templates/fragments/settings/discogs.html:6
+msgid "Optional exact-pressing and collector metadata for Music releases. MusicBrainz remains the canonical release identity."
+msgstr "Dati facoltativi sulla stampa esatta e per collezionisti per le uscite musicali. MusicBrainz resta l'identità di riferimento dell'uscita."
+
+#: app/templates/fragments/settings/discogs.html:11
+msgid "Personal access token"
+msgstr "Token di accesso personale"
+
+#: app/templates/fragments/settings/discogs.html:15
+msgid "The token is encrypted at rest using Shelf's existing sensitive-settings mechanism and is never rendered back into this page."
+msgstr "Il token criptato con il meccanismo di Shelf per le impostazioni riservate viene salvato e non viene mai più mostrato su questa pagina."
+
+#: app/templates/fragments/settings/discogs.html:19
+#: app/templates/fragments/settings/integrations.html:91
+#: app/templates/fragments/settings/integrations.html:273
+#: app/templates/fragments/settings/integrations.html:923
+#: app/templates/fragments/settings/romm.html:29
+msgid "Remove saved token"
+msgstr "Rimuovi il token salvato"
+
+#: app/templates/fragments/settings/discogs.html:25
+msgid "This only configures the optional provider. Discogs must not replace MusicBrainz release identity, Cover Art Archive artwork, or copy-specific condition/acquisition data."
+msgstr "Qui si configura solo il fornitore facoltativo. Discogs non deve sostituire l'identità dell'uscita di MusicBrainz, le copertine di Cover Art Archive né i dati su condizioni e acquisto delle singole copie."
+
 #: app/templates/fragments/settings/feature_off_note.html:15
 #: app/templates/fragments/settings/library.html:81
 msgid "Turned off in Features —"
@@ -5654,6 +5755,8 @@ msgid "Audiobookshelf URL"
 msgstr "URL di Audiobookshelf"
 
 #: app/templates/fragments/settings/integrations.html:48
+#: app/templates/fragments/settings/komga.html:19
+#: app/templates/fragments/settings/romm.html:17
 msgid "Browser URL"
 msgstr "URL per il browser"
 
@@ -5706,12 +5809,6 @@ msgstr "Prova"
 msgid "Testing..."
 msgstr "Prova in corso..."
 
-#: app/templates/fragments/settings/integrations.html:91
-#: app/templates/fragments/settings/integrations.html:273
-#: app/templates/fragments/settings/integrations.html:923
-msgid "Remove saved token"
-msgstr "Rimuovi il token salvato"
-
 #: app/templates/fragments/settings/integrations.html:129
 #: app/templates/fragments/settings/integrations.html:347
 msgid "Added:"
@@ -5750,6 +5847,7 @@ msgid "Uncheck libraries you don't want in Shelf (e.g. a dump of files you're no
 msgstr "Deseleziona le librerie che non vuoi in Shelf (per esempio un archivio di file che non stai catalogando)."
 
 #: app/templates/fragments/settings/integrations.html:172
+#: app/templates/fragments/settings/komga.html:45
 msgid "Manage Libraries"
 msgstr "Gestisci le librerie"
 
@@ -6320,6 +6418,52 @@ msgstr "LibraryThing Developer Hub"
 msgid "API token"
 msgstr "Token API"
 
+#: app/templates/fragments/settings/komga.html:8
+msgid "Sync Comics and Manga libraries while keeping digital availability separate from physical location."
+msgstr "Sincronizza le librerie di fumetti e manga tenendo la disponibilità digitale separata dalla posizione fisica."
+
+#: app/templates/fragments/settings/komga.html:14
+msgid "Komga URL"
+msgstr "URL di Komga"
+
+#: app/templates/fragments/settings/komga.html:22
+msgid "Use this when Shelf reaches Komga over Docker/LAN but browsers use a reverse-proxy address."
+msgstr "Usalo quando Shelf raggiunge Komga tramite Docker o rete locale ma i browser usano l'indirizzo di un reverse proxy."
+
+#: app/templates/fragments/settings/komga.html:25
+msgid "API key"
+msgstr "Chiave API"
+
+#: app/templates/fragments/settings/komga.html:26
+msgid "Leave blank to keep the saved key"
+msgstr "Lascia vuoto per mantenere la chiave salvata"
+
+#: app/templates/fragments/settings/komga.html:30
+msgid "Remove saved API key"
+msgstr "Rimuovi la chiave API salvata"
+
+#: app/templates/fragments/settings/komga.html:34
+#: app/templates/fragments/settings/romm.html:33
+msgid "Test Connection"
+msgstr "Prova la connessione"
+
+#: app/templates/fragments/settings/komga.html:42
+msgid "Libraries"
+msgstr "Librerie"
+
+#: app/templates/fragments/settings/komga.html:43
+msgid "Choose which libraries Shelf imports and explicitly classify each as Comics or Manga."
+msgstr "Scegli quali librerie importa Shelf e indica per ognuna se contiene fumetti o manga."
+
+#: app/templates/fragments/settings/komga.html:48
+msgid "Save Library Selection"
+msgstr "Salva la selezione delle librerie"
+
+#: app/templates/fragments/settings/komga.html:53
+#: app/templates/fragments/settings/romm.html:52
+msgid "Sync Now"
+msgstr "Sincronizza ora"
+
 #: app/templates/fragments/settings/library.html:12
 #, python-format
 msgid "%(num)s item in your library"
@@ -6594,6 +6738,46 @@ msgstr "Gli annunci vengono inviati tramite l'URL di notifica nella scheda Prest
 #: app/templates/fragments/settings/release_radar.html:23
 msgid "Announcements are sent through the notification URL on the Library tab's Lending card."
 msgstr "Gli annunci vengono inviati tramite l'URL di notifica nella scheda Prestiti della sezione Biblioteca."
+
+#: app/templates/fragments/settings/romm.html:7
+msgid "Sync digital game availability from selected RomM platforms without treating it as a physical cartridge or disc."
+msgstr "Sincronizza la disponibilità digitale dei giochi dalle piattaforme RomM scelte, senza trattarla come una cartuccia o un disco fisico."
+
+#: app/templates/fragments/settings/romm.html:12
+msgid "RomM URL"
+msgstr "URL di RomM"
+
+#: app/templates/fragments/settings/romm.html:20
+msgid "Use this when Shelf connects over Docker/LAN but users open RomM through a reverse proxy."
+msgstr "Usalo quando Shelf si collega tramite Docker o rete locale ma gli utenti aprono RomM tramite un reverse proxy."
+
+#: app/templates/fragments/settings/romm.html:23
+msgid "Client API token"
+msgstr "Token API del client"
+
+#: app/templates/fragments/settings/romm.html:24
+msgid "Leave blank to keep the saved token"
+msgstr "Lascia vuoto per mantenere il token salvato"
+
+#: app/templates/fragments/settings/romm.html:26
+msgid "A long-lived RomM client token with platform and ROM read access is sufficient."
+msgstr "Basta un token client RomM di lunga durata con accesso in lettura a piattaforme e ROM."
+
+#: app/templates/fragments/settings/romm.html:41
+msgid "Platforms"
+msgstr "Piattaforme"
+
+#: app/templates/fragments/settings/romm.html:42
+msgid "Choose which RomM platforms are represented in Shelf."
+msgstr "Scegli quali piattaforme RomM compaiono in Shelf."
+
+#: app/templates/fragments/settings/romm.html:44
+msgid "Manage Platforms"
+msgstr "Gestisci le piattaforme"
+
+#: app/templates/fragments/settings/romm.html:47
+msgid "Save Platform Selection"
+msgstr "Salva la selezione delle piattaforme"
 
 #: app/templates/fragments/settings/sidebar.html:2
 msgid "Settings sections"

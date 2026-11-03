@@ -10,6 +10,7 @@ import httpx
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import RedirectResponse, StreamingResponse
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.services import romm_client, romm_sync
@@ -46,9 +47,9 @@ async def save_settings(request: Request):
     token = body.get("token", "")
     clear_token = body.get("clear_token", False)
     if not isinstance(url, str) or not isinstance(public_url, str) or not isinstance(token, str):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     if not isinstance(clear_token, bool):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     try:
         romm_sync.save_configuration(
             url=url,
@@ -58,7 +59,7 @@ async def save_settings(request: Request):
         )
     except romm_client.RomMError as exc:
         return {"ok": False, "message": str(exc)}
-    return {"ok": True, "message": "RomM settings saved"}
+    return {"ok": True, "message": i18n.gettext("RomM settings saved")}
 
 
 @router.post("/test", dependencies=[Depends(require_role("admin"))])
@@ -67,16 +68,16 @@ async def test_connection(request: Request):
     url = body.get("url")
     token = body.get("token")
     if url is not None and not isinstance(url, str):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     if token is not None and not isinstance(token, str):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     try:
         platforms = await romm_sync.discover_platforms(url=url or None, token=token or None)
     except romm_client.RomMError as exc:
         return {"ok": False, "message": str(exc)}
     except httpx.HTTPError:
-        return {"ok": False, "message": "Could not connect to RomM"}
-    return {"ok": True, "message": f"Connected — {len(platforms)} platform(s) found"}
+        return {"ok": False, "message": i18n.gettext("Could not connect to RomM")}
+    return {"ok": True, "message": i18n.gettext("Connected — %(n)s platform(s) found") % {"n": len(platforms)}}
 
 
 @router.get("/platforms", dependencies=[Depends(require_role("admin"))])
@@ -93,12 +94,12 @@ async def save_platforms(request: Request):
     body = await _json_body(request)
     rows = body.get("platforms")
     if not isinstance(rows, list):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     try:
         romm_sync.save_platform_selection(rows)
     except romm_client.RomMError as exc:
         return {"ok": False, "message": str(exc)}
-    return {"ok": True, "message": "RomM platform selection saved"}
+    return {"ok": True, "message": i18n.gettext("RomM platform selection saved")}
 
 
 @router.get("/sync/stream", dependencies=[
@@ -124,7 +125,7 @@ async def sync_stream():
             await queue.put({"type": "error", "message": str(exc)})
         except Exception:
             logger.exception("RomM sync failed")
-            await queue.put({"type": "error", "message": "RomM sync failed — check server logs"})
+            await queue.put({"type": "error", "message": i18n.gettext("RomM sync failed — check server logs")})
 
     async def events():
         task = asyncio.create_task(run_sync())
