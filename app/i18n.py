@@ -17,12 +17,12 @@ from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 
-SUPPORTED = ("en", "it")
+SUPPORTED = ("en", "it", "zh")
 DEFAULT = "en"
 LOCALE_DIR = Path(__file__).parent / "locales"
 # Each language named in itself, so a reader who can't read the current UI
 # can still find their own in the picker.
-LANGUAGE_NAMES = {"en": "English", "it": "Italiano"}
+LANGUAGE_NAMES = {"en": "English", "it": "Italiano", "zh": "简体中文"}
 
 current_locale: ContextVar[str] = ContextVar("current_locale", default=DEFAULT)
 

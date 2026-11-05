@@ -1,0 +1,42 @@
+# Chinese translations for Shelf.
+# Copyright (C) 2026 Shelf contributors
+# This file is distributed under the same license as the Shelf project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"PO-Revision-Date: 2026-11-04 22:13+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh\n"
+"Language-Team: zh <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit"
+
+#: static/js/app.js:71 static/js/app.js:114 static/js/app.js:124
+msgid "Done"
+msgstr "完成"
+
+#: static/js/components-settings.js:767
+msgid "Never"
+msgstr "从未"
+
+#: static/js/components-settings.js:779
+msgid "Copied"
+msgstr "已复制"
+
+#: static/js/components-settings.js:779
+msgid "Copy"
+msgstr "复制"
+
+#: static/js/components-settings.js:807
+#, python-brace-format
+msgid "Revoke token {name}?"
+msgstr "撤销令牌 {name}？"
+
+#: static/js/components.js:82
+msgid "Could not change the language"
+msgstr "无法切换语言"
+
