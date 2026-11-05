@@ -1,0 +1,384 @@
+# Chinese translations for Shelf.
+# Copyright (C) 2026 Shelf contributors
+# This file is distributed under the same license as the Shelf project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"PO-Revision-Date: 2026-11-04 22:13+0000\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh\n"
+"Language-Team: zh <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit"
+
+#: app/nav.py:34
+msgid "Browse"
+msgstr "浏览"
+
+#: app/nav.py:35
+msgid "Scan"
+msgstr "扫码"
+
+#: app/nav.py:36
+msgid "Intake"
+msgstr "拍照入库"
+
+#: app/nav.py:38
+msgid "Shelf Fill"
+msgstr "定位上架"
+
+#: app/nav.py:40
+msgid "Store"
+msgstr "书店模式"
+
+#: app/nav.py:41
+msgid "Series"
+msgstr "系列"
+
+#: app/nav.py:42
+msgid "Music"
+msgstr "音乐"
+
+#: app/nav.py:43
+msgid "Periodicals"
+msgstr "期刊"
+
+#: app/nav.py:44
+msgid "Discover"
+msgstr "发现"
+
+#: app/nav.py:45
+msgid "Stats"
+msgstr "统计"
+
+#: app/nav.py:46
+msgid "Trash"
+msgstr "回收站"
+
+#: app/nav.py:47 app/nav.py:49 app/nav.py:51 app/nav.py:53
+msgid "Library"
+msgstr "书库"
+
+#: app/nav.py:48
+msgid "Labels"
+msgstr "条码标签"
+
+#: app/nav.py:50
+msgid "Audits"
+msgstr "盘点记录"
+
+#: app/nav.py:52
+msgid "Duplicates"
+msgstr "重复项"
+
+#: app/nav.py:54
+msgid "Settings"
+msgstr "设置"
+
+#: app/nav.py:55 app/nav.py:57
+msgid "Administration"
+msgstr "管理"
+
+#: app/nav.py:56
+msgid "Logs"
+msgstr "日志"
+
+#: app/routers/api_tokens.py:63
+msgid "Give the token a name"
+msgstr "请为令牌命名"
+
+#: app/routers/api_tokens.py:66
+#, python-format
+msgid "Keep the name to %(max)s characters or fewer"
+msgstr "名称不能超过 %(max)s 个字符"
+
+#: app/routers/api_tokens.py:72
+#, python-format
+msgid "You already have %(max)s tokens — revoke one first"
+msgstr "已有 %(max)s 个令牌，请先撤销一个"
+
+#: app/routers/api_tokens.py:90
+msgid "Token not found"
+msgstr "找不到该令牌"
+
+#: app/routers/auth_routes.py:56 app/routers/auth_routes.py:63
+msgid "Invalid username or password"
+msgstr "用户名或密码错误"
+
+#: app/routers/auth_routes.py:121
+msgid "Password must be at least 8 characters"
+msgstr "密码至少需要 8 个字符"
+
+#: app/routers/auth_routes.py:123 app/templates/fragments/account_menu.html:153
+#: app/templates/setup.html:53
+msgid "Passwords do not match"
+msgstr "两次输入的密码不一致"
+
+#: app/routers/auth_routes.py:125
+msgid "Username must be at least 2 characters"
+msgstr "用户名至少需要 2 个字符"
+
+#: app/routers/auth_routes.py:127
+msgid "Choose how much of Shelf to start with"
+msgstr "请选择 Shelf 的初始功能档位"
+
+#: app/routers/auth_routes.py:264
+msgid "New password must be at least 8 characters"
+msgstr "新密码至少需要 8 个字符"
+
+#: app/routers/auth_routes.py:270 app/routers/auth_routes.py:285
+msgid "Current password is incorrect"
+msgstr "当前密码不正确"
+
+#: app/routers/auth_routes.py:291
+msgid "Password changed"
+msgstr "密码已修改"
+
+#: app/routers/auth_routes.py:306
+msgid "Display name cannot be empty"
+msgstr "显示名称不能为空"
+
+#: app/routers/auth_routes.py:317
+msgid "Display name updated"
+msgstr "显示名称已更新"
+
+#: app/routers/auth_routes.py:330
+msgid "Unknown language"
+msgstr "未知语言"
+
+#: app/templates/base.html:60
+msgid "Main menu"
+msgstr "主菜单"
+
+#: app/templates/base.html:109
+msgid "Keyboard shortcuts (?)"
+msgstr "键盘快捷键 (?)"
+
+#: app/templates/base.html:115
+msgid "Keyboard Shortcuts"
+msgstr "键盘快捷键"
+
+#: app/templates/base.html:122
+msgid "Global"
+msgstr "全局"
+
+#: app/templates/base.html:124
+msgid "Focus search"
+msgstr "定位到搜索框"
+
+#: app/templates/base.html:125
+msgid "Go to Scan"
+msgstr "前往扫码"
+
+#: app/templates/base.html:126
+msgid "Go to Browse"
+msgstr "前往浏览"
+
+#: app/templates/base.html:127
+msgid "Show shortcuts"
+msgstr "显示快捷键"
+
+#: app/templates/base.html:131
+msgid "Browse Page"
+msgstr "浏览页"
+
+#: app/templates/base.html:133
+msgid "Toggle grid / list view"
+msgstr "切换网格 / 列表视图"
+
+#: app/templates/base.html:134
+msgid "Toggle select mode"
+msgstr "开关选择模式"
+
+#: app/templates/base.html:135
+msgid "Toggle filters (mobile)"
+msgstr "显示/隐藏筛选（移动端）"
+
+#: app/templates/base.html:136
+msgid "Clear all filters"
+msgstr "清除全部筛选"
+
+#: app/templates/base.html:137
+msgid "Exit select / blur search"
+msgstr "退出选择 / 离开搜索框"
+
+#: app/templates/base.html:142
+msgid "Shortcuts are disabled when typing in inputs"
+msgstr "在输入框中打字时快捷键不生效"
+
+#: app/templates/login.html:6 app/templates/login.html:37
+msgid "Sign In"
+msgstr "登录"
+
+#: app/templates/login.html:13
+msgid "Sign in to your library"
+msgstr "登录你的书库"
+
+#: app/templates/fragments/account_menu.html:100 app/templates/login.html:24
+#: app/templates/setup.html:27
+msgid "Username"
+msgstr "用户名"
+
+#: app/templates/fragments/account_menu.html:91 app/templates/login.html:30
+#: app/templates/setup.html:40
+msgid "Password"
+msgstr "密码"
+
+#: app/templates/setup.html:6
+msgid "Welcome"
+msgstr "初始设置"
+
+#: app/templates/setup.html:15
+msgid "Welcome to Shelf"
+msgstr "欢迎使用 Shelf"
+
+#: app/templates/setup.html:16
+msgid "Create your admin account to get started."
+msgstr "创建管理员账号即可开始使用。"
+
+#: app/templates/fragments/account_menu.html:105 app/templates/setup.html:33
+msgid "Display Name"
+msgstr "显示名称"
+
+#: app/templates/setup.html:33
+msgid "(optional)"
+msgstr "（可选）"
+
+#: app/templates/setup.html:35
+msgid "How your name appears in the app"
+msgstr "你的名字在应用中的显示方式"
+
+#: app/templates/fragments/account_menu.html:146 app/templates/setup.html:44
+msgid "Must be at least 8 characters"
+msgstr "至少 8 个字符"
+
+#: app/templates/setup.html:48
+msgid "Confirm Password"
+msgstr "确认密码"
+
+#: app/templates/setup.html:60
+msgid "How much of Shelf do you want to start with?"
+msgstr "想从哪个功能档位开始？"
+
+#: app/templates/setup.html:70
+#, python-format
+msgid "Adds: %(features)s"
+msgstr "新增：%(features)s"
+
+#: app/templates/setup.html:75
+msgid "You can change this any time in Settings → Features."
+msgstr "之后可随时在 设置 → 功能 中修改。"
+
+#: app/templates/setup.html:81
+msgid "Create Account"
+msgstr "创建账号"
+
+#: app/templates/setup.html:85
+msgid "This will be the admin account with full access to your library."
+msgstr "这将是管理员账号，拥有书库的全部权限。"
+
+#: app/templates/fragments/account_menu.html:3
+msgid "Account menu"
+msgstr "账号菜单"
+
+#: app/templates/fragments/account_menu.html:27
+#: app/templates/fragments/account_menu.html:79
+msgid "Account"
+msgstr "账号"
+
+#: app/templates/fragments/account_menu.html:28
+msgid "Profile and password"
+msgstr "个人资料与密码"
+
+#: app/templates/fragments/account_menu.html:65
+msgid "Sign out"
+msgstr "退出登录"
+
+#: app/templates/fragments/account_menu.html:80
+msgid "Manage your profile and sign-in details"
+msgstr "管理个人资料和登录信息"
+
+#: app/templates/fragments/account_menu.html:82
+msgid "Close account dialog"
+msgstr "关闭账号窗口"
+
+#: app/templates/fragments/account_menu.html:89
+msgid "Profile"
+msgstr "个人资料"
+
+#: app/templates/fragments/account_menu.html:94
+msgid "API tokens"
+msgstr "API 令牌"
+
+#: app/templates/fragments/account_menu.html:110
+msgid "Role"
+msgstr "角色"
+
+#: app/templates/fragments/account_menu.html:116
+msgid "Language"
+msgstr "语言"
+
+#: app/templates/fragments/account_menu.html:120
+msgid "Automatic (browser language)"
+msgstr "自动（跟随浏览器语言）"
+
+#: app/templates/fragments/account_menu.html:132
+msgid "Save"
+msgstr "保存"
+
+#: app/templates/fragments/account_menu.html:138
+msgid "Current Password"
+msgstr "当前密码"
+
+#: app/templates/fragments/account_menu.html:143
+msgid "New Password"
+msgstr "新密码"
+
+#: app/templates/fragments/account_menu.html:149
+msgid "Confirm New Password"
+msgstr "确认新密码"
+
+#: app/templates/fragments/account_menu.html:160
+msgid "Change Password"
+msgstr "修改密码"
+
+#: app/templates/fragments/account_menu.html:166
+msgid "Read-only tokens for dashboards and scripts. A token reads <code>/api/v1</code> only, and never more than a viewer can see."
+msgstr "供仪表盘和脚本使用的只读令牌。令牌只能读取 <code>/api/v1</code>，能看到的内容不会超出「查看者」角色。"
+
+#: app/templates/fragments/account_menu.html:168
+msgid "Token name, e.g. homepage"
+msgstr "令牌名称，例如 homepage"
+
+#: app/templates/fragments/account_menu.html:172
+msgid "Create"
+msgstr "创建"
+
+#: app/templates/fragments/account_menu.html:180
+msgid "This is the only time the token is shown."
+msgstr "令牌只显示这一次，请立即复制保存。"
+
+#: app/templates/fragments/account_menu.html:186
+msgid "Copy"
+msgstr "复制"
+
+#: app/templates/fragments/account_menu.html:190
+msgid "No tokens yet."
+msgstr "还没有令牌。"
+
+#: app/templates/fragments/account_menu.html:198
+msgid "created"
+msgstr "创建于"
+
+#: app/templates/fragments/account_menu.html:199
+msgid "last used"
+msgstr "最近使用"
+
+#: app/templates/fragments/account_menu.html:204
+msgid "Revoke"
+msgstr "撤销"
+
