@@ -57,6 +57,7 @@ PROVIDER_LABELS = {
     "openlibrary": "Open Library",
     "hardcover": "Hardcover",
     "google": "Google Books",
+    "bnf": "BnF",
     "dnb": "DNB",
     "oszk": "OSZK NEKTÁR",
     "sbn": "SBN",
