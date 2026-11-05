@@ -297,6 +297,7 @@ Shelf queries free, public APIs to look up book and game information — no API 
 
 | Source | What it provides | API key required? |
 |--------|-----------------|-------------------|
+| [Bibliothèque nationale de France](https://catalogue.bnf.fr) | French (978-2, 979-10) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, pages, language | No |
 | [Deutsche Nationalbibliothek](https://portal.dnb.de) | German (978-3) ISBNs, consulted before the rest: title, author, publisher, year, language; cover art | No |
 | [Servizio Bibliotecario Nazionale](https://opac.sbn.it) | Italian (978-88, 979-12) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, language | No |
 | [PORBASE](https://porbase.bnportugal.gov.pt) (Biblioteca Nacional de Portugal) | Portuguese (978-989, 978-972) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, pages, language; cover art as a last resort | No |

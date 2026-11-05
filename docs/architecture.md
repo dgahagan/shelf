@@ -582,7 +582,8 @@ the next boot re-indexes everything.
 The national leg is a registry, `services/national.py`: unhyphenated ISBN-13
 registration-group prefixes mapped to provider modules, resolved by
 **longest** prefix match, so a narrow key can coexist with a broader one. It
-currently serves five providers — **DNB** (`services/dnb.py`, MARC21 over SRU)
+currently serves six providers — **BnF** (`services/bnf.py`, UNIMARC over SRU at
+`catalogue.bnf.fr`) for the French-language 978-2 group and 979-10, **DNB** (`services/dnb.py`, MARC21 over SRU)
 for 978-3, **OSZK NEKTÁR** (`services/oszk.py`, HUNMARC over Z39.50 at
 `tagetes2.oszk.hu:1616/ANY`) for the Hungarian 978-615 and 978-963 groups,
 **SBN** (`services/sbn.py`, flat JSON over ICCU's OPAC endpoint) for the Italian
@@ -603,7 +604,7 @@ NEKTÁR uses `yaz-client` and `pymarc`; it paces each query against
 the requested edition. Its five-second query timeout and provider diagnostics
 stay server-side, while the scan surface receives only the normal provider
 outcome and `oszk` identifier.
-**The covers cascade and picker below are unchanged by this**: OSZK, SBN and KB
+**The covers cascade and picker below are unchanged by this**: BnF, OSZK, SBN and KB
 contribute no cover source, and the DNB cover rung is a separate hand-written
 prefix test in `services/covers.py`, not a read of this registry. Any later
 OSZK cover source needs its own request pacing, host configuration, URL
