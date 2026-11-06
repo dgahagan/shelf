@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-01 18:58+0100\n"
+"PO-Revision-Date: 2026-11-02 22:44+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -12,7 +12,196 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit"
 
-#: app/nav.py:34
+#: app/browse_columns.py:62
+msgid "Title"
+msgstr "Titolo"
+
+#: app/browse_columns.py:63 app/browse_filters.py:206 app/config.py:156
+msgid "Author"
+msgstr "Autore"
+
+#: app/browse_columns.py:64 app/browse_filters.py:195
+msgid "Type"
+msgstr "Tipo"
+
+#: app/browse_columns.py:65 app/browse_filters.py:197
+msgid "Location"
+msgstr "Posizione"
+
+#: app/browse_columns.py:66 app/browse_filters.py:199
+msgid "Status"
+msgstr "Stato"
+
+#: app/browse_columns.py:67
+msgid "Value"
+msgstr "Valore"
+
+#: app/browse_columns.py:68 app/nav.py:41 app/templates/browse.html:49
+msgid "Series"
+msgstr "Serie"
+
+#: app/browse_columns.py:69
+msgid "Publisher"
+msgstr "Editore"
+
+#: app/browse_columns.py:70
+msgid "Year"
+msgstr "Anno"
+
+#: app/browse_columns.py:71
+msgid "Pages"
+msgstr "Pagine"
+
+#: app/browse_columns.py:72 app/browse_filters.py:207
+#: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
+msgid "Language"
+msgstr "Lingua"
+
+#: app/browse_columns.py:73
+msgid "Added"
+msgstr "Aggiunto il"
+
+#: app/browse_columns.py:74
+msgid "Platform"
+msgstr "Piattaforma"
+
+#: app/browse_columns.py:75
+msgid "ISBN/UPC"
+msgstr "ISBN/UPC"
+
+#: app/browse_columns.py:76
+msgid "Tags"
+msgstr "Tag"
+
+#: app/browse_filters.py:194
+msgid "Search"
+msgstr "Ricerca"
+
+#: app/browse_filters.py:196
+msgid "Source"
+msgstr "Origine"
+
+#: app/browse_filters.py:198
+msgid "Sort"
+msgstr "Ordinamento"
+
+#: app/browse_filters.py:202 app/templates/browse.html:83
+msgid "Tag"
+msgstr "Tag"
+
+#: app/config.py:15
+msgid "Book"
+msgstr "Libro"
+
+#: app/config.py:16
+msgid "Audiobook"
+msgstr "Audiolibro"
+
+#: app/config.py:17
+msgid "eBook"
+msgstr "eBook"
+
+#: app/config.py:18
+msgid "Magazine"
+msgstr "Rivista"
+
+#: app/config.py:19
+msgid "DVD / Blu-ray"
+msgstr "DVD / Blu-ray"
+
+#: app/config.py:20
+msgid "Vinyl"
+msgstr "Vinile"
+
+#: app/config.py:21
+msgid "Cassette"
+msgstr "Cassetta"
+
+#: app/config.py:22
+msgid "CD"
+msgstr "CD"
+
+#: app/config.py:23
+msgid "Digital Music"
+msgstr "Musica digitale"
+
+#: app/config.py:24
+msgid "Comic / Graphic Novel"
+msgstr "Fumetto / Graphic novel"
+
+#: app/config.py:25
+msgid "Manga"
+msgstr "Manga"
+
+#: app/config.py:26
+msgid "Video Game"
+msgstr "Videogioco"
+
+#: app/config.py:54
+msgid "Want to Read"
+msgstr "Da leggere"
+
+#: app/config.py:54
+msgid "Reading"
+msgstr "In lettura"
+
+#: app/config.py:54
+msgid "Read"
+msgstr "Letto"
+
+#: app/config.py:55
+msgid "Want to Watch"
+msgstr "Da vedere"
+
+#: app/config.py:55
+msgid "Watching"
+msgstr "In visione"
+
+#: app/config.py:55
+msgid "Watched"
+msgstr "Visto"
+
+#: app/config.py:56
+msgid "Want to Play"
+msgstr "Da giocare"
+
+#: app/config.py:56
+msgid "Playing"
+msgstr "In gioco"
+
+#: app/config.py:56
+msgid "Played"
+msgstr "Giocato"
+
+#: app/config.py:58
+msgid "Want to"
+msgstr "Da iniziare"
+
+#: app/config.py:58
+msgid "In progress"
+msgstr "In corso"
+
+#: app/config.py:58
+msgid "Finished"
+msgstr "Finito"
+
+#: app/config.py:124
+msgid "Author(s)"
+msgstr "Autore/i"
+
+#: app/config.py:127
+msgid "Developer"
+msgstr "Sviluppatore"
+
+#: app/config.py:128
+msgid "Director"
+msgstr "Regista"
+
+#: app/config.py:131
+msgid "Artist"
+msgstr "Artista"
+
+#: app/nav.py:34 app/templates/browse.html:2
 msgid "Browse"
 msgstr "Sfoglia"
 
@@ -31,10 +220,6 @@ msgstr "Riempi scaffale"
 #: app/nav.py:40
 msgid "Store"
 msgstr "Negozio"
-
-#: app/nav.py:41
-msgid "Series"
-msgstr "Serie"
 
 #: app/nav.py:42
 msgid "Music"
@@ -147,6 +332,120 @@ msgstr "Nome visualizzato aggiornato"
 msgid "Unknown language"
 msgstr "Lingua sconosciuta"
 
+#: app/routers/items.py:996
+msgid "No items or updates specified"
+msgstr "Nessun elemento o modifica specificati"
+
+#: app/routers/items.py:1001 app/routers/tags.py:71 app/routers/tags.py:76
+msgid "Invalid item IDs"
+msgstr "ID elemento non validi"
+
+#: app/routers/items.py:1006
+msgid "No valid fields to update"
+msgstr "Nessun campo valido da aggiornare"
+
+#: app/routers/items.py:1012
+msgid "Series name cannot be empty"
+msgstr "Il nome della serie non può essere vuoto"
+
+#: app/routers/tags.py:78
+msgid "No items selected"
+msgstr "Nessun elemento selezionato"
+
+#: app/routers/tags.py:82
+msgid "No tag given"
+msgstr "Nessun tag indicato"
+
+#: app/routers/tags.py:99
+#, python-format
+msgid "Added %(tags)s to %(count)s item(s)"
+msgstr "Tag aggiunto (%(tags)s). Elementi: %(count)s"
+
+#: app/routers/tags.py:101
+#, python-format
+msgid "Removed %(tags)s from %(count)s item(s)"
+msgstr "Tag rimosso (%(tags)s). Elementi: %(count)s"
+
+#: app/services/browse_counts.py:16
+msgid "Manual"
+msgstr "Manuale"
+
+#: app/services/browse_counts.py:29
+msgid "Photo Intake"
+msgstr "Acquisizione da foto"
+
+#: app/services/browse_counts.py:30
+msgid "Store Queue"
+msgstr "Coda negozio"
+
+#: app/services/browse_counts.py:31
+msgid "CSV Import"
+msgstr "Importazione CSV"
+
+#: app/services/national.py:81
+msgid "English"
+msgstr "Inglese"
+
+#: app/services/national.py:82
+msgid "German"
+msgstr "Tedesco"
+
+#: app/services/national.py:83
+msgid "French"
+msgstr "Francese"
+
+#: app/services/national.py:84
+msgid "Spanish"
+msgstr "Spagnolo"
+
+#: app/services/national.py:85
+msgid "Italian"
+msgstr "Italiano"
+
+#: app/services/national.py:86
+msgid "Dutch"
+msgstr "Olandese"
+
+#: app/services/national.py:87
+msgid "Portuguese"
+msgstr "Portoghese"
+
+#: app/services/national.py:88
+msgid "Swedish"
+msgstr "Svedese"
+
+#: app/services/national.py:89
+msgid "Danish"
+msgstr "Danese"
+
+#: app/services/national.py:90
+msgid "Norwegian"
+msgstr "Norvegese"
+
+#: app/services/national.py:91
+msgid "Polish"
+msgstr "Polacco"
+
+#: app/services/national.py:92
+msgid "Czech"
+msgstr "Ceco"
+
+#: app/services/national.py:93
+msgid "Japanese"
+msgstr "Giapponese"
+
+#: app/services/national.py:94
+msgid "Russian"
+msgstr "Russo"
+
+#: app/services/national.py:95
+msgid "Chinese"
+msgstr "Cinese"
+
+#: app/services/national.py:96
+msgid "Korean"
+msgstr "Coreano"
+
 #: app/templates/base.html:60
 msgid "Main menu"
 msgstr "Menu principale"
@@ -195,7 +494,7 @@ msgstr "Attiva/disattiva selezione"
 msgid "Toggle filters (mobile)"
 msgstr "Mostra/nascondi filtri (mobile)"
 
-#: app/templates/base.html:136
+#: app/templates/base.html:136 app/templates/fragments/item_grid.html:61
 msgid "Clear all filters"
 msgstr "Azzera tutti i filtri"
 
@@ -206,6 +505,194 @@ msgstr "Esci dalla selezione / dalla ricerca"
 #: app/templates/base.html:142
 msgid "Shortcuts are disabled when typing in inputs"
 msgstr "Le scorciatoie sono disattivate mentre scrivi in un campo"
+
+#: app/templates/browse.html:13
+msgid "Move to location..."
+msgstr "Sposta in..."
+
+#: app/templates/browse.html:19 app/templates/browse.html:27
+#: app/templates/browse.html:37 app/templates/browse.html:44
+#: app/templates/browse.html:59 app/templates/browse.html:74
+msgid "Apply"
+msgstr "Applica"
+
+#: app/templates/browse.html:21
+msgid "Change type..."
+msgstr "Cambia tipo..."
+
+#: app/templates/browse.html:30
+msgid "Set status..."
+msgstr "Imposta stato..."
+
+#: app/templates/browse.html:34
+msgid "Clear Status"
+msgstr "Rimuovi stato"
+
+#: app/templates/browse.html:39
+msgid "Wishlist..."
+msgstr "Lista desideri..."
+
+#: app/templates/browse.html:40
+msgid "Add to wishlist"
+msgstr "Aggiungi alla lista desideri"
+
+#: app/templates/browse.html:41
+msgid "Remove from wishlist"
+msgstr "Rimuovi dalla lista desideri"
+
+#: app/templates/browse.html:51
+msgid "Type or pick a series..."
+msgstr "Scrivi o scegli una serie..."
+
+#: app/templates/browse.html:61 app/templates/browse.html:76
+msgid "Clear"
+msgstr "Rimuovi"
+
+#: app/templates/browse.html:68
+msgid "Choose…"
+msgstr "Scegli…"
+
+#: app/templates/browse.html:85
+msgid "Type or pick a tag..."
+msgstr "Scrivi o scegli un tag..."
+
+#: app/templates/browse.html:94
+msgid "Add tag"
+msgstr "Aggiungi tag"
+
+#: app/templates/browse.html:96
+msgid "Remove tag"
+msgstr "Rimuovi tag"
+
+#: app/templates/browse.html:99
+msgid "Delete Selected"
+msgstr "Elimina selezionati"
+
+#: app/templates/browse.html:111
+msgid "Collection"
+msgstr "Collezione"
+
+#: app/templates/browse.html:115
+msgid "Grid view"
+msgstr "Vista griglia"
+
+#: app/templates/browse.html:119
+msgid "List view"
+msgstr "Vista elenco"
+
+#: app/templates/browse.html:135
+msgid "Tap items to select them for bulk actions such as moving, type/status/series changes, tagging, or deleting."
+msgstr "Tocca gli elementi per selezionarli e agire su più elementi insieme: spostarli, cambiarne tipo, stato o serie, assegnare tag o eliminarli."
+
+#: app/templates/browse.html:140
+msgid "Select All"
+msgstr "Seleziona tutto"
+
+#: app/templates/browse.html:141
+msgid "Deselect All"
+msgstr "Deseleziona tutto"
+
+#: app/templates/browse.html:151
+msgid "Columns"
+msgstr "Colonne"
+
+#: app/templates/browse.html:170
+msgid "Reset to defaults"
+msgstr "Ripristina predefiniti"
+
+#: app/templates/browse.html:180
+msgid "Filters"
+msgstr "Filtri"
+
+#: app/templates/browse.html:184 app/templates/browse.html:192
+msgid "Search..."
+msgstr "Cerca..."
+
+#: app/templates/browse.html:204
+#: app/templates/fragments/filter_counts_oob.html:13
+msgid "All Types"
+msgstr "Tutti i tipi"
+
+#: app/templates/browse.html:218
+#: app/templates/fragments/filter_counts_oob.html:37
+msgid "All Locations"
+msgstr "Tutte le posizioni"
+
+#: app/templates/browse.html:230
+#: app/templates/fragments/filter_counts_oob.html:26
+msgid "All"
+msgstr "Tutti"
+
+#: app/templates/browse.html:231
+#: app/templates/fragments/filter_counts_oob.html:27
+msgid "Owned"
+msgstr "Posseduti"
+
+#: app/templates/browse.html:232
+#: app/templates/fragments/filter_counts_oob.html:28
+#: app/templates/fragments/item_card.html:7
+#: app/templates/fragments/item_row.html:51
+msgid "Wishlist"
+msgstr "Lista desideri"
+
+#: app/templates/browse.html:233
+#: app/templates/fragments/filter_counts_oob.html:29
+msgid "Not owned or wishlisted"
+msgstr "Né posseduti né in lista desideri"
+
+#: app/templates/browse.html:242
+msgid "All Items"
+msgstr "Tutti gli elementi"
+
+#: app/templates/browse.html:243
+msgid "Lent Out"
+msgstr "In prestito"
+
+#: app/templates/browse.html:253
+#: app/templates/fragments/filter_counts_oob.html:68
+msgid "All Statuses"
+msgstr "Tutti gli stati"
+
+#: app/templates/browse.html:266
+msgid "All Tags"
+msgstr "Tutti i tag"
+
+#: app/templates/browse.html:279
+msgid "All Languages"
+msgstr "Tutte le lingue"
+
+#: app/templates/browse.html:291
+#: app/templates/fragments/filter_counts_oob.html:50
+msgid "All Sources"
+msgstr "Tutte le origini"
+
+#: app/templates/browse.html:306
+msgid "Most Recent"
+msgstr "Più recenti"
+
+#: app/templates/browse.html:307
+msgid "Oldest First"
+msgstr "Meno recenti"
+
+#: app/templates/browse.html:308
+msgid "Title A–Z"
+msgstr "Titolo A–Z"
+
+#: app/templates/browse.html:309
+msgid "Title Z–A"
+msgstr "Titolo Z–A"
+
+#: app/templates/browse.html:312
+msgid "Year (Newest)"
+msgstr "Anno (dal più recente)"
+
+#: app/templates/browse.html:313
+msgid "Year (Oldest)"
+msgstr "Anno (dal meno recente)"
+
+#: app/templates/browse.html:326
+msgid "Clear all"
+msgstr "Azzera tutto"
 
 #: app/templates/login.html:6 app/templates/login.html:37
 msgid "Sign In"
@@ -315,10 +802,6 @@ msgstr "Token API"
 msgid "Role"
 msgstr "Ruolo"
 
-#: app/templates/fragments/account_menu.html:116
-msgid "Language"
-msgstr "Lingua"
-
 #: app/templates/fragments/account_menu.html:120
 msgid "Automatic (browser language)"
 msgstr "Automatica (lingua del browser)"
@@ -378,4 +861,48 @@ msgstr "ultimo uso"
 #: app/templates/fragments/account_menu.html:204
 msgid "Revoke"
 msgstr "Revoca"
+
+#: app/templates/fragments/item_card.html:12
+#: app/templates/fragments/item_row.html:57
+#: app/templates/fragments/item_row.html:74
+#, python-format
+msgid "Loaned to %(name)s"
+msgstr "In prestito a %(name)s"
+
+#: app/templates/fragments/item_card.html:13
+#: app/templates/fragments/item_row.html:58
+msgid "Overdue"
+msgstr "In ritardo"
+
+#: app/templates/fragments/item_card.html:13
+#: app/templates/fragments/item_row.html:58
+msgid "Loaned"
+msgstr "In prestito"
+
+#: app/templates/fragments/item_card.html:13
+#: app/templates/fragments/item_row.html:58
+#, python-format
+msgid "To: %(name)s"
+msgstr "A: %(name)s"
+
+#: app/templates/fragments/item_card.html:22
+#: app/templates/fragments/item_row.html:62
+msgid "New"
+msgstr "Nuovo"
+
+#: app/templates/fragments/item_card.html:53
+msgid "Open in RomM"
+msgstr "Apri in RomM"
+
+#: app/templates/fragments/item_grid.html:59
+msgid "No items match your filters"
+msgstr "Nessun elemento corrisponde ai filtri"
+
+#: app/templates/fragments/item_grid.html:63
+msgid "No items found"
+msgstr "Nessun elemento trovato"
+
+#: app/templates/fragments/item_grid.html:64
+msgid "Start scanning books"
+msgstr "Inizia a scansionare i libri"
 
