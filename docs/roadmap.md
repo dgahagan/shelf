@@ -83,8 +83,8 @@ Library, and thinner otherwise.
 - **A translated interface.** In progress. The translation machinery and the
   first catalog have landed, and each user can pick a language or follow the
   browser. Other languages come next. The page shell (navigation, sign-in,
-  setup, the Account dialog) is translated; the feature pages follow area by
-  area. Until then it sits behind `SHELF_I18N`, off by default.
+  setup, the Account dialog) and Browse are translated; the other feature pages
+  follow area by area. Until then it sits behind `SHELF_I18N`, off by default.
 
 ## Import and migration
 

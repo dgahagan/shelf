@@ -17,6 +17,8 @@ import re
 from dataclasses import dataclass
 from typing import Mapping
 
+from app.i18n import N_
+
 #: Column names become CSS selectors, JSON keys and localStorage keys, so they
 #: are held to identifier syntax — the same discipline as `browse_filters`'s
 #: `_NAME_RE`, and for the same reason: without it a name could inject markup.
@@ -57,21 +59,21 @@ class BrowseColumn:
 COLUMNS: tuple[BrowseColumn, ...] = (
     BrowseColumn("select", "", locked=True, default_on=True),
     BrowseColumn("cover", "", locked=True, default_on=True),
-    BrowseColumn("title", "Title", locked=True, default_on=True),
-    BrowseColumn("author", "Author", default_on=True),
-    BrowseColumn("media_type", "Type", default_on=True),
-    BrowseColumn("location", "Location", default_on=True),
-    BrowseColumn("status", "Status", default_on=True),
-    BrowseColumn("value", "Value", default_on=False),
-    BrowseColumn("series", "Series", default_on=False),
-    BrowseColumn("publisher", "Publisher", default_on=False),
-    BrowseColumn("year", "Year", default_on=False),
-    BrowseColumn("pages", "Pages", default_on=False),
-    BrowseColumn("language", "Language", default_on=False),
-    BrowseColumn("added", "Added", default_on=False),
-    BrowseColumn("platform", "Platform", default_on=False),
-    BrowseColumn("identifier", "ISBN/UPC", default_on=False),
-    BrowseColumn("tags", "Tags", default_on=False),
+    BrowseColumn("title", N_("Title"), locked=True, default_on=True),
+    BrowseColumn("author", N_("Author"), default_on=True),
+    BrowseColumn("media_type", N_("Type"), default_on=True),
+    BrowseColumn("location", N_("Location"), default_on=True),
+    BrowseColumn("status", N_("Status"), default_on=True),
+    BrowseColumn("value", N_("Value"), default_on=False),
+    BrowseColumn("series", N_("Series"), default_on=False),
+    BrowseColumn("publisher", N_("Publisher"), default_on=False),
+    BrowseColumn("year", N_("Year"), default_on=False),
+    BrowseColumn("pages", N_("Pages"), default_on=False),
+    BrowseColumn("language", N_("Language"), default_on=False),
+    BrowseColumn("added", N_("Added"), default_on=False),
+    BrowseColumn("platform", N_("Platform"), default_on=False),
+    BrowseColumn("identifier", N_("ISBN/UPC"), default_on=False),
+    BrowseColumn("tags", N_("Tags"), default_on=False),
 )
 
 BY_NAME: Mapping[str, BrowseColumn] = {c.name: c for c in COLUMNS}

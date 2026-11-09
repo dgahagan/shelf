@@ -8,6 +8,7 @@ import pytest
 
 from app import i18n
 from app.services import api_tokens
+from tests.conftest import _insert_item
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -99,6 +100,45 @@ def test_api_tokens_tab_and_its_errors_are_translated(admin_client):
     long_name = "x" * (api_tokens.MAX_NAME + 1)
     assert admin_client.post("/api/tokens", data={"name": long_name}).json()["message"] == (
         f"Il nome può avere al massimo {api_tokens.MAX_NAME} caratteri")
+
+
+def test_browse_is_translated(admin_client, db):
+    _insert_item(db, title="Prestato", isbn="9780000000033", media_type="dvd", source="csv_import")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/browse?view=list").text
+    for text in ("Collezione", "Tutti i tipi", "Più recenti", "Da iniziare", "Importazione CSV"):
+        assert text in page, text
+    assert '"prefix": "Tipo"' in page  # the filter chips browse.js builds
+    assert '"{count} selected": "Selezionati: {count}"' in page
+
+    swapped = admin_client.get("/api/search?media_type_filter=dvd").text
+    assert all(t in swapped for t in ("Da vedere", "Tutti i tipi", "Regista"))  # the OOB dropdowns
+
+
+def test_bulk_messages_are_translated(admin_client, db):
+    item_id = _insert_item(db, title="Etichettato", isbn="9780000000040")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    tagged = admin_client.post("/api/items/bulk-tags", json={"item_ids": [item_id], "add": ["kids"]})
+    assert tagged.json()["message"] == "Tag aggiunto (kids). Elementi: 1"
+    refused = admin_client.post("/api/items/bulk-update", json={"item_ids": [], "updates": {}})
+    assert refused.json()["message"] == "Nessun elemento o modifica specificati"
+
+
+@pytest.mark.parametrize("locale", ["en", "it"])
+def test_values_with_a_percent_sign_reach_browse_unformatted(admin_client, db, locale):
+    """Newstyle _() runs `value % {}` and marks the result safe, so a query-string
+    or stored value must never go through it: `%d` would 500 the page."""
+    _insert_item(db, title="Strano", isbn="9780000000057", language="100%d", source="50%d off")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": locale})
+
+    for url in ("/browse?source_filter=100%25d", "/api/search?source_filter=100%25d", "/browse?view=list"):
+        assert admin_client.get(url).status_code == 200, url
+    assert "100%d" in admin_client.get("/browse").text
 
 
 def test_catalogs_are_complete_and_compiled():
