@@ -9,6 +9,7 @@ import logging
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.services import tags as tags_svc
@@ -67,18 +68,18 @@ async def bulk_tags(request: Request, _=Depends(require_role("editor"))):
     except ValueError:
         data = None
     if not isinstance(data, dict):
-        return _refuse("Invalid item IDs")
+        return _refuse(i18n.gettext("Invalid item IDs"))
     raw_ids = data.get("item_ids")
     if not isinstance(raw_ids, list) or not all(
         isinstance(i, int) and not isinstance(i, bool) for i in raw_ids
     ):
-        return _refuse("Invalid item IDs")
+        return _refuse(i18n.gettext("Invalid item IDs"))
     if not raw_ids:
-        return _refuse("No items selected")
+        return _refuse(i18n.gettext("No items selected"))
     add = _names(data.get("add"))
     remove = _names(data.get("remove"))
     if not add and not remove:
-        return _refuse("No tag given")
+        return _refuse(i18n.gettext("No tag given"))
 
     missing = None
     with get_db() as db:
@@ -95,9 +96,9 @@ async def bulk_tags(request: Request, _=Depends(require_role("editor"))):
 
     parts = []
     if add:
-        parts.append(f"Added {', '.join(add)} to {updated} item(s)")
+        parts.append(i18n.gettext("Added %(tags)s to %(count)s item(s)") % {"tags": ", ".join(add), "count": updated})
     if remove:
-        parts.append(f"Removed {', '.join(remove)} from {updated} item(s)")
+        parts.append(i18n.gettext("Removed %(tags)s from %(count)s item(s)") % {"tags": ", ".join(remove), "count": updated})
     return {"ok": True, "updated": updated, "message": "; ".join(parts)}
 
 

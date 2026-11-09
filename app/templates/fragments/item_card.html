@@ -4,13 +4,13 @@
          data-cover-shape="{{ cover_shape(item.media_type) }}"
          :class="selectedIds.includes({{ item.id }}) ? 'ring-2 ring-shelf-accent' : ''">
         {% if item.wishlisted %}
-        <div class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shadow-sm">Wishlist</div>
+        <div class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shadow-sm">{{ _('Wishlist') }}</div>
         {% elif item.lent_to and feature_on('lending') %}
         <div x-data="{ show: false }" @click.stop.prevent="show = !show" @mouseleave="show = false"
              data-testid="loan-badge"
              class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-sm text-[10px] font-medium {% if item.lent_overdue %}bg-shelf-error/90{% else %}bg-orange-500/90{% endif %} text-white shadow-sm cursor-pointer max-w-[140px] truncate"
-             title="Loaned to {{ item.lent_to }}">
-            <span x-show="!show">{% if item.lent_overdue %}Overdue{% else %}Loaned{% endif %}</span><span x-show="show" style="display:none">To: {{ item.lent_to }}</span>
+             title="{{ _('Loaned to %(name)s', name=item.lent_to) }}">
+            <span x-show="!show">{% if item.lent_overdue %}{{ _('Overdue') }}{% else %}{{ _('Loaned') }}{% endif %}</span><span x-show="show" style="display:none">{{ _('To: %(name)s', name=item.lent_to) }}</span>
         </div>
         {% elif item.reading_status %}
         <div class="absolute top-2 right-2 z-10 w-3 h-3 rounded-full shadow
@@ -19,7 +19,7 @@
             {% elif item.reading_status == 'want_to_read' %}bg-shelf-warning{% endif %}"></div>
         {% endif %}
         {% if item.created_at and item.created_at >= seven_days_ago %}
-        <div class="absolute top-2 {% if item.wishlisted or (item.lent_to and feature_on('lending')) or item.reading_status %}right-2 top-8{% else %}right-2{% endif %} z-10 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-accent/80 text-white shadow-sm">New</div>
+        <div class="absolute top-2 {% if item.wishlisted or (item.lent_to and feature_on('lending')) or item.reading_status %}right-2 top-8{% else %}right-2{% endif %} z-10 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-accent/80 text-white shadow-sm">{{ _('New') }}</div>
         {% endif %}
         <!-- Select checkbox -->
         <div x-show="selectMode" class="absolute top-2 left-2 z-10">
@@ -50,7 +50,7 @@
 <a href="/api/romm/items/{{ item.id }}/open" target="_blank" rel="noopener"
    x-show="!selectMode" data-testid="romm-card-action"
    class="absolute top-2 left-2 z-20 px-2 py-1 rounded-md bg-black/70 border border-white/20 text-white text-[10px] font-medium hover:bg-black/90 transition-colors"
-   title="Open in RomM">RomM ↗</a>
+   title="{{ _('Open in RomM') }}">RomM ↗</a>
 {% endif %}
 {% endif %}
 </div>

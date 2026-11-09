@@ -9,6 +9,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
 from app import browse_filters
+from app import i18n
 from app import nav
 from app.auth import require_role
 
@@ -992,23 +993,23 @@ async def bulk_update(request: Request, _=Depends(require_role("admin"))):
     updates = data.get("updates", {})
 
     if not raw_ids or not updates:
-        return {"ok": False, "message": "No items or updates specified"}
+        return {"ok": False, "message": i18n.gettext("No items or updates specified")}
 
     try:
         item_ids = [int(i) for i in raw_ids]
     except (ValueError, TypeError):
-        return {"ok": False, "message": "Invalid item IDs"}
+        return {"ok": False, "message": i18n.gettext("Invalid item IDs")}
 
     allowed = {"media_type", "location_id", "reading_status", "owned", "wishlisted", "series_name", "language"}
     filtered = {k: v for k, v in updates.items() if k in allowed}
     if not filtered:
-        return {"ok": False, "message": "No valid fields to update"}
+        return {"ok": False, "message": i18n.gettext("No valid fields to update")}
 
     if "series_name" in filtered:
         if filtered["series_name"] == "__clear__":
             filtered["series_name"] = None
         elif not str(filtered["series_name"]).strip():
-            return {"ok": False, "message": "Series name cannot be empty"}
+            return {"ok": False, "message": i18n.gettext("Series name cannot be empty")}
 
     if "language" in filtered:
         lang = str(filtered["language"] or "").strip()

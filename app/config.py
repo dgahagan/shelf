@@ -3,6 +3,8 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from app.i18n import N_
+
 logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", "/data"))
@@ -10,18 +12,18 @@ DATABASE_PATH = DATA_DIR / "shelf.db"
 COVERS_DIR = DATA_DIR / "covers"
 
 MEDIA_TYPES = {
-    "book": "Book",
-    "audiobook": "Audiobook",
-    "ebook": "eBook",
-    "magazine": "Magazine",
-    "dvd": "DVD / Blu-ray",
-    "vinyl": "Vinyl",
-    "cassette": "Cassette",
-    "cd": "CD",
-    "digital_music": "Digital Music",
-    "comic": "Comic / Graphic Novel",
-    "manga": "Manga",
-    "video_game": "Video Game",
+    "book": N_("Book"),
+    "audiobook": N_("Audiobook"),
+    "ebook": N_("eBook"),
+    "magazine": N_("Magazine"),
+    "dvd": N_("DVD / Blu-ray"),
+    "vinyl": N_("Vinyl"),
+    "cassette": N_("Cassette"),
+    "cd": N_("CD"),
+    "digital_music": N_("Digital Music"),
+    "comic": N_("Comic / Graphic Novel"),
+    "manga": N_("Manga"),
+    "video_game": N_("Video Game"),
 }
 
 # The book family: media types that are read, carry ISBNs, and belong to a
@@ -49,11 +51,11 @@ class StatusLabels:
         return {"want_to_read": self.want, "reading": self.doing, "read": self.done}.get(value, "")
 
 
-READ_LABELS = StatusLabels("read", "Want to Read", "Reading", "Read", "read")
-WATCH_LABELS = StatusLabels("watch", "Want to Watch", "Watching", "Watched", "watched")
-PLAY_LABELS = StatusLabels("play", "Want to Play", "Playing", "Played", "played")
+READ_LABELS = StatusLabels("read", N_("Want to Read"), N_("Reading"), N_("Read"), "read")
+WATCH_LABELS = StatusLabels("watch", N_("Want to Watch"), N_("Watching"), N_("Watched"), "watched")
+PLAY_LABELS = StatusLabels("play", N_("Want to Play"), N_("Playing"), N_("Played"), "played")
 # For places that show several types at once.
-NEUTRAL_LABELS = StatusLabels("neutral", "Want to", "In progress", "Finished", "finished")
+NEUTRAL_LABELS = StatusLabels("neutral", N_("Want to"), N_("In progress"), N_("Finished"), "finished")
 
 # Overrides only, as CREATOR_LABELS does; every other type reads.
 STATUS_VERBS = {"dvd": WATCH_LABELS, "video_game": PLAY_LABELS}
@@ -119,14 +121,14 @@ MUSIC_MEDIA_TYPES = frozenset({
 # `magazine` is deliberately absent, so it reads "Author(s)": a magazine's
 # `authors` column holds contributors, and the publication itself already has
 # its own `publisher` field. This is the intended answer, not an omission.
-DEFAULT_CREATOR_LABEL = "Author(s)"
+DEFAULT_CREATOR_LABEL = N_("Author(s)")
 
 CREATOR_LABELS = {
-    "video_game": "Developer",
-    "dvd": "Director",
+    "video_game": N_("Developer"),
+    "dvd": N_("Director"),
     # Derived from MUSIC_MEDIA_TYPES rather than retyped, so a fifth music
     # format added above cannot silently fall back to "Author(s)".
-    **{media_type: "Artist" for media_type in MUSIC_MEDIA_TYPES},
+    **{media_type: N_("Artist") for media_type in MUSIC_MEDIA_TYPES},
 }
 
 
@@ -151,7 +153,7 @@ def cover_shape(media_type):
 # with no single type picked the column mixes every type, and it has always
 # read "Author", not the add form's per-item "Author(s)". One function, so the
 # header and the sort option cannot disagree.
-BROWSE_CREATOR_DEFAULT = "Author"
+BROWSE_CREATOR_DEFAULT = N_("Author")
 
 
 def browse_creator_label(media_type):

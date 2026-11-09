@@ -19,6 +19,7 @@ from types import ModuleType
 # to_iso639_1 lives in bib_normalize (format-independent, shared with the
 # flat-JSON and Dublin Core providers). Re-exported here because the registry
 # is what callers already reach for: intake.py, openlibrary.py, googlebooks.py.
+from app.i18n import N_
 from app.services.bib_normalize import MARC_TO_ISO639_1, to_iso639_1  # noqa: F401
 
 from app.services import dnb, kb, oszk, porbase, sbn
@@ -77,20 +78,20 @@ def iso_to_marc(code: str | None) -> str | None:
 # Ordered code -> English display name, for the settings search-language
 # dropdown. Order is deliberate (display order in the UI).
 SEARCH_LANGS: dict[str, str] = {
-    "en": "English",
-    "de": "German",
-    "fr": "French",
-    "es": "Spanish",
-    "it": "Italian",
-    "nl": "Dutch",
-    "pt": "Portuguese",
-    "sv": "Swedish",
-    "da": "Danish",
-    "no": "Norwegian",
-    "pl": "Polish",
-    "cs": "Czech",
-    "ja": "Japanese",
-    "ru": "Russian",
-    "zh": "Chinese",
-    "ko": "Korean",
+    "en": N_("English"),
+    "de": N_("German"),
+    "fr": N_("French"),
+    "es": N_("Spanish"),
+    "it": N_("Italian"),
+    "nl": N_("Dutch"),
+    "pt": N_("Portuguese"),
+    "sv": N_("Swedish"),
+    "da": N_("Danish"),
+    "no": N_("Norwegian"),
+    "pl": N_("Polish"),
+    "cs": N_("Czech"),
+    "ja": N_("Japanese"),
+    "ru": N_("Russian"),
+    "zh": N_("Chinese"),
+    "ko": N_("Korean"),
 }
