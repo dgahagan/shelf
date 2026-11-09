@@ -21,6 +21,9 @@ def test_picking_italian_translates_the_page(live_server, authed_page):
 
         expect(authed_page.locator("html")).to_have_attribute("lang", "it")
         expect(authed_page.locator("[data-nav-tab='browse']")).to_have_text("Sfoglia")
+        # Alpine reads this one through a t() getter, under the CSP build.
+        authed_page.get_by_role("button", name="Seleziona", exact=True).click()
+        expect(authed_page.get_by_role("button", name="Fatto", exact=True)).to_be_visible()
     finally:
         # The session's admin is shared by every E2E test; leave it on Automatic
         # so later tests still find the English text they click.

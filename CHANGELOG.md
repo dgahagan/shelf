@@ -8,6 +8,9 @@ All notable changes to Shelf are documented here. The format follows
 
 ### Added
 
+- **Browse speaks Italian too.** The translated interface now covers Browse:
+  its filters and their counts, sorting, the bulk action bar, the grid and list
+  views and the filter chips. It is still behind `SHELF_I18N=on`.
 - **French ISBNs are looked up in the BnF first.** An ISBN that starts 978-2 or
   979-10 is now checked against the Bibliothèque nationale de France catalogue
   before Open Library, Hardcover and Google Books. It needs no API key, so a

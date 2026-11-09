@@ -2,7 +2,7 @@
 {# The author sort option follows the Type filter. Swap the <option>, never its
    <select>: browse.js binds the sort select's change listener once at load,
    and replacing the element would silently drop it. #}
-<option id="sort-option-author" value="author" hx-swap-oob="true" {{ 'selected' if active_sort == 'author' else '' }}>{{ browse_creator_label(active_type) }}</option>
+<option id="sort-option-author" value="author" hx-swap-oob="true" {{ 'selected' if active_sort == 'author' else '' }}>{{ _(browse_creator_label(active_type)) }}</option>
 
 <span id="collection-count" hx-swap-oob="true" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span>
 
@@ -10,11 +10,11 @@
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('media_type_filter') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-    <option value="" {{ 'selected' if not active_type else '' }}>All Types ({{ type_total }})</option>
+    <option value="" {{ 'selected' if not active_type else '' }}>{{ _('All Types') }} ({{ type_total }})</option>
     {% for key, label in media_types.items() %}
     {% set count = type_counts.get(key, 0) %}
     {% if count > 0 %}
-    <option value="{{ key }}" {{ 'selected' if active_type == key else '' }}>{{ label }} ({{ count }})</option>
+    <option value="{{ key }}" {{ 'selected' if active_type == key else '' }}>{{ _(label) }} ({{ count }})</option>
     {% endif %}
     {% endfor %}
 </select>
@@ -23,10 +23,10 @@
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('owned') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-    <option value="" {{ 'selected' if not active_owned else '' }}>All ({{ owned_count + wishlist_count + neither_count }})</option>
-    <option value="1" {{ 'selected' if active_owned == '1' else '' }}>Owned ({{ owned_count }})</option>
-    <option value="0" {{ 'selected' if active_owned == '0' else '' }}>Wishlist ({{ wishlist_count }})</option>
-    <option value="none" {{ 'selected' if active_owned == 'none' else '' }}>Not owned or wishlisted ({{ neither_count }})</option>
+    <option value="" {{ 'selected' if not active_owned else '' }}>{{ _('All') }} ({{ owned_count + wishlist_count + neither_count }})</option>
+    <option value="1" {{ 'selected' if active_owned == '1' else '' }}>{{ _('Owned') }} ({{ owned_count }})</option>
+    <option value="0" {{ 'selected' if active_owned == '0' else '' }}>{{ _('Wishlist') }} ({{ wishlist_count }})</option>
+    <option value="none" {{ 'selected' if active_owned == 'none' else '' }}>{{ _('Not owned or wishlisted') }} ({{ neither_count }})</option>
 </select>
 
 {% if locations is defined %}
@@ -34,7 +34,7 @@
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('location_filter') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-    <option value="" {{ 'selected' if not active_location else '' }}>All Locations ({{ filtered_total }})</option>
+    <option value="" {{ 'selected' if not active_location else '' }}>{{ _('All Locations') }} ({{ filtered_total }})</option>
     {% for loc in locations %}
     {% set lcount = location_counts.get(loc.id, 0) if location_counts else 0 %}
     <option value="{{ loc.id }}" {{ 'selected' if active_location == loc.id|string else '' }}>{{ loc.name }}{% if lcount %} ({{ lcount }}){% endif %}</option>
@@ -47,7 +47,7 @@
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('source_filter') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-    <option value="" {{ 'selected' if not active_source else '' }}>All Sources</option>
+    <option value="" {{ 'selected' if not active_source else '' }}>{{ _('All Sources') }}</option>
     {% for key, count in source_counts.items() %}
     <option value="{{ key }}" {{ 'selected' if active_source == key else '' }}>{{ source_labels.get(key, key | replace('_', ' ') | title) }} ({{ count }})</option>
     {% endfor %}
@@ -65,10 +65,10 @@
         hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('reading_status') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-    <option value="" {{ 'selected' if not active_reading_status else '' }}>All Statuses</option>
-    <option value="want_to_read" {{ 'selected' if active_reading_status == 'want_to_read' else '' }}>{{ sl.want }}{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>
-    <option value="reading" {{ 'selected' if active_reading_status == 'reading' else '' }}>{{ sl.doing }}{% if rsc.get('reading') %} ({{ rsc.reading }}){% endif %}</option>
-    <option value="read" {{ 'selected' if active_reading_status == 'read' else '' }}>{{ sl.done }}{% if rsc.get('read') %} ({{ rsc.read }}){% endif %}</option>
+    <option value="" {{ 'selected' if not active_reading_status else '' }}>{{ _('All Statuses') }}</option>
+    <option value="want_to_read" {{ 'selected' if active_reading_status == 'want_to_read' else '' }}>{{ _(sl.want) }}{% if rsc.get('want_to_read') %} ({{ rsc.want_to_read }}){% endif %}</option>
+    <option value="reading" {{ 'selected' if active_reading_status == 'reading' else '' }}>{{ _(sl.doing) }}{% if rsc.get('reading') %} ({{ rsc.reading }}){% endif %}</option>
+    <option value="read" {{ 'selected' if active_reading_status == 'read' else '' }}>{{ _(sl.done) }}{% if rsc.get('read') %} ({{ rsc.read }}){% endif %}</option>
 </select>
 {% endif %}
 {% endif %}

@@ -25,6 +25,10 @@ function browsePage() {
         // LAST duplicate, so an empty second input used to wipe the search.
         searchQuery: '',
 
+        // Getters: an Alpine CSP expression can't call t().
+        get selectedLabel() { return t('{count} selected').replace('{count}', this.selectedIds.length); },
+        get selectModeLabel() { return this.selectMode ? t('Done') : t('Select'); },
+
         init() {
             // Must run before anything else touches the DOM. visibleCols needs
             // a key for EVERY registered column before Alpine's first render:
@@ -77,7 +81,7 @@ function browsePage() {
             // Show keyboard shortcut hint on first visit
             if (!localStorage.getItem('shelf-shortcuts-seen')) {
                 localStorage.setItem('shelf-shortcuts-seen', '1');
-                setTimeout(function() { showToast('Press ? for keyboard shortcuts', 'info'); }, 1500);
+                setTimeout(function() { showToast(t('Press ? for keyboard shortcuts'), 'info'); }, 1500);
             }
             // Browse-page keyboard shortcuts
             this._keyHandler = (e) => this.handleKey(e);
@@ -475,14 +479,14 @@ function browsePage() {
                 });
                 var data = await resp.json();
                 if (data.ok) {
-                    showToast('Updated ' + data.updated + ' items', 'success');
+                    showToast(t('Updated {count} items').replace('{count}', data.updated), 'success');
                     this.selectedIds = [];
                     location.reload();
                 } else {
-                    showToast(data.message || 'Update failed', 'error');
+                    showToast(data.message || t('Update failed'), 'error');
                 }
             } catch (e) {
-                showToast('Update failed: ' + e.message, 'error');
+                showToast(t('Update failed') + ': ' + e.message, 'error');
             }
         },
 
@@ -516,19 +520,19 @@ function browsePage() {
                     this.bulkTagVal = '';
                     location.reload();
                 } else {
-                    showToast(data.message || 'Tag update failed', 'error');
+                    showToast(data.message || t('Tag update failed'), 'error');
                 }
             } catch (e) {
-                showToast('Tag update failed: ' + e.message, 'error');
+                showToast(t('Tag update failed') + ': ' + e.message, 'error');
             }
         },
 
         async bulkDelete() {
-            if (!confirm('Move ' + this.selectedIds.length + ' items to Trash?')) return;
+            if (!confirm(t('Move {count} items to Trash?').replace('{count}', this.selectedIds.length))) return;
             for (var id of this.selectedIds) {
                 await fetch('/api/items/' + id, {method: 'DELETE', headers: {'X-CSRF-Token': window.csrfToken()}});
             }
-            showToast('Moved ' + this.selectedIds.length + ' items to Trash', 'success');
+            showToast(t('Moved {count} items to Trash').replace('{count}', this.selectedIds.length), 'success');
             this.selectedIds = [];
             location.reload();
         }
