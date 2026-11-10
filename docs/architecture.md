@@ -599,15 +599,19 @@ the next boot re-indexes everything.
 The national leg is a registry, `services/national.py`: unhyphenated ISBN-13
 registration-group prefixes mapped to provider modules, resolved by
 **longest** prefix match, so a narrow key can coexist with a broader one. It
-currently serves six providers — **BnF** (`services/bnf.py`, UNIMARC over SRU at
+currently serves seven providers — **BnF** (`services/bnf.py`, UNIMARC over SRU at
 `catalogue.bnf.fr`) for the French-language 978-2 group and 979-10, **DNB** (`services/dnb.py`, MARC21 over SRU)
 for 978-3, **OSZK NEKTÁR** (`services/oszk.py`, HUNMARC over Z39.50 at
 `tagetes2.oszk.hu:1616/ANY`) for the Hungarian 978-615 and 978-963 groups,
 **SBN** (`services/sbn.py`, flat JSON over ICCU's OPAC endpoint) for the Italian
 978-88 and 979-12, **KB** (`services/kb.py`, SPARQL over the Nederlandse
-Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups, and **PORBASE**
+Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups, **PORBASE**
 (`services/porbase.py`, Dublin Core XML from the `urn.porbase.org` resolver) for
-the Portuguese 978-972 and 978-989 groups. PORBASE answers a miss with HTTP 200
+the Portuguese 978-972 and 978-989 groups, and **NeoDB** (`services/neodb.py`,
+JSON from the public catalogue search at `neodb.social`) for the Chinese-language
+978-7, 978-957, 978-986, 978-626, 978-962 and 978-988 groups. NeoDB's search is
+full-text, so only a record whose `isbn` equals the scanned ISBN-13 is a hit.
+PORBASE answers a miss with HTTP 200
 and an `<error>` body, marks non-sorting articles with literal `?` or `<>`, and
 mixes real series with "Fora de colecção" in `dc:relation`, so the client strips
 the markers and reads no series. Keys are as wide as the group: the Italian `97888` and `97912` and Dutch `97890` and `97894` use
@@ -623,7 +627,10 @@ stay server-side, while the scan surface receives only the normal provider
 outcome and `oszk` identifier.
 **The covers cascade and picker below are unchanged by this**: BnF, OSZK, SBN and KB
 contribute no cover source, and the DNB cover rung is a separate hand-written
-prefix test in `services/covers.py`, not a read of this registry. Any later
+prefix test in `services/covers.py`, not a read of this registry. NeoDB returns a
+`cover_url` the way Google Books does, so its image is tried at the existing
+provided-URL rung (after Open Library and Amazon); `neodb.social` is on the
+cover allowlist. Any later
 OSZK cover source needs its own request pacing, host configuration, URL
 validation and a placement decision in the cover order and picker.
 

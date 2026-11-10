@@ -30,9 +30,32 @@ def _i18n_on(monkeypatch):
     (None, "de, *", "en"),
     ("it", "en-US,en;q=0.9", "it"),               # the user's choice beats the browser
     ("xx", "it", "it"),                           # an unknown stored value falls through
+    ("zh", None, "zh_Hans"),                      # a stored bare code still resolves
+    (None, "zh-CN", "zh_Hans"),                   # region aliased to a script
+    (None, "zh-Hans-CN", "zh_Hans"),              # script and region together
+    (None, "zh-TW,zh;q=0.9", "zh_Hans"),          # only variant shipped: Traditional falls back to it
+    (None, "zh", "zh_Hans"),                      # bare language finds its only variant
+    (None, "IT_ch", "it"),                        # casing and underscores, unsupported region
 ])
 def test_resolve(user_language, header, expected):
     assert i18n.resolve(user_language, header) == expected
+
+
+@pytest.mark.parametrize("tag, expected", [
+    ("pt-BR", "pt_BR"), ("pt_br", "pt_BR"), ("PT-br", "pt_BR"),
+    ("pt-PT", "pt_PT"), ("pt", None), ("pt-AO", None),
+    ("zh-Hant", "zh_Hant"), ("zh-TW", "zh_Hant"), ("zh-HK", "zh_Hant"), ("zh-Hant-TW", "zh_Hant"),
+    ("zh-CN", "zh_Hans"), ("zh-SG", "zh_Hans"), ("zh", None),
+    ("es-419", "es_419"), ("", None), (None, None),
+])
+def test_match_prefers_the_most_specific_variant(monkeypatch, tag, expected):
+    # Two variants of each, so a bare language is ambiguous and must not match.
+    monkeypatch.setattr(i18n, "SUPPORTED", ("en", "pt_BR", "pt_PT", "zh_Hans", "zh_Hant", "es_419", "es_ES"))
+    assert i18n.match(tag) == expected
+
+
+def test_html_lang_is_bcp47(client, admin_user):
+    assert '<html lang="zh-Hans"' in client.get("/login", headers={"Accept-Language": "zh-CN"}).text
 
 
 def test_gettext_follows_the_locale():

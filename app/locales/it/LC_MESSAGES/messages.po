@@ -441,83 +441,83 @@ msgstr "Tag rimosso (%(tags)s). Elementi: %(count)s"
 msgid "Manual"
 msgstr "Manuale"
 
-#: app/services/browse_counts.py:30
+#: app/services/browse_counts.py:31
 msgid "Audible import"
 msgstr ""
 
-#: app/services/browse_counts.py:31
+#: app/services/browse_counts.py:32
 msgid "Photo Intake"
 msgstr "Acquisizione da foto"
 
-#: app/services/browse_counts.py:32
+#: app/services/browse_counts.py:33
 msgid "Store Queue"
 msgstr "Coda negozio"
 
-#: app/services/browse_counts.py:33
+#: app/services/browse_counts.py:34
 msgid "CSV Import"
 msgstr "Importazione CSV"
 
-#: app/services/national.py:83
+#: app/services/national.py:89
 msgid "English"
 msgstr "Inglese"
 
-#: app/services/national.py:84
+#: app/services/national.py:90
 msgid "German"
 msgstr "Tedesco"
 
-#: app/services/national.py:85
+#: app/services/national.py:91
 msgid "French"
 msgstr "Francese"
 
-#: app/services/national.py:86
+#: app/services/national.py:92
 msgid "Spanish"
 msgstr "Spagnolo"
 
-#: app/services/national.py:87
+#: app/services/national.py:93
 msgid "Italian"
 msgstr "Italiano"
 
-#: app/services/national.py:88
+#: app/services/national.py:94
 msgid "Dutch"
 msgstr "Olandese"
 
-#: app/services/national.py:89
+#: app/services/national.py:95
 msgid "Portuguese"
 msgstr "Portoghese"
 
-#: app/services/national.py:90
+#: app/services/national.py:96
 msgid "Swedish"
 msgstr "Svedese"
 
-#: app/services/national.py:91
+#: app/services/national.py:97
 msgid "Danish"
 msgstr "Danese"
 
-#: app/services/national.py:92
+#: app/services/national.py:98
 msgid "Norwegian"
 msgstr "Norvegese"
 
-#: app/services/national.py:93
+#: app/services/national.py:99
 msgid "Polish"
 msgstr "Polacco"
 
-#: app/services/national.py:94
+#: app/services/national.py:100
 msgid "Czech"
 msgstr "Ceco"
 
-#: app/services/national.py:95
+#: app/services/national.py:101
 msgid "Japanese"
 msgstr "Giapponese"
 
-#: app/services/national.py:96
+#: app/services/national.py:102
 msgid "Russian"
 msgstr "Russo"
 
-#: app/services/national.py:97
+#: app/services/national.py:103
 msgid "Chinese"
 msgstr "Cinese"
 
-#: app/services/national.py:98
+#: app/services/national.py:104
 msgid "Korean"
 msgstr "Coreano"
 
