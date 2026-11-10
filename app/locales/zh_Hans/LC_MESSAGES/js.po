@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-10 14:52+0100\n"
+"PO-Revision-Date: 2026-11-10 11:39-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -23,38 +23,38 @@ msgstr "完成"
 #: static/js/browse.js:29
 #, python-brace-format
 msgid "{count} selected"
-msgstr ""
+msgstr "已选 {count} 项"
 
 #: static/js/browse.js:30
 msgid "Select"
-msgstr ""
+msgstr "选择"
 
 #: static/js/browse.js:84
 msgid "Press ? for keyboard shortcuts"
-msgstr ""
+msgstr "按 ? 查看键盘快捷键"
 
 #: static/js/browse.js:482
 #, python-brace-format
 msgid "Updated {count} items"
-msgstr ""
+msgstr "已更新 {count} 个条目"
 
 #: static/js/browse.js:486 static/js/browse.js:489
 msgid "Update failed"
-msgstr ""
+msgstr "更新失败"
 
 #: static/js/browse.js:523 static/js/browse.js:526
 msgid "Tag update failed"
-msgstr ""
+msgstr "标签更新失败"
 
 #: static/js/browse.js:531
 #, python-brace-format
 msgid "Move {count} items to Trash?"
-msgstr ""
+msgstr "将 {count} 个条目移到回收站？"
 
 #: static/js/browse.js:535
 #, python-brace-format
 msgid "Moved {count} items to Trash"
-msgstr ""
+msgstr "已将 {count} 个条目移到回收站"
 
 #: static/js/components-settings.js:767
 msgid "Never"
