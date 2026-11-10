@@ -5,35 +5,35 @@
         <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"want_to_read"}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                 {% if rs == 'want_to_read' %}bg-shelf-warning/20 text-shelf-warning border-shelf-warning/40{% else %}bg-shelf-card text-shelf-muted border-shelf-border hover:border-shelf-warning/40{% endif %}">
-            {{ sl.want }}
+            {{ _(sl.want) }}
         </button>
         <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"reading"}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                 {% if rs == 'reading' %}bg-shelf-accent/20 text-shelf-accent2 border-shelf-accent/40{% else %}bg-shelf-card text-shelf-muted border-shelf-border hover:border-shelf-accent/40{% endif %}">
-            {{ sl.doing }}
+            {{ _(sl.doing) }}
         </button>
         <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"read"}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                 {% if rs == 'read' %}bg-shelf-success/20 text-shelf-success border-shelf-success/40{% else %}bg-shelf-card text-shelf-muted border-shelf-border hover:border-shelf-success/40{% endif %}">
-            {{ sl.done }}
+            {{ _(sl.done) }}
         </button>
         {% if rs %}
         <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":""}' hx-target="#reading-status-section" hx-swap="outerHTML"
-                class="px-2 py-1.5 rounded-full text-xs text-shelf-muted hover:text-shelf-error transition-colors" title="Clear status">
+                class="px-2 py-1.5 rounded-full text-xs text-shelf-muted hover:text-shelf-error transition-colors" title="{{ _('Clear status') }}">
             &times;
         </button>
         {% endif %}
     </div>
     {% if item.date_started or item.date_finished %}
     <div class="mt-2 text-xs text-shelf-muted">
-        {% if item.date_started %}Started: {{ item.date_started }}{% endif %}
+        {% if item.date_started %}{{ _('Started: %(date)s', date=item.date_started) }}{% endif %}
         {% if item.date_started and item.date_finished %} · {% endif %}
-        {% if item.date_finished %}Finished: {{ item.date_finished }}{% endif %}
+        {% if item.date_finished %}{{ _('Finished: %(date)s', date=item.date_finished) }}{% endif %}
     </div>
     {% endif %}
     {% if reading_history and reading_history|length >= 2 %}
     <details class="mt-2" data-testid="reading-history">
-        <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">{{ sl.done }} {{ reading_history|length }} times</summary>
+        <summary class="text-xs text-shelf-muted cursor-pointer hover:text-shelf-text">{{ _('%(status)s %(count)s times', status=_(sl.done), count=reading_history|length) }}</summary>
         <div class="mt-2 space-y-1">
             {% for r in reading_history %}
             <div class="text-xs text-shelf-muted flex gap-2">

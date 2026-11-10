@@ -33,6 +33,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.routers import items_common
@@ -153,7 +154,7 @@ def _refuse(failure: tuple[str, int], warning: tuple | None) -> HTMLResponse:
 
 
 def _barcode_taken_message(row) -> str:
-    return f"Barcode already used by “{row['title']}” (item {row['item_id']})."
+    return i18n.gettext("Barcode already used by “%(title)s” (item %(id)s).") % {"title": row["title"], "id": row["item_id"]}
 
 
 @router.get("/items/{item_id}/copies")
@@ -170,7 +171,7 @@ async def collapsed_block(
     """
     with get_db() as db:
         if not db.execute("SELECT 1 FROM items_live WHERE id = ?", (item_id,)).fetchone():
-            return _refusal("Item not found", 404)
+            return _refusal(i18n.gettext("Item not found"), 404)
         return _render_block(request, db, item_id)
 
 
@@ -185,7 +186,7 @@ def _render_edit_panel(request: Request, db, item_id: int, copy_id: int,
         "SELECT * FROM copies_live WHERE id = ? AND item_id = ?", (copy_id, item_id),
     ).fetchone()
     if copy is None:
-        return _refusal("Copy not found", 404)
+        return _refusal(i18n.gettext("Copy not found"), 404)
     if unsaved:
         copy = {**dict(copy), **unsaved}
     return request.app.state.templates.TemplateResponse(
@@ -227,7 +228,7 @@ async def add_copy(
         db.execute("BEGIN IMMEDIATE")
         if not db.execute("SELECT 1 FROM items_live WHERE id = ?", (item_id,)).fetchone():
             db.rollback()
-            return _refusal("Item not found", 404)
+            return _refusal(i18n.gettext("Item not found"), 404)
 
         barcode = _clean(copy_barcode)
         if barcode:
@@ -243,7 +244,7 @@ async def add_copy(
         except sqlite3.IntegrityError:
             db.rollback()
             warning = ("Copy add refused for item %s", item_id)
-            failure = ("Could not add that copy.", 400)
+            failure = (i18n.gettext("Could not add that copy."), 400)
         except ValueError as exc:
             db.rollback()
             failure = (str(exc), 400)
@@ -288,7 +289,7 @@ async def update_copy(
         ).fetchone()
         if copy is None:
             db.rollback()
-            return _refusal("Copy not found", 404)
+            return _refusal(i18n.gettext("Copy not found"), 404)
 
         fields = {"location_id": location_id}
         for name in _EDITABLE:
@@ -316,7 +317,7 @@ async def update_copy(
         except sqlite3.IntegrityError:
             db.rollback()
             warning = ("Copy update refused for copy %s", copy_id)
-            failure = ("Could not save that copy.", 400)
+            failure = (i18n.gettext("Could not save that copy."), 400)
         except ValueError as exc:
             db.rollback()
             failure = (str(exc), 400)
@@ -351,7 +352,7 @@ async def remove_copy(
         ).fetchone()
         if copy is None:
             db.rollback()
-            return _refusal("Copy not found", 404)
+            return _refusal(i18n.gettext("Copy not found"), 404)
 
         item_copies.trash_copy(db, copy_id)
         return _render_block(request, db, item_id)
@@ -370,6 +371,6 @@ async def copy_found(
         if not db.execute("SELECT 1 FROM copies_live WHERE id = ? AND item_id = ?",
                           (copy_id, item_id)).fetchone():
             db.rollback()
-            return _refusal("Copy not found", 404)
+            return _refusal(i18n.gettext("Copy not found"), 404)
         item_copies.clear_missing(db, copy_id)
         return _render_block(request, db, item_id)

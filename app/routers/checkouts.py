@@ -3,6 +3,7 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db, get_setting
 from app.features import require_feature
@@ -123,7 +124,7 @@ async def checkout_item(
             due = (date.today() + timedelta(days=due_days)).isoformat()
         except OverflowError:
             return JSONResponse(
-                {"ok": False, "message": "Due date is out of range"}, status_code=400
+                {"ok": False, "message": i18n.gettext("Due date is out of range")}, status_code=400
             )
     else:
         due = None
@@ -134,13 +135,13 @@ async def checkout_item(
         db.execute("BEGIN IMMEDIATE")
         # A stale item page can still post here after the item went to Trash.
         if db.execute("SELECT 1 FROM items_live WHERE id = ?", (item_id,)).fetchone() is None:
-            return JSONResponse({"ok": False, "message": "Item not found"}, status_code=404)
+            return JSONResponse({"ok": False, "message": i18n.gettext("Item not found")}, status_code=404)
         # Check not already checked out
         active = db.execute(
             "SELECT id FROM checkouts WHERE item_id = ? AND checked_in IS NULL", (item_id,)
         ).fetchone()
         if active:
-            return {"ok": False, "message": "Already checked out"}
+            return {"ok": False, "message": i18n.gettext("Already checked out")}
 
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, due_date, notes) VALUES (?, ?, ?, ?)",
@@ -163,11 +164,11 @@ async def checkin_item(
         ).fetchone()
         if not checkout:
             return JSONResponse(
-                {"ok": False, "message": "Checkout not found"}, status_code=404
+                {"ok": False, "message": i18n.gettext("Checkout not found")}, status_code=404
             )
         if checkout["checked_in"] is not None:
             return JSONResponse(
-                {"ok": False, "message": "Checkout already checked in"}, status_code=409
+                {"ok": False, "message": i18n.gettext("Checkout already checked in")}, status_code=409
             )
         cursor = db.execute(
             "UPDATE checkouts SET checked_in = datetime('now') "
@@ -176,7 +177,7 @@ async def checkin_item(
         )
         if cursor.rowcount != 1:
             return JSONResponse(
-                {"ok": False, "message": "Checkout already checked in"}, status_code=409
+                {"ok": False, "message": i18n.gettext("Checkout already checked in")}, status_code=409
             )
     return RedirectResponse(url=f"/item/{checkout['item_id']}", status_code=303)
 

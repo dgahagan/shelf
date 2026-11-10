@@ -15,33 +15,33 @@
     {% if remaining %}
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-8 text-center"
          data-testid="cover-review-exhausted">
-        <p class="text-lg font-medium">That's the end of this pass</p>
+        <p class="text-lg font-medium">{{ _("That's the end of this pass") }}</p>
         <p class="text-sm text-shelf-muted mt-2">
-            {{ remaining }} item{{ '' if remaining == 1 else 's' }} you skipped
-            {{ 'is' if remaining == 1 else 'are' }} still waiting for a cover.
+            {{ ngettext('%(num)s item you skipped is still waiting for a cover.',
+                        '%(num)s items you skipped are still waiting for a cover.', remaining) }}
         </p>
         <div class="flex items-center justify-center gap-2 mt-4">
             <a href="/cover-review"
                data-testid="cover-review-restart"
                class="inline-block px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:opacity-90 transition-opacity">
-                Start another pass
+                {{ _('Start another pass') }}
             </a>
             <a href="/settings"
                class="inline-block px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
-                Back to Settings
+                {{ _('Back to Settings') }}
             </a>
         </div>
     </div>
     {% else %}
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-8 text-center"
          data-testid="cover-review-empty">
-        <p class="text-lg font-medium">No covers need attention</p>
+        <p class="text-lg font-medium">{{ _('No covers need attention') }}</p>
         <p class="text-sm text-shelf-muted mt-2">
-            Every item either has a cover or has been marked as not available.
+            {{ _('Every item either has a cover or has been marked as not available.') }}
         </p>
         <a href="/settings"
            class="inline-block mt-4 px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
-            Back to Settings
+            {{ _('Back to Settings') }}
         </a>
     </div>
     {% endif %}
@@ -57,7 +57,7 @@
                 </p>
             </div>
             <p class="text-sm text-shelf-muted whitespace-nowrap" data-testid="cover-review-counter">
-                {{ pos }} of {{ total }}
+                {{ _('%(pos)s of %(total)s', pos=pos, total=total) }}
             </p>
         </div>
 
@@ -65,7 +65,7 @@
             <div class="w-28 shrink-0">
                 <div class="w-full aspect-2/3 bg-shelf-bg border border-shelf-border rounded-lg flex items-center justify-center"
                      data-cover-shape="{{ cover_shape(item.media_type) }}">
-                    <span class="text-xs text-shelf-muted">No cover</span>
+                    <span class="text-xs text-shelf-muted">{{ _('No cover') }}</span>
                 </div>
             </div>
             <div class="min-w-0 flex-1">
@@ -97,14 +97,14 @@
                     hx-target="#cover-review" hx-swap="outerHTML"
                     data-testid="cover-review-skip"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
-                Skip
+                {{ _('Skip') }}
             </button>
             <button hx-post="/api/covers/review/{{ item.id }}/dismiss"
                     hx-vals='{"pos": "{{ pos }}", "total": "{{ total }}"}'
                     hx-target="#cover-review" hx-swap="outerHTML"
                     data-testid="cover-review-dismiss"
                     class="px-4 py-2 bg-shelf-hover text-shelf-error rounded-lg text-sm hover:bg-shelf-border transition-colors">
-                Not available
+                {{ _('Not available') }}
             </button>
         </div>
     </div>

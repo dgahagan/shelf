@@ -218,10 +218,10 @@ def visible_tabs(user: dict | None) -> list[dict]:
 # here — including anything crafted to look like a URL or path — silently
 # degrades to the default with no `from=` param emitted at all.
 BACK_TARGETS = {
-    "series": ("/series", "Back to series"),
-    "stats": ("/stats", "Back to stats"),
+    "series": ("/series", N_("Back to series")),
+    "stats": ("/stats", N_("Back to stats")),
 }
-DEFAULT_BACK_TARGET = ("/browse", "Back to collection")
+DEFAULT_BACK_TARGET = ("/browse", N_("Back to collection"))
 
 
 def back_target(key: str | None) -> dict:

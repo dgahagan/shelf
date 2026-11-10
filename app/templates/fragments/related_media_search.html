@@ -1,5 +1,5 @@
 {% if query and not candidates %}
-<p class="text-xs text-shelf-muted">No unlinked catalogue items matched “{{ query }}”.</p>
+<p class="text-xs text-shelf-muted">{{ _('No unlinked catalogue items matched “%(query)s”.', query=query) }}</p>
 {% endif %}
 {% for candidate in candidates %}
 <div class="flex items-center gap-2 py-2{% if not loop.last %} border-b border-shelf-border{% endif %}">
@@ -12,11 +12,11 @@
           class="flex items-center gap-1 shrink-0">
         <input type="hidden" name="other_item_id" value="{{ candidate.id }}">
         <select name="link_type" class="bg-shelf-card border border-shelf-border rounded-sm px-2 py-1 text-xs text-shelf-text">
-            <option value="format">Format</option>
-            <option value="related" selected>Related</option>
-            <option value="adaptation">Adaptation</option>
+            <option value="format">{{ _('Format') }}</option>
+            <option value="related" selected>{{ _('Related') }}</option>
+            <option value="adaptation">{{ _('Adaptation') }}</option>
         </select>
-        <button type="submit" class="px-2 py-1 bg-shelf-accent text-white rounded-sm text-xs">Link</button>
+        <button type="submit" class="px-2 py-1 bg-shelf-accent text-white rounded-sm text-xs">{{ _('Link') }}</button>
     </form>
 </div>
 {% endfor %}
