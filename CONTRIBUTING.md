@@ -129,7 +129,9 @@ Notes:
   (`make check-i18n` fails otherwise). Leaving the untranslated `msgstr` empty 
   is fine; the English shows until someone translates it. To add a language, add 
   its code to `SUPPORTED` and `LANGUAGE_NAMES` in `app/i18n.py` and to `LANGUAGES` 
-  in `scripts/i18n.py`, then run `make i18n`.
+  in `scripts/i18n.py`, then run `make i18n`. A language with variants takes its 
+  script or region in gettext's form (`zh_Hans`, `pt_BR`); a region that stands 
+  for a script goes in `ALIASES`.
 - Phrase a translation so it doesn't depend on the reader's gender: Shelf doesn't
   ask for it, and the setup page runs before any user exists. Rewrite the
   sentence rather than pick a form ("Ti diamo il benvenuto", not "Benvenuto").
