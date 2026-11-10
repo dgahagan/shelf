@@ -16,20 +16,20 @@ msgstr ""
 msgid "Title"
 msgstr "Titolo"
 
-#: app/browse_columns.py:63 app/browse_filters.py:206 app/config.py:156
+#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:156
 msgid "Author"
 msgstr "Autore"
 
-#: app/browse_columns.py:64 app/browse_filters.py:195
+#: app/browse_columns.py:64 app/browse_filters.py:209
 msgid "Type"
 msgstr "Tipo"
 
-#: app/browse_columns.py:65 app/browse_filters.py:197
+#: app/browse_columns.py:65 app/browse_filters.py:211
 #: app/templates/fragments/item_copy_edit.html:37
 msgid "Location"
 msgstr "Posizione"
 
-#: app/browse_columns.py:66 app/browse_filters.py:199
+#: app/browse_columns.py:66 app/browse_filters.py:213
 #: app/templates/item_detail.html:230
 msgid "Status"
 msgstr "Stato"
@@ -54,7 +54,7 @@ msgstr "Anno"
 msgid "Pages"
 msgstr "Pagine"
 
-#: app/browse_columns.py:72 app/browse_filters.py:207
+#: app/browse_columns.py:72 app/browse_filters.py:221
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
 msgid "Language"
 msgstr "Lingua"
@@ -75,19 +75,19 @@ msgstr "ISBN/UPC"
 msgid "Tags"
 msgstr "Tag"
 
-#: app/browse_filters.py:194
+#: app/browse_filters.py:208
 msgid "Search"
 msgstr "Ricerca"
 
-#: app/browse_filters.py:196 app/templates/fragments/item_copy_edit.html:67
+#: app/browse_filters.py:210 app/templates/fragments/item_copy_edit.html:67
 msgid "Source"
 msgstr "Origine"
 
-#: app/browse_filters.py:198
+#: app/browse_filters.py:212
 msgid "Sort"
 msgstr "Ordinamento"
 
-#: app/browse_filters.py:202 app/templates/browse.html:83
+#: app/browse_filters.py:216 app/templates/browse.html:83
 msgid "Tag"
 msgstr "Tag"
 
@@ -693,79 +693,88 @@ msgstr "Tutti i tipi"
 msgid "All Locations"
 msgstr "Tutte le posizioni"
 
-#: app/templates/browse.html:230
+#: app/templates/browse.html:220
+#: app/templates/fragments/filter_counts_oob.html:39
+#: app/templates/fragments/item_copies.html:90
+#: app/templates/fragments/item_copies.html:95
+#: app/templates/fragments/item_copies.html:108
+#: app/templates/fragments/item_copy_edit.html:40
+msgid "No location"
+msgstr "Nessuna posizione"
+
+#: app/templates/browse.html:233
 #: app/templates/fragments/filter_counts_oob.html:26
 msgid "All"
 msgstr "Tutti"
 
-#: app/templates/browse.html:231
+#: app/templates/browse.html:234
 #: app/templates/fragments/filter_counts_oob.html:27
 msgid "Owned"
 msgstr "Posseduti"
 
-#: app/templates/browse.html:232
+#: app/templates/browse.html:235
 #: app/templates/fragments/filter_counts_oob.html:28
 #: app/templates/fragments/item_card.html:7
 #: app/templates/fragments/item_row.html:51 app/templates/item_detail.html:57
 msgid "Wishlist"
 msgstr "Lista desideri"
 
-#: app/templates/browse.html:233
+#: app/templates/browse.html:236
 #: app/templates/fragments/filter_counts_oob.html:29
 msgid "Not owned or wishlisted"
 msgstr "Né posseduti né in lista desideri"
 
-#: app/templates/browse.html:242
+#: app/templates/browse.html:245
 msgid "All Items"
 msgstr "Tutti gli elementi"
 
-#: app/templates/browse.html:243
+#: app/templates/browse.html:246
 msgid "Lent Out"
 msgstr "In prestito"
 
-#: app/templates/browse.html:253
-#: app/templates/fragments/filter_counts_oob.html:68
+#: app/templates/browse.html:256
+#: app/templates/fragments/filter_counts_oob.html:71
 msgid "All Statuses"
 msgstr "Tutti gli stati"
 
-#: app/templates/browse.html:266
+#: app/templates/browse.html:269
 msgid "All Tags"
 msgstr "Tutti i tag"
 
-#: app/templates/browse.html:279
+#: app/templates/browse.html:282
 msgid "All Languages"
 msgstr "Tutte le lingue"
 
-#: app/templates/browse.html:291
-#: app/templates/fragments/filter_counts_oob.html:50
+#: app/templates/browse.html:294
+#: app/templates/fragments/filter_counts_oob.html:53
 msgid "All Sources"
 msgstr "Tutte le origini"
 
-#: app/templates/browse.html:306
+#: app/templates/browse.html:309
 msgid "Most Recent"
 msgstr "Più recenti"
 
-#: app/templates/browse.html:307
+#: app/templates/browse.html:310
 msgid "Oldest First"
 msgstr "Meno recenti"
 
-#: app/templates/browse.html:308
+#: app/templates/browse.html:311
 msgid "Title A–Z"
 msgstr "Titolo A–Z"
 
-#: app/templates/browse.html:309
+#: app/templates/browse.html:312
 msgid "Title Z–A"
 msgstr "Titolo Z–A"
 
-#: app/templates/browse.html:312
+#: app/templates/browse.html:315
 msgid "Year (Newest)"
 msgstr "Anno (dal più recente)"
 
-#: app/templates/browse.html:313
+#: app/templates/browse.html:316
 msgid "Year (Oldest)"
 msgstr "Anno (dal meno recente)"
 
-#: app/templates/browse.html:326
+#: app/templates/browse.html:329
 msgid "Clear all"
 msgstr "Azzera tutto"
 
@@ -1349,13 +1358,6 @@ msgstr "Posizione:"
 #, python-format
 msgid "position %(n)s"
 msgstr "posizione %(n)s"
-
-#: app/templates/fragments/item_copies.html:90
-#: app/templates/fragments/item_copies.html:95
-#: app/templates/fragments/item_copies.html:108
-#: app/templates/fragments/item_copy_edit.html:40
-msgid "No location"
-msgstr "Nessuna posizione"
 
 #: app/templates/fragments/item_copies.html:92
 msgid "Copies"
