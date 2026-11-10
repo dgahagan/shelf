@@ -1,0 +1,108 @@
+{
+  "data": [
+    {
+      "id": "https://neodb.social/book/4eAsM9JtweTc2fB2OIzDsV",
+      "type": "Edition",
+      "uuid": "4eAsM9JtweTc2fB2OIzDsV",
+      "url": "/book/4eAsM9JtweTc2fB2OIzDsV",
+      "api_url": "/api/book/4eAsM9JtweTc2fB2OIzDsV",
+      "category": "book",
+      "parent_uuid": "3mEvltFym8DIZZLkpeeZAM",
+      "display_title": "知識的考掘",
+      "external_resources": [
+        {
+          "url": "https://book.douban.com/subject/1352318/"
+        }
+      ],
+      "credits": [
+        {
+          "role": "author",
+          "name": "米歇．傅柯，譯／王德威",
+          "character_name": "",
+          "person_url": null
+        },
+        {
+          "role": "publisher",
+          "name": "麥田出版公司",
+          "character_name": "",
+          "person_url": null
+        },
+        {
+          "role": "translator",
+          "name": "王德威",
+          "character_name": "",
+          "person_url": null
+        }
+      ],
+      "title": "知識的考掘",
+      "description": "什麼是知識？知識如何產生、發展、改變或消失？傅柯是當代歐洲文化、思想史最受矚目的學者之一，他拆解西方理性迷思，質疑歷史法則邏輯，重普知識衍生、傳佈的脈絡。\n相對於傳統史學，其「考掘學」將歷史流程空間化、暴露知識體系的斷層，從而顯示意義、法理、道統的權宜性與擴散性；立論曲折，引人思辯，是觀察世紀末西方人文現象的重要入門。",
+      "localized_title": [
+        {
+          "lang": "zh-tw",
+          "text": "知識的考掘"
+        }
+      ],
+      "localized_description": [
+        {
+          "lang": "zh-tw",
+          "text": "什麼是知識？知識如何產生、發展、改變或消失？傅柯是當代歐洲文化、思想史最受矚目的學者之一，他拆解西方理性迷思，質疑歷史法則邏輯，重普知識衍生、傳佈的脈絡。\n相對於傳統史學，其「考掘學」將歷史流程空間化、暴露知識體系的斷層，從而顯示意義、法理、道統的權宜性與擴散性；立論曲折，引人思辯，是觀察世紀末西方人文現象的重要入門。"
+        }
+      ],
+      "cover_image_url": "https://neodb.social/m/book/2021/09/17e7996b81-e879-40b8-8500-fc70be122e2e.jpg",
+      "rating": null,
+      "rating_count": 4,
+      "rating_distribution": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "tags": [
+        "foucault",
+        "pdf",
+        "ssk",
+        "二",
+        "历史",
+        "史学理论",
+        "哲学",
+        "哲學",
+        "思想史",
+        "文化研究",
+        "歐洲",
+        "法國",
+        "王德威",
+        "理论",
+        "社会学",
+        "福柯",
+        "话语"
+      ],
+      "brief": "什麼是知識？知識如何產生、發展、改變或消失？傅柯是當代歐洲文化、思想史最受矚目的學者之一，他拆解西方理性迷思，質疑歷史法則邏輯，重普知識衍生、傳佈的脈絡。\n相對於傳統史學，其「考掘學」將歷史流程空間化、暴露知識體系的斷層，從而顯示意義、法理、道統的權宜性與擴散性；立論曲折，引人思辯，是觀察世紀末西方人文現象的重要入門。",
+      "subtitle": null,
+      "orig_title": "L'archéologie du savoir",
+      "author": [
+        "米歇．傅柯，譯／王德威"
+      ],
+      "translator": [
+        "王德威"
+      ],
+      "language": [],
+      "publisher": [
+        "麥田出版公司"
+      ],
+      "pub_house": "麥田出版公司",
+      "pub_year": 1993,
+      "pub_month": 7,
+      "format": null,
+      "binding": "平装",
+      "price": "TWD 350",
+      "pages": 373,
+      "series": "麥田人文",
+      "imprint": null,
+      "contents": "譯序\n導讀淺論傅柯\n導讀2:「考掘畢」舆宗譜學\n再論傅柯的歷史文化觀\n【第一部】緒論\n【第二部】話語的規則\n第一章  話語的統一性\n第二章  話語的組織\n第三章  話語對象的形構\n第四章  「聲明」模式的形成\n第五章  觀念的形構\n第六章  策略的形搆\n第七章  批評與結論\n【第三部】  「聲明」和檔案\n第一章  「聲明」的定義\n第二章  「聲明」的坊能\n第三章  「聲明」的描述\n第四章  稀有性、外緣性、積累性\n第五章  歷史之先驗及檔案\n【第四部】  「考掘學式L的描述\n第五部　结论\n附录　人名小注(收起)",
+      "isbn": "9789577081193"
+    }
+  ],
+  "pages": 1,
+  "count": 1
+}

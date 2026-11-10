@@ -1,7 +1,7 @@
 """Tests for app.services.national — prefix-provider registry and the shared
 MARC <-> ISO 639-1 language mapper. Pure logic, no app/db needed (see G14)."""
 
-from app.services import bnf, dnb, kb, oszk, porbase, sbn
+from app.services import bnf, dnb, kb, neodb, oszk, porbase, sbn
 from app.services.national import (
     PREFIX_PROVIDERS,
     SEARCH_LANGS,
@@ -22,6 +22,21 @@ class TestProviderFor:
     def test_french_group_does_not_swallow_neighbours(self):
         assert provider_for("9791221200454") is sbn  # 979-12 Italy
         assert provider_for("9791100000000") is None  # 979-11 Korea
+
+    def test_chinese_groups_return_neodb(self):
+        assert provider_for("9787544295390") is neodb  # 978-7 mainland China
+        assert provider_for("9789577081193") is neodb  # 978-957 Taiwan
+        assert provider_for("9789860000000") is neodb  # 978-986 Taiwan
+        assert provider_for("9786267747858") is neodb  # 978-626 Taiwan
+        assert provider_for("9789620000000") is neodb  # 978-962 Hong Kong
+        assert provider_for("9789880000000") is neodb  # 978-988 Hong Kong
+
+    def test_chinese_groups_do_not_swallow_neighbours(self):
+        assert provider_for("9789896168285") is porbase  # 978-989 Portugal, beside 978-988
+        assert provider_for("9789630000000") is oszk  # 978-963 Hungary, beside 978-962
+        assert provider_for("9789580000000") is None  # 978-958 Colombia, beside 978-957
+        assert provider_for("9786270000000") is None  # 978-627 Pakistan, beside 978-626
+        assert provider_for("9789870000000") is None  # 978-987 Argentina, beside 978-986
 
     def test_german_group_returns_dnb(self):
         assert provider_for("9783161484100") is dnb
