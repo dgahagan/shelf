@@ -29,7 +29,7 @@ from babel.messages.pofile import read_po, write_po
 ROOT = Path(__file__).resolve().parent.parent
 LOCALES = ROOT / "app" / "locales"
 # Every language with a catalog. English is the source and has none.
-LANGUAGES = ("it",)
+LANGUAGES = ("it", "zh")
 # domain -> (directory, Babel method map relative to it, keywords)
 DOMAINS = {
     "messages": ("app", [("**.py", "python"), ("templates/**.html", "jinja2")],
