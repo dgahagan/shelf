@@ -249,3 +249,175 @@ def test_store_camera_uses_html5_qrcode_by_default(live_server, browser, setup_a
         assert_page_clean(pg)
     finally:
         ctx.close()
+
+
+# --- Queue flush: verdict, ISBN-10, single flight, drain ---------------------
+#
+# Server-side rows are seeded AFTER the manifest loads, so the device's index
+# does not have them and the check goes through the queue (G83: wait on the
+# response, not on a sleep). Every ISBN below is unique to this block (G34).
+
+C1_WISHLIST_ISBN = "9789010000606"
+C1_OWNED_ISBN = "9789010000705"
+ISBN10_BASE = "9789010000507"
+SINGLE_FLIGHT_CODES = ("9789030001003", "9789030002000", "9789030003007")
+
+
+BASELINE_ISBN = "9789010000804"
+
+
+def _store_loaded(live_server, ctx, setup_admin):
+    # The status line reads "titles cached" only for a non-empty library, so
+    # seed one row up front; the test's own row lands after the load.
+    if not _baseline_seeded(live_server):
+        insert_item(live_server["data_dir"], title="Flush Baseline Book", isbn=BASELINE_ISBN)
+    pg = _login(live_server, ctx, setup_admin)
+    pg.goto(f"{live_server['url']}/store")
+    expect(pg.get_by_test_id("status-line")).to_contain_text("titles cached", timeout=10_000)
+    return pg
+
+
+def _baseline_seeded(live_server):
+    conn = sqlite3.connect(str(live_server["data_dir"] / "shelf.db"))
+    try:
+        return conn.execute("SELECT 1 FROM items WHERE isbn = ?", (BASELINE_ISBN,)).fetchone() is not None
+    finally:
+        conn.close()
+
+
+def _check_via_queue(pg, code):
+    pg.get_by_test_id("isbn-input").fill(code)
+    with pg.expect_response("**/api/store/queue"):
+        pg.get_by_test_id("check-button").click()
+
+
+def test_flush_reads_wishlisted_row_as_on_wishlist(live_server, browser, setup_admin):
+    ctx = browser.new_context()
+    try:
+        pg = _store_loaded(live_server, ctx, setup_admin)
+        insert_item(live_server["data_dir"], title="Flush Wishlist Book", isbn=C1_WISHLIST_ISBN,
+                    owned=0, wishlisted=True)
+
+        _check_via_queue(pg, C1_WISHLIST_ISBN)
+        expect(pg.get_by_test_id("verdict")).to_contain_text("ON WISHLIST")
+        expect(pg.get_by_test_id("verdict")).not_to_contain_text("OWNED")
+        expect(pg.get_by_test_id("queue-count")).to_have_text("0")
+
+        # Scan again: the index now answers it, still not OWNED.
+        pg.get_by_test_id("isbn-input").fill(C1_WISHLIST_ISBN)
+        pg.get_by_test_id("check-button").click()
+        expect(pg.get_by_test_id("verdict")).to_contain_text("ON WISHLIST")
+        expect(pg.get_by_test_id("verdict")).not_to_contain_text("OWNED")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_flush_reads_owned_row_as_owned(live_server, browser, setup_admin):
+    ctx = browser.new_context()
+    try:
+        pg = _store_loaded(live_server, ctx, setup_admin)
+        insert_item(live_server["data_dir"], title="Flush Owned Book", isbn=C1_OWNED_ISBN)
+
+        _check_via_queue(pg, C1_OWNED_ISBN)
+        expect(pg.get_by_test_id("verdict")).to_contain_text("OWNED")
+        expect(pg.get_by_test_id("verdict")).not_to_contain_text("ON WISHLIST")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_flush_matches_an_isbn10_scan_to_its_isbn13_row(live_server, browser, setup_admin):
+    from app.services.isbn import isbn13_to_isbn10
+
+    isbn10 = isbn13_to_isbn10(ISBN10_BASE)
+    ctx = browser.new_context()
+    try:
+        pg = _store_loaded(live_server, ctx, setup_admin)
+        insert_item(live_server["data_dir"], title="Flush Ten Book", isbn=ISBN10_BASE)
+
+        _check_via_queue(pg, isbn10)
+        expect(pg.get_by_test_id("queue-count")).to_have_text("0")
+        expect(pg.get_by_test_id("verdict")).not_to_contain_text("NOT IN LIBRARY")
+        expect(pg.get_by_test_id("verdict")).to_contain_text("OWNED")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_flush_is_single_flight_and_picks_up_mid_flight_scans(live_server, browser, setup_admin):
+    a, b, c = SINGLE_FLIGHT_CODES
+    bodies = []
+    held = []
+
+    def handler(route):
+        body = route.request.post_data_json
+        bodies.append(body)
+        if len(bodies) == 1:
+            held.append(route)  # unanswered until the test says so
+            return
+        route.fulfill(json={"results": [
+            {"code": x, "isbn": x, "status": "added_bare", "title": None, "owned": False}
+            for x in body["isbns"]
+        ]})
+
+    ctx = browser.new_context()
+    try:
+        pg = _store_loaded(live_server, ctx, setup_admin)
+        pg.route("**/api/store/queue", handler)
+
+        def scan(code):
+            pg.get_by_test_id("isbn-input").fill(code)
+            pg.get_by_test_id("check-button").click()
+
+        scan(a)
+        expect(pg.get_by_test_id("queue-count")).to_have_text("1")
+        scan(b)
+        scan(c)
+        expect(pg.get_by_test_id("queue-count")).to_have_text("3")
+        assert len(bodies) == 1 and bodies[0]["isbns"] == [a], bodies
+        assert len(held) == 1
+
+        held[0].fulfill(json={"results": [
+            {"code": a, "isbn": a, "status": "added_bare", "title": None, "owned": False}
+        ]})
+        expect(pg.get_by_test_id("queue-count")).to_have_text("0")
+        assert len(bodies) == 2, bodies
+        assert bodies[1]["isbns"] == [b, c], bodies
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_flush_drains_a_51_code_queue_in_two_rounds(live_server, browser, setup_admin):
+    def check_digit(base):
+        s = sum(int(d) * (1 if i % 2 == 0 else 3) for i, d in enumerate(base))
+        return base + str((10 - s % 10) % 10)
+
+    codes = [check_digit("97890200%04d" % i) for i in range(51)]
+    bodies = []
+
+    def handler(route):
+        body = route.request.post_data_json
+        bodies.append(body)
+        route.fulfill(json={"results": [
+            {"code": x, "isbn": x, "status": "added_bare", "title": None, "owned": False}
+            for x in body["isbns"]
+        ]})
+
+    ctx = browser.new_context()
+    try:
+        pg = _store_loaded(live_server, ctx, setup_admin)
+        pg.route("**/api/store/queue", handler)
+        # G52: seed after load and reload; no add_init_script.
+        pg.evaluate(
+            "(codes) => localStorage.setItem('shelf-store-queue',"
+            " JSON.stringify(codes.map(c => ({isbn: c, at: new Date().toISOString()}))))",
+            codes,
+        )
+        pg.reload()
+        expect(pg.get_by_test_id("queue-count")).to_have_text("0", timeout=10_000)
+        assert [len(x["isbns"]) for x in bodies] == [50, 1], [len(x["isbns"]) for x in bodies]
+        assert_page_clean(pg)
+    finally:
+        ctx.close()

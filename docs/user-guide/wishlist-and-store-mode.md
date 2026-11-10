@@ -129,9 +129,15 @@ neither own nor want reads **Not in library** too, and scanning it queues it
 like any unknown: on the next sync Shelf adds that existing item to your
 wishlist instead of creating a new one.
 
-Queued unknowns are looked up and **added to your wishlist** (with metadata
-and cover) the next time you open the page online. Nothing is lost if you
-close the tab; the queue lives in the browser.
+When the device is online, an unknown scan syncs at once. Shelf looks it up,
+**adds it to your wishlist** (with metadata and cover), and the card changes
+to Shelf's answer: **On wishlist** with the book's title, or **Owned** if the
+book was already on your shelf and the device's cache had not caught up yet.
+
+Scans made offline wait in the queue and sync the next time you open the
+page online, or when you tap **Sync now**. A long queue syncs in batches of
+50, one after another, with no further taps. Nothing is lost if you close the
+tab; the queue lives in the browser.
 
 A barcode the scanner misreads is kept too. If a queued code fails its check
 digit it can't be looked up, so instead of dropping it Shelf saves a wishlist

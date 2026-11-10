@@ -15,6 +15,7 @@
     var scanner = null;
     var lastScan = { code: null, at: 0 };
     var deferredInstall = null;
+    var currentCode = null;    // the code the verdict card is showing
 
     function $(id) { return document.getElementById(id); }
 
@@ -81,15 +82,61 @@
         setQueue(q);
     }
 
+    // One flush in flight at a time. A caller that arrives while it is out
+    // gets the same promise; a scan made mid-flight is enqueued and picked up
+    // by the next round. The drain stops on an empty queue, a failed round,
+    // or a round that removed nothing (so a code the server answers but the
+    // client cannot match never loops).
+    var inflight = null;
+
     function flushQueue() {
-        var q = getQueue();
-        if (!q.length || !navigator.onLine) return Promise.resolve();
-        var isbns = q.map(function (e) { return e.isbn; });
+        if (inflight) return inflight;
+        if (!getQueue().length || !navigator.onLine) return Promise.resolve();
         $('sync-hint').classList.add('hidden');
+
+        var totals = { unreadable: 0, restored: 0, rounds: 0 };
+        var settle;
+        inflight = new Promise(function (resolve) { settle = resolve; });
+
+        function stop() {
+            // Cleared here, in the callback that decides to stop, so a scan
+            // event never sees a settled promise still parked in `inflight`.
+            inflight = null;
+            if (totals.rounds) {
+                showSyncResult(totals.unreadable, totals.restored);
+                updateStatus();
+            } else {
+                renderQueue();
+            }
+            settle();
+        }
+
+        function round() {
+            var q = getQueue();
+            if (!q.length || !navigator.onLine) { stop(); return; }
+            flushRound(q.slice(0, 50), totals).then(function (removed) {
+                totals.rounds++;
+                if (removed > 0 && getQueue().length) round();
+                else stop();
+            }, stop);
+        }
+
+        round();
+        return inflight;
+    }
+
+    // Send one batch and index what the server says about each code. The
+    // server echoes the string sent as `code` and the row's real `owned` on
+    // every result, so there is no per-status branch here: every answered
+    // code is indexed under what was sent and under its ISBN-13, and dropped
+    // from the queue by what was sent. A failed round throws before anything
+    // is written (G137), so the index only ever holds answers.
+    function flushRound(batch, totals) {
+        var isbns = batch.map(function (e) { return e.isbn; });
         return fetch('/api/store/queue', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
-            body: JSON.stringify({ isbns: isbns.slice(0, 50) }),
+            body: JSON.stringify({ isbns: isbns }),
         }).then(function (r) {
             if (r.status === 401 || r.status === 403) {
                 var hint = $('sync-hint');
@@ -105,38 +152,31 @@
             return r.json();
         }).then(function (data) {
             var handled = {};
-            var unreadable = 0;
-            var restored = 0;
             (data.results || []).forEach(function (res) {
-                handled[normalizeCode(res.isbn)] = true;
-                if (res.status === 'unreadable') unreadable++;
-                if (res.status === 'restored') restored++;
-                // Make freshly wishlisted books match on an immediate re-scan.
-                // 'unreadable' is included so re-scanning the same bad barcode
-                // matches the row the server just made instead of queueing a
-                // second one — there is no ISBN on it to dedupe against.
-                // 'restored' is a status the server can now return, and every
-                // returned status must have a branch here: the entry is
-                // dropped from the queue above regardless, so one this block
-                // does not index is a book the next scan cannot match.
-                if (res.status === 'wishlisted' || res.status === 'added_bare' ||
-                    res.status === 'duplicate' || res.status === 'unreadable' ||
-                    res.status === 'restored') {
-                    index[normalizeCode(res.isbn)] = {
-                        title: res.title || ('ISBN ' + res.isbn),
-                        authors: null,
-                        // A restored row carries its real ownership; only the
-                        // other statuses can be inferred from the status.
-                        owned: res.owned !== undefined
-                            ? !!res.owned
-                            : res.status === 'duplicate',
-                    };
-                }
+                if (res.status === 'unreadable') totals.unreadable++;
+                if (res.status === 'restored') totals.restored++;
+                var key = normalizeCode(res.code || res.isbn);
+                var entry = {
+                    title: res.title || ('ISBN ' + res.isbn),
+                    authors: null,
+                    owned: !!res.owned,
+                };
+                handled[key] = true;
+                if (key) index[key] = entry;
+                var isbnKey = normalizeCode(res.isbn);
+                if (isbnKey) index[isbnKey] = entry;
             });
-            setQueue(getQueue().filter(function (e) { return !handled[normalizeCode(e.isbn)]; }));
-            showSyncResult(unreadable, restored);
-            updateStatus();
-        }).catch(function () { renderQueue(); });
+            var before = getQueue();
+            var after = before.filter(function (e) { return !handled[normalizeCode(e.isbn)]; });
+            setQueue(after);
+            // The card still showing a code this round answered now shows
+            // the server's answer. A card moved on to another code is left
+            // alone (G39: prove ownership before writing).
+            if (currentCode && handled[currentCode] && index[currentCode]) {
+                renderVerdict(currentCode);
+            }
+            return before.length - after.length;
+        });
     }
 
     // A barcode that failed its check digit is still saved, as a titled
@@ -179,7 +219,25 @@
     function showVerdict(rawCode) {
         var code = normalizeCode(rawCode);
         if (!code) return;
+        currentCode = code;
+        if (renderVerdict(code)) return;
 
+        var note = $('verdict-note');
+        if (isQueued(code)) {
+            note.textContent = 'Already queued for your wishlist.';
+        } else {
+            enqueue(code);
+            note.textContent = navigator.onLine
+                ? 'Added to sync queue — syncing now…'
+                : 'Queued — will be added to your wishlist when back online.';
+            if (navigator.onLine) flushQueue();
+        }
+    }
+
+    // Paint the card for `code` from the index. No queueing, no flush —
+    // safe to call again when a flush answers the code on screen. Returns
+    // whether the code is in the library.
+    function renderVerdict(code) {
         var card = $('verdict');
         var label = $('verdict-label');
         var title = $('verdict-title');
@@ -209,16 +267,8 @@
             label.classList.add('text-shelf-muted');
             label.textContent = 'NOT IN LIBRARY';
             title.textContent = 'ISBN ' + code;
-            if (isQueued(code)) {
-                note.textContent = 'Already queued for your wishlist.';
-            } else {
-                enqueue(code);
-                note.textContent = navigator.onLine
-                    ? 'Added to sync queue — syncing now…'
-                    : 'Queued — will be added to your wishlist when back online.';
-                if (navigator.onLine) flushQueue();
-            }
         }
+        return !!hit;
     }
 
     // --- Camera -----------------------------------------------------------

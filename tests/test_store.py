@@ -276,6 +276,7 @@ class TestStoreQueue:
         result = resp.json()["results"][0]
         assert result["status"] == "duplicate"
         assert result["title"] == "Already Here"
+        assert result["owned"] is True
 
     def test_wishlisted_duplicate_still_reported_as_duplicate(self, admin_client, db):
         """An already-wishlisted row is a no-op, same as an owned one."""
@@ -291,6 +292,7 @@ class TestStoreQueue:
         result = resp.json()["results"][0]
         assert result["status"] == "duplicate"
         assert result["title"] == "Already Wanted"
+        assert result["owned"] is False
 
         row = db.execute("SELECT owned FROM items WHERE id = ?", (item_id,)).fetchone()
         assert row["owned"] == 0
@@ -362,6 +364,16 @@ class TestStoreQueue:
                    new=AsyncMock(return_value=(None, None, {}, False))):
             resp = admin_client.post("/api/store/queue", json={"isbns": ["0441013597"]})
         assert resp.json()["results"][0]["isbn"] == "9780441013593"
+        assert resp.json()["results"][0]["code"] == "0441013597"
+
+    @pytest.mark.parametrize("code", ["978-0-441-01359-3", "  9780441013593 "])
+    def test_code_is_echoed_byte_for_byte(self, admin_client, db, code):
+        with patch("app.routers.items_common._lookup_metadata",
+                   new=AsyncMock(return_value=(None, None, {}, False))):
+            resp = admin_client.post("/api/store/queue", json={"isbns": [code]})
+        result = resp.json()["results"][0]
+        assert result["code"] == code
+        assert result["isbn"] == "9780441013593"
 
     def test_invalid_isbn(self, admin_client):
         resp = admin_client.post("/api/store/queue", json={"isbns": ["not-an-isbn"]})
@@ -431,11 +443,11 @@ class TestStoreQueue:
 class TestStoreModeRestores:
     """Sites 12-14 of the plan's call-site table.
 
-    G73 is the constraint that shapes this: `store.js` drops every returned
-    entry from the offline queue regardless of status, and only *indexes* the
-    statuses it lists. A status the server can return but the client does not
-    index is a book the next scan cannot match — so the two vocabularies must
-    agree, and the grep-level pin below is what keeps them agreeing.
+    G73 is the constraint that shapes this: the client indexes what the
+    server tells it, so a restored row must report its real `owned`. The
+    server-side contract (every status carries `code` and a bool `owned`)
+    is pinned in `TestStoreQueueContract`, which also reads the status
+    literals from `store.py` so a new status cannot go untested.
     """
 
     ISBN = "9780441013593"
@@ -509,30 +521,192 @@ class TestStoreModeRestores:
         assert result["title"] == "My Dune"
         assert result["owned"] is False
 
-    def test_store_js_indexes_every_status_the_server_can_return(self):
-        """The G73 pin, beside the existing `unreadable` reasoning.
 
-        Both halves are read from source rather than asserted by hand, so a
-        status added on either side without the other goes red here.
-        """
-        import re
-        from pathlib import Path
+class TestStoreQueueContract:
+    """The server half of the Store flush contract (G73): every result, on
+    every branch, echoes the string sent as `code` and answers `owned` as a
+    real bool. The client indexes what it is told, so these two fields are
+    what it reads back."""
 
-        root = Path(__file__).resolve().parents[1]
-        server = set(re.findall(
-            r'"status": "([a-z_]+)"', (root / "app" / "routers" / "store.py").read_text()))
-        client_src = (root / "static" / "js" / "store.js").read_text()
-        # Only the condition guarding the index write. A wider slice picks
-        # the status names up from the display counters above it
-        # (`restored++`, `unreadable++`), so dropping one from this `if`
-        # stayed green (`codex-M2`).
-        write = client_src.index("index[normalizeCode(res.isbn)] =")
-        block = client_src[client_src.rindex("if (", 0, write):write]
-        indexed = set(re.findall(r"res\.status === '([a-z_]+)'", block))
+    ISBN = "9780441013593"
+    OTHER = "9780553283686"
 
-        missing = server - indexed
-        assert not missing, (
-            "store.js indexes no branch for these statuses store.py can "
-            f"return, so a re-scan cannot match them: {sorted(missing)}"
-        )
-        assert "restored" in indexed
+    def _meta(self):
+        return {"title": "Found Book", "authors": "An Author"}
+
+    def _post(self, client, code, lookup):
+        with patch("app.routers.items_common._lookup_metadata", new=lookup), \
+             patch("app.routers.store.covers.download_cover",
+                   new=AsyncMock(return_value=None)):
+            resp = client.post("/api/store/queue", json={"isbns": [code]})
+        assert resp.status_code == 200
+        return resp.json()["results"][0]
+
+    def _found(self):
+        return AsyncMock(return_value=(self._meta(), "openlibrary", {}, False))
+
+    def _missing(self):
+        return AsyncMock(return_value=(None, None, {}, False))
+
+    def _trashed(self, db, owned):
+        from app.services import item_write
+
+        item_id = item_write.insert_item(
+            db, title="Old Row", isbn=self.ISBN, media_type="book",
+            owned=1 if owned else 0, wishlisted=not owned)
+        item_write.trash_item(db, item_id)
+        db.commit()
+
+    CASES = [
+        "unreadable", "existing_neither", "existing_owned",
+        "existing_wishlisted", "fresh", "fresh_restored", "bare",
+        "bare_restored",
+    ]
+    EXPECTED = {
+        "unreadable": "unreadable",
+        "existing_neither": "wishlisted",
+        "existing_owned": "duplicate",
+        "existing_wishlisted": "duplicate",
+        "fresh": "wishlisted",
+        "fresh_restored": "restored",
+        "bare": "added_bare",
+        "bare_restored": "restored",
+    }
+
+    @pytest.mark.parametrize("case", CASES)
+    def test_every_branch_echoes_code_and_a_bool_owned(self, admin_client, db, case):
+        code = self.ISBN
+        lookup = self._found()
+        if case == "unreadable":
+            code = "xyz"
+        elif case == "existing_neither":
+            _insert_item(db, title="Neither", isbn=self.ISBN, owned=0)
+            db.execute("COMMIT")
+        elif case == "existing_owned":
+            _insert_item(db, title="Mine", isbn=self.ISBN, owned=1)
+            db.execute("COMMIT")
+        elif case == "existing_wishlisted":
+            _insert_item(db, title="Wanted", isbn=self.ISBN, owned=0, wishlisted=True)
+            db.execute("COMMIT")
+        elif case == "fresh_restored":
+            self._trashed(db, owned=True)
+        elif case == "bare":
+            lookup = self._missing()
+        elif case == "bare_restored":
+            self._trashed(db, owned=False)
+            lookup = self._missing()
+
+        result = self._post(admin_client, code, lookup)
+
+        assert result["status"] == self.EXPECTED[case]
+        assert result["code"] == code
+        assert isinstance(result["owned"], bool)
+
+    def test_owned_matches_the_row_on_each_branch(self, admin_client, db):
+        _insert_item(db, title="Mine", isbn=self.ISBN, owned=1)
+        db.execute("COMMIT")
+        assert self._post(admin_client, self.ISBN, self._found())["owned"] is True
+        assert self._post(admin_client, "xyz", self._found())["owned"] is False
+
+    def test_the_cases_cover_every_status_store_py_can_return(self):
+        """Anti-drift: statuses are read from the source, so a status added
+        to the route without a case above goes red here."""
+        src = (Path(__file__).resolve().parents[1]
+               / "app" / "routers" / "store.py").read_text()
+        fresh = set(re.findall(r'restored_status\(\w+, "([a-z_]+)"\)', src))
+        assert "wishlisted" in fresh, "regex no longer sees the fresh-save status"
+        statuses = set(re.findall(r'status = "([a-z_]+)"', src)) | fresh
+        statuses |= set(re.findall(r'_result\(\s*\w+,\s*\w+,\s*"([a-z_]+)"', src))
+        assert {"wishlisted", "duplicate", "unreadable", "added_bare",
+                "restored"} <= statuses
+        assert statuses <= set(self.EXPECTED.values()), (
+            f"untested statuses: {sorted(statuses - set(self.EXPECTED.values()))}")
+
+
+class TestStoreQueueLostRace:
+    """Design decision 4: a save that loses the insert race to another flush
+    (a second device, or a retry after a dropped connection) answers as the
+    existing row, not a 500. The rival inserts on its own connection while
+    this flush is out at the metadata lookup — after the existing-row guard
+    has already missed. G115: the route catches broadly, so these assert on
+    the response body and the row count, never on a stub being called."""
+
+    ISBN = "9780765326355"
+
+    def _rival(self, owned, wishlisted):
+        from app.database import get_db
+        from app.services.item_write import insert_item
+
+        def side_effect(*args, **kwargs):
+            with get_db() as rival_db:
+                insert_item(rival_db, title="Rival", isbn=self.ISBN,
+                            media_type="book", owned=owned,
+                            wishlisted=wishlisted)
+            return metadata_holder[0]
+
+        metadata_holder = [None]
+        return side_effect, metadata_holder
+
+    def _flush(self, client, side_effect):
+        with patch("app.routers.items_common._lookup_metadata",
+                   new=AsyncMock(side_effect=side_effect)), \
+             patch("app.routers.store.covers.download_cover",
+                   new=AsyncMock(return_value=None)):
+            return client.post("/api/store/queue", json={"isbns": [self.ISBN]})
+
+    def _rows(self, db):
+        return db.execute(
+            "SELECT COUNT(*) FROM items WHERE isbn = ?", (self.ISBN,)
+        ).fetchone()[0]
+
+    def test_lookup_path_save_collision_answers_as_the_existing_row(
+            self, admin_client, db):
+        side_effect, holder = self._rival(owned=1, wishlisted=False)
+        holder[0] = ({"title": "Found Book", "authors": "An Author"},
+                     "openlibrary", {}, False)
+        # The bare fallback has its own IntegrityError recovery, so a
+        # collision that fell through to it would still answer correctly and
+        # hide a missing lookup-path handler. Make any fall-through red.
+        # `_save_item` writes through items_common's own binding, so the
+        # rival collision still happens.
+        with patch("app.routers.store.insert_item",
+                   side_effect=AssertionError(
+                       "lookup collision must not reach the bare fallback")):
+            resp = self._flush(admin_client, side_effect)
+        assert resp.status_code == 200
+        [result] = resp.json()["results"]
+        assert result["status"] == "duplicate"
+        assert result["owned"] is True
+        assert result["code"] == self.ISBN
+        assert self._rows(db) == 1
+
+    def test_bare_path_insert_collision_answers_as_the_existing_row(
+            self, admin_client, db):
+        side_effect, holder = self._rival(owned=1, wishlisted=False)
+        holder[0] = (None, None, {}, False)
+        resp = self._flush(admin_client, side_effect)
+        assert resp.status_code == 200
+        [result] = resp.json()["results"]
+        assert result["status"] == "duplicate"
+        assert result["owned"] is True
+        assert result["code"] == self.ISBN
+        assert self._rows(db) == 1
+
+    def test_rival_neither_row_gains_wishlist_membership(self, admin_client, db):
+        """G100: the lost-race answer is the existing-row guard's own block,
+        so a rival row that is neither owned nor wishlisted is promoted
+        exactly as the early guard would promote it."""
+        side_effect, holder = self._rival(owned=0, wishlisted=False)
+        holder[0] = (None, None, {}, False)
+        resp = self._flush(admin_client, side_effect)
+        assert resp.status_code == 200
+        [result] = resp.json()["results"]
+        assert result["status"] == "wishlisted"
+        assert result["owned"] is False
+        assert self._rows(db) == 1
+        from app.services import lists
+        row = db.execute(
+            f"SELECT {lists.WISHLISTED_SQL} AS w FROM items_live i WHERE i.isbn = ?",
+            (self.ISBN,),
+        ).fetchone()
+        assert row["w"]

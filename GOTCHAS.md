@@ -3542,6 +3542,13 @@ grep -rn "canonical_isbn_pair" app/services/audiobookshelf.py app/routers/hardco
   `#queue-section`, which hides itself the moment the flush drains the queue.
   Pinned by `tests/test_store.py`. Same shape, opposite call: the *provider*
   paths in `G72` drop rather than refuse, for this reason.
+- **The structural fix, for `/api/store/queue`:** every result now echoes
+  the string sent as `code` and carries the row's `owned`, and `store.js`
+  indexes and dequeues by them with **no per-status branch** — so a new
+  status can no longer be dropped unindexed there, and the status-list grep
+  pin was replaced by a server-side contract test
+  (`TestStoreQueueContract`). `e188c88` + `054ace7` (2026-11-10). Any other
+  route feeding a client that discards its copy should take the same shape.
 - **Status:** documented. Partially greppable — a route returning a status
   string with no matching branch in the JS that calls it — but the general
   rule needs judgement about who holds the input.
@@ -4734,6 +4741,18 @@ python -m pytest tests/test_scan_upc_enrichment.py -k "PromotesTheWishlist" -q
   something the user owns. The intent has to ride the insert
   (`_save_item(..., owned=False)`, `fd856e4`); a two-step writer added later
   reintroduces the bug with nothing to flag it.
+- **A broad catch in front of a fallback insert hides the guard that is
+  missing.** `/api/store/queue` had no guard beside the insert at all. A
+  rival row saved during the metadata lookup made `_save_item` raise
+  `IntegrityError`; the route's `except Exception` logged it as a failed
+  lookup and fell through to the bare-add fallback, which claimed the same
+  `UNIQUE(isbn, media_type)` slot and raised again — a 500 from the line that
+  exists so a scan is never lost. Catch `sqlite3.IntegrityError` **before**
+  the broad handler, and on every insert the fallback makes, and answer
+  through the early guard's own locked block (`_existing_row_result`) so the
+  promotion above applies there too. `148a2c2` (2026-11-10, plan
+  `store-flush-verdict` T2); `TestStoreQueueLostRace` makes the rival insert
+  from inside the lookup stub.
 - **Status:** documented. Not a lint candidate — which guards are related is
   route-specific.
 
@@ -6496,6 +6515,29 @@ grep -n 'FROM items\(_live\)\? WHERE' app/services/audiobookshelf.py   # …is i
 
 - **Status:** documented. A lint is possible (parse both column lists and
   the `desired` keys) but has not been built.
+
+## G156 — When a Store Mode E2E test waits for "titles cached"
+
+- **Rule:** seed at least one library row before loading `/store` in a test
+  that waits for the status line's `titles cached`. Seed the row the test is
+  *about* after the load if the test needs the device not to have it.
+- **Why:** `store.js` writes `N titles cached` only when the cached library
+  is non-empty; an empty one reads `No library data cached yet`. In the full
+  file the wait passes because an earlier test has already seeded rows into
+  the shared session server, so a new test is green in the suite and red
+  alone — and a G31 mutation run of just that test is red for the wrong
+  reason.
+- **Evidence:** plan `store-flush-verdict` T4 (`e52748c`, 2026-11-10): the
+  first mutation run of the new flush tests failed on the wait, not on the
+  verdict. `_store_loaded` in `tests/e2e/test_store_pwa.py` seeds a baseline
+  row once per server.
+- **Verify:**
+
+```bash
+python -m pytest tests/e2e/test_store_pwa.py -m e2e -q -k flush_reads_owned_row_as_owned
+```
+
+- **Status:** documented.
 
 ## Graveyard
 

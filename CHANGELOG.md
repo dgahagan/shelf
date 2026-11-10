@@ -6,6 +6,19 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.77.0] - 2026-11-10
+
+Store Mode could tell you to put a book back that you meant to buy. After a
+sync, a book that was only on your wishlist could show as Owned, and a book
+scanned by its 10-digit ISBN stayed in the sync queue for good, sent again on
+every sync. Store Mode now trusts what Shelf says about each book, and the
+verdict card changes to that answer as soon as an online scan syncs. This
+release also carries four community contributions. Two are from
+[@litong5969](https://github.com/litong5969): Chinese ISBNs looked up in NeoDB,
+and Browse translated into Simplified Chinese. Two are from
+[@vjandrea](https://github.com/vjandrea): the item page translated into
+Italian, and support for regional and script variants of a language.
+
 ### Added
 
 - **Chinese ISBNs are looked up in NeoDB first.** An ISBN in a Chinese-language
@@ -17,6 +30,37 @@ All notable changes to Shelf are documented here. The format follows
   filled in, in the book's own script. Series are not, because NeoDB's series
   field is the publisher's collection. A book NeoDB does not hold falls through
   to the other sources as before.
+  Contributed by [@litong5969](https://github.com/litong5969) in
+  [#179](https://github.com/dgahagan/shelf/pull/179).
+- **The item page is translated into Italian**: details, copies, tags,
+  reading status, related media and cover search, plus the messages those
+  panels return. Contributed by [@vjandrea](https://github.com/vjandrea) in
+  [#176](https://github.com/dgahagan/shelf/pull/176).
+- **Browse is translated into Simplified Chinese**, as is the Audible import
+  label. Contributed by [@litong5969](https://github.com/litong5969) in
+  [#178](https://github.com/dgahagan/shelf/pull/178).
+
+### Changed
+
+- **A translation can now ship as a regional or script variant**, such as
+  `zh_Hans` or `pt_BR`, and the browser's language is matched to it: `zh-CN`
+  finds Simplified Chinese, and `zh-TW` or `zh-HK` will find Traditional
+  Chinese once it ships. Simplified Chinese moved from `zh` to `zh_Hans`; a
+  saved choice of `zh` still resolves to it. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#177](https://github.com/dgahagan/shelf/pull/177).
+
+### Fixed
+
+- **Store Mode no longer shows a wishlisted book as Owned after a sync.** The
+  sync now reports each book's real ownership, and the verdict card updates
+  to Shelf's answer as soon as an online scan syncs.
+- **An ISBN-10 scanned in Store Mode leaves the queue once it syncs.** It used
+  to stay queued and be sent again on every sync.
+- **A Store Mode queue longer than 50 scans syncs in one go**, in batches,
+  instead of needing a tap per 50.
+- **Two syncs adding the same book at once no longer fail.** The one that
+  loses answers with the book the other added.
 
 ## [0.76.0] - 2026-11-09
 
@@ -5582,6 +5626,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.77.0]: https://github.com/dgahagan/shelf/releases/tag/v0.77.0
 [0.76.0]: https://github.com/dgahagan/shelf/releases/tag/v0.76.0
 [0.75.0]: https://github.com/dgahagan/shelf/releases/tag/v0.75.0
 [0.74.1]: https://github.com/dgahagan/shelf/releases/tag/v0.74.1

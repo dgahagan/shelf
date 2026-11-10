@@ -79,20 +79,21 @@ Library, and thinner otherwise.
   Nationalbibliothek, French ones to the BnF, Italian ones to Italy's national
   network, Dutch ones to
   the Koninklijke Bibliotheek, Hungarian ones to OSZK NEKTÁR and Portuguese
-  ones to PORBASE. Other
+  ones to PORBASE, and Chinese-language ones to NeoDB. Other
   countries deserve the same.
 - **A translated interface.** In progress. The translation machinery and the
   first catalog have landed, and each user can pick a language or follow the
   browser. Other languages come next. The page shell (navigation, sign-in,
-  setup, the Account dialog) and Browse are translated; the other feature pages
+  setup, the Account dialog), Browse and the item page are translated; the other feature pages
   follow area by area. Until then it sits behind `SHELF_I18N`, off by default.
 
 ## Import and migration
 
-**Planned.** Goodreads, StoryGraph, LibraryThing, Libib, CSV and a portable
-archive are supported today. Next is an importer for an **Audible/Libation
-library export**, so an audiobook collection can be catalogued without retyping
-it. Shelf stores the catalogue record, never the audio.
+**In progress.** Goodreads, StoryGraph, LibraryThing, Libib, CSV, a portable
+archive and an **Audible library export** (audible-cli or Libation, since
+0.76.0) are supported today. Next is looking up an audiobook's details and cover
+by its ASIN, so an imported title fills in what the export leaves out. Shelf
+stores the catalogue record, never the audio.
 
 ## Reading life
 
@@ -119,10 +120,10 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.76.0](https://github.com/dgahagan/shelf/releases/tag/v0.76.0) | **Audible library import.** Upload an export from audible-cli or Libation under Settings → Data, and each title becomes an audiobook with its narrator, length and ASIN; re-imports add nothing twice, an audiobook already synced from Audiobookshelf is matched instead of duplicated, and the print copy you own shows **Also available as: Audiobook**. Also French ISBNs looked up in the BnF, contributed by @larsvilhuber, and the page shell in Simplified Chinese, contributed by @litong5969. |
 | [0.75.0](https://github.com/dgahagan/shelf/releases/tag/v0.75.0) | **Buy links.** Wishlisted books and the missing volumes of a series can show Bookshop.org and Amazon links carrying your own affiliate tags — Shelf earns nothing. Enter a tag under Settings → Library → Buy links; nothing shows until you do. Also the first translated pages: the page shell in Italian, contributed by @vjandrea, behind `SHELF_I18N=on`. |
 | [0.74.0](https://github.com/dgahagan/shelf/releases/tag/v0.74.0) | **API tokens for dashboards.** Make a read-only token in your account menu and point Homepage, Homarr or Home Assistant at `/api/v1/stats` for item counts, loans, value and upcoming releases. Tokens never act above viewer; admins can revoke anyone's from Settings → Users. |
 | [0.73.0](https://github.com/dgahagan/shelf/releases/tag/v0.73.0) | **Release radar.** Watch a series — or every complete one at once — and Shelf checks Hardcover daily for newly announced volumes. An Upcoming releases page, linked from Series, lists them soonest first with + Wishlist, Dismiss and Stop watching, and a daily digest goes to the notification URL you already use for loans. |
-| [0.72.0](https://github.com/dgahagan/shelf/releases/tag/v0.72.0) | **Duplicates.** Admins get a page of records filed twice — by ISBN or barcode, or by title and author for records with no identifier — side by side. Pick the one to keep and merge: every physical copy, tag, loan and audit entry comes across, so two records of one book become one record with two copies. **Not duplicates** hides a group, and Restore brings it back. Part of Collector tools. |
 | [0.71.0](https://github.com/dgahagan/shelf/releases/tag/v0.71.0) | **Shelf audits.** Start an audit of a shelf or the whole library from Scan → Inventory, scan from any device (several at once, or after a reload), and finish for a report: found, moved here, seen elsewhere, on loan, missing and unexpected. Mark the missing copies; a Found button or the next scan of that copy clears the mark. Part of Collector tools. |
 
 ---

@@ -198,10 +198,10 @@ manage their own API tokens, from the account menu — not from Settings.
 
 - Metadata source order (a national bibliography where one covers the ISBN —
   DNB for German ISBNs, BnF for French ones, SBN for Italian ones, KB for Dutch
-  ones → Open Library →
+  ones, NeoDB for Chinese-language ones → Open Library →
   Hardcover → Google Books) is fixed; see [Architecture](architecture.md). National
   routing follows the ISBN's registration group and has no on/off switch, for
-  SBN, DNB, BnF or KB.
+  SBN, DNB, BnF, KB or NeoDB.
 - Outbound API pacing per host is fixed to each provider's published limit.
 - Media types are a fixed list: book, audiobook, eBook, magazine,
   DVD / Blu-ray, vinyl, cassette, CD, digital music, comic / graphic novel,

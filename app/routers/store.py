@@ -7,6 +7,7 @@ offline for unknown books queue locally and are flushed to /api/store/queue
 when the device is back online.
 """
 import logging
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -95,6 +96,48 @@ async def store_data(_=Depends(require_role("viewer")),
     }
 
 
+def _result(raw, isbn, status, owned, **extra):
+    """One flush result. `code` is the batch element exactly as received, so
+    the client can drop precisely what it sent; `owned` is always a bool."""
+    return {"isbn": isbn, "code": raw, "status": status,
+            "owned": bool(owned), **extra}
+
+
+def _existing_row_result(raw, isbn13):
+    """Answer a code whose book is already in the collection, or None.
+
+    A row that is neither owned nor wishlisted gains wishlist membership; the
+    scan means "I want this".
+    """
+    from app.routers import items_common
+
+    newly_wishlisted = False
+    # G18 — the guard read and the wishlist write it may trigger share one
+    # connection and one write lock, BEGIN IMMEDIATE first, above the guard
+    # SELECT: a row inserted between an unlocked read and a later write would
+    # be acted on blind.
+    with get_db() as db:
+        db.execute("BEGIN IMMEDIATE")
+        existing = db.execute(
+            f"SELECT i.id, i.title, i.owned, {lists.WISHLISTED_SQL} AS wishlisted "
+            "FROM items_live i WHERE i.isbn = ? AND i.media_type = 'book'",
+            (isbn13,),
+        ).fetchone()
+        if existing and not existing["owned"] and not existing["wishlisted"]:
+            # No `logger.*`/`_log_scan` in here — G3.
+            update_item_fields(db, existing["id"], {"wishlisted": True})
+            newly_wishlisted = True
+    if not existing:
+        return None
+    if newly_wishlisted:
+        items_common._log_scan(isbn13, "book", "wishlisted", existing["id"], "wishlist")
+        status = "wishlisted"
+    else:
+        status = "duplicate"
+    return _result(raw, isbn13, status, existing["owned"],
+                   title=existing["title"], item_id=existing["id"])
+
+
 @router.post("/api/store/queue")
 async def store_queue(request: Request, _=Depends(require_role("editor")),
                       __=Depends(require_feature("store"))):
@@ -148,44 +191,16 @@ async def store_queue(request: Request, _=Depends(require_role("editor")),
                         source="store_queue",
                     )
                 items_common._log_scan(label, "book", "unreadable", item_id, "wishlist")
-                results.append({
-                    "isbn": raw, "status": "unreadable",
-                    "title": f"Unreadable barcode — {label}", "item_id": item_id,
-                })
+                results.append(_result(
+                    raw, raw, "unreadable", False,
+                    title=f"Unreadable barcode — {label}", item_id=item_id,
+                ))
                 continue
             isbn13 = pair[0]
 
-            # G18 — the guard read and the wishlist write it may trigger
-            # share one connection and one write lock, BEGIN IMMEDIATE first,
-            # above the guard SELECT: a row inserted between an unlocked read
-            # and a later write would be acted on blind.
-            newly_wishlisted = False
-            with get_db() as db:
-                db.execute("BEGIN IMMEDIATE")
-                existing = db.execute(
-                    f"SELECT i.id, i.title, i.owned, {lists.WISHLISTED_SQL} AS wishlisted "
-                    "FROM items_live i WHERE i.isbn = ? AND i.media_type = 'book'",
-                    (isbn13,),
-                ).fetchone()
-                if existing and not existing["owned"] and not existing["wishlisted"]:
-                    # Neither owned nor wishlisted — the scan means "I want
-                    # this", so the flush adds membership rather than
-                    # reporting a no-op duplicate (no `logger.*`/`_log_scan`
-                    # in here — G3).
-                    update_item_fields(db, existing["id"], {"wishlisted": True})
-                    newly_wishlisted = True
-            if existing:
-                if newly_wishlisted:
-                    items_common._log_scan(isbn13, "book", "wishlisted", existing["id"], "wishlist")
-                    results.append({
-                        "isbn": isbn13, "status": "wishlisted",
-                        "title": existing["title"], "item_id": existing["id"],
-                    })
-                else:
-                    results.append({
-                        "isbn": isbn13, "status": "duplicate",
-                        "title": existing["title"], "item_id": existing["id"],
-                    })
+            existing_result = _existing_row_result(raw, isbn13)
+            if existing_result is not None:
+                results.append(existing_result)
                 continue
 
             metadata, source, hc_ids = None, None, {}
@@ -225,8 +240,8 @@ async def store_queue(request: Request, _=Depends(require_role("editor")),
                         logger.warning("Store queue: cover download failed for %s", isbn13)
                     status = restore_report.restored_status(item_id, "wishlisted")
                     items_common._log_scan(isbn13, "book", status, item_id, "wishlist")
-                    entry = {"isbn": isbn13, "status": status,
-                             "title": metadata["title"], "item_id": item_id}
+                    entry = _result(raw, isbn13, status, False,
+                                    title=metadata["title"], item_id=item_id)
                     if status == "restored":
                         # The stored row, and its real ownership — store.js
                         # must not infer `owned` from the status, because a
@@ -242,20 +257,38 @@ async def store_queue(request: Request, _=Depends(require_role("editor")),
                         entry.update(title=card["title"], owned=bool(owned))
                     results.append(entry)
                     continue
+                except sqlite3.IntegrityError:
+                    # Lost the insert race: another flush (a second device, a
+                    # retry after a dropped connection) saved this book while
+                    # the lookup was out. Answer as the row it saved, through
+                    # the guard's own locked read-and-promote block (G100). A
+                    # rival already trashed again leaves no row: re-raise.
+                    lost = _existing_row_result(raw, isbn13)
+                    if lost is None:
+                        raise
+                    results.append(lost)
+                    continue
                 except Exception:
                     logger.exception("Store queue: save failed for %s, falling back to bare add", isbn13)
 
             # Bare fallback — never lose a scan
-            with get_db() as db:
-                item_id = insert_item(
-                    db,
-                    title=f"Unknown — ISBN {isbn13}",
-                    isbn=isbn13,
-                    media_type="book",
-                    owned=0,
-                    wishlisted=True,
-                    source="store_queue",
-                )
+            try:
+                with get_db() as db:
+                    item_id = insert_item(
+                        db,
+                        title=f"Unknown — ISBN {isbn13}",
+                        isbn=isbn13,
+                        media_type="book",
+                        owned=0,
+                        wishlisted=True,
+                        source="store_queue",
+                    )
+            except sqlite3.IntegrityError:
+                lost = _existing_row_result(raw, isbn13)  # lost race, as above
+                if lost is None:
+                    raise
+                results.append(lost)
+                continue
             status = restore_report.restored_status(item_id, "wishlisted")
             items_common._log_scan(isbn13, "book", status, item_id, "wishlist")
             if status == "restored":
@@ -264,11 +297,10 @@ async def store_queue(request: Request, _=Depends(require_role("editor")),
                     owned = db.execute(
                         "SELECT owned FROM items_live WHERE id = ?", (item_id,)
                     ).fetchone()["owned"]
-                results.append({"isbn": isbn13, "status": "restored",
-                                "title": card["title"], "item_id": item_id,
-                                "owned": bool(owned)})
+                results.append(_result(raw, isbn13, "restored", owned,
+                                       title=card["title"], item_id=item_id))
             else:
-                results.append({"isbn": isbn13, "status": "added_bare",
-                                "item_id": item_id})
+                results.append(_result(raw, isbn13, "added_bare", False,
+                                       item_id=item_id))
 
     return {"results": results}

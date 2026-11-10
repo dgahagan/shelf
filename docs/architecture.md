@@ -1465,7 +1465,17 @@ its queue on the response, so a bare refusal would destroy the scan. A code
 that fails the value stage is therefore saved the same way a failed metadata
 lookup is — a bare wishlist row with `isbn` NULL and the raw code (bounded to
 32 characters) in the title — and returned as `unreadable` for the page to
-count. Precaching is cache-first, so
+count. The other half of the contract is what the client may do with an
+answer. Every result, on every branch, echoes the string the client sent as
+`code` and carries the row's real `owned` as a boolean; the page indexes each
+result under `code` and the ISBN-13 and drops it from the queue by `code`,
+with no per-status branch, so a status added later cannot be silently
+mis-indexed and an ISBN-10 is matched by what was sent. One flush is in flight
+at a time: a scan made meanwhile joins the queue, and the flush drains it in
+sequential batches of 50, stopping on an empty queue, a failed request, or a
+round that removed nothing. A save that loses the insert race to another
+flush answers as the existing row, through the same locked read the
+existing-row guard uses, rather than failing. Precaching is cache-first, so
 the cache name has to change whenever a precached file does — `SW_VERSION` is
 generated from a digest of the precache contents by `make css` rather than
 typed by hand (see `docs/development.md` § Service worker versioning).
