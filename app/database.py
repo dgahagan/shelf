@@ -400,6 +400,11 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
         SELECT 'feature.buy_links', '0'
         WHERE EXISTS (SELECT 1 FROM settings
                       WHERE key = 'feature.valuation' AND value = '0')"""),
+    # Migration-only, like the 37/38 note: the column is NOT in SCHEMA. Not
+    # unique on purpose (G71): Audiobookshelf can hold one ASIN in two
+    # libraries. An edition identifier like isbn/upc.
+    (56, "Add items ASIN", "ALTER TABLE items ADD COLUMN asin TEXT"),
+    (57, "Index items ASIN", "CREATE INDEX IF NOT EXISTS idx_items_asin ON items(asin)"),
 )
 
 MIGRATION_TABLES = """

@@ -151,7 +151,7 @@ key material.
 - Checkout system — lend to borrowers and track who has what, with overdue badges and an optional daily reminder digest (ntfy/webhook)
 - Wishlist — a list of what you want, alongside your catalog; an item can also be neither owned nor wished for, keeping its reading history
 - Public share links — read-only wishlist or collection pages for gift ideas, revocable anytime
-- Goodreads, StoryGraph, LibraryThing & Libib import — upload your export as-is (LibraryThing and Libib in beta); format auto-detected, covers fetched automatically
+- Goodreads, StoryGraph, LibraryThing, Libib & Audible (audible-cli or Libation) import — upload your export as-is (LibraryThing and Libib in beta); format auto-detected, covers fetched automatically
 - Custom tags — free-form tags (`signed`, `first-edition`, …) on the item and edit pages or applied in bulk from Browse, with a tag filter and an optional Tags column on Browse, a tag manager in Settings (rename, scope, delete, counts), and default tags for a scanning session on Scan, Shelf Fill or Photo Intake
 - Bulk editing — select items in Browse to move them, change type or status, add to or remove from the wishlist, set and clear series, or add and remove a tag in one go
 - Valuation report — location-grouped, print-ready collection value report for insurance (via ISBNdb)

@@ -6,19 +6,94 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.76.0] - 2026-11-09
+
+An Audible library lived outside Shelf. The only way in was through
+Audiobookshelf, and only for titles you had downloaded, so a purchase you had
+not downloaded was missing and an audiobook bought alongside a paperback never
+met it. Shelf now imports an Audible library export directly, keeps each
+audiobook's ASIN (Audible's product id), and links each audiobook to the print
+copy you already own. This release also carries three community contributions:
+French ISBNs looked up in the Bibliothèque nationale de France, by
+[@larsvilhuber](https://github.com/larsvilhuber); Browse translated into
+Italian, by [@vjandrea](https://github.com/vjandrea); and the page shell in
+Simplified Chinese, by [@litong5969](https://github.com/litong5969).
+
 ### Added
 
-- **Browse speaks Italian too.** The translated interface now covers Browse:
-  its filters and their counts, sorting, the bulk action bar, the grid and list
-  views and the filter chips. It is still behind `SHELF_I18N=on`.
+- **Import your Audible library.** Under Settings → Data → Import, upload an
+  export from [audible-cli](https://github.com/mkb79/audible-cli)
+  (`audible library export`, tab- or comma-separated) or
+  [Libation](https://github.com/rmcrackan/Libation) (CSV, including the
+  semicolon-separated files a German or Italian computer writes). Shelf detects
+  which tool wrote the file. Each title becomes an audiobook with its narrators,
+  length, description, publication year, first series and its position, and
+  ASIN. Finished titles are marked read, and an audible-cli title you are partway
+  through is marked reading. Shelf never signs in to Audible.
+- **Re-importing adds nothing twice.** A title whose ASIN you already have is
+  skipped. An audiobook you already have with no ASIN, such as one synced from
+  Audiobookshelf, is matched on title and author instead and **gains the ASIN**,
+  even in Skip mode. The summary says how many were matched that way.
+- **The print copy shows the audiobook.** After an import, a print book with the
+  same title and first author shows **Also available as: Audiobook**.
+- **Listening history is not ownership.** Libation titles marked Audible Plus or
+  absent from last scan import as not owned and never go on the wishlist.
+  Podcast episodes are refused row by row, with a line naming each one.
+- **Covers from audible-cli.** Its cover link is fetched as the cover when Fetch
+  covers is ticked. Libation exports no cover link, so its rows get no cover
+  from the import.
+- **The ASIN where you look for it.** It shows under an audiobook's Integration
+  IDs, Browse search finds it, and you can set, change or clear it on an
+  audiobook's edit form. A malformed one is refused with the rule it broke, and
+  nothing is saved. Merging two items keeps it, and the portable archive
+  carries it.
+- **"Audible import" in Browse's Source filter**, so you can see everything an
+  import created.
 - **French ISBNs are looked up in the BnF first.** An ISBN that starts 978-2 or
   979-10 is now checked against the Bibliothèque nationale de France catalogue
   before Open Library, Hardcover and Google Books. It needs no API key, so a
   French book still resolves when Google Books is rate-limiting a shared
   connection. Title, subtitle, author, publisher, year, page count and language
-  are filled in; series are not, because BnF records do not separate a real
+  are filled in. Series are not, because BnF records do not separate a real
   series from a publisher's collection. Quebec and Belgian books in the same
   group that BnF does not hold fall through to the other sources as before.
+  Contributed by [@larsvilhuber](https://github.com/larsvilhuber) in
+  [#173](https://github.com/dgahagan/shelf/pull/173).
+- **Browse speaks Italian too.** The translated interface now covers Browse:
+  its filters and their counts, sorting, the bulk action bar, the grid and list
+  views and the filter chips. It is still behind `SHELF_I18N=on`.
+  Contributed by [@vjandrea](https://github.com/vjandrea) in
+  [#175](https://github.com/dgahagan/shelf/pull/175).
+- **Shelf speaks Simplified Chinese, starting with the page shell.** The
+  navigation, sign-in, first-run setup and the Account dialog are translated,
+  and 简体中文 appears under Account → Profile → Language. The rest of the interface
+  stays in English for now, and the translation is behind `SHELF_I18N=on` like
+  Italian. Contributed by [@litong5969](https://github.com/litong5969) in
+  [#171](https://github.com/dgahagan/shelf/pull/171).
+
+### Changed
+
+- **Audiobookshelf sync records the ASIN, and no longer treats it as an ISBN.**
+  An Audiobookshelf item whose record carries an ASIN gains it in Shelf, so the
+  first sync after upgrading may count those items as **Updated**. Later syncs
+  count them as Unchanged again. If Audiobookshelf has no ASINs, which depends on
+  its metadata provider, nothing changes. An item that has only an ASIN now
+  syncs without an ISBN, instead of logging the ASIN as an invalid ISBN. An ASIN
+  you set yourself, or one an import stamped, is kept when Audiobookshelf has
+  none.
+- **The Related media panel says what Shelf links by itself.** It used to say
+  Shelf never links formats by title, but Shelf did, and an Audible import now
+  does too. It now says that an audiobook or ebook is linked to its print copy
+  when the title and first author match.
+- **An item's footer names its source the way Browse does.** "via
+  audible_import" now reads "via Audible import", and "via openlibrary" reads
+  "via Open Library".
+
+**Deliberately not in this release:** no "open on Audible" link, because an
+ASIN does not say which Audible marketplace it belongs to, and a link to the
+wrong one is a dead page. Shelf's own CSV export does not carry the ASIN, just
+as it does not carry the narrator or length; the portable archive is the
+lossless copy.
 
 ## [0.75.0] - 2026-11-02
 
@@ -5495,6 +5570,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.76.0]: https://github.com/dgahagan/shelf/releases/tag/v0.76.0
 [0.75.0]: https://github.com/dgahagan/shelf/releases/tag/v0.75.0
 [0.74.1]: https://github.com/dgahagan/shelf/releases/tag/v0.74.1
 [0.74.0]: https://github.com/dgahagan/shelf/releases/tag/v0.74.0

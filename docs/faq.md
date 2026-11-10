@@ -65,9 +65,10 @@ the cover, and reads the printed ISBN if the back cover is showing.
 Yes: admin / editor / viewer roles on one shared library. Per-user reading
 tracking and per-household libraries are planned.
 
-**Can I import from Goodreads / StoryGraph / LibraryThing / Libib?**
-Yes — all four: upload the export as-is and the format is detected. The
-LibraryThing and Libib importers are labelled beta. See
+**Can I import from Goodreads / StoryGraph / LibraryThing / Libib / Audible?**
+Yes — all five: upload the export as-is and the format is detected. The
+LibraryThing and Libib importers are labelled beta. Audible comes in through
+an export from audible-cli or Libation; Shelf never signs in to Audible. See
 [Import & export](user-guide/import-and-export.md#reading-trackers-and-catalogue-apps).
 Anything else: CSV with at least a `title` column.
 

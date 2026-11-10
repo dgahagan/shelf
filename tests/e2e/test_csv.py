@@ -255,3 +255,58 @@ def test_import_card_lists_created_locations(live_server, authed_page):
             conn.commit()
         finally:
             conn.close()
+
+
+def test_audible_cli_import_names_format_and_matched(live_server, authed_page):
+    """An audible-cli TSV is named on the import card, and a row whose title
+    and author match an existing ASIN-less audiobook is counted as matched
+    rather than imported. Titles are unique: the server is shared (G34)."""
+    seed_title = "Zephyrine Chronicles Seed Audiobook"
+    new_title = "Zephyrine Chronicles Brand New Audiobook"
+    insert_item(
+        live_server["data_dir"], title=seed_title, authors="Quillon Marsh",
+        media_type="audiobook", isbn="9789100000017",
+    )
+    header = [
+        "asin", "title", "subtitle", "extended_product_description", "authors",
+        "narrators", "series_title", "series_sequence", "genres",
+        "runtime_length_min", "is_finished", "percent_complete", "rating",
+        "num_ratings", "date_added", "release_date", "cover_url", "purchase_date",
+    ]
+    def row(asin, title):
+        r = dict.fromkeys(header, "")
+        r.update(asin=asin, title=title, authors="Quillon Marsh",
+                 narrators="Some Narrator", runtime_length_min="600",
+                 is_finished="False", percent_complete="0")
+        return "\t".join(r[c] for c in header)
+    content = "\n".join(
+        ["\t".join(header), row("B0ZEPHYR01", seed_title), row("B0ZEPHYR02", new_title)]
+    ) + "\n"
+
+    errors = []
+    authed_page.on("pageerror", lambda e: errors.append(str(e)))
+    authed_page.goto(f"{live_server['url']}/settings")
+    authed_page.wait_for_load_state("networkidle")
+    authed_page.locator("button:has-text('Data')").click()
+
+    file_input = authed_page.locator("input[type=file][accept*='.csv']")
+    expect(file_input).to_be_visible()
+    file_input.set_input_files({
+        "name": "audible_library.tsv",
+        "mimeType": "text/tab-separated-values",
+        "buffer": content.encode(),
+    })
+    form = file_input.locator("xpath=ancestor::form")
+    with authed_page.expect_response("**/api/import/csv") as resp_info:
+        form.locator("button[type=submit]").first.click()
+    result = resp_info.value.json()
+    assert result["format"] == "audible_cli", result
+    assert result["matched"] == 1, result
+    assert result["imported"] == 1, result
+
+    summary = authed_page.get_by_test_id("csv-import-result")
+    expect(summary).to_contain_text("Detected audible-cli export")
+    expect(summary).not_to_contain_text("Audible_cli")
+    expect(authed_page.get_by_test_id("csv-import-matched")).to_have_text("1")
+    expect(summary).to_contain_text("Imported: 1")
+    assert errors == [], errors

@@ -5,7 +5,7 @@ All under Settings → Data. Four mechanisms, each for a different job.
 | | Best for | Covers included? | Credentials/users? |
 |---|---|---|---|
 | **CSV** | Spreadsheets, other apps, quick bulk entry | No (re-fetched) | No |
-| **Reading tracker & catalogue app import** (Goodreads, StoryGraph, LibraryThing, Libib) | Migrating a reading history or another catalogue | No (re-fetched) | No |
+| **Reading tracker & catalogue app import** (Goodreads, StoryGraph, LibraryThing, Libib, Audible via audible-cli or Libation) | Migrating a reading history, another catalogue or an Audible library | No (re-fetched) | No |
 | **Portable archive** | Moving Shelf to a new server, giving someone your library | **Yes** | No |
 | **Database backup** | Disaster recovery of *this* instance | No | Yes (hashed/encrypted) |
 
@@ -42,8 +42,8 @@ the file at all.
 
 ## CSV import
 
-Upload a CSV — or a tab-separated file (`.tsv`, `.txt`); Shelf tells the two
-apart from the header row. Headers are matched case-insensitively (spaces →
+Upload a CSV — or a tab- or semicolon-separated file (`.tsv`, `.txt`);
+Shelf tells them apart from the header row. Headers are matched case-insensitively (spaces →
 underscores), so Shelf's own export round-trips, and any file with at least a
 `title` column imports. The file must be UTF-8: a file in another encoding is
 refused whole, with a message saying how to re-save it, rather than imported
@@ -55,7 +55,8 @@ ISBN, and by title + author + media type when it doesn't — so games, DVDs and
 ISBN-less books are recognised as duplicates too, and re-importing your own
 export adds nothing. A row without an ISBN is only ever matched against other
 items that also lack one: it will not be folded into an edition you own that
-*does* have an ISBN, because those are different copies.
+*does* have an ISBN, because those are different copies. A row from an
+Audible export matches on its ASIN first — see [Audible](#audible).
 
 **ISBN form doesn't matter.** `0441172717`, `9780441172719` and
 `978-0-441-17271-9` are the same book, so a file carrying any of them matches
@@ -163,7 +164,8 @@ is not listed. Re-importing Shelf's own export lists only `source`.
 ## Reading trackers and catalogue apps
 
 Export from Goodreads (My Books → Import and export), StoryGraph (Manage
-account → Export), LibraryThing or Libib, and upload the file **as-is** to
+account → Export), LibraryThing, Libib or your Audible library (see
+[Audible](#audible) below), and upload the file **as-is** to
 the same import card. The format is auto-detected from the headers, and the
 summary names the format it detected.
 
@@ -222,8 +224,53 @@ row imports wrongly, the card links to
 include your file's header row.
 
 In **Update** mode a reading-tracker or catalogue-app file — Goodreads,
-StoryGraph, LibraryThing or Libib — always sets owned and wishlist state on
-the items it matches.
+StoryGraph, LibraryThing, Libib or Audible — always sets owned and wishlist
+state on the items it matches.
+
+### Audible
+
+Shelf never signs in to Audible. Export your
+library with one of two free tools, then upload the file:
+
+- **audible-cli**: `audible library export` writes a tab-separated file;
+  add `--format csv` for a comma-separated one. Both work.
+- **Libation**: export your library to **CSV**. Libation writes the list
+  separator of the computer it runs on, so a file from a German or Italian
+  computer is separated by semicolons. That works too.
+
+What is imported:
+
+- every row becomes an **audiobook**, with title, subtitle, authors,
+  narrators, length, description, the year it was published, the **first**
+  series and its position, and the title's **ASIN** (Audible's product id).
+  A series position that is not a plain number, such as `1-3`, is left
+  empty rather than guessed.
+- finished titles are marked read. An audible-cli title you are partway
+  through is marked reading.
+- audible-cli's cover link is fetched as the cover when **Fetch covers** is
+  ticked. Libation exports no cover link, so its rows get no cover from the
+  import.
+- Libation titles marked **Audible Plus** or **absent from last scan** are
+  listening history, not something you own: they import as not owned and
+  never go on the wishlist.
+- **Podcasts are refused row by row.** A Libation row that is not a book is
+  a row error naming its content type; the rest of the file imports.
+
+Not imported, and listed under **Not imported**: language, purchase and
+added dates, ratings, categories and genres, and Libation's own tags and
+cover ids.
+
+**Re-importing matches on the ASIN**, so the same file twice adds nothing
+the second time. An audiobook you already have with no ASIN — one synced
+from [Audiobookshelf](integrations.md#audiobookshelf), say — matches on
+title and author instead, and **gains the ASIN** even in Skip mode; the
+summary says how many were matched that way. A print book never matches an
+audiobook. After the import, the print edition's page shows **Also
+available as: Audiobook** for each title that matches one.
+
+In **Update** mode an Audible file fills narrator, length, description,
+subtitle and ASIN only where the item has none, and never overwrites what is
+there.
 
 ### Cleaning up a wishlist after a Goodreads import
 
@@ -306,7 +353,9 @@ carried Trash, imports with every item live.
 A row whose ISBN isn't valid — an archive exported before Shelf stopped
 storing Audiobookshelf ASINs as ISBNs will carry some — is imported
 **without** its ISBN and listed in the import's report, so nothing is
-silently dropped. A row with a media type or platform Shelf doesn't know is
+silently dropped. An invalid ASIN is treated the same way. The archive
+carries each audiobook's ASIN; an archive from an older Shelf has none, and
+imports without it. A row with a media type or platform Shelf doesn't know is
 refused and named in the same report; the rest of the archive still applies.
 An item is checked in full before any of it is written, so a refused item is
 skipped whole — it never leaves a half-written record, copy or location behind

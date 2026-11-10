@@ -74,3 +74,13 @@ def test_unknown_source_values_remain_representable(viewer_client, db):
     db.commit()
     options = _source_options(viewer_client.get("/browse?source_filter=some_future_sync").text)
     assert options["some_future_sync"] == "Some Future Sync (0)"
+
+
+def test_source_dropdown_labels_an_audible_import(viewer_client, db):
+    _insert_item(db, title="Hail Mary", isbn=None, media_type="audiobook",
+                 source="audible_import", asin="B0D1234567")
+    db.commit()
+
+    options = _source_options(viewer_client.get("/browse").text)
+
+    assert options["audible_import"] == "Audible import (1)"

@@ -1,5 +1,5 @@
 """Normalizers for CSV exports from reading-tracker and catalogue apps
-(Goodreads, StoryGraph, LibraryThing, Libib).
+(Goodreads, StoryGraph, LibraryThing, Libib, audible-cli, Libation).
 
 The import endpoint lowercases headers and replaces spaces with underscores
 before these functions see a row, so keys here match that convention
@@ -29,6 +29,10 @@ Each normalizer returns the shelf-native shape consumed by the CSV import:
                                        # the new item's primary copy (see add_copy)
         "dropped": list[tuple[str, str]],  # Libib only — per-row (column, reason)
                                             # drops the route folds into the response
+        "subtitle", "narrator", "description": str | None,  # Audible only
+        "duration_mins": int | None,  # Audible only
+        "asin": str | None,           # Audible only — validated 10-char ASIN
+        "cover_url": str | None,      # audible-cli only — a cover-queue hint
         "tags": list[str],           # generic, LibraryThing and Libib emit it;
                                       # [] when absent/blank. Goodreads/StoryGraph
                                       # emit no "tags" key at all, so callers must
@@ -42,6 +46,7 @@ import unicodedata
 
 from app import config
 from app.services import bib_normalize
+from app.services import isbn as isbn_svc
 from app.services import tags as tags_svc
 from app.services import upc as upc_svc
 from app.services.national import SEARCH_LANGS
@@ -50,32 +55,37 @@ GOODREADS = "goodreads"
 STORYGRAPH = "storygraph"
 LIBRARYTHING = "librarything"
 LIBIB = "libib"
+AUDIBLE_CLI = "audible_cli"
+LIBATION = "libation"
 GENERIC = "generic"
 
 
 def choose_delimiter(first_line: str) -> str:
     """Pick the CSV/TSV delimiter from the file's first (header) line.
 
-    Tab when the line holds more tabs than commas, counting only those
-    outside a double-quoted field; comma otherwise, including an empty line
-    or a tie. LibraryThing's classic export is tab-separated, and one of
-    its column names, "Author (First, Last)", carries an unquoted comma —
-    so a mere "no comma outside quotes" test would read that file as CSV.
-    No `csv.Sniffer` (it is known to guess wrong on single-column and
-    quoted files).
+    Whichever of tab, comma and semicolon occurs most often outside a
+    double-quoted field wins, but only when it strictly beats the other two;
+    an empty line, a header with none of them, or any tie at the top gives
+    comma. LibraryThing's classic export is tab-separated, and one of its
+    column names, "Author (First, Last)", carries an unquoted comma — so a
+    mere "no comma outside quotes" test would read that file as CSV, which
+    is why this counts rather than tests for presence. Libation writes the
+    exporting machine's list separator, a semicolon on most European
+    locales. No `csv.Sniffer` (it is known to guess wrong on single-column
+    and quoted files).
     """
-    tabs = commas = 0
+    counts = {"\t": 0, ",": 0, ";": 0}
     in_quotes = False
     for ch in first_line or "":
         if ch == '"':
             in_quotes = not in_quotes
         elif in_quotes:
             continue
-        elif ch == "\t":
-            tabs += 1
-        elif ch == ",":
-            commas += 1
-    return "\t" if tabs > commas else ","
+        elif ch in counts:
+            counts[ch] += 1
+    top = max(counts.values())
+    leaders = [d for d, n in counts.items() if n == top]
+    return leaders[0] if top > 0 and len(leaders) == 1 else ","
 
 
 # Goodreads embeds series in the title: "The Gray Man (Gray Man, #1)".
@@ -108,6 +118,12 @@ def detect_format(fieldnames) -> str:
         return LIBRARYTHING
     if "item_type" in fields and "ean_isbn13" in fields:
         return LIBIB
+    # audible-cli needs both markers so that a future `asin` column in
+    # Shelf's own CSV does not re-route a Shelf export.
+    if "asin" in fields and "runtime_length_min" in fields:
+        return AUDIBLE_CLI
+    if "audible_product_id" in fields:
+        return LIBATION
     return GENERIC
 
 
@@ -654,11 +670,133 @@ def normalize_libib(row: dict) -> dict:
     }
 
 
+# --- Audible: audible-cli and Libation --------------------------------------
+
+_AUDIBLE_POSITION_RE = re.compile(r"^\d+(\.\d+)?$")
+_AUDIBLE_YEAR_RE = re.compile(r"\b(1[5-9]\d\d|20\d\d)\b")
+# A Libation `Series Order` cell is "N : Name" pairs joined by ", ".
+_LIBATION_PAIR_SPLIT_RE = re.compile(r",\s+(?=[^,:]*\s:\s)")
+
+
+def _audible_position(cell: str | None) -> float | None:
+    """A plain number only; `1-3`, `Book 2` and `½` are None, never coerced
+    (G131)."""
+    cell = (cell or "").strip()
+    return float(cell) if _AUDIBLE_POSITION_RE.match(cell) else None
+
+
+def _audible_year(cell: str | None) -> str | None:
+    """The first four-digit year in the publication-date cell. Libation's
+    dates follow the exporting machine's locale, so nothing beyond the year
+    is trustworthy."""
+    m = _AUDIBLE_YEAR_RE.search(cell or "")
+    return m.group(1) if m else None
+
+
+def _audible_duration(cell: str | None) -> int | None:
+    cell = (cell or "").strip()
+    return int(cell) if cell.isascii() and cell.isdigit() else None
+
+
+def _truthy(cell: str | None) -> bool:
+    return (cell or "").strip().lower() in ("true", "yes", "1")
+
+
+def _audible_base(row: dict, asin_cell, description_cell) -> dict:
+    """The key set both Audible normalizers share. Every row is an
+    audiobook with no ISBN; the ASIN is the file's value, so an invalid one
+    becomes None rather than refusing the row (G72)."""
+    return {
+        "title": (row.get("title") or "").strip(),
+        "authors": (row.get("authors") or "").strip() or None,
+        "isbn": None,
+        "upc": None,
+        "media_type": "audiobook",
+        "publisher": None,
+        "page_count": None,
+        "date_finished": None,  # neither file carries one
+        "deleted": None,
+        "tags": [],
+        "dropped": [],
+        "subtitle": (row.get("subtitle") or "").strip() or None,
+        "narrator": (row.get("narrators") or "").strip() or None,
+        "description": (description_cell or "").strip() or None,
+        "asin": isbn_svc.clean_asin(asin_cell),
+    }
+
+
+def normalize_audible_cli(row: dict) -> dict:
+    """`audible library export` (tsv by default, csv with `--format csv`).
+    Authors and narrators arrive comma-joined, the series as its first
+    entry only (`series_title`, `series_sequence`)."""
+    out = _audible_base(row, row.get("asin"), row.get("extended_product_description"))
+    status = None
+    if _truthy(row.get("is_finished")):
+        status = "read"
+    else:
+        try:
+            pct = float((row.get("percent_complete") or "").strip())
+        except ValueError:
+            pct = None
+        if pct is not None and 0 < pct < 100:
+            status = "reading"
+    out.update({
+        "publish_year": _audible_year(row.get("release_date")),
+        "duration_mins": _audible_duration(row.get("runtime_length_min")),
+        "series_name": (row.get("series_title") or "").strip() or None,
+        "series_position": _audible_position(row.get("series_sequence")),
+        "reading_status": status,
+        "owned": True,
+        "wishlisted": None,
+        "cover_url": (row.get("cover_url") or "").strip() or None,
+    })
+    return out
+
+
+def normalize_libation(row: dict) -> dict:
+    """Libation's library export. Its `Content Type` is the C# enum name:
+    `Product` is a book, `Episode`/`Parent`/`Unknown` are podcasts or
+    placeholders, which are a row error like Libib's unknown types."""
+    content_type = (row.get("content_type") or "").strip()
+    if content_type.lower() != "product":
+        raise ValueError(f"Not a book: {content_type!r}")
+
+    out = _audible_base(row, row.get("audible_product_id"), row.get("description"))
+
+    series_name = None
+    series_position = None
+    cell = (row.get("series_order") or "").strip()
+    if cell:
+        first = _LIBATION_PAIR_SPLIT_RE.split(cell, maxsplit=1)[0]
+        order, sep, name = first.partition(" : ")
+        if sep:
+            series_name = name.strip() or None
+            series_position = _audible_position(order)
+
+    # Audible Plus titles and ones gone from the account are listening
+    # history, not possessions. Explicit False (not None) so the
+    # "to-read -> wishlist" option cannot shelve them (G87).
+    history = _truthy(row.get("is_audible_plus?")) or _truthy(row.get("absent_from_last_scan?"))
+    out.update({
+        "publisher": (row.get("publisher") or "").strip() or None,
+        "publish_year": _audible_year(row.get("date_published")),
+        "duration_mins": _audible_duration(row.get("length_in_minutes")),
+        "series_name": series_name,
+        "series_position": series_position,
+        "reading_status": "read" if _truthy(row.get("is_finished?")) else None,
+        "owned": False if history else True,
+        "wishlisted": False if history else None,
+    })
+    return out
+
+
 NORMALIZERS = {
     GOODREADS: normalize_goodreads,
     STORYGRAPH: normalize_storygraph,
     LIBRARYTHING: normalize_librarything,
     LIBIB: normalize_libib,
+    AUDIBLE_CLI: normalize_audible_cli,
+    LIBATION: normalize_libation,
     GENERIC: normalize_generic,
 }
 
@@ -697,5 +835,17 @@ CONSUMED_COLUMNS: dict[str, frozenset[str]] = {
         "item_type", "title", "creators", "ean_isbn13", "upc_isbn10",
         "publisher", "publish_date", "group", "tags", "status",
         "completed", "completed_date", "length",
+    }),
+    AUDIBLE_CLI: frozenset({
+        "asin", "title", "subtitle", "extended_product_description",
+        "authors", "narrators", "series_title", "series_sequence",
+        "runtime_length_min", "is_finished", "percent_complete",
+        "release_date", "cover_url",
+    }),
+    LIBATION: frozenset({
+        "audible_product_id", "title", "subtitle", "authors", "narrators",
+        "length_in_minutes", "description", "publisher", "series_order",
+        "date_published", "content_type", "is_finished?",
+        "is_audible_plus?", "absent_from_last_scan?",
     }),
 }

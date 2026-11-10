@@ -86,3 +86,15 @@ def canonical_isbn_pair(raw: str) -> tuple[str, str | None] | None:
     if validate_isbn13(isbn):
         return isbn, isbn13_to_isbn10(isbn)
     return None
+
+
+def clean_asin(value) -> str | None:
+    """Return an upper-cased 10-character ASIN, or ``None``.
+
+    Strips surrounding spaces and tabs only (not newlines) so a value with a
+    trailing newline is refused rather than silently repaired.
+    """
+    if not isinstance(value, str):
+        return None
+    v = value.strip(" \t").upper()
+    return v if re.fullmatch(r"[A-Z0-9]{10}", v) else None

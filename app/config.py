@@ -303,6 +303,7 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "www.librarything.com": 1.0,
     "www.googleapis.com": 0.25,  # Google Books quota is per-day; light pacing only
     "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
+    "m.media-amazon.com": 0.5,  # Audible cover CDN (audible-cli cover hints); politeness only
     "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
     "api.themoviedb.org": 0.1,  # no hard per-second cap
     # MusicBrainz asks ordinary clients to stay at or below one request per

@@ -1,5 +1,5 @@
 """Tests for ABS cross-linking (_auto_link_items author guard, detail badge)."""
-from app.services.audiobookshelf import _authors_compatible, _auto_link_items
+from app.services.audiobookshelf import _authors_compatible, _auto_link_items, auto_link
 from tests.conftest import _insert_item
 
 
@@ -55,6 +55,35 @@ class TestAutoLink:
         db.execute("COMMIT")
         _auto_link_items()
         assert (min(a, b), max(a, b)) in [tuple(r) for r in _links(db)]
+
+
+class TestAutoLinkOrigins:
+    def test_links_audiobook_origin_to_print_book(self, db):
+        book = _insert_item(db, title="Dune", isbn=None, media_type="book", authors="Frank Herbert")
+        audio = _insert_item(db, title="Dune", isbn=None, media_type="audiobook",
+                             authors="Frank Herbert")
+        db.execute("COMMIT")
+        assert auto_link([audio]) == 1
+        assert [tuple(r) for r in _links(db)] == [(min(book, audio), max(book, audio))]
+
+    def test_two_audiobooks_with_one_title_are_not_linked(self, db):
+        a = _insert_item(db, title="Dune", isbn=None, media_type="audiobook", authors="Frank Herbert")
+        _insert_item(db, title="Dune", isbn=None, media_type="audiobook", authors="Frank Herbert")
+        db.execute("COMMIT")
+        assert auto_link([a]) == 0
+        assert _links(db) == []
+
+    def test_candidate_may_carry_an_abs_id(self, db):
+        # "Not the origin", not "no abs_id": the origin links to an ABS ebook.
+        audio = _insert_item(db, title="Dune", isbn=None, media_type="audiobook", authors="Frank Herbert")
+        ebook = _insert_item(db, title="Dune", isbn=None, media_type="ebook",
+                             authors="Frank Herbert", abs_id="li_ebook")
+        db.execute("COMMIT")
+        assert auto_link([audio]) == 1
+        assert [tuple(r) for r in _links(db)] == [(min(audio, ebook), max(audio, ebook))]
+
+    def test_empty_origin_set_does_nothing(self, db):
+        assert auto_link([]) == 0
 
 
 class TestAlsoInAbsBadge:

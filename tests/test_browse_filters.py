@@ -275,3 +275,17 @@ class TestClientConfig:
 
     def test_sort_clears_to_its_default_not_empty(self):
         assert bf.BY_NAME["sort"].clear_to == "newest"
+
+
+def test_search_matches_an_asin(viewer_client, db):
+    from tests.conftest import _insert_item
+
+    _insert_item(db, title="Project Hail Mary", isbn=None, media_type="audiobook",
+                 asin="B0D1234567")
+    _insert_item(db, title="Unrelated", isbn=None, media_type="audiobook")
+    db.commit()
+
+    html = viewer_client.get("/api/search?q=B0D1234567").text
+
+    assert "Project Hail Mary" in html
+    assert "Unrelated" not in html

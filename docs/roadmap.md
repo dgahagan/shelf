@@ -76,7 +76,8 @@ household, and nothing visibly changes until you invite someone.
 Library, and thinner otherwise.
 
 - **More national sources.** German ISBNs already route to the Deutsche
-  Nationalbibliothek, Italian ones to Italy's national network, Dutch ones to
+  Nationalbibliothek, French ones to the BnF, Italian ones to Italy's national
+  network, Dutch ones to
   the Koninklijke Bibliotheek, Hungarian ones to OSZK NEKTÁR and Portuguese
   ones to PORBASE. Other
   countries deserve the same.
@@ -105,10 +106,6 @@ anything, so it follows the households work.
 
 - **New-release alerts for authors** you follow, beyond the series you watch
   (series watching and the Upcoming releases page shipped in 0.73.0).
-- **Buy links** on wishlist and series-gap rows — off by default, with
-  Bookshop.org first because it supports independent bookshops. If you turn them
-  on you enter *your own* affiliate tags, not the project's, and the link says
-  what it is. Shelf takes nothing from it.
 
 ---
 
@@ -122,11 +119,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.75.0](https://github.com/dgahagan/shelf/releases/tag/v0.75.0) | **Buy links.** Wishlisted books and the missing volumes of a series can show Bookshop.org and Amazon links carrying your own affiliate tags — Shelf earns nothing. Enter a tag under Settings → Library → Buy links; nothing shows until you do. Also the first translated pages: the page shell in Italian, contributed by @vjandrea, behind `SHELF_I18N=on`. |
 | [0.74.0](https://github.com/dgahagan/shelf/releases/tag/v0.74.0) | **API tokens for dashboards.** Make a read-only token in your account menu and point Homepage, Homarr or Home Assistant at `/api/v1/stats` for item counts, loans, value and upcoming releases. Tokens never act above viewer; admins can revoke anyone's from Settings → Users. |
 | [0.73.0](https://github.com/dgahagan/shelf/releases/tag/v0.73.0) | **Release radar.** Watch a series — or every complete one at once — and Shelf checks Hardcover daily for newly announced volumes. An Upcoming releases page, linked from Series, lists them soonest first with + Wishlist, Dismiss and Stop watching, and a daily digest goes to the notification URL you already use for loans. |
 | [0.72.0](https://github.com/dgahagan/shelf/releases/tag/v0.72.0) | **Duplicates.** Admins get a page of records filed twice — by ISBN or barcode, or by title and author for records with no identifier — side by side. Pick the one to keep and merge: every physical copy, tag, loan and audit entry comes across, so two records of one book become one record with two copies. **Not duplicates** hides a group, and Restore brings it back. Part of Collector tools. |
 | [0.71.0](https://github.com/dgahagan/shelf/releases/tag/v0.71.0) | **Shelf audits.** Start an audit of a shelf or the whole library from Scan → Inventory, scan from any device (several at once, or after a reload), and finish for a report: found, moved here, seen elsewhere, on loan, missing and unexpected. Mark the missing copies; a Found button or the next scan of that copy clears the mark. Part of Collector tools. |
-| [0.70.0](https://github.com/dgahagan/shelf/releases/tag/v0.70.0) | **Copy labels.** Give each physical copy its own barcode from the new Labels page or a copy's edit panel, and print the codes on Avery 5160 or L7160 sheets. Scanning a label acts on that exact copy: Inventory and Move act on that copy alone, Lookup names it, and Add reports the copy you already own. Part of the new Collector tools feature. |
 
 ---
 

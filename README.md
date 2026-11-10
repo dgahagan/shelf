@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-6058%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-364%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-6163%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-365%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -217,6 +217,7 @@ each option before anything is sent.
 - **CSV import/export** — bulk operations and backups
 - **Portable archive** — export your whole collection as a single zip (items, tags, locations, series, reading log, checkouts, physical copies, **and your cover art**) and merge it back into any Shelf instance without refetching a single cover. No credentials or instance-specific data are included, so it's the safe way to move servers or hand your library to someone else — unlike a database backup, which carries password hashes and encrypted API keys but no covers at all. Importing previews first: you see how many items are new, how many are already yours, how each duplicate was matched (exactly on ISBN, or heuristically on title and author), and you can leave parts of the archive out before anything is written. Trash travels too: what you deleted arrives in Trash on the other side, with its deletion date, and an import never moves a live item to Trash
 - **Goodreads, StoryGraph, LibraryThing & Libib migration** — upload your library export as-is (LibraryThing and Libib in beta); the format is auto-detected, reading statuses and owned/wishlist flags are mapped, and covers are fetched automatically
+- **Audible library import** — upload an export from audible-cli or Libation; each title becomes an audiobook with its narrator, length and ASIN, re-imports match on the ASIN, and an audiobook already synced from Audiobookshelf is matched instead of duplicated. Shelf never signs in to Audible
 - **Store Mode (offline PWA)** — scan barcodes in a bookstore with no signal and get an instant Owned / On wishlist / Not in library verdict; unknown books queue on-device and are added to your wishlist automatically when you're back online (see [Store Mode](#store-mode-offline-pwa))
 
 ### Integrations
@@ -297,7 +298,6 @@ Shelf queries free, public APIs to look up book and game information — no API 
 
 | Source | What it provides | API key required? |
 |--------|-----------------|-------------------|
-| [Bibliothèque nationale de France](https://catalogue.bnf.fr) | French (978-2, 979-10) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, pages, language | No |
 | [Deutsche Nationalbibliothek](https://portal.dnb.de) | German (978-3) ISBNs, consulted before the rest: title, author, publisher, year, language; cover art | No |
 | [Servizio Bibliotecario Nazionale](https://opac.sbn.it) | Italian (978-88, 979-12) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, language | No |
 | [PORBASE](https://porbase.bnportugal.gov.pt) (Biblioteca Nacional de Portugal) | Portuguese (978-989, 978-972) ISBNs, consulted before the rest: title, subtitle, author, publisher, year, pages, language; cover art as a last resort | No |

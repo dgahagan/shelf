@@ -234,6 +234,16 @@ the user called *not duplicates*, stored `(min id, max id)` under a `CHECK`;
 both ids `ON DELETE CASCADE`, so a purge removes the rows and a trash keeps
 them).
 
+**`items.asin` is an inline edition identifier, nullable and deliberately
+not unique.** It holds Audible's product id, upper-cased and checked for
+shape (ten letters or digits) by `isbn.clean_asin` on every write path. It
+sits beside `isbn` and `upc` rather than in a side table because it names an
+edition, the same on every instance — which is also why the portable
+archive exports it and not `abs_id`, a key into one user's server. It has a
+plain index and no `UNIQUE`: Audiobookshelf can hold one ASIN in two
+libraries, so a unique slot would make the second sync's insert fail on
+correct data. Every writer that keys on it reads first instead.
+
 **API tokens are stored as hashes.** An `api_tokens` row holds the SHA-256 of
 the token (`token_hash`, unique — the lookup key, so no secret is compared in
 Python), its first 12 characters for display, a name, and a `last_used_at`
@@ -525,7 +535,14 @@ excludes every item already in the component, so a redundant edge cannot be
 added merely to make a transitive member direct. Adding and removing need
 editor or admin; the panel itself is readable by a viewer. Reads go through
 `items_live`, so a trashed item leaves every panel, search and link target.
-Nothing infers a link: a relationship exists because someone made it.
+Only two callers infer a `format` link, and both after their own
+transaction has committed, on a fresh connection:
+`audiobookshelf.auto_link(origin_ids)` runs after every Audiobookshelf sync
+for the synced rows, and after an Audible CSV import for the audiobooks it
+created or matched. It links an origin to a live row of a different media
+type that shares its ISBN, or else its normalized title and first author.
+The Related Media panel never infers one: a `related` or `adaptation` link
+exists because someone made it.
 
 Secrets in `settings` are encrypted with a key kept *outside* the database
 (`data/encryption.key` or `SHELF_ENCRYPTION_KEY`), so a DB backup contains
@@ -1230,6 +1247,11 @@ stated rather than incidental:
   Doing so would silently convert a cartridge row into a service-backed one, so
   it inserts its own row and leaves the connection to the user, through
   `item_links`.
+- **Audiobookshelf records the ASIN** it already receives, into
+  `items.asin` and never into `isbn`. A sync writes it only when ABS sends a
+  valid one, so an ASIN stamped by hand or by an Audible import survives a
+  sync that sends none. It is not a sync matching key: `abs_id` matches
+  first, then ISBN.
 - **Komga's library kind is held apart from `items.media_type`** — that is what
   `komga_records.kind` (`comic` or `manga`, checked in the schema) is for.
   Changing a library's kind on the Komga side must not reclassify an item the
@@ -1706,8 +1728,9 @@ block back.
 
 **Live wins wherever the key is not unique.** The funnel's own lookups need no
 ordering — a trashed row holding a unique slot means there is no live holder.
-But CSV's title/author fallback, `find_duplicate_issue`, `abs_id` and
-`hardcover_book_id` are covered by no unique index, so each lets a live row win
+But CSV's title/author fallback, the Audible import's ASIN and widened
+title rungs (`csv_import.match_audiobook`), `find_duplicate_issue`, `abs_id`
+and `hardcover_book_id` are covered by no unique index, so each lets a live row win
 and acts on a trashed hit only when no live row matches. Without that, deleting
 one of two equal matches and re-importing resurrects the deleted one.
 

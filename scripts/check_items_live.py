@@ -276,6 +276,22 @@ ALLOWLIST: dict[str, dict[str, int]] = {
         "FROM items i LEFT JOIN locations l ON i.location_id = l.id "
         "ORDER BY i.title": 1,
     },
+    "app/services/csv_import.py": {
+        # match_audiobook's ASIN rung — finds the row the view hides, not a
+        # UNIQUE prediction (items.asin is deliberately not unique): a
+        # trashed audiobook holding the ASIN must be found so the route
+        # restores it rather than creating a twin (G107).
+        "SELECT id, deleted_at FROM items WHERE asin = ? AND media_type = 'audiobook' "
+        "ORDER BY deleted_at IS NOT NULL, id LIMIT 1": 1,
+        # match_audiobook's title rung — same reason as the CSV title
+        # fallback in items_csv.py: no UNIQUE constraint behind it, so it
+        # orders a live row first ("live wins") and acts on a trashed hit
+        # only when no live row matches.
+        "SELECT id, deleted_at FROM items WHERE TRIM(title) = TRIM(?) COLLATE NOCASE AND "
+        "TRIM(COALESCE(authors, '')) = TRIM(?) COLLATE NOCASE AND "
+        "media_type = 'audiobook' AND asin IS NULL "
+        "ORDER BY deleted_at IS NOT NULL, id LIMIT 1": 1,
+    },
     "app/routers/item_copies.py": {
         # _barcode_conflict — copy_barcode is UNIQUE collection-wide, so this
         # predicts the raw constraint and must join the physical items table,

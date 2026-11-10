@@ -33,7 +33,23 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
-### After upgrading to X.Y.Z
+### After upgrading to 0.76.0
+
+**Two migrations run.** They add an `asin` column to `items`, for Audible's
+product id, and an index on it. Both leave every row as it was, so they are
+quick even on a large library, and they need no action from you.
+
+**The first Audiobookshelf sync afterwards may count items as Updated.**
+Every Audiobookshelf item whose own record has an ASIN gains it on that sync,
+which is a change; later syncs count those items as Unchanged again. If
+Audiobookshelf has no ASINs — they come from its Audible metadata provider —
+nothing changes and the count stays Unchanged. See
+[Integrations](user-guide/integrations.md#audiobookshelf).
+
+**The portable archive now carries each audiobook's ASIN.** An archive from
+an older Shelf has none, and still imports — those items arrive without one.
+
+### After upgrading to 0.75.0
 
 **Buy links starts the way Valuation stands.** If Valuation is off — as it is
 under the Standard and Minimal profiles — the upgrade turns the new

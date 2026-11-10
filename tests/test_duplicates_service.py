@@ -215,6 +215,20 @@ class TestCards:
         assert second.filled == ()
 
 
+class TestAsinMembers:
+    def test_members_with_an_asin_render_without_error(self, db):
+        a = _book(db, "Twin", media_type="audiobook", asin="B0D1234567")
+        b = _book(db, "Twin", media_type="audiobook")
+
+        (group,) = duplicates.groups(db)[1]
+
+        assert sorted(group.member_ids) == sorted([a, b])
+        by_id = {m.id: m for m in group.members}
+        assert by_id[a].filled == ("asin",)
+        assert dict(by_id[a].values)["asin"] == "B0D1234567"
+        assert by_id[b].filled == ()
+
+
 class TestOrderingAndCap:
     def test_order_by_title_then_id_and_cap(self, db):
         for t in ("Zeta", "alpha", "Mid"):

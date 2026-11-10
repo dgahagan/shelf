@@ -51,6 +51,41 @@ def resolve_state(norm: dict, to_read_wishlist: bool,
     return owned, wishlisted, owned_given, wishlisted_given
 
 
+# Audiobook fields an import writes on insert, and in update mode only into
+# an empty column (see update_from_row).
+FILL_EMPTY = ("subtitle", "narrator", "duration_mins", "description", "asin")
+
+
+def match_audiobook(db, asin: str, title: str, authors: str | None):
+    """Find the audiobook an Audible export row describes: `(hit, rung)`.
+
+    The ASIN rung first, then title and authors against audiobooks that hold
+    no ASIN yet (an Audiobookshelf row often has an ISBN and, until its next
+    sync, no ASIN). `rung` is "asin" or "title"; `(None, None)` on a miss.
+
+    Both reads use the physical table and order a live row first: the ASIN
+    rung must find a trashed twin so the route restores it (G107, "find the
+    row the view hides"), and the title rung follows the existing title
+    rung's "live wins" rule. Neither has a UNIQUE constraint behind it.
+    """
+    hit = db.execute(
+        "SELECT id, deleted_at FROM items WHERE asin = ? AND media_type = 'audiobook' "
+        "ORDER BY deleted_at IS NOT NULL, id LIMIT 1",
+        (asin,),
+    ).fetchone()
+    if hit:
+        return hit, "asin"
+    hit = db.execute(
+        "SELECT id, deleted_at FROM items WHERE "
+        "TRIM(title) = TRIM(?) COLLATE NOCASE AND "
+        "TRIM(COALESCE(authors, '')) = TRIM(?) COLLATE NOCASE AND "
+        "media_type = 'audiobook' AND asin IS NULL "
+        "ORDER BY deleted_at IS NOT NULL, id LIMIT 1",
+        (title, authors or ""),
+    ).fetchone()
+    return (hit, "title") if hit else (None, None)
+
+
 def update_from_row(db, item_id: int, row: dict, *, generic: bool = False,
                     location_id: int | None = None):
     """Update an existing item from CSV row data (non-empty fields only).
@@ -58,6 +93,8 @@ def update_from_row(db, item_id: int, row: dict, *, generic: bool = False,
     Generic rows also carry the parsed round-trip fields (#145): each applies
     only when the normalizer produced a value, so an empty cell is no opinion.
     `estimated_value` is never applied here — the valuation route owns it.
+    The `FILL_EMPTY` audiobook fields apply to every format, and only into a
+    column the existing row leaves empty.
     `location_id` reaches `sync_primary_location` through the seam, which
     moves the primary copy (or creates the first one) and leaves the others;
     nothing here removes a copy first, so G96's ordering does not arise.
@@ -77,6 +114,17 @@ def update_from_row(db, item_id: int, row: dict, *, generic: bool = False,
                 updates[db_key] = int(val) if val.isdigit() else None
             else:
                 updates[db_key] = val
+    # Fill-only fields (any format): written only where the row holds none,
+    # because an Audiobookshelf-synced row's values come from the user's own
+    # files and an import must not overwrite them.
+    fill = {k: row[k] for k in FILL_EMPTY if row.get(k) not in (None, "")}
+    if fill:
+        current = db.execute(
+            f"SELECT {', '.join(fill)} FROM items_live WHERE id = ?", (item_id,)
+        ).fetchone()
+        for key, val in fill.items():
+            if current is not None and current[key] in (None, ""):
+                updates.setdefault(key, val)
     if generic:
         # Already parsed by normalize_generic — never through .strip() above.
         for key in ("language", "series_position", "manual_value", "platform"):

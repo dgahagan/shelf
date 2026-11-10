@@ -4679,6 +4679,13 @@ python -m pytest tests/test_lists_migration.py -q -k "predates or create_and_see
   a heading naming a version the changelog has never heard of. The docs read
   fine in isolation — nothing in the plan set is wrong — which is why only the
   release notices.
+- **The other direction: a release that does not stamp it.** 0.75.0 shipped
+  its buy-links upgrade note under a heading still reading `X.Y.Z`, so the
+  next plan's docs task (`audible-import` T11, 2026-11-09) found an unstamped
+  heading holding last release's note and had to stamp it `0.75.0` before
+  adding its own. `/release` step 4b must replace `X.Y.Z` with the version it
+  is cutting, and a docs task that finds an `X.Y.Z` heading should check the
+  changelog before adding to it.
 - **Status:** documented. A lint is possible but weak — it would have to know
   the unreleased version to know which mentions are stale. The cheap guard is
   step 4b's existing sweep: grep the docs for any version string newer than the
@@ -6464,6 +6471,31 @@ grep -rn "import gettext as _" app/routers/            # expect no hits
 
 - **Status:** documented. `make check-i18n` catches unextracted strings but 
   not import-time translation.
+
+## G155 — When the Audiobookshelf sync gains a field in its `desired` dict
+
+- **Rule:** add the column to **both** `SELECT`s the update arm can compare
+  against in `app/services/audiobookshelf.py::sync` — the `abs_id` match
+  (physical `items`) and the ISBN adopt (`items_live`) — not only the one
+  the change is about.
+- **Why:** the change test is
+  `any(existing[key] != value for key, value in desired.items())`, which
+  indexes whichever row matched by every `desired` key. A column missing
+  from either `SELECT` raises `IndexError` for the rows that reach that
+  branch, and the sync records it as that item's error. The unit tests catch
+  it only if they seed a row down *that* branch.
+- **Evidence:** plan `audible-import` T2 (`30365b0`, 2026-11-09). The plan
+  named only the adopt `SELECT`; the builder found the `abs_id` one needed
+  `asin` too.
+- **Verify:**
+
+```bash
+grep -n -A16 'desired = {' app/services/audiobookshelf.py   # every key here, and any desired["…"] = below it…
+grep -n 'FROM items\(_live\)\? WHERE' app/services/audiobookshelf.py   # …is in both SELECTs above these
+```
+
+- **Status:** documented. A lint is possible (parse both column lists and
+  the `desired` keys) but has not been built.
 
 ## Graveyard
 

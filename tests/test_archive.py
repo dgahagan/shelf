@@ -2396,6 +2396,93 @@ class TestPlanAndApplyAgreeOnABadIsbn:
         assert any("B00EXAMPLE" in e for e in report["errors"])
 
 
+class TestArchiveAsin:
+    """The ASIN is an edition identifier: exported, pre-cleaned in both
+    stages (G72), absent in archives that predate it (G87)."""
+
+    @staticmethod
+    def _import(db, path):
+        with read_archive(path) as reader:
+            report = merge_archive(db, reader, mode="skip")
+        db.execute("COMMIT")
+        return report
+
+    def test_round_trip_preserves_asin(self, db):
+        _insert_item(db, title="Project Hail Mary", media_type="audiobook",
+                     authors="Andy Weir", asin="B08G9PRS1K")
+        db.execute("COMMIT")
+        path = build_archive(db)
+        with zipfile.ZipFile(path) as zf:
+            exported = json.loads(zf.read("library.json"))
+        assert exported["items"][0]["asin"] == "B08G9PRS1K"
+
+        _wipe_library(db)
+        report = self._import(db, path)
+        assert report["errors"] == []
+        row = db.execute("SELECT asin FROM items WHERE title = ?",
+                         ("Project Hail Mary",)).fetchone()
+        assert row["asin"] == "B08G9PRS1K"
+
+    def test_archive_without_asin_key_imports_with_null(self, db, tmp_path):
+        library = json.dumps({"items": [{"id": 1, "title": "Old Export",
+                                         "media_type": "audiobook"}]})
+        path = _write_zip(tmp_path / "old.zip", [], manifest=_MANIFEST,
+                          library=library)
+        report = self._import(db, path)
+        assert report["errors"] == []
+        assert report["imported"] == 1
+        row = db.execute("SELECT asin FROM items WHERE title = 'Old Export'").fetchone()
+        assert row["asin"] is None
+
+    def test_absent_key_does_not_erase_an_existing_asin_on_update(self, db, tmp_path):
+        item_id = _insert_item(db, title="Kept", media_type="audiobook",
+                               authors="A", isbn=None, asin="B08G9PRS1K")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Kept", "authors": "A",
+                              "media_type": "audiobook", "publisher": "P"}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library), mode="update")
+        assert report["updated"] == 1
+        row = db.execute("SELECT asin FROM items WHERE id = ?", (item_id,)).fetchone()
+        assert row["asin"] == "B08G9PRS1K"
+
+    def test_junk_asin_is_dropped_and_reported_once(self, db, tmp_path):
+        library = json.dumps({"items": [{"id": 1, "title": "Junky",
+                                         "media_type": "audiobook",
+                                         "asin": "junk"}]})
+        path = _write_zip(tmp_path / "junk.zip", [], library=library)
+        report = self._import(db, path)
+        assert report["imported"] == 1
+        assert len(report["errors"]) == 1
+        assert "'junk'" in report["errors"][0] and "ASIN" in report["errors"][0]
+        row = db.execute("SELECT asin FROM items WHERE title = 'Junky'").fetchone()
+        assert row["asin"] is None
+
+    def test_bad_asin_plans_and_applies_the_same_verdict(self, db, tmp_path):
+        existing_id = _insert_item(db, title="Dune", authors="Frank Herbert",
+                                   isbn=None, media_type="audiobook")
+        db.execute("COMMIT")
+        library = {"items": [{"id": 1, "title": "Dune", "authors": "Frank Herbert",
+                              "media_type": "audiobook", "asin": "junk",
+                              "publisher": "Macmillan"}]}
+        plan, report = _plan_and_apply(db, _zip_for(tmp_path, library), mode="update")
+        assert plan["items"][0]["verdict"] == "update"
+        assert report["drifted"] == 0
+        assert report["updated"] == 1
+        row = db.execute("SELECT asin, publisher FROM items WHERE id = ?",
+                         (existing_id,)).fetchone()
+        assert row["asin"] is None
+        assert row["publisher"] == "Macmillan"
+        assert any("'junk'" in e for e in report["errors"])
+
+    def test_good_asin_is_upper_cased_on_import(self, db, tmp_path):
+        library = {"items": [{"id": 1, "title": "Lower", "media_type": "audiobook",
+                              "asin": " b08g9prs1k "}]}
+        _plan, report = _plan_and_apply(db, _zip_for(tmp_path, library))
+        assert report["errors"] == []
+        row = db.execute("SELECT asin FROM items WHERE title = 'Lower'").fetchone()
+        assert row["asin"] == "B08G9PRS1K"
+
+
 class TestArchiveCopiesImport:
     """The import half of issue #116. Four rules, plus the one that matters
     most for an untrusted input: a rejected item leaves nothing behind."""

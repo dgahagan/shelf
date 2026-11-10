@@ -30,7 +30,7 @@ def test_item_edit_is_sectioned_without_changing_the_save_contract():
     for field in (
         "title", "subtitle", "authors", "publisher", "publish_year", "isbn",
         "page_count", "series_name", "series_position", "narrator",
-        "duration_mins", "date_started", "date_finished",
+        "duration_mins", "asin", "date_started", "date_finished",
     ):
         assert f'field("{field}"' in template
 

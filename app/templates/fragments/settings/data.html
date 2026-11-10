@@ -154,7 +154,7 @@
 
             <div class="border-t border-shelf-border pt-4">
                 <p class="text-sm text-shelf-muted mb-2">Import items from a CSV file (columns: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)</p>
-                <p class="text-sm text-shelf-muted mb-2"><strong class="text-shelf-text">Goodreads</strong>, <strong class="text-shelf-text">StoryGraph</strong>, <strong class="text-shelf-text">LibraryThing</strong> and <strong class="text-shelf-text">Libib</strong> library exports are detected automatically — reading status, dates, and owned/wishlist flags are mapped for you.</p>
+                <p class="text-sm text-shelf-muted mb-2"><strong class="text-shelf-text">Goodreads</strong>, <strong class="text-shelf-text">StoryGraph</strong>, <strong class="text-shelf-text">LibraryThing</strong> and <strong class="text-shelf-text">Libib</strong> library exports, and <strong class="text-shelf-text">Audible (audible-cli or Libation)</strong> exports, are detected automatically — reading status, dates, and owned/wishlist flags are mapped for you.</p>
                 <form @submit.prevent="doImport">
                     <div class="flex flex-wrap gap-2 items-end">
                         <input type="file" name="file" accept=".csv,.tsv,.txt" required class="block w-full text-sm text-shelf-muted file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-shelf-hover file:text-shelf-text">
@@ -186,11 +186,17 @@
                     <template x-if="importResult && !importResult.error">
                         <div>
                             <p class="text-shelf-muted">
-                                <template x-if="importResult.format && importResult.format !== 'generic' && importResult.format !== 'librarything'">
+                                <template x-if="importResult.format && importResult.format !== 'generic' && importResult.format !== 'librarything' && importResult.format !== 'audible_cli' && importResult.format !== 'libation'">
                                     <span>Detected <span x-text="importResult.format" class="capitalize text-shelf-accent2"></span> export · </span>
                                 </template>
                                 <template x-if="importResult.format === 'librarything'">
                                     <span>Detected <span class="text-shelf-accent2">LibraryThing</span> export · </span>
+                                </template>
+                                <template x-if="importResult.format === 'audible_cli'">
+                                    <span>Detected <span class="text-shelf-accent2">audible-cli</span> export · </span>
+                                </template>
+                                <template x-if="importResult.format === 'libation'">
+                                    <span>Detected <span class="text-shelf-accent2">Libation</span> export · </span>
                                 </template>
                                 <template x-if="importResult.format === 'librarything' || importResult.format === 'libib'">
                                     <span><span class="font-semibold text-shelf-muted">Beta</span> — built from the documented export format — if a row imports wrongly, <a href="https://github.com/dgahagan/shelf/issues/new/choose" target="_blank" rel="noopener" class="text-shelf-accent2 hover:underline">open an issue</a> with your file's header row. · </span>
@@ -199,6 +205,9 @@
                                 Skipped: <span x-text="importResult.skipped"></span>
                                 <template x-if="importResult.restored > 0">
                                     <span>, Restored: <span x-text="importResult.restored"></span></span>
+                                </template>
+                                <template x-if="importResult.matched > 0">
+                                    <span>, Matched to <span x-text="importResult.matched" data-testid="csv-import-matched"></span> existing audiobooks</span>
                                 </template>
                                 <template x-if="importResult.trashed > 0">
                                     <span>, To Trash: <span x-text="importResult.trashed"></span></span>

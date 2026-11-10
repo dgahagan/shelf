@@ -12,6 +12,11 @@ permissions:
   contents: read
 
 jobs:
+  # Every job pins ubuntu-24.04, not ubuntu-latest. `ubuntu-latest` moved to
+  # Ubuntu 26.04 (from 2026-10-19), and Playwright 1.52 refuses to install
+  # Chromium there ("Playwright does not support chromium on
+  # ubuntu26.04-x64"), so the e2e job failed on every run. Unpin when
+  # Playwright is upgraded to a release that supports 26.04.
   # Regenerate the three artefacts a pull request is not allowed to carry —
   # static/css/app.css, SW_VERSION in static/sw.js, and README.md's two
   # test-count badges — and commit them, on the push to `main` only.
@@ -34,7 +39,7 @@ jobs:
   # is no recursion to break.
   restamp:
     if: github.event_name == 'push'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     outputs:
@@ -125,7 +130,7 @@ jobs:
     # SKIPPED is itself skipped — without this condition every pull-request
     # build would show this gate green because it never ran.
     if: ${{ !failure() && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -171,7 +176,7 @@ jobs:
   # that is merely behind `main` is not blamed for a restamp `main` made since.
   generated-output:
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # fetch-depth: 2 — the default of 1 leaves the merge ref without its
       # first parent, and the comparison would then fail for a reason that
@@ -205,7 +210,7 @@ jobs:
     # See the `test` job: a skipped `needs` skips the dependent job, and this
     # gate must still run on every pull request.
     if: ${{ !failure() && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:
@@ -253,7 +258,7 @@ jobs:
     # See the `test` job: a skipped `needs` skips the dependent job, and this
     # gate must still run on every pull request.
     if: ${{ !failure() && !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
         with:

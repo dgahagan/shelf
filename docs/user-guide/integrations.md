@@ -32,7 +32,7 @@ ISBN, and you can type the right one into **Edit**.
 audiobook/podcast server.
 
 **Adds:** sync of selected ABS libraries into Shelf as audiobook / eBook
-items, cross-linking with physical copies (the item page shows both and
+items, each with its ASIN, cross-linking with physical copies (the item page shows both and
 deep-links into ABS), periodic re-sync.
 
 **Setup:** in ABS, Settings → Users → your user → API Token. Enter the ABS
@@ -67,12 +67,29 @@ linked rather than added a second time; a duplicate of the same ISBN inside
 ABS is skipped with a reason. If one library times out, the others still sync
 and the timeout is reported for that library alone.
 
-An ABS item that has only an ASIN (no ISBN) syncs **without** an ISBN —
-an ASIN isn't one, and storing it there broke the edit form and the
-duplicate checks. A row that got an ASIN in its ISBN field from an earlier
-sync is cleared on the next sync and counted under **Updated**. An item
-whose ISBN in ABS fails its check digit is treated the same way, with a line
-in the server log naming it.
+**The sync records each item's ASIN** (Audible's product id) in its own
+field, shown in the item page's Integration IDs panel and searchable in
+Browse. The ASIN is never stored as an ISBN — an ASIN isn't one, and storing
+it there broke the edit form and the duplicate checks — so an ABS item that
+has only an ASIN syncs **without** an ISBN. A row that got an ASIN in its
+ISBN field from an earlier sync is cleared on the next sync and counted
+under **Updated**. An ASIN that is not ten letters or digits is left out,
+and an item whose ISBN in ABS fails its check digit is left without it; each
+gets a line in the server log naming the item. An ASIN you set yourself, or
+one an Audible import stamped, stays when ABS sends none.
+
+**The first sync after upgrading may count items as Updated.** Every ABS
+item whose record has an ASIN gains it on that sync, which is a change. Later
+syncs go back to counting them as **Unchanged**. ABS fills the ASIN from its
+Audible metadata provider; a library matched another way has none, and the
+sync changes nothing.
+
+**Libation → Audiobookshelf → Shelf.** If you download your Audible library
+with [Libation](https://github.com/rmcrackan/Libation) into a folder
+Audiobookshelf serves, sync Audiobookshelf first, then import Libation's
+[library export](import-and-export.md#audible). The import matches the
+synced audiobooks by ASIN, or by title and author where the sync has not
+recorded one yet, instead of adding each title a second time.
 
 A scan that comes back thin tells you **on the card** which of five things
 happened: no credential configured, a credential the provider rejected, a
@@ -201,8 +218,9 @@ wishlist price-drop digest and the release-radar digest. See
 ## Always-on sources (no key)
 
 Open Library, Google Books (anonymous by default), Amazon cover images, UPC Item DB,
-the Deutsche Nationalbibliothek for German ISBNs, and the Servizio
-Bibliotecario Nazionale for Italian ones. Apart from credentials you
+the Deutsche Nationalbibliothek for German ISBNs, the Bibliothèque nationale
+de France for French ones, and the Servizio Bibliotecario Nazionale for Italian
+ones. Apart from credentials you
 explicitly configure, lookups send only the ISBN or UPC — never your account,
 collection or personal data. Requests to every provider are paced to its
 published rate limit. UPC Item DB's free tier is

@@ -17,7 +17,7 @@ from starlette.responses import Response
 from app.auth import require_role
 from app.database import get_db
 from app.routers import items_common
-from app.services import cover_queue, csv_import
+from app.services import audiobookshelf, cover_queue, csv_import
 from app.services import isbn as isbn_svc
 from app.services import item_copies, item_write
 from app.services import lists
@@ -33,6 +33,9 @@ router = APIRouter(prefix="/api")
 # unbounded) so the existing `> MAX_CSV_UPLOAD_SIZE` branch below still
 # fires on an oversized file (G55).
 MAX_CSV_UPLOAD_SIZE = 50 * 1024 * 1024
+
+# Both Audible tools export the same library, so they share one source label.
+_FORMAT_SOURCE = {"audible_cli": "audible_import", "libation": "audible_import"}
 
 @router.get("/export/csv")
 async def export_csv(user=Depends(require_role("viewer"))):
@@ -141,14 +144,22 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
 
     fmt = reading_imports.detect_format(reader.fieldnames)
     normalize = reading_imports.NORMALIZERS[fmt]
-    source = "csv_import" if fmt == reading_imports.GENERIC else f"{fmt}_import"
+    source = _FORMAT_SOURCE.get(fmt) or (
+        "csv_import" if fmt == reading_imports.GENERIC else f"{fmt}_import")
 
     imported = 0
     skipped = 0
     restored = 0
     trashed = 0
+    # Ids of existing audiobooks an Audible row matched by title and stamped
+    # with its ASIN — the response's `matched`.
+    matched_ids: list[int] = []
     errors = []
     new_item_ids: list[int] = []
+    cover_hints: list[tuple[int, str]] = []  # (id, audible-cli cover URL)
+    # Rows an Audible-format import created — keyed on the format, not the
+    # ASIN, so a row whose ASIN failed validation is still linked.
+    audible_created: list[int] = []
     # Keyed ('isbn', isbn, media), ('upc', upc, media) or ('title', title,
     # authors, media) — the tag keeps the key spaces from colliding.
     seen_in_file: set[tuple] = set()
@@ -259,7 +270,15 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                 # when no live row matches (claude-R4, "live wins").
                 authors_val = norm["authors"] or ""
                 isbn_pair = isbn_svc.canonical_isbn_pair(isbn_val) if isbn_val else None
-                if isbn_pair:
+                asin = norm.get("asin")
+                title_hit = False
+                if asin:
+                    # An Audible export row: ASIN, then title against
+                    # audiobooks with no ASIN yet (csv_import.match_audiobook).
+                    file_key = ("asin", asin, media)
+                    existing, rung = csv_import.match_audiobook(db, asin, title, authors_val)
+                    title_hit = rung == "title"
+                elif isbn_pair:
                     isbn13, isbn10 = isbn_pair
                     file_key = ("isbn", isbn13, media)
                     existing = db.execute(
@@ -307,6 +326,14 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                         skipped += 1
                         continue
                     seen_in_file.add(file_key)
+
+                if title_hit:
+                    # The row's first write (G85): nothing that can raise
+                    # sits between the match above and this stamp. It is the
+                    # one field skip mode writes, so the next import matches
+                    # on the ASIN instead of the title.
+                    update_item_fields(db, existing["id"], {"asin": asin})
+                    matched_ids.append(existing["id"])
 
                 # Whether the file itself marks this row deleted (the CSV's
                 # own `deleted` column, generic-only — None on a
@@ -397,7 +424,8 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                 # Only keys with a value: a None would bypass the SCHEMA
                 # default, and location_id=None would still call the seam.
                 extra = {k: norm[k] for k in ("language", "platform", "manual_value",
-                                              "estimated_value") if norm.get(k) is not None}
+                                              "estimated_value", *csv_import.FILL_EMPTY)
+                         if norm.get(k) is not None}
                 if norm.get("location"):
                     # Created only now, after every pre-check passed (G85). A
                     # trashed twin insert_item restores ignores location_id;
@@ -454,8 +482,12 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                         # file data (G85), and the copy commits with the item
                         # (G118).
                         item_copies.add_copy(db, new_id, norm["copy"])
+                    if fmt in _FORMAT_SOURCE:
+                        audible_created.append(new_id)
                     if isbn_val:
                         new_item_ids.append(new_id)
+                    elif norm.get("cover_url") and not item_write.was_restored(new_id):
+                        cover_hints.append((new_id, norm["cover_url"]))
                     imported += 1
             except ItemValueError as e:
                 errors.append(f"Row {i}: {e}")
@@ -474,6 +506,14 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
         # The hand-off filters again — deliberate, keeps it idempotent and
         # safe for any future producer (G29).
         asyncio.create_task(items_common._enrich_import_covers(eligible))
+    if enrich_covers and cover_hints and not os.environ.get("SHELF_DISABLE_COVER_ENRICH"):
+        for hid, url in cover_hints:  # paced by outbound's per-host interval
+            cover_queue.enqueue(hid, {"cover_url": url, "skip_title_search": True})
+        covers_queued += len(cover_hints)
+    # After the block has committed: auto_link opens its own connection (G112).
+    # Only Audible-format rows need linking to their print editions.
+    if audible_created or matched_ids:
+        audiobookshelf.auto_link(audible_created + matched_ids)
 
     return {
         # `imported`, `skipped`, `restored` and `trashed` partition every row
@@ -497,6 +537,9 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
         "error_count": len(errors),
         "format": fmt,
         "covers_queued": covers_queued,
+        # Existing audiobooks an Audible row matched by title and author and
+        # stamped with its ASIN; each is also counted in one of the four above.
+        "matched": len(matched_ids),
         # Columns that held data and were not imported, as codes the import
         # card turns into words (G58): `unmapped` (this format does not read
         # the column), `existing_item` (LibraryThing acquisition data on a

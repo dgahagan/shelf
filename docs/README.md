@@ -39,7 +39,7 @@ New here? Start with **[Installation](installation.md)**, then
 | [Wishlist & Store Mode](user-guide/wishlist-and-store-mode.md) | Building a wishlist; price alerts; the offline bookstore PWA |
 | [Sharing](user-guide/sharing.md) | Public read-only wishlist and collection links |
 | [Stats & valuation](user-guide/stats-and-valuation.md) | Stats dashboard, ISBNdb valuation, the insurance report, display currency |
-| [Import & export](user-guide/import-and-export.md) | CSV, Goodreads/StoryGraph migration, portable archive, database backup |
+| [Import & export](user-guide/import-and-export.md) | CSV, Goodreads/StoryGraph/LibraryThing/Libib migration, Audible library import, portable archive, database backup |
 | [Integrations](user-guide/integrations.md) | Hardcover, Audiobookshelf, IGDB, TMDb, ISBNdb, Google Books, vision providers — what each adds and how to connect it |
 | [RomM](romm.md) | Connecting a self-hosted RomM server for digital games |
 | [Komga](komga.md) | Connecting a self-hosted Komga server for digital comics and manga |

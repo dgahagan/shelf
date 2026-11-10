@@ -226,3 +226,15 @@ def test_music_refresh_reindexes_the_item(editor_client, db, monkeypatch):
     assert resp.status_code in (200, 303)
 
     assert _index_keys(db, item_id) == _expected_keys(ROLES)
+
+
+def test_merge_keeps_the_asin_of_the_audible_twin(admin_client, db):
+    keep = _insert_item(db, title="Twin", isbn=None, media_type="audiobook", abs_id="li_1")
+    other = _insert_item(db, title="Twin", isbn=None, media_type="audiobook",
+                         source="audible_import", asin="B0D1234567")
+    db.commit()
+
+    resp = admin_client.post("/api/items/merge", json={"keep_id": keep, "merge_ids": [other]})
+
+    assert resp.json() == {"ok": True, "merged": 1}
+    assert db.execute("SELECT asin FROM items WHERE id = ?", (keep,)).fetchone()[0] == "B0D1234567"

@@ -86,8 +86,8 @@ def _column(column: str, cast: Callable[[str], object] = str) -> ConditionBuilde
 def _search(value):
     like = f"%{value}%"
     return (
-        "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ?)",
-        [like, like, like, like],
+        "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ? OR i.asin LIKE ?)",
+        [like, like, like, like, like],
     )
 
 

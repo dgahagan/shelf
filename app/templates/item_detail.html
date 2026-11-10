@@ -319,7 +319,7 @@
                 </div>
 
                 <p class="mt-4 pt-4 border-t border-shelf-border text-xs text-shelf-muted" data-testid="record-footer">
-                    Added {{ item.created_at[:10] }} · Updated {{ item.updated_at[:10] }}{% if item.source %} · via {{ item.source }}{% endif %}
+                    Added {{ item.created_at[:10] }} · Updated {{ item.updated_at[:10] }}{% if item.source %} · via {{ source_label(item.source) }}{% endif %}
                 </p>
 
                 {% if user and user.role == 'admin' %}
@@ -329,6 +329,7 @@
                         <dt class="text-shelf-muted">id</dt><dd>{{ item.id }}</dd>
                         <dt class="text-shelf-muted">isbn10</dt><dd>{{ item.isbn10 or '—' }}</dd>
                         <dt class="text-shelf-muted">upc</dt><dd>{{ item.upc or '—' }}</dd>
+                        <dt class="text-shelf-muted">asin</dt><dd>{{ item.asin or '—' }}</dd>
                         <dt class="text-shelf-muted">abs_id</dt><dd>{{ item.abs_id or '—' }}</dd>
                         <dt class="text-shelf-muted">abs_library_id</dt><dd>{{ item.abs_library_id or '—' }}</dd>
                         <dt class="text-shelf-muted">hardcover_book_id</dt><dd>{{ item.hardcover_book_id or '—' }}</dd>

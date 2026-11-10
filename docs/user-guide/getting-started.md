@@ -92,7 +92,7 @@ report says what is missing — and the valuation report's grouping.
   Settings → Features. [Integrations](integrations.md)
 - **Household accounts** — add editors and viewers under Settings → Users.
   [Users & roles](users-and-roles.md)
-- **Migrate from Goodreads, StoryGraph, LibraryThing or Libib** — upload your export under
+- **Migrate from Goodreads, StoryGraph, LibraryThing, Libib or Audible** (via audible-cli or Libation) — upload your export under
   Settings → Data → Import / Export. [Import & export](import-and-export.md)
 - **Make the certificate warning go away** on your phone.
   [HTTPS & reverse proxy](../https-and-reverse-proxy.md)

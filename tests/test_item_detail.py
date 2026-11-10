@@ -21,7 +21,7 @@ class TestRecordFooter:
         assert 'data-testid="record-footer"' in html
         assert "Added 20" in html
         assert "Updated 20" in html
-        assert "via audiobookshelf" in html
+        assert "via Audiobookshelf" in html
         assert "Source:" not in html
 
 
@@ -981,3 +981,26 @@ class TestAuthorLinks:
         assert "&lt;b&gt;Evil&lt;/b&gt;" in html
         assert '"Quoted" Name' not in html
         assert "&#34;Quoted&#34; Name" in html or "&quot;Quoted&quot; Name" in html
+
+
+class TestAsinRow:
+    def test_admin_sees_the_asin_row(self, admin_client, db):
+        item_id = _insert_item(
+            db, title="Audible Twin", isbn=None, media_type="audiobook", asin="B0D1234567",
+        )
+        db.commit()
+
+        html = admin_client.get(f"/item/{item_id}").text
+
+        assert '<dt class="text-shelf-muted">asin</dt><dd>B0D1234567</dd>' in html
+
+    def test_viewer_does_not_see_the_panel_or_the_asin(self, viewer_client, db):
+        item_id = _insert_item(
+            db, title="Audible Twin V", isbn=None, media_type="audiobook", asin="B0D1234567",
+        )
+        db.commit()
+
+        html = viewer_client.get(f"/item/{item_id}").text
+
+        assert 'data-testid="integration-ids"' not in html
+        assert "B0D1234567" not in html

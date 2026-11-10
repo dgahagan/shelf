@@ -91,9 +91,10 @@ def test_editor_can_link_an_adaptation(admin_client, db):
 
 
 def test_unlinking_direct_edge_can_split_group(admin_client, db):
-    a = _item(db, "A")
-    b = _item(db, "B")
-    c = _item(db, "C")
+    # Distinct titles: a bare "B" or "C" also matches the panel's own copy.
+    a = _item(db, "Title Alpha")
+    b = _item(db, "Title Bravo")
+    c = _item(db, "Title Charlie")
     media_groups.link_items(db, a, b)
     media_groups.link_items(db, b, c)
     db.commit()
@@ -101,8 +102,8 @@ def test_unlinking_direct_edge_can_split_group(admin_client, db):
     response = admin_client.delete(f"/api/related-media/items/{a}/links/{b}")
 
     assert response.status_code == 200
-    assert "B" not in response.text
-    assert "C" not in response.text
+    assert "Title Bravo" not in response.text
+    assert "Title Charlie" not in response.text
     assert media_groups.related_ids(db, a) == []
     assert media_groups.related_ids(db, b) == [c]
 

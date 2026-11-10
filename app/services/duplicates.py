@@ -52,7 +52,7 @@ _IDENTIFIER_COLUMNS = ("isbn", "isbn10", "upc")
 _COLUMNS = (
     "id", "title", "subtitle", "authors", "isbn", "isbn10", "upc", "media_type",
     "cover_path", "created_at", "publisher", "publish_year", "page_count",
-    "description", "series_name", "narrator",
+    "description", "series_name", "narrator", "asin",
 )
 
 

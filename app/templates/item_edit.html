@@ -27,6 +27,10 @@
     <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
         That UPC / EAN isn't a valid retail barcode — correct it or clear the field. Nothing was saved.
     </div>
+    {% elif error == "invalid_asin" %}
+    <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
+        An ASIN is ten letters or digits, like B0D1234567.
+    </div>
     {% elif error == "identifier_in_trash" %}
     <div data-testid="edit-error" role="alert" class="mb-4 rounded-lg border border-shelf-error/40 bg-shelf-error/10 px-4 py-3 text-sm text-shelf-error">
         {% if trashed_title %}
@@ -75,7 +79,7 @@
         <a href="#edit-series" data-section-nav="series" data-media-types="book audiobook ebook comic manga" data-always-visible="{{ 'true' if item.series_name or item.series_position is not none or item.page_count is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Series</a>
         <a href="#edit-identifiers" data-section-nav="identifiers" data-media-types="book audiobook ebook comic manga dvd cd video_game" data-always-visible="{{ 'true' if item.isbn or item.upc else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Identifiers</a>
         <a href="#edit-location" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Location</a>
-        <a href="#edit-media" data-section-nav="media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Media Details</a>
+        <a href="#edit-media" data-section-nav="media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none or item.asin else 'false' }}" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Media Details</a>
         <a href="#edit-tags" class="px-3 py-2 bg-shelf-card border border-shelf-border rounded-lg text-sm text-shelf-muted hover:text-shelf-text hover:border-shelf-accent/50 transition-colors">Tags</a>
     </nav>
 
@@ -341,7 +345,7 @@
             </div>
         </section>
 
-        <section id="edit-media" data-testid="edit-section-media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
+        <section id="edit-media" data-testid="edit-section-media" data-media-types="video_game audiobook" data-always-visible="{{ 'true' if item.platform or item.narrator or item.duration_mins is not none or item.asin else 'false' }}" class="bg-shelf-card rounded-xl border border-shelf-border p-6 space-y-4">
             <div>
                 <h2 class="text-lg font-semibold">Media Details</h2>
                 <p class="text-sm text-shelf-muted mt-1">Fields specific to the selected media type.</p>
@@ -358,9 +362,10 @@
                 </select>
             </div>
 
-            <div data-media-types="audiobook" data-always-visible="{{ 'true' if item.narrator or item.duration_mins is not none else 'false' }}" class="grid grid-cols-2 gap-4">
+            <div data-media-types="audiobook" data-always-visible="{{ 'true' if item.narrator or item.duration_mins is not none or item.asin else 'false' }}" class="grid grid-cols-2 gap-4">
                 {{ field("narrator", "Narrator", item.narrator) }}
                 {{ field("duration_mins", "Duration (min)", item.duration_mins, type="number") }}
+                {{ field("asin", "ASIN", item.asin) }}
             </div>
         </section>
 

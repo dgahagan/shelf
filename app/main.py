@@ -59,6 +59,7 @@ from app.config import (
 from app.currency import CURRENCIES, format_money, get_currency
 from app.features import feature_enabled
 from app.services.national import SEARCH_LANGS
+from app.services.browse_counts import source_label
 from app.database import init_db, get_db
 from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music, related_media, trash, labels, audits, duplicates, upcoming, api_v1
 from app.routers import auth_routes
@@ -737,6 +738,8 @@ templates.env.globals["search_langs"] = SEARCH_LANGS
 # A global rather than route context, so neither host route grows a key for it.
 templates.env.globals["creator_labels"] = CREATOR_LABELS
 templates.env.globals["creator_label"] = creator_label
+# The item footer's "via <source>" — the same names the Browse Source filter shows.
+templates.env.globals["source_label"] = source_label
 # Each cover's box shape per media type — declared once in app/config.py, and
 # carried as data-cover-shape so one CSS rule squares every music cover.
 templates.env.globals["cover_shape"] = cover_shape

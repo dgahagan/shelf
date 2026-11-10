@@ -66,9 +66,11 @@ def import_tmp_path() -> Path:
 # items columns included verbatim in library.json, in the order the plan
 # lists them. Dropped: cover_path (replaced by "cover"), location_id
 # (replaced by "location"), abs_id/abs_library_id (foreign keys into a
-# different self-hosted instance; ABS re-sync recreates them).
+# different self-hosted instance; ABS re-sync recreates them). `asin` IS
+# exported, unlike abs_id: it is an edition identifier that means the same
+# thing on every instance, not a foreign key into one.
 _ITEM_COLUMNS = (
-    "title", "subtitle", "authors", "isbn", "isbn10", "upc",
+    "title", "subtitle", "authors", "isbn", "isbn10", "upc", "asin",
     "media_type", "platform", "publisher", "publish_year", "page_count",
     "description", "series_name", "series_position", "narrator",
     "duration_mins", "source", "notes", "reading_status", "date_started",
@@ -1331,6 +1333,9 @@ def plan_archive(db, reader: ArchiveReader, mode: str = "skip") -> dict:
             raw_isbn = (item.get("isbn") or "").strip() or None
             isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
             isbn_val = isbn_pair[0] if isbn_pair else None
+            # No ASIN pre-clean here: _classify does not key on the ASIN, so
+            # it cannot change a verdict. apply_plan cleans it (G72); a rule
+            # that dedupes on the ASIN must clean it here too.
             media, item_tag_names = _item_media_and_tags(item)
             cover_arcname = item.get("cover")
             has_cover_entry = bool(cover_arcname) and cover_arcname in cover_names
@@ -1636,6 +1641,13 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
             raw_isbn = (item.get("isbn") or "").strip() or None
             isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
             isbn_val, isbn10_val = isbn_pair or (None, None)
+            # Same provider-value treatment for the ASIN (G72): a malformed
+            # one is dropped and reported, the row is still imported. Cleaned
+            # here, before the item's first write (G85).
+            raw_asin = item.get("asin")
+            if isinstance(raw_asin, str) and not raw_asin.strip(" \t"):
+                raw_asin = None  # blank means absent, not malformed
+            asin_val = isbn_svc.clean_asin(raw_asin)
             media, item_tag_names = _item_media_and_tags(item)
 
             # Both lookups are confined to rows that existed *before* this
@@ -1677,6 +1689,7 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
             # could otherwise disagree with the cleaned isbn and trip the
             # funnel's own check digit validation on isbn10 alone.
             item_norm["isbn10"] = isbn10_val
+            item_norm["asin"] = asin_val
             item_norm["media_type"] = media
             item_norm["source"] = item.get("source") or "manual"
             # owned is NOT NULL DEFAULT 1 on the items table; 0 is a real
@@ -1750,6 +1763,11 @@ def apply_plan(db, reader: ArchiveReader, plan: dict, selection: dict | None = N
                 errors.append(
                     f"Archive item {archive_id} ({title!r}): imported without "
                     f"its ISBN — {raw_isbn!r} is not a valid ISBN"
+                )
+            if raw_asin and asin_val is None:
+                errors.append(
+                    f"Archive item {archive_id} ({title!r}): imported without "
+                    f"its ASIN — {raw_asin!r} is not a valid ASIN"
                 )
 
             if existing:

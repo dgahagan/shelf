@@ -27,10 +27,18 @@ SOURCE_LABELS = {
     "porbase": "PORBASE",
     "bnf": "BnF",
     "google": "Google Books",
+    "audible_import": N_("Audible import"),
     "photo_intake": N_("Photo Intake"),
     "store_queue": N_("Store Queue"),
     "csv_import": N_("CSV Import"),
 }
+
+
+def source_label(key: str) -> str:
+    """An `items.source` value as a person reads it — the Browse label, or
+    the same title-cased fallback the Source dropdown uses."""
+    label = SOURCE_LABELS.get(key)
+    return i18n.gettext(label) if label else key.replace("_", " ").title()
 
 
 def filter_counts(db, values: dict, total: int) -> dict:

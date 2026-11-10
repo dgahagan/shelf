@@ -13,9 +13,11 @@ import pytest
 from app.services import lists
 from app.services import upc as upc_svc
 from app.services.reading_imports import (
+    AUDIBLE_CLI,
     CONSUMED_COLUMNS,
     GENERIC,
     GOODREADS,
+    LIBATION,
     LIBIB,
     LIBRARYTHING,
     STORYGRAPH,
@@ -93,6 +95,18 @@ class TestChooseDelimiter:
 
     def test_one_tab_one_comma_tie_picks_comma(self):
         assert choose_delimiter("Title\tSubtitle,Author") == ","
+
+    def test_semicolon_header_picks_semicolon(self):
+        assert choose_delimiter("Title;Authors;Narrators") == ";"
+
+    def test_semicolon_inside_quotes_is_not_counted(self):
+        assert choose_delimiter('"a;b;c",d,e') == ","
+
+    def test_three_way_tie_picks_comma(self):
+        assert choose_delimiter("a\tb,c;d") == ","
+
+    def test_semicolon_comma_tie_picks_comma(self):
+        assert choose_delimiter("a;b,c") == ","
 
     def test_tab_with_only_quoted_commas_picks_tab(self):
         # No comma outside quotes anywhere in the line — the only commas
@@ -1037,3 +1051,32 @@ class TestRouteCopyWriteFailure:
     def test_prices_keep_only_symbols_and_a_currency_code(self, price, expected):
         norm = normalize_librarything(_lt_row(title="Dune", purchase_price=price))
         assert (norm["copy"] or {}).get("acquisition_price") == expected
+
+
+# ---------------------------------------------------------------------------
+# Audible formats — CONSUMED_COLUMNS pins (columns deliberately left out so
+# the "unmapped" report names them: language, purchase_date, date_added,
+# rating, num_ratings, genres, and Libation's tags, ratings, categories and
+# cover ids)
+# ---------------------------------------------------------------------------
+
+class TestAudibleConsumedColumns:
+    def test_audible_cli_pin(self):
+        assert CONSUMED_COLUMNS[AUDIBLE_CLI] == frozenset({
+            "asin", "title", "subtitle", "extended_product_description",
+            "authors", "narrators", "series_title", "series_sequence",
+            "runtime_length_min", "is_finished", "percent_complete",
+            "release_date", "cover_url",
+        })
+
+    def test_libation_pin(self):
+        assert CONSUMED_COLUMNS[LIBATION] == frozenset({
+            "audible_product_id", "title", "subtitle", "authors", "narrators",
+            "length_in_minutes", "description", "publisher", "series_order",
+            "date_published", "content_type", "is_finished?",
+            "is_audible_plus?", "absent_from_last_scan?",
+        })
+
+    def test_language_is_in_neither_set(self):
+        assert "language" not in CONSUMED_COLUMNS[AUDIBLE_CLI]
+        assert "language" not in CONSUMED_COLUMNS[LIBATION]

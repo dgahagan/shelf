@@ -166,11 +166,10 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
 
                 authors = metadata.get("authorName") or metadata.get("author")
                 narrator = metadata.get("narratorName")
-                # A provider value, and ABS audiobooks frequently carry an
-                # ASIN in this same metadata field rather than an ISBN.
-                # Pre-cleaned per #54: never written into items.isbn — the
-                # raw value survives only in the warning below.
-                raw_isbn = metadata.get("isbn") or metadata.get("asin")
+                # A provider value. Pre-cleaned per #54: the raw value
+                # survives only in the warning below. The ASIN is a different
+                # identifier and never stands in for the ISBN (G72).
+                raw_isbn = metadata.get("isbn")
                 isbn_pair = isbn_svc.canonical_isbn_pair(raw_isbn) if raw_isbn else None
                 if raw_isbn and isbn_pair is None:
                     logger.warning(
@@ -178,6 +177,13 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         f"Audiobookshelf item {abs_id} ({title})", raw_isbn,
                     )
                 isbn = isbn_pair[0] if isbn_pair else None
+                raw_asin = metadata.get("asin")
+                asin = isbn_svc.clean_asin(raw_asin)
+                if raw_asin and asin is None:
+                    logger.warning(
+                        "%s: %r is not a valid ASIN — stored without one",
+                        f"Audiobookshelf item {abs_id} ({title})", raw_asin,
+                    )
                 series_name = metadata.get("seriesName")
                 publisher = metadata.get("publisher")
                 pub_year = _normalise_publish_year(metadata.get("publishedYear"))
@@ -197,7 +203,7 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         """SELECT id, title, authors, narrator, isbn, series_name,
                                   publisher, publish_year, description, duration_mins,
                                   media_type, abs_id, abs_library_id, cover_path,
-                                  deleted_at
+                                  asin, deleted_at
                            FROM items WHERE abs_id = ?
                            ORDER BY deleted_at IS NOT NULL, id LIMIT 1""",
                         (abs_id,),
@@ -255,7 +261,8 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                         existing = db.execute(
                             """SELECT id, title, authors, narrator, isbn, series_name,
                                       publisher, publish_year, description, duration_mins,
-                                      media_type, abs_id, abs_library_id, cover_path
+                                      media_type, abs_id, abs_library_id, cover_path,
+                                      asin
                                FROM items_live WHERE id = ?""",
                             (isbn_match["id"],),
                         ).fetchone()
@@ -279,6 +286,11 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                             "abs_id": abs_id,
                             "abs_library_id": lib_id,
                         }
+                        if asin is not None:
+                            # Only ever set: an ASIN stamped by hand or by an
+                            # import survives a sync where ABS sends none or
+                            # an invalid one.
+                            desired["asin"] = asin
                         changed = any(existing[key] != value for key, value in desired.items())
 
                         try:
@@ -314,6 +326,9 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                                 title=title,
                                 authors=authors,
                                 isbn=isbn,
+                                # The provider's value, pre-cleaned: an
+                                # invalid ASIN is dropped, not refused (G72).
+                                asin=asin,
                                 media_type=media_type,
                                 publisher=publisher,
                                 publish_year=pub_year,
@@ -408,21 +423,39 @@ def _authors_compatible(a: str | None, b: str | None) -> bool:
     return bool(first_a) and bool(first_b) and (first_a in b.casefold() or first_b in a.casefold())
 
 
-def _auto_link_items():
-    """Create item_links between items that appear to be the same work in different formats."""
-    with get_db() as db:
-        abs_items = db.execute(
-            "SELECT id, title, authors, isbn, media_type FROM items_live WHERE abs_id IS NOT NULL"
-        ).fetchall()
+def auto_link(origin_ids) -> int:
+    """Link each origin item to the same work in another format.
 
-        for abs_item in abs_items:
-            norm_title = _normalize_title(abs_item["title"])
+    A candidate is a live row that is not itself an origin and has a
+    different ``media_type``. A shared ISBN matches first; otherwise
+    normalized-title equality plus compatible authors. Returns the number of
+    links inserted. Opens its own connection, so call it only after the
+    caller's write transaction has committed (G112).
+    """
+    origin_set = {int(i) for i in origin_ids}
+    if not origin_set:
+        return 0
+    inserted = 0
+    with get_db() as db:
+        # Batched: an ABS library can hold more ids than SQLite binds at once.
+        ordered = sorted(origin_set)
+        origins = []
+        for start in range(0, len(ordered), 500):
+            batch = ordered[start:start + 500]
+            origins += db.execute(
+                "SELECT id, title, authors, isbn, media_type FROM items_live "
+                f"WHERE id IN ({','.join('?' * len(batch))})",
+                batch,
+            ).fetchall()
+
+        for origin in origins:
+            norm_title = _normalize_title(origin["title"])
 
             # Match by ISBN
-            if abs_item["isbn"]:
+            if origin["isbn"]:
                 matches = db.execute(
                     "SELECT id FROM items_live WHERE isbn = ? AND id != ? AND media_type != ?",
-                    (abs_item["isbn"], abs_item["id"], abs_item["media_type"]),
+                    (origin["isbn"], origin["id"], origin["media_type"]),
                 ).fetchall()
             else:
                 matches = []
@@ -430,24 +463,38 @@ def _auto_link_items():
             # Match by normalized title + compatible authors if no ISBN match
             if not matches:
                 all_items = db.execute(
-                    "SELECT id, title, authors, media_type FROM items_live WHERE id != ? AND abs_id IS NULL",
-                    (abs_item["id"],),
+                    "SELECT id, title, authors, media_type FROM items_live WHERE id != ?",
+                    (origin["id"],),
                 ).fetchall()
                 matches = [
                     i for i in all_items
-                    if _normalize_title(i["title"]) == norm_title
-                    and i["media_type"] != abs_item["media_type"]
-                    and _authors_compatible(abs_item["authors"], i["authors"])
+                    if i["id"] not in origin_set
+                    and _normalize_title(i["title"]) == norm_title
+                    and i["media_type"] != origin["media_type"]
+                    and _authors_compatible(origin["authors"], i["authors"])
                 ]
 
             for match in matches:
                 match_id = match["id"] if isinstance(match, dict) else match[0]
-                a_id = min(abs_item["id"], match_id)
-                b_id = max(abs_item["id"], match_id)
+                a_id = min(origin["id"], match_id)
+                b_id = max(origin["id"], match_id)
                 try:
-                    db.execute(
+                    cur = db.execute(
                         "INSERT OR IGNORE INTO item_links (item_a_id, item_b_id) VALUES (?, ?)",
                         (a_id, b_id),
                     )
+                    inserted += max(cur.rowcount, 0)
                 except Exception:
                     pass
+    return inserted
+
+
+def _auto_link_items():
+    """Create item_links between items that appear to be the same work in different formats.
+
+    The origins are every live row with an ``abs_id``; the candidate set
+    ("not an origin") is then exactly the old ``abs_id IS NULL``.
+    """
+    with get_db() as db:
+        ids = [r[0] for r in db.execute("SELECT id FROM items_live WHERE abs_id IS NOT NULL").fetchall()]
+    auto_link(ids)

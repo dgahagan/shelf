@@ -35,7 +35,7 @@ from app.services import item_copies, lists
 # The fields a merge fills on the kept row from the merged-away one when the
 # kept row has none. The merge route applies it; the Duplicates page reads it too.
 MERGE_FILLABLE = frozenset(["subtitle", "authors", "publisher", "publish_year", "page_count",
-                            "description", "series_name", "narrator", "isbn"])
+                            "description", "series_name", "narrator", "isbn", "asin"])
 
 
 def active_loan_ids(db, item_ids) -> set[int]:

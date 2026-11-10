@@ -246,3 +246,97 @@ def test_sync_records_a_bad_update_value_as_an_error_without_aborting(db, monkey
     row = db.execute("SELECT title FROM items WHERE id = ?", (existing_id,)).fetchone()
     assert row["title"] == "Old Title"
     assert progress[-1][3] == "error"
+
+def _mock_metadata_libraries(**libs):
+    """libs: library id -> list of (abs_id, metadata dict)."""
+    respx.get(f"{ABS}/api/libraries").mock(return_value=httpx.Response(200, json={
+        "libraries": [
+            {"id": lib_id, "name": lib_id, "mediaType": "book"} for lib_id in libs
+        ]}))
+    for lib_id, items in libs.items():
+        respx.get(f"{ABS}/api/libraries/{lib_id}/items").mock(
+            return_value=httpx.Response(200, json={"results": [
+                {"id": abs_id, "media": {"metadata": md, "numAudioFiles": 1,
+                                         "duration": 3600}}
+                for abs_id, md in items
+            ]}))
+        for abs_id, _ in items:
+            respx.get(f"{ABS}/api/items/{abs_id}/cover").mock(
+                return_value=httpx.Response(404))
+
+
+@respx.mock
+def test_sync_stores_a_valid_asin_without_an_isbn_warning(db, caplog):
+    _mock_metadata_libraries(lib_audio=[
+        ("li_1", {"title": "ASIN Book", "asin": ASIN})])
+
+    with caplog.at_level("WARNING"):
+        stats = asyncio.run(sync(ABS, "token"))
+
+    assert stats["added"] == 1 and stats["errors"] == 0
+    row = db.execute("SELECT isbn, asin FROM items").fetchone()
+    assert row["asin"] == ASIN
+    assert row["isbn"] is None
+    assert "not a valid ISBN" not in caplog.text
+    assert "not a valid ASIN" not in caplog.text
+
+
+@respx.mock
+def test_sync_drops_an_invalid_asin_and_warns(db, caplog):
+    _mock_metadata_libraries(lib_audio=[
+        ("li_1", {"title": "Bad ASIN", "asin": "not-an-asin"})])
+
+    with caplog.at_level("WARNING"):
+        stats = asyncio.run(sync(ABS, "token"))
+
+    assert stats["added"] == 1 and stats["errors"] == 0
+    assert db.execute("SELECT asin FROM items").fetchone()["asin"] is None
+    assert "'not-an-asin' is not a valid ASIN" in caplog.text
+
+
+@respx.mock
+def test_sync_accepts_one_asin_in_two_libraries(db):
+    _mock_metadata_libraries(
+        lib_a=[("li_1", {"title": "Same Book", "asin": ASIN})],
+        lib_b=[("li_2", {"title": "Same Book", "asin": ASIN})],
+    )
+
+    stats = asyncio.run(sync(ABS, "token"))
+
+    assert stats["added"] == 2 and stats["errors"] == 0
+    rows = db.execute("SELECT asin FROM items").fetchall()
+    assert [r["asin"] for r in rows] == [ASIN, ASIN]
+
+
+@respx.mock
+def test_sync_backfills_an_asin_onto_an_existing_row(db):
+    item_id = _insert_item(
+        db, title="Old Row", isbn=None, media_type="audiobook",
+        abs_id="li_1", abs_library_id="lib_audio",
+    )
+    db.execute("COMMIT")
+    _mock_metadata_libraries(lib_audio=[
+        ("li_1", {"title": "Old Row", "asin": ASIN})])
+
+    stats = asyncio.run(sync(ABS, "token"))
+
+    assert stats["updated"] == 1 and stats["errors"] == 0
+    row = db.execute("SELECT asin FROM items WHERE id = ?", (item_id,)).fetchone()
+    assert row["asin"] == ASIN
+
+
+@respx.mock
+def test_sync_keeps_a_hand_stamped_asin_when_abs_sends_none_or_junk(db):
+    item_id = _insert_item(
+        db, title="Stamped", isbn=None, media_type="audiobook",
+        abs_id="li_1", abs_library_id="lib_audio", asin="B00STAMPED",
+    )
+    db.execute("COMMIT")
+
+    for md in ({"title": "Stamped"}, {"title": "Stamped", "asin": "not-an-asin"}):
+        with respx.mock:
+            _mock_metadata_libraries(lib_audio=[("li_1", md)])
+            stats = asyncio.run(sync(ABS, "token"))
+        assert stats["errors"] == 0
+        row = db.execute("SELECT asin FROM items WHERE id = ?", (item_id,)).fetchone()
+        assert row["asin"] == "B00STAMPED"

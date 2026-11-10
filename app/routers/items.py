@@ -1166,7 +1166,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                     "publish_year", "page_count", "description", "series_name",
                     "series_position", "narrator", "duration_mins", "location_id", "notes",
                     "reading_status", "date_started", "date_finished", "owned", "wishlisted",
-                    "platform", "manual_value", "language"):
+                    "platform", "manual_value", "language", "asin"):
             val = form.get(key)
             if val is not None:
                 if key == "wishlisted":
@@ -1244,6 +1244,13 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
             if not valid_upc:
                 return _refused("invalid_upc")
             fields["upc"] = canonical_upc
+
+        # The user's value: refuse, never drop (G72). Clearing stores NULL.
+        if fields.get("asin") is not None:
+            cleaned_asin = isbn_svc.clean_asin(fields["asin"])
+            if cleaned_asin is None:
+                return _refused("invalid_asin")
+            fields["asin"] = cleaned_asin
 
         if fields.get("media_type"):
             fields["media_type"] = canonical_media_type(fields["media_type"])

@@ -10,6 +10,7 @@ from app.services.isbn import (
     validate_isbn10,
     validate_isbn13,
     canonical_isbn_pair,
+    clean_asin,
 )
 from app.services.upc import normalize_barcode, detect_barcode_type, validate_upc
 
@@ -203,3 +204,30 @@ class TestValidateUpc:
 
     def test_non_numeric(self):
         assert validate_upc("abcdefghijkl") is False
+
+
+class TestCleanAsin:
+    def test_upper_cases_and_strips_spaces(self):
+        assert clean_asin(" b0d1234567 ") == "B0D1234567"
+
+    def test_plain_asin_unchanged(self):
+        assert clean_asin("B0D1234567") == "B0D1234567"
+
+    def test_isbn10_shaped_value_is_accepted(self):
+        assert clean_asin("054792822X") == "054792822X"
+
+    def test_none_and_empty(self):
+        assert clean_asin(None) is None
+        assert clean_asin("") is None
+        assert clean_asin("   ") is None
+
+    def test_wrong_length_or_characters(self):
+        assert clean_asin("B0D123456") is None
+        assert clean_asin("B0D12345678") is None
+        assert clean_asin("B0D123456-") is None
+
+    def test_trailing_newline_is_refused(self):
+        assert clean_asin("B0D1234567\n") is None
+
+    def test_non_string(self):
+        assert clean_asin(1234567890) is None
