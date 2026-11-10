@@ -17,12 +17,16 @@ from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 
-SUPPORTED = ("en", "it", "zh")
+# Locale identifiers in gettext's directory form: `it`, `zh_Hans`, `pt_BR`.
+SUPPORTED = ("en", "it", "zh_Hans")
 DEFAULT = "en"
 LOCALE_DIR = Path(__file__).parent / "locales"
 # Each language named in itself, so a reader who can't read the current UI
 # can still find their own in the picker.
-LANGUAGE_NAMES = {"en": "English", "it": "Italiano", "zh": "简体中文"}
+LANGUAGE_NAMES = {"en": "English", "it": "Italiano", "zh_Hans": "简体中文"}
+# Regions that stand for a script, which no rule can derive (only Chinese).
+ALIASES = {"zh_TW": "zh_Hant", "zh_HK": "zh_Hant", "zh_MO": "zh_Hant",
+           "zh_CN": "zh_Hans", "zh_SG": "zh_Hans"}
 
 current_locale: ContextVar[str] = ContextVar("current_locale", default=DEFAULT)
 
@@ -39,18 +43,42 @@ def N_(message: str) -> str:
     return message
 
 
+def match(tag: str | None) -> str | None:
+    """The supported locale for one language tag, most specific first.
+
+    `pt-BR`, `pt_br` and `PT-br` are all `pt_BR`; `zh-Hant` is `zh_Hant`.
+    Then an alias (`zh-TW` is `zh_Hant`), then the bare language, then the
+    language's only shipped variant (a bare `zh` or `zh-Hant` finds `zh_Hans`
+    while that is the one Chinese catalog). None when nothing fits.
+    """
+    subtags = (tag or "").strip().replace("_", "-").split("-")
+    lang = subtags[0].lower()
+    script = next((s.title() for s in subtags[1:] if len(s) == 4 and s.isalpha()), None)
+    region = next((s.upper() for s in subtags[1:] if len(s) == 2 or (len(s) == 3 and s.isdigit())), None)
+    for candidate in (
+        "_".join(filter(None, (lang, script, region))),
+        script and f"{lang}_{script}",
+        region and ALIASES.get(f"{lang}_{region}"),
+        lang,
+    ):
+        if candidate in SUPPORTED:
+            return candidate
+    # shortcut: no per-language default variant; add a {"zh": "zh_Hans"} map once a language ships two
+    variants = [s for s in SUPPORTED if s.split("_")[0] == lang]
+    return variants[0] if len(variants) == 1 else None
+
+
 def resolve(user_language: str | None, accept_language: str | None) -> str:
     """The locale for a request: the user's choice, else the browser's, else English.
 
-    `Accept-Language` entries are ranked by q-value, ties by position; region
-    subtags are dropped (`it-CH` is `it`), and `q=0` means "not this one".
+    `Accept-Language` entries are ranked by q-value, ties by position, and each
+    maps to a locale through `match()`; `q=0` means "not this one".
     """
-    if user_language in SUPPORTED:
-        return user_language
+    if chosen := match(user_language):
+        return chosen
     ranked = []
     for position, part in enumerate((accept_language or "").split(",")):
         tag, _, params = part.partition(";")
-        lang = tag.strip().lower().split("-")[0]
         q = 1.0
         for param in params.split(";"):
             key, _, value = param.strip().lower().partition("=")
@@ -59,8 +87,8 @@ def resolve(user_language: str | None, accept_language: str | None) -> str:
                     q = float(value)
                 except ValueError:
                     q = 0.0
-        if lang in SUPPORTED and q > 0:
-            ranked.append((-q, position, lang))
+        if (locale := match(tag)) and q > 0:
+            ranked.append((-q, position, locale))
     return min(ranked)[2] if ranked else DEFAULT
 
 
