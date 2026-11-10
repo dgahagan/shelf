@@ -178,8 +178,10 @@ def test_location_filter_none_lists_only_unlocated_items(admin_client, seeded_li
         assert "DVD One" not in resp.text
     for sel in SELECT_IDS:
         assert _opts(b.text, sel) == _opts(s.text, sel), sel
-    assert re.search(r'<option value="none"\s+selected>\s*No location \(2\)', b.text)
-    assert "No location (2)" in _opts(s.text, "location-filter")
+    # The count is every unfiled item under the other filters (the wishlist
+    # and not-owned fixtures have no location either), so match any number.
+    assert re.search(r'<option value="none"\s+selected>\s*No location \(\d+\)', b.text)
+    assert any(o.startswith("No location (") for o in _opts(s.text, "location-filter"))
 
 
 def test_location_filter_offers_no_location_only_when_some_exist(admin_client, db):
@@ -187,7 +189,9 @@ def test_location_filter_offers_no_location_only_when_some_exist(admin_client, d
     _insert_item(db, title="Filed", isbn="9780000010018", media_type="book",
                  location_id=loc)
     db.commit()
-    assert 'value="none"' not in admin_client.get("/browse").text
+    # Not `value="none"`: the Owned filter's "Not owned or wishlisted" uses it too.
+    opts = _opts(admin_client.get("/browse").text, "location-filter")
+    assert not any(o.startswith("No location") for o in opts), opts
 
 
 def test_q_truncation(admin_client, db, monkeypatch):
