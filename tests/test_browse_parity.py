@@ -163,6 +163,33 @@ def test_result_set_parity_location_filter(admin_client, seeded_library):
     assert b_cards > 0, (qs, b.text[:400])
 
 
+def test_location_filter_none_lists_only_unlocated_items(admin_client, seeded_library):
+    """"No location" is how an item that was never filed gets found and bulk
+    moved. Both routes must agree, return exactly the unlocated items, and
+    offer the option with the matching count."""
+    qs = "location_filter=none"
+    b = admin_client.get(f"/browse?{qs}")
+    s = admin_client.get(f"/api/search?{qs}")
+    for resp in (b, s):
+        assert resp.status_code == 200
+        assert "Book Unlocated" in resp.text
+        assert "DVD Two" in resp.text
+        assert "Book Two" not in resp.text  # has a location
+        assert "DVD One" not in resp.text
+    for sel in SELECT_IDS:
+        assert _opts(b.text, sel) == _opts(s.text, sel), sel
+    assert re.search(r'<option value="none"\s+selected>\s*No location \(2\)', b.text)
+    assert "No location (2)" in _opts(s.text, "location-filter")
+
+
+def test_location_filter_offers_no_location_only_when_some_exist(admin_client, db):
+    loc = _insert_location(db, "Shelf A")
+    _insert_item(db, title="Filed", isbn="9780000010018", media_type="book",
+                 location_id=loc)
+    db.commit()
+    assert 'value="none"' not in admin_client.get("/browse").text
+
+
 def test_q_truncation(admin_client, db, monkeypatch):
     # `q` truncation is enforced *before* the search hits the DB, so a query
     # long enough to trigger it can never literally appear as a substring of

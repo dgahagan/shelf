@@ -83,6 +83,20 @@ def _column(column: str, cast: Callable[[str], object] = str) -> ConditionBuilde
     return build
 
 
+#: `location_filter` value that selects items with no location at all. Not an
+#: id, so it cannot collide with one; it is the same spelling `owned` uses for
+#: its "neither" arm.
+NO_LOCATION = "none"
+
+
+def _location(value):
+    """A location id, or `none` for items that have no location (the ones to
+    pick when tagging a library's locations after the fact)."""
+    if value == NO_LOCATION:
+        return "i.location_id IS NULL", []
+    return _column("i.location_id", cast=int)(value)
+
+
 def _search(value):
     like = f"%{value}%"
     return (
@@ -194,7 +208,7 @@ FILTERS: tuple[BrowseFilter, ...] = (
     BrowseFilter("q", prefix=N_("Search"), condition=_search),
     BrowseFilter("media_type_filter", prefix=N_("Type"), condition=_column("i.media_type")),
     BrowseFilter("source_filter", prefix=N_("Source"), condition=_column("i.source")),
-    BrowseFilter("location_filter", prefix=N_("Location"), condition=_column("i.location_id", cast=int)),
+    BrowseFilter("location_filter", prefix=N_("Location"), condition=_location),
     BrowseFilter("sort", prefix=N_("Sort"), default="newest", clear_to="newest"),
     BrowseFilter("reading_status", prefix=N_("Status"), condition=_column("i.reading_status")),
     BrowseFilter("owned", condition=_owned),

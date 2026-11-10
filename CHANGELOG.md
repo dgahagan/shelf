@@ -6,6 +6,14 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Browse can filter to items with no location.** The Location filter now
+  lists **No location**, with a count, whenever some item has none, so the items
+  that were never filed can be found and moved to a location with the bulk
+  **Move**. The user guide already described this option; it was missing. A
+  bookmarked `?location_filter=none` works too.
+
 ## [0.77.0] - 2026-11-10
 
 Store Mode could tell you to put a book back that you meant to buy. After a

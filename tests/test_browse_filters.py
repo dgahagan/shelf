@@ -147,6 +147,13 @@ class TestBuildWhere:
         assert where == "WHERE 1 = 0"
         assert params == []
 
+    def test_location_none_selects_items_without_one(self):
+        # "none" is not an id: it must not reach int(), which would make it
+        # an uncastable value that matches nothing.
+        assert bf.build_where({"location_filter": "none"}) == (
+            "WHERE i.location_id IS NULL", [],
+        )
+
     def test_owned_is_tri_state(self):
         """The URL contract is unchanged — "1" and "0" still mean owned and
         wishlist — but "0" now reads `list_items` rather than `owned = 0`
