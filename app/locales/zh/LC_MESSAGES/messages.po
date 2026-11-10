@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-04 22:13+0000\n"
+"PO-Revision-Date: 2026-11-10 05:16+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh\n"
 "Language-Team: zh <LL@li.org>\n"
@@ -17,27 +17,27 @@ msgstr ""
 
 #: app/browse_columns.py:62
 msgid "Title"
-msgstr ""
+msgstr "标题"
 
 #: app/browse_columns.py:63 app/browse_filters.py:206 app/config.py:156
 msgid "Author"
-msgstr ""
+msgstr "作者"
 
 #: app/browse_columns.py:64 app/browse_filters.py:195
 msgid "Type"
-msgstr ""
+msgstr "类型"
 
 #: app/browse_columns.py:65 app/browse_filters.py:197
 msgid "Location"
-msgstr ""
+msgstr "位置"
 
 #: app/browse_columns.py:66 app/browse_filters.py:199
 msgid "Status"
-msgstr ""
+msgstr "状态"
 
 #: app/browse_columns.py:67
 msgid "Value"
-msgstr ""
+msgstr "价值"
 
 #: app/browse_columns.py:68 app/nav.py:41 app/templates/browse.html:49
 msgid "Series"
@@ -45,15 +45,15 @@ msgstr "系列"
 
 #: app/browse_columns.py:69
 msgid "Publisher"
-msgstr ""
+msgstr "出版社"
 
 #: app/browse_columns.py:70
 msgid "Year"
-msgstr ""
+msgstr "年份"
 
 #: app/browse_columns.py:71
 msgid "Pages"
-msgstr ""
+msgstr "页数"
 
 #: app/browse_columns.py:72 app/browse_filters.py:207
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
@@ -62,147 +62,147 @@ msgstr "语言"
 
 #: app/browse_columns.py:73
 msgid "Added"
-msgstr ""
+msgstr "添加日期"
 
 #: app/browse_columns.py:74
 msgid "Platform"
-msgstr ""
+msgstr "平台"
 
 #: app/browse_columns.py:75
 msgid "ISBN/UPC"
-msgstr ""
+msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76
 msgid "Tags"
-msgstr ""
+msgstr "标签"
 
 #: app/browse_filters.py:194
 msgid "Search"
-msgstr ""
+msgstr "搜索"
 
 #: app/browse_filters.py:196
 msgid "Source"
-msgstr ""
+msgstr "来源"
 
 #: app/browse_filters.py:198
 msgid "Sort"
-msgstr ""
+msgstr "排序"
 
 #: app/browse_filters.py:202 app/templates/browse.html:83
 msgid "Tag"
-msgstr ""
+msgstr "标签"
 
 #: app/config.py:15
 msgid "Book"
-msgstr ""
+msgstr "图书"
 
 #: app/config.py:16
 msgid "Audiobook"
-msgstr ""
+msgstr "有声书"
 
 #: app/config.py:17
 msgid "eBook"
-msgstr ""
+msgstr "电子书"
 
 #: app/config.py:18
 msgid "Magazine"
-msgstr ""
+msgstr "杂志"
 
 #: app/config.py:19
 msgid "DVD / Blu-ray"
-msgstr ""
+msgstr "DVD / 蓝光"
 
 #: app/config.py:20
 msgid "Vinyl"
-msgstr ""
+msgstr "黑胶唱片"
 
 #: app/config.py:21
 msgid "Cassette"
-msgstr ""
+msgstr "磁带"
 
 #: app/config.py:22
 msgid "CD"
-msgstr ""
+msgstr "CD"
 
 #: app/config.py:23
 msgid "Digital Music"
-msgstr ""
+msgstr "数字音乐"
 
 #: app/config.py:24
 msgid "Comic / Graphic Novel"
-msgstr ""
+msgstr "漫画 / 图像小说"
 
 #: app/config.py:25
 msgid "Manga"
-msgstr ""
+msgstr "日漫"
 
 #: app/config.py:26
 msgid "Video Game"
-msgstr ""
+msgstr "电子游戏"
 
 #: app/config.py:54
 msgid "Want to Read"
-msgstr ""
+msgstr "想读"
 
 #: app/config.py:54
 msgid "Reading"
-msgstr ""
+msgstr "在读"
 
 #: app/config.py:54
 msgid "Read"
-msgstr ""
+msgstr "已读"
 
 #: app/config.py:55
 msgid "Want to Watch"
-msgstr ""
+msgstr "想看"
 
 #: app/config.py:55
 msgid "Watching"
-msgstr ""
+msgstr "在看"
 
 #: app/config.py:55
 msgid "Watched"
-msgstr ""
+msgstr "已看"
 
 #: app/config.py:56
 msgid "Want to Play"
-msgstr ""
+msgstr "想玩"
 
 #: app/config.py:56
 msgid "Playing"
-msgstr ""
+msgstr "在玩"
 
 #: app/config.py:56
 msgid "Played"
-msgstr ""
+msgstr "已玩"
 
 #: app/config.py:58
 msgid "Want to"
-msgstr ""
+msgstr "想要"
 
 #: app/config.py:58
 msgid "In progress"
-msgstr ""
+msgstr "进行中"
 
 #: app/config.py:58
 msgid "Finished"
-msgstr ""
+msgstr "已完成"
 
 #: app/config.py:124
 msgid "Author(s)"
-msgstr ""
+msgstr "作者"
 
 #: app/config.py:127
 msgid "Developer"
-msgstr ""
+msgstr "开发商"
 
 #: app/config.py:128
 msgid "Director"
-msgstr ""
+msgstr "导演"
 
 #: app/config.py:131
 msgid "Artist"
-msgstr ""
+msgstr "艺术家"
 
 #: app/nav.py:34 app/templates/browse.html:2
 msgid "Browse"
@@ -337,121 +337,121 @@ msgstr "未知语言"
 
 #: app/routers/items.py:996
 msgid "No items or updates specified"
-msgstr ""
+msgstr "未指定条目或更新内容"
 
 #: app/routers/items.py:1001 app/routers/tags.py:71 app/routers/tags.py:76
 msgid "Invalid item IDs"
-msgstr ""
+msgstr "无效的条目 ID"
 
 #: app/routers/items.py:1006
 msgid "No valid fields to update"
-msgstr ""
+msgstr "没有可更新的有效字段"
 
 #: app/routers/items.py:1012
 msgid "Series name cannot be empty"
-msgstr ""
+msgstr "系列名称不能为空"
 
 #: app/routers/tags.py:78
 msgid "No items selected"
-msgstr ""
+msgstr "未选择条目"
 
 #: app/routers/tags.py:82
 msgid "No tag given"
-msgstr ""
+msgstr "未填写标签"
 
 #: app/routers/tags.py:99
 #, python-format
 msgid "Added %(tags)s to %(count)s item(s)"
-msgstr ""
+msgstr "已为 %(count)s 个条目添加标签 %(tags)s"
 
 #: app/routers/tags.py:101
 #, python-format
 msgid "Removed %(tags)s from %(count)s item(s)"
-msgstr ""
+msgstr "已从 %(count)s 个条目移除标签 %(tags)s"
 
 #: app/services/browse_counts.py:16
 msgid "Manual"
-msgstr ""
+msgstr "手动添加"
 
 #: app/services/browse_counts.py:30
 msgid "Audible import"
-msgstr ""
+msgstr "Audible 导入"
 
 #: app/services/browse_counts.py:31
 msgid "Photo Intake"
-msgstr ""
+msgstr "拍照入库"
 
 #: app/services/browse_counts.py:32
 msgid "Store Queue"
-msgstr ""
+msgstr "书店模式队列"
 
 #: app/services/browse_counts.py:33
 msgid "CSV Import"
-msgstr ""
+msgstr "CSV 导入"
 
 #: app/services/national.py:83
 msgid "English"
-msgstr ""
+msgstr "英语"
 
 #: app/services/national.py:84
 msgid "German"
-msgstr ""
+msgstr "德语"
 
 #: app/services/national.py:85
 msgid "French"
-msgstr ""
+msgstr "法语"
 
 #: app/services/national.py:86
 msgid "Spanish"
-msgstr ""
+msgstr "西班牙语"
 
 #: app/services/national.py:87
 msgid "Italian"
-msgstr ""
+msgstr "意大利语"
 
 #: app/services/national.py:88
 msgid "Dutch"
-msgstr ""
+msgstr "荷兰语"
 
 #: app/services/national.py:89
 msgid "Portuguese"
-msgstr ""
+msgstr "葡萄牙语"
 
 #: app/services/national.py:90
 msgid "Swedish"
-msgstr ""
+msgstr "瑞典语"
 
 #: app/services/national.py:91
 msgid "Danish"
-msgstr ""
+msgstr "丹麦语"
 
 #: app/services/national.py:92
 msgid "Norwegian"
-msgstr ""
+msgstr "挪威语"
 
 #: app/services/national.py:93
 msgid "Polish"
-msgstr ""
+msgstr "波兰语"
 
 #: app/services/national.py:94
 msgid "Czech"
-msgstr ""
+msgstr "捷克语"
 
 #: app/services/national.py:95
 msgid "Japanese"
-msgstr ""
+msgstr "日语"
 
 #: app/services/national.py:96
 msgid "Russian"
-msgstr ""
+msgstr "俄语"
 
 #: app/services/national.py:97
 msgid "Chinese"
-msgstr ""
+msgstr "中文"
 
 #: app/services/national.py:98
 msgid "Korean"
-msgstr ""
+msgstr "韩语"
 
 #: app/templates/base.html:60
 msgid "Main menu"
@@ -515,191 +515,191 @@ msgstr "在输入框中打字时快捷键不生效"
 
 #: app/templates/browse.html:13
 msgid "Move to location..."
-msgstr ""
+msgstr "移动到位置…"
 
 #: app/templates/browse.html:19 app/templates/browse.html:27
 #: app/templates/browse.html:37 app/templates/browse.html:44
 #: app/templates/browse.html:59 app/templates/browse.html:74
 msgid "Apply"
-msgstr ""
+msgstr "应用"
 
 #: app/templates/browse.html:21
 msgid "Change type..."
-msgstr ""
+msgstr "更改类型…"
 
 #: app/templates/browse.html:30
 msgid "Set status..."
-msgstr ""
+msgstr "设置状态…"
 
 #: app/templates/browse.html:34
 msgid "Clear Status"
-msgstr ""
+msgstr "清除状态"
 
 #: app/templates/browse.html:39
 msgid "Wishlist..."
-msgstr ""
+msgstr "心愿单…"
 
 #: app/templates/browse.html:40
 msgid "Add to wishlist"
-msgstr ""
+msgstr "加入心愿单"
 
 #: app/templates/browse.html:41
 msgid "Remove from wishlist"
-msgstr ""
+msgstr "移出心愿单"
 
 #: app/templates/browse.html:51
 msgid "Type or pick a series..."
-msgstr ""
+msgstr "输入或选择系列…"
 
 #: app/templates/browse.html:61 app/templates/browse.html:76
 msgid "Clear"
-msgstr ""
+msgstr "清除"
 
 #: app/templates/browse.html:68
 msgid "Choose…"
-msgstr ""
+msgstr "选择…"
 
 #: app/templates/browse.html:85
 msgid "Type or pick a tag..."
-msgstr ""
+msgstr "输入或选择标签…"
 
 #: app/templates/browse.html:94
 msgid "Add tag"
-msgstr ""
+msgstr "添加标签"
 
 #: app/templates/browse.html:96
 msgid "Remove tag"
-msgstr ""
+msgstr "移除标签"
 
 #: app/templates/browse.html:99
 msgid "Delete Selected"
-msgstr ""
+msgstr "删除所选"
 
 #: app/templates/browse.html:111
 msgid "Collection"
-msgstr ""
+msgstr "藏品"
 
 #: app/templates/browse.html:115
 msgid "Grid view"
-msgstr ""
+msgstr "网格视图"
 
 #: app/templates/browse.html:119
 msgid "List view"
-msgstr ""
+msgstr "列表视图"
 
 #: app/templates/browse.html:135
 msgid "Tap items to select them for bulk actions such as moving, type/status/series changes, tagging, or deleting."
-msgstr ""
+msgstr "点选条目即可批量操作：移动、修改类型/状态/系列、打标签或删除。"
 
 #: app/templates/browse.html:140
 msgid "Select All"
-msgstr ""
+msgstr "全选"
 
 #: app/templates/browse.html:141
 msgid "Deselect All"
-msgstr ""
+msgstr "取消全选"
 
 #: app/templates/browse.html:151
 msgid "Columns"
-msgstr ""
+msgstr "列"
 
 #: app/templates/browse.html:170
 msgid "Reset to defaults"
-msgstr ""
+msgstr "恢复默认"
 
 #: app/templates/browse.html:180
 msgid "Filters"
-msgstr ""
+msgstr "筛选"
 
 #: app/templates/browse.html:184 app/templates/browse.html:192
 msgid "Search..."
-msgstr ""
+msgstr "搜索…"
 
 #: app/templates/browse.html:204
 #: app/templates/fragments/filter_counts_oob.html:13
 msgid "All Types"
-msgstr ""
+msgstr "全部类型"
 
 #: app/templates/browse.html:218
 #: app/templates/fragments/filter_counts_oob.html:37
 msgid "All Locations"
-msgstr ""
+msgstr "全部位置"
 
 #: app/templates/browse.html:230
 #: app/templates/fragments/filter_counts_oob.html:26
 msgid "All"
-msgstr ""
+msgstr "全部"
 
 #: app/templates/browse.html:231
 #: app/templates/fragments/filter_counts_oob.html:27
 msgid "Owned"
-msgstr ""
+msgstr "已拥有"
 
 #: app/templates/browse.html:232
 #: app/templates/fragments/filter_counts_oob.html:28
 #: app/templates/fragments/item_card.html:7
 #: app/templates/fragments/item_row.html:51
 msgid "Wishlist"
-msgstr ""
+msgstr "心愿单"
 
 #: app/templates/browse.html:233
 #: app/templates/fragments/filter_counts_oob.html:29
 msgid "Not owned or wishlisted"
-msgstr ""
+msgstr "未拥有且不在心愿单"
 
 #: app/templates/browse.html:242
 msgid "All Items"
-msgstr ""
+msgstr "全部条目"
 
 #: app/templates/browse.html:243
 msgid "Lent Out"
-msgstr ""
+msgstr "已借出"
 
 #: app/templates/browse.html:253
 #: app/templates/fragments/filter_counts_oob.html:68
 msgid "All Statuses"
-msgstr ""
+msgstr "全部状态"
 
 #: app/templates/browse.html:266
 msgid "All Tags"
-msgstr ""
+msgstr "全部标签"
 
 #: app/templates/browse.html:279
 msgid "All Languages"
-msgstr ""
+msgstr "全部语言"
 
 #: app/templates/browse.html:291
 #: app/templates/fragments/filter_counts_oob.html:50
 msgid "All Sources"
-msgstr ""
+msgstr "全部来源"
 
 #: app/templates/browse.html:306
 msgid "Most Recent"
-msgstr ""
+msgstr "最新在前"
 
 #: app/templates/browse.html:307
 msgid "Oldest First"
-msgstr ""
+msgstr "最早在前"
 
 #: app/templates/browse.html:308
 msgid "Title A–Z"
-msgstr ""
+msgstr "标题 A–Z"
 
 #: app/templates/browse.html:309
 msgid "Title Z–A"
-msgstr ""
+msgstr "标题 Z–A"
 
 #: app/templates/browse.html:312
 msgid "Year (Newest)"
-msgstr ""
+msgstr "年份（从新到旧）"
 
 #: app/templates/browse.html:313
 msgid "Year (Oldest)"
-msgstr ""
+msgstr "年份（从旧到新）"
 
 #: app/templates/browse.html:326
 msgid "Clear all"
-msgstr ""
+msgstr "全部清除"
 
 #: app/templates/login.html:6 app/templates/login.html:37
 msgid "Sign In"
@@ -874,42 +874,42 @@ msgstr "撤销"
 #: app/templates/fragments/item_row.html:74
 #, python-format
 msgid "Loaned to %(name)s"
-msgstr ""
+msgstr "已借给 %(name)s"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58
 msgid "Overdue"
-msgstr ""
+msgstr "逾期"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58
 msgid "Loaned"
-msgstr ""
+msgstr "已借出"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58
 #, python-format
 msgid "To: %(name)s"
-msgstr ""
+msgstr "借给：%(name)s"
 
 #: app/templates/fragments/item_card.html:22
 #: app/templates/fragments/item_row.html:62
 msgid "New"
-msgstr ""
+msgstr "新"
 
 #: app/templates/fragments/item_card.html:53
 msgid "Open in RomM"
-msgstr ""
+msgstr "在 RomM 中打开"
 
 #: app/templates/fragments/item_grid.html:59
 msgid "No items match your filters"
-msgstr ""
+msgstr "没有符合筛选条件的条目"
 
 #: app/templates/fragments/item_grid.html:63
 msgid "No items found"
-msgstr ""
+msgstr "未找到条目"
 
 #: app/templates/fragments/item_grid.html:64
 msgid "Start scanning books"
-msgstr ""
+msgstr "开始扫码录入图书"
 
