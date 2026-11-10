@@ -24,6 +24,7 @@ ALLOWED_COVER_DOMAINS = {
     "image.tmdb.org",  # TMDb posters (tmdb.TMDB_IMAGE_BASE)
     "portal.dnb.de",  # DNB/MVB cover service for German (978-3) ISBNs
     "rnod.bnportugal.gov.pt",  # PORBASE cover scans for Portuguese (978-989, 978-972) ISBNs
+    "neodb.social",  # NeoDB cover images for Chinese (978-7, Taiwan, Hong Kong) ISBNs
     "coverartarchive.org",  # Cover Art Archive entry point for music releases
 }
 

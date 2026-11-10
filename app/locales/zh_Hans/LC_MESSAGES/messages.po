@@ -6,10 +6,10 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-10 05:16+0000\n"
+"PO-Revision-Date: 2026-11-10 11:39-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language: zh\n"
-"Language-Team: zh <LL@li.org>\n"
+"Language: zh_Hans\n"
+"Language-Team: zh_Hans <LL@li.org>\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
@@ -373,83 +373,83 @@ msgstr "已从 %(count)s 个条目移除标签 %(tags)s"
 msgid "Manual"
 msgstr "手动添加"
 
-#: app/services/browse_counts.py:30
+#: app/services/browse_counts.py:31
 msgid "Audible import"
 msgstr "Audible 导入"
 
-#: app/services/browse_counts.py:31
+#: app/services/browse_counts.py:32
 msgid "Photo Intake"
 msgstr "拍照入库"
 
-#: app/services/browse_counts.py:32
+#: app/services/browse_counts.py:33
 msgid "Store Queue"
 msgstr "书店模式队列"
 
-#: app/services/browse_counts.py:33
+#: app/services/browse_counts.py:34
 msgid "CSV Import"
 msgstr "CSV 导入"
 
-#: app/services/national.py:83
+#: app/services/national.py:89
 msgid "English"
 msgstr "英语"
 
-#: app/services/national.py:84
+#: app/services/national.py:90
 msgid "German"
 msgstr "德语"
 
-#: app/services/national.py:85
+#: app/services/national.py:91
 msgid "French"
 msgstr "法语"
 
-#: app/services/national.py:86
+#: app/services/national.py:92
 msgid "Spanish"
 msgstr "西班牙语"
 
-#: app/services/national.py:87
+#: app/services/national.py:93
 msgid "Italian"
 msgstr "意大利语"
 
-#: app/services/national.py:88
+#: app/services/national.py:94
 msgid "Dutch"
 msgstr "荷兰语"
 
-#: app/services/national.py:89
+#: app/services/national.py:95
 msgid "Portuguese"
 msgstr "葡萄牙语"
 
-#: app/services/national.py:90
+#: app/services/national.py:96
 msgid "Swedish"
 msgstr "瑞典语"
 
-#: app/services/national.py:91
+#: app/services/national.py:97
 msgid "Danish"
 msgstr "丹麦语"
 
-#: app/services/national.py:92
+#: app/services/national.py:98
 msgid "Norwegian"
 msgstr "挪威语"
 
-#: app/services/national.py:93
+#: app/services/national.py:99
 msgid "Polish"
 msgstr "波兰语"
 
-#: app/services/national.py:94
+#: app/services/national.py:100
 msgid "Czech"
 msgstr "捷克语"
 
-#: app/services/national.py:95
+#: app/services/national.py:101
 msgid "Japanese"
 msgstr "日语"
 
-#: app/services/national.py:96
+#: app/services/national.py:102
 msgid "Russian"
 msgstr "俄语"
 
-#: app/services/national.py:97
+#: app/services/national.py:103
 msgid "Chinese"
 msgstr "中文"
 
-#: app/services/national.py:98
+#: app/services/national.py:104
 msgid "Korean"
 msgstr "韩语"
 

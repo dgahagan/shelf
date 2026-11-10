@@ -296,6 +296,7 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "opac.sbn.it": 1.0,  # SBN publishes no rate limit; matches DNB, a comparable national library
     "data.bibliotheken.nl": 1.0,  # KB Dutch National Bibliography SPARQL endpoint
     "catalogue.bnf.fr": 1.0,  # BnF SRU catalogue; publishes no limit, matches the other national libraries
+    "neodb.social": 1.0,  # NeoDB catalogue search (Chinese ISBNs) and its cover images; publishes no limit
     "urn.porbase.org": 1.0,  # PORBASE (Biblioteca Nacional de Portugal) URN resolver; publishes no limit
     "rnod.bnportugal.gov.pt": 1.0,  # PORBASE cover scans, same library; publishes no limit
     "api.hardcover.app": 1.0,  # 60/min API limit
