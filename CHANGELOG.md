@@ -6,6 +6,18 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Chinese ISBNs are looked up in NeoDB first.** An ISBN in a Chinese-language
+  group (978-7 mainland China; 978-957, 978-986 and 978-626 Taiwan; 978-962 and
+  978-988 Hong Kong) is now checked against [NeoDB](https://neodb.social)'s public
+  catalogue before Open Library, Hardcover and Google Books, which mostly knew
+  these books only by an English or pinyin title. It needs no API key. Title,
+  subtitle, authors, publisher, year, page count, description and a cover are
+  filled in, in the book's own script. Series are not, because NeoDB's series
+  field is the publisher's collection. A book NeoDB does not hold falls through
+  to the other sources as before.
+
 ## [0.76.0] - 2026-11-09
 
 An Audible library lived outside Shelf. The only way in was through

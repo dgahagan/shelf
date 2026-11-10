@@ -22,7 +22,7 @@ from types import ModuleType
 from app.i18n import N_
 from app.services.bib_normalize import MARC_TO_ISO639_1, to_iso639_1  # noqa: F401
 
-from app.services import bnf, dnb, kb, oszk, porbase, sbn
+from app.services import bnf, dnb, kb, neodb, oszk, porbase, sbn
 
 # ISBN-13 prefix (unhyphenated, longest-match wins) -> provider module.
 #
@@ -44,6 +44,12 @@ PREFIX_PROVIDERS: dict[str, ModuleType] = {
     "97894": kb,  # 978-94: Netherlands
     "978972": porbase,  # 978-972: Portugal (older group)
     "978989": porbase,  # 978-989: Portugal
+    "9787": neodb,  # 978-7: mainland China
+    "978957": neodb,  # 978-957: Taiwan
+    "978986": neodb,  # 978-986: Taiwan
+    "978626": neodb,  # 978-626: Taiwan (newer group)
+    "978962": neodb,  # 978-962: Hong Kong
+    "978988": neodb,  # 978-988: Hong Kong
 }
 
 
