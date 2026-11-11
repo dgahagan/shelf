@@ -258,7 +258,9 @@ _HC_BOOK = {
 def _render_hc_results(**overrides):
     ctx = {"results": [], "query": "", "user": None}
     ctx.update(overrides)
-    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True)
+    env = Environment(loader=FileSystemLoader("app/templates"), autoescape=True,
+                      extensions=["jinja2.ext.i18n"])
+    env.install_null_translations(newstyle=True)  # the fragment marks its text with _()
     return env.get_template("fragments/hardcover_search_results.html").render(**ctx)
 
 

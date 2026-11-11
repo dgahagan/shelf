@@ -737,6 +737,8 @@ templates.env.globals["search_langs"] = SEARCH_LANGS
 # The creator field's label per media type — declared once in app/config.py.
 # A global rather than route context, so neither host route grows a key for it.
 templates.env.globals["creator_labels"] = CREATOR_LABELS
+# The same map translated per request, for the add forms' data-creator-labels.
+templates.env.globals["translated_creator_labels"] = lambda: {k: i18n.gettext(v) for k, v in CREATOR_LABELS.items()}
 templates.env.globals["creator_label"] = creator_label
 # The item footer's "via <source>" — the same names the Browse Source filter shows.
 templates.env.globals["source_label"] = source_label

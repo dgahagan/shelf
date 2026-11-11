@@ -269,7 +269,7 @@
                    component is mounted by every not_found card, and several
                    can sit on this page at once. #}
                 <div x-data="manualAddForm" data-manual-host="panel"
-                     data-creator-labels='{{ creator_labels | tojson }}'>
+                     data-creator-labels='{{ translated_creator_labels() | tojson }}'>
                     {% set manual_host = 'panel' %}
                     {% include "fragments/manual_add_form.html" with context %}
                 </div>

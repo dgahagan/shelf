@@ -25,13 +25,13 @@ function isbnCamera() {
         scanner: false,
         isZxingFallback: false,
         accepted: false,
-        status: 'Point the camera at a 978 or 979 ISBN barcode.',
+        status: t('Point the camera at a 978 or 979 ISBN barcode.'),
 
         async startCamera() {
             if (this.cameraActive) return;
             this.cameraActive = true;
             this.accepted = false;
-            this.status = 'Starting camera…';
+            this.status = t('Starting camera…');
             try {
                 await this.$nextTick();
                 this.scanner = window.createBarcodeScanner({
@@ -43,16 +43,16 @@ function isbnCamera() {
                 this.isZxingFallback = this.scanner.engine === 'zxing';
                 await this.$nextTick();
                 await this.scanner.start();
-                this.status = 'Point the camera at a 978 or 979 ISBN barcode.';
+                this.status = t('Point the camera at a 978 or 979 ISBN barcode.');
             } catch (err) {
                 if (this.scanner) await this.scanner.stop();
                 this.scanner = false;
                 this.cameraActive = false;
                 this.isZxingFallback = false;
                 if (!window.isSecureContext) {
-                    showToast('Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on.', 'error');
+                    showToast(t('Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on.'), 'error');
                 } else {
-                    showToast('Camera access denied. Check browser permissions for this site.', 'error');
+                    showToast(t('Camera access denied. Check browser permissions for this site.'), 'error');
                 }
             }
         },
@@ -68,7 +68,7 @@ function isbnCamera() {
             if (this.accepted) return;
             var digits = String(decodedText || '').replace(/\D/g, '');
             if (digits.length !== 13 || (digits.slice(0, 3) !== '978' && digits.slice(0, 3) !== '979')) {
-                this.status = 'That barcode is not a 978/979 ISBN. Try again.';
+                this.status = t('That barcode is not a 978/979 ISBN. Try again.');
                 return;
             }
             var input = document.getElementById('isbn');
@@ -112,13 +112,13 @@ function upcCamera() {
         scanner: false,
         isZxingFallback: false,
         accepted: false,
-        status: 'Point the camera at a UPC-A or EAN-13 retail barcode.',
+        status: t('Point the camera at a UPC-A or EAN-13 retail barcode.'),
 
         async startCamera() {
             if (this.cameraActive) return;
             this.cameraActive = true;
             this.accepted = false;
-            this.status = 'Starting camera…';
+            this.status = t('Starting camera…');
             try {
                 await this.$nextTick();
                 this.scanner = window.createBarcodeScanner({
@@ -130,16 +130,16 @@ function upcCamera() {
                 this.isZxingFallback = this.scanner.engine === 'zxing';
                 await this.$nextTick();
                 await this.scanner.start();
-                this.status = 'Point the camera at a UPC-A or EAN-13 retail barcode.';
+                this.status = t('Point the camera at a UPC-A or EAN-13 retail barcode.');
             } catch (err) {
                 if (this.scanner) await this.scanner.stop();
                 this.scanner = false;
                 this.cameraActive = false;
                 this.isZxingFallback = false;
                 if (!window.isSecureContext) {
-                    showToast('Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on.', 'error');
+                    showToast(t('Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on.'), 'error');
                 } else {
-                    showToast('Camera access denied. Check browser permissions for this site.', 'error');
+                    showToast(t('Camera access denied. Check browser permissions for this site.'), 'error');
                 }
             }
         },
@@ -155,7 +155,7 @@ function upcCamera() {
             if (this.accepted) return;
             var canonical = canonicalEditUpc(decodedText);
             if (!canonical) {
-                this.status = 'That is not a valid UPC-A / EAN-13 retail barcode. Try again.';
+                this.status = t('That is not a valid UPC-A / EAN-13 retail barcode. Try again.');
                 return;
             }
             var input = document.getElementById('upc');
