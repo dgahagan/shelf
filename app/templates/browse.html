@@ -216,6 +216,9 @@
                     hx-include="{{ filter_includes('location_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.location_filter else '' }}>{{ _('All Locations') }} ({{ filtered_total }})</option>
+                {% if no_location_count or f.location_filter == 'none' %}
+                <option value="none" {{ 'selected' if f.location_filter == 'none' else '' }}>{{ _('No location') }} ({{ no_location_count }})</option>
+                {% endif %}
                 {% for loc in locations %}
                 {% set lcount = location_counts.get(loc.id, 0) %}
                 <option value="{{ loc.id }}" {{ 'selected' if f.location_filter == loc.id|string else '' }}>{{ loc.name }}{% if lcount %} ({{ lcount }}){% endif %}</option>
