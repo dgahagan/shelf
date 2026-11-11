@@ -208,6 +208,14 @@ Your data in the `/data` volume is preserved across updates.
 | `x.y` | Latest patch of a minor line (e.g., `0.10`) |
 | `x.y.z` | Specific version (e.g., `0.10.1`) |
 
+## Verifying the Image
+
+The official image is [`dangahagan/shelf`](https://hub.docker.com/r/dangahagan/shelf), built and published from [dgahagan/shelf](https://github.com/dgahagan/shelf) by GitHub Actions. Every release from 0.78.0 on carries a signed build provenance attestation, which you can check with the GitHub CLI:
+
+```bash
+gh attestation verify oci://index.docker.io/dangahagan/shelf:X.Y.Z --repo dgahagan/shelf
+```
+
 ## Tech Stack
 
 | Layer | Technology |

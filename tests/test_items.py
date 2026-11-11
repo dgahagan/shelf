@@ -205,6 +205,44 @@ class TestBrowseViewModePagination:
         assert b"<tr" not in resp.content
 
 
+class TestSearchPagingBounds:
+    """/api/search and /logs bound their paging integers; per_page rejects
+    rather than clamps, and page<=0 still means page 1."""
+
+    @pytest.mark.parametrize("per_page,status", [(-1, 422), (0, 422), (201, 422), (1, 200), (200, 200)])
+    def test_per_page_bounds(self, viewer_client, per_page, status):
+        assert viewer_client.get(f"/api/search?per_page={per_page}").status_code == status
+
+    def test_per_page_200_returns_exactly_200_rows(self, viewer_client, db):
+        for i in range(201):
+            _insert_item(db, title=f"Bound Book {i}", isbn=None)
+        db.commit()
+        resp = viewer_client.get("/api/search?view=list&per_page=200")
+        assert resp.status_code == 200
+        rows = resp.content.count(b'<tr class="border-b border-shelf-border hover:bg-shelf-hover/50')
+        assert rows > 0
+        assert rows == 200
+
+    @pytest.mark.parametrize("page,status", [
+        ("99999999999999999999999", 422), ("1000001", 422), ("1000000", 200),
+    ])
+    def test_page_upper_bound(self, viewer_client, page, status):
+        assert viewer_client.get(f"/api/search?page={page}").status_code == status
+
+    @pytest.mark.parametrize("page", [0, -5])
+    def test_page_nonpositive_is_page_one(self, viewer_client, db, page):
+        _insert_item(db, title="Page One Book", isbn=None)
+        db.commit()
+        resp = viewer_client.get(f"/api/search?page={page}")
+        assert resp.status_code == 200
+        assert b'data-testid="item-grid"' in resp.content
+
+    def test_logs_page_bounds(self, admin_client):
+        assert admin_client.get("/logs?page=99999999999999999999999").status_code == 422
+        assert admin_client.get("/logs?page=0").status_code == 200
+        assert admin_client.get("/logs").status_code == 200
+
+
 class TestBulkUpdateSeries:
     def test_sets_series_name_on_multiple_items(self, admin_client, db):
         item1 = _insert_item(db, title="Bulk Series One", isbn="9780000002303")

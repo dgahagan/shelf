@@ -90,6 +90,21 @@ class TestManualValueOverride:
         # above Alpha (effective 10) — sorting by estimated_value would reverse this.
         assert html.index("Beta Low Estimate High Manual") < html.index("Alpha High Estimate Low Manual")
 
+    def test_manual_value_of_zero_is_priced_not_estimated(self, admin_client, db):
+        # A declared value of 0 is a price. Treating it as unpriced added the
+        # average price (20.00) for it and reported a 40.00 grand total.
+        _insert_item(db, title="Priced Twenty", isbn="9789000006014",
+                     estimated_value=20.00)
+        _insert_item(db, title="Declared Worthless", isbn="9789000006182",
+                     estimated_value=50.00, manual_value=0)
+        db.execute("COMMIT")
+
+        html = admin_client.get("/api/valuation/report").text
+
+        assert "$40.00" not in html
+        assert "$20.00" in html
+        assert "$0.00" in html
+
     def test_manual_badge_marks_overridden_rows_only(self, admin_client, db):
         _insert_item(db, title="Manual Priced Book", isbn="9789000006250",
                      estimated_value=15.00, manual_value=99.00)

@@ -352,6 +352,8 @@ def issn_portal_url() -> str:
 # HTTP client defaults
 HTTP_TIMEOUT = 15  # seconds for external API calls
 DEFAULT_PAGE_SIZE = 60
+MAX_PAGE_SIZE = 200
+MAX_PAGE = 1_000_000
 
 # Auth
 SECRET_KEY = os.environ.get("SECRET_KEY", "")  # auto-generated into DATA_DIR/signing.key if empty

@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-6236%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-6249%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![E2E tests](https://img.shields.io/badge/e2e%20tests-370%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
@@ -77,6 +77,12 @@ docker compose up -d
 ```
 
 Open `https://localhost:18888` and create your admin account and pick a feature profile via the setup wizard. That's it.
+
+The official image is [`dangahagan/shelf`](https://hub.docker.com/r/dangahagan/shelf), built and published from this repository by GitHub Actions. Every release from 0.78.0 on carries a signed build provenance attestation, which you can check with the GitHub CLI:
+
+```bash
+gh attestation verify oci://index.docker.io/dangahagan/shelf:X.Y.Z --repo dgahagan/shelf
+```
 
 ### Configuration
 

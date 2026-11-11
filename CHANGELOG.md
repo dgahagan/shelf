@@ -6,6 +6,36 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.78.1] - 2026-11-11
+
+The insurance valuation report overstated a collection that held anything you
+had valued at 0: it filled each of those in with the collection's average
+price. This release counts them at $0.00. It also refuses search and log
+requests that ask for an unlimited or absurd page, which could return the
+whole catalogue in one response or fail with a server error.
+
+### Added
+
+- **You can check that a Shelf image was built from this repository.** Every
+  Docker image from 0.78.0 on is published with a signed build provenance
+  attestation. The README and the Docker Hub page now say so and give the
+  command that verifies it:
+  `gh attestation verify oci://index.docker.io/dangahagan/shelf:X.Y.Z --repo dgahagan/shelf`.
+
+### Fixed
+
+- **The valuation report no longer adds a price to an item you valued at 0.**
+  An item whose value you set to 0 was counted as unpriced, so the report
+  added the collection's average price for it and the total came out too
+  high. It now counts as priced at $0.00 and shows that figure in its row.
+
+- **Browse search no longer answers a request for an unlimited page.**
+  A hand-built `/api/search` request could ask for every item at once with
+  `per_page=-1` or a huge page size. The page size must now be between 1 and
+  200, and anything outside that gets a 422. An absurdly large page number on
+  Browse search or the Logs page now gets a 422 too, instead of a server
+  error.
+
 ## [0.78.0] - 2026-11-10
 
 Items that were never filed under a location could not be picked out in
@@ -5671,6 +5701,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.78.1]: https://github.com/dgahagan/shelf/releases/tag/v0.78.1
 [0.78.0]: https://github.com/dgahagan/shelf/releases/tag/v0.78.0
 [0.77.0]: https://github.com/dgahagan/shelf/releases/tag/v0.77.0
 [0.76.0]: https://github.com/dgahagan/shelf/releases/tag/v0.76.0

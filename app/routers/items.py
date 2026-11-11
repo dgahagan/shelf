@@ -4,7 +4,7 @@ import logging
 import sqlite3
 
 import httpx
-from fastapi import APIRouter, Depends, Request, Form
+from fastapi import APIRouter, Depends, Request, Form, Query
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.responses import StreamingResponse
 
@@ -14,7 +14,7 @@ from app import nav
 from app.auth import require_role
 
 logger = logging.getLogger(__name__)
-from app.config import MEDIA_TYPES, BOOK_MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE, canonical_media_type, status_labels
+from app.config import MEDIA_TYPES, BOOK_MEDIA_TYPES, HTTP_TIMEOUT, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, MAX_PAGE, canonical_media_type, status_labels
 from app.database import (get_db, get_setting, gc_orphaned_series_meta,
                           get_reading_history)
 from app.routers.series import MAX_SERIES_NAME
@@ -903,8 +903,8 @@ async def copy_template(item_id: int, _=Depends(require_role("editor"))):
 @router.get("/search")
 async def search_items(
     request: Request,
-    page: int = 1,
-    per_page: int = DEFAULT_PAGE_SIZE,
+    page: int = Query(1, le=MAX_PAGE),
+    per_page: int = Query(DEFAULT_PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
     _=Depends(require_role("viewer")),
 ):
     """Search/filter items. Returns HTMX fragment of item cards.

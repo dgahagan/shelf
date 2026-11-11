@@ -7,7 +7,7 @@ from app import browse_filters, features, nav
 from app.auth import require_role
 from app.features import require_feature
 from app.config import (
-    MEDIA_TYPES, DEFAULT_PAGE_SIZE, BOOK_MEDIA_TYPES, STATUS_MEDIA_TYPES,
+    MEDIA_TYPES, DEFAULT_PAGE_SIZE, MAX_PAGE, BOOK_MEDIA_TYPES, STATUS_MEDIA_TYPES,
     status_labels, READ_LABELS, WATCH_LABELS, PLAY_LABELS,
 )
 from app.services.synopsis import SYNOPSIS_MEDIA_TYPES
@@ -636,7 +636,7 @@ async def logs(
     level: str = "",
     module: str = "",
     q: str = "",
-    page: int = 1,
+    page: int = Query(1, le=MAX_PAGE),
     _=Depends(require_role("admin")),
 ):
     per_page = 100

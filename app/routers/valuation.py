@@ -285,7 +285,7 @@ async def valuation_report(request: Request, _=Depends(require_role("viewer")),
         ).fetchone()["c"]
 
     total_items = len(items)
-    priced = [i for i in items if i["effective_value"]]
+    priced = [i for i in items if i["effective_value"] is not None]
     total_value = sum(i["effective_value"] for i in priced)
     avg_price = total_value / len(priced) if priced else 0
     unpriced = total_items - len(priced)
@@ -300,7 +300,7 @@ async def valuation_report(request: Request, _=Depends(require_role("viewer")),
             location_groups.append({"name": name, "items": [], "subtotal": 0.0, "priced_count": 0})
         group = location_groups[-1]
         group["items"].append(item)
-        if item["effective_value"]:
+        if item["effective_value"] is not None:
             group["subtotal"] += item["effective_value"]
             group["priced_count"] += 1
 
