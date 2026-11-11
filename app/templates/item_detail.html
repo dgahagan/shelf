@@ -150,7 +150,7 @@
                 {# Outside #item-tags: tag mutations swap that fragment
                    whole, and a loader inside it would reload (and briefly
                    duplicate) this panel on every add/remove. #}
-                <div hx-get="/api/related-media/items/{{ item_id }}/panel" hx-trigger="load" hx-swap="outerHTML">
+                <div hx-get="/api/related-media/items/{{ item_id }}/panel{% if back.key %}?from={{ back.key }}{% endif %}" hx-trigger="load" hx-swap="outerHTML">
                     <div class="mt-4 text-xs text-shelf-muted">{{ _('Loading related media…') }}</div>
                 </div>
 
@@ -207,18 +207,7 @@
                 {% endif %}
 
                 <!-- Linked Items (other formats) -->
-                {% if linked_items %}
-                <div class="mb-4">
-                    <p class="text-xs text-shelf-muted mb-1">{{ _('Also available as:') }}</p>
-                    <div class="flex flex-wrap gap-2">
-                        {% for li in linked_items %}
-                        <a href="/item/{{ li.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="px-2 py-1 bg-shelf-hover rounded-sm text-xs text-shelf-text hover:bg-shelf-border transition-colors">
-                            {{ (_(media_types[li.media_type]) if li.media_type in media_types else li.media_type) }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
+                {% include "fragments/also_available_as.html" %}
 
                 {# Status — the book family plus the types with their own verb (dvd,
                    video_game), or anything else while a status is still set so it can

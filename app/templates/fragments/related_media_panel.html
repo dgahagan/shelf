@@ -12,7 +12,7 @@
         <div class="flex items-center gap-3 bg-shelf-bg border border-shelf-border rounded-lg p-2">
             {% if related.cover_path %}<img src="/{{ related.cover_path }}" alt="" class="w-8 h-12 object-cover rounded-sm shrink-0" data-cover-shape="{{ cover_shape(related.media_type) }}">{% endif %}
             <div class="min-w-0 flex-1">
-                <a href="/item/{{ related.id }}" class="text-sm font-medium hover:text-shelf-accent2">{{ related.title }}</a>
+                <a href="/item/{{ related.id }}{% if back.key %}?from={{ back.key }}{% endif %}" class="text-sm font-medium hover:text-shelf-accent2">{{ related.title }}</a>
                 <p class="text-xs text-shelf-muted">
                     {{ _(media_types[related.media_type]) if related.media_type in media_types else related.media_type|replace('_', ' ')|title }}
                     {% if related.direct %} · {{ _(related.link_type|title) if related.link_type in ('format', 'related', 'adaptation') else related.link_type|replace('_', ' ')|title }}{% else %} · {{ _('via related group') }}{% endif %}
@@ -20,7 +20,7 @@
                 </p>
             </div>
             {% if related.direct and user and user.role in ('admin', 'editor') %}
-            <button hx-delete="/api/related-media/items/{{ item.id }}/links/{{ related.id }}"
+            <button hx-delete="/api/related-media/items/{{ item.id }}/links/{{ related.id }}{% if back.key %}?from={{ back.key }}{% endif %}"
                     hx-target="#related-media-panel" hx-swap="outerHTML"
                     class="text-xs text-shelf-error hover:underline">{{ _('Unlink') }}</button>
             {% endif %}
@@ -36,7 +36,7 @@
         <summary class="cursor-pointer text-sm text-shelf-accent2">{{ _('Link another catalogue item') }}</summary>
         <div class="mt-3">
             <input type="search" name="q" placeholder="{{ _('Search title, creator or series…') }}" maxlength="120"
-                   hx-get="/api/related-media/items/{{ item.id }}/search"
+                   hx-get="/api/related-media/items/{{ item.id }}/search{% if back.key %}?from={{ back.key }}{% endif %}"
                    hx-trigger="keyup changed delay:300ms"
                    hx-target="#related-media-search-results-{{ item.id }}"
                    hx-swap="innerHTML"
@@ -46,3 +46,6 @@
     </details>
     {% endif %}
 </section>
+{% if also_available_oob %}
+{% include "fragments/also_available_as.html" %}
+{% endif %}
