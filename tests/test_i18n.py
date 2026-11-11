@@ -194,3 +194,15 @@ def test_off_stays_english_and_hides_the_picker(admin_client, db, monkeypatch, v
     assert '<html lang="en"' in page.text
     assert "Sfoglia" not in page.text
     assert 'data-testid="account-language"' not in page.text
+
+
+def test_item_edit_and_manual_add_are_translated(admin_client, db):
+    item_id = _insert_item(db, title="Modificami", isbn="9780000000071")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get(f"/item/{item_id}/edit").text
+    for text in ("Modifica Modificami", "Sottotitolo", "Tipo di media", "Autore/i", "UPC-A o EAN-13"):
+        assert text in page, text
+    scan = admin_client.get("/scan").text
+    assert '"dvd": "Regista"' in scan  # the creator labels the manual-add form reads

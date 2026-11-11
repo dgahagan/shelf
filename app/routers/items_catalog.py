@@ -14,6 +14,7 @@ import httpx
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 
+from app import i18n
 from app.auth import require_role
 from app.config import BOOK_MEDIA_TYPES, HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
 from app.database import get_db, get_game_platforms, get_setting
@@ -89,7 +90,7 @@ async def add_game_from_search(
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": "",
-             "message": "Unrecognised game platform — pick one and try again"},
+             "message": i18n.gettext("Unrecognised game platform — pick one and try again")},
         )
     platform_val = platform or None
 
@@ -106,7 +107,7 @@ async def add_game_from_search(
     if not metadata:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "error", "isbn": "", "message": "Failed to fetch game details from IGDB"},
+            {"status": "error", "isbn": "", "message": i18n.gettext("Failed to fetch game details from IGDB")},
         )
 
     # The funnel's own <=0-is-no-location rule applies on write; no need to
@@ -265,7 +266,7 @@ async def add_book_from_search(
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "error", "isbn": isbn.strip(),
-             "message": "Unrecognised media type — pick one and try again"},
+             "message": i18n.gettext("Unrecognised media type — pick one and try again")},
         )
     # Check digit before the lookup, as `/api/scan`'s add branch does (#54).
     isbn13 = isbn_svc.to_isbn13(isbn.strip())
@@ -273,7 +274,7 @@ async def add_book_from_search(
     if pair is None:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "error", "isbn": isbn, "message": "Invalid ISBN"},
+            {"status": "error", "isbn": isbn, "message": i18n.gettext("Invalid ISBN")},
         )
     isbn13 = pair[0]
 
@@ -315,7 +316,7 @@ async def add_book_from_search(
             items_common._log_scan(isbn13, media_type, "not_found")
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
-                {"status": "error", "isbn": isbn13, "message": "Could not fetch metadata for this ISBN"},
+                {"status": "error", "isbn": isbn13, "message": i18n.gettext("Could not fetch metadata for this ISBN")},
             )
 
         try:
@@ -435,7 +436,7 @@ async def add_dvd_from_search(
     if not title:
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
-            {"status": "error", "isbn": "", "message": "Title is required"},
+            {"status": "error", "isbn": "", "message": i18n.gettext("Title is required")},
         )
 
     publish_year = (publish_year or "").strip()
@@ -443,7 +444,7 @@ async def add_dvd_from_search(
         if not publish_year.isdigit():
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
-                {"status": "error", "isbn": "", "message": "Invalid publish year"},
+                {"status": "error", "isbn": "", "message": i18n.gettext("Invalid publish year")},
             )
         year = int(publish_year)
     else:

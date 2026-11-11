@@ -15,7 +15,7 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit"
 
-#: app/browse_columns.py:62
+#: app/browse_columns.py:62 app/templates/item_edit.html:103
 msgid "Title"
 msgstr "标题"
 
@@ -29,11 +29,14 @@ msgstr "类型"
 
 #: app/browse_columns.py:65 app/browse_filters.py:197
 #: app/templates/fragments/item_copy_edit.html:37
+#: app/templates/fragments/manual_add_form.html:160
+#: app/templates/item_edit.html:81 app/templates/item_edit.html:301
+#: app/templates/item_edit.html:306
 msgid "Location"
 msgstr "位置"
 
 #: app/browse_columns.py:66 app/browse_filters.py:199
-#: app/templates/item_detail.html:230
+#: app/templates/item_detail.html:230 app/templates/item_edit.html:138
 msgid "Status"
 msgstr "状态"
 
@@ -42,23 +45,29 @@ msgid "Value"
 msgstr "价值"
 
 #: app/browse_columns.py:68 app/nav.py:41 app/templates/browse.html:49
+#: app/templates/fragments/manual_add_form.html:155
+#: app/templates/item_edit.html:79 app/templates/item_edit.html:217
+#: app/templates/item_edit.html:221
 msgid "Series"
 msgstr "系列"
 
-#: app/browse_columns.py:69
+#: app/browse_columns.py:69 app/templates/fragments/manual_add_form.html:96
+#: app/templates/item_edit.html:118
 msgid "Publisher"
 msgstr "出版社"
 
-#: app/browse_columns.py:70
+#: app/browse_columns.py:70 app/templates/fragments/manual_add_form.html:99
+#: app/templates/item_edit.html:119
 msgid "Year"
 msgstr "年份"
 
-#: app/browse_columns.py:71
+#: app/browse_columns.py:71 app/templates/item_edit.html:223
 msgid "Pages"
 msgstr "页数"
 
 #: app/browse_columns.py:72 app/browse_filters.py:207
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
+#: app/templates/item_edit.html:123
 msgid "Language"
 msgstr "语言"
 
@@ -66,7 +75,7 @@ msgstr "语言"
 msgid "Added"
 msgstr "添加日期"
 
-#: app/browse_columns.py:74
+#: app/browse_columns.py:74 app/templates/item_edit.html:355
 msgid "Platform"
 msgstr "平台"
 
@@ -75,6 +84,7 @@ msgid "ISBN/UPC"
 msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
+#: app/templates/item_edit.html:83 app/templates/item_edit.html:390
 msgid "Tags"
 msgstr "标签"
 
@@ -406,7 +416,36 @@ msgstr "没有可更新的有效字段"
 msgid "Series name cannot be empty"
 msgstr "系列名称不能为空"
 
+#: app/routers/items_catalog.py:93
+msgid "Unrecognised game platform — pick one and try again"
+msgstr ""
+
+#: app/routers/items_catalog.py:110
+msgid "Failed to fetch game details from IGDB"
+msgstr ""
+
+#: app/routers/items_catalog.py:269
+msgid "Unrecognised media type — pick one and try again"
+msgstr ""
+
+#: app/routers/items_catalog.py:277
+msgid "Invalid ISBN"
+msgstr ""
+
+#: app/routers/items_catalog.py:319
+msgid "Could not fetch metadata for this ISBN"
+msgstr ""
+
+#: app/routers/items_catalog.py:439
+msgid "Title is required"
+msgstr ""
+
+#: app/routers/items_catalog.py:447
+msgid "Invalid publish year"
+msgstr ""
+
 #: app/routers/items_covers.py:74
+#: app/templates/fragments/book_search_results.html:35
 msgid "No ISBN"
 msgstr ""
 
@@ -776,6 +815,7 @@ msgstr "全部清除"
 msgid "English cover from another edition"
 msgstr ""
 
+#: app/templates/fragments/hardcover_search_results.html:15
 #: app/templates/item_detail.html:27
 msgid "No Cover"
 msgstr ""
@@ -1030,6 +1070,264 @@ msgstr ""
 msgid "Integration IDs"
 msgstr ""
 
+#: app/templates/item_edit.html:2
+#, python-format
+msgid "Edit %(title)s"
+msgstr ""
+
+#: app/templates/item_edit.html:9
+msgid "Back to item"
+msgstr ""
+
+#: app/templates/item_edit.html:13
+msgid "Edit item"
+msgstr ""
+
+#: app/templates/item_edit.html:24
+msgid "That ISBN's check digit doesn't add up — correct it or clear the field. Nothing else you typed was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:28
+msgid "That UPC / EAN isn't a valid retail barcode — correct it or clear the field. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:32
+msgid "An ASIN is ten letters or digits, like B0D1234567."
+msgstr ""
+
+#: app/templates/item_edit.html:37
+#, python-format
+msgid "“%(title)s” is in Trash and already uses that identifier. Restore it from Trash, or delete it permanently, before using it here. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:39
+msgid "That identifier belongs to an item in Trash. Restore that item, or delete it permanently, before using it here. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:44
+msgid "That UPC / EAN is already assigned to another item of this media type. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:48
+msgid "That media type isn't one Shelf knows — pick one from the list. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:52
+msgid "That location no longer exists — pick another, or none. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:56
+msgid "That game platform isn't in your platform list — pick one, or add it under Settings first. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:60
+msgid "That status isn't one Shelf recognises. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:64
+msgid "Owned must be on or off. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:68
+msgid "An item you own can't also be on your wishlist. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:72
+msgid "A number field (year, pages, minutes, series #, value) had something that isn't a number. Nothing was saved."
+msgstr ""
+
+#: app/templates/item_edit.html:76
+msgid "Edit sections"
+msgstr ""
+
+#: app/templates/item_edit.html:77 app/templates/item_edit.html:99
+msgid "General"
+msgstr ""
+
+#: app/templates/item_edit.html:78 app/templates/item_edit.html:168
+msgid "Artwork"
+msgstr ""
+
+#: app/templates/item_edit.html:80 app/templates/item_edit.html:229
+msgid "Identifiers"
+msgstr ""
+
+#: app/templates/item_edit.html:82 app/templates/item_edit.html:350
+msgid "Media Details"
+msgstr ""
+
+#: app/templates/item_edit.html:100
+msgid "Core catalogue metadata and reading details."
+msgstr ""
+
+#: app/templates/item_edit.html:104
+msgid "Subtitle"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:40
+#: app/templates/item_edit.html:108
+msgid "Media Type"
+msgstr ""
+
+#: app/templates/item_edit.html:126
+msgid "Unknown"
+msgstr ""
+
+#: app/templates/item_edit.html:142 app/templates/item_edit.html:178
+#: app/templates/item_edit.html:309 app/templates/item_edit.html:358
+msgid "None"
+msgstr ""
+
+#: app/templates/item_edit.html:149
+msgid "Date Started"
+msgstr ""
+
+#: app/templates/item_edit.html:150
+msgid "Date Finished"
+msgstr ""
+
+#: app/templates/item_edit.html:155
+msgid "Description"
+msgstr ""
+
+#: app/templates/item_edit.html:161
+msgid "Notes"
+msgstr ""
+
+#: app/templates/item_edit.html:169
+msgid "Preview the current cover, upload a replacement, or use a public image URL."
+msgstr ""
+
+#: app/templates/fragments/cover_search.html:40
+#: app/templates/item_edit.html:175
+msgid "Current cover"
+msgstr ""
+
+#: app/templates/item_edit.html:177
+msgid "Cover preview"
+msgstr ""
+
+#: app/templates/item_edit.html:188
+msgid "Drop an image here or click to browse"
+msgstr ""
+
+#: app/templates/item_edit.html:190
+msgid "The replacement is applied when you save the item."
+msgstr ""
+
+#: app/templates/item_edit.html:196
+msgid "Cover image URL"
+msgstr ""
+
+#: app/templates/item_edit.html:208
+msgid "Use URL"
+msgstr ""
+
+#: app/templates/item_edit.html:211
+msgid "Public HTTPS image links only. Use URL applies the cover immediately; your other edits are still saved with Save Changes."
+msgstr ""
+
+#: app/templates/item_edit.html:218
+msgid "Series membership, position and page count."
+msgstr ""
+
+#: app/templates/item_edit.html:222
+msgid "Series #"
+msgstr ""
+
+#: app/templates/item_edit.html:230
+msgid "Identifiers printed on this edition."
+msgstr ""
+
+#: app/templates/item_edit.html:233
+msgid "ISBN"
+msgstr ""
+
+#: app/templates/item_edit.html:237
+msgid "The stored ISBN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
+msgstr ""
+
+#: app/templates/item_edit.html:242 app/templates/item_edit.html:249
+msgid "Scan ISBN"
+msgstr ""
+
+#: app/templates/item_edit.html:250 app/templates/item_edit.html:283
+msgid "Close scanner"
+msgstr ""
+
+#: app/templates/item_edit.html:266
+msgid "UPC / EAN"
+msgstr ""
+
+#: app/templates/item_edit.html:266
+msgid "UPC-A or EAN-13"
+msgstr ""
+
+#: app/templates/item_edit.html:270
+msgid "The stored UPC / EAN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
+msgstr ""
+
+#: app/templates/item_edit.html:275 app/templates/item_edit.html:282
+msgid "Scan UPC / EAN"
+msgstr ""
+
+#: app/templates/item_edit.html:302
+msgid "Ownership, physical location and collection value."
+msgstr ""
+
+#: app/templates/item_edit.html:323
+msgid "I own this item"
+msgstr ""
+
+#: app/templates/item_edit.html:334
+msgid "On my wishlist"
+msgstr ""
+
+#: app/templates/item_edit.html:336
+msgid "Uncheck both for a book you read but don't own — reading history stays."
+msgstr ""
+
+#: app/templates/item_edit.html:341
+#, python-format
+msgid "Value (%(symbol)s)"
+msgstr ""
+
+#: app/templates/item_edit.html:344
+msgid "Overrides the ISBNdb estimate everywhere it's shown"
+msgstr ""
+
+#: app/templates/item_edit.html:344
+#, python-format
+msgid "ISBNdb estimate: %(value)s"
+msgstr ""
+
+#: app/templates/item_edit.html:351
+msgid "Fields specific to the selected media type."
+msgstr ""
+
+#: app/templates/item_edit.html:366
+msgid "Narrator"
+msgstr ""
+
+#: app/templates/item_edit.html:367
+msgid "Duration (min)"
+msgstr ""
+
+#: app/templates/fragments/account_menu.html:132
+#: app/templates/fragments/item_copy_edit.html:99
+#: app/templates/item_edit.html:374
+msgid "Save"
+msgstr "保存"
+
+#: app/templates/fragments/item_copy_edit.html:103
+#: app/templates/item_edit.html:377
+msgid "Cancel"
+msgstr ""
+
+#: app/templates/item_edit.html:391
+msgid "Tags save as you add or remove them."
+msgstr ""
+
 #: app/templates/login.html:6 app/templates/login.html:37
 msgid "Sign In"
 msgstr "登录"
@@ -1142,11 +1440,6 @@ msgstr "角色"
 msgid "Automatic (browser language)"
 msgstr "自动（跟随浏览器语言）"
 
-#: app/templates/fragments/account_menu.html:132
-#: app/templates/fragments/item_copy_edit.html:99
-msgid "Save"
-msgstr "保存"
-
 #: app/templates/fragments/account_menu.html:138
 msgid "Current Password"
 msgstr "当前密码"
@@ -1199,6 +1492,23 @@ msgstr "最近使用"
 msgid "Revoke"
 msgstr "撤销"
 
+#: app/templates/fragments/book_search_results.html:31
+#: app/templates/fragments/dvd_search_results.html:29
+#: app/templates/fragments/game_search_results.html:31
+msgid "Add"
+msgstr ""
+
+#: app/templates/fragments/book_search_results.html:43
+#, python-format
+msgid "No books found for \"%(query)s\". Try a different search."
+msgstr ""
+
+#: app/templates/fragments/book_search_results.html:48
+#: app/templates/fragments/dvd_search_results.html:43
+#: app/templates/fragments/game_search_results.html:45
+msgid "Add it by hand"
+msgstr ""
+
 #: app/templates/fragments/cover_review_item.html:18
 msgid "That's the end of this pass"
 msgstr ""
@@ -1236,6 +1546,7 @@ msgid "No cover"
 msgstr ""
 
 #: app/templates/fragments/cover_review_item.html:100
+#: app/templates/fragments/manual_add_form.html:188
 msgid "Skip"
 msgstr ""
 
@@ -1249,10 +1560,6 @@ msgstr ""
 
 #: app/templates/fragments/cover_search.html:29
 msgid "Select a cover:"
-msgstr ""
-
-#: app/templates/fragments/cover_search.html:40
-msgid "Current cover"
 msgstr ""
 
 #: app/templates/fragments/cover_search.html:42
@@ -1297,6 +1604,37 @@ msgstr ""
 
 #: app/templates/fragments/cover_search.html:129
 msgid "Remove cover"
+msgstr ""
+
+#: app/templates/fragments/dvd_search_results.html:38
+#, python-format
+msgid "No movies found for \"%(query)s\". Try a different search."
+msgstr ""
+
+#: app/templates/fragments/game_search_results.html:40
+msgid "No games found. Try a different title or remove the platform filter."
+msgstr ""
+
+#: app/templates/fragments/hardcover_search_results.html:3
+#, python-format
+msgid "No results for \"%(query)s\""
+msgstr ""
+
+#: app/templates/fragments/hardcover_search_results.html:42
+msgid "Add to Wishlist"
+msgstr ""
+
+#: app/templates/fragments/hardcover_search_results.html:43
+msgid "Adding..."
+msgstr ""
+
+#: app/templates/fragments/hardcover_search_results.html:45
+#: app/templates/fragments/hardcover_search_results.html:50
+msgid "In your library"
+msgstr ""
+
+#: app/templates/fragments/hardcover_search_results.html:52
+msgid "Not in your library"
 msgstr ""
 
 #: app/templates/fragments/item_card.html:12
@@ -1433,10 +1771,6 @@ msgstr ""
 msgid "Provenance"
 msgstr ""
 
-#: app/templates/fragments/item_copy_edit.html:103
-msgid "Cancel"
-msgstr ""
-
 #: app/templates/fragments/item_copy_edit.html:108
 msgid "Remove copy"
 msgstr ""
@@ -1455,6 +1789,50 @@ msgstr "开始扫码录入图书"
 
 #: app/templates/fragments/item_tags.html:19
 msgid "+ tag"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:51
+msgid "ISBN or barcode (optional)"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:58
+msgid "Add this item manually:"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:65
+msgid "Copy from an existing item (optional)"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:78
+msgid "Copied fields from"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:78
+msgid "— edit anything below before adding."
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:84
+msgid "Title *"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:117
+msgid "Platform (optional)"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:147
+msgid "Other"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:168
+msgid "Language (unknown)"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:175
+msgid "Cover image (optional)"
+msgstr ""
+
+#: app/templates/fragments/manual_add_form.html:181
+msgid "Add to Collection"
 msgstr ""
 
 #: app/templates/fragments/reading_status.html:22
@@ -1523,5 +1901,24 @@ msgstr ""
 
 #: app/templates/fragments/related_media_search.html:19
 msgid "Link"
+msgstr ""
+
+#: app/templates/fragments/search_status_notice.html:18
+#, python-format
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
+msgstr ""
+
+#: app/templates/fragments/search_status_notice.html:20
+#, python-format
+msgid "%(provider)s is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later."
+msgstr ""
+
+#: app/templates/fragments/search_status_notice.html:22
+msgid "LibraryThing unavailable. Try again later."
+msgstr ""
+
+#: app/templates/fragments/search_status_notice.html:22
+#, python-format
+msgid "Could not reach %(provider)s &mdash; check connectivity and try again."
 msgstr ""
 

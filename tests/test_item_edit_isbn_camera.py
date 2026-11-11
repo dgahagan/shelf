@@ -14,7 +14,7 @@ def test_item_edit_isbn_camera_uses_rendered_ui_and_shared_scanner():
     # being assembled imperatively in JavaScript. Keep the existing shared
     # field macro so the edit form's save contract remains unchanged.
     assert 'x-data="isbnCamera"' in template
-    assert 'field("isbn", "ISBN", item.isbn, placeholder="ISBN-13")' in template
+    assert 'field("isbn", _("ISBN"), item.isbn, placeholder="ISBN-13")' in template
     assert 'id="edit-isbn-camera-reader"' in template
     assert 'id="edit-isbn-zxing-video"' in template
     assert "document.createElement" not in source
