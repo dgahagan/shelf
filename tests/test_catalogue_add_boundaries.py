@@ -136,6 +136,85 @@ def test_game_add_reports_duplicate_without_inserting_a_second_row(editor_client
     assert _item_count(db, media_type="video_game") == 1
 
 
+def test_game_add_without_platform_reports_duplicate_of_a_platformless_row(editor_client, db, monkeypatch):
+    """A platform-less add matches a platform-less row (NULL-safe IS, not =)."""
+    monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
+    existing_id = _insert_item(
+        db, title="Loose Game", isbn=None, media_type="video_game",
+    )
+    db.execute("COMMIT")
+
+    monkeypatch.setattr(
+        items_catalog.igdb, "lookup_game",
+        AsyncMock(return_value={
+            "title": "Loose Game", "description": None, "publisher": None,
+            "publish_year": None, "series_name": None, "cover_url": None,
+        }),
+    )
+
+    response = editor_client.post(
+        "/api/games/add",
+        data={"igdb_id": "123"},
+    )
+
+    assert response.status_code == 200
+    assert "Already in collection" in response.text
+    assert f'/item/{existing_id}"' in response.text
+    assert _item_count(db, media_type="video_game") == 1
+
+
+def test_game_add_with_platform_is_not_blocked_by_a_platformless_row(editor_client, db, monkeypatch):
+    """A platformed add is a different row from a platform-less one."""
+    monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
+    existing_id = _insert_item(
+        db, title="Loose Game", isbn=None, media_type="video_game",
+    )
+    db.execute("COMMIT")
+
+    monkeypatch.setattr(
+        items_catalog.igdb, "lookup_game",
+        AsyncMock(return_value={
+            "title": "Loose Game", "description": None, "publisher": None,
+            "publish_year": None, "series_name": None, "cover_url": None,
+        }),
+    )
+
+    response = editor_client.post(
+        "/api/games/add",
+        data={"igdb_id": "123", "platform": "switch"},
+    )
+
+    assert response.status_code == 200
+    assert 'data-scan-status="added"' in response.text
+    assert _item_count(db, media_type="video_game") == 2
+
+
+def test_game_add_without_platform_is_not_blocked_by_a_platformed_row(editor_client, db, monkeypatch):
+    """A platform-less add is a different row from a platformed one."""
+    monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
+    existing_id = _insert_item(
+        db, title="Loose Game", isbn=None, media_type="video_game", platform="switch",
+    )
+    db.execute("COMMIT")
+
+    monkeypatch.setattr(
+        items_catalog.igdb, "lookup_game",
+        AsyncMock(return_value={
+            "title": "Loose Game", "description": None, "publisher": None,
+            "publish_year": None, "series_name": None, "cover_url": None,
+        }),
+    )
+
+    response = editor_client.post(
+        "/api/games/add",
+        data={"igdb_id": "123"},
+    )
+
+    assert response.status_code == 200
+    assert 'data-scan-status="added"' in response.text
+    assert _item_count(db, media_type="video_game") == 2
+
+
 def test_dvd_add_reports_duplicate_without_inserting_a_second_row(editor_client, db):
     """T3/issue #83: same as the game case, for /api/dvds/add's title guard."""
     existing_id = _insert_item(

@@ -6,13 +6,50 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.78.0] - 2026-11-10
+
+Items that were never filed under a location could not be picked out in
+Browse, so there was no way to find them and move them in bulk. The Location
+filter now offers **No location**. This release also fixes two ways to add or
+scan an item that went wrong: adding a video game with no platform could add a
+second copy, and typing certain titles in the scan box failed with a server
+error. It carries two community contributions: the Browse filter from
+[@larsvilhuber](https://github.com/larsvilhuber), and the item edit page
+translated into Italian from [@vjandrea](https://github.com/vjandrea).
+
 ### Added
 
 - **Browse can filter to items with no location.** The Location filter now
-  lists **No location**, with a count, whenever some item has none, so the items
-  that were never filed can be found and moved to a location with the bulk
-  **Move**. The user guide already described this option; it was missing. A
-  bookmarked `?location_filter=none` works too.
+  lists **No location**, with a count, whenever some item has none. Pick it to
+  find the items that were never filed, then move them with the bulk **Move**.
+  The user guide already described this option; it was missing. A bookmarked
+  `?location_filter=none` works too. Contributed by
+  [@larsvilhuber](https://github.com/larsvilhuber) in
+  [#182](https://github.com/dgahagan/shelf/pull/182).
+- **The item edit page and manual add are translated into Italian**: the edit
+  sections and their fields, the validation messages, the camera scanners, the
+  manual add form, the book, game, DVD and Hardcover search results, and the
+  messages those adds return. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#181](https://github.com/dgahagan/shelf/pull/181).
+- **The Docker image carries a signed build provenance attestation**, so you
+  can check that an image was built from this repository by its own release
+  workflow:
+  `gh attestation verify oci://index.docker.io/dangahagan/shelf:0.78.0 --repo dgahagan/shelf`.
+
+### Changed
+
+- **Adding the same video game twice with no platform now reports it as
+  already in your collection**, instead of adding a second copy. A game with no
+  platform and the same game on a named platform are still two separate items,
+  in either order. Copies already added twice this way stay as they are;
+  nothing merges them for you.
+
+### Fixed
+
+- **Typing a title that looks like an ISBN-10 with an `X` in the middle**, such
+  as `X209912345`, in the scan box no longer fails with a server error. It is
+  treated as a title search.
 
 ## [0.77.0] - 2026-11-10
 
@@ -5634,6 +5671,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.78.0]: https://github.com/dgahagan/shelf/releases/tag/v0.78.0
 [0.77.0]: https://github.com/dgahagan/shelf/releases/tag/v0.77.0
 [0.76.0]: https://github.com/dgahagan/shelf/releases/tag/v0.76.0
 [0.75.0]: https://github.com/dgahagan/shelf/releases/tag/v0.75.0

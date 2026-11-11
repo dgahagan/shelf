@@ -127,7 +127,7 @@ async def add_game_from_search(
     with get_db() as db:
         db.execute("BEGIN IMMEDIATE")
         existing = db.execute(
-            "SELECT id, title FROM items_live WHERE title = ? AND media_type = 'video_game' AND platform = ?",
+            "SELECT id, title FROM items_live WHERE title = ? AND media_type = 'video_game' AND platform IS ?",
             (metadata["title"], platform_val),
         ).fetchone()
         if existing is None:

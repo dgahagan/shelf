@@ -6,7 +6,7 @@ def normalize_isbn(isbn: str) -> str:
 
 
 def isbn10_to_isbn13(isbn10: str) -> str | None:
-    if len(isbn10) != 10:
+    if len(isbn10) != 10 or not isbn10[:9].isdigit():
         return None
     digits = "978" + isbn10[:9]
     check = sum(int(d) * (1 if i % 2 == 0 else 3) for i, d in enumerate(digits))

@@ -36,6 +36,12 @@ class TestIsbn10ToIsbn13:
     def test_rejects_wrong_length(self):
         assert isbn10_to_isbn13("123") is None
 
+    def test_x_outside_the_check_digit_is_rejected(self):
+        # A typed title like "X209912345" is 10 chars of [0-9X]; it used to
+        # raise ValueError from int("X") and 500 /api/scan.
+        assert isbn10_to_isbn13("X209912345") is None
+        assert to_isbn13("X209912345") is None
+
     def test_the_hobbit(self):
         # The Hobbit: ISBN-10 054792822X -> ISBN-13 9780547928227
         assert isbn10_to_isbn13("054792822X") == "9780547928227"
