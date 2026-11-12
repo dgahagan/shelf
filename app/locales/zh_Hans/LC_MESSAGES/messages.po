@@ -1610,15 +1610,19 @@ msgstr ""
 msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
 msgstr ""
 
-#: app/templates/scan.html:258
+#: app/templates/scan.html:260
 msgid "Add by hand"
 msgstr ""
 
-#: app/templates/scan.html:265
+#: app/templates/scan.html:260
+msgid "Hide manual entry"
+msgstr ""
+
+#: app/templates/scan.html:267
 msgid "Add by Hand"
 msgstr ""
 
-#: app/templates/scan.html:266
+#: app/templates/scan.html:268
 msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
 msgstr ""
 

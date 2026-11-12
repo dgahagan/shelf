@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-10 17:30+0100\n"
+"PO-Revision-Date: 2026-11-12 16:50-0500\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -1607,15 +1607,19 @@ msgstr "Cerca libri su Open Library per titolo, autore o parola chiave."
 msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
 msgstr "La ricerca per titolo non ha un codice a barre da cui riconoscere il tipo, quindi cerca libri. Scegli un tipo di media qui sopra per cercare su TMDb o IGDB."
 
-#: app/templates/scan.html:258
+#: app/templates/scan.html:260
 msgid "Add by hand"
 msgstr "Aggiungi a mano"
 
-#: app/templates/scan.html:265
+#: app/templates/scan.html:260
+msgid "Hide manual entry"
+msgstr "Nascondi inserimento manuale"
+
+#: app/templates/scan.html:267
 msgid "Add by Hand"
 msgstr "Aggiungi a mano"
 
-#: app/templates/scan.html:266
+#: app/templates/scan.html:268
 msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
 msgstr "Nessuna ricerca: basta un titolo. Tutto il resto è facoltativo e modificabile dopo."
 

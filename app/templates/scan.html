@@ -255,7 +255,9 @@
         <button type="button" @click="toggleManual()"
                 class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:border-shelf-accent transition-colors"
                 data-manual-toggle>
-            <span x-text="manualOpen ? 'Hide manual entry' : 'Add by hand'">{{ _('Add by hand') }}</span>
+            {# Two spans, not an x-text ternary: x-text would overwrite the
+               translated text with an English literal as Alpine starts. #}
+            <span x-show="!manualOpen">{{ _('Add by hand') }}</span><span x-show="manualOpen" style="display:none">{{ _('Hide manual entry') }}</span>
         </button>
 
         <div x-show="manualOpen" x-transition class="mt-4"
