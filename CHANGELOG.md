@@ -6,6 +6,24 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.78.2] - 2026-11-11
+
+Shelf upgrades its database at startup, and it skips a few upgrade steps on
+purpose when a later step will create the table they touch. The check for
+those deliberate skips was too loose: an upgrade step with a mistyped table
+name could be marked as done without ever running. This release makes that
+check exact. No upgrade that has shipped is affected, and nothing in your
+collection changes.
+
+### Fixed
+
+- **A database upgrade step with a mistyped table name now stops startup
+  with an error.** Before, a step naming `tag` instead of `tags` was quietly
+  recorded as applied, and the column it should have added was missing for
+  good. It now fails loudly, so the mistake is caught before a release
+  instead of after. Every upgrade step that has shipped behaves exactly as it
+  did.
+
 ## [0.78.1] - 2026-11-11
 
 The insurance valuation report overstated a collection that held anything you
@@ -5701,6 +5719,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.78.2]: https://github.com/dgahagan/shelf/releases/tag/v0.78.2
 [0.78.1]: https://github.com/dgahagan/shelf/releases/tag/v0.78.1
 [0.78.0]: https://github.com/dgahagan/shelf/releases/tag/v0.78.0
 [0.77.0]: https://github.com/dgahagan/shelf/releases/tag/v0.77.0

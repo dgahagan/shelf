@@ -810,6 +810,13 @@ CREATE TABLE IF NOT EXISTS api_tokens (
 );
 """
 
+# The tables MIGRATION_TABLES creates, matched by exact name in
+# _is_benign_migration_error. Derived once at import: a test that patches
+# MIGRATION_TABLES must patch this too.
+_MIGRATION_TABLE_NAMES = frozenset(
+    re.findall(r"CREATE TABLE IF NOT EXISTS (\w+)", MIGRATION_TABLES)
+)
+
 
 # Last migration that shipped before the loop became atomic (issue #24).
 # Only these could have applied their ALTER without recording it, so only
@@ -838,7 +845,7 @@ def _is_benign_migration_error(version: int, exc: sqlite3.OperationalError) -> b
         # manages the ALTER is redundant by design and recording the version
         # is correct. A table it will not create is a typo or a removed
         # table; recording that would make the divergence permanent.
-        return f"CREATE TABLE IF NOT EXISTS {match.group(1)}" in MIGRATION_TABLES
+        return match.group(1) in _MIGRATION_TABLE_NAMES
     return False
 
 

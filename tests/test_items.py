@@ -883,8 +883,11 @@ class TestMigrationDefectsPropagate:
     # SUCCEEDS, adding a column literally named "COLUM". This one really is
     # malformed ("unrecognized token: 9bad").
     BAD_SYNTAX = "ALTER TABLE items ADD COLUMN 9bad TEXT"
+    # "itemz" is a prefix of no managed table, so this case never caught C28.
     UNMANAGED_TABLE = "ALTER TABLE itemz ADD COLUMN oops TEXT"
     EXISTING_COLUMN = "ALTER TABLE items ADD COLUMN title TEXT"
+    # A strict prefix of a managed table ("tags"): must not be forgiven (C28).
+    PREFIX_OF_MANAGED_TABLE = "ALTER TABLE tag ADD COLUMN oops TEXT"
 
     def _current_db(self, tmp_path):
         """A fully up-to-date database — forces the incremental branch."""
@@ -929,12 +932,12 @@ class TestMigrationDefectsPropagate:
         assert 99 not in applied
         conn.close()
 
-    @pytest.mark.parametrize("sql_attr", ["BAD_SYNTAX", "UNMANAGED_TABLE", "EXISTING_COLUMN"])
+    @pytest.mark.parametrize("sql_attr", ["BAD_SYNTAX", "UNMANAGED_TABLE", "EXISTING_COLUMN", "PREFIX_OF_MANAGED_TABLE"])
     def test_defect_propagates_on_incremental_path(self, tmp_path, monkeypatch, sql_attr):
         self._patch(monkeypatch, getattr(self, sql_attr))
         self._assert_raises_and_unrecorded(self._current_db(tmp_path))
 
-    @pytest.mark.parametrize("sql_attr", ["BAD_SYNTAX", "UNMANAGED_TABLE", "EXISTING_COLUMN"])
+    @pytest.mark.parametrize("sql_attr", ["BAD_SYNTAX", "UNMANAGED_TABLE", "EXISTING_COLUMN", "PREFIX_OF_MANAGED_TABLE"])
     def test_defect_propagates_on_backfill_path(self, tmp_path, monkeypatch, sql_attr):
         self._patch(monkeypatch, getattr(self, sql_attr))
         self._assert_raises_and_unrecorded(self._pre_versioning_db(tmp_path))

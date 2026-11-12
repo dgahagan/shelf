@@ -120,12 +120,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.78.1](https://github.com/dgahagan/shelf/releases/tag/v0.78.1) | **The valuation report counts a value of 0.** An item you valued at 0 now counts as priced at $0.00 instead of being filled in with the collection's average price, so the report's totals are no longer too high. |
 | [0.78.0](https://github.com/dgahagan/shelf/releases/tag/v0.78.0) | **Browse finds items with no location.** The Location filter lists **No location** with a count, so items that were never filed can be found and moved in bulk, contributed by @larsvilhuber. Also: re-adding a video game with no platform reports it as already in your collection instead of adding a second copy, and the item edit page and manual add in Italian, contributed by @vjandrea. |
 | [0.77.0](https://github.com/dgahagan/shelf/releases/tag/v0.77.0) | **Store Mode trusts the sync.** A wishlisted book no longer shows as Owned after a sync, the verdict card updates to Shelf's answer as soon as an online scan syncs, an ISBN-10 leaves the queue, and a long queue syncs in one go. Also Chinese ISBNs looked up in NeoDB and Browse in Simplified Chinese, contributed by @litong5969, and the item page in Italian with regional and script language variants, contributed by @vjandrea. |
 | [0.76.0](https://github.com/dgahagan/shelf/releases/tag/v0.76.0) | **Audible library import.** Upload an export from audible-cli or Libation under Settings → Data, and each title becomes an audiobook with its narrator, length and ASIN; re-imports add nothing twice, an audiobook already synced from Audiobookshelf is matched instead of duplicated, and the print copy you own shows **Also available as: Audiobook**. Also French ISBNs looked up in the BnF, contributed by @larsvilhuber, and the page shell in Simplified Chinese, contributed by @litong5969. |
 | [0.75.0](https://github.com/dgahagan/shelf/releases/tag/v0.75.0) | **Buy links.** Wishlisted books and the missing volumes of a series can show Bookshop.org and Amazon links carrying your own affiliate tags — Shelf earns nothing. Enter a tag under Settings → Library → Buy links; nothing shows until you do. Also the first translated pages: the page shell in Italian, contributed by @vjandrea, behind `SHELF_I18N=on`. |
-| [0.74.0](https://github.com/dgahagan/shelf/releases/tag/v0.74.0) | **API tokens for dashboards.** Make a read-only token in your account menu and point Homepage, Homarr or Home Assistant at `/api/v1/stats` for item counts, loans, value and upcoming releases. Tokens never act above viewer; admins can revoke anyone's from Settings → Users. |
-
 ---
 
 ## Suggesting something
