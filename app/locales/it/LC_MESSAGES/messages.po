@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-12 16:50-0500\n"
+"PO-Revision-Date: 2026-11-12 17:44-0500\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -515,7 +515,7 @@ msgstr "Nessuna persona selezionata per il prestito"
 #: app/routers/items_scan_modes.py:86
 #, python-format
 msgid "Already lent to %(name)s"
-msgstr "Già in prestito a %(name)s"
+msgstr "Già in prestito presso %(name)s"
 
 #: app/routers/items_scan_modes.py:93
 msgid "Borrower not found"
@@ -524,7 +524,7 @@ msgstr "Persona non trovata"
 #: app/routers/items_scan_modes.py:107
 #, python-format
 msgid "Lent to %(name)s"
-msgstr "Prestato a %(name)s"
+msgstr "In prestito presso %(name)s"
 
 #: app/routers/items_scan_modes.py:131
 msgid "Not currently checked out"
@@ -1922,7 +1922,7 @@ msgstr "Non nella tua biblioteca"
 #: app/templates/fragments/item_row.html:74
 #, python-format
 msgid "Loaned to %(name)s"
-msgstr "In prestito a %(name)s"
+msgstr "In prestito presso %(name)s"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58

@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-06 15:53+0100\n"
+"PO-Revision-Date: 2026-11-12 17:44-0500\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -172,7 +172,7 @@ msgstr "Consulta"
 
 #: static/js/scan.js:59 static/js/scan.js:95
 msgid "Quick Rate"
-msgstr "Segna come finito"
+msgstr "Segna finito"
 
 #: static/js/scan.js:65
 msgid "Target Location"
