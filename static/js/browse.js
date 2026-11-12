@@ -124,6 +124,8 @@ function browsePage() {
                 if (e.key === 'Escape') { document.activeElement.blur(); e.preventDefault(); }
                 return;
             }
+            // Leave Ctrl/Cmd/Alt combos to the browser (find-in-page, etc.); Escape still works.
+            if (e.key !== 'Escape' && (e.ctrlKey || e.metaKey || e.altKey)) return;
             if (e.key === 'Escape') {
                 if (this.selectMode) { this.selectMode = false; this.selectedIds = []; e.preventDefault(); }
             } else if (e.key === 'e') {
@@ -136,7 +138,7 @@ function browsePage() {
             } else if (e.key === 'f') {
                 this.filtersOpen = !this.filtersOpen;
                 e.preventDefault();
-            } else if (e.key === 'x' && !e.ctrlKey && !e.metaKey) {
+            } else if (e.key === 'x') {
                 this.clearAllFilters();
                 e.preventDefault();
             }

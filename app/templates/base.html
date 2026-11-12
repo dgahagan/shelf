@@ -104,16 +104,16 @@
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <!-- Keyboard shortcut help button -->
-    <button onclick="document.getElementById('shortcut-modal').classList.toggle('hidden')"
+    <button id="shortcut-help-trigger"
             class="no-print fixed bottom-4 left-4 z-40 w-8 h-8 bg-shelf-card border border-shelf-border rounded-full text-shelf-muted hover:text-shelf-accent2 hover:border-shelf-accent/50 transition-colors flex items-center justify-center text-sm font-bold shadow-lg"
             title="{{ _('Keyboard shortcuts (?)') }}">?</button>
 
     <!-- Keyboard shortcuts help modal -->
-    <div id="shortcut-modal" class="fixed inset-0 bg-black/60 z-200 hidden items-center justify-center" onclick="if(event.target===this)this.classList.add('hidden')">
-        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+    <div id="shortcut-modal" class="fixed inset-0 bg-black/60 z-200 hidden flex items-center justify-center p-4">
+        <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full shadow-2xl">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-bold">{{ _('Keyboard Shortcuts') }}</h3>
-                <button onclick="this.closest('#shortcut-modal').classList.add('hidden')" class="text-shelf-muted hover:text-white">
+                <button id="shortcut-modal-close" class="text-shelf-muted hover:text-white">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                 </button>
             </div>

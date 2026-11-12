@@ -6,6 +6,30 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.78.3] - 2026-11-12
+
+The keyboard-shortcuts help was broken in a translated interface: in Italian
+or Chinese the `?` button, the close button and the backdrop all did nothing.
+Separately, Shelf's single-key shortcuts also fired while Ctrl, Cmd or Alt was
+held, so Ctrl+F opened Browse's filters instead of the browser's find bar.
+This release fixes both, and tidies how the help looks on screen.
+
+### Fixed
+
+- **The keyboard-shortcuts `?` button now works in Italian and Chinese.**
+  Before, in a translated interface the button did nothing, and the help's
+  close button and its backdrop did nothing either — the list could only be
+  opened with the `?` key and closed with Escape. All three now work in every
+  language.
+- **Keyboard shortcuts no longer fire while Ctrl, Cmd or Alt is held.**
+  Ctrl/Cmd+F (find in page), Ctrl+S, Ctrl+B and similar browser shortcuts
+  reach the browser again instead of toggling Browse's filters or jumping to
+  Scan or Browse. The plain keys work exactly as before.
+- **The keyboard-shortcuts help now opens in the middle of the screen.**
+  Before, it opened in the top-left corner on a desktop, and on a phone its
+  right edge ran off the screen. It is now centred, and it fits a phone
+  screen with a margin on both sides.
+
 ## [0.78.2] - 2026-11-11
 
 Shelf upgrades its database at startup, and it skips a few upgrade steps on
@@ -5719,6 +5743,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.78.3]: https://github.com/dgahagan/shelf/releases/tag/v0.78.3
 [0.78.2]: https://github.com/dgahagan/shelf/releases/tag/v0.78.2
 [0.78.1]: https://github.com/dgahagan/shelf/releases/tag/v0.78.1
 [0.78.0]: https://github.com/dgahagan/shelf/releases/tag/v0.78.0
