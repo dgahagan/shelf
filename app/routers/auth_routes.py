@@ -2,7 +2,7 @@ import logging
 import sqlite3
 
 from fastapi import APIRouter, Form, Request, Depends
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import RedirectResponse
 from starlette.concurrency import run_in_threadpool
 
 from app.auth import (

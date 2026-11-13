@@ -23,7 +23,6 @@ from app.services import (
     komga_records,
     lists,
     musicbrainz,
-    periodicals,
     provider_result,
     romm_records,
     tmdb,

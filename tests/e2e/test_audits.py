@@ -52,8 +52,8 @@ def _seed(data_dir, tag):
     n = uuid.uuid4().hex[:6].upper()
     loc_name = f"Audit Shelf {tag} {n}"
     loc = _insert_location(data_dir, loc_name)
-    found = _seed_item_with_copy(data_dir, f"Audit Found {tag} {n}",
-                                 None, loc, f"TSTAUD-{n}F")
+    _seed_item_with_copy(data_dir, f"Audit Found {tag} {n}",
+                         None, loc, f"TSTAUD-{n}F")
     missing = _seed_item_with_copy(data_dir, f"Audit Missing {tag} {n}",
                                    None, loc, f"TSTAUD-{n}M")
     return {"loc": loc, "loc_name": loc_name, "n": n,

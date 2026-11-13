@@ -11,8 +11,6 @@ import logging
 import os
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse
-from starlette.responses import Response
 
 from app.auth import require_role
 from app.database import get_db
@@ -39,8 +37,6 @@ _FORMAT_SOURCE = {"audible_cli": "audible_import", "libation": "audible_import"}
 
 @router.get("/export/csv")
 async def export_csv(user=Depends(require_role("viewer"))):
-    import csv
-    import io
     from fastapi.responses import StreamingResponse
 
     output = io.StringIO()
@@ -96,10 +92,6 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     the source is auto-detected from the header row (see
     services/reading_imports.py for the column mappings).
     """
-    import csv
-    import io
-    import os
-
     from app.services import reading_imports
 
     form = await request.form()

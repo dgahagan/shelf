@@ -30,7 +30,7 @@ would pass on an empty database instead of on the view actually filtering.
 import pytest
 
 from app.routers import cover_review, shelf_fill
-from app.services import archive, item_copies, item_merge, location_order
+from app.services import archive, item_copies, location_order
 from tests.conftest import _insert_item, _insert_location
 
 _TRASHED_AT = "2026-09-18T00:00:00"

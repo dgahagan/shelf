@@ -29,7 +29,8 @@ make check-sw-version      # lint: SW_VERSION matches the precache digest (gener
 make badges                # restamp README's test-count badges (generated — run after adding/deleting tests)
 make check-badges          # lint: README test-count badges match what pytest collects
 make check-tests           # lint: test conventions — app.main import isolation, CSP-safe waits, page guards, no networkidle wait after a click
-make checks-fast           # instant offline lints (secrets, csrf, alpine, sw-version, tests, badges) — the inner-loop target
+make check-ruff            # lint: ruff (E9 + F — unused imports/variables, redefinitions, syntax errors)
+make checks-fast           # instant offline lints (secrets, csrf, alpine, sw-version, tests, ruff, badges) — the inner-loop target
 make checks                # everything, incl. network pip-audit + licenses — before a release
 make dev / dev-down / dev-logs   # docker compose up/down/logs
 uvicorn app.main:app --reload    # run without Docker

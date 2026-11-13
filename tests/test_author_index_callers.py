@@ -15,7 +15,6 @@ import io
 import httpx
 import respx
 
-from app.database import get_db
 from app.services import authors as authors_svc
 from app.services import music_catalog, musicbrainz, provider_result
 from tests.conftest import _insert_item

@@ -6,7 +6,7 @@ import urllib.request
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item, ADMIN_USERNAME, ADMIN_PASSWORD
+from tests.e2e.conftest import insert_item
 
 pytestmark = pytest.mark.e2e
 

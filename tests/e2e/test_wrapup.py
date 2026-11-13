@@ -13,7 +13,6 @@ session-scoped `live_server` — no G126 cleanup is needed because nothing here
 is shared with the other ~130 E2E tests.
 """
 import os
-import sqlite3
 import time
 from pathlib import Path
 

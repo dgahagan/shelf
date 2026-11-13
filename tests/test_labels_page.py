@@ -8,7 +8,7 @@ from starlette.routing import Match
 
 from app.database import set_setting
 from app.services import copy_labels, item_copies
-from tests.conftest import _insert_item, _insert_location
+from tests.conftest import _insert_item
 from tests.test_features_gate import assert_disabled_page, off
 
 

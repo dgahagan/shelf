@@ -48,8 +48,6 @@ from app import browse_columns, browse_filters, i18n
 from app.config import (
     COVERS_DIR,
     CREATOR_LABELS,
-    DATA_DIR,
-    MEDIA_TYPES,
     browse_creator_label,
     cover_shape,
     creator_label,

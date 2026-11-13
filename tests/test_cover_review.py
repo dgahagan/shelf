@@ -7,7 +7,6 @@ G48: every seed goes through the `db` fixture and is committed before the
 request, or the app's own connection cannot see it and the failure reads like a
 routing bug.
 """
-import pytest
 
 from tests.conftest import _insert_item, _insert_location
 
@@ -744,7 +743,6 @@ class TestRetryMissingCoversStaysDismissalBlind:
 
         Revisit if and when un-dismissing from the UI ships.
         """
-        from unittest.mock import AsyncMock
         from app.routers import items_common
 
         dismissed = _seed(db, title="Dismissed Book", media_type="book",
@@ -791,8 +789,6 @@ class TestTheCounterSurvivesAPick:
         stay byte-identical to what it rendered before the queue existed."""
         item_id = _seed(db, title="On Item Detail", cover_path=None)
         db.commit()
-        from unittest.mock import AsyncMock
-        from app.services import covers, provider_result
         r = admin_client.get(f"/item/{item_id}")
         assert 'name="pos"' not in r.text
         assert 'name="total"' not in r.text

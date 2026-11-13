@@ -1,9 +1,7 @@
 """Tests for app.database settings helpers and app.config env var overrides."""
 
-import os
-import pytest
 
-from app.database import get_db, get_setting, get_all_settings
+from app.database import get_setting, get_all_settings
 from app.services import cover_queue
 from tests.conftest import _insert_borrower, _insert_item, _insert_location
 

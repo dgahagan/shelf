@@ -17,10 +17,8 @@ before the request (G48); `_lookup_metadata`/`_save_item` are patched on
 import io
 from unittest.mock import AsyncMock, patch
 
-import pytest
 
-from app.database import get_db
-from tests.conftest import _insert_item, _insert_location
+from tests.conftest import _insert_item
 from tests.test_items import _rendered_form
 
 BAD_ISBN = "9780441172710"   # well-formed ISBN-13, bad check digit

@@ -228,7 +228,8 @@ class TestDismissAndRestore:
 def test_copies_and_rooms_render(admin_client, db):
     from tests.conftest import _insert_location
     hall = _insert_location(db, "Hall")
-    a, b = _book(db, "Twin"), _book(db, "Twin")
+    a = _book(db, "Twin")
+    _book(db, "Twin")
     item_copies.insert_copy(db, {"item_id": a, "copy_number": 1, "location_id": hall})
     db.commit()
     html = admin_client.get("/duplicates").text

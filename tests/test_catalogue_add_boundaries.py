@@ -166,7 +166,7 @@ def test_game_add_without_platform_reports_duplicate_of_a_platformless_row(edito
 def test_game_add_with_platform_is_not_blocked_by_a_platformless_row(editor_client, db, monkeypatch):
     """A platformed add is a different row from a platform-less one."""
     monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
-    existing_id = _insert_item(
+    _insert_item(
         db, title="Loose Game", isbn=None, media_type="video_game",
     )
     db.execute("COMMIT")
@@ -192,7 +192,7 @@ def test_game_add_with_platform_is_not_blocked_by_a_platformless_row(editor_clie
 def test_game_add_without_platform_is_not_blocked_by_a_platformed_row(editor_client, db, monkeypatch):
     """A platform-less add is a different row from a platformed one."""
     monkeypatch.setattr(items_catalog, "get_setting", lambda db, key: "configured")
-    existing_id = _insert_item(
+    _insert_item(
         db, title="Loose Game", isbn=None, media_type="video_game", platform="switch",
     )
     db.execute("COMMIT")

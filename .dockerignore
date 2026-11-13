@@ -19,3 +19,4 @@ docs/
 scripts/
 node_modules/
 *.md
+.ruff_cache/

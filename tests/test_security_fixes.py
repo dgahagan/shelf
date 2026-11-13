@@ -11,13 +11,11 @@ Covers:
 """
 
 import io
-import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.database import get_db
-from tests.conftest import _insert_item
 
 
 # ---------------------------------------------------------------------------
@@ -57,7 +55,7 @@ class TestCoverRedirectValidation:
     @pytest.mark.anyio
     async def test_rejects_redirect_to_untrusted_domain(self, tmp_path):
         """If a redirect lands on a domain not in ALLOWED_COVER_DOMAINS, download fails."""
-        from app.services.covers import _download, ALLOWED_COVER_DOMAINS
+        from app.services.covers import _download
 
         dest = tmp_path / "cover.jpg"
         trusted_url = "https://covers.openlibrary.org/b/id/123-L.jpg"

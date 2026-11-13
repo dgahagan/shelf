@@ -36,7 +36,7 @@ class TestAddMode:
     """Default add mode — existing behavior, smoke tests."""
 
     def test_add_duplicate_returns_duplicate(self, admin_client, db):
-        item_id = _insert_item(db, title="Existing Book", isbn="9780000000026")
+        _insert_item(db, title="Existing Book", isbn="9780000000026")
         db.commit()
         resp = admin_client.post("/api/scan", data={
             "isbn": "9780000000026", "media_type": "book", "mode": "add",
@@ -163,7 +163,7 @@ class TestWishlistMode:
         """Wishlist mode should create item with owned=0."""
         # We can't easily test full metadata lookup without mocking external APIs,
         # but we can test the duplicate path returns correctly
-        item_id = _insert_item(db, title="Already Here", isbn="9780000000002")
+        _insert_item(db, title="Already Here", isbn="9780000000002")
         db.commit()
         resp = admin_client.post("/api/scan", data={
             "isbn": "9780000000002", "media_type": "book", "mode": "wishlist",
@@ -174,7 +174,7 @@ class TestWishlistMode:
 
 class TestLendMode:
     def test_lend_item(self, admin_client, db):
-        item_id = _insert_item(db, title="Lendable Book", isbn="9780000000125")
+        _insert_item(db, title="Lendable Book", isbn="9780000000125")
         borrower_id = _insert_borrower(db, "Alice")
         db.commit()
         resp = admin_client.post("/api/scan", data={
@@ -287,7 +287,7 @@ class TestMoveMode:
 class TestInventoryMode:
     def test_inventory_confirms_item_at_location(self, admin_client, db):
         loc_id = _insert_location(db, "Shelf A")
-        item_id = _insert_item(db, title="Right Place", isbn="9780000000040", location_id=loc_id)
+        _insert_item(db, title="Right Place", isbn="9780000000040", location_id=loc_id)
         db.commit()
         resp = admin_client.post("/api/scan", data={
             "isbn": "9780000000040", "mode": "inventory", "location_id": str(loc_id),

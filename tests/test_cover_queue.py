@@ -443,7 +443,7 @@ class TestTheStartupRequeueHonoursADismissal:
         from app.services import cover_queue
         from tests.conftest import _insert_item
 
-        kept = _insert_item(db, title="Still Wanted", media_type="book",
+        _insert_item(db, title="Still Wanted", media_type="book",
                             isbn="9780000000019", cover_path=None)
         dismissed = _insert_item(db, title="No Cover Exists", media_type="book",
                                  isbn="9780000000026", cover_path=None)

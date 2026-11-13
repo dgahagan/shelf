@@ -128,7 +128,7 @@ def _load_zip(content: bytes):
 
 class TestBuildArchive:
     def test_contract_shape(self, db):
-        item_id = _seed_full_library(db)
+        _seed_full_library(db)
         path = build_archive(db)
         assert path.exists()
         assert path.name == "shelf_archive_tmp.zip"

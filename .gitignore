@@ -17,3 +17,4 @@ node_modules/
 # them, so the diff is empty and they silently never ship). Archive anything
 # worth keeping under .devdocs/archive/completed/.
 .session/
+.ruff_cache/

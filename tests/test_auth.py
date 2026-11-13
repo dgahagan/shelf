@@ -1,11 +1,5 @@
 """Tests for app.auth — password hashing, JWT tokens, role enforcement."""
 
-import time
-from unittest.mock import patch
-
-import pytest
-from starlette.testclient import TestClient
-
 from app.auth import (
     hash_password,
     verify_password,
@@ -14,7 +8,6 @@ from app.auth import (
     should_refresh_token,
     get_secret_key,
     get_user_count,
-    _cached_secret_key,
 )
 
 
@@ -90,13 +83,8 @@ def test_should_refresh_token_before_halflife(client, admin_user):
     """Fresh tokens should NOT be refreshed."""
     from app.auth import create_token
     token = create_token(admin_user["id"], "admin", "admin")
-    # Simulate a request with a fresh cookie
-    from starlette.testclient import TestClient
-    from app.main import app
-    c = TestClient(app, base_url="https://testserver", cookies={"access_token": token})
-    # Make a request and check no refresh happened
+    # Check no refresh happens for a fresh token
     from unittest.mock import MagicMock
-    from starlette.requests import Request
     req = MagicMock()
     req.cookies = {"access_token": token}
     user = {"id": admin_user["id"], "username": "admin", "role": "admin",

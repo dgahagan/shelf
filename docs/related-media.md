@@ -18,6 +18,8 @@ Open an item. The Related Media panel appears below its tags. Editors and admini
 
 Direct relationships can be removed from the item page. Removing one edge can split a larger group; other independent links are left intact.
 
+The item's "Also available as" links list only direct **Format** links, and they update as soon as you link or unlink one — no reload needed.
+
 Search excludes every item already in the current connected group, preventing redundant edges from being added just to make a transitive member direct.
 
 Related Media follows Shelf's normal live-catalogue boundary. Soft-deleted items do not appear in panels, searches or relationship-management targets.

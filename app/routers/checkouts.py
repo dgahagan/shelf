@@ -118,7 +118,6 @@ async def checkout_item(
     __=Depends(require_feature("lending")),
 ):
     """Check out an item to a borrower."""
-    templates = request.app.state.templates
     if due_days > 0:
         try:
             due = (date.today() + timedelta(days=due_days)).isoformat()

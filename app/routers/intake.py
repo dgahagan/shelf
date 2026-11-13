@@ -6,7 +6,7 @@ import os
 import sqlite3
 
 import httpx
-from fastapi import APIRouter, Depends, Request, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
 from pydantic import BaseModel, field_validator
 
 from app.auth import require_role

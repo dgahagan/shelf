@@ -1,6 +1,5 @@
 """Tests for app.services.isbn and app.services.upc — pure validation logic."""
 
-import pytest
 
 from app.services.isbn import (
     normalize_isbn,
@@ -12,7 +11,7 @@ from app.services.isbn import (
     canonical_isbn_pair,
     clean_asin,
 )
-from app.services.upc import normalize_barcode, detect_barcode_type, validate_upc
+from app.services.upc import detect_barcode_type, validate_upc
 
 
 # --- ISBN ---

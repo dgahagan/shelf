@@ -10,7 +10,6 @@ import stat
 from app import crypto
 from app.auth import get_secret_key
 from app.crypto import (
-    SENSITIVE_KEYS,
     encrypt_value,
     get_encryption_key,
     is_fernet_token,

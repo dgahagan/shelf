@@ -284,7 +284,7 @@ class TestTagsColumn:
         `search_items` context as page 1, so it must get `tags_by_item` too."""
         from app.services import tags as tags_svc
 
-        first = _insert_item(db, title="A First Item", isbn="9780000093015", media_type="book")
+        _insert_item(db, title="A First Item", isbn="9780000093015", media_type="book")
         second = _insert_item(db, title="B Second Item", isbn="9780000093022", media_type="book")
         tags_svc.attach_tags(db, second, ["Signed"])
         db.commit()

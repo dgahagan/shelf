@@ -107,7 +107,7 @@ def _response_outcome(provider, response, *, auth_statuses=()):
 
 
 def _matches(values, isbn):
-    return any((pair := canonical_isbn_pair(value))[0] == isbn for value in values
+    return any(canonical_isbn_pair(value)[0] == isbn for value in values
                if isinstance(value, str) and canonical_isbn_pair(value))
 
 

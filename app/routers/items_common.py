@@ -16,7 +16,6 @@ rather than `from ... import resolve_missing_cover`. Tests patch these by
 attribute, and a from-import binds a copy that patching cannot reach.
 """
 
-import asyncio
 import json
 import logging
 import sqlite3
@@ -31,7 +30,7 @@ from app.database import get_db, get_setting
 from app.services import covers, detect, googlebooks, hardcover, national, openlibrary, provider_result
 from app.services import cover_queue
 from app.services import authors as authors_svc
-from app.services import igdb, scan_outcome, title_lookup, tmdb, upcitemdb
+from app.services import scan_outcome, title_lookup, upcitemdb
 from app.services import upc as upc_svc
 from app.services import isbn as isbn_svc
 from app.services.item_write import ItemValueError, insert_item, update_item_fields

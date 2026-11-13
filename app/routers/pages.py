@@ -24,7 +24,6 @@ from app.services import buy_links as buy_links_svc
 from app.services import release_radar
 from app.services import wrapups
 from app.database import get_db, get_setting, get_game_platforms, get_reading_history
-from app.routers import items_common
 from app.routers.items_common import SORT_OPTIONS
 from app.routers.series import find_gaps
 from app.services import item_copies, item_template, item_write

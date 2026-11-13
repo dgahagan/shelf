@@ -14,9 +14,7 @@ write funnel — that is the point: the funnel refuses the value this step
 exists to remove.
 """
 
-import sqlite3
 
-import pytest
 
 from app.database import _retire_kids_book, _run_migrations, get_db, init_db
 from tests.conftest import _assert_ownership_partition, _insert_item

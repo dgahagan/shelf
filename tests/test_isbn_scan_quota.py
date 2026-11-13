@@ -10,9 +10,8 @@ The card does not name a provider, for the same reason the added-card notice
 does not: four sources feed this and naming one of them would be a guess.
 """
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
-import httpx
 import pytest
 
 from app.routers import items_common

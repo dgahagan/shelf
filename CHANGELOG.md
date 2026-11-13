@@ -6,12 +6,31 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.79.1] - 2026-11-13
+
+Three things were out of step. Linking an audiobook or ebook to its print copy
+in Related Media left the item's "Also available as" links stale until you
+reloaded the page. A brief Open Library outage could turn a scan into an error
+page instead of trying the next source. And a reading-app import could store a
+date that does not exist. This release fixes all three. The Related Media fix
+is a community contribution from
+[@sudo-rpaisley](https://github.com/sudo-rpaisley).
+
 ### Fixed
 
 - **"Also available as" updates immediately when you link or unlink another
   format in Related Media.** Adding the first format or removing the last no
   longer needs a page reload, and the links keep your Series or Stats back
-  destination.
+  destination. Only formats appear there: a link marked Related or Adaptation
+  stays in the Related Media panel, as before. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#184](https://github.com/dgahagan/shelf/pull/184).
+- **A scan or title search no longer fails with an error page when Open
+  Library drops the connection mid-reply or redirects in a loop.** The lookup
+  falls through to the next source instead.
+- **Importing a reading-app CSV no longer stores an impossible date.** A date
+  such as `2023/13/45` is left blank instead of being saved as a finished or
+  acquired date.
 
 ## [0.79.0] - 2026-11-12
 
@@ -5773,6 +5792,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.79.1]: https://github.com/dgahagan/shelf/releases/tag/v0.79.1
 [0.79.0]: https://github.com/dgahagan/shelf/releases/tag/v0.79.0
 [0.78.3]: https://github.com/dgahagan/shelf/releases/tag/v0.78.3
 [0.78.2]: https://github.com/dgahagan/shelf/releases/tag/v0.78.2

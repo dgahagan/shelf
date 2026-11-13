@@ -132,7 +132,7 @@ class TestDeleteItem:
 class TestBrowseLentOutFilter:
     def test_lent_out_filter(self, admin_client, db):
         item1 = _insert_item(db, title="Lent Book", isbn="9780000002105")
-        item2 = _insert_item(db, title="Home Book", isbn="9780000002112")
+        _insert_item(db, title="Home Book", isbn="9780000002112")
         bid = _insert_borrower(db, "Tester")
         db.execute(
             "INSERT INTO checkouts (item_id, borrower_id, checked_out) VALUES (?, ?, datetime('now'))",
@@ -1556,7 +1556,7 @@ class TestLanguageFilter:
     def test_location_counts_respect_language(self, viewer_client, db):
         """R3: loc_conds is rebuilt from scratch — it must include the
         language condition."""
-        loc = self._seed(db)
+        self._seed(db)
         resp = viewer_client.get("/api/search", params={"language": "de"})
         html = resp.content.decode()
         # Office holds 1 German item (German Novel) and 1 English item;

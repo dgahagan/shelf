@@ -40,6 +40,7 @@ Each normalizer returns the shelf-native shape consumed by the CSV import:
     }
 """
 
+import datetime
 import math
 import re
 import unicodedata
@@ -151,7 +152,11 @@ def _clean_date(value: str | None) -> str | None:
     v = value.strip().replace("/", "-")
     parts = v.split("-")
     if len(parts) == 3 and all(p.isdigit() for p in parts) and len(parts[0]) == 4:
-        return f"{parts[0]}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+        try:
+            d = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+        except ValueError:
+            return None  # not a calendar date, e.g. 2023/13/45 or 2023/02/30
+        return f"{parts[0]}-{d.month:02d}-{d.day:02d}"
     return None
 
 

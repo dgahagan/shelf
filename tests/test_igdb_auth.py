@@ -19,7 +19,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.services import covers, igdb, provider_result
+from app.services import covers, igdb
 
 
 CLIENT_ID = "abcdef0123456789"

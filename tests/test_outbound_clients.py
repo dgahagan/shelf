@@ -397,6 +397,20 @@ class TestOpenLibraryOutcomes:
             result = await openlibrary.lookup("9780000000057", client)
         assert result.outcome == "transport_failed"
 
+    @respx.mock
+    @pytest.mark.parametrize("exc", [
+        httpx.RemoteProtocolError("peer closed"),
+        httpx.TooManyRedirects("loop"),
+    ])
+    async def test_other_httpx_errors_are_transport_failed(self, exc):
+        respx.get("https://openlibrary.org/isbn/9780000000057.json").mock(side_effect=exc)
+        respx.get("https://openlibrary.org/search.json").mock(side_effect=exc)
+        async with httpx.AsyncClient() as client:
+            looked_up = await openlibrary.lookup("9780000000057", client)
+            searched = await openlibrary.search_books("Some Book", client)
+        assert looked_up.outcome == "transport_failed"
+        assert searched.outcome == "transport_failed"
+
 
     @respx.mock
     async def test_an_unreadable_body_is_no_match_not_a_raise(self):

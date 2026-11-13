@@ -6,7 +6,6 @@ import app.features as features
 from app.features import (
     CORE_NAV_TABS,
     FEATURES,
-    PROFILES,
     Feature,
     apply_profile,
     current_profile,

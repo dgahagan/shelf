@@ -79,7 +79,7 @@ None of this applies to typo and docs fixes. Send those straight in.
 ```bash
 make test        # unit + integration tests
 make test-e2e    # Playwright E2E tests (starts its own server)
-make checks      # dependency audit, license check, secret scan, CSRF lint, Alpine CSP lint
+make checks      # dependency audit, license check, secret scan, CSRF lint, Alpine CSP lint, Python lint (ruff)
 make test-contract   # live UPC Item DB check (one lookup/run) — not needed for a PR
 make css         # if you touched templates or Tailwind classes — to see your work; do NOT commit the result
 ```

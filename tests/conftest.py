@@ -1,11 +1,6 @@
-import os
 import re
-import sqlite3
 import sys
-import tempfile
-from contextlib import contextmanager
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient

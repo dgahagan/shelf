@@ -16,7 +16,7 @@ import sqlite3
 
 import pytest
 
-from app.database import MIGRATION_TABLES, MIGRATIONS, get_db
+from app.database import MIGRATION_TABLES, MIGRATIONS
 from tests.conftest import bootstrap_sql_before
 
 _ALTER = re.compile(r"ALTER TABLE (\w+) ADD COLUMN (\w+)", re.I)

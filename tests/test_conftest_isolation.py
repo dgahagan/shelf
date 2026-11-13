@@ -26,7 +26,6 @@ BINDING_MODULES = (
     ("app.routers.settings", "DATABASE_PATH"),
     ("app.routers.settings", "DATA_DIR"),
     ("app.main", "COVERS_DIR"),
-    ("app.main", "DATA_DIR"),
     ("app.services.isbndb", "DATA_DIR"),
 )
 

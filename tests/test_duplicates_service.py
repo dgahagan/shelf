@@ -255,7 +255,8 @@ def test_statement_count_does_not_grow_with_groups(db):
     def count(n_groups):
         db.execute("DELETE FROM items")
         for i in range(n_groups):
-            a, b = _book(db, f"Twin {i}"), _book(db, f"Twin {i}")
+            a = _book(db, f"Twin {i}")
+            _book(db, f"Twin {i}")
             item_copies.insert_copy(db, {"item_id": a, "copy_number": 1})
         statements = []
         db.set_trace_callback(statements.append)

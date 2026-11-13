@@ -5,12 +5,9 @@ directly through the service and read `build_report` back. The expected-set
 test pins the rule the old Show Missing endpoint used (its query moved here
 verbatim) against a literal id list.
 """
-import re
-import sqlite3
 
 import pytest
 
-from app.database import get_db
 from app.services import audits, item_copies, trash
 from app.services import locations as locations_svc
 from app.services.item_write import trash_item

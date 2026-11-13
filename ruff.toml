@@ -1,0 +1,7 @@
+# The rule set is explicit on purpose: ruff's default set changes across
+# versions, and under 0.17.5 it reports 466 B008 on FastAPI's Depends()/Form().
+# A rule joins select only in a change that brings its findings to zero, and
+# only when a finding is a bug or dead code — never a style preference.
+target-version = "py312"   # Dockerfile:1 — the interpreter that ships
+[lint]
+select = ["E9", "F"]

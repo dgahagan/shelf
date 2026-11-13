@@ -48,7 +48,7 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> provider_result.Provid
             headers={"User-Agent": USER_AGENT},
             follow_redirects=True,
         )
-    except (httpx.TimeoutException, httpx.NetworkError):
+    except httpx.HTTPError:
         logger.debug("Open Library lookup failed for ISBN %s: transport error", isbn, exc_info=True)
         return provider_result.transport_failed("openlibrary")
 
@@ -274,7 +274,7 @@ async def _search(
             params={**params, "limit": str(limit), "fields": _SEARCH_FIELDS, "lang": lang},
             headers={"User-Agent": USER_AGENT},
         )
-    except (httpx.TimeoutException, httpx.NetworkError):
+    except httpx.HTTPError:
         logger.debug("Open Library search failed for %r: transport error", params, exc_info=True)
         return provider_result.transport_failed("openlibrary")
 

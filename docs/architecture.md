@@ -526,7 +526,12 @@ splits the set without rewriting a group id anywhere.
 The item page carries **two** surfaces over that one table, and the split is
 deliberate. The older "Also available as:" block reads `link_type = 'format'`
 only, because it asserts the same content in another format — which `related`
-and `adaptation` are not. The **Related Media panel** (`routers/related_media.py`,
+and `adaptation` are not. It is the shared fragment
+`fragments/also_available_as.html`, which always renders its `#also-available-as`
+target (empty when nothing is linked); a successful link or unlink response
+carries it as an HTMX out-of-band swap beside the panel, so the block follows
+the edit without a reload. The panel's own GETs and refused mutations send no
+replacement. The **Related Media panel** (`routers/related_media.py`,
 lazy-loaded into `item_detail.html` below the tags) shows the whole connected
 group across all three types, labelling a direct link apart from a member
 reached only through a third item. Its four endpoints sit under

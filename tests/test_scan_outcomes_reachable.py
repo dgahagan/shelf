@@ -8,7 +8,6 @@ Hardcover key was filed as "no such book" and the copy sat unreachable. The
 third asserts the literal that made it so cannot come back.
 """
 
-import re
 from pathlib import Path
 
 import httpx

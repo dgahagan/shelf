@@ -45,7 +45,7 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
-| `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, README test-count badges |
+| `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges |
 | `make badges` | Restamp README's two test-count badges from `pytest --co` — CI runs this on the push to `main` (the `restamp` job below); run it locally to see your work, but **never commit the result in a pull request** |
 | `make checks` | All checks incl. `pip-audit` and licenses (network) |
 | `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — run it after any template/JS change to see your work, **but leave the output out of a pull request** |
@@ -53,6 +53,9 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 Unit and E2E tests **cannot share one pytest invocation** — always use the
 targets above. `make verify` enforces a minimum test count, so deleting
 tests fails CI.
+
+`make check-ruff` runs ruff with the rule set in `ruff.toml`, and
+`python -m ruff check --fix app tests scripts` repairs most findings.
 
 **CI runs five jobs**, and three of them behave differently on a pull request
 than on a push to `main`:

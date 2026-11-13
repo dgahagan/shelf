@@ -114,6 +114,14 @@ class TestCleanDate:
         assert _clean_date("not a date") is None
         assert _clean_date("") is None
 
+    def test_impossible_calendar_date_is_none(self):
+        assert _clean_date("2023/13/45") is None
+        assert _clean_date("2023/02/30") is None
+        assert _clean_date("2023/00/10") is None
+
+    def test_leap_day_kept(self):
+        assert _clean_date("2024/02/29") == "2024-02-29"
+
 
 # ---------------------------------------------------------------------------
 # Normalizers
@@ -716,7 +724,7 @@ class TestCoverEnrichment:
         search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
                           "isbn": "9780515147018", "cover_url": "https://covers.example/1.jpg",
                           "publish_year": 2009, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_by_title_author",
+        with patch("app.services.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
@@ -746,7 +754,7 @@ class TestCoverEnrichment:
         search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
                           "isbn": "9780441172710", "cover_url": "https://covers.example/1.jpg",
                           "publish_year": 2009, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_by_title_author",
+        with patch("app.services.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")) as dl:
@@ -775,7 +783,7 @@ class TestCoverEnrichment:
         search_result = [{"title": "1984 (adaptation)", "authors": "Michael Dean",
                           "isbn": "9780000000002", "cover_url": "https://covers.example/x.jpg",
                           "publish_year": None, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_by_title_author",
+        with patch("app.services.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover", new=AsyncMock()) as dl:
             await items_common.resolve_missing_cover(item_id, None)
@@ -805,7 +813,7 @@ class TestCoverEnrichment:
         async def dl_side_effect(item_id_, isbn, cover_url, cover_id, client, **kw):
             return f"covers/{item_id_}.jpg" if cover_url else None  # ISBN chain fails
 
-        with patch("app.routers.items.openlibrary.search_by_title_author",
+        with patch("app.services.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(side_effect=dl_side_effect)) as dl:
@@ -834,7 +842,7 @@ class TestCoverEnrichment:
         search_result = [{"title": "The Gray Man", "authors": "Mark Greaney",
                           "isbn": "9780515147018", "cover_url": "https://covers.example/1.jpg",
                           "publish_year": None, "publisher": None, "page_count": None}]
-        with patch("app.routers.items.openlibrary.search_by_title_author",
+        with patch("app.services.openlibrary.search_by_title_author",
                    new=AsyncMock(return_value=search_result)), \
              patch("app.routers.items.covers.download_cover",
                    new=AsyncMock(return_value=f"covers/{item_id}.jpg")):

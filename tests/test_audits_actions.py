@@ -221,7 +221,7 @@ class TestMarkMissing:
         s = _missing_setup(db)
         html = editor_client.get(f"/audits/{s['audit']}").text
         assert 'data-testid="audit-mark-all"' in html
-        assert f'data-testid="audit-mark-missing-' in html
+        assert 'data-testid="audit-mark-missing-' in html
         assert f'value="{s["lost"]}"' in html
 
     def test_a_deleted_location_renders_no_mark_missing(self, editor_client, db):

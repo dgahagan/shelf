@@ -1645,6 +1645,11 @@ python -m pytest tests/test_items.py -k round_trip -q   # must FAIL; then revert
   wrong-patch-target waiting to happen. Module-level imports have the mirror
   trap and the opposite fix — there the *using* module holds its own
   reference, so that is what must be patched.
+  The same holds in reverse when an F401 says that module-level import is
+  unused: a test may still patch through it (`app.routers.items.openlibrary`
+  was read only by five `patch(...)` strings). Before deleting one, grep
+  `tests/` for `<module>.<name>`; if found, retarget the patch to the
+  defining module, never `# noqa` the import (`f355b72`, 2026-11-13).
 - **Evidence:** called out in the `intake-covers` plan review (Codex R2) and
   written into the plan's test text before it could bite; the same reasoning
   drove the `_lookup_metadata` patches in
@@ -4488,7 +4493,10 @@ done
 ```
 
 - **Status:** documented — a lint candidate; the loop above is already the
-  check, and it has no false-positive surface worth speaking of.
+  check, and it has no false-positive surface worth speaking of. **`make
+  check-ruff` does not cover it:** ruff's `F811` fires only when the first
+  definition is unused, and here earlier tests call it. Probed 2026-11-13
+  (`ruff-lint-gate`) against a two-`_login_page` module: clean.
 
 ## G95 — When excluding tests from a gate target, exclude by path, not by marker
 

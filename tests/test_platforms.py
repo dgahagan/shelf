@@ -1,6 +1,5 @@
 """Tests for app.routers.platforms — game platform CRUD and slugify."""
 
-import pytest
 
 from app.database import get_db
 from app.routers.platforms import _slugify

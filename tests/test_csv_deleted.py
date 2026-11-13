@@ -172,7 +172,7 @@ class TestOldFileImportsLive:
 
 class TestRoundTrip:
     def test_nineteen_column_export_preserves_deleted_state(self, admin_client, db):
-        live_id = _insert_item(db, title="Round Trip Live", isbn=ISBN_A, media_type="book")
+        _insert_item(db, title="Round Trip Live", isbn=ISBN_A, media_type="book")
         trashed_id = _insert_item(db, title="Round Trip Trashed", isbn=ISBN_B,
                                   media_type="book")
         db.execute("COMMIT")

@@ -22,7 +22,6 @@ import sqlite3
 import pytest
 
 from app.database import (
-    MIGRATION_TABLES,
     MIGRATIONS,
     SCHEMA,
     _run_migrations,

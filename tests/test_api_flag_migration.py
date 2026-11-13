@@ -11,7 +11,6 @@ writes the row.
 
 import sqlite3
 
-import pytest
 
 from app.database import MIGRATIONS, SCHEMA, _run_migrations, init_db
 from app.features import FEATURES, apply_profile, current_profile, feature_enabled, feature_rows, profile_keys

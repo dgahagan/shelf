@@ -30,7 +30,7 @@ from app.services.item_write import (IdentifierInTrash, ItemValueError,
                                      update_items_fields, validate_item_fields,
                                      validated_location_id)
 from app.services import item_write  # _coerce_owned (bulk update), promote_wishlisted (scan), trash_item (delete)
-from app.services import openlibrary, googlebooks, hardcover, covers, national
+from app.services import hardcover, covers
 from app.services import detect
 from app.services import cover_queue
 from app.services import legacy_book
@@ -40,9 +40,8 @@ from app.services import item_merge
 from app.services import restore_report
 from app.services import tags as tags_svc
 from app.services import item_template
-from app.services import upc as upc_svc, tmdb, igdb
+from app.services import upc as upc_svc, igdb
 from app.services import synopsis as synopsis_svc
-from app.services import authors as authors_svc
 
 router = APIRouter(prefix="/api")
 

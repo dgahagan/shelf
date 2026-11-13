@@ -11,16 +11,15 @@ import logging
 import httpx
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 from starlette.responses import StreamingResponse
 
 from app import i18n
 from app.auth import require_role
-from app.config import BOOK_MEDIA_TYPES, COVERS_DIR, HTTP_TIMEOUT
+from app.config import BOOK_MEDIA_TYPES, HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.routers import items_common
-from app.services import covers, cover_queue, manual_cover, openlibrary, scan_outcome
-from app.services import isbn as isbn_svc
+from app.services import covers, cover_queue, manual_cover, scan_outcome
 
 logger = logging.getLogger(__name__)
 

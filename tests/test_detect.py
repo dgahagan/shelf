@@ -794,9 +794,8 @@ def test_every_five_type_book_family_declaration_agrees_with_config():
     """config.BOOK_MEDIA_TYPES is the family's home; the three older five-type
     literals are deferred repoints (design §1) and must not drift from it.
     synopsis.SYNOPSIS_MEDIA_TYPES is deliberately three and is not compared."""
-    from app.routers import items_catalog, series
+    from app.routers import series
 
     assert BOOK_MEDIA_TYPES <= set(MEDIA_TYPES)
     assert detect._BOOK_FAMILY_HINTS == BOOK_MEDIA_TYPES
     assert set(series.UNASSIGNED_MEDIA_TYPES) == BOOK_MEDIA_TYPES
-    assert items_catalog.BOOK_MEDIA_TYPES == BOOK_MEDIA_TYPES

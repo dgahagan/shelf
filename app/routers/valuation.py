@@ -3,8 +3,7 @@ import json
 import logging
 
 import httpx
-from fastapi import APIRouter, Depends, Request, Form
-from fastapi.responses import HTMLResponse
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import StreamingResponse
 
 from app.auth import require_role

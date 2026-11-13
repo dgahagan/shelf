@@ -12,17 +12,16 @@ import sqlite3
 import httpx
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse
 
 from app import i18n
 from app.auth import require_role
-from app.config import BOOK_MEDIA_TYPES, HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
+from app.config import HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
 from app.database import get_db, get_game_platforms, get_setting
 from app.routers import items_common
 from app.services import covers, igdb, item_write, openlibrary, restore_report, scan_outcome, tmdb
 from app.services import tags as tags_svc
 from app.services import isbn as isbn_svc
-from app.services import upc as upc_svc
 from app.services.item_write import ItemValueError, insert_item, validated_location_id
 
 logger = logging.getLogger(__name__)

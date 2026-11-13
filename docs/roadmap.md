@@ -121,11 +121,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.79.0](https://github.com/dgahagan/shelf/releases/tag/v0.79.0) | **The Scan page in Italian.** The mode tabs, the form, and every card and message a scan returns are translated, and the labels follow the mode and the media type. Contributed by @vjandrea. |
 | [0.78.3](https://github.com/dgahagan/shelf/releases/tag/v0.78.3) | **Keyboard-shortcut help in every language.** In Italian or Chinese, the **?** button now opens the shortcut list, and its close button and backdrop close it. The list opens centred and fits a phone screen. Shortcuts also stop firing while Ctrl, Cmd or Alt is held, so Ctrl+F and the browser's other shortcuts work again. |
 | [0.78.1](https://github.com/dgahagan/shelf/releases/tag/v0.78.1) | **The valuation report counts a value of 0.** An item you valued at 0 now counts as priced at $0.00 instead of being filled in with the collection's average price, so the report's totals are no longer too high. |
 | [0.78.0](https://github.com/dgahagan/shelf/releases/tag/v0.78.0) | **Browse finds items with no location.** The Location filter lists **No location** with a count, so items that were never filed can be found and moved in bulk, contributed by @larsvilhuber. Also: re-adding a video game with no platform reports it as already in your collection instead of adding a second copy, and the item edit page and manual add in Italian, contributed by @vjandrea. |
 | [0.77.0](https://github.com/dgahagan/shelf/releases/tag/v0.77.0) | **Store Mode trusts the sync.** A wishlisted book no longer shows as Owned after a sync, the verdict card updates to Shelf's answer as soon as an online scan syncs, an ISBN-10 leaves the queue, and a long queue syncs in one go. Also Chinese ISBNs looked up in NeoDB and Browse in Simplified Chinese, contributed by @litong5969, and the item page in Italian with regional and script language variants, contributed by @vjandrea. |
-| [0.76.0](https://github.com/dgahagan/shelf/releases/tag/v0.76.0) | **Audible library import.** Upload an export from audible-cli or Libation under Settings → Data, and each title becomes an audiobook with its narrator, length and ASIN; re-imports add nothing twice, an audiobook already synced from Audiobookshelf is matched instead of duplicated, and the print copy you own shows **Also available as: Audiobook**. Also French ISBNs looked up in the BnF, contributed by @larsvilhuber, and the page shell in Simplified Chinese, contributed by @litong5969. |
 ---
 
 ## Suggesting something

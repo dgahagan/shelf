@@ -16,7 +16,7 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
-        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-deleted check-i18n i18n \
+        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n \
         badges check-badges check-roadmap \
         checks checks-fast \
         report-review report-security report-test reports \
@@ -143,6 +143,10 @@ check-sw-version:
 check-tests:
 	python scripts/check_test_conventions.py
 
+# Python lint: syntax errors, unused imports/variables, redefinitions (ruff.toml).
+check-ruff:
+	python -m ruff check app tests scripts
+
 # Every marked UI string is in each .po, and each committed .mo matches its .po.
 check-i18n:
 	python scripts/i18n.py --check
@@ -162,7 +166,7 @@ check-roadmap:
 	python scripts/check_roadmap_map.py
 
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-badges check-roadmap check-i18n
+checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-ruff check-badges check-roadmap check-i18n
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.

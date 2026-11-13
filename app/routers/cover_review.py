@@ -33,13 +33,12 @@ editor cannot use. An editor-visible entry point belongs to roadmap item 22
 import logging
 
 import httpx
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT
 from app.database import get_db
-from app.routers import items_common
 from app.routers import items_covers
 from app.services import covers
 
