@@ -9,8 +9,7 @@
         <p class="font-medium truncate" data-scan-title><a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a></p>
         {% if authors %}<p class="text-sm text-shelf-muted truncate" data-scan-authors>{{ authors }}</p>{% endif %}
         <p class="text-xs text-shelf-muted" data-scan-detail>
-            {% if newly_added %}Added and shelved{% elif was_wishlist %}Moved from wishlist and shelved{% else %}Shelved{% endif %}
-            at {{ location_name }}{% if copy_number and copy_number > 1 %} · copy {{ copy_number }}{% endif %}
+            {% if newly_added %}{{ _('Added and shelved at %(place)s', place=location_name) }}{% elif was_wishlist %}{{ _('Moved from wishlist and shelved at %(place)s', place=location_name) }}{% else %}{{ _('Shelved at %(place)s', place=location_name) }}{% endif %}{% if copy_number and copy_number > 1 %} · {{ _('copy %(n)s', n=copy_number) }}{% endif %}
         </p>
     </div>
     {% if position_order %}
@@ -18,8 +17,8 @@
        it is per-location and assigned in scan order. It was written to the
        database from the first release and shown only on the Arrange page. #}
     <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-hover text-shelf-muted font-mono"
-          data-testid="shelf-fill-position" title="Position on this shelf">#{{ position_order }}</span>
+          data-testid="shelf-fill-position" title="{{ _('Position on this shelf') }}">#{{ position_order }}</span>
     {% endif %}
-    <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-success/20 text-shelf-success" data-scan-badge>shelved</span>
+    <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-success/20 text-shelf-success" data-scan-badge>{{ _('shelved') }}</span>
 </div>
 {% include "fragments/shelf_fill_summary.html" %}

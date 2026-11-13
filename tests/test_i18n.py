@@ -221,3 +221,14 @@ def test_scan_page_and_results_are_translated(admin_client):
 
     card = admin_client.post("/api/scan", data={"isbn": "9780000000088", "mode": "lookup"}).text
     assert "Non è nella tua collezione" in card and "non trovato" in card
+
+
+def test_intake_shelf_fill_and_store_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    assert "Nessun servizio di visione configurato" in admin_client.get("/intake").text
+    shelf_fill = admin_client.get("/shelf-fill").text
+    assert 'pagina <span class="text-shelf-text">Disponi</span>.' in shelf_fill
+    store = admin_client.get("/store").text
+    assert '<html lang="it"' in store and "Modalità negozio" in store
+    assert '"OWNED": "POSSEDUTO"' in store  # store.js reads the catalog itself

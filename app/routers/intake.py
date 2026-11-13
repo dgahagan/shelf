@@ -9,6 +9,7 @@ import httpx
 from fastapi import APIRouter, Depends, UploadFile, File
 from pydantic import BaseModel, field_validator
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.config import (
@@ -60,12 +61,12 @@ async def plan_photo(payload: PlanRequest):
     """
     w, h = payload.width, payload.height
     if not (0 < w <= MAX_PHOTO_DIMENSION and 0 < h <= MAX_PHOTO_DIMENSION):
-        return {"ok": False, "message": "Invalid photo dimensions"}
+        return {"ok": False, "message": i18n.gettext("Invalid photo dimensions")}
 
     with get_db() as db:
         settings = get_all_settings(db)
     if not settings.get("vision_provider"):
-        return {"ok": False, "message": "No vision provider configured"}
+        return {"ok": False, "message": i18n.gettext("No vision provider configured")}
 
     cap = tiling.ingest_cap(settings)
     factor = tiling.downscale_factor(w, h, cap)
@@ -102,21 +103,21 @@ async def analyze_photo(photos: list[UploadFile] = File(...)):
     for photo in photos:
         mime = (photo.content_type or "").lower()
         if mime not in vision.ALLOWED_MIME:
-            return {"ok": False, "message": "Please upload a JPEG, PNG, or WebP photo"}
+            return {"ok": False, "message": i18n.gettext("Please upload a JPEG, PNG, or WebP photo")}
         image_bytes = await photo.read()
         if len(image_bytes) > vision.MAX_IMAGE_BYTES:
-            return {"ok": False, "message": "Photo is too large (max 10 MB)"}
+            return {"ok": False, "message": i18n.gettext("Photo is too large (max 10 MB)")}
         if not image_bytes:
-            return {"ok": False, "message": "Empty upload"}
+            return {"ok": False, "message": i18n.gettext("Empty upload")}
         # Stop reading further tiles the moment the combined budget is spent,
         # rather than reading every file first and checking at the end.
         total_bytes += len(image_bytes)
         if total_bytes > vision.MAX_TOTAL_INTAKE_BYTES:
-            return {"ok": False, "message": "This upload is too large to analyze (over 300 MB in total)"}
+            return {"ok": False, "message": i18n.gettext("This upload is too large to analyze (over 300 MB in total)")}
         images.append((image_bytes, mime))
         parts.append(f"{photo.filename or '-'} {mime} {len(image_bytes)} B")
     if not images:
-        return {"ok": False, "message": "Empty upload"}
+        return {"ok": False, "message": i18n.gettext("Empty upload")}
 
     logger.info("Intake analyze: %d photo(s) — %s", len(parts), ", ".join(parts))
 
@@ -129,7 +130,7 @@ async def analyze_photo(photos: list[UploadFile] = File(...)):
         return {"ok": False, "message": str(e)}
 
     if not books:
-        return {"ok": False, "message": "No books were recognized in this photo"}
+        return {"ok": False, "message": i18n.gettext("No books were recognized in this photo")}
     return {"ok": True, "books": books}
 
 
@@ -217,7 +218,7 @@ async def _confirm_one(
     # promote it back into the decision.
     with get_db() as db:
         if _title_taken(db, title, book.authors or "", media_type):
-            return "skipped", {"title": title, "reason": "already in library"}, None
+            return "skipped", {"title": title, "reason": i18n.gettext("already in library")}, None
 
     # 2. A printed ISBN, if one survives re-validation, buys the full scan
     # cascade. The client value is re-cleaned server-side — the review field
@@ -225,7 +226,7 @@ async def _confirm_one(
     printed_isbn13 = vision.clean_isbn(book.isbn)
     if printed_isbn13:
         if _isbn_taken(printed_isbn13, media_type):
-            return "skipped", {"title": title, "reason": "ISBN already in library"}, None
+            return "skipped", {"title": title, "reason": i18n.gettext("ISBN already in library")}, None
 
         # Deferred import, the store.py precedent — the item routers never
         # import intake. Call through the module so tests can patch it.
@@ -254,7 +255,7 @@ async def _confirm_one(
                     # allowing the invariant failure to propagate.
                     if _isbn_taken(printed_isbn13, media_type):
                         return "skipped", {
-                            "title": title, "reason": "ISBN already in library"}, None
+                            "title": title, "reason": i18n.gettext("ISBN already in library")}, None
                     raise
                 # Read the restore flag before item_id is used for anything
                 # else. No cover guard needed here: this row's cover, if any,
@@ -388,7 +389,7 @@ async def _confirm_one(
         # guard that decides.
         if _title_taken(db, book.title.strip(), book.authors or "", media_type):
             return "skipped", {
-                "title": book.title.strip(), "reason": "already in library"}, None
+                "title": book.title.strip(), "reason": i18n.gettext("already in library")}, None
 
         # 4a. The dupe check at step 1 ran on the row's *read* title. A lookup
         # that resolved 'SPIDER-MAN 2' to *Marvel's Spider-Man 2* has moved the
@@ -403,7 +404,7 @@ async def _confirm_one(
                 (title, media_type),
             ).fetchone()
             if resolved_dupe:
-                return "skipped", {"title": title, "reason": "already in library"}, None
+                return "skipped", {"title": title, "reason": i18n.gettext("already in library")}, None
 
         # 4. ISBN dupe check, scoped to media type.
         if isbn13:
@@ -412,7 +413,7 @@ async def _confirm_one(
                 (isbn13, media_type),
             ).fetchone()
             if taken:
-                return "skipped", {"title": title, "reason": "ISBN already in library"}, None
+                return "skipped", {"title": title, "reason": i18n.gettext("ISBN already in library")}, None
 
         # 5. Insert. A location deleted after the boundary check can still
         # fail the FK invariant here; an ISBN race is classified separately.
@@ -448,7 +449,7 @@ async def _confirm_one(
                     (isbn13, media_type),
                 ).fetchone()
                 if hit:
-                    return "skipped", {"title": title, "reason": "ISBN already in library"}, None
+                    return "skipped", {"title": title, "reason": i18n.gettext("ISBN already in library")}, None
             raise
         # insert_item() reads lastrowid inside the connection's scope (G16).
 

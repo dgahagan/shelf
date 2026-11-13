@@ -1,5 +1,7 @@
 function shelfFillPage() {
     return {
+        // The badge's fallback word; a CSP-build expression can't call t().
+        get shelvedLabel() { return t('shelved'); },
         location: localStorage.getItem('shelf_fill_location') || '',
         // `kids_book` no longer exists as an option; normalize a cached
         // reading of it to `book` and correct the stored value.
@@ -28,7 +30,7 @@ function shelfFillPage() {
                 form.addEventListener('htmx:beforeRequest', function (e) {
                     if (!self.location) {
                         e.preventDefault();
-                        showToast('Choose a shelf location first', 'error');
+                        showToast(t('Choose a shelf location first'), 'error');
                         return false;
                     }
                 });
@@ -46,7 +48,7 @@ function shelfFillPage() {
 
         async startCamera() {
             if (!this.location) {
-                showToast('Choose a shelf location first', 'error');
+                showToast(t('Choose a shelf location first'), 'error');
                 return;
             }
             try {
@@ -65,7 +67,7 @@ function shelfFillPage() {
             } catch (err) {
                 this.scanner = false;
                 this.cameraActive = false;
-                showToast('Camera access failed. Check browser permissions and HTTPS.', 'error');
+                showToast(t('Camera access failed. Check browser permissions and HTTPS.'), 'error');
             }
         },
 
@@ -130,7 +132,7 @@ function shelfFillPage() {
                     code: code
                 };
             } catch (err) {
-                this.scanResult = {title: 'Scan failed', label: 'error', code: code};
+                this.scanResult = {title: t('Scan failed'), label: t('error'), code: code};
             }
             this.scanLoading = false;
         }

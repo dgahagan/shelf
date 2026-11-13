@@ -183,8 +183,8 @@ function intakePage() {
             } catch (err) {
                 this.viewfinder = false;
                 showToast(err && err.name === 'NotFoundError'
-                    ? 'No camera found. Use Choose photo instead.'
-                    : 'Camera access denied. Check browser permissions for this site.',
+                    ? t('No camera found. Use Choose photo instead.')
+                    : t('Camera access denied. Check browser permissions for this site.'),
                     'error');
             }
         },
@@ -194,7 +194,7 @@ function intakePage() {
             try {
                 blob = await this.capture.grab();
             } catch (e) {
-                showToast('Could not capture a frame \u2014 try again.', 'error');
+                showToast(t('Could not capture a frame \u2014 try again.'), 'error');
                 return;
             }
             await this.closeViewfinder();
@@ -359,11 +359,11 @@ function intakePage() {
                         source: b.source || 'read', media_type: 'book', include: true,
                     }));
                 } else {
-                    this.error = data.message || 'Analysis failed';
+                    this.error = data.message || t('Analysis failed');
                 }
             } catch (e) {
                 if (gen !== this.photoGeneration) return;
-                this.error = 'Analysis failed: ' + e.message;
+                this.error = t('Analysis failed') + ': ' + e.message;
             }
             this.analyzing = false;
         },
@@ -437,12 +437,12 @@ function intakePage() {
                 if (data.ok) {
                     this.result = data;
                     this.books = [];
-                    showToast('Added ' + data.added.length + ' items');
+                    showToast(t('Added {count} items').replace('{count}', data.added.length));
                 } else {
-                    this.error = data.message || 'Add failed';
+                    this.error = data.message || t('Add failed');
                 }
             } catch (e) {
-                this.error = 'Add failed: ' + e.message;
+                this.error = t('Add failed') + ': ' + e.message;
             }
             this.confirming = false;
         },

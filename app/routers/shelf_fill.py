@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Form, Request
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.config import MEDIA_TYPES
@@ -18,7 +19,7 @@ def _location(db, location_id: int):
         "SELECT id, name FROM locations WHERE id = ?", (location_id,)
     ).fetchone()
     if not row:
-        raise ValueError("Shelf location no longer exists")
+        raise ValueError(i18n.gettext("Shelf location no longer exists"))
     return row
 
 
@@ -69,7 +70,7 @@ def _place_item(db, item_id: int, location_id: int) -> dict:
         "FROM items_live WHERE id = ?", (item_id,),
     ).fetchone()
     if not item:
-        raise ValueError("Item no longer exists")
+        raise ValueError(i18n.gettext("Item no longer exists"))
 
     fields = {"location_id": location_id}
     if not item["owned"]:
@@ -262,7 +263,7 @@ async def shelf_fill_scan(
     """Resolve one barcode and place its physical copy at ``location_id``."""
     raw = isbn.strip()
     if not raw:
-        return _render_error(request, raw, "Enter or scan a barcode")
+        return _render_error(request, raw, i18n.gettext("Enter or scan a barcode"))
 
     try:
         with get_db() as db:
