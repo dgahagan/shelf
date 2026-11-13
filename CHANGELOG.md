@@ -13,6 +13,71 @@ All notable changes to Shelf are documented here. The format follows
   longer needs a page reload, and the links keep your Series or Stats back
   destination.
 
+## [0.79.0] - 2026-11-12
+
+In a translated interface, Scan was still in English: the mode tabs, the
+form, and every card a scan returns. Scan is the page you use most when
+adding to a collection, so an Italian interface stopped being Italian at the
+point you used it most. This release translates Scan into Italian. It is a
+community contribution from [@vjandrea](https://github.com/vjandrea), the
+fourth area of the translated interface.
+
+### Added
+
+- **The Scan page is translated into Italian.** This covers the eight modes
+  and their descriptions, the camera, and the location, borrower, platform,
+  tag and status controls. It also covers title search, Add by hand, the
+  periodical card, and every result card and message a scan returns (add,
+  lend, return, move, inventory, lookup and quick rate). The labels follow the
+  mode and the media type, as they do in English: Move asks for the
+  destination location, and a video game asks for its UPC. The loan wording
+  is "In prestito presso", here and in Browse's loan tooltip. That form reads
+  correctly before any borrower name. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#183](https://github.com/dgahagan/shelf/pull/183).
+
+## [0.78.3] - 2026-11-12
+
+The keyboard-shortcuts help was broken in a translated interface: in Italian
+or Chinese the `?` button, the close button and the backdrop all did nothing.
+Separately, Shelf's single-key shortcuts also fired while Ctrl, Cmd or Alt was
+held, so Ctrl+F opened Browse's filters instead of the browser's find bar.
+This release fixes both, and tidies how the help looks on screen.
+
+### Fixed
+
+- **The keyboard-shortcuts `?` button now works in Italian and Chinese.**
+  Before, in a translated interface the button did nothing, and the help's
+  close button and its backdrop did nothing either — the list could only be
+  opened with the `?` key and closed with Escape. All three now work in every
+  language.
+- **Keyboard shortcuts no longer fire while Ctrl, Cmd or Alt is held.**
+  Ctrl/Cmd+F (find in page), Ctrl+S, Ctrl+B and similar browser shortcuts
+  reach the browser again instead of toggling Browse's filters or jumping to
+  Scan or Browse. The plain keys work exactly as before.
+- **The keyboard-shortcuts help now opens in the middle of the screen.**
+  Before, it opened in the top-left corner on a desktop, and on a phone its
+  right edge ran off the screen. It is now centred, and it fits a phone
+  screen with a margin on both sides.
+
+## [0.78.2] - 2026-11-11
+
+Shelf upgrades its database at startup, and it skips a few upgrade steps on
+purpose when a later step will create the table they touch. The check for
+those deliberate skips was too loose: an upgrade step with a mistyped table
+name could be marked as done without ever running. This release makes that
+check exact. No upgrade that has shipped is affected, and nothing in your
+collection changes.
+
+### Fixed
+
+- **A database upgrade step with a mistyped table name now stops startup
+  with an error.** Before, a step naming `tag` instead of `tags` was quietly
+  recorded as applied, and the column it should have added was missing for
+  good. It now fails loudly, so the mistake is caught before a release
+  instead of after. Every upgrade step that has shipped behaves exactly as it
+  did.
+
 ## [0.78.1] - 2026-11-11
 
 The insurance valuation report overstated a collection that held anything you
@@ -5708,6 +5773,9 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.79.0]: https://github.com/dgahagan/shelf/releases/tag/v0.79.0
+[0.78.3]: https://github.com/dgahagan/shelf/releases/tag/v0.78.3
+[0.78.2]: https://github.com/dgahagan/shelf/releases/tag/v0.78.2
 [0.78.1]: https://github.com/dgahagan/shelf/releases/tag/v0.78.1
 [0.78.0]: https://github.com/dgahagan/shelf/releases/tag/v0.78.0
 [0.77.0]: https://github.com/dgahagan/shelf/releases/tag/v0.77.0

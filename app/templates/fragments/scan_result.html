@@ -3,13 +3,13 @@
      data-scan-status="{{ status }}">
     <div class="flex items-start gap-3">
         <div class="flex-1 min-w-0">
-            <p class="font-medium" data-scan-title>Which book is this?</p>
+            <p class="font-medium" data-scan-title>{{ _('Which book is this?') }}</p>
             <p class="text-sm text-shelf-muted mt-1" data-scan-detail>
-                Older book barcode matches more than one book. Choose the exact title printed on this copy; Shelf will remember this barcode.
+                {{ _('Older book barcode matches more than one book. Choose the exact title printed on this copy; Shelf will remember this barcode.') }}
             </p>
         </div>
         <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
-              data-scan-badge>choose</span>
+              data-scan-badge>{{ _('choose') }}</span>
     </div>
 
     <div class="space-y-2 mt-4">
@@ -34,13 +34,13 @@
                 {% if candidate.authors %}
                 <span class="block text-sm text-shelf-muted mt-0.5">{{ candidate.authors }}</span>
                 {% endif %}
-                <span class="block text-xs text-shelf-muted mt-1">ISBN {{ candidate.isbn10 or candidate.isbn13 }}</span>
+                <span class="block text-xs text-shelf-muted mt-1">{{ _('ISBN %(isbn)s', isbn=candidate.isbn10 or candidate.isbn13) }}</span>
             </button>
         </form>
         {% endfor %}
     </div>
 
-    <p class="text-xs text-shelf-muted mt-3">If none matches, scan the printed ISBN instead.</p>
+    <p class="text-xs text-shelf-muted mt-3">{{ _('If none matches, scan the printed ISBN instead.') }}</p>
 </div>
 
 {% elif status == 'legacy_incomplete' %}
@@ -48,20 +48,20 @@
      data-scan-status="{{ status }}">
     <div class="flex items-start gap-3">
         <div class="flex-1 min-w-0">
-            <p class="font-medium" data-scan-title>Older book barcode: five more digits needed</p>
+            <p class="font-medium" data-scan-title>{{ _('Older book barcode: five more digits needed') }}</p>
             <p class="text-sm text-shelf-muted mt-1" data-scan-detail>
-                This UPC is shared by many Scholastic-era titles. The five digits printed to the right of the barcode say which book — type them and Shelf will look it up.
+                {{ _('This UPC is shared by many Scholastic-era titles. The five digits printed to the right of the barcode say which book — type them and Shelf will look it up.') }}
             </p>
         </div>
         <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
-              data-scan-badge>incomplete</span>
+              data-scan-badge>{{ _('incomplete') }}</span>
     </div>
 
     {% if supplement_rejected %}
     {# G58/G62: a boolean state the router set, with the copy written here —
        and a plain paragraph, never `data-scan-error`, which would replace the
        whole toast and read this card as a failure. #}
-    <p class="text-sm text-shelf-error mt-3">Enter exactly five digits.</p>
+    <p class="text-sm text-shelf-error mt-3">{{ _('Enter exactly five digits.') }}</p>
     {% endif %}
 
     <form hx-post="{{ scan_action|default('/api/scan', true) }}" hx-target="closest .scan-result" hx-swap="outerHTML" class="mt-4 flex gap-2">
@@ -78,11 +78,11 @@
            same card comes back with nothing to say (diff-review codex B2). #}
         <input type="text" name="legacy_supplement" inputmode="numeric" pattern="[0-9]{5}" maxlength="5"
                required
-               autocomplete="off" autofocus placeholder="5 digits" aria-label="Five-digit supplement"
+               autocomplete="off" autofocus placeholder="{{ _('5 digits') }}" aria-label="{{ _('Five-digit supplement') }}"
                class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text placeholder-shelf-muted focus:border-shelf-accent focus:outline-hidden">
         <button type="submit"
                 class="shrink-0 px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
-            Look it up
+            {{ _('Look it up') }}
         </button>
     </form>
 
@@ -95,14 +95,14 @@
        matches the page rather than sending the user off it and losing the shelf
        they picked. #}
     {% if scan_action %}
-    <p class="text-xs text-shelf-muted mt-3">Can't read them? Scan the printed ISBN instead.</p>
+    <p class="text-xs text-shelf-muted mt-3">{{ _("Can't read them? Scan the printed ISBN instead.") }}</p>
     {% else %}
     <p class="text-xs text-shelf-muted mt-3">
-        Can't read them? Scan the printed ISBN instead, or
+        {{ _("Can't read them? Scan the printed ISBN instead, or") }}
         <button type="button" data-manual-add
                 data-manual-add-title=""
                 class="mt-2 px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs font-medium hover:border-shelf-accent transition-colors">
-            Add it by hand
+            {{ _('Add it by hand') }}
         </button>
     </p>
     {% endif %}
@@ -119,7 +119,7 @@
         {% endif %}
         <div class="flex-1 min-w-0">
             <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
-            <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} (cover found on Amazon){% endif %}</p>
+            <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} {{ _('(cover found on Amazon)') }}{% endif %}</p>
             {# G58: a state name and a bare provider name from the router, the
                copy here. Two arms, because two are all this card can be
                given: the router suppresses `no_match` (it would repeat the
@@ -143,13 +143,13 @@
                cascade can be starved and a rate-limited UPC product lookup
                lands here too. #}
             {% if enrich_status == 'rejected' %}
-            <p class="text-xs text-shelf-warning mt-1">{{ enrich_provider }} rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations, or add it below.</p>
+            <p class="text-xs text-shelf-warning mt-1">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations, or add it below.', provider=enrich_provider) }}</p>
             {% elif enrich_status == 'quota' %}
-            <p class="text-xs text-shelf-warning mt-1">A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below.</p>
+            <p class="text-xs text-shelf-warning mt-1">{{ _('A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below.') }}</p>
             {% endif %}
         </div>
         <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
-              data-scan-badge>not found</span>
+              data-scan-badge>{{ _('not found') }}</span>
     </div>
 
     {% include "fragments/manual_add_form.html" with context %}
@@ -188,16 +188,16 @@
 
         {# Status-specific detail line #}
         {% if status == 'restored' %}
-        <span data-scan-detail>Restored from Trash</span>
+        <span data-scan-detail>{{ _('Restored from Trash') }}</span>
         {% elif status == 'in_trash' and copy_in_trash %}
         {# Only the copy is trashed; its item is live, so the item-restore
            route would answer "already live". Send the user to Trash, where
            copies are restored one by one. #}
-        <p class="text-xs text-shelf-muted" data-scan-detail>Copy {{ copy_number }} is in Trash &mdash; restore it from the Trash page</p>
+        <p class="text-xs text-shelf-muted" data-scan-detail>{{ _('Copy %(n)s is in Trash &mdash; restore it from the Trash page', n=copy_number) }}</p>
         <a href="/trash" data-testid="scan-copy-in-trash"
-           class="inline-block mt-2 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">Open Trash</a>
+           class="inline-block mt-2 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">{{ _('Open Trash') }}</a>
         {% elif status == 'in_trash' %}
-        <p class="text-xs text-shelf-muted" data-scan-detail>In Trash since {{ (deleted_at or '')[:10] }} &mdash; restore it to lend, move or rate it</p>
+        <p class="text-xs text-shelf-muted" data-scan-detail>{{ _('In Trash since %(date)s &mdash; restore it to lend, move or rate it', date=(deleted_at or '')[:10]) }}</p>
         {# A side-trip to a fixed route, so it does not read scan_action
            (G103): it restores this item whatever mode the scan ran in, and the
            route answers with the `restored` card in this card's place. #}
@@ -208,17 +208,17 @@
             <input type="hidden" name="render" value="scan">
             <button type="submit" data-testid="scan-restore-from-trash"
                     class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">
-                Restore
+                {{ _('Restore') }}
             </button>
         </form>
         {% elif status == 'added' %}
-        <p class="text-xs text-shelf-muted">{{ media_type_label }} via {{ source }}</p>
+        <p class="text-xs text-shelf-muted">{{ _('%(type)s via %(source)s', type=media_type_label, source=source) }}</p>
         {% elif status == 'wishlisted' %}
-        <p class="text-xs text-shelf-muted">Added to wishlist &middot; {{ media_type_label }} via {{ source }}</p>
+        <p class="text-xs text-shelf-muted">{{ _('Added to wishlist') }} &middot; {{ _('%(type)s via %(source)s', type=media_type_label, source=source) }}</p>
         {% elif status == 'promoted' %}
-        <p class="text-xs text-shelf-muted" data-scan-detail>Now owned &mdash; was on your wishlist</p>
+        <p class="text-xs text-shelf-muted" data-scan-detail>{{ _('Now owned &mdash; was on your wishlist') }}</p>
         {% elif status == 'duplicate' %}
-        <p class="text-sm text-shelf-muted">Already in collection</p>
+        <p class="text-sm text-shelf-muted">{{ _('Already in collection') }}</p>
         {% elif status in ('checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'already_checked_out', 'not_checked_out', 'elsewhere') %}
         {# The toast reads DECLARED ATTRIBUTES ONLY — app.js matches no classes.
            data-scan-detail carries what the title cannot: a lend names its
@@ -248,7 +248,7 @@
         <button type="button" data-manual-add
                 data-manual-add-title="{{ manual_add_text }}"
                 class="mt-2 px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs font-medium hover:border-shelf-accent transition-colors">
-            Add it by hand
+            {{ _('Add it by hand') }}
         </button>
         {% endif %}
         {% endif %}
@@ -269,19 +269,19 @@
            under an explicit `dvd` hint would otherwise be told nothing could
            be corrected. Self-contained here, suppressed there. #}
         {% if enrich_status == 'no_lookup' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; the title names console hardware, so no film or game lookup was attempted. Change the type on the item if that's wrong.</p>
+        <p class="text-xs text-shelf-warning mt-1">{{ _("Added with title only &mdash; the title names console hardware, so no film or game lookup was attempted. Change the type on the item if that's wrong.") }}</p>
         {% elif enrich_status == 'no_credential' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only. Add {{ 'an' if enrich_provider == 'IGDB' else 'a' }} {{ enrich_provider }} API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.</p>
+        <p class="text-xs text-shelf-warning mt-1">{% if enrich_provider == 'IGDB' %}{{ _('Added with title only. Add an %(provider)s API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.', provider=enrich_provider) }}{% else %}{{ _('Added with title only. Add a %(provider)s API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.', provider=enrich_provider) }}{% endif %}</p>
         {% elif enrich_status == 'rejected' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; {{ enrich_provider }} rejected the configured key.</p>
+        <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; %(provider)s rejected the configured key.', provider=enrich_provider) }}</p>
         {% elif enrich_status == 'quota' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; a metadata provider is rate-limiting us right now. Re-scan later to fill it in.</p>
+        <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; a metadata provider is rate-limiting us right now. Re-scan later to fill it in.') }}</p>
         {% elif enrich_status == 'offline' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; could not reach {{ enrich_provider }}. Check connectivity and re-scan later to fill it in.</p>
+        <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; could not reach %(provider)s. Check connectivity and re-scan later to fill it in.', provider=enrich_provider) }}</p>
         {% elif enrich_status == 'no_provider' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; Shelf has no metadata source for this format yet.</p>
+        <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; Shelf has no metadata source for this format yet.') }}</p>
         {% elif enrich_status == 'no_match' %}
-        <p class="text-xs text-shelf-warning mt-1">Added with title only &mdash; no {{ enrich_provider }} match for this barcode.</p>
+        <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; no %(provider)s match for this barcode.', provider=enrich_provider) }}</p>
         {% endif %}
         {# Suppressed under `no_lookup`: that arm already names console hardware
            as the cause and says how to correct the type, so rendering
@@ -301,21 +301,24 @@
         {% elif status == 'checked_out' %}bg-orange-500/20 text-orange-400
         {% elif status in ('moved', 'found', 'relocated', 'elsewhere') %}bg-blue-500/20 text-blue-400
         {% else %}bg-shelf-error/20 text-shelf-error{% endif %}">
-        {% if status == 'restored' %}restored
-        {% elif status == 'wishlisted' %}wishlisted
-        {% elif status == 'promoted' %}owned
-        {% elif status == 'checked_out' %}lent
-        {% elif status == 'returned' %}returned
-        {% elif status == 'moved' %}moved
-        {% elif status == 'confirmed' %}confirmed
-        {% elif status == 'relocated' %}relocated
-        {% elif status == 'elsewhere' %}elsewhere
-        {% elif status == 'found' %}found
-        {% elif status == 'not_owned' %}not found
-        {% elif status == 'marked_read' %}{{ status_labels(media_type or none).done_lower }}
-        {% elif status == 'already_checked_out' %}already lent
-        {% elif status == 'not_checked_out' %}not lent
-        {% elif status == 'in_trash' %}in Trash
+        {% if status == 'restored' %}{{ _('restored') }}
+        {% elif status == 'wishlisted' %}{{ _('wishlisted') }}
+        {% elif status == 'promoted' %}{{ _('owned') }}
+        {% elif status == 'checked_out' %}{{ _('lent') }}
+        {% elif status == 'returned' %}{{ _('returned') }}
+        {% elif status == 'moved' %}{{ _('moved') }}
+        {% elif status == 'confirmed' %}{{ _('confirmed') }}
+        {% elif status == 'relocated' %}{{ _('relocated') }}
+        {% elif status == 'elsewhere' %}{{ _('elsewhere') }}
+        {% elif status == 'found' %}{{ _('found') }}
+        {% elif status == 'not_owned' %}{{ _('not found') }}
+        {% elif status == 'marked_read' %}{{ _(status_labels(media_type or none).done_lower) }}
+        {% elif status == 'already_checked_out' %}{{ _('already lent') }}
+        {% elif status == 'not_checked_out' %}{{ _('not lent') }}
+        {% elif status == 'in_trash' %}{{ _('in Trash') }}
+        {% elif status == 'added' %}{{ _('added') }}
+        {% elif status == 'duplicate' %}{{ _('duplicate') }}
+        {% elif status == 'error' %}{{ _('error') }}
         {% else %}{{ status }}{% endif %}
     </span>
 </div>

@@ -206,10 +206,9 @@ class TestDeleteConfirmations:
     def test_no_dead_inline_confirm_handlers_remain(self, admin_client, db):
         """The converted forms must not fall back to an inline confirm.
 
-        Scoped to the `onclick="return confirm(` pattern rather than all
-        inline handlers: base.html's shortcut-modal buttons carry their own
-        dead onclick attributes, which are a separate feature area and are
-        explicitly out of scope for this branch.
+        Scoped to the `onclick="return confirm(` pattern: this test pins the
+        settings delete forms only. The wider no-inline-handler policy for
+        base.html is pinned in test_shortcut_help.py.
         """
         _insert_borrower(db, "Lars")
         _insert_location(db, "Shelf B")

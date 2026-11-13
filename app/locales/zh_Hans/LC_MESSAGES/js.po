@@ -113,11 +113,11 @@ msgstr ""
 msgid "Starting camera…"
 msgstr ""
 
-#: static/js/item_edit.js:53 static/js/item_edit.js:140
+#: static/js/item_edit.js:53 static/js/item_edit.js:140 static/js/scan.js:384
 msgid "Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on."
 msgstr ""
 
-#: static/js/item_edit.js:55 static/js/item_edit.js:142
+#: static/js/item_edit.js:55 static/js/item_edit.js:142 static/js/scan.js:386
 msgid "Camera access denied. Check browser permissions for this site."
 msgstr ""
 
@@ -131,5 +131,221 @@ msgstr ""
 
 #: static/js/item_edit.js:158
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
+msgstr ""
+
+#: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165
+msgid "Want to"
+msgstr ""
+
+#: static/js/scan.js:29 static/js/scan.js:163 static/js/scan.js:165
+msgid "In progress"
+msgstr ""
+
+#: static/js/scan.js:30 static/js/scan.js:163 static/js/scan.js:165
+msgid "Finished"
+msgstr ""
+
+#: static/js/scan.js:52
+msgid "Add"
+msgstr ""
+
+#: static/js/scan.js:53
+msgid "Wishlist"
+msgstr ""
+
+#: static/js/scan.js:54
+msgid "Lend"
+msgstr ""
+
+#: static/js/scan.js:55
+msgid "Return"
+msgstr ""
+
+#: static/js/scan.js:56
+msgid "Move"
+msgstr ""
+
+#: static/js/scan.js:57
+msgid "Inventory"
+msgstr ""
+
+#: static/js/scan.js:58 static/js/scan.js:94
+msgid "Lookup"
+msgstr ""
+
+#: static/js/scan.js:59 static/js/scan.js:95
+msgid "Quick Rate"
+msgstr ""
+
+#: static/js/scan.js:65
+msgid "Target Location"
+msgstr ""
+
+#: static/js/scan.js:65
+msgid "Auditing Location"
+msgstr ""
+
+#: static/js/scan.js:65
+msgid "Location"
+msgstr ""
+
+#: static/js/scan.js:70
+msgid "Barcode"
+msgstr ""
+
+#: static/js/scan.js:70
+msgid "ISBN / UPC"
+msgstr ""
+
+#: static/js/scan.js:72
+msgid "Scan barcode..."
+msgstr ""
+
+#: static/js/scan.js:73
+msgid "Scan any barcode..."
+msgstr ""
+
+#: static/js/scan.js:74
+msgid "Scan UPC barcode..."
+msgstr ""
+
+#: static/js/scan.js:74
+msgid "Scan or type ISBN..."
+msgstr ""
+
+#: static/js/scan.js:77
+msgid "Title or author..."
+msgstr ""
+
+#: static/js/scan.js:77
+msgid "Game title..."
+msgstr ""
+
+#: static/js/scan.js:77
+msgid "Movie title..."
+msgstr ""
+
+#: static/js/scan.js:78
+msgid "Book title or author..."
+msgstr ""
+
+#: static/js/scan.js:81
+msgid "Recently Added"
+msgstr ""
+
+#: static/js/scan.js:81
+msgid "Added to Wishlist"
+msgstr ""
+
+#: static/js/scan.js:81
+msgid "Checked Out"
+msgstr ""
+
+#: static/js/scan.js:81
+msgid "Returned"
+msgstr ""
+
+#: static/js/scan.js:82
+msgid "Moved"
+msgstr ""
+
+#: static/js/scan.js:82
+msgid "Scanned Items"
+msgstr ""
+
+#: static/js/scan.js:82
+msgid "Lookup Results"
+msgstr ""
+
+#: static/js/scan.js:83
+msgid "Marked as finished"
+msgstr ""
+
+#: static/js/scan.js:83
+msgid "Results"
+msgstr ""
+
+#: static/js/scan.js:88
+msgid "Add Items"
+msgstr ""
+
+#: static/js/scan.js:88
+msgid "Scan barcodes to add items to your collection."
+msgstr ""
+
+#: static/js/scan.js:89
+msgid "Add to Wishlist"
+msgstr ""
+
+#: static/js/scan.js:89
+msgid "Scan to save items you want but haven't bought yet."
+msgstr ""
+
+#: static/js/scan.js:90
+msgid "Lend Items"
+msgstr ""
+
+#: static/js/scan.js:90
+msgid "Select a borrower, then scan items to check them out."
+msgstr ""
+
+#: static/js/scan.js:91
+msgid "Return Items"
+msgstr ""
+
+#: static/js/scan.js:91
+msgid "Scan items to check them back in."
+msgstr ""
+
+#: static/js/scan.js:92
+msgid "Move Items"
+msgstr ""
+
+#: static/js/scan.js:92
+msgid "Select a target location, then scan items to move them."
+msgstr ""
+
+#: static/js/scan.js:93
+msgid "Inventory Audit"
+msgstr ""
+
+#: static/js/scan.js:93
+msgid "Select a location and scan every item you find there. Start an audit to get a report."
+msgstr ""
+
+#: static/js/scan.js:94
+msgid "Scan to check if an item is in your collection. No changes are made."
+msgstr ""
+
+#: static/js/scan.js:95
+msgid "Scan to mark items as read or completed."
+msgstr ""
+
+#: static/js/scan.js:118
+msgid "Could not load recent scans"
+msgstr ""
+
+#: static/js/scan.js:267 static/js/scan.js:416
+msgid "Select a borrower first"
+msgstr ""
+
+#: static/js/scan.js:272 static/js/scan.js:420
+msgid "Select a location first"
+msgstr ""
+
+#: static/js/scan.js:488
+msgid "Choose the matching book below"
+msgstr ""
+
+#: static/js/scan.js:488
+msgid "Type the five digits below"
+msgstr ""
+
+#: static/js/scan.js:507
+msgid "error"
+msgstr ""
+
+#: static/js/scan.js:507
+msgid "Scan failed"
 msgstr ""
 

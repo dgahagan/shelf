@@ -25,9 +25,9 @@ function scanPage() {
         // The default-status words for the current media type, and whether
         // that type carries a status at all (refreshStatusLabels).
         statusLabelSets: {},
-        statusWant: 'Want to',
-        statusDoing: 'In progress',
-        statusDone: 'Finished',
+        statusWant: t('Want to'),
+        statusDoing: t('In progress'),
+        statusDone: t('Finished'),
         statusTypeOk: true,
         statusDisabled: false,
         borrowerId: '',
@@ -49,26 +49,50 @@ function scanPage() {
         recentScansRequest: 0,
 
         modes: [
-            {id: 'add', label: 'Add'},
-            {id: 'wishlist', label: 'Wishlist'},
-            {id: 'lend', label: 'Lend'},
-            {id: 'return', label: 'Return'},
-            {id: 'move', label: 'Move'},
-            {id: 'inventory', label: 'Inventory'},
-            {id: 'lookup', label: 'Lookup'},
-            {id: 'quick_rate', label: 'Quick Rate'},
+            {id: 'add', label: t('Add')},
+            {id: 'wishlist', label: t('Wishlist')},
+            {id: 'lend', label: t('Lend')},
+            {id: 'return', label: t('Return')},
+            {id: 'move', label: t('Move')},
+            {id: 'inventory', label: t('Inventory')},
+            {id: 'lookup', label: t('Lookup')},
+            {id: 'quick_rate', label: t('Quick Rate')},
         ],
+
+        // Alpine's CSP build can't call t() in an expression: the scan form's
+        // mode- and type-dependent wording comes from these getters.
+        get locationLabel() {
+            return this.mode === 'move' ? t('Target Location') : this.mode === 'inventory' ? t('Auditing Location') : t('Location');
+        },
+        get barcodeOnly() {
+            return ['lend', 'return', 'move', 'inventory', 'lookup', 'quick_rate'].indexOf(this.mode) !== -1;
+        },
+        get barcodeLabel() { return this.barcodeOnly ? t('Barcode') : t('ISBN / UPC'); },
+        get barcodePlaceholder() {
+            if (this.barcodeOnly) return t('Scan barcode...');
+            if (this.mediaType === 'auto') return t('Scan any barcode...');
+            return this.mediaType === 'video_game' ? t('Scan UPC barcode...') : t('Scan or type ISBN...');
+        },
+        get titlePlaceholder() {
+            return {auto: t('Title or author...'), video_game: t('Game title...'), dvd: t('Movie title...')}[this.mediaType] ||
+                t('Book title or author...');
+        },
+        get resultsHeading() {
+            return {add: t('Recently Added'), wishlist: t('Added to Wishlist'), lend: t('Checked Out'), 'return': t('Returned'),
+                    move: t('Moved'), inventory: t('Scanned Items'), lookup: t('Lookup Results'),
+                    quick_rate: t('Marked as finished')}[this.mode] || t('Results');
+        },
 
         get modeConfig() {
             var configs = {
-                add: {heading: 'Add Items', description: 'Scan barcodes to add items to your collection.'},
-                wishlist: {heading: 'Add to Wishlist', description: 'Scan to save items you want but haven\'t bought yet.'},
-                lend: {heading: 'Lend Items', description: 'Select a borrower, then scan items to check them out.'},
-                'return': {heading: 'Return Items', description: 'Scan items to check them back in.'},
-                move: {heading: 'Move Items', description: 'Select a target location, then scan items to move them.'},
-                inventory: {heading: 'Inventory Audit', description: 'Select a location and scan every item you find there. Start an audit to get a report.'},
-                lookup: {heading: 'Lookup', description: 'Scan to check if an item is in your collection. No changes are made.'},
-                quick_rate: {heading: 'Quick Rate', description: 'Scan to mark items as read or completed.'},
+                add: {heading: t('Add Items'), description: t('Scan barcodes to add items to your collection.')},
+                wishlist: {heading: t('Add to Wishlist'), description: t('Scan to save items you want but haven\'t bought yet.')},
+                lend: {heading: t('Lend Items'), description: t('Select a borrower, then scan items to check them out.')},
+                'return': {heading: t('Return Items'), description: t('Scan items to check them back in.')},
+                move: {heading: t('Move Items'), description: t('Select a target location, then scan items to move them.')},
+                inventory: {heading: t('Inventory Audit'), description: t('Select a location and scan every item you find there. Start an audit to get a report.')},
+                lookup: {heading: t('Lookup'), description: t('Scan to check if an item is in your collection. No changes are made.')},
+                quick_rate: {heading: t('Quick Rate'), description: t('Scan to mark items as read or completed.')},
             };
             return configs[this.mode] || configs.add;
         },
@@ -91,7 +115,7 @@ function scanPage() {
                     }
                 })
                 .catch(function() {
-                    showToast('Could not load recent scans', 'error');
+                    showToast(t('Could not load recent scans'), 'error');
                 });
         },
 
@@ -136,9 +160,9 @@ function scanPage() {
         refreshStatusLabels() {
             var sets = this.statusLabelSets;
             var words = sets[this.mediaType] || sets.auto ||
-                ['Want to', 'In progress', 'Finished'];
+                [t('Want to'), t('In progress'), t('Finished')];
             this.statusTypeOk = this.mediaType === 'auto' || !!sets[this.mediaType];
-            if (!this.statusTypeOk) words = sets.auto || ['Want to', 'In progress', 'Finished'];
+            if (!this.statusTypeOk) words = sets.auto || [t('Want to'), t('In progress'), t('Finished')];
             this.statusWant = words[0];
             this.statusDoing = words[1];
             this.statusDone = words[2];
@@ -240,12 +264,12 @@ function scanPage() {
                 form.addEventListener('htmx:beforeRequest', function(e) {
                     if (self.mode === 'lend' && !self.borrowerId) {
                         e.preventDefault();
-                        showToast('Select a borrower first', 'error');
+                        showToast(t('Select a borrower first'), 'error');
                         return false;
                     }
                     if ((self.mode === 'move' || self.mode === 'inventory') && !self.location) {
                         e.preventDefault();
-                        showToast('Select a location first', 'error');
+                        showToast(t('Select a location first'), 'error');
                         return false;
                     }
                 });
@@ -357,9 +381,9 @@ function scanPage() {
                 this.cameraActive = false;
                 this.scanLoading = false;
                 if (!window.isSecureContext) {
-                    showToast('Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on.', 'error');
+                    showToast(t('Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on.'), 'error');
                 } else {
-                    showToast('Camera access denied. Check browser permissions for this site.', 'error');
+                    showToast(t('Camera access denied. Check browser permissions for this site.'), 'error');
                 }
             }
         },
@@ -389,11 +413,11 @@ function scanPage() {
 
             // Client-side validation
             if (this.mode === 'lend' && !this.borrowerId) {
-                showToast('Select a borrower first', 'error');
+                showToast(t('Select a borrower first'), 'error');
                 return;
             }
             if ((this.mode === 'move' || this.mode === 'inventory') && !this.location) {
-                showToast('Select a location first', 'error');
+                showToast(t('Select a location first'), 'error');
                 return;
             }
 
@@ -461,7 +485,7 @@ function scanPage() {
                     this.scanPaused = false;
                     this.scanLoading = false;
                     this.scanResult = false;
-                    showToast(outcome.status === 'legacy_ambiguous' ? 'Choose the matching book below' : 'Type the five digits below', 'warning');
+                    showToast(outcome.status === 'legacy_ambiguous' ? t('Choose the matching book below') : t('Type the five digits below'), 'warning');
                     return;
                 }
 
@@ -480,7 +504,7 @@ function scanPage() {
                 // the strip's counts (the typed path does this on afterSwap).
                 if (this.mode === 'inventory' && this.auditId) this.refreshAudit();
             } catch (err) {
-                this.scanResult = { ok: false, warn: false, info: false, label: 'error', title: 'Scan failed', isbn: code };
+                this.scanResult = { ok: false, warn: false, info: false, label: t('error'), title: t('Scan failed'), isbn: code };
             }
             this.scanLoading = false;
         }

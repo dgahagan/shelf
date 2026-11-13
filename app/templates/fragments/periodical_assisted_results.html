@@ -16,11 +16,11 @@
                 hx-target="closest .scan-result"
                 hx-swap="outerHTML"
                 class="shrink-0 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30">
-            Use result
+            {{ _('Use result') }}
         </button>
     </article>
     {% endfor %}
 </div>
 {% elif query %}
-<p class="text-xs text-shelf-muted">No matching Google Books magazine titles were found. Try a shorter publication title or use the exact-barcode links below.</p>
+<p class="text-xs text-shelf-muted">{{ _('No matching Google Books magazine titles were found. Try a shorter publication title or use the exact-barcode links below.') }}</p>
 {% endif %}

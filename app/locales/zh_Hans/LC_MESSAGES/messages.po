@@ -76,6 +76,7 @@ msgid "Added"
 msgstr "添加日期"
 
 #: app/browse_columns.py:74 app/templates/item_edit.html:355
+#: app/templates/scan.html:148
 msgid "Platform"
 msgstr "平台"
 
@@ -89,6 +90,7 @@ msgid "Tags"
 msgstr "标签"
 
 #: app/browse_filters.py:208
+#: app/templates/fragments/periodical_scan_result.html:29
 msgid "Search"
 msgstr "搜索"
 
@@ -116,11 +118,11 @@ msgstr "有声书"
 msgid "eBook"
 msgstr "电子书"
 
-#: app/config.py:18
+#: app/config.py:18 app/templates/fragments/periodical_scan_result.html:8
 msgid "Magazine"
 msgstr "杂志"
 
-#: app/config.py:19
+#: app/config.py:19 app/routers/items_catalog.py:522
 msgid "DVD / Blu-ray"
 msgstr "DVD / 蓝光"
 
@@ -148,7 +150,8 @@ msgstr "漫画 / 图像小说"
 msgid "Manga"
 msgstr "日漫"
 
-#: app/config.py:26
+#: app/config.py:26 app/routers/items_catalog.py:186
+#: app/routers/items_common.py:855
 msgid "Video Game"
 msgstr "电子游戏"
 
@@ -164,6 +167,10 @@ msgstr "在读"
 msgid "Read"
 msgstr "已读"
 
+#: app/config.py:54
+msgid "read"
+msgstr ""
+
 #: app/config.py:55
 msgid "Want to Watch"
 msgstr "想看"
@@ -175,6 +182,10 @@ msgstr "在看"
 #: app/config.py:55
 msgid "Watched"
 msgstr "已看"
+
+#: app/config.py:55
+msgid "watched"
+msgstr ""
 
 #: app/config.py:56
 msgid "Want to Play"
@@ -188,17 +199,25 @@ msgstr "在玩"
 msgid "Played"
 msgstr "已玩"
 
-#: app/config.py:58
+#: app/config.py:56
+msgid "played"
+msgstr ""
+
+#: app/config.py:58 app/templates/scan.html:212
 msgid "Want to"
 msgstr "想要"
 
-#: app/config.py:58
+#: app/config.py:58 app/templates/scan.html:213
 msgid "In progress"
 msgstr "进行中"
 
-#: app/config.py:58
+#: app/config.py:58 app/templates/scan.html:214
 msgid "Finished"
 msgstr "已完成"
+
+#: app/config.py:58
+msgid "finished"
+msgstr ""
 
 #: app/config.py:124
 msgid "Author(s)"
@@ -220,7 +239,7 @@ msgstr "艺术家"
 msgid "Browse"
 msgstr "浏览"
 
-#: app/nav.py:35
+#: app/nav.py:35 app/templates/scan.html:2 app/templates/scan.html:107
 msgid "Scan"
 msgstr "扫码"
 
@@ -400,6 +419,44 @@ msgstr ""
 msgid "Could not save that copy."
 msgstr ""
 
+#: app/routers/items.py:195
+msgid "Older book barcode matches more than one book — scan the printed ISBN"
+msgstr ""
+
+#: app/routers/items.py:198
+msgid "Couldn’t safely verify this older book barcode right now — try again later or scan the printed ISBN"
+msgstr ""
+
+#: app/routers/items.py:202
+msgid "Older book barcode recognized, but no unique book match was found — scan the printed ISBN instead"
+msgstr ""
+
+#: app/routers/items.py:387 app/routers/items_scan_modes.py:218
+msgid "Not in your collection"
+msgstr ""
+
+#: app/routers/items.py:477 app/routers/items.py:697
+#: app/routers/items_catalog.py:277
+msgid "Invalid ISBN"
+msgstr ""
+
+#: app/routers/items.py:568
+msgid "Network error during lookup — check connectivity"
+msgstr ""
+
+#: app/routers/items.py:584 app/routers/items_common.py:547
+#: app/routers/items_common.py:735
+msgid "Not found — add manually below"
+msgstr ""
+
+#: app/routers/items.py:668 app/routers/items_catalog.py:439
+msgid "Title is required"
+msgstr ""
+
+#: app/routers/items.py:708 app/routers/items_catalog.py:447
+msgid "Invalid publish year"
+msgstr ""
+
 #: app/routers/items.py:996
 msgid "No items or updates specified"
 msgstr "未指定条目或更新内容"
@@ -428,20 +485,12 @@ msgstr ""
 msgid "Unrecognised media type — pick one and try again"
 msgstr ""
 
-#: app/routers/items_catalog.py:277
-msgid "Invalid ISBN"
-msgstr ""
-
 #: app/routers/items_catalog.py:319
 msgid "Could not fetch metadata for this ISBN"
 msgstr ""
 
-#: app/routers/items_catalog.py:439
-msgid "Title is required"
-msgstr ""
-
-#: app/routers/items_catalog.py:447
-msgid "Invalid publish year"
+#: app/routers/items_common.py:406
+msgid "Metadata lookup failed — check connectivity"
 msgstr ""
 
 #: app/routers/items_covers.py:74
@@ -453,12 +502,138 @@ msgstr ""
 msgid "No cover found"
 msgstr ""
 
+#: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:159
+#: app/routers/items_scan_modes.py:230 app/routers/scan_inventory.py:208
+msgid "no location"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:65 app/routers/items_scan_modes.py:117
+msgid "Lending is turned off on this Shelf."
+msgstr ""
+
+#: app/routers/items_scan_modes.py:70
+msgid "No borrower selected"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:86
+#, python-format
+msgid "Already lent to %(name)s"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:93
+msgid "Borrower not found"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:107
+#, python-format
+msgid "Lent to %(name)s"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:131
+msgid "Not currently checked out"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:144
+#, python-format
+msgid "Returned from %(name)s"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:154
+msgid "No target location selected"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:161 app/routers/scan_inventory.py:211
+#: app/templates/browse.html:220
+#: app/templates/fragments/filter_counts_oob.html:39
+#: app/templates/fragments/item_copies.html:90
+#: app/templates/fragments/item_copies.html:95
+#: app/templates/fragments/item_copies.html:108
+#: app/templates/fragments/item_copy_edit.html:40
+msgid "No location"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:182
+#, python-format
+msgid "Copy %(n)s is no longer in the collection"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:197 app/routers/scan_inventory.py:181
+#: app/templates/item_edit.html:126
+msgid "Unknown"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:200
+#, python-format
+msgid "Copy %(n)s: %(detail)s"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:231
+#, python-format
+msgid "Copy %(n)s · %(place)s"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:236
+msgid "No location set"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:238
+#, python-format
+msgid "Location: %(place)s"
+msgstr ""
+
+#: app/routers/items_scan_modes.py:264
+#, python-format
+msgid "Marked as %(status)s"
+msgstr ""
+
 #: app/routers/related_media.py:85
 msgid "An item cannot be related to itself"
 msgstr ""
 
 #: app/routers/related_media.py:108
 msgid "Related-media link not found"
+msgstr ""
+
+#: app/routers/scan_inventory.py:63 app/routers/scan_inventory.py:80
+#, python-format
+msgid "Copy %(n)s "
+msgstr ""
+
+#: app/routers/scan_inventory.py:76
+msgid "is no longer in the collection"
+msgstr ""
+
+#: app/routers/scan_inventory.py:143
+msgid "No audit location selected"
+msgstr ""
+
+#: app/routers/scan_inventory.py:159
+msgid "Not in collection"
+msgstr ""
+
+#: app/routers/scan_inventory.py:201
+#, python-format
+msgid "confirmed at %(place)s"
+msgstr ""
+
+#: app/routers/scan_inventory.py:201
+#, python-format
+msgid "Confirmed at %(place)s"
+msgstr ""
+
+#: app/routers/scan_inventory.py:204
+#, python-format
+msgid "Copies at %(places)s; none here."
+msgstr ""
+
+#: app/routers/scan_inventory.py:209
+#, python-format
+msgid "was at %(old)s, updated to %(new)s"
+msgstr ""
+
+#: app/routers/scan_inventory.py:212
+#, python-format
+msgid "Was at %(old)s, updated to %(new)s"
 msgstr ""
 
 #: app/routers/tags.py:78
@@ -734,15 +909,6 @@ msgstr "全部类型"
 #: app/templates/fragments/filter_counts_oob.html:37
 msgid "All Locations"
 msgstr "全部位置"
-
-#: app/templates/browse.html:220
-#: app/templates/fragments/filter_counts_oob.html:39
-#: app/templates/fragments/item_copies.html:90
-#: app/templates/fragments/item_copies.html:95
-#: app/templates/fragments/item_copies.html:108
-#: app/templates/fragments/item_copy_edit.html:40
-msgid "No location"
-msgstr ""
 
 #: app/templates/browse.html:233
 #: app/templates/fragments/filter_counts_oob.html:26
@@ -1174,16 +1340,13 @@ msgid "Subtitle"
 msgstr ""
 
 #: app/templates/fragments/manual_add_form.html:40
-#: app/templates/item_edit.html:108
+#: app/templates/item_edit.html:108 app/templates/scan.html:113
 msgid "Media Type"
-msgstr ""
-
-#: app/templates/item_edit.html:126
-msgid "Unknown"
 msgstr ""
 
 #: app/templates/item_edit.html:142 app/templates/item_edit.html:178
 #: app/templates/item_edit.html:309 app/templates/item_edit.html:358
+#: app/templates/scan.html:134 app/templates/scan.html:211
 msgid "None"
 msgstr ""
 
@@ -1355,6 +1518,114 @@ msgstr "用户名"
 msgid "Password"
 msgstr "密码"
 
+#: app/templates/scan.html:40
+msgid "Scan with Camera"
+msgstr ""
+
+#: app/templates/scan.html:40
+msgid "Stop Camera"
+msgstr ""
+
+#: app/templates/scan.html:67
+msgid "Looking up barcode..."
+msgstr ""
+
+#: app/templates/scan.html:85
+msgid "Scan Next"
+msgstr ""
+
+#: app/templates/scan.html:89
+msgid "Point your camera at a barcode"
+msgstr ""
+
+#: app/templates/scan.html:120
+msgid "Auto &mdash; detect from the barcode"
+msgstr ""
+
+#: app/templates/scan.html:152
+msgid "Any / Unknown"
+msgstr ""
+
+#: app/templates/scan.html:161
+msgid "Borrower"
+msgstr ""
+
+#: app/templates/scan.html:164
+msgid "Select borrower..."
+msgstr ""
+
+#: app/templates/scan.html:170
+msgid "No borrowers yet. Add them in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Settings</a>."
+msgstr ""
+
+#: app/templates/scan.html:190
+msgid "Default tags"
+msgstr ""
+
+#: app/templates/scan.html:194
+msgid "e.g. Cookbook; Signed"
+msgstr ""
+
+#: app/templates/scan.html:197
+msgid "Added to every new item. Separate several with <code>;</code>."
+msgstr ""
+
+#: app/templates/scan.html:206
+msgid "Default status"
+msgstr ""
+
+#: app/templates/scan.html:216
+msgid "Set on every new item. No dates are recorded."
+msgstr ""
+
+#: app/templates/scan.html:220
+msgid "Select a borrower before scanning."
+msgstr ""
+
+#: app/templates/scan.html:221
+msgid "Select a target location before scanning."
+msgstr ""
+
+#: app/templates/scan.html:222
+msgid "Select the location you are auditing before scanning."
+msgstr ""
+
+#: app/templates/scan.html:229
+msgid "Search by Title"
+msgstr ""
+
+#: app/templates/scan.html:230
+msgid "For cartridges or games without a barcode — search IGDB by name and platform."
+msgstr ""
+
+#: app/templates/scan.html:231
+msgid "Search TMDb for movies by title."
+msgstr ""
+
+#: app/templates/scan.html:234
+msgid "Search Open Library for books by title, author, or keyword."
+msgstr ""
+
+#: app/templates/scan.html:235
+msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
+msgstr ""
+
+#: app/templates/scan.html:260
+msgid "Add by hand"
+msgstr ""
+
+#: app/templates/scan.html:260
+msgid "Hide manual entry"
+msgstr ""
+
+#: app/templates/scan.html:267
+msgid "Add by Hand"
+msgstr ""
+
+#: app/templates/scan.html:268
+msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
+msgstr ""
+
 #: app/templates/setup.html:6
 msgid "Welcome"
 msgstr "初始设置"
@@ -1515,6 +1786,8 @@ msgstr ""
 #: app/templates/fragments/book_search_results.html:48
 #: app/templates/fragments/dvd_search_results.html:43
 #: app/templates/fragments/game_search_results.html:45
+#: app/templates/fragments/scan_result.html:105
+#: app/templates/fragments/scan_result.html:251
 msgid "Add it by hand"
 msgstr ""
 
@@ -1837,6 +2110,87 @@ msgstr ""
 msgid "Add to Collection"
 msgstr ""
 
+#: app/templates/fragments/periodical_assisted_results.html:19
+msgid "Use result"
+msgstr ""
+
+#: app/templates/fragments/periodical_assisted_results.html:25
+msgid "No matching Google Books magazine titles were found. Try a shorter publication title or use the exact-barcode links below."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:4
+msgid "Confirm the issue below"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:6
+msgid "unknown"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:15
+msgid "The printed carrier and add-on identify the scan. Confirm the publication and concrete issue separately; Shelf will not guess what a publisher-specific supplement means."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:18
+msgid "Wrong or missing publication? Search magazines"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:19
+msgid "Search Google Books by magazine title. Selecting a candidate only fills this card; nothing is added until you confirm below."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:27
+msgid "Magazine title…"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:33
+msgid "Search exact barcode on the web ↗"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:47
+msgid "Publication"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:48
+msgid "Publication title"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:52
+msgid "Publication ISSN"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:55
+msgid "This may differ from the 977-derived hint when a trusted result or the printed masthead proves otherwise."
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:60
+msgid "Volume"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:61
+#: app/templates/fragments/periodical_scan_result.html:65
+msgid "Optional"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:64
+msgid "Issue number"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:68
+msgid "Issue date"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:74
+msgid "Cover date / label"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:75
+msgid "September 2026, Summer Special…"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:79
+msgid "Add confirmed issue"
+msgstr ""
+
 #: app/templates/fragments/reading_status.html:22
 msgid "Clear status"
 msgstr ""
@@ -1854,6 +2208,10 @@ msgstr ""
 #: app/templates/fragments/reading_status.html:36
 #, python-format
 msgid "%(status)s %(count)s times"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:30
+msgid "No recent activity for this mode."
 msgstr ""
 
 #: app/templates/fragments/related_media_panel.html:4
@@ -1903,6 +2261,222 @@ msgstr ""
 
 #: app/templates/fragments/related_media_search.html:19
 msgid "Link"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:6
+msgid "Which book is this?"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:8
+msgid "Older book barcode matches more than one book. Choose the exact title printed on this copy; Shelf will remember this barcode."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:12
+msgid "choose"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:37
+#, python-format
+msgid "ISBN %(isbn)s"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:43
+msgid "If none matches, scan the printed ISBN instead."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:51
+msgid "Older book barcode: five more digits needed"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:53
+msgid "This UPC is shared by many Scholastic-era titles. The five digits printed to the right of the barcode say which book — type them and Shelf will look it up."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:57
+msgid "incomplete"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:64
+msgid "Enter exactly five digits."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:81
+msgid "5 digits"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:81
+msgid "Five-digit supplement"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:85
+msgid "Look it up"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:98
+msgid "Can't read them? Scan the printed ISBN instead."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:101
+msgid "Can't read them? Scan the printed ISBN instead, or"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:122
+msgid "(cover found on Amazon)"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:146
+#, python-format
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations, or add it below."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:148
+msgid "A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:152
+#: app/templates/fragments/scan_result.html:314
+msgid "not found"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:191
+msgid "Restored from Trash"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:196
+#, python-format
+msgid "Copy %(n)s is in Trash &mdash; restore it from the Trash page"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:198
+msgid "Open Trash"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:200
+#, python-format
+msgid "In Trash since %(date)s &mdash; restore it to lend, move or rate it"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:211
+msgid "Restore"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:215
+#: app/templates/fragments/scan_result.html:217
+#, python-format
+msgid "%(type)s via %(source)s"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:217
+msgid "Added to wishlist"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:219
+msgid "Now owned &mdash; was on your wishlist"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:221
+msgid "Already in collection"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:272
+msgid "Added with title only &mdash; the title names console hardware, so no film or game lookup was attempted. Change the type on the item if that's wrong."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:274
+#, python-format
+msgid "Added with title only. Add an %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:274
+#, python-format
+msgid "Added with title only. Add a %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:276
+#, python-format
+msgid "Added with title only &mdash; %(provider)s rejected the configured key."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:278
+msgid "Added with title only &mdash; a metadata provider is rate-limiting us right now. Re-scan later to fill it in."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:280
+#, python-format
+msgid "Added with title only &mdash; could not reach %(provider)s. Check connectivity and re-scan later to fill it in."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:282
+msgid "Added with title only &mdash; Shelf has no metadata source for this format yet."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:284
+#, python-format
+msgid "Added with title only &mdash; no %(provider)s match for this barcode."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:304
+msgid "restored"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:305
+msgid "wishlisted"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:306
+msgid "owned"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:307
+msgid "lent"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:308
+msgid "returned"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:309
+msgid "moved"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:310
+msgid "confirmed"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:311
+msgid "relocated"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:312
+msgid "elsewhere"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:313
+msgid "found"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:316
+msgid "already lent"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:317
+msgid "not lent"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:318
+msgid "in Trash"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:319
+msgid "added"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:320
+msgid "duplicate"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:321
+msgid "error"
 msgstr ""
 
 #: app/templates/fragments/search_status_notice.html:18
