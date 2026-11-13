@@ -11,4 +11,4 @@ def test_scan_fetch_paths_reject_http_errors_before_consuming_bodies():
     # this used to count, went with the button when audits moved server-side.)
     assert js.count("if (!resp.ok) throw new Error('HTTP ' + resp.status);") >= 1
     assert "Could not load recent scans" in js
-    assert "title: 'Scan failed'" in js
+    assert "title: t('Scan failed')" in js

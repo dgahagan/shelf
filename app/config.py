@@ -51,11 +51,11 @@ class StatusLabels:
         return {"want_to_read": self.want, "reading": self.doing, "read": self.done}.get(value, "")
 
 
-READ_LABELS = StatusLabels("read", N_("Want to Read"), N_("Reading"), N_("Read"), "read")
-WATCH_LABELS = StatusLabels("watch", N_("Want to Watch"), N_("Watching"), N_("Watched"), "watched")
-PLAY_LABELS = StatusLabels("play", N_("Want to Play"), N_("Playing"), N_("Played"), "played")
+READ_LABELS = StatusLabels("read", N_("Want to Read"), N_("Reading"), N_("Read"), N_("read"))
+WATCH_LABELS = StatusLabels("watch", N_("Want to Watch"), N_("Watching"), N_("Watched"), N_("watched"))
+PLAY_LABELS = StatusLabels("play", N_("Want to Play"), N_("Playing"), N_("Played"), N_("played"))
 # For places that show several types at once.
-NEUTRAL_LABELS = StatusLabels("neutral", N_("Want to"), N_("In progress"), N_("Finished"), "finished")
+NEUTRAL_LABELS = StatusLabels("neutral", N_("Want to"), N_("In progress"), N_("Finished"), N_("finished"))
 
 # Overrides only, as CREATOR_LABELS does; every other type reads.
 STATUS_VERBS = {"dvd": WATCH_LABELS, "video_game": PLAY_LABELS}
