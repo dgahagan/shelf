@@ -6,6 +6,13 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **"Also available as" updates immediately when you link or unlink another
+  format in Related Media.** Adding the first format or removing the last no
+  longer needs a page reload, and the links keep your Series or Stats back
+  destination.
+
 ## [0.79.0] - 2026-11-12
 
 In a translated interface, Scan was still in English: the mode tabs, the

@@ -7,7 +7,7 @@
         <p class="text-sm font-medium truncate">{{ candidate.title }}</p>
         <p class="text-xs text-shelf-muted truncate">{{ candidate.media_type|replace('_', ' ')|title }}{% if candidate.authors %} · {{ candidate.authors }}{% endif %}</p>
     </div>
-    <form hx-post="/api/related-media/items/{{ item_id }}/links"
+    <form hx-post="/api/related-media/items/{{ item_id }}/links{% if back.key %}?from={{ back.key }}{% endif %}"
           hx-target="#related-media-panel" hx-swap="outerHTML"
           class="flex items-center gap-1 shrink-0">
         <input type="hidden" name="other_item_id" value="{{ candidate.id }}">
