@@ -6,6 +6,29 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.79.0] - 2026-11-12
+
+In a translated interface, Scan was still in English: the mode tabs, the
+form, and every card a scan returns. Scan is the page you use most when
+adding to a collection, so an Italian interface stopped being Italian at the
+point you used it most. This release translates Scan into Italian. It is a
+community contribution from [@vjandrea](https://github.com/vjandrea), the
+fourth area of the translated interface.
+
+### Added
+
+- **The Scan page is translated into Italian.** This covers the eight modes
+  and their descriptions, the camera, and the location, borrower, platform,
+  tag and status controls. It also covers title search, Add by hand, the
+  periodical card, and every result card and message a scan returns (add,
+  lend, return, move, inventory, lookup and quick rate). The labels follow the
+  mode and the media type, as they do in English: Move asks for the
+  destination location, and a video game asks for its UPC. The loan wording
+  is "In prestito presso", here and in Browse's loan tooltip. That form reads
+  correctly before any borrower name. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#183](https://github.com/dgahagan/shelf/pull/183).
+
 ## [0.78.3] - 2026-11-12
 
 The keyboard-shortcuts help was broken in a translated interface: in Italian
@@ -5743,6 +5766,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.79.0]: https://github.com/dgahagan/shelf/releases/tag/v0.79.0
 [0.78.3]: https://github.com/dgahagan/shelf/releases/tag/v0.78.3
 [0.78.2]: https://github.com/dgahagan/shelf/releases/tag/v0.78.2
 [0.78.1]: https://github.com/dgahagan/shelf/releases/tag/v0.78.1
