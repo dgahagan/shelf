@@ -78,3 +78,38 @@ def test_a_book_family_item_takes_the_recovery_chain(editor_client, db, monkeypa
     resolve.assert_awaited_once()
     assert resolve.await_args.args[0] == item_id
     exact.assert_not_awaited()
+
+
+def test_an_isbnless_audiobook_with_an_asin_reaches_the_resolver(editor_client, db, monkeypatch):
+    from app.routers import items_common
+
+    item_id = _insert_item(
+        db, title="Audio", isbn=None, asin="B002V0QK4C", media_type="audiobook", cover_path=None,
+    )
+    db.commit()
+    resolve = AsyncMock(return_value="covers/audnexus.jpg")
+    monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
+
+    r = editor_client.post(f"/api/items/{item_id}/retry-cover")
+
+    assert r.json() == {"ok": True, "cover_path": "covers/audnexus.jpg"}
+    resolve.assert_awaited_once()
+
+
+@pytest.mark.parametrize("media_type, asin", [("audiobook", None), ("ebook", "B002V0QK4C")])
+def test_without_an_isbn_or_an_audiobook_asin_the_route_says_no_isbn(
+    editor_client, db, monkeypatch, media_type, asin,
+):
+    from app.routers import items_common
+
+    item_id = _insert_item(
+        db, title="Nothing", isbn=None, asin=asin, media_type=media_type, cover_path=None,
+    )
+    db.commit()
+    resolve = AsyncMock(return_value="covers/x.jpg")
+    monkeypatch.setattr(items_common, "resolve_missing_cover", resolve)
+
+    r = editor_client.post(f"/api/items/{item_id}/retry-cover")
+
+    assert r.json() == {"ok": False, "message": "No ISBN"}
+    resolve.assert_not_awaited()

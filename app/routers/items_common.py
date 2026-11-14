@@ -27,7 +27,7 @@ from fastapi import Request
 from app import i18n
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES
 from app.database import get_db, get_setting
-from app.services import covers, detect, googlebooks, hardcover, national, openlibrary, provider_result
+from app.services import audnexus, covers, detect, googlebooks, hardcover, national, openlibrary, provider_result
 from app.services import cover_queue
 from app.services import authors as authors_svc
 from app.services import scan_outcome, title_lookup, upcitemdb
@@ -210,7 +210,8 @@ async def resolve_missing_cover(
     LibraryThing tries verified English related editions only if that fails
     (imported and print-on-demand edition ISBNs often have no cover
     anywhere). A recovered ISBN is stored on ISBN-less items unless another
-    item already holds it.
+    item already holds it. An audiobook with an ASIN asks Audnexus for the
+    Audible edition's cover after any hint and before the ISBN chain.
 
     `hints` carries a caller's own cover inputs (`cover_url`, `cover_id`,
     `hardcover_cover_url`) — the scan path passes the ones it already looked
@@ -225,7 +226,7 @@ async def resolve_missing_cover(
     """
     with get_db() as db:
         row = db.execute(
-            "SELECT title, authors, isbn, cover_path, media_type FROM items_live WHERE id = ?",
+            "SELECT title, authors, isbn, asin, cover_path, media_type FROM items_live WHERE id = ?",
             (item_id,),
         ).fetchone()
     if not row or row["cover_path"]:
@@ -242,7 +243,9 @@ async def resolve_missing_cover(
             client,
             hardcover_cover_url=hints.get("hardcover_cover_url"),
         )
-    elif row["isbn"]:
+    if not cover_path and row["asin"] and row["media_type"] == "audiobook":
+        cover_path = await audnexus.cover_for_item(item_id, row["asin"], client)
+    if not cover_path and not hints and row["isbn"]:
         cover_path = await covers.download_cover(
             item_id, row["isbn"], None, None, client)
 

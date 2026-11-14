@@ -126,6 +126,10 @@ _UPC_STUB_TABLE = {
 _UPC_STUB_UNKNOWN = (200, {}, b'{"code":"OK","total":0,"offset":0,"items":[]}')
 
 
+# The one Audnexus book the stub knows; every other /audnexus/... path is a 404.
+_AUDNEXUS_FIXTURE = _UPC_FIXTURES / "audnexus_book_B08G9PRS1K.json"
+
+
 class _UpcStubHandler(http.server.BaseHTTPRequestHandler):
     """Answers the one endpoint `app/services/upcitemdb.py` calls; any other path (e.g. `/issn/...`) is a 404."""
 
@@ -134,7 +138,9 @@ class _UpcStubHandler(http.server.BaseHTTPRequestHandler):
         upc = parse_qs(parts.query).get("upc", [""])[0]
         self.server.requests.append((parts.path, upc))
 
-        if parts.path != "/lookup":
+        if parts.path == "/audnexus/books/B08G9PRS1K":
+            status, headers, body = 200, {}, _AUDNEXUS_FIXTURE.read_bytes()
+        elif parts.path != "/lookup":
             status, headers, body = 404, {}, b'{"code":"NOT_FOUND"}'
         else:
             status, headers, body = _UPC_STUB_TABLE.get(upc, _UPC_STUB_UNKNOWN)
@@ -230,6 +236,7 @@ def _boot_server(
         # The same stub answers 404 for any non-/lookup path, which the ISSN
         # client classifies no_match, so E2E never reaches portal.issn.org.
         "SHELF_ISSN_PORTAL_URL": f"{upc_stub_url}/issn/{{issn}}",
+        "SHELF_AUDNEXUS_URL": f"{upc_stub_url}/audnexus",
     })
     env.update(env_extra or {})
 

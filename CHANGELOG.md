@@ -6,6 +6,56 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.80.0] - 2026-11-13
+
+An audiobook bought on Audible has an ASIN but usually no ISBN, and Shelf could
+only look up covers and details by ISBN. Audiobooks from a Libation or
+audible-cli import therefore often arrived without a cover, and Retry answered
+"No ISBN". Shelf now asks the Audible catalogue, through the public Audnexus
+service, for an audiobook's cover and details by its ASIN. This release also
+translates Photo Intake, Shelf Fill and Store Mode into Italian, a community
+contribution from [@vjandrea](https://github.com/vjandrea).
+
+### Added
+
+- **Audiobooks with an ASIN get their cover from the Audible catalogue.** When
+  a Libation or audible-cli import has "Fetch covers" ticked, the cover queue
+  looks up each new audiobook by its ASIN. The startup retry and Retry Missing
+  Covers in Settings do the same. A cover found by its ASIN is the edition you
+  bought, so Shelf tries it before the ISBN sources. An audiobook without an
+  ASIN, and any item that is not an audiobook, is looked up exactly as before.
+- **Retry ASIN on an audiobook with no ISBN.** The item page offers "Retry
+  ASIN" where it used to offer nothing, and Find cover shows the Audible
+  cover first, labelled "Audible · ASIN match". The Cover Review queue shows
+  the same tile when you search.
+- **Fill details from Audible.** A button on an audiobook page that has an ASIN
+  fills its empty fields from the catalogue: subtitle, authors, narrator,
+  publisher, year, duration, synopsis and series. It never overwrites a value
+  you have set, and it never sets the ISBN. Audible's ISBN identifies a
+  different edition, and storing it would make a scan of that edition look
+  like this audiobook. To replace a value, use Edit.
+- **Audible marketplace setting** (Settings → Library). Audible sells some
+  titles in only one marketplace. If your audiobooks come from the UK or
+  German store, choose that marketplace, or those titles are reported as "not
+  in the Audible catalogue". The default is the United States.
+- **Photo Intake, Shelf Fill and Store Mode are translated into Italian.** This
+  covers the photo, tiling and result states of Photo Intake, the Shelf Fill
+  result and summary cards, and Store Mode. Titles
+  you queued in Store Mode are your own data and stay as written. Contributed
+  by [@vjandrea](https://github.com/vjandrea) in
+  [#185](https://github.com/dgahagan/shelf/pull/185).
+
+### Changed
+
+- **The Cover Review card no longer says "No covers found" before you search.**
+  The queue does not search when a card opens, because each Skip would then
+  cost a provider request. The card now asks you to type in the search box.
+
+Not included, on purpose: adding an audiobook by typing its ASIN, and
+searching the Audible catalogue by title. Audnexus looks books up by ASIN only.
+To add one, add it by title, set its ASIN in Edit, then use Fill details from
+Audible.
+
 ## [0.79.1] - 2026-11-13
 
 Three things were out of step. Linking an audiobook or ebook to its print copy
@@ -5792,6 +5842,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.80.0]: https://github.com/dgahagan/shelf/releases/tag/v0.80.0
 [0.79.1]: https://github.com/dgahagan/shelf/releases/tag/v0.79.1
 [0.79.0]: https://github.com/dgahagan/shelf/releases/tag/v0.79.0
 [0.78.3]: https://github.com/dgahagan/shelf/releases/tag/v0.78.3

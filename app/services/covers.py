@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 import httpx
 
 from app.config import COVERS_DIR
-from app.services import book_cover_search, igdb, national, outbound, porbase, provider_result, tmdb
+from app.services import audnexus, book_cover_search, igdb, national, outbound, porbase, provider_result, tmdb
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +247,33 @@ async def search_covers(
         client,
         google_api_key=creds.get("google_books_api_key"),
     )
+    audible = await _audible_asin_candidate(item, typed, client, creds)
+    if audible:
+        merged = await _book_leg_candidates(item, typed, client, creds, result)
+        candidates = _dedupe_by_url(audible + (merged.payload if merged.found else []))
+        return provider_result.found(merged.provider if merged.found else "audnexus", candidates)
+    return await _book_leg_candidates(item, typed, client, creds, result)
+
+
+async def _audible_asin_candidate(item, typed: bool, client, creds: dict) -> list[dict]:
+    """The Audible edition's own cover, first in the grid, by ASIN.
+
+    Audiobook with an ASIN and an untyped query only: a typed query searches
+    its text alone. Any Audnexus outcome but `found` with an image yields
+    nothing, leaving the book path's result untouched. The image is fetched
+    later through `_download_to_item` (G11).
+    """
+    asin = (_col(item, "asin") or "").strip()
+    if typed or _col(item, "media_type") != "audiobook" or not asin:
+        return []
+    found = await audnexus.lookup(asin, client, region=creds.get("audible_region") or "us")
+    url = found.payload.get("cover_url") if found.found else None
+    if not url:
+        return []
+    return [{"url": url, "thumbnail": url, "source": "Audible · ASIN match", "match": "asin"}]
+
+
+async def _book_leg_candidates(item, typed: bool, client, creds: dict, result):
     from app.services import librarything
     # A typed query searches on that text alone (docs/user-guide/items.md), so
     # the stored ISBN must not reach LibraryThing either.

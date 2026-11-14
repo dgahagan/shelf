@@ -39,6 +39,17 @@
                 </select>
                 <p class="text-xs text-shelf-muted mt-2">Preferred language for Open Library title searches — browse search, CSV-import ISBN recovery, and shelf-photo intake.</p>
             </div>
+            <div>
+                <label for="audible_region" class="block text-sm font-medium text-shelf-muted mb-2">Audible marketplace</label>
+                {% set selected_audible_region = settings.get("audible_region", "us") %}
+                <select id="audible_region" name="audible_region"
+                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
+                    {% for code, name in audible_regions.items() %}
+                    <option value="{{ code }}" {% if selected_audible_region == code %}selected{% endif %}>{{ _(name) }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-shelf-muted mt-2">Used to look up audiobook covers and details by ASIN. A title your marketplace does not sell is reported as not in the catalogue.</p>
+            </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                 Save
             </button>

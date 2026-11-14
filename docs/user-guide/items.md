@@ -17,6 +17,7 @@ its home.
 
   | Media type | What it searches | Tiles are labelled |
   |---|---|---|
+  | Audiobooks with an ASIN | the Audible edition's own cover first, by ASIN, then everything books search | `Audible · ASIN match` for the Audible tile; the rest as for books |
   | Books, ebooks, audiobooks, comics | Google Books and Open Library — the exact ISBN edition first, followed by the other editions of the same work Open Library knows; title matches only when neither source has that edition | by source and match (`Open Library · ISBN match`, `Google Books · Check edition`); another edition's tile reads `Open Library · Check edition` with a second line giving its year, publisher and (when known) language, e.g. `1965 · Chilton Book Company` |
   | DVDs and Blu-rays | the film's poster set on TMDb | by language (`TMDb · EN`) — the same film's posters differ mostly by language |
   | Video games | IGDB cover art **and** key artwork, as separate tiles | by game and kind (`IGDB · Portal · cover`) |
@@ -46,6 +47,14 @@ its home.
   series and position, platform (games), synopsis. **Fetch synopsis** pulls
   a description from Open Library, Google Books or Hardcover if one wasn't
   captured on add.
+
+  **Fill details from Audible** appears on an audiobook that has an ASIN, for
+  editors and admins. It asks the Audible catalogue for that ASIN and fills
+  only the fields that are empty — subtitle, authors, narrator, publisher,
+  year, length, synopsis, series and position. It never overwrites a value
+  you or a sync already set, never touches the title or ISBN, and says in
+  place what it filled, or why it could not (not in the catalogue for your
+  marketplace, rate-limited, or unreachable).
 
   **Each author is a link** to Browse filtered to that person's items (see
   [the Author filter](browse-and-search.md#filters)). Shelf reads the authors
@@ -194,7 +203,9 @@ stored value is not a valid ISBN. For the Audiobookshelf case you usually
 don't have to correct anything: from 0.28.0 the next sync clears an ASIN out
 of the ISBN field for you (see [Integrations](integrations.md)).
 
-**Retry cover** appears once the item has an ISBN. **Push to Hardcover**
+**Retry cover** appears once the item has an ISBN or, for an audiobook, an
+ASIN — the button then reads **Retry ASIN** and asks the Audible catalogue
+first. **Push to Hardcover**
 appears only for book-family items, and only when the item has an ISBN or
 an existing Hardcover link, so adding an ISBN in Edit helps only for
 book-family rows.
@@ -226,7 +237,9 @@ automatic chain is worst at. **Settings → Data → Maintenance → Review cove
 needing attention** opens a queue that walks **every** cover-less item — discs,
 games and music included — one at a time, with the full cover picker inline so
 you can search, pick or upload without leaving it. Each pick advances to the
-next item.
+next item. A card does not search when it opens, because every Skip would
+then cost a provider request: type in its search box to see candidates. For
+an audiobook with an ASIN, the Audible cover comes first.
 
 Three things make it different from Retry missing covers:
 

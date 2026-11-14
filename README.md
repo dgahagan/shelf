@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-6279%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-384%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-6362%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-386%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -129,7 +129,7 @@ of this whole directory carries the keys next to the data they protect.
 - **Add by hand** — a title is the only field required, for anything no lookup can find: a self-published book, a burned CD, a niche import, something you made yourself. Every media type, no barcode needed, and reachable from Home, from an empty title search, from a mistyped barcode, and from any item's page
 - **Cascading metadata lookup** — Open Library, Hardcover, and Google Books, with national bibliographies consulted first for the groups they cover: German (978-3) ISBNs go to the Deutsche Nationalbibliothek (DNB), Italian ones (978-88 and 979-12) to the Servizio Bibliotecario Nazionale (SBN)
 - **Edition language** — captured on lookup, editable on items, filterable in Browse; a settings dropdown picks the preferred language for title searches
-- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, and manual search/upload/paste-a-URL/remove, on any item. A **cover review queue** walks every cover-less item one at a time — discs, games and music included, which the automatic sweep deliberately never touches — with the picker inline, and a **Not available** verdict that is remembered so the list converges on zero. Cover search is media-type aware: books search Google Books and Open Library, DVDs the film's TMDb poster set, video games IGDB cover art and artwork. The picker reports a missing key, a rejected key, a spent quota and an unreachable provider by name, so "No covers found for this title." is only ever a genuine miss
+- **Cover art pipeline** — Open Library, Hardcover, DNB (German ISBNs), Amazon, Google Books, IGDB, Audnexus (audiobooks, by ASIN), and manual search/upload/paste-a-URL/remove, on any item. A **cover review queue** walks every cover-less item one at a time — discs, games and music included, which the automatic sweep deliberately never touches — with the picker inline, and a **Not available** verdict that is remembered so the list converges on zero. Cover search is media-type aware: books search Google Books and Open Library, DVDs the film's TMDb poster set, video games IGDB cover art and artwork. The picker reports a missing key, a rejected key, a spent quota and an unreachable provider by name, so "No covers found for this title." is only ever a genuine miss
 - **UPC support** — scan DVDs and Blu-rays with TMDb lookup, and music discs, which are detected on Auto. A barcode Shelf can resolve on MusicBrainz brings back the release; one it cannot is still filed under its own title
 - **Music by release, not by title** — a **Music** page searches MusicBrainz by title, artist, barcode or catalogue number and catalogues the exact pressing: country, date, label, catalogue number, packaging and medium, with real track lists across multiple discs. Vinyl, Cassette, CD and Digital Music. Two pressings of one album stay distinct and are linked to each other automatically. Artwork is shown square and uncropped. See [Music](docs/user-guide/music.md)
 - **Periodicals as publication plus issue** — a magazine run is one publication with many issues, not many unrelated rows. Scan a 977 barcode (13, 15 or 18 digits) in Add or Wishlist and Shelf resolves the publication from its ISSN, keeping the add-on; the issue number and date stay yours to confirm. When the barcode does not resolve, search for the magazine by title instead. See [Periodicals](docs/user-guide/periodicals.md)
@@ -314,8 +314,9 @@ Shelf queries free, public APIs to look up book and game information — no API 
 | [UPC Item DB](https://www.upcitemdb.com) | Title lookup from UPC barcodes (games, DVDs) | No |
 | [MusicBrainz](https://musicbrainz.org) | Music releases by title, artist, barcode or catalogue number: pressing details, track lists, release groups | No |
 | [ISSN Portal](https://portal.issn.org) | Periodical publications from an ISSN, resolved from a 977 barcode | No |
+| [Audnexus](https://github.com/laxamentumtech/audnexus) | Audible's catalogue by ASIN: audiobook covers, narrator, length, series and synopsis | No |
 
-Metadata lookups send only the ISBN or UPC to these services. No personal data, account info, or collection details are transmitted.
+Metadata lookups send only the ISBN, UPC or ASIN to these services. No personal data, account info, or collection details are transmitted.
 
 ## Optional API Keys
 

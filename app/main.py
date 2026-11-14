@@ -57,6 +57,7 @@ from app.config import (
 from app.currency import CURRENCIES, format_money, get_currency
 from app.features import feature_enabled
 from app.services.national import SEARCH_LANGS
+from app.services import audnexus
 from app.services.browse_counts import source_label
 from app.database import init_db, get_db
 from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music, related_media, trash, labels, audits, duplicates, upcoming, api_v1
@@ -732,6 +733,7 @@ templates.env.filters["money"] = format_money
 templates.env.globals["currency"] = get_currency
 templates.env.globals["currencies"] = CURRENCIES
 templates.env.globals["search_langs"] = SEARCH_LANGS
+templates.env.globals["audible_regions"] = audnexus.REGIONS
 # The creator field's label per media type — declared once in app/config.py.
 # A global rather than route context, so neither host route grows a key for it.
 templates.env.globals["creator_labels"] = CREATOR_LABELS

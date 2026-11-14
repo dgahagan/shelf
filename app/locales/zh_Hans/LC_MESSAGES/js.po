@@ -33,25 +33,25 @@ msgstr "选择"
 msgid "Press ? for keyboard shortcuts"
 msgstr "按 ? 查看键盘快捷键"
 
-#: static/js/browse.js:482
+#: static/js/browse.js:484
 #, python-brace-format
 msgid "Updated {count} items"
 msgstr "已更新 {count} 个条目"
 
-#: static/js/browse.js:486 static/js/browse.js:489
+#: static/js/browse.js:488 static/js/browse.js:491
 msgid "Update failed"
 msgstr "更新失败"
 
-#: static/js/browse.js:523 static/js/browse.js:526
+#: static/js/browse.js:525 static/js/browse.js:528
 msgid "Tag update failed"
 msgstr "标签更新失败"
 
-#: static/js/browse.js:531
+#: static/js/browse.js:533
 #, python-brace-format
 msgid "Move {count} items to Trash?"
 msgstr "将 {count} 个条目移到回收站？"
 
-#: static/js/browse.js:535
+#: static/js/browse.js:537
 #, python-brace-format
 msgid "Moved {count} items to Trash"
 msgstr "已将 {count} 个条目移到回收站"

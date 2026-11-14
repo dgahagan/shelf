@@ -6498,6 +6498,12 @@ grep -rn "import gettext as _" app/routers/            # expect no hits
 
 - **Status:** documented. `make check-i18n` catches unextracted strings but 
   not import-time translation.
+- **Also:** `i18n.gettext(message)` and `i18n.ngettext(singular, plural, n)`
+  take **no format keywords**. Unlike Jinja's `_('… %(x)s', x=…)`, a router
+  interpolates after translating: `i18n.gettext("Filled %(count)s") % {"count": n}`.
+  A plan that writes the Jinja form in Python is a `TypeError` on first call.
+  Evidence: `audnexus-provider` T7's plan specified the kwarg form; caught at
+  drafting, `fc096dd`, 2026-11-13.
 
 ## G155 — When the Audiobookshelf sync gains a field in its `desired` dict
 
@@ -6546,6 +6552,24 @@ python -m pytest tests/e2e/test_store_pwa.py -m e2e -q -k flush_reads_owned_row_
 ```
 
 - **Status:** documented.
+
+## G157 — When adding a new file under `tests/e2e/`
+
+- **Rule:** give it `pytestmark = pytest.mark.e2e` at module level (or mark
+  every test). Then run it with `-m e2e` and check that it collects.
+- **Why:** `make test` excludes `tests/e2e/` by path, and `make test-e2e` runs
+  `-m "e2e and not live"`. An unmarked E2E file therefore runs in **neither**
+  gate. Both stay green, and the new test has never executed.
+- **Evidence:** `audnexus-provider` T8, `c303aef`, 2026-11-13. The worker's
+  first `-m e2e` run deselected both new tests.
+- **Verify:**
+
+```bash
+/usr/bin/grep -L "pytestmark\|mark.e2e" tests/e2e/test_*.py   # expect no output
+```
+
+- **Status:** documented. **Lint candidate** for `make check-tests`: the
+  Verify line above is the whole check.
 
 ## Graveyard
 

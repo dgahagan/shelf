@@ -248,8 +248,14 @@ What is imported:
 - finished titles are marked read. An audible-cli title you are partway
   through is marked reading.
 - audible-cli's cover link is fetched as the cover when **Fetch covers** is
-  ticked. Libation exports no cover link, so its rows get no cover from the
-  import.
+  ticked. Libation exports no cover link, so with **Fetch covers** ticked its
+  rows (and any audible-cli row without a link) get their cover from the
+  Audible catalogue by ASIN instead, through
+  [Audnexus](https://github.com/laxamentumtech/audnexus). This runs in the
+  background at about one lookup per second, so a thousand books take
+  roughly 20–30 minutes. A title your
+  [Audible marketplace](../configuration.md#library) does not sell stays
+  without a cover rather than taking a print edition's cover.
 - Libation titles marked **Audible Plus** or **absent from last scan** are
   listening history, not something you own: they import as not owned and
   never go on the wishlist.

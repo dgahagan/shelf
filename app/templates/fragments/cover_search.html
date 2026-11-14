@@ -72,6 +72,12 @@
     <p class="text-sm text-shelf-muted">{{ search_note }}</p>
     {% elif search_status %}
     {% include "fragments/search_status_notice.html" %}
+    {% elif not query %}
+    {# No search has run: the review queue renders its card with an empty
+       query and does not search on load, since every Skip would then cost
+       provider calls. Saying "No covers found" here hid candidates one
+       keystroke away (test-drive audnexus-provider Observation 1). #}
+    <p class="text-sm text-shelf-muted" data-testid="cover-search-prompt">{{ _('Type in the search box to look for covers.') }}</p>
     {% else %}
     <p class="text-sm text-shelf-muted">{{ _('No covers found for this title.') }}</p>
     {% endif %}

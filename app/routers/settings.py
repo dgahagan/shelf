@@ -12,7 +12,7 @@ from app.currency import CURRENCIES, invalidate_cache as invalidate_currency_cac
 from app import features
 from app.database import get_db, get_setting, set_setting
 from app.nav import HIDEABLE_KEYS, invalidate_cache as invalidate_nav_cache
-from app.services import audiobookshelf
+from app.services import audiobookshelf, audnexus
 from app.services.national import SEARCH_LANGS
 
 router = APIRouter(prefix="/api/settings", dependencies=[Depends(require_role("admin"))])
@@ -401,6 +401,13 @@ async def update_display_settings(request: Request):
     if search_lang in SEARCH_LANGS:
         with get_db() as db:
             _upsert_setting(db, "metadata_search_lang", search_lang)
+
+    # Audible marketplace for Audnexus lookups. Empty or unknown is refused
+    # here, not in the markup (G104).
+    audible_region = (form.get("audible_region") or "").strip()
+    if audible_region in audnexus.REGIONS:
+        with get_db() as db:
+            _upsert_setting(db, "audible_region", audible_region)
 
     return RedirectResponse(url="/settings", status_code=303)
 

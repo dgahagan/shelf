@@ -84,8 +84,8 @@ Library, and thinner otherwise.
 - **A translated interface.** In progress. The translation machinery and the
   first catalog have landed, and each user can pick a language or follow the
   browser. Other languages come next. The page shell (navigation, sign-in,
-  setup, the Account dialog), Browse, the item page, item edit, manual add and Scan
-  are translated; the other feature pages
+  setup, the Account dialog), Browse, the item page, item edit, manual add, Scan,
+  Photo Intake, Shelf Fill and Store Mode are translated; the other feature pages
   follow area by area. Until then it sits behind `SHELF_I18N`, off by default.
 
 ## Import and migration
@@ -121,11 +121,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.79.1](https://github.com/dgahagan/shelf/releases/tag/v0.79.1) | **"Also available as" follows Related Media.** Linking or unlinking another format on an item updates its "Also available as" links straight away, without a reload. Contributed by @sudo-rpaisley. |
 | [0.79.0](https://github.com/dgahagan/shelf/releases/tag/v0.79.0) | **The Scan page in Italian.** The mode tabs, the form, and every card and message a scan returns are translated, and the labels follow the mode and the media type. Contributed by @vjandrea. |
 | [0.78.3](https://github.com/dgahagan/shelf/releases/tag/v0.78.3) | **Keyboard-shortcut help in every language.** In Italian or Chinese, the **?** button now opens the shortcut list, and its close button and backdrop close it. The list opens centred and fits a phone screen. Shortcuts also stop firing while Ctrl, Cmd or Alt is held, so Ctrl+F and the browser's other shortcuts work again. |
 | [0.78.1](https://github.com/dgahagan/shelf/releases/tag/v0.78.1) | **The valuation report counts a value of 0.** An item you valued at 0 now counts as priced at $0.00 instead of being filled in with the collection's average price, so the report's totals are no longer too high. |
 | [0.78.0](https://github.com/dgahagan/shelf/releases/tag/v0.78.0) | **Browse finds items with no location.** The Location filter lists **No location** with a count, so items that were never filed can be found and moved in bulk, contributed by @larsvilhuber. Also: re-adding a video game with no platform reports it as already in your collection instead of adding a second copy, and the item edit page and manual add in Italian, contributed by @vjandrea. |
-| [0.77.0](https://github.com/dgahagan/shelf/releases/tag/v0.77.0) | **Store Mode trusts the sync.** A wishlisted book no longer shows as Owned after a sync, the verdict card updates to Shelf's answer as soon as an online scan syncs, an ISBN-10 leaves the queue, and a long queue syncs in one go. Also Chinese ISBNs looked up in NeoDB and Browse in Simplified Chinese, contributed by @litong5969, and the item page in Italian with regional and script language variants, contributed by @vjandrea. |
 ---
 
 ## Suggesting something

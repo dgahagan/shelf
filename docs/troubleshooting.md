@@ -145,6 +145,15 @@ else it cannot reach. Items
 with no ISBN (manual adds, discs, games without IGDB) need a manual cover
 or **Find cover**.
 
+## Not in the Audible catalogue for your marketplace
+
+**Fill details from Audible** (or an audiobook's missing cover) asks the
+Audible catalogue in one marketplace, set under Settings → Library →
+**Audible marketplace**. Audnexus answers "not found" for a title that
+marketplace does not sell, so a book bought on audible.de looked up with the
+marketplace set to United States is reported as not in the catalogue.
+Change the setting to the store you bought it from and try again.
+
 ## A scan added only a title
 
 The card tells you which of these it was, because the fix is different each

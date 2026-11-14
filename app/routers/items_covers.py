@@ -19,7 +19,7 @@ from app.auth import require_role
 from app.config import BOOK_MEDIA_TYPES, HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.routers import items_common
-from app.services import covers, cover_queue, manual_cover, scan_outcome
+from app.services import audnexus, covers, cover_queue, manual_cover, scan_outcome
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +67,11 @@ async def retry_cover(item_id: int, _=Depends(require_role("editor"))):
     """
     with get_db() as db:
         item = db.execute(
-            "SELECT isbn, cover_path, media_type FROM items_live WHERE id = ?", (item_id,)
+            "SELECT isbn, asin, cover_path, media_type FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
-    if not item or not item["isbn"]:
+    # An ISBN-less audiobook with an ASIN is retryable: the resolver's Audnexus
+    # leg keys on it. The button in item_detail.html mirrors this condition.
+    if not item or not (item["isbn"] or (item["asin"] and item["media_type"] == "audiobook")):
         return {"ok": False, "message": i18n.gettext("No ISBN")}
     if item["cover_path"]:
         return {"ok": True, "cover_path": item["cover_path"]}
@@ -141,6 +143,11 @@ def _cover_search_credentials(db, media_type: str | None) -> dict[str, str]:
     """Load required provider credentials plus the optional Google book key."""
     keys = covers.required_credentials(media_type)
     creds = {key: get_setting(db, key) for key in keys}
+    if not keys and media_type == "audiobook":
+        # Only the ASIN leg reads it, so other book types keep `creds` as it was.
+        # Key by key on this connection, never `audnexus.region()` (G112).
+        region = (get_setting(db, "audible_region") or "").strip().lower()
+        creds["audible_region"] = region if region in audnexus.REGIONS else audnexus.DEFAULT_REGION
     if not keys:
         google_key = get_setting(db, "google_books_api_key")
         if google_key:
@@ -158,7 +165,7 @@ async def cover_search(request: Request, item_id: int, query: str | None = None,
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, cover_path, media_type, publish_year, platform, isbn, cover_edition_language "
+            "SELECT title, authors, cover_path, media_type, publish_year, platform, isbn, asin, cover_edition_language "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Key-by-key through get_setting, never the bulk settings accessor:
@@ -220,7 +227,7 @@ async def cover_select(
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT title, authors, cover_path, media_type, publish_year, platform, isbn, cover_edition_language "
+            "SELECT title, authors, cover_path, media_type, publish_year, platform, isbn, asin, cover_edition_language "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Same key-by-key build as cover_search — this failure path re-renders

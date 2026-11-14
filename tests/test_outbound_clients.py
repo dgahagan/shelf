@@ -16,7 +16,7 @@ import pytest
 import respx
 
 import app.config
-from app.services import dnb, googlebooks, hardcover, isbndb, openlibrary, provider_result
+from app.services import audnexus, dnb, googlebooks, hardcover, isbndb, openlibrary, provider_result
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
@@ -62,6 +62,34 @@ class TestOpenLibraryUsesSharedLimiter:
         # The 0.34s interval in HOST_RATE_LIMITS only holds if this header
         # keeps identifying the app with a contact URL -- see config.py.
         assert "github.com/dgahagan/shelf" in openlibrary.USER_AGENT
+
+
+class TestAudnexusUsesSharedLimiter:
+    @respx.mock
+    async def test_lookup_acquires_before_request(self, monkeypatch):
+        calls = []
+
+        async def fake_acquire(host):
+            calls.append(("acquire", host))
+
+        monkeypatch.setattr(audnexus.outbound, "acquire", fake_acquire)
+
+        def responder(request):
+            calls.append(("request", request.url.host))
+            return httpx.Response(404)
+
+        respx.get("https://api.audnex.us/books/B08G9PRS1K").mock(side_effect=responder)
+
+        async with httpx.AsyncClient() as client:
+            await audnexus.lookup("B08G9PRS1K", client, region="us")
+
+        assert calls == [
+            ("acquire", "api.audnex.us"),
+            ("request", "api.audnex.us"),
+        ]
+
+    def test_user_agent_carries_contact_info(self):
+        assert "github.com/dgahagan/shelf" in audnexus.USER_AGENT
 
 
 class TestHardcoverUsesSharedLimiter:

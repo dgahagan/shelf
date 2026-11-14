@@ -149,6 +149,9 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
     errors = []
     new_item_ids: list[int] = []
     cover_hints: list[tuple[int, str]] = []  # (id, audible-cli cover URL)
+    # Audible-format rows with an ASIN and no cover URL (Libation): the
+    # resolver's Audnexus leg fetches their cover by ASIN.
+    asin_rows: list[int] = []
     # Rows an Audible-format import created — keyed on the format, not the
     # ASIN, so a row whose ASIN failed validation is still linked.
     audible_created: list[int] = []
@@ -480,6 +483,14 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
                         new_item_ids.append(new_id)
                     elif norm.get("cover_url") and not item_write.was_restored(new_id):
                         cover_hints.append((new_id, norm["cover_url"]))
+                    elif (
+                        fmt in _FORMAT_SOURCE
+                        and norm.get("asin")
+                        and not item_write.was_restored(new_id)
+                    ):
+                        # Audible-format rows only: every one is an audiobook,
+                        # so the title-search-free hand-off is safe (G29).
+                        asin_rows.append(new_id)
                     imported += 1
             except ItemValueError as e:
                 errors.append(f"Row {i}: {e}")
@@ -502,6 +513,10 @@ async def import_csv(request: Request, _=Depends(require_role("admin"))):
         for hid, url in cover_hints:  # paced by outbound's per-host interval
             cover_queue.enqueue(hid, {"cover_url": url, "skip_title_search": True})
         covers_queued += len(cover_hints)
+    if enrich_covers and asin_rows and not os.environ.get("SHELF_DISABLE_COVER_ENRICH"):
+        for aid in asin_rows:
+            cover_queue.enqueue(aid, {"skip_title_search": True})
+        covers_queued += len(asin_rows)
     # After the block has committed: auto_link opens its own connection (G112).
     # Only Audible-format rows need linking to their print editions.
     if audible_created or matched_ids:

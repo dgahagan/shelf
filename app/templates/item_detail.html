@@ -25,16 +25,17 @@
                 {% else %}
                 <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
                     <span>{{ _('No Cover') }}</span>
-                    {# …and it keys on the ISBN because the route does: retry-cover
-                       answers "No ISBN" without one, and the reload would hide that. #}
-                    {% if item.isbn %}
+                    {# …and it keys on the route's own precondition (an ISBN, or an ASIN on
+                       an audiobook): retry-cover answers "No ISBN" without
+                       one, and the reload would hide that. #}
+                    {% if item.isbn or (item.asin and item.media_type == 'audiobook') %}
                     {% if user and user.role in ('admin', 'editor') %}
                     {# Retry ISBN re-runs the automatic download chain, so it means
                        nothing once a cover exists — it alone stays missing-only. #}
                     <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
                             data-after-request="reload"
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
-                        {{ _('Retry ISBN') }}
+                        {{ _('Retry ISBN') if item.isbn else _('Retry ASIN') }}
                     </button>
                     {% endif %}
                     {% endif %}
@@ -142,6 +143,18 @@
                         <span x-show="fetching">{{ _('Searching…') }}</span>
                     </button>
                     <p x-show="failed" x-cloak class="text-xs text-shelf-muted mt-1.5">{{ _('No synopsis found on Open Library or Google Books.') }}</p>
+                </div>
+                {% endif %}
+
+                {% if user and user.role in ('admin', 'editor') and item.media_type == 'audiobook' and item.asin %}
+                <div class="mb-6">
+                    <button hx-post="/api/items/{{ item.id }}/fill-from-audible"
+                            hx-target="#audnexus-fill-result" hx-swap="innerHTML" hx-disabled-elt="this"
+                            data-testid="fill-from-audible"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:bg-shelf-border hover:text-shelf-text transition-colors disabled:opacity-50">
+                        {{ _('Fill details from Audible') }}
+                    </button>
+                    <div id="audnexus-fill-result"></div>
                 </div>
                 {% endif %}
 

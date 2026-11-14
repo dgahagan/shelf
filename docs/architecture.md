@@ -683,7 +683,19 @@ a retail UPC and neither produces a plain `items` row:
   setting, and `api.discogs.com` is paced at 1 req/s, the published rate for
   authenticated requests.
 
-All three pace through `services/outbound.py` like every other shared public host.
+- **Audnexus** (`services/audnexus.py`) answers for an audiobook by its
+  **ASIN**, not its ISBN, so it sits outside the ISBN cascade too. It is the
+  hosted API of `github.com/laxamentumtech/audnexus` (GPL-3.0; Shelf calls the
+  API and links none of its code), republishing Audible's catalogue in one of
+  ten marketplaces (`audible_region`). It is asked for a cover (see below) and
+  by the item page's **Fill details from Audible**, which writes only empty
+  fields. Its `isbn` is never stored: it is often the print edition's. The
+  project names **AudiobookDB** as its successor; that was rejected because it
+  needs a per-install API key, and Audible's own API needs the user's Audible
+  credentials. Revisit if Audnexus announces a shutdown or AudiobookDB offers
+  keyless lookup by ASIN — the client is one module so that swap is one file.
+
+All four pace through `services/outbound.py` like every other shared public host.
 
 **One family of UPC is intercepted above all of that**, by
 `services/legacy_book.py`: the pre-Bookland price-point UPC-A a few publishers
@@ -844,7 +856,12 @@ Amazon → Google Books → PORBASE (Portuguese ISBNs only, last resort) → IGD
 and film artwork does not run the cascade — IGDB and TMDb each supply one URL
 with the metadata, downloaded directly through the same allow-list and
 post-redirect re-check. Misses are retried by a background **cover queue**
-(`services/cover_queue.py`). With a LibraryThing token saved,
+(`services/cover_queue.py`). For an **audiobook with an ASIN**,
+`resolve_missing_cover` asks Audnexus for the Audible edition's cover after
+any caller hint and **before** the ISBN chain, so the queue, the startup
+requeue, the admin sweep and per-item retry all reach it; an Audible import
+row that misses there stops (`skip_title_search`) rather than taking a print
+edition's cover. With a LibraryThing token saved,
 `resolve_missing_cover` tries one more step after the cascade misses: a
 verified English related edition (`services/librarything.py`, thingISBN →
 Open Library / Google Books), recording that edition's ISBN and language
@@ -895,7 +912,9 @@ reaches `_download`'s post-redirect allow-list re-check when the user picks it.
 `search_covers` returns a `ProviderResult` whose payload is the candidate
 list, so the picker projects the provider's own outcome through the same
 `scan_outcome.not_found_status` the scan card uses — one vocabulary across
-both surfaces. The route renders three things in precedence order: the
+both surfaces. The review queue's card renders the picker before any search,
+with an empty query, and says so rather than reporting a miss. After a search,
+the route renders three things in precedence order: the
 unconfigured-provider note first (nothing was asked, so there is no outcome to
 report), then the actionable state, then the generic "No covers found" line,
 which now means only that the provider answered and had nothing. A `found`
@@ -1067,7 +1086,8 @@ lookup and the TMDb/IGDB query ladder above all resolve through it.
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
 external host has a minimum interval matching its published rate limit,
 with retry on transient failures. This is what lets a 200-book session not
-get throttled. The daily release-radar pass rides the same
+get throttled. `api.audnex.us` runs at 1 req/s (it reports 300 per minute;
+its self-hosted README documents 100). The daily release-radar pass rides the same
 `api.hardcover.app` interval as every other Hardcover call. Retries honour a server's `Retry-After` up to a fixed ceiling
 (`RETRY_AFTER_MAX`, 30s); a stated wait beyond that ends the attempt and
 returns the response at once, on the reasoning that a server asking for an

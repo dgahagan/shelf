@@ -19,10 +19,10 @@ from app.auth import require_role
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
 from app.database import get_db, get_game_platforms, get_setting
 from app.routers import items_common
-from app.services import covers, igdb, item_write, openlibrary, restore_report, scan_outcome, tmdb
+from app.services import audnexus, covers, igdb, item_write, openlibrary, restore_report, scan_outcome, tmdb
 from app.services import tags as tags_svc
 from app.services import isbn as isbn_svc
-from app.services.item_write import ItemValueError, insert_item, validated_location_id
+from app.services.item_write import ItemValueError, insert_item, update_item_fields, validated_location_id
 
 logger = logging.getLogger(__name__)
 
@@ -523,3 +523,62 @@ async def add_dvd_from_search(
     )
     resp.headers["HX-Trigger"] = items_common._toast_header(f"Added: {title[:50]}")
     return resp
+
+
+@router.post("/items/{item_id}/fill-from-audible")
+async def fill_from_audible(request: Request, item_id: int, _=Depends(require_role("editor"))):
+    """Fill an audiobook's empty fields from the Audible catalogue, by ASIN.
+
+    Never overwrites. Every outcome the user can act on answers 200 with an
+    inline message (G145); only a missing item is a 404 with a toast.
+    """
+    with get_db() as db:
+        item = db.execute(
+            f"SELECT id, media_type, asin, {', '.join(audnexus.FILL_FIELDS)} "
+            "FROM items_live WHERE id = ?", (item_id,)
+        ).fetchone()
+    if not item:
+        return HTMLResponse("", status_code=404, headers={
+            "HX-Trigger": items_common._toast_header(i18n.gettext("Item not found"), "error")})
+
+    def answer(outcome: str, message: str, link: bool = False):
+        return request.app.state.templates.TemplateResponse(
+            request, "fragments/audnexus_fill_result.html",
+            {"outcome": outcome, "message": message, "item_id": item_id, "link": link})
+
+    asin = (item["asin"] or "").strip()
+    if item["media_type"] != "audiobook" or not asin:
+        return answer("no_asin", i18n.gettext("This item has no ASIN to look up."))
+
+    region = audnexus.region()  # after the read block closes (G112)
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        result = await audnexus.lookup(asin, client, region=region)
+
+    if result.outcome == "no_match":
+        return answer("no_match", i18n.gettext(
+            "Not in the Audible catalogue for the %(region)s marketplace. "
+            "Check Settings → Library → Audible marketplace.")
+            % {"region": i18n.gettext(audnexus.REGIONS[region])})
+    if result.outcome == "rate_limited":
+        return answer("rate_limited", i18n.gettext(
+            "The Audible catalogue is rate-limiting requests. Try again in a minute."))
+    if not result.found:
+        return answer("transport_failed", i18n.gettext(
+            "Could not reach the Audible catalogue (Audnexus)."))
+
+    fields = audnexus.blank_fields(item, result.payload)
+    if not fields:
+        return answer("nothing", i18n.gettext(
+            "Nothing to fill — every detail Audible has is already set."))
+    try:
+        with get_db() as db:
+            update_item_fields(db, item_id, fields)
+    except ItemValueError as e:
+        return answer("invalid", i18n.gettext(
+            "Audible's details could not be saved: %(error)s") % {"error": str(e)})
+    return answer("filled", i18n.ngettext(
+        "Filled %(count)s field from Audible: %(fields)s.",
+        "Filled %(count)s fields from Audible: %(fields)s.", len(fields))
+        % {"count": len(fields),
+           "fields": ", ".join(i18n.gettext(audnexus.FILL_LABELS[f]) for f in fields)},
+        link=True)

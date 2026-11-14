@@ -300,6 +300,10 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "urn.porbase.org": 1.0,  # PORBASE (Biblioteca Nacional de Portugal) URN resolver; publishes no limit
     "rnod.bnportugal.gov.pt": 1.0,  # PORBASE cover scans, same library; publishes no limit
     "api.hardcover.app": 1.0,  # 60/min API limit
+    # Audnexus (hosted API) answered with x-ratelimit-limit: 300 per 60 s;
+    # its README states 100/min for a self-hosted instance. 1 req/s stays
+    # under both.
+    "api.audnex.us": 1.0,
     "api2.isbndb.com": 3.0,  # was isbndb's own 3s post-request sleep
     "www.librarything.com": 1.0,
     "www.googleapis.com": 0.25,  # Google Books quota is per-day; light pacing only
@@ -347,6 +351,17 @@ def issn_portal_url() -> str:
     For the test suite only: the E2E server points it at a local stub.
     """
     return os.environ.get("SHELF_ISSN_PORTAL_URL") or ISSN_PORTAL_URL_DEFAULT
+
+
+AUDNEXUS_URL_DEFAULT = "https://api.audnex.us"
+
+
+def audnexus_url() -> str:
+    """The Audnexus API base URL: `SHELF_AUDNEXUS_URL`, else the hosted API.
+
+    For the test suite only: the E2E server points it at a local stub.
+    """
+    return os.environ.get("SHELF_AUDNEXUS_URL") or AUDNEXUS_URL_DEFAULT
 
 
 # HTTP client defaults

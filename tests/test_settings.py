@@ -106,6 +106,55 @@ class TestMetadataSearchLangSetting:
         assert r.status_code == 403
 
 
+# --- POST /api/settings/display — audible_region ----------------------------
+
+class TestAudibleRegionSetting:
+    def _stored(self, db):
+        row = db.execute("SELECT value FROM settings WHERE key = 'audible_region'").fetchone()
+        return row["value"] if row else None
+
+    def test_default_is_us_with_no_row(self, db):
+        from app.services import audnexus
+        assert audnexus.region() == "us"
+
+    def test_valid_code_persists(self, admin_client, db):
+        from app.services import audnexus
+        r = admin_client.post(
+            "/api/settings/display", data={"audible_region": "de"}, follow_redirects=False
+        )
+        assert r.status_code == 303
+        assert self._stored(db) == "de"
+        assert audnexus.region() == "de"
+
+    def test_unknown_and_empty_leave_prior_value(self, admin_client, db):
+        admin_client.post("/api/settings/display", data={"audible_region": "fr"}, follow_redirects=False)
+        for bad in ("xx", "", "  "):
+            admin_client.post(
+                "/api/settings/display", data={"audible_region": bad}, follow_redirects=False
+            )
+            assert self._stored(db) == "fr"
+
+    def test_unknown_with_no_row_writes_nothing(self, admin_client, db):
+        admin_client.post("/api/settings/display", data={"audible_region": "xx"}, follow_redirects=False)
+        assert self._stored(db) is None
+
+    def test_rendered_page_round_trip(self, admin_client, db):
+        import re
+        admin_client.post("/api/settings/display", data={"audible_region": "de"}, follow_redirects=False)
+        html = admin_client.get("/settings").text
+        m = re.search(r'<select id="audible_region" name="audible_region".*?</select>', html, re.S)
+        assert m, "audible_region select missing from the settings page"
+        block = m.group(0)
+        selected = re.findall(r'<option value="([a-z]+)"\s+selected', block)
+        assert selected == ["de"]
+        assert "not in the catalogue" in html  # visible help line (G129)
+        # Re-post what the form rendered: the stored value must survive.
+        admin_client.post(
+            "/api/settings/display", data={"audible_region": selected[0]}, follow_redirects=False
+        )
+        assert self._stored(db) == "de"
+
+
 # --- GET /settings?borrower_error= — blocked-delete banner -------------------
 
 class TestBorrowerErrorBanner:

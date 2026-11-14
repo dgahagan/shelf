@@ -368,6 +368,29 @@ class TestBookShapedControls:
         assert ">Read<" not in resp.text
         assert "Status: Watched" in resp.headers["HX-Trigger"]
 
+    def test_an_isbnless_audiobook_with_an_asin_gets_retry_asin(self, editor_client, db):
+        item_id = _insert_item(
+            db, title="Audio", isbn=None, asin="B002V0QK4C", media_type="audiobook",
+        )
+        db.commit()
+
+        html = editor_client.get(f"/item/{item_id}").text
+
+        assert f"/api/items/{item_id}/{self.RETRY}" in html
+        assert "Retry ASIN" in html
+        assert "Retry ISBN" not in html
+
+    @pytest.mark.parametrize("media_type, asin", [("audiobook", None), ("ebook", "B002V0QK4C")])
+    def test_no_retry_without_an_isbn_or_an_audiobook_asin(
+        self, editor_client, db, media_type, asin,
+    ):
+        item_id = _insert_item(db, title="Nope", isbn=None, asin=asin, media_type=media_type)
+        db.commit()
+
+        html = editor_client.get(f"/item/{item_id}").text
+
+        assert f"/api/items/{item_id}/{self.RETRY}" not in html
+
     def test_a_book_without_an_isbn_keeps_reading_status_only(
         self, editor_client, db, monkeypatch,
     ):
@@ -1004,3 +1027,28 @@ class TestAsinRow:
 
         assert 'data-testid="integration-ids"' not in html
         assert "B0D1234567" not in html
+
+
+class TestFillFromAudibleControl:
+    BUTTON = 'data-testid="fill-from-audible"'
+
+    def test_editor_sees_it_on_an_audiobook_with_an_asin(self, editor_client, db):
+        item_id = _insert_item(db, title="Audio", isbn=None, asin="B08G9PRS1K", media_type="audiobook")
+        db.commit()
+        html = editor_client.get(f"/item/{item_id}").text
+        assert self.BUTTON in html
+        assert f'hx-post="/api/items/{item_id}/fill-from-audible"' in html
+
+    def test_viewer_does_not(self, viewer_client, db):
+        item_id = _insert_item(db, title="Audio", isbn=None, asin="B08G9PRS1K", media_type="audiobook")
+        db.commit()
+        assert self.BUTTON not in viewer_client.get(f"/item/{item_id}").text
+
+    @pytest.mark.parametrize("fields", [
+        {"asin": None, "media_type": "audiobook"},
+        {"asin": "B08G9PRS1K", "media_type": "book"},
+    ])
+    def test_absent_without_an_audiobook_asin(self, editor_client, db, fields):
+        item_id = _insert_item(db, title="Audio", isbn=None, **fields)
+        db.commit()
+        assert self.BUTTON not in editor_client.get(f"/item/{item_id}").text

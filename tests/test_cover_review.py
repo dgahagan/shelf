@@ -82,6 +82,15 @@ class TestTheQueuePredicate:
         r = admin_client.get("/cover-review")
         assert "1 of 3" in r.text
 
+    def test_a_card_that_has_not_searched_does_not_claim_no_covers(self, admin_client, db):
+        """The card renders before any search runs, so "No covers found" was
+        false there (test-drive audnexus-provider Observation 1)."""
+        _seed(db, title="Unsearched", isbn=None)
+        db.commit()
+        r = admin_client.get("/cover-review")
+        assert "Type in the search box to look for covers." in r.text
+        assert "No covers found for this title." not in r.text
+
 
 class TestZeroCopyItemsStayVisible:
     def test_a_located_item_with_no_copy_rows_still_shows_its_location(

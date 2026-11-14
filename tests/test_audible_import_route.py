@@ -270,17 +270,48 @@ class TestCoverHints:
         assert enqueued == [(row["id"], {"cover_url": self.URL, "skip_title_search": True})]
         assert result["covers_queued"] == 1
 
-    def test_libation_row_is_not_enqueued(self, admin_client, enqueued):
+    def test_libation_row_is_enqueued_for_an_asin_cover(self, admin_client, db, enqueued):
         result = self._post(admin_client, _libation_csv({}))
 
-        assert enqueued == []
-        assert result["covers_queued"] == 0
+        [row] = _audiobooks(db)
+        assert enqueued == [(row["id"], {"skip_title_search": True})]
+        assert result["covers_queued"] == 1
 
     def test_unticked_fetch_covers_enqueues_nothing(self, admin_client, enqueued):
         result = self._post(admin_client, _cli_tsv({"cover_url": self.URL}), enrich=False)
 
         assert enqueued == []
         assert result["covers_queued"] == 0
+
+    def test_unticked_fetch_covers_enqueues_nothing_for_libation(self, admin_client, enqueued):
+        result = self._post(admin_client, _libation_csv({}), enrich=False)
+
+        assert enqueued == []
+        assert result["covers_queued"] == 0
+
+    async def test_libation_catalogue_miss_leaves_no_cover_and_no_isbn(
+        self, admin_client, db, enqueued
+    ):
+        from unittest.mock import AsyncMock, patch
+
+        from app.routers import items_common
+        from app.services import provider_result
+
+        self._post(admin_client, _libation_csv({}))
+        [(item_id, hints)] = enqueued
+
+        with patch("app.services.audnexus.lookup",
+                   new=AsyncMock(return_value=provider_result.no_match("audnexus"))), \
+             patch("app.services.covers.download_cover",
+                   new=AsyncMock(return_value=None)), \
+             patch("app.routers.items_common._search_isbn_for_item",
+                   new=AsyncMock(return_value=(None, None))) as search:
+            assert await items_common.resolve_missing_cover(item_id, None, hints) is None
+
+        row = db.execute("SELECT cover_path, isbn FROM items WHERE id = ?", (item_id,)).fetchone()
+        assert row["cover_path"] is None
+        assert row["isbn"] is None
+        assert not search.called
 
     def test_a_title_matched_row_is_not_enqueued(self, admin_client, db, enqueued):
         _insert_item(db, title="Dune", authors="Frank Herbert", isbn="9780441013593",

@@ -241,7 +241,7 @@ async def cover_review_search(
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT id, title, authors, cover_path, media_type, publish_year, platform, isbn, cover_edition_language "
+            "SELECT id, title, authors, cover_path, media_type, publish_year, platform, isbn, asin, cover_edition_language "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Key-by-key through get_setting, never the bulk accessor: provider
