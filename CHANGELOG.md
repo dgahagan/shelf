@@ -6,6 +6,12 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **The Docker image is now published for `linux/arm64` as well as
+  `linux/amd64`.** A Raspberry Pi or another ARM64 device can pull
+  `dangahagan/shelf` directly instead of building the image locally.
+
 ## [0.80.0] - 2026-11-13
 
 An audiobook bought on Audible has an ASIN but usually no ISBN, and Shelf could
