@@ -150,6 +150,12 @@ jobs:
       - name: Check the dependency locks are current
         run: make check-lock
 
+      # The self-test mutates one digest in a temp copy and fails unless
+      # check-lock goes red. It needs the index, so it lives here and in
+      # `make checks`, not in checks-fast.
+      - name: Prove the lock check catches a bad hash
+        run: make check-lock-selftest
+
       - name: Run unit and integration tests
         run: make test
 

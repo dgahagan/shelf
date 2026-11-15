@@ -17,7 +17,7 @@ PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n \
-        badges check-badges check-roadmap lock lock-upgrade check-lock \
+        badges check-badges check-roadmap lock lock-upgrade check-lock check-lock-selftest \
         checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
@@ -94,29 +94,57 @@ test-all: test test-e2e
 # requirements.txt and requirements-dev.txt are GENERATED from the .in files by
 # uv; never edit them by hand. The dev lock is compiled constrained by the
 # runtime lock so shared transitives resolve to one version.
-# check-lock compiles into temp COPIES of the committed locks, not empty files:
-# uv reads an existing -o file as pin preferences, so an empty target would take
-# the newest release of every transitive and fail whenever PyPI moves. The
-# compile runs inside the temp dir with relative paths because uv writes the -c
-# path into the dev lock's "via" comments.
+#
+# Every lock target compiles in a temp dir over COPIES of the committed locks
+# with their --hash= lines stripped (LOCK_IN_TMP). uv reads an existing -o file
+# as preferences: the versions it keeps are what stop an empty target taking the
+# newest release of every transitive, and the hashes it would keep verbatim are
+# why they are stripped, so every hash is fetched fresh from the index (G159).
+# lock/lock-upgrade copy the result back only after both compiles succeed, so a
+# failed or offline run leaves the committed locks untouched. The compile runs
+# inside the temp dir with relative paths because uv writes the -c path into the
+# dev lock's "via" comments.
 UV_COMPILE = python -m uv pip compile --universal --python-version 3.12 --generate-hashes --quiet --custom-compile-command "make lock"
+LOCK_DIR ?= .
+
+# $(1) = directory holding the four files, $(2) = extra compile flags. Leaves
+# the shell open with the fresh locks in $$tmp; each caller appends its tail.
+LOCK_IN_TMP = set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	cp "$(1)/requirements.in" "$(1)/requirements-dev.in" "$$tmp/"; \
+	for f in requirements.txt requirements-dev.txt; do \
+	  if [ -f "$(1)/$$f" ]; then sed -e '/^ *--hash=/d' -e 's/ \\$$//' "$(1)/$$f" > "$$tmp/$$f"; \
+	  else : > "$$tmp/$$f"; fi; \
+	done; \
+	(cd "$$tmp" && $(UV_COMPILE) $(2) requirements.in -o requirements.txt && \
+	 $(UV_COMPILE) $(2) requirements-dev.in -c requirements.txt -o requirements-dev.txt)
 
 lock:
-	$(UV_COMPILE) requirements.in -o requirements.txt
-	$(UV_COMPILE) requirements-dev.in -c requirements.txt -o requirements-dev.txt
+	@$(call LOCK_IN_TMP,.,); cp "$$tmp/requirements.txt" "$$tmp/requirements-dev.txt" .
 
 lock-upgrade:
-	$(UV_COMPILE) --upgrade requirements.in -o requirements.txt
-	$(UV_COMPILE) --upgrade requirements-dev.in -c requirements.txt -o requirements-dev.txt
+	@$(call LOCK_IN_TMP,.,--upgrade); cp "$$tmp/requirements.txt" "$$tmp/requirements-dev.txt" .
 
 check-lock:
-	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
-	cp requirements.in requirements-dev.in requirements.txt requirements-dev.txt "$$tmp/"; \
-	(cd "$$tmp" && $(UV_COMPILE) requirements.in -o requirements.txt && \
-	$(UV_COMPILE) requirements-dev.in -c requirements.txt -o requirements-dev.txt); \
-	diff -u requirements.txt "$$tmp/requirements.txt" && \
-	diff -u requirements-dev.txt "$$tmp/requirements-dev.txt" || \
-	{ echo "ERROR: a lock is not what 'make lock' produces from the .in files. Run 'make lock' and commit both .txt files."; exit 1; }
+	@$(call LOCK_IN_TMP,$(LOCK_DIR),); \
+	diff -u "$(LOCK_DIR)/requirements.txt" "$$tmp/requirements.txt" && \
+	diff -u "$(LOCK_DIR)/requirements-dev.txt" "$$tmp/requirements-dev.txt" || \
+	{ echo "ERROR: a lock is not what 'make lock' produces. Run 'make lock' and commit both .txt files."; \
+	  echo "Causes: a .in edit that was not relocked; a hand-edited --hash= line; or PyPI added a file to a version already pinned (not caused by your change)."; exit 1; }
+
+# Proves check-lock can fail: a clean copy must pass, then one invented digest
+# must turn it red WITH that digest in the diff, so a network error cannot pass
+# as a caught mutation (G108). Output goes to files, never a pipe (G63).
+check-lock-selftest:
+	@set -e; d=$$(mktemp -d); trap 'rm -rf "$$d"' EXIT; \
+	cp requirements.in requirements-dev.in requirements.txt requirements-dev.txt "$$d/"; \
+	if ! $(MAKE) --no-print-directory -s check-lock LOCK_DIR="$$d" > "$$d/base.log" 2>&1; then \
+	  cat "$$d/base.log"; echo "ERROR: check-lock fails on an unmodified copy, so the self-test proves nothing. Fix that first."; exit 1; fi; \
+	h=$$(grep -om1 'sha256:[0-9a-f]*' "$$d/requirements.txt"); bad="$${h%?}0"; [ "$$bad" != "$$h" ] || bad="$${h%?}1"; \
+	sed -i "s/$$h/$$bad/" "$$d/requirements.txt"; \
+	if $(MAKE) --no-print-directory -s check-lock LOCK_DIR="$$d" > "$$d/mut.log" 2>&1; then rc=0; else rc=$$?; fi; \
+	if [ "$$rc" -eq 0 ] || ! grep -q "$$bad" "$$d/mut.log"; then \
+	  cat "$$d/mut.log"; echo "ERROR: check-lock passed a lock with an invented hash — the hash check is broken (G159)."; exit 1; fi; \
+	echo "check-lock-selftest: an invented hash was caught."
 
 # ---------------------------------------------------------------------------
 # Static checks
@@ -200,7 +228,7 @@ checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-versio
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.
-checks: checks-fast check-lock check-deps check-licenses
+checks: checks-fast check-lock check-lock-selftest check-deps check-licenses
 
 # ---------------------------------------------------------------------------
 # Claude agent reports

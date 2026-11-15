@@ -25,7 +25,10 @@ anything that does not match. Edit dependencies in `requirements.in` or
 `requirements-dev.in`, never in a `.txt`, then run `make lock` to regenerate
 both locks; its diff is what a reviewer reads. `make lock-upgrade` takes new
 versions of the indirect dependencies on purpose. CI's `make check-lock` fails
-a pull request whose `.in` change was not relocked.
+a pull request whose `.in` change was not relocked, and it also checks every
+`--hash=` line against the package index. It can therefore fail on a pull
+request that changed no dependency, when PyPI adds a file to a version that is
+already pinned. `make lock` is the repair in every case.
 
 ## Run it
 
@@ -55,10 +58,11 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
 | `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges |
 | `make badges` | Restamp README's two test-count badges from `pytest --co` — CI runs this on the push to `main` (the `restamp` job below); run it locally to see your work, but **never commit the result in a pull request** |
-| `make checks` | All checks incl. `check-lock`, `pip-audit` and licenses (network) |
+| `make checks` | All checks incl. `check-lock`, `check-lock-selftest`, `pip-audit` and licenses (network) |
 | `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
 | `make lock-upgrade` | The same, taking new versions of indirect dependencies |
-| `make check-lock` | Fail if a lock is not what `make lock` produces (network) |
+| `make check-lock` | Fail if a lock (versions or hashes) is not what `make lock` produces (network) |
+| `make check-lock-selftest` | Prove `check-lock` fails on an invented hash (network) |
 | `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — run it after any template/JS change to see your work, **but leave the output out of a pull request** |
 
 Unit and E2E tests **cannot share one pytest invocation** — always use the
@@ -74,7 +78,7 @@ than on a push to `main`:
 | Job | What it does |
 |---|---|
 | `restamp` | Push to `main` only. Rebuilds with `make css` and `make badges`, then commits **only the generated paths that actually changed** — any of `README.md`, `static/css/app.css`, `static/sw.js`, and never one already current — as `github-actions[bot]` (`Restamp generated output after merge`) and pushes to `main`. `test`, `css` and `e2e` below check out whatever this job produced (or the pushed commit unchanged, on a pull request or when nothing needed restamping) rather than the raw push |
-| `test` | `make check-lock`, `make test` and `make checks-fast` |
+| `test` | `make check-lock`, `make check-lock-selftest`, `make test` and `make checks-fast` |
 | `e2e` | `make css`, then `make test-e2e` — the suite is always judged against a stylesheet rebuilt from the templates in that checkout |
 | `css` | Rebuilds with `make css`. The **rebuild** runs on every event, so a template or `static/css/input.css` change (it holds the `@theme` colours and the `@source` paths) that breaks compilation still fails cheaply. The **comparison** against the committed output fails on push to `main` and is advisory (a `::notice::`) on a pull request |
 | `generated-output` | Pull requests only. Fails if the merge result changes `static/css/app.css`, `sw.js`'s `SW_VERSION` or either README badge count, relative to the base branch |

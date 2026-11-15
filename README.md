@@ -374,7 +374,8 @@ make install-playwright   # downloads headless Chromium
 | `make test-all` | `test` and `test-e2e` |
 | `make check-deps` | `pip-audit` vulnerability scan of the locked dependency set (`requirements.txt`) |
 | `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
-| `make check-lock` | Fail if a lock is not what `make lock` produces |
+| `make check-lock` | Fail if a lock (versions or hashes) is not what `make lock` produces |
+| `make check-lock-selftest` | Prove `check-lock` fails on an invented hash |
 | `make check-licenses` | License compliance report |
 | `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
 | `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |

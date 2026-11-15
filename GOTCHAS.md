@@ -6604,40 +6604,25 @@ PY
 
 ## G159 — When `make check-lock` passes and you read it as "the hashes are right"
 
-- **Rule:** `check-lock` proves the locks match their `.in` sources: versions,
-  markers and the set of pins. It does **not** prove the `--hash=` lines are
-  real. Never hand-edit a hash in `requirements*.txt`, and never trust a green
-  `check-lock` as evidence that one is genuine.
-- **Why:** `check-lock` (and `make lock` itself) compiles over the existing
-  output, and uv treats that output as preferences: it keeps the hash lines
-  verbatim, even with `--refresh`. An invented or deleted hash therefore
-  survives both, and `make lock` does not repair it. Because pip accepts any
-  listed hash (G158), a deleted hash for a wheel amd64 never selects also
-  passes the amd64 CI install. It fails only at the arm64 publish on the tag.
-  A bad hash can block an install but never admit a wrong package, which is
-  why this is a trap and not a hole.
-- **Evidence:** `dep-lock-hashes` diff review, codex M1, 2026-11-14 (branch
-  head `346ca86`). Changing the first `aiofiles` digest's last character left
-  `make check-lock` at exit 0, and a recompile with `--refresh` re-emitted it.
-  Deferred, not fixed. The fix is to compile fresh hashes from the bare pins and
-  compare the output with comments stripped (ROADMAP §0 O2 follow-up).
-- **Repair today:** reduce the suspect block to a bare `name==version` line
-  (drop every `--hash=` under it), then run `make lock`. uv has no preferred
-  hashes for that pin, so it fetches them fresh from the index. Tested on
-  `aiofiles`: the result matched the original lock byte for byte.
-- **Verify** (prints `trap holds` while the defect stands):
+- **Rule:** never hand-edit a `--hash=` line in `requirements*.txt`, and never
+  compile a lock over one that still carries its hashes. The lock targets strip
+  them first (`LOCK_IN_TMP` in the `Makefile`). A red `check-lock` on a PR that
+  touched no dependency usually means PyPI added a file to a version already
+  pinned; `make lock` is the repair in every case.
+- **Why:** uv reads an existing `-o` file as preferences and keeps its hash
+  lines verbatim, even with `--refresh`, so a compile over the committed lock
+  could neither catch nor repair an invented or deleted hash. Stripping the
+  hash lines keeps the version preferences and makes uv fetch every hash fresh.
+- **Evidence:** `dep-lock-hashes` diff review, codex M1, 2026-11-14 (an
+  invented `aiofiles` digest passed `make check-lock`). Fixed by
+  `check-lock-hash-verify`, `5c5f777`, 2026-11-15.
+- **Verify** (prints the check line while the lint holds):
 
 ```bash
-d=$(mktemp -d); cp requirements.in requirements.txt "$d"; cd "$d"
-h=$(grep -om1 'sha256:[0-9a-f]*' requirements.txt); bad="${h%?}0"; [ "$bad" = "$h" ] && bad="${h%?}1"
-sed -i "s/$h/$bad/" requirements.txt
-python -m uv pip compile --universal --python-version 3.12 --generate-hashes --quiet \
-  --custom-compile-command "make lock" requirements.in -o requirements.txt
-grep -q "$bad" requirements.txt && echo "trap holds" || echo "check: uv replaced the invented hash"
-cd - >/dev/null; rm -rf "$d"
+make --no-print-directory -s check-lock-selftest >/dev/null 2>&1 && echo "check: check-lock caught the invented hash" || { echo "trap holds"; make --no-print-directory -s check-lock-selftest; }
 ```
 
-- **Status:** documented. Lint candidate: the fixed `check-lock` would be the lint.
+- **Status:** linted: `make check-lock` (self-tested by `make check-lock-selftest`, in `make checks` and CI's `test` job).
 
 ## Graveyard
 

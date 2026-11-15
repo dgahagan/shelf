@@ -31,10 +31,11 @@ make check-badges          # lint: README test-count badges match what pytest co
 make check-tests           # lint: test conventions — app.main import isolation, CSP-safe waits, page guards, no networkidle wait after a click
 make check-ruff            # lint: ruff (E9 + F — unused imports/variables, redefinitions, syntax errors)
 make checks-fast           # instant offline lints (secrets, csrf, alpine, sw-version, tests, ruff, badges) — the inner-loop target
-make checks                # everything, incl. network check-lock + pip-audit + licenses — before a release
+make checks                # everything, incl. network check-lock + check-lock-selftest + pip-audit + licenses — before a release
 make lock                  # regenerate the hashed requirements*.txt locks from requirements*.in (generated — never hand-edit a .txt)
 make lock-upgrade          # same, taking new versions of indirect dependencies on purpose
-make check-lock            # lint: the committed locks are what make lock produces (needs the package index)
+make check-lock            # lint: the committed locks, hashes included, are what make lock produces (needs the package index)
+make check-lock-selftest   # lint: proves check-lock fails on an invented hash (needs the package index)
 make dev / dev-down / dev-logs   # docker compose up/down/logs
 uvicorn app.main:app --reload    # run without Docker
 ```

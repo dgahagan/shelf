@@ -6,6 +6,22 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.81.1] - 2026-11-15
+
+This release changes nothing in the app. It fixes a contributor check. Since
+0.81.0, every dependency is pinned with the hashes of its files. The check that
+the locks are current compared only versions, not those hashes. A missing or
+mistyped hash could pass it and then break the arm64 image build when a
+release was tagged. The check now compares the hashes too, and `make lock` repairs them.
+
+### Changed
+
+- **For contributors:** `make check-lock` now checks the `--hash=` lines in
+  the dependency locks as well as the versions, and `make lock` repairs a bad
+  hash. A pull request can now fail `check-lock` when PyPI adds a file to a
+  version that is already pinned, even if the pull request changed no
+  dependency. Run `make lock` and commit the result.
+
 ## [0.81.0] - 2026-11-14
 
 Shelf's image was published for x86-64 only, so a Raspberry Pi or another
@@ -5869,6 +5885,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.81.1]: https://github.com/dgahagan/shelf/releases/tag/v0.81.1
 [0.81.0]: https://github.com/dgahagan/shelf/releases/tag/v0.81.0
 [0.80.0]: https://github.com/dgahagan/shelf/releases/tag/v0.80.0
 [0.79.1]: https://github.com/dgahagan/shelf/releases/tag/v0.79.1
