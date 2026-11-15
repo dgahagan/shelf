@@ -31,6 +31,10 @@ make dev                  # docker compose up -d --build
 # or: DATA_DIR=./data-dev uvicorn app.main:app --reload
 ```
 
+To change a dependency, edit `requirements.in` (or `requirements-dev.in`), run
+`make lock`, and commit the `.in` file together with both regenerated
+`requirements*.txt` locks. Never edit a `requirements*.txt` by hand.
+
 Full details — running, testing, project layout, the rules that bite — are in
 [docs/development.md](docs/development.md) and
 [docs/architecture.md](docs/architecture.md).

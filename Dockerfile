@@ -7,7 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl gosu ya
 WORKDIR /app
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# requirements.txt is a generated hashed lock (make lock); --require-hashes makes a
+# lock that lost its hashes fail the build instead of installing unchecked.
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
 COPY app/ ./app/
 COPY static/ ./static/

@@ -6,6 +6,9 @@ It needs nothing else — no database server, no reverse proxy, no API keys.
 ## Requirements
 
 - Docker 20+ (or Podman) with Compose
+- An `amd64` (x86-64) or `arm64` machine, such as a Raspberry Pi 4 or 5 on a
+  64-bit OS. Each release tag carries both, and Docker pulls the one that
+  matches your machine
 - ~200 MB disk for the image, plus space for your covers (a few KB each)
 - A browser on the same network — phone, tablet or desktop. Camera scanning
   needs HTTPS, which Shelf provides out of the box. Behind a TLS-terminating
@@ -112,6 +115,9 @@ git clone https://github.com/dgahagan/shelf.git && cd shelf
 pip install -r requirements.txt
 DATA_DIR=./data uvicorn app.main:app --reload
 ```
+
+The install is hash-checked against the lock in `requirements.txt` and needs
+Python 3.12 or later.
 
 Running without Docker means no auto-generated certificate — `uvicorn` will
 serve plain HTTP on `127.0.0.1:8000`, which is fine for `localhost`

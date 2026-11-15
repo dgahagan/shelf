@@ -144,6 +144,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt -r requirements-dev.txt
 
+      # requirements*.txt are generated from the .in files (make lock). A PR
+      # that edits a .in file must carry the relocked .txt; this is what
+      # enforces it. Needs the package index, hence not in checks-fast.
+      - name: Check the dependency locks are current
+        run: make check-lock
+
       - name: Run unit and integration tests
         run: make test
 

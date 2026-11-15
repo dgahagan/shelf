@@ -1,0 +1,17 @@
+# Hand-edited source for the dev lock. 'make lock' regenerates requirements-dev.txt from it.
+# Never edit requirements-dev.txt by hand.
+-r requirements.in
+pytest==9.0.3
+pytest-asyncio==1.4.0
+respx==0.22.0
+pytest-cov==6.1.1
+pytest-xdist==3.6.1
+playwright==1.52.0
+pip-audit==2.7.3
+pip-licenses==5.0.0
+# Extracts and compiles the UI catalogs (make i18n); the app reads .mo with stdlib gettext.
+Babel==2.18.0
+# Python lint (make check-ruff); E9 + F only — see ruff.toml.
+ruff==0.17.5
+# Compiles the hashed locks (make lock / check-lock); never installed in the image.
+uv==0.11.11

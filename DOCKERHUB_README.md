@@ -10,6 +10,8 @@ A self-hosted home library catalog — scan barcodes or photograph whole shelves
 
 ## Quick Start
 
+Runs on `linux/amd64` and `linux/arm64` (Raspberry Pi 4/5 on a 64-bit OS): each release tag carries both.
+
 ```bash
 mkdir -p shelf-data
 docker run -d \

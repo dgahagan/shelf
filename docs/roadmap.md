@@ -88,14 +88,6 @@ Library, and thinner otherwise.
   Photo Intake, Shelf Fill and Store Mode are translated; the other feature pages
   follow area by area. Until then it sits behind `SHELF_I18N`, off by default.
 
-## Import and migration
-
-**In progress.** Goodreads, StoryGraph, LibraryThing, Libib, CSV, a portable
-archive and an **Audible library export** (audible-cli or Libation, since
-0.76.0) are supported today. Next is looking up an audiobook's details and cover
-by its ASIN, so an imported title fills in what the export leaves out. Shelf
-stores the catalogue record, never the audio.
-
 ## Reading life
 
 **Planned.** Ratings, did-not-finish and paused states, re-reads, a reading
@@ -121,11 +113,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.81.0](https://github.com/dgahagan/shelf/releases/tag/v0.81.0) | **Shelf on a Raspberry Pi.** The Docker image is published for `arm64` as well as `amd64`, so an ARM64 machine such as a Raspberry Pi pulls it directly instead of building it. Contributed by @Chrisser73. |
+| [0.80.0](https://github.com/dgahagan/shelf/releases/tag/v0.80.0) | **Audiobook covers and details from Audible.** An audiobook with an ASIN, such as one from a Libation or audible-cli import, gets its cover from the Audible catalogue, and **Fill details from Audible** fills its empty fields. Choose your Audible marketplace in Settings. Also: Photo Intake, Shelf Fill and Store Mode in Italian, contributed by @vjandrea. |
 | [0.79.1](https://github.com/dgahagan/shelf/releases/tag/v0.79.1) | **"Also available as" follows Related Media.** Linking or unlinking another format on an item updates its "Also available as" links straight away, without a reload. Contributed by @sudo-rpaisley. |
 | [0.79.0](https://github.com/dgahagan/shelf/releases/tag/v0.79.0) | **The Scan page in Italian.** The mode tabs, the form, and every card and message a scan returns are translated, and the labels follow the mode and the media type. Contributed by @vjandrea. |
 | [0.78.3](https://github.com/dgahagan/shelf/releases/tag/v0.78.3) | **Keyboard-shortcut help in every language.** In Italian or Chinese, the **?** button now opens the shortcut list, and its close button and backdrop close it. The list opens centred and fits a phone screen. Shortcuts also stop firing while Ctrl, Cmd or Alt is held, so Ctrl+F and the browser's other shortcuts work again. |
-| [0.78.1](https://github.com/dgahagan/shelf/releases/tag/v0.78.1) | **The valuation report counts a value of 0.** An item you valued at 0 now counts as priced at $0.00 instead of being filled in with the collection's average price, so the report's totals are no longer too high. |
-| [0.78.0](https://github.com/dgahagan/shelf/releases/tag/v0.78.0) | **Browse finds items with no location.** The Location filter lists **No location** with a count, so items that were never filed can be found and moved in bulk, contributed by @larsvilhuber. Also: re-adding a video game with no platform reports it as already in your collection instead of adding a second copy, and the item edit page and manual add in Italian, contributed by @vjandrea. |
 ---
 
 ## Suggesting something

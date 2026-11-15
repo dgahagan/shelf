@@ -6,11 +6,32 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.81.0] - 2026-11-14
+
+Shelf's image was published for x86-64 only, so a Raspberry Pi or another
+ARM64 machine had to build it from source. It is now published for both, a
+community contribution from [@Chrisser73](https://github.com/Chrisser73). This
+release also locks every dependency, so the packages inside an image no
+longer depend on the day it was built.
+
 ### Added
 
 - **The Docker image is now published for `linux/arm64` as well as
   `linux/amd64`.** A Raspberry Pi or another ARM64 device can pull
-  `dangahagan/shelf` directly instead of building the image locally.
+  `dangahagan/shelf` directly instead of building the image locally. The same
+  tag serves both; Docker picks the right one. Contributed by
+  [@Chrisser73](https://github.com/Chrisser73) in
+  [#186](https://github.com/dgahagan/shelf/pull/186).
+
+### Changed
+
+- **Every dependency is now installed from a hash-checked lock.** The image
+  build installs all packages, direct and indirect, at pinned versions whose
+  hashes must match, so two builds of the same tag get the same packages, and
+  `make check-deps` audits exactly that set. A from-source install is
+  hash-checked too and needs Python 3.12 or later. Contributors change
+  dependencies in `requirements.in` / `requirements-dev.in` and run
+  `make lock`.
 
 ## [0.80.0] - 2026-11-13
 
@@ -5848,6 +5869,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.81.0]: https://github.com/dgahagan/shelf/releases/tag/v0.81.0
 [0.80.0]: https://github.com/dgahagan/shelf/releases/tag/v0.80.0
 [0.79.1]: https://github.com/dgahagan/shelf/releases/tag/v0.79.1
 [0.79.0]: https://github.com/dgahagan/shelf/releases/tag/v0.79.0

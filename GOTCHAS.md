@@ -4059,7 +4059,7 @@ grep -n "__guardToastAppends" tests/e2e/test_component_load_guard.py
     shape returns in **29 ms** with the row unmoved; D's in ~10 ms with the
     **pre-swap** grid still on screen.
   - **B is redundant post-click cleanup, not a race repair** — green both
-    ways. Playwright 1.52 (`requirements-dev.txt:8`) documents `click()` as
+    ways. Playwright 1.52 (pinned in `requirements-dev.in`) documents `click()` as
     waiting for a navigation it *directly initiates*, and the measured
     baseline click alone spans 1.560s against the 1500 ms delay. The pre-armed
     `expect_navigation` keeps the intended event visible in the test; it does
@@ -6570,6 +6570,74 @@ python -m pytest tests/e2e/test_store_pwa.py -m e2e -q -k flush_reads_owned_row_
 
 - **Status:** documented. **Lint candidate** for `make check-tests`: the
   Verify line above is the whole check.
+
+## G158 — When mutation-testing `--require-hashes` against the universal lock
+
+- **Rule:** to prove the hash check bites, rewrite one whole requirement block
+  in `requirements.txt` as a single unhashed line (`bcrypt==4.3.0`, no trailing
+  `\`, no `--hash=` lines). Do not delete one arbitrary `--hash=` line.
+- **Why:** the lock is compiled `--universal`, so each pin lists a hash for
+  every wheel and sdist. pip accepts a download that matches **any** listed
+  hash, so deleting one line usually removes some other platform's artifact,
+  and the build stays green. That green reads as "`--require-hashes` does
+  nothing" when the mutation was the defect (G108).
+- **Evidence:** `dep-lock-hashes` plan review (codex R1) and T2, `7b8838a`,
+  2026-11-14. The whole-block rewrite failed `docker build` with
+  `Hashes are required in --require-hashes mode … bcrypt==4.3.0`.
+  The Verify line needs `--ignore-installed`: in an env that already has
+  `bcrypt`, pip never downloads it, checks no hash, and the dry run passes —
+  the same false green one level down (hit while writing this entry).
+- **Verify:**
+
+```bash
+python - <<'PY'
+import re,subprocess,tempfile
+s=open("requirements.txt").read()
+s=re.sub(r"bcrypt==4\.3\.0 \\\n(\s+--hash=\S+( \\)?\n)+", "bcrypt==4.3.0\n", s)
+f=tempfile.NamedTemporaryFile("w",suffix=".txt",delete=False); f.write(s); f.close()
+r=subprocess.run(["pip","install","--dry-run","--ignore-installed","--require-hashes","-r",f.name],capture_output=True,text=True)
+print("trap holds" if "Hashes are required" in r.stderr and "bcrypt" in r.stderr else "check: no hash error")
+PY
+```
+
+- **Status:** documented.
+
+## G159 — When `make check-lock` passes and you read it as "the hashes are right"
+
+- **Rule:** `check-lock` proves the locks match their `.in` sources: versions,
+  markers and the set of pins. It does **not** prove the `--hash=` lines are
+  real. Never hand-edit a hash in `requirements*.txt`, and never trust a green
+  `check-lock` as evidence that one is genuine.
+- **Why:** `check-lock` (and `make lock` itself) compiles over the existing
+  output, and uv treats that output as preferences: it keeps the hash lines
+  verbatim, even with `--refresh`. An invented or deleted hash therefore
+  survives both, and `make lock` does not repair it. Because pip accepts any
+  listed hash (G158), a deleted hash for a wheel amd64 never selects also
+  passes the amd64 CI install. It fails only at the arm64 publish on the tag.
+  A bad hash can block an install but never admit a wrong package, which is
+  why this is a trap and not a hole.
+- **Evidence:** `dep-lock-hashes` diff review, codex M1, 2026-11-14 (branch
+  head `346ca86`). Changing the first `aiofiles` digest's last character left
+  `make check-lock` at exit 0, and a recompile with `--refresh` re-emitted it.
+  Deferred, not fixed. The fix is to compile fresh hashes from the bare pins and
+  compare the output with comments stripped (ROADMAP §0 O2 follow-up).
+- **Repair today:** reduce the suspect block to a bare `name==version` line
+  (drop every `--hash=` under it), then run `make lock`. uv has no preferred
+  hashes for that pin, so it fetches them fresh from the index. Tested on
+  `aiofiles`: the result matched the original lock byte for byte.
+- **Verify** (prints `trap holds` while the defect stands):
+
+```bash
+d=$(mktemp -d); cp requirements.in requirements.txt "$d"; cd "$d"
+h=$(grep -om1 'sha256:[0-9a-f]*' requirements.txt); bad="${h%?}0"; [ "$bad" = "$h" ] && bad="${h%?}1"
+sed -i "s/$h/$bad/" requirements.txt
+python -m uv pip compile --universal --python-version 3.12 --generate-hashes --quiet \
+  --custom-compile-command "make lock" requirements.in -o requirements.txt
+grep -q "$bad" requirements.txt && echo "trap holds" || echo "check: uv replaced the invented hash"
+cd - >/dev/null; rm -rf "$d"
+```
+
+- **Status:** documented. Lint candidate: the fixed `check-lock` would be the lint.
 
 ## Graveyard
 

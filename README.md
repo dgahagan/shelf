@@ -372,7 +372,9 @@ make install-playwright   # downloads headless Chromium
 | `make test-e2e` | Playwright E2E browser tests against a live local server |
 | `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `make test-all` | `test` and `test-e2e` |
-| `make check-deps` | `pip-audit` vulnerability scan of `requirements.txt` |
+| `make check-deps` | `pip-audit` vulnerability scan of the locked dependency set (`requirements.txt`) |
+| `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
+| `make check-lock` | Fail if a lock is not what `make lock` produces |
 | `make check-licenses` | License compliance report |
 | `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
 | `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |

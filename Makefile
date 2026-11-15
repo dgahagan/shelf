@@ -17,7 +17,7 @@ PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n \
-        badges check-badges check-roadmap \
+        badges check-badges check-roadmap lock lock-upgrade check-lock \
         checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
@@ -89,12 +89,42 @@ test-contract:
 test-all: test test-e2e
 
 # ---------------------------------------------------------------------------
+# Dependency locks
+# ---------------------------------------------------------------------------
+# requirements.txt and requirements-dev.txt are GENERATED from the .in files by
+# uv; never edit them by hand. The dev lock is compiled constrained by the
+# runtime lock so shared transitives resolve to one version.
+# check-lock compiles into temp COPIES of the committed locks, not empty files:
+# uv reads an existing -o file as pin preferences, so an empty target would take
+# the newest release of every transitive and fail whenever PyPI moves. The
+# compile runs inside the temp dir with relative paths because uv writes the -c
+# path into the dev lock's "via" comments.
+UV_COMPILE = python -m uv pip compile --universal --python-version 3.12 --generate-hashes --quiet --custom-compile-command "make lock"
+
+lock:
+	$(UV_COMPILE) requirements.in -o requirements.txt
+	$(UV_COMPILE) requirements-dev.in -c requirements.txt -o requirements-dev.txt
+
+lock-upgrade:
+	$(UV_COMPILE) --upgrade requirements.in -o requirements.txt
+	$(UV_COMPILE) --upgrade requirements-dev.in -c requirements.txt -o requirements-dev.txt
+
+check-lock:
+	@set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	cp requirements.in requirements-dev.in requirements.txt requirements-dev.txt "$$tmp/"; \
+	(cd "$$tmp" && $(UV_COMPILE) requirements.in -o requirements.txt && \
+	$(UV_COMPILE) requirements-dev.in -c requirements.txt -o requirements-dev.txt); \
+	diff -u requirements.txt "$$tmp/requirements.txt" && \
+	diff -u requirements-dev.txt "$$tmp/requirements-dev.txt" || \
+	{ echo "ERROR: a lock is not what 'make lock' produces from the .in files. Run 'make lock' and commit both .txt files."; exit 1; }
+
+# ---------------------------------------------------------------------------
 # Static checks
 # ---------------------------------------------------------------------------
 
 check-deps:
 	@mkdir -p $(DOCS)
-	set -o pipefail && pip-audit -r requirements.txt --desc 2>&1 | tee $(DOCS)/dep-audit-$(DATE).txt
+	set -o pipefail && pip-audit -r requirements.txt --require-hashes --disable-pip --desc 2>&1 | tee $(DOCS)/dep-audit-$(DATE).txt
 
 check-licenses:
 	@mkdir -p $(DOCS)
@@ -170,7 +200,7 @@ checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-versio
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.
-checks: checks-fast check-deps check-licenses
+checks: checks-fast check-lock check-deps check-licenses
 
 # ---------------------------------------------------------------------------
 # Claude agent reports
