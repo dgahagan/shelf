@@ -1,18 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Series — Shelf{% endblock %}
+{% block title %}{{ _('Series') }} — Shelf{% endblock %}
 {% block content %}
 {% set can_edit = user and user.role in ('admin', 'editor') %}
 {% set radar = radar_on and has_hardcover %}
 <div class="mb-6">
-    <h1 class="text-2xl font-bold">Series <span class="text-shelf-muted text-lg font-normal">({{ series_list|length }})</span></h1>
-    <p class="text-sm text-shelf-muted mt-1">Your library grouped by series. Gaps are inferred from position numbers{% if has_hardcover %}; use <span class="text-shelf-accent2">Check completeness</span> to compare against Hardcover's full series listing{% endif %}.</p>
+    <h1 class="text-2xl font-bold">{{ _('Series') }} <span class="text-shelf-muted text-lg font-normal">({{ series_list|length }})</span></h1>
+    <p class="text-sm text-shelf-muted mt-1">{% if has_hardcover %}{{ _("Your library grouped by series. Gaps are inferred from position numbers; use <span class=\"text-shelf-accent2\">Check completeness</span> to compare against Hardcover's full series listing.") }}{% else %}{{ _('Your library grouped by series. Gaps are inferred from position numbers.') }}{% endif %}</p>
     {% if radar %}
     <div class="flex flex-wrap items-center gap-3 mt-3">
-        <a href="/upcoming" class="text-sm text-shelf-accent2 hover:underline" data-testid="upcoming-link">Upcoming releases</a>
+        <a href="/upcoming" class="text-sm text-shelf-accent2 hover:underline" data-testid="upcoming-link">{{ _('Upcoming releases') }}</a>
         {% if can_edit %}
         <button type="button" hx-post="/api/series/watch-all" hx-swap="none"
                 class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text hover:border-shelf-accent/50 transition-colors"
-                data-testid="watch-all">Watch all complete series</button>
+                data-testid="watch-all">{{ _('Watch all complete series') }}</button>
         {% endif %}
     </div>
     {% endif %}
@@ -20,8 +20,8 @@
 
 {% if not series_list %}
 <div class="text-center py-16 text-shelf-muted">
-    <p class="text-lg mb-1">No series yet</p>
-    <p class="text-sm">Items gain a series when metadata lookup finds one, or when you set it manually while editing.</p>
+    <p class="text-lg mb-1">{{ _('No series yet') }}</p>
+    <p class="text-sm">{{ _('Items gain a series when metadata lookup finds one, or when you set it manually while editing.') }}</p>
 </div>
 {% endif %}
 
@@ -30,13 +30,13 @@
 <div class="flex items-center gap-2 mb-4" data-testid="series-filter">
     <button @click="setFilter('all')" data-testid="filter-all"
             :class="filter === 'all' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">All</button>
+            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">{{ _('All') }}</button>
     <button @click="setFilter('complete')" data-testid="filter-complete"
             :class="filter === 'complete' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">Complete</button>
+            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">{{ _('Complete') }}</button>
     <button @click="setFilter('incomplete')" data-testid="filter-incomplete"
             :class="filter === 'incomplete' ? 'bg-shelf-accent/20 text-shelf-accent2' : 'text-shelf-muted hover:text-shelf-text'"
-            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">Incomplete</button>
+            class="px-3 py-1 rounded-lg text-xs border border-shelf-border transition-colors">{{ _('Incomplete') }}</button>
 </div>
 {% endif %}
 
@@ -63,21 +63,21 @@
                        breaks mid-badge on a narrow screen, dropping "Complete"
                        to the next line and clipping the tick at the card edge. #}
                     <span x-show="isComplete" style="display:none" data-testid="series-complete-badge"
-                          class="ml-1 align-middle inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-success/20 text-shelf-success">&check; Complete</span>
+                          class="ml-1 align-middle inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-success/20 text-shelf-success">&check; {{ _('Complete') }}</span>
                     <span x-show="showMissing" style="display:none" data-testid="series-missing-badge"
                           x-text="missingLabel"
                           class="ml-1 align-middle inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-warning/20 text-shelf-warning"></span>
                 </h2>
                 <p class="text-xs text-shelf-muted mt-0.5">
-                    {{ s.owned_count }} owned{% if s.wishlist_count %} · {{ s.wishlist_count }} wishlisted{% endif %}
+                    {{ _('%(n)s owned', n=s.owned_count) }}{% if s.wishlist_count %} · {{ _('%(n)s wishlisted', n=s.wishlist_count) }}{% endif %}
                     {% if s.gaps %}
-                    · <span class="text-shelf-warning">possibly missing
+                    · <span class="text-shelf-warning">{{ _('possibly missing') }}
                         {%- for g in s.gaps[:8] %} #{{ g }}{% if not loop.last %},{% endif %}{% endfor %}
-                        {%- if s.gaps|length > 8 %} +{{ s.gaps|length - 8 }} more{% endif %}</span>
+                        {%- if s.gaps|length > 8 %} {{ _('+%(n)s more', n=s.gaps|length - 8) }}{% endif %}</span>
                     {% endif %}
                 </p>
                 {% if radar and s.watch_state == 'not_found' %}
-                <p class="text-xs text-shelf-warning mt-0.5" data-testid="watch-not-found">Not found on Hardcover</p>
+                <p class="text-xs text-shelf-warning mt-0.5" data-testid="watch-not-found">{{ _('Not found on Hardcover') }}</p>
                 {% endif %}
             </div>
             <div class="flex flex-wrap items-center gap-2">
@@ -86,15 +86,15 @@
                         class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text hover:border-shelf-accent/50 transition-colors disabled:opacity-50"
                         data-testid="watch-series" x-text="watchLabel">{{ 'Watching' if s.watched else 'Watch for new volumes' }}</button>
                 {% elif radar and s.watched %}
-                <span class="inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-accent/20 text-shelf-accent2" data-testid="watching-pill">Watching</span>
+                <span class="inline-block whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium bg-shelf-accent/20 text-shelf-accent2" data-testid="watching-pill">{{ _('Watching') }}</span>
                 {% endif %}
                 {% if has_hardcover and can_edit %}
                 <button @click="fetchDescription"
                         :disabled="fetching"
                         class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text hover:border-shelf-accent/50 transition-colors disabled:opacity-50"
                         data-testid="fetch-synopsis">
-                    <span x-show="!fetching">Fetch synopsis</span>
-                    <span x-show="fetching" style="display:none">Fetching&hellip;</span>
+                    <span x-show="!fetching">{{ _('Fetch synopsis') }}</span>
+                    <span x-show="fetching" style="display:none">{{ _('Fetching…') }}</span>
                 </button>
                 {% endif %}
                 {% if has_hardcover %}
@@ -102,14 +102,14 @@
                         :disabled="checking"
                         class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors disabled:opacity-50"
                         data-testid="check-series">
-                    <span x-show="!checking">Check completeness</span>
-                    <span x-show="checking" style="display:none">Checking&hellip;</span>
+                    <span x-show="!checking">{{ _('Check completeness') }}</span>
+                    <span x-show="checking" style="display:none">{{ _('Checking…') }}</span>
                 </button>
                 {% endif %}
                 {% if can_edit %}
                 <!-- Rename/disband are local mutations and do not depend on Hardcover. -->
                 <div class="relative">
-                    <button @click="toggleMenu" aria-label="Series actions"
+                    <button @click="toggleMenu" aria-label="{{ _('Series actions') }}"
                             class="px-2 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs leading-none hover:text-shelf-text hover:border-shelf-accent/50 transition-colors"
                             data-testid="series-actions">&vellip;</button>
                     <!-- Backdrop closes the menu on any outside click. -->
@@ -122,10 +122,10 @@
                                 data-testid="toggle-complete" x-text="completeLabel"></button>
                         <button @click="startRename"
                                 class="block w-full text-left px-3 py-1.5 text-xs text-shelf-text hover:bg-shelf-hover"
-                                data-testid="rename-series">Rename series&hellip;</button>
+                                data-testid="rename-series">{{ _('Rename series…') }}</button>
                         <button @click="startRemoveAll"
                                 class="block w-full text-left px-3 py-1.5 text-xs text-shelf-error hover:bg-shelf-hover"
-                                data-testid="remove-all">Remove all books&hellip;</button>
+                                data-testid="remove-all">{{ _('Remove all books…') }}</button>
                     </div>
                 </div>
                 {% endif %}
@@ -135,19 +135,19 @@
         {% if can_edit %}
         <!-- Rename / merge -->
         <div x-show="renaming" style="display:none" class="mt-3 border-t border-shelf-border pt-3">
-            <p class="text-xs text-shelf-muted mb-1">Rename this series. Typing the name of another series merges the two.</p>
-            <input type="text" x-model="renameDraft" list="series-names" placeholder="Series name"
+            <p class="text-xs text-shelf-muted mb-1">{{ _('Rename this series. Typing the name of another series merges the two.') }}</p>
+            <input type="text" x-model="renameDraft" list="series-names" placeholder="{{ _('Series name') }}"
                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50"
                    data-testid="rename-input">
             <p x-show="mergeTarget" style="display:none" class="text-xs text-shelf-warning mt-1">
-                Both series' books will be combined under <span x-text="mergeTarget"></span>, keeping their positions as-is.
+                {{ _("Both series' books will be combined under") }} <span x-text="mergeTarget"></span>{{ _(', keeping their positions as-is.') }}
             </p>
             <div class="flex items-center gap-2 mt-2">
                 <button @click="submitRename" :disabled="renameSaving"
                         class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-50"
                         data-testid="rename-submit" x-text="renameLabel"></button>
                 <button @click="cancelRename"
-                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs">Cancel</button>
+                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs">{{ _('Cancel') }}</button>
                 <span x-show="renameError" style="display:none" class="text-xs text-shelf-error" x-text="renameError"></span>
             </div>
         </div>
@@ -155,18 +155,18 @@
         <!-- Remove all books: inline confirm, deliberately more guarded than
              the bulk bar's Clear because it acts on the whole series. -->
         <div x-show="confirmingRemove" style="display:none" class="mt-3 border-t border-shelf-border pt-3">
-            <p class="text-sm font-medium">Remove all books from this series?</p>
+            <p class="text-sm font-medium">{{ _('Remove all books from this series?') }}</p>
             <p class="text-xs text-shelf-muted mt-1">
-                <span x-text="removeCountLabel"></span> will no longer belong to &ldquo;{{ s.name }}&rdquo;. The books stay in your library.
+                <span x-text="removeCountLabel"></span> {{ _('will no longer belong to &ldquo;%(name)s&rdquo;. The books stay in your library.', name=s.name) }}
             </p>
             <div class="flex items-center gap-2 mt-2">
                 <button @click="cancelRemoveAll"
-                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs">Cancel</button>
+                        class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs">{{ _('Cancel') }}</button>
                 <button @click="submitRemoveAll" :disabled="removing"
                         class="px-3 py-1 bg-shelf-error text-white rounded-lg text-xs disabled:opacity-50"
                         data-testid="remove-all-confirm">
-                    <span x-show="!removing">Remove books</span>
-                    <span x-show="removing" style="display:none">Removing&hellip;</span>
+                    <span x-show="!removing">{{ _('Remove books') }}</span>
+                    <span x-show="removing" style="display:none">{{ _('Removing…') }}</span>
                 </button>
                 <span x-show="removeError" style="display:none" class="text-xs text-shelf-error" x-text="removeError"></span>
             </div>
@@ -182,25 +182,25 @@
                 <button @click="startEdit"
                         class="text-xs text-shelf-accent2 hover:text-shelf-text transition-colors mt-1"
                         data-testid="edit-synopsis">
-                    <span x-show="description">Edit synopsis</span>
-                    <span x-show="!description">+ Add synopsis</span>
+                    <span x-show="description">{{ _('Edit synopsis') }}</span>
+                    <span x-show="!description">{{ _('+ Add synopsis') }}</span>
                 </button>
                 {% endif %}
             </div>
             {% if can_edit %}
             <div x-show="editing" style="display:none">
-                <textarea x-model="draft" rows="4" placeholder="What is this series about?"
+                <textarea x-model="draft" rows="4" placeholder="{{ _('What is this series about?') }}"
                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50"
                           data-testid="synopsis-input"></textarea>
                 <div class="flex items-center gap-2 mt-2">
                     <button @click="saveDescription" :disabled="saving"
                             class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs disabled:opacity-50"
                             data-testid="save-synopsis">
-                        <span x-show="!saving">Save</span>
-                        <span x-show="saving" style="display:none">Saving&hellip;</span>
+                        <span x-show="!saving">{{ _('Save') }}</span>
+                        <span x-show="saving" style="display:none">{{ _('Saving…') }}</span>
                     </button>
                     <button @click="cancelEdit"
-                            class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs">Cancel</button>
+                            class="px-3 py-1 bg-shelf-bg border border-shelf-border text-shelf-muted rounded-lg text-xs">{{ _('Cancel') }}</button>
                     <span x-show="descError" style="display:none" class="text-xs text-shelf-error" x-text="descError"></span>
                 </div>
             </div>
@@ -223,7 +223,7 @@
                     <span class="absolute top-1 left-1 bg-black/70 text-white text-[10px] px-1 rounded-sm">#{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}</span>
                     {% endif %}
                     {% if item.wishlisted %}
-                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded-sm font-medium">Wishlist</span>
+                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded-sm font-medium">{{ _('Wishlist') }}</span>
                     {% endif %}
                 </div>
             </a>
@@ -237,9 +237,9 @@
         <template x-if="result">
             <div class="mt-3 border-t border-shelf-border pt-3">
                 <p class="text-sm text-shelf-muted mb-2">
-                    Hardcover lists <span class="text-shelf-text" x-text="result.total"></span> volumes —
-                    <span x-show="result.missing === 0" class="text-shelf-success">you have them all!</span>
-                    <span x-show="result.missing > 0" class="text-shelf-warning"><span x-text="result.missing"></span> missing:</span>
+                    {{ _('Hardcover lists') }} <span class="text-shelf-text" x-text="result.total"></span> {{ _('volumes —') }}
+                    <span x-show="result.missing === 0" class="text-shelf-success">{{ _('you have them all!') }}</span>
+                    <span x-show="result.missing > 0" class="text-shelf-warning"><span x-text="result.missing"></span> {{ _('missing:') }}</span>
                 </p>
                 <div class="space-y-1.5">
                     <template x-for="b in missingBooks" :key="b.hardcover_book_id">
@@ -262,9 +262,9 @@
                             <button x-show="!added[b.hardcover_book_id]"
                                     @click="addToWishlist(b)"
                                     class="ml-auto px-2 py-0.5 bg-shelf-accent/20 text-shelf-accent2 rounded-sm text-xs hover:bg-shelf-accent/30 transition-colors shrink-0">
-                                + Wishlist
+                                {{ _('+ Wishlist') }}
                             </button>
-                            <span x-show="added[b.hardcover_book_id]" style="display:none" class="ml-auto text-xs text-shelf-success shrink-0">Wishlisted</span>
+                            <span x-show="added[b.hardcover_book_id]" style="display:none" class="ml-auto text-xs text-shelf-success shrink-0">{{ _('Wishlisted') }}</span>
                             {% endif %}
                             </div>
                         </div>
@@ -283,11 +283,11 @@
     {% if unassigned_total %}
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-5"
          data-testid="unassigned-card">
-        <h2 class="text-lg font-semibold">Unassigned</h2>
+        <h2 class="text-lg font-semibold">{{ _('Unassigned') }}</h2>
         <p class="text-xs text-shelf-muted mt-0.5" data-testid="unassigned-count">
-            {{ unassigned_total }} book{{ '' if unassigned_total == 1 else 's' }} with no series
-            {%- if unassigned_total > unassigned_items|length %} · showing {{ unassigned_items|length }}{% endif %}</p>
-        <p class="text-sm text-shelf-muted mt-2">These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card.</p>
+            {{ ngettext('%(num)s book with no series', '%(num)s books with no series', unassigned_total) }}
+            {%- if unassigned_total > unassigned_items|length %} · {{ _('showing %(n)s', n=unassigned_items|length) }}{% endif %}</p>
+        <p class="text-sm text-shelf-muted mt-2">{{ _("These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card.") }}</p>
         <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
             {% for item in unassigned_items %}
             <a href="/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
@@ -300,7 +300,7 @@
                     </div>
                     {% endif %}
                     {% if item.wishlisted %}
-                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded-sm font-medium">Wishlist</span>
+                    <span class="absolute bottom-1 left-1 bg-shelf-warning/90 text-black text-[9px] px-1 rounded-sm font-medium">{{ _('Wishlist') }}</span>
                     {% endif %}
                 </div>
             </a>

@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-13 17:01-0500\n"
+"PO-Revision-Date: 2026-11-15 19:57+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -49,7 +49,8 @@ msgstr "价值"
 #: app/templates/browse.html:49
 #: app/templates/fragments/manual_add_form.html:155
 #: app/templates/item_edit.html:79 app/templates/item_edit.html:217
-#: app/templates/item_edit.html:221
+#: app/templates/item_edit.html:221 app/templates/series.html:2
+#: app/templates/series.html:7 app/templates/upcoming.html:6
 msgid "Series"
 msgstr "系列"
 
@@ -179,7 +180,7 @@ msgstr ""
 msgid "Want to Watch"
 msgstr "想看"
 
-#: app/config.py:55
+#: app/config.py:55 app/templates/series.html:89
 msgid "Watching"
 msgstr "在看"
 
@@ -235,7 +236,8 @@ msgstr "开发商"
 msgid "Director"
 msgstr "导演"
 
-#: app/config.py:131
+#: app/config.py:131 app/templates/fragments/music_discogs.html:74
+#: app/templates/music.html:22 app/templates/music.html:23
 msgid "Artist"
 msgstr "艺术家"
 
@@ -261,15 +263,17 @@ msgstr "定位上架"
 msgid "Store"
 msgstr "书店模式"
 
-#: app/nav.py:42
+#: app/nav.py:42 app/templates/music.html:2 app/templates/music.html:8
+#: app/templates/music_item.html:2
 msgid "Music"
 msgstr "音乐"
 
-#: app/nav.py:43
+#: app/nav.py:43 app/templates/periodical_publication.html:2
+#: app/templates/periodicals.html:2 app/templates/periodicals.html:8
 msgid "Periodicals"
 msgstr "期刊"
 
-#: app/nav.py:44
+#: app/nav.py:44 app/templates/discover.html:2
 msgid "Discover"
 msgstr "发现"
 
@@ -388,10 +392,11 @@ msgstr "未知语言"
 msgid "Due date is out of range"
 msgstr ""
 
-#: app/routers/checkouts.py:137 app/routers/item_copies.py:174
-#: app/routers/item_copies.py:231 app/routers/items_catalog.py:542
-#: app/routers/related_media.py:44 app/routers/related_media.py:80
-#: app/routers/related_media.py:103 app/routers/related_media.py:120
+#: app/routers/checkouts.py:137 app/routers/hardcover.py:250
+#: app/routers/item_copies.py:174 app/routers/item_copies.py:231
+#: app/routers/items_catalog.py:542 app/routers/related_media.py:44
+#: app/routers/related_media.py:80 app/routers/related_media.py:103
+#: app/routers/related_media.py:120
 msgid "Item not found"
 msgstr ""
 
@@ -405,6 +410,22 @@ msgstr ""
 
 #: app/routers/checkouts.py:170 app/routers/checkouts.py:179
 msgid "Checkout already checked in"
+msgstr ""
+
+#: app/routers/hardcover.py:92
+msgid "Title required"
+msgstr ""
+
+#: app/routers/hardcover.py:201 app/templates/fragments/scan_result.html:217
+msgid "Added to wishlist"
+msgstr ""
+
+#: app/routers/hardcover.py:203
+msgid "Already in your library"
+msgstr ""
+
+#: app/routers/hardcover.py:248
+msgid "Hardcover API token required"
 msgstr ""
 
 #: app/routers/intake.py:64
@@ -625,7 +646,7 @@ msgstr ""
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/item_copies.html:108
 #: app/templates/fragments/item_copy_edit.html:40 app/templates/intake.html:56
-#: app/templates/intake.html:203
+#: app/templates/intake.html:203 app/templates/music.html:75
 msgid "No location"
 msgstr ""
 
@@ -661,6 +682,10 @@ msgstr ""
 #: app/routers/items_scan_modes.py:264
 #, python-format
 msgid "Marked as %(status)s"
+msgstr ""
+
+#: app/routers/periodicals.py:120
+msgid "This periodical issue is already in the collection"
 msgstr ""
 
 #: app/routers/related_media.py:99
@@ -711,6 +736,56 @@ msgstr ""
 #: app/routers/scan_inventory.py:212
 #, python-format
 msgid "Was at %(old)s, updated to %(new)s"
+msgstr ""
+
+#: app/routers/series.py:157 app/routers/series.py:329
+#: app/routers/series.py:384 app/routers/series.py:479
+#: app/routers/series.py:575 app/routers/series.py:606
+msgid "Series name required"
+msgstr ""
+
+#: app/routers/series.py:162 app/routers/series.py:611
+msgid "Hardcover integration not configured"
+msgstr ""
+
+#: app/routers/series.py:174
+msgid "Series not found on Hardcover (or lookup failed)"
+msgstr ""
+
+#: app/routers/series.py:388
+msgid "complete must be '0' or '1'"
+msgstr ""
+
+#: app/routers/series.py:397 app/routers/series.py:496
+#: app/routers/series.py:584
+msgid "Series not found"
+msgstr ""
+
+#: app/routers/series.py:452
+#, python-format
+msgid "Watching %(name)s"
+msgstr ""
+
+#: app/routers/series.py:452
+#, python-format
+msgid "Stopped watching %(name)s"
+msgstr ""
+
+#: app/routers/series.py:481
+msgid "New series name required"
+msgstr ""
+
+#: app/routers/series.py:484
+#, python-format
+msgid "Series name too long (max %(max)s chars)"
+msgstr ""
+
+#: app/routers/series.py:488
+msgid "That is already the series name"
+msgstr ""
+
+#: app/routers/series.py:619
+msgid "Hardcover has no synopsis for this series — add one below"
 msgstr ""
 
 #: app/routers/shelf_fill.py:22
@@ -991,6 +1066,7 @@ msgid "Type or pick a series..."
 msgstr "输入或选择系列…"
 
 #: app/templates/browse.html:61 app/templates/browse.html:76
+#: app/templates/music.html:36
 msgid "Clear"
 msgstr "清除"
 
@@ -1066,6 +1142,7 @@ msgstr "全部位置"
 
 #: app/templates/browse.html:233
 #: app/templates/fragments/filter_counts_oob.html:26
+#: app/templates/series.html:33
 msgid "All"
 msgstr "全部"
 
@@ -1078,6 +1155,7 @@ msgstr "已拥有"
 #: app/templates/fragments/filter_counts_oob.html:28
 #: app/templates/fragments/item_card.html:7
 #: app/templates/fragments/item_row.html:51 app/templates/item_detail.html:58
+#: app/templates/series.html:226 app/templates/series.html:303
 msgid "Wishlist"
 msgstr "心愿单"
 
@@ -1140,6 +1218,34 @@ msgstr "年份（从旧到新）"
 msgid "Clear all"
 msgstr "全部清除"
 
+#: app/templates/discover.html:5
+msgid "Discover Books"
+msgstr ""
+
+#: app/templates/discover.html:10
+msgid "Connect your Hardcover account to search for books and add them to your wishlist."
+msgstr ""
+
+#: app/templates/discover.html:11
+msgid "Go to Settings"
+msgstr ""
+
+#: app/templates/discover.html:13
+msgid "Hardcover is not connected. Ask an administrator to configure the integration."
+msgstr ""
+
+#: app/templates/discover.html:20
+msgid "Search by title or author..."
+msgstr ""
+
+#: app/templates/discover.html:31
+msgid "Search Hardcover's catalog to find books and add them to your wishlist."
+msgstr ""
+
+#: app/templates/discover.html:33
+msgid "Search Hardcover's catalog to explore books."
+msgstr ""
+
 #: app/templates/intake.html:6
 msgid "Photograph books on a shelf, in a stack, or face-up &mdash; front cover is fine. The vision model reads spines and recognizes covers; a readable back-cover barcode gives exact-edition metadata. Review the list, then confirm."
 msgstr ""
@@ -1178,7 +1284,8 @@ msgid "Capture"
 msgstr ""
 
 #: app/templates/fragments/item_copy_edit.html:103 app/templates/intake.html:49
-#: app/templates/item_edit.html:377
+#: app/templates/item_edit.html:377 app/templates/series.html:150
+#: app/templates/series.html:164 app/templates/series.html:203
 msgid "Cancel"
 msgstr ""
 
@@ -1464,7 +1571,7 @@ msgstr ""
 msgid "Show less"
 msgstr ""
 
-#: app/templates/item_detail.html:142
+#: app/templates/item_detail.html:142 app/templates/series.html:96
 msgid "Fetch synopsis"
 msgstr ""
 
@@ -1791,7 +1898,7 @@ msgstr ""
 msgid "Close scanner"
 msgstr ""
 
-#: app/templates/item_edit.html:266
+#: app/templates/item_edit.html:266 app/templates/music.html:27
 msgid "UPC / EAN"
 msgstr ""
 
@@ -1847,7 +1954,7 @@ msgstr ""
 
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
-#: app/templates/item_edit.html:374
+#: app/templates/item_edit.html:374 app/templates/series.html:199
 msgid "Save"
 msgstr "保存"
 
@@ -1872,6 +1979,192 @@ msgstr "用户名"
 #: app/templates/setup.html:40
 msgid "Password"
 msgstr "密码"
+
+#: app/templates/music.html:7 app/templates/periodicals.html:7
+msgid "Catalogue"
+msgstr ""
+
+#: app/templates/music.html:9
+msgid "Search exact MusicBrainz releases and keep the pressing, medium and track list you actually own."
+msgstr ""
+
+#: app/templates/music.html:11
+msgid "Browse all media"
+msgstr ""
+
+#: app/templates/music.html:15
+msgid "Find a release"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:69 app/templates/music.html:18
+#: app/templates/music.html:19
+msgid "Release title"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:79 app/templates/music.html:26
+msgid "Barcode"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:84 app/templates/music.html:30
+#: app/templates/music.html:31
+msgid "Catalogue number"
+msgstr ""
+
+#: app/templates/music.html:35
+msgid "Search MusicBrainz"
+msgstr ""
+
+#: app/templates/music.html:46
+msgid "Matching releases"
+msgstr ""
+
+#: app/templates/music.html:68
+msgid "Choose format"
+msgstr ""
+
+#: app/templates/music.html:78
+msgid "Add release"
+msgstr ""
+
+#: app/templates/music.html:90
+msgid "Your music"
+msgstr ""
+
+#: app/templates/music.html:91
+#, python-format
+msgid "%(n)s shown"
+msgstr ""
+
+#: app/templates/music.html:102 app/templates/periodical_publication.html:36
+msgid "View"
+msgstr ""
+
+#: app/templates/music.html:108
+msgid "No music releases are catalogued yet. Search above to add an exact release."
+msgstr ""
+
+#: app/templates/music_item.html:6
+msgid "Back to music"
+msgstr ""
+
+#: app/templates/music_item.html:11
+msgid "Restored from Trash &mdash; this release was in Trash and has been brought back."
+msgstr ""
+
+#: app/templates/music_item.html:32
+msgid "Catalogue item"
+msgstr ""
+
+#: app/templates/music_item.html:35
+msgid "Refresh metadata"
+msgstr ""
+
+#: app/templates/music_item.html:45
+msgid "Release:"
+msgstr ""
+
+#: app/templates/music_item.html:46
+msgid "Date:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:38
+#: app/templates/music_item.html:47
+msgid "Country:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:39
+#: app/templates/music_item.html:48
+msgid "Label:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:40
+#: app/templates/music_item.html:49
+msgid "Catalogue #:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:41
+#: app/templates/music_item.html:50
+msgid "Format:"
+msgstr ""
+
+#: app/templates/music_item.html:51
+msgid "Packaging:"
+msgstr ""
+
+#: app/templates/music_item.html:52
+msgid "Barcode:"
+msgstr ""
+
+#: app/templates/music_item.html:60
+#, python-format
+msgid "Medium %(n)s"
+msgstr ""
+
+#: app/templates/music_item.html:60
+msgid "Track listing"
+msgstr ""
+
+#: app/templates/music_item.html:84
+msgid "MusicBrainz release:"
+msgstr ""
+
+#: app/templates/music_item.html:87
+msgid "This music item does not have an exact MusicBrainz release attached yet."
+msgstr ""
+
+#: app/templates/music_item.html:96
+msgid "Loading Discogs pressing information…"
+msgstr ""
+
+#: app/templates/periodical_publication.html:5
+msgid "Back to periodicals"
+msgstr ""
+
+#: app/templates/fragments/periodical_scan_result.html:47
+#: app/templates/periodical_publication.html:8
+msgid "Publication"
+msgstr ""
+
+#: app/templates/periodical_publication.html:18
+msgid "Issues"
+msgstr ""
+
+#: app/templates/periodical_publication.html:30
+#, python-format
+msgid "Vol. %(n)s"
+msgstr ""
+
+#: app/templates/periodical_publication.html:31
+#, python-format
+msgid "No. %(n)s"
+msgstr ""
+
+#: app/templates/periodical_publication.html:33
+#, python-format
+msgid "add-on %(code)s"
+msgstr ""
+
+#: app/templates/periodical_publication.html:42
+msgid "No issues are attached to this publication."
+msgstr ""
+
+#: app/templates/periodicals.html:9
+msgid "Browse magazines by continuing publication while keeping every concrete issue as its own Shelf item."
+msgstr ""
+
+#: app/templates/periodicals.html:12
+msgid "Scan an issue"
+msgstr ""
+
+#: app/templates/periodicals.html:25
+#, python-format
+msgid "%(num)s issue"
+msgid_plural "%(num)s issues"
+msgstr[0] ""
+
+#: app/templates/periodicals.html:31
+msgid "No periodical publications are catalogued yet. Scan a 977 barcode from the Scan page to begin."
+msgstr ""
 
 #: app/templates/scan.html:40 app/templates/shelf_fill.html:67
 #: app/templates/store.html:36
@@ -1976,6 +2269,178 @@ msgstr ""
 
 #: app/templates/scan.html:268
 msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
+msgstr ""
+
+#: app/templates/series.html:8
+msgid "Your library grouped by series. Gaps are inferred from position numbers; use <span class=\"text-shelf-accent2\">Check completeness</span> to compare against Hardcover's full series listing."
+msgstr ""
+
+#: app/templates/series.html:8
+msgid "Your library grouped by series. Gaps are inferred from position numbers."
+msgstr ""
+
+#: app/templates/series.html:11 app/templates/upcoming.html:2
+#: app/templates/upcoming.html:7
+msgid "Upcoming releases"
+msgstr ""
+
+#: app/templates/series.html:15
+msgid "Watch all complete series"
+msgstr ""
+
+#: app/templates/series.html:23
+msgid "No series yet"
+msgstr ""
+
+#: app/templates/series.html:24
+msgid "Items gain a series when metadata lookup finds one, or when you set it manually while editing."
+msgstr ""
+
+#: app/templates/series.html:36 app/templates/series.html:66
+msgid "Complete"
+msgstr ""
+
+#: app/templates/series.html:39
+msgid "Incomplete"
+msgstr ""
+
+#: app/templates/series.html:72
+#, python-format
+msgid "%(n)s owned"
+msgstr ""
+
+#: app/templates/series.html:72
+#, python-format
+msgid "%(n)s wishlisted"
+msgstr ""
+
+#: app/templates/series.html:74
+msgid "possibly missing"
+msgstr ""
+
+#: app/templates/series.html:76
+#, python-format
+msgid "+%(n)s more"
+msgstr ""
+
+#: app/templates/series.html:80
+msgid "Not found on Hardcover"
+msgstr ""
+
+#: app/templates/series.html:97
+msgid "Fetching…"
+msgstr ""
+
+#: app/templates/series.html:105
+msgid "Check completeness"
+msgstr ""
+
+#: app/templates/series.html:106
+msgid "Checking…"
+msgstr ""
+
+#: app/templates/series.html:112
+msgid "Series actions"
+msgstr ""
+
+#: app/templates/series.html:125
+msgid "Rename series…"
+msgstr ""
+
+#: app/templates/series.html:128
+msgid "Remove all books…"
+msgstr ""
+
+#: app/templates/series.html:138
+msgid "Rename this series. Typing the name of another series merges the two."
+msgstr ""
+
+#: app/templates/series.html:139
+msgid "Series name"
+msgstr ""
+
+#: app/templates/series.html:143
+msgid "Both series' books will be combined under"
+msgstr ""
+
+#: app/templates/series.html:143
+msgid ", keeping their positions as-is."
+msgstr ""
+
+#: app/templates/series.html:158
+msgid "Remove all books from this series?"
+msgstr ""
+
+#: app/templates/series.html:160
+#, python-format
+msgid "will no longer belong to &ldquo;%(name)s&rdquo;. The books stay in your library."
+msgstr ""
+
+#: app/templates/series.html:168
+msgid "Remove books"
+msgstr ""
+
+#: app/templates/series.html:169
+msgid "Removing…"
+msgstr ""
+
+#: app/templates/series.html:185
+msgid "Edit synopsis"
+msgstr ""
+
+#: app/templates/series.html:186
+msgid "+ Add synopsis"
+msgstr ""
+
+#: app/templates/series.html:192
+msgid "What is this series about?"
+msgstr ""
+
+#: app/templates/series.html:200
+msgid "Saving…"
+msgstr ""
+
+#: app/templates/series.html:240
+msgid "Hardcover lists"
+msgstr ""
+
+#: app/templates/series.html:240
+msgid "volumes —"
+msgstr ""
+
+#: app/templates/series.html:241
+msgid "you have them all!"
+msgstr ""
+
+#: app/templates/series.html:242
+msgid "missing:"
+msgstr ""
+
+#: app/templates/series.html:265 app/templates/upcoming.html:43
+msgid "+ Wishlist"
+msgstr ""
+
+#: app/templates/series.html:267
+msgid "Wishlisted"
+msgstr ""
+
+#: app/templates/series.html:286
+msgid "Unassigned"
+msgstr ""
+
+#: app/templates/series.html:288
+#, python-format
+msgid "%(num)s book with no series"
+msgid_plural "%(num)s books with no series"
+msgstr[0] ""
+
+#: app/templates/series.html:289
+#, python-format
+msgid "showing %(n)s"
+msgstr ""
+
+#: app/templates/series.html:290
+msgid "These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card."
 msgstr ""
 
 #: app/templates/setup.html:6
@@ -2121,6 +2586,35 @@ msgstr ""
 
 #: app/templates/store.html:84
 msgid "Scans of books not in your library are added to your wishlist automatically when you're back online."
+msgstr ""
+
+#: app/templates/upcoming.html:8
+msgid "Announced volumes in the series you watch, checked once a day."
+msgstr ""
+
+#: app/templates/upcoming.html:13
+msgid "No announcements found for your watched series."
+msgstr ""
+
+#: app/templates/upcoming.html:14
+msgid "That is not the same as nothing coming: Hardcover may not list a volume yet."
+msgstr ""
+
+#: app/templates/upcoming.html:39
+msgid "announced — date TBA"
+msgstr ""
+
+#: app/templates/upcoming.html:46
+msgid "Dismiss"
+msgstr ""
+
+#: app/templates/upcoming.html:49
+#, python-format
+msgid "Stop watching %(name)s"
+msgstr ""
+
+#: app/templates/upcoming.html:58
+msgid "Powered by Hardcover"
 msgstr ""
 
 #: app/templates/fragments/account_menu.html:3
@@ -2556,6 +3050,75 @@ msgstr ""
 msgid "Add to Collection"
 msgstr ""
 
+#: app/templates/fragments/music_discogs.html:4
+msgid "Discogs exact pressing"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:5
+msgid "Optional pressing-level enrichment. MusicBrainz remains Shelf's canonical release identity."
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:9
+msgid "Open in Discogs ↗"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:17
+msgid "Selected Discogs release"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:25
+msgid "Load fresh details"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:27
+msgid "Clear selection"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:37
+msgid "Released:"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:44
+msgid "Collector identifiers"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:89
+msgid "Search Discogs"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:93
+msgid "Configure a Discogs personal access token in"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:93
+msgid "Settings → Integrations"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:93
+msgid "to identify the exact pressing."
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:110
+#, python-format
+msgid "Barcode: %(codes)s"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:111
+msgid "View release ↗"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:116
+msgid "Use this pressing"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:126
+msgid "Data provided by Discogs"
+msgstr ""
+
+#: app/templates/fragments/music_discogs.html:126
+msgid ". Provider data shown here is requested live and is not copied into Shelf's release metadata."
+msgstr ""
+
 #: app/templates/fragments/periodical_assisted_results.html:19
 msgid "Use result"
 msgstr ""
@@ -2590,10 +3153,6 @@ msgstr ""
 
 #: app/templates/fragments/periodical_scan_result.html:33
 msgid "Search exact barcode on the web ↗"
-msgstr ""
-
-#: app/templates/fragments/periodical_scan_result.html:47
-msgid "Publication"
 msgstr ""
 
 #: app/templates/fragments/periodical_scan_result.html:48
@@ -2810,10 +3369,6 @@ msgstr ""
 #: app/templates/fragments/scan_result.html:217
 #, python-format
 msgid "%(type)s via %(source)s"
-msgstr ""
-
-#: app/templates/fragments/scan_result.html:217
-msgid "Added to wishlist"
 msgstr ""
 
 #: app/templates/fragments/scan_result.html:219

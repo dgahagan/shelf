@@ -56,24 +56,142 @@ msgstr "将 {count} 个条目移到回收站？"
 msgid "Moved {count} items to Trash"
 msgstr "已将 {count} 个条目移到回收站"
 
+#: static/js/components-item.js:75
+#, python-brace-format
+msgid "{count} missing"
+msgstr ""
+
+#: static/js/components-item.js:78
+#, python-brace-format
+msgid "checked {date}"
+msgstr ""
+
+#: static/js/components-item.js:81 static/js/components-item.js:85
+#: static/js/components-item.js:154
+msgid "Saving…"
+msgstr ""
+
+#: static/js/components-item.js:82
+msgid "Unmark complete"
+msgstr ""
+
+#: static/js/components-item.js:82
+msgid "Mark complete"
+msgstr ""
+
+#: static/js/components-item.js:86
+msgid "Watching"
+msgstr ""
+
+#: static/js/components-item.js:86
+msgid "Watch for new volumes"
+msgstr ""
+
+#: static/js/components-item.js:104 static/js/components-item.js:110
+#: static/js/components-item.js:127 static/js/components-item.js:133
+#: static/js/components-item.js:312 static/js/components-item.js:313
+#: static/js/components-item.js:346 static/js/components-item.js:349
+#: static/js/components-item.js:444
+msgid "Failed"
+msgstr ""
+
+#: static/js/components-item.js:106
+msgid "Watching for new volumes"
+msgstr ""
+
+#: static/js/components-item.js:106
+msgid "Stopped watching"
+msgstr ""
+
+#: static/js/components-item.js:128
+msgid "Marked complete"
+msgstr ""
+
+#: static/js/components-item.js:128
+msgid "Completeness cleared"
+msgstr ""
+
+#: static/js/components-item.js:155
+#, python-brace-format
+msgid "Merge into {name}"
+msgstr ""
+
+#: static/js/components-item.js:155
+msgid "Rename"
+msgstr ""
+
+#: static/js/components-item.js:172 static/js/components-item.js:183
+msgid "Rename failed"
+msgstr ""
+
+#: static/js/components-item.js:176
+#, python-brace-format
+msgid "Merged {books} into {name}"
+msgstr ""
+
+#: static/js/components-item.js:177
+#, python-brace-format
+msgid "Series renamed to {name}"
+msgstr ""
+
+#: static/js/components-item.js:210 static/js/components-item.js:216
+msgid "Remove failed"
+msgstr ""
+
+#: static/js/components-item.js:213
+#, python-brace-format
+msgid "Removed {books} from the series"
+msgstr ""
+
+#: static/js/components-item.js:219
+msgid "1 book"
+msgstr ""
+
+#: static/js/components-item.js:219
+#, python-brace-format
+msgid "{count} books"
+msgstr ""
+
+#: static/js/components-item.js:248
+msgid "Synopsis saved"
+msgstr ""
+
+#: static/js/components-item.js:250 static/js/components-item.js:253
+msgid "Save failed"
+msgstr ""
+
+#: static/js/components-item.js:267
+msgid "Synopsis fetched from Hardcover"
+msgstr ""
+
+#: static/js/components-item.js:275
+msgid "No synopsis found"
+msgstr ""
+
+#: static/js/components-item.js:278
+msgid "Fetch failed"
+msgstr ""
+
+#: static/js/components-item.js:303
+msgid "Check failed"
+msgstr ""
+
+#: static/js/components-item.js:312 static/js/components-item.js:342
+#: static/js/components-item.js:443
+msgid "Restored from Trash"
+msgstr ""
+
+#: static/js/components-item.js:312 static/js/components-item.js:342
+#: static/js/components-item.js:443
+msgid "Added to wishlist"
+msgstr ""
+
 #: static/js/components-item.js:419
 msgid "Synced to Hardcover"
 msgstr ""
 
 #: static/js/components-item.js:420
 msgid "Connection failed"
-msgstr ""
-
-#: static/js/components-item.js:443
-msgid "Restored from Trash"
-msgstr ""
-
-#: static/js/components-item.js:443
-msgid "Added to wishlist"
-msgstr ""
-
-#: static/js/components-item.js:444
-msgid "Failed"
 msgstr ""
 
 #: static/js/components-item.js:537 static/js/intake.js:400
