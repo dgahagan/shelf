@@ -175,9 +175,15 @@
                 <div>
                     <label for="isbn-input" class="block text-sm font-medium text-shelf-muted mb-1"
                            x-text="barcodeLabel"></label>
-                    <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off"
-                           :placeholder="barcodePlaceholder"
-                           class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
+                    <div class="flex flex-wrap gap-2">
+                        <input type="text" id="isbn-input" name="isbn" autofocus autocomplete="off" enterkeyhint="go"
+                               :placeholder="barcodePlaceholder"
+                               class="flex-1 min-w-36 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
+                        <button type="submit" data-testid="scan-submit"
+                                class="px-4 py-2.5 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+                            {{ _('Scan') }}
+                        </button>
+                    </div>
                 </div>
             </div>
 

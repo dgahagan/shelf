@@ -2595,6 +2595,123 @@ def test_shelf_fill_enter_submits_with_default_tags(live_server, authed_page):
     assert_page_clean(authed_page)
 
 
+_SUBMIT_CONTEXTS = [
+    pytest.param(
+        {"viewport": {"width": 1280, "height": 800}}, "desktop", id="desktop"
+    ),
+    pytest.param(
+        {
+            "viewport": {"width": 390, "height": 844},
+            "is_mobile": True,
+            "has_touch": True,
+        },
+        "mobile",
+        id="mobile",
+    ),
+]
+
+
+def _shelf_fill_posts(pg):
+    posts = []
+    pg.on(
+        "request",
+        lambda r: posts.append(r.url)
+        if r.method == "POST" and "/api/shelf-fill/scan" in r.url
+        else None,
+    )
+    return posts
+
+
+@pytest.mark.parametrize("context_kwargs,label", _SUBMIT_CONTEXTS)
+def test_the_shelf_fill_submit_button_sends_one_scan_and_resets_the_field(
+    browser, live_server, setup_admin, context_kwargs, label
+):
+    """#194: the visible Scan button files a typed code on Shelf Fill. One tap
+    is one POST, a card lands in the results, and the field is emptied and
+    focused for the next code."""
+    data_dir = live_server["data_dir"]
+    loc_id = _insert_location(data_dir, f"Submit Shelf {label}")
+    isbn = {"desktop": "9780000194053", "mobile": "9780000194060"}[label]
+    insert_item(data_dir, title=f"Shelf Fill Submit {label}", isbn=isbn)
+    ctx = browser.new_context(**context_kwargs)
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        posts = _shelf_fill_posts(pg)
+        pg.goto(f"{live_server['url']}/shelf-fill")
+        pg.wait_for_load_state("networkidle")
+        pg.select_option("#shelf-fill-location", str(loc_id))
+
+        pg.fill("#shelf-fill-barcode", isbn)
+        with pg.expect_response(lambda r: "/api/shelf-fill/scan" in r.url and r.ok):
+            pg.get_by_test_id("shelf-fill-submit").click()
+
+        expect(pg.locator("#shelf-fill-results .scan-result")).to_have_count(
+            1, timeout=10_000
+        )
+        assert len(posts) == 1
+        expect(pg.locator("#shelf-fill-barcode")).to_have_value("")
+        expect(pg.locator("#shelf-fill-barcode")).to_be_focused()
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+@pytest.mark.parametrize("context_kwargs,label", _SUBMIT_CONTEXTS)
+def test_shelf_fill_clears_and_focuses_the_field_after_an_enter_scan(
+    browser, live_server, setup_admin, context_kwargs, label
+):
+    """The field state after an Enter-submitted scan matches the button's: the
+    clear-scan-input handler finds the field by name, not by Scan's id."""
+    data_dir = live_server["data_dir"]
+    loc_id = _insert_location(data_dir, f"Enter Shelf {label}")
+    isbn = {"desktop": "9780000194077", "mobile": "9780000194084"}[label]
+    insert_item(data_dir, title=f"Shelf Fill Enter Reset {label}", isbn=isbn)
+    ctx = browser.new_context(**context_kwargs)
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        pg.goto(f"{live_server['url']}/shelf-fill")
+        pg.wait_for_load_state("networkidle")
+        pg.select_option("#shelf-fill-location", str(loc_id))
+
+        pg.fill("#shelf-fill-barcode", isbn)
+        with pg.expect_response(lambda r: "/api/shelf-fill/scan" in r.url and r.ok):
+            pg.press("#shelf-fill-barcode", "Enter")
+
+        expect(pg.locator("#shelf-fill-results .scan-result")).to_have_count(
+            1, timeout=10_000
+        )
+        expect(pg.locator("#shelf-fill-barcode")).to_have_value("")
+        expect(pg.locator("#shelf-fill-barcode")).to_be_focused()
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+@pytest.mark.parametrize("context_kwargs,label", _SUBMIT_CONTEXTS)
+def test_the_shelf_fill_submit_button_needs_a_location(
+    browser, live_server, setup_admin, context_kwargs, label
+):
+    """With no shelf location chosen a tap sends nothing, shows the toast, and
+    leaves the typed code in the field."""
+    ctx = browser.new_context(**context_kwargs)
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        posts = _shelf_fill_posts(pg)
+        pg.goto(f"{live_server['url']}/shelf-fill")
+        pg.wait_for_load_state("networkidle")
+        pg.fill("#shelf-fill-barcode", "9780000194091")
+        pg.get_by_test_id("shelf-fill-submit").click()
+
+        expect(pg.locator("#toast-container > div").first).to_contain_text(
+            "Choose a shelf location first"
+        )
+        assert posts == []
+        expect(pg.locator("#shelf-fill-barcode")).to_have_value("9780000194091")
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
 def test_add_scan_after_lend_does_not_post_the_hidden_borrower(live_server, authed_page):
     """G90: `x-show` hides the Lend-only borrower select but leaves it in the
     form, and scan.js builds its body with `new FormData(form)`. Only
@@ -2643,3 +2760,105 @@ def test_add_scan_after_lend_does_not_post_the_hidden_borrower(live_server, auth
             conn.commit()
         finally:
             conn.close()
+
+
+@pytest.mark.parametrize("context_kwargs,label", _SUBMIT_CONTEXTS)
+def test_the_scan_submit_button_sends_one_scan_and_resets_the_field(
+    browser, live_server, setup_admin, context_kwargs, label
+):
+    """#194: a typed code can be sent with the visible Scan button (the only
+    path on a phone keyboard). One tap is one POST /api/scan, a result card
+    appears, and the field is emptied and focused for the next code."""
+    # One row per parametrization: the E2E DB is shared across the session.
+    isbn = {"desktop": "9780000194015", "mobile": "9780000194046"}[label]
+    insert_item(live_server["data_dir"], title=f"Submit Button Subject {label}", isbn=isbn)
+    ctx = browser.new_context(**context_kwargs)
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        posts = []
+        pg.on(
+            "request",
+            lambda r: posts.append(r.url)
+            if r.method == "POST" and "/api/scan" in r.url
+            else None,
+        )
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        base = pg.locator("#scan-results .scan-result").count()
+
+        pg.fill("#isbn-input", isbn)
+        with pg.expect_response(lambda r: "/api/scan" in r.url and r.ok):
+            pg.get_by_test_id("scan-submit").click()
+
+        expect(pg.locator("#scan-results .scan-result")).to_have_count(
+            base + 1, timeout=10_000
+        )
+        assert len(posts) == 1
+        expect(pg.locator("#isbn-input")).to_have_value("")
+        expect(pg.locator("#isbn-input")).to_be_focused()
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+@pytest.mark.parametrize("context_kwargs,label", _SUBMIT_CONTEXTS)
+def test_the_scan_submit_button_in_lend_mode_needs_a_borrower(
+    browser, live_server, setup_admin, context_kwargs, label
+):
+    """Tapping Scan in Lend mode with no borrower chosen sends nothing and
+    shows the same toast Enter does."""
+    ctx = browser.new_context(**context_kwargs)
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        posts = []
+        pg.on(
+            "request",
+            lambda r: posts.append(r.url)
+            if r.method == "POST" and "/api/scan" in r.url
+            else None,
+        )
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        with pg.expect_response(lambda r: "/api/recent-scans" in r.url and r.ok):
+            pg.get_by_role("button", name="Lend", exact=True).click()
+        pg.fill("#isbn-input", "9780000194022")
+        pg.get_by_test_id("scan-submit").click()
+
+        expect(pg.locator("#toast-container > div").first).to_contain_text(
+            "Select a borrower first"
+        )
+        assert posts == []
+        assert_page_clean(pg)
+    finally:
+        ctx.close()
+
+
+def test_the_scan_submit_button_fits_its_card_on_a_phone(
+    browser, live_server, setup_admin
+):
+    """At 390x844 the button sits inside the card and the input is at least as
+    wide as the button -- the design's phone-containment contract.
+
+    This test does not guard the input's min-w-36 floor: at 390px the field
+    spans the full card, so a min-w-0 input still passes here. The width that
+    crushes it is 640px, where the field sits in a one-third grid column;
+    test_responsive.py::test_no_collapsed_text_controls[640] is that pin (G43)."""
+    ctx = browser.new_context(
+        viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True
+    )
+    try:
+        pg = _login_page(live_server, ctx, setup_admin)
+        pg.goto(f"{live_server['url']}/scan")
+        pg.wait_for_load_state("networkidle")
+        btn = pg.get_by_test_id("scan-submit")
+        expect(btn).to_be_visible()
+        card = btn.locator("xpath=ancestor::div[contains(@class,'bg-shelf-card')][1]")
+        b = btn.bounding_box()
+        c = card.bounding_box()
+        i = pg.locator("#isbn-input").bounding_box()
+        assert b["x"] >= c["x"] and b["x"] + b["width"] <= c["x"] + c["width"]
+        assert b["y"] >= c["y"] and b["y"] + b["height"] <= c["y"] + c["height"]
+        assert i["width"] >= b["width"]
+        assert_page_clean(pg)
+    finally:
+        ctx.close()

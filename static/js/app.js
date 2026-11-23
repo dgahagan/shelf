@@ -308,7 +308,7 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
     if (!action) return;
     var ok = evt.detail.successful;
     if (action === 'clear-scan-input') {
-        var input = el.querySelector('#isbn-input');
+        var input = el.querySelector('input[name="isbn"]');
         if (input) { input.value = ''; input.focus(); }
         // This handler is the SOLE owner of the typed-scan toast: /api/scan
         // sets no HX-Trigger on any branch, so nothing else toasts here.

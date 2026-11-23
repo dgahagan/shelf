@@ -59,7 +59,8 @@ shortcut list; **Escape** closes it.
 
 On a phone: open **Scan**, leave the mode on **Add**, tap the camera button,
 point it at the barcode. On a desktop with a USB scanner: click into the
-barcode field and scan. Or type the ISBN and press Enter.
+barcode field and scan. Or type the ISBN and send it with Enter or the
+**Scan** button beside the field. On a phone, use the button.
 
 Shelf looks the ISBN up (Open Library, then Hardcover and Google Books as
 fallbacks; German ISBNs go to the Deutsche Nationalbibliothek first, Italian

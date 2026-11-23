@@ -19,7 +19,9 @@ barcode field once and scan away. No camera involved, no configuration.
 Let each result appear before scanning the next item: a scan made while the
 previous one is still being looked up is ignored.
 
-**Keyboard.** Type an ISBN-10, ISBN-13 or UPC and press Enter.
+**Keyboard.** Type an ISBN-10, ISBN-13 or UPC. Send it with Enter or with the
+**Scan** button beside the field. On a phone, the button is the way to send a
+typed code. On a narrow screen it wraps below the field.
 
 ## Scan modes
 

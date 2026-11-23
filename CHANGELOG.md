@@ -6,6 +6,48 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.82.0] - 2026-11-23
+
+On a phone, a barcode typed into Scan could not be sent. The field had no
+button of its own, and the keyboard's action key read "Next" and moved on to
+another field. Only a physical Enter key worked. Scan and Shelf Fill now have
+a visible **Scan** button beside the barcode field. This release also carries
+two community translations: Series, Upcoming, Discover, Music and Periodicals
+in Italian, from [@vjandrea](https://github.com/vjandrea), and six more areas
+in Simplified Chinese, from [@litong5969](https://github.com/litong5969).
+
+### Added
+
+- **A Scan button beside the barcode field, on Scan and Shelf Fill.** Type a
+  code and tap it to send it. On a phone this is the way to send a typed code.
+  Enter, a USB or Bluetooth scanner, and the camera work as before. In a
+  narrow column the button wraps below the field. Reported by
+  [@MartinZwolle](https://github.com/MartinZwolle) in
+  [#194](https://github.com/dgahagan/shelf/issues/194).
+- **Series, Upcoming, Discover, Music and Periodicals are translated into
+  Italian,** including the messages the Series and Hardcover actions show.
+  Contributed by [@vjandrea](https://github.com/vjandrea) in
+  [#192](https://github.com/dgahagan/shelf/pull/192).
+- **The item page, item edit, Scan, Photo Intake, Shelf Fill and Store Mode
+  are translated into Simplified Chinese.** Contributed by
+  [@litong5969](https://github.com/litong5969) in
+  [#189](https://github.com/dgahagan/shelf/pull/189).
+
+### Changed
+
+- **Phone keyboards are asked for a "Go" key on both barcode fields.** On
+  Gboard the action key becomes a Go arrow that sends the code. Other
+  keyboards may ignore the request; the button works either way.
+- **On desktop, the Scan barcode field is narrower** to make room for the
+  button. A full 13-digit ISBN scrolls by one digit while you type it.
+
+### Fixed
+
+- **Shelf Fill clears its barcode field after each scan.** A typed code used
+  to stay in the field after it was filed, so the next code had to be typed
+  over it. The field is now emptied and keeps focus, as on Scan. A scan
+  refused because no shelf is chosen keeps the code for the retry.
+
 ## [0.81.1] - 2026-11-15
 
 This release changes nothing in the app. It fixes a contributor check. Since
@@ -5885,6 +5927,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.82.0]: https://github.com/dgahagan/shelf/releases/tag/v0.82.0
 [0.81.1]: https://github.com/dgahagan/shelf/releases/tag/v0.81.1
 [0.81.0]: https://github.com/dgahagan/shelf/releases/tag/v0.81.0
 [0.80.0]: https://github.com/dgahagan/shelf/releases/tag/v0.80.0

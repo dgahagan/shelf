@@ -226,3 +226,22 @@ def test_an_hx_disabled_elt_button_is_guarded_alongside_htmx(live_server, authed
     expect(btn).to_be_enabled()
     expect(btn).not_to_have_attribute("aria-busy", "true")
     expect(url_input).to_be_enabled()
+
+
+def test_the_visible_scan_button_is_busy_and_cannot_double_submit(live_server, authed_page):
+    held, _ = _hold(authed_page, "**/api/scan")
+    _open_scan_add(authed_page, live_server)
+    btn = authed_page.get_by_test_id("scan-submit")
+
+    authed_page.fill("#isbn-input", "9780000194039")
+    btn.click()
+    _wait_held(authed_page, held, 1)
+    expect(btn).to_be_disabled()
+    expect(btn).to_have_attribute("aria-busy", "true")
+    btn.click(force=True)
+    authed_page.wait_for_timeout(300)
+    assert len(held) == 1
+    held[0].fulfill(status=200, content_type="text/html",
+                    body='<div class="scan-result" data-testid="busy-visible-scan">done</div>')
+    expect(authed_page.get_by_test_id("busy-visible-scan")).to_be_visible()
+    expect(btn).to_be_enabled()

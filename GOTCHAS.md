@@ -1515,6 +1515,12 @@ no cap would not have found this entry under the old title.)
   test snapshots the watch ids before it presses the button and deletes every
   newer one in cleanup. When the action cannot be scoped, own its blast
   radius instead.
+- **Fourth face: a parametrized test that seeds an identifier.** The
+  desktop/mobile `context_kwargs` variants run against the same server, so
+  two variants seeding one ISBN collide on the second with
+  `UNIQUE constraint failed: items.isbn, items.media_type`. Key the seeded
+  ISBN (and any other unique field) on the variant's label. Hit in
+  `feat/issue-194-scan-submit-button` T1 (`d39ea14`, 2026-11-23).
 - **Evidence:** caught on paper by the issue-31 `/plan-review` (R2,
   2026-08-21). The plan's `E2E Unassigned Book` already had at least eight
   earlier-sorting seriesless titles ahead of it (`1984`, `Book To Delete`,
@@ -1845,6 +1851,13 @@ grep -rn "post_data_buffer" tests/e2e/
   giving the locations/borrowers/platforms rows a `flex-wrap` seam.
   Re-verified under Tailwind 4.3.3 (2026-10, issue #160): `.sm\:flex-1` still
   precedes `.sm\:basis-auto` in the built app.css.
+  **A row with no seam of its own still has one, inherited from its column**
+  (issue #194, `d39ea14`, 2026-11-23): Scan's new barcode + button row used
+  the `store.html` pattern (`flex-1 min-w-0` input), which is safe at full
+  width. On Scan the row sits in a one-third grid column from `sm` up, and at
+  640px the input measured 73px of content. Fixed with `flex flex-wrap` and a
+  `min-w-36` floor on the input, so the button wraps below it instead. Copying
+  a row that passes on one page proves nothing about a narrower parent.
 - **Verify:** the responsive gate measures every top-level page at
   320/390/430/640/768/1024 for both overflow *and* text columns squeezed under
   80px. A breakpoint's own width is the worst case for the layout it turns on,

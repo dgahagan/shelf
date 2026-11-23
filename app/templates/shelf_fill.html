@@ -88,8 +88,14 @@
         <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">{{ _('Scan') }}</button>
         <div class="bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
             <label for="shelf-fill-barcode" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('ISBN / UPC / copy barcode') }}</label>
-            <input type="text" id="shelf-fill-barcode" name="isbn" autofocus autocomplete="off" placeholder="{{ _('Scan or type a barcode…') }}"
-                   class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
+            <div class="flex flex-wrap gap-2">
+                <input type="text" id="shelf-fill-barcode" name="isbn" autofocus autocomplete="off" enterkeyhint="go" placeholder="{{ _('Scan or type a barcode…') }}"
+                       class="flex-1 min-w-36 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text text-lg font-mono focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50">
+                <button type="submit" data-testid="shelf-fill-submit"
+                        class="px-4 py-2.5 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
+                    {{ _('Scan') }}
+                </button>
+            </div>
         </div>
     </form>
 
