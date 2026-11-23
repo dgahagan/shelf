@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-10 11:39-0500\n"
+"PO-Revision-Date: 2026-11-15 05:16+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -93,7 +93,7 @@ msgstr ""
 #: static/js/components-item.js:346 static/js/components-item.js:349
 #: static/js/components-item.js:444
 msgid "Failed"
-msgstr ""
+msgstr "失败"
 
 #: static/js/components-item.js:106
 msgid "Watching for new volumes"
@@ -179,28 +179,28 @@ msgstr ""
 #: static/js/components-item.js:312 static/js/components-item.js:342
 #: static/js/components-item.js:443
 msgid "Restored from Trash"
-msgstr ""
+msgstr "已从回收站恢复"
 
 #: static/js/components-item.js:312 static/js/components-item.js:342
 #: static/js/components-item.js:443
 msgid "Added to wishlist"
-msgstr ""
+msgstr "已加入心愿单"
 
 #: static/js/components-item.js:419
 msgid "Synced to Hardcover"
-msgstr ""
+msgstr "已同步到 Hardcover"
 
 #: static/js/components-item.js:420
 msgid "Connection failed"
-msgstr ""
+msgstr "连接失败"
 
 #: static/js/components-item.js:537 static/js/intake.js:400
 msgid "Author(s)"
-msgstr ""
+msgstr "作者"
 
 #: static/js/components-item.js:578 static/js/components-item.js:582
 msgid "Could not copy from that item."
-msgstr ""
+msgstr "无法从该条目复制。"
 
 #: static/js/components-settings.js:767
 msgid "Never"
@@ -225,368 +225,368 @@ msgstr "无法切换语言"
 
 #: static/js/intake.js:186
 msgid "No camera found. Use Choose photo instead."
-msgstr ""
+msgstr "未找到摄像头。请改用“选择照片”。"
 
 #: static/js/intake.js:187 static/js/item_edit.js:55 static/js/item_edit.js:142
 #: static/js/scan.js:386
 msgid "Camera access denied. Check browser permissions for this site."
-msgstr ""
+msgstr "摄像头访问被拒绝。请检查此网站的浏览器权限。"
 
 #: static/js/intake.js:197
 msgid "Could not capture a frame — try again."
-msgstr ""
+msgstr "无法截取画面 — 请重试。"
 
 #: static/js/intake.js:362 static/js/intake.js:366
 msgid "Analysis failed"
-msgstr ""
+msgstr "分析失败"
 
 #: static/js/intake.js:440
 #, python-brace-format
 msgid "Added {count} items"
-msgstr ""
+msgstr "已添加 {count} 个条目"
 
 #: static/js/intake.js:442 static/js/intake.js:445
 msgid "Add failed"
-msgstr ""
+msgstr "添加失败"
 
 #: static/js/item_edit.js:28 static/js/item_edit.js:46
 msgid "Point the camera at a 978 or 979 ISBN barcode."
-msgstr ""
+msgstr "请将摄像头对准 978 或 979 开头的 ISBN 条码。"
 
 #: static/js/item_edit.js:34 static/js/item_edit.js:121
 msgid "Starting camera…"
-msgstr ""
+msgstr "正在启动摄像头…"
 
 #: static/js/item_edit.js:53 static/js/item_edit.js:140 static/js/scan.js:384
 msgid "Camera requires HTTPS. Open Shelf through an HTTPS reverse proxy, or leave SHELF_TLS on."
-msgstr ""
+msgstr "摄像头需要 HTTPS。请通过 HTTPS 反向代理打开 Shelf，或保持 SHELF_TLS 开启。"
 
 #: static/js/item_edit.js:71
 msgid "That barcode is not a 978/979 ISBN. Try again."
-msgstr ""
+msgstr "该条码不是 978/979 开头的 ISBN，请重试。"
 
 #: static/js/item_edit.js:115 static/js/item_edit.js:133
 msgid "Point the camera at a UPC-A or EAN-13 retail barcode."
-msgstr ""
+msgstr "请将摄像头对准 UPC-A 或 EAN-13 商品条码。"
 
 #: static/js/item_edit.js:158
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
-msgstr ""
+msgstr "这不是有效的 UPC-A / EAN-13 商品条码，请重试。"
 
 #: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165
 msgid "Want to"
-msgstr ""
+msgstr "想要"
 
 #: static/js/scan.js:29 static/js/scan.js:163 static/js/scan.js:165
 msgid "In progress"
-msgstr ""
+msgstr "进行中"
 
 #: static/js/scan.js:30 static/js/scan.js:163 static/js/scan.js:165
 msgid "Finished"
-msgstr ""
+msgstr "已完成"
 
 #: static/js/scan.js:52
 msgid "Add"
-msgstr ""
+msgstr "添加"
 
 #: static/js/scan.js:53
 msgid "Wishlist"
-msgstr ""
+msgstr "心愿单"
 
 #: static/js/scan.js:54
 msgid "Lend"
-msgstr ""
+msgstr "借出"
 
 #: static/js/scan.js:55
 msgid "Return"
-msgstr ""
+msgstr "归还"
 
 #: static/js/scan.js:56
 msgid "Move"
-msgstr ""
+msgstr "移动"
 
 #: static/js/scan.js:57
 msgid "Inventory"
-msgstr ""
+msgstr "盘点"
 
 #: static/js/scan.js:58 static/js/scan.js:94
 msgid "Lookup"
-msgstr ""
+msgstr "查询"
 
 #: static/js/scan.js:59 static/js/scan.js:95
 msgid "Quick Rate"
-msgstr ""
+msgstr "快速评分"
 
 #: static/js/scan.js:65
 msgid "Target Location"
-msgstr ""
+msgstr "目标位置"
 
 #: static/js/scan.js:65
 msgid "Auditing Location"
-msgstr ""
+msgstr "正在盘点的位置"
 
 #: static/js/scan.js:65
 msgid "Location"
-msgstr ""
+msgstr "位置"
 
 #: static/js/scan.js:70
 msgid "Barcode"
-msgstr ""
+msgstr "条码"
 
 #: static/js/scan.js:70
 msgid "ISBN / UPC"
-msgstr ""
+msgstr "ISBN / UPC"
 
 #: static/js/scan.js:72
 msgid "Scan barcode..."
-msgstr ""
+msgstr "扫描条码..."
 
 #: static/js/scan.js:73
 msgid "Scan any barcode..."
-msgstr ""
+msgstr "扫描任意条码..."
 
 #: static/js/scan.js:74
 msgid "Scan UPC barcode..."
-msgstr ""
+msgstr "扫描 UPC 条码..."
 
 #: static/js/scan.js:74
 msgid "Scan or type ISBN..."
-msgstr ""
+msgstr "扫码或输入 ISBN..."
 
 #: static/js/scan.js:77
 msgid "Title or author..."
-msgstr ""
+msgstr "标题或作者..."
 
 #: static/js/scan.js:77
 msgid "Game title..."
-msgstr ""
+msgstr "游戏名称..."
 
 #: static/js/scan.js:77
 msgid "Movie title..."
-msgstr ""
+msgstr "片名..."
 
 #: static/js/scan.js:78
 msgid "Book title or author..."
-msgstr ""
+msgstr "书名或作者..."
 
 #: static/js/scan.js:81
 msgid "Recently Added"
-msgstr ""
+msgstr "最近添加"
 
 #: static/js/scan.js:81
 msgid "Added to Wishlist"
-msgstr ""
+msgstr "已加入心愿单"
 
 #: static/js/scan.js:81
 msgid "Checked Out"
-msgstr ""
+msgstr "已借出"
 
 #: static/js/scan.js:81
 msgid "Returned"
-msgstr ""
+msgstr "已归还"
 
 #: static/js/scan.js:82
 msgid "Moved"
-msgstr ""
+msgstr "已移动"
 
 #: static/js/scan.js:82
 msgid "Scanned Items"
-msgstr ""
+msgstr "已扫码条目"
 
 #: static/js/scan.js:82
 msgid "Lookup Results"
-msgstr ""
+msgstr "查询结果"
 
 #: static/js/scan.js:83
 msgid "Marked as finished"
-msgstr ""
+msgstr "已标记为完成"
 
 #: static/js/scan.js:83
 msgid "Results"
-msgstr ""
+msgstr "结果"
 
 #: static/js/scan.js:88
 msgid "Add Items"
-msgstr ""
+msgstr "添加条目"
 
 #: static/js/scan.js:88
 msgid "Scan barcodes to add items to your collection."
-msgstr ""
+msgstr "扫码将条目添加到你的收藏。"
 
 #: static/js/scan.js:89
 msgid "Add to Wishlist"
-msgstr ""
+msgstr "加入心愿单"
 
 #: static/js/scan.js:89
 msgid "Scan to save items you want but haven't bought yet."
-msgstr ""
+msgstr "扫码保存想要但还没买的条目。"
 
 #: static/js/scan.js:90
 msgid "Lend Items"
-msgstr ""
+msgstr "借出条目"
 
 #: static/js/scan.js:90
 msgid "Select a borrower, then scan items to check them out."
-msgstr ""
+msgstr "选择借阅人，然后扫码借出条目。"
 
 #: static/js/scan.js:91
 msgid "Return Items"
-msgstr ""
+msgstr "归还条目"
 
 #: static/js/scan.js:91
 msgid "Scan items to check them back in."
-msgstr ""
+msgstr "扫码归还条目。"
 
 #: static/js/scan.js:92
 msgid "Move Items"
-msgstr ""
+msgstr "移动条目"
 
 #: static/js/scan.js:92
 msgid "Select a target location, then scan items to move them."
-msgstr ""
+msgstr "选择目标位置，然后扫码移动条目。"
 
 #: static/js/scan.js:93
 msgid "Inventory Audit"
-msgstr ""
+msgstr "盘点"
 
 #: static/js/scan.js:93
 msgid "Select a location and scan every item you find there. Start an audit to get a report."
-msgstr ""
+msgstr "选择一个位置，扫描在那里找到的每个条目。开始盘点即可生成报告。"
 
 #: static/js/scan.js:94
 msgid "Scan to check if an item is in your collection. No changes are made."
-msgstr ""
+msgstr "扫码查看条目是否已在收藏中，不会做任何更改。"
 
 #: static/js/scan.js:95
 msgid "Scan to mark items as read or completed."
-msgstr ""
+msgstr "扫码将条目标记为已读或已完成。"
 
 #: static/js/scan.js:118
 msgid "Could not load recent scans"
-msgstr ""
+msgstr "无法加载最近的扫码记录"
 
 #: static/js/scan.js:267 static/js/scan.js:416
 msgid "Select a borrower first"
-msgstr ""
+msgstr "请先选择借阅人"
 
 #: static/js/scan.js:272 static/js/scan.js:420
 msgid "Select a location first"
-msgstr ""
+msgstr "请先选择位置"
 
 #: static/js/scan.js:488
 msgid "Choose the matching book below"
-msgstr ""
+msgstr "请在下方选择匹配的图书"
 
 #: static/js/scan.js:488
 msgid "Type the five digits below"
-msgstr ""
+msgstr "请在下方输入五位数字"
 
 #: static/js/scan.js:507 static/js/shelf-fill.js:135
 msgid "error"
-msgstr ""
+msgstr "错误"
 
 #: static/js/scan.js:507 static/js/shelf-fill.js:135
 msgid "Scan failed"
-msgstr ""
+msgstr "扫码失败"
 
 #: static/js/shelf-fill.js:4
 msgid "shelved"
-msgstr ""
+msgstr "已上架"
 
 #: static/js/shelf-fill.js:33 static/js/shelf-fill.js:51
 msgid "Choose a shelf location first"
-msgstr ""
+msgstr "请先选择上架位置"
 
 #: static/js/shelf-fill.js:70
 msgid "Camera access failed. Check browser permissions and HTTPS."
-msgstr ""
+msgstr "摄像头访问失败。请检查浏览器权限和 HTTPS。"
 
 #: static/js/store.js:155
 msgid "Store Mode is turned off on this Shelf. Your queued scans are kept."
-msgstr ""
+msgstr "此 Shelf 已关闭书店模式。排队中的扫码记录会保留。"
 
 #: static/js/store.js:156
 msgid "Sign in to Shelf to sync your queued scans."
-msgstr ""
+msgstr "登录 Shelf 以同步排队中的扫码记录。"
 
 #: static/js/store.js:201
 msgid "1 barcode didn't scan cleanly — saved to your wishlist to fix later."
-msgstr ""
+msgstr "1 个条码未能清晰识别 — 已存入心愿单，稍后再修正。"
 
 #: static/js/store.js:202
 #, python-brace-format
 msgid "{count} barcodes didn't scan cleanly — saved to your wishlist to fix later."
-msgstr ""
+msgstr "{count} 个条码未能正确识别——已存入心愿单，稍后修正。"
 
 #: static/js/store.js:206
 msgid "1 restored from Trash."
-msgstr ""
+msgstr "1 个已从回收站恢复。"
 
 #: static/js/store.js:207
 #, python-brace-format
 msgid "{count} restored from Trash."
-msgstr ""
+msgstr "已从回收站恢复 {count} 个。"
 
 #: static/js/store.js:237
 msgid "Already queued for your wishlist."
-msgstr ""
+msgstr "已在心愿单队列中。"
 
 #: static/js/store.js:241
 msgid "Added to sync queue — syncing now…"
-msgstr ""
+msgstr "已加入同步队列 — 正在同步…"
 
 #: static/js/store.js:242
 msgid "Queued — will be added to your wishlist when back online."
-msgstr ""
+msgstr "已排队 — 恢复联网后将加入心愿单。"
 
 #: static/js/store.js:266
 msgid "OWNED"
-msgstr ""
+msgstr "已拥有"
 
 #: static/js/store.js:272
 msgid "ON WISHLIST"
-msgstr ""
+msgstr "已在心愿单"
 
 #: static/js/store.js:278
 msgid "NOT IN LIBRARY"
-msgstr ""
+msgstr "书库中没有"
 
 #: static/js/store.js:279
 #, python-brace-format
 msgid "ISBN {code}"
-msgstr ""
+msgstr "ISBN {code}"
 
 #: static/js/store.js:295 static/js/store.js:317
 msgid "Scan with Camera"
-msgstr ""
+msgstr "用摄像头扫码"
 
 #: static/js/store.js:313
 msgid "Stop Camera"
-msgstr ""
+msgstr "关闭摄像头"
 
 #: static/js/store.js:323
 msgid "Camera unavailable — use manual entry."
-msgstr ""
+msgstr "摄像头不可用 — 请手动输入。"
 
 #: static/js/store.js:363
 #, python-brace-format
 msgid "{count} titles cached"
-msgstr ""
+msgstr "已缓存 {count} 个书名"
 
 #: static/js/store.js:363
 msgid "No library data cached yet"
-msgstr ""
+msgstr "尚未缓存书库数据"
 
 #: static/js/store.js:365
 #, python-brace-format
 msgid "synced {when}"
-msgstr ""
+msgstr "同步于 {when}"
 
 #: static/js/store.js:367
 msgid "online"
-msgstr ""
+msgstr "在线"
 
 #: static/js/store.js:367
 msgid "offline"
-msgstr ""
+msgstr "离线"
 
