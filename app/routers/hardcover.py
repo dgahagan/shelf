@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.responses import StreamingResponse
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.config import HTTP_TIMEOUT
@@ -88,7 +89,7 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
     data = await request.json()
     title = data.get("title", "").strip()
     if not title:
-        return {"ok": False, "message": "Title required"}
+        return {"ok": False, "message": i18n.gettext("Title required")}
 
     isbn = data.get("isbn")
     hc_book_id = data.get("hardcover_book_id")
@@ -197,9 +198,9 @@ async def add_hardcover_to_shelf(request: Request, _=Depends(require_role("edito
             promoted_to_wishlist = True
 
     if promoted_to_wishlist:
-        return {"ok": True, "message": "Added to wishlist", "item_id": existing["id"]}
+        return {"ok": True, "message": i18n.gettext("Added to wishlist"), "item_id": existing["id"]}
     if existing:
-        return {"ok": False, "message": "Already in your library", "item_id": existing["id"]}
+        return {"ok": False, "message": i18n.gettext("Already in your library"), "item_id": existing["id"]}
     if value_error:
         return {"ok": False, "message": value_error}
 
@@ -244,9 +245,9 @@ async def push_to_hardcover(item_id: int, _=Depends(require_role("editor")),
         item = db.execute("SELECT * FROM items_live WHERE id = ?", (item_id,)).fetchone()
 
     if not token:
-        return {"ok": False, "message": "Hardcover API token required"}
+        return {"ok": False, "message": i18n.gettext("Hardcover API token required")}
     if not item:
-        return {"ok": False, "message": "Item not found"}
+        return {"ok": False, "message": i18n.gettext("Item not found")}
 
     async with httpx.AsyncClient(timeout=30) as client:
         result = await hardcover.push_item_to_hardcover(token, dict(item), client)

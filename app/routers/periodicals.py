@@ -6,6 +6,7 @@ import httpx
 from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.config import HTTP_TIMEOUT
@@ -116,7 +117,7 @@ async def render_scan_candidate(
                 "isbn": serial.full_code,
                 "title": existing["title"],
                 "item_id": existing["id"],
-                "message": "This periodical issue is already in the collection",
+                "message": i18n.gettext("This periodical issue is already in the collection"),
             },
         )
 

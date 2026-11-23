@@ -1,17 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Upcoming releases — Shelf{% endblock %}
+{% block title %}{{ _('Upcoming releases') }} — Shelf{% endblock %}
 {% block content %}
 {% set can_edit = user and user.role in ('admin', 'editor') %}
 <div class="mb-6">
-    <a href="/series" class="text-sm text-shelf-muted hover:text-shelf-text">&larr; Series</a>
-    <h1 class="text-2xl font-bold mt-1">Upcoming releases</h1>
-    <p class="text-sm text-shelf-muted mt-1">Announced volumes in the series you watch, checked once a day.</p>
+    <a href="/series" class="text-sm text-shelf-muted hover:text-shelf-text">&larr; {{ _('Series') }}</a>
+    <h1 class="text-2xl font-bold mt-1">{{ _('Upcoming releases') }}</h1>
+    <p class="text-sm text-shelf-muted mt-1">{{ _('Announced volumes in the series you watch, checked once a day.') }}</p>
 </div>
 
 {% if not releases %}
 <div class="text-center py-16 text-shelf-muted" data-testid="upcoming-empty">
-    <p class="text-lg mb-1">No announcements found for your watched series.</p>
-    <p class="text-sm">That is not the same as nothing coming: Hardcover may not list a volume yet.</p>
+    <p class="text-lg mb-1">{{ _('No announcements found for your watched series.') }}</p>
+    <p class="text-sm">{{ _('That is not the same as nothing coming: Hardcover may not list a volume yet.') }}</p>
 </div>
 {% else %}
 <ul class="space-y-3">
@@ -36,17 +36,17 @@
             <div class="font-medium break-words" data-testid="upcoming-row-title">{{ r.title }}</div>
             {% if r.authors %}<div class="text-sm break-words">{{ r.authors }}</div>{% endif %}
             <div class="text-sm text-shelf-muted break-words">{{ r.series_name }}{% if r.series_position is not none %} #{{ r.series_position|int if r.series_position == r.series_position|int else r.series_position }}{% endif %}</div>
-            <div class="text-sm mt-1" data-testid="upcoming-row-date">{% if r.release_date %}{{ r.release_date }}{% else %}announced — date TBA{% endif %}</div>
+            <div class="text-sm mt-1" data-testid="upcoming-row-date">{% if r.release_date %}{{ r.release_date }}{% else %}{{ _('announced — date TBA') }}{% endif %}</div>
             {% if can_edit %}
             <div class="flex flex-wrap gap-2 mt-3">
                 <button type="button" @click="addToWishlist" :disabled="busy" data-testid="upcoming-row-wishlist"
-                        class="px-3 py-1.5 text-xs rounded-lg bg-shelf-accent/20 text-shelf-accent2 hover:bg-shelf-accent/30 disabled:opacity-50">+ Wishlist</button>
+                        class="px-3 py-1.5 text-xs rounded-lg bg-shelf-accent/20 text-shelf-accent2 hover:bg-shelf-accent/30 disabled:opacity-50">{{ _('+ Wishlist') }}</button>
                 <button type="button" hx-post="/api/upcoming/{{ r.id }}/dismiss" hx-target="closest li" hx-swap="outerHTML"
                         data-testid="upcoming-row-dismiss"
-                        class="px-3 py-1.5 text-xs rounded-lg border border-shelf-border text-shelf-muted hover:text-shelf-text">Dismiss</button>
+                        class="px-3 py-1.5 text-xs rounded-lg border border-shelf-border text-shelf-muted hover:text-shelf-text">{{ _('Dismiss') }}</button>
                 <button type="button" hx-post="/api/series/{{ r.series_name|urlencode }}/watch" hx-vals='{"watch": "0"}' hx-swap="none"
                         data-testid="upcoming-row-stop"
-                        class="px-3 py-1.5 text-xs rounded-lg border border-shelf-border text-shelf-muted hover:text-shelf-text">Stop watching {{ r.series_name }}</button>
+                        class="px-3 py-1.5 text-xs rounded-lg border border-shelf-border text-shelf-muted hover:text-shelf-text">{{ _('Stop watching %(name)s', name=r.series_name) }}</button>
             </div>
             {% endif %}
         </div>
@@ -55,5 +55,5 @@
 </ul>
 {% endif %}
 
-<p class="text-xs text-shelf-muted mt-8" data-testid="upcoming-attribution">Powered by Hardcover</p>
+<p class="text-xs text-shelf-muted mt-8" data-testid="upcoming-attribution">{{ _('Powered by Hardcover') }}</p>
 {% endblock %}
