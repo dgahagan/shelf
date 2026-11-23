@@ -6,6 +6,17 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Audiobookshelf no longer links unrelated books with non-Latin titles.** The
+  title match behind auto-linking (also used by the Audible import's print-copy
+  links) kept only a-z and 0-9, so Chinese, Japanese, Korean, Cyrillic and Greek
+  titles all normalised to nothing, or to their digits, and were linked to each
+  other wherever the author check allowed: one book with no author collected
+  every such audiobook. Titles now keep letters of every script, and a title
+  that normalises to nothing never title-matches. Same-title, same-author books
+  in those scripts now link as they should.
+
 ## [0.82.0] - 2026-11-23
 
 On a phone, a barcode typed into Scan could not be sent. The field had no
