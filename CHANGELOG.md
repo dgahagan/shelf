@@ -6,6 +6,14 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- **Audiobookshelf series group as one.** The sync stored ABS's display string,
+  "Name #6", as the series name, so every volume became a series of its own and
+  each sync wrote it back. The series name and its number are now stored
+  separately (the first series when ABS lists several, as Komga's "Name (6)"
+  already is), and items synced before are repaired by the next sync.
+
 ## [0.82.0] - 2026-11-23
 
 On a phone, a barcode typed into Scan could not be sent. The field had no
