@@ -6,6 +6,7 @@ import httpx
 from fastapi import APIRouter, Depends, Request
 from starlette.responses import StreamingResponse
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES
@@ -32,11 +33,11 @@ async def _optional_test_key(request: Request) -> tuple[str | None, dict | None]
     if body is None:
         body = {}
     if not isinstance(body, dict):
-        return None, {"ok": False, "message": "Invalid request body"}
+        return None, {"ok": False, "message": i18n.gettext("Invalid request body")}
 
     raw_key = body.get("key")
     if raw_key is not None and not isinstance(raw_key, str):
-        return None, {"ok": False, "message": "Invalid request body"}
+        return None, {"ok": False, "message": i18n.gettext("Invalid request body")}
     return (raw_key or "").strip(), None
 
 
@@ -52,7 +53,7 @@ async def test_isbndb_key(request: Request, _=Depends(require_role("admin"))):
             api_key = get_setting(db, "isbndb_api_key") or ""
 
     if not api_key:
-        return {"ok": False, "message": "No key configured"}
+        return {"ok": False, "message": i18n.gettext("No key configured")}
 
     # Use a well-known ISBN (The Odyssey, Penguin Classics) as the test probe
     test_isbn = "9780140449136"
@@ -64,13 +65,13 @@ async def test_isbndb_key(request: Request, _=Depends(require_role("admin"))):
                 timeout=10,
             )
         if resp.status_code == 200:
-            return {"ok": True, "message": "Key is valid"}
+            return {"ok": True, "message": i18n.gettext("Key is valid")}
         elif resp.status_code == 403:
-            return {"ok": False, "message": "Invalid or expired key"}
+            return {"ok": False, "message": i18n.gettext("Invalid or expired key")}
         else:
-            return {"ok": False, "message": f"Unexpected response: HTTP {resp.status_code}"}
+            return {"ok": False, "message": i18n.gettext("Unexpected response: HTTP %(code)s") % {"code": resp.status_code}}
     except Exception:
-        return {"ok": False, "message": "Connection failed — check network"}
+        return {"ok": False, "message": i18n.gettext("Connection failed — check network")}
 
 
 @router.post("/tmdb/test-key")
@@ -91,7 +92,7 @@ async def test_tmdb_key(request: Request, _=Depends(require_role("admin"))):
             api_key = get_setting(db, "tmdb_api_key") or ""
 
     if not api_key:
-        return {"ok": False, "message": "No key configured"}
+        return {"ok": False, "message": i18n.gettext("No key configured")}
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         return await tmdb.test_key(api_key, client)
@@ -106,10 +107,10 @@ async def valuate_item(item_id: int, _=Depends(require_role("admin")),
         api_key = get_setting(db, "isbndb_api_key")
 
     if not item or not item["isbn"]:
-        return {"ok": False, "message": "No ISBN"}
+        return {"ok": False, "message": i18n.gettext("No ISBN")}
 
     if not api_key:
-        return {"ok": False, "message": "ISBNdb API key not configured"}
+        return {"ok": False, "message": i18n.gettext("ISBNdb API key not configured")}
 
     cache = isbndb._load_cache()
     async with httpx.AsyncClient() as client:
@@ -124,7 +125,7 @@ async def valuate_item(item_id: int, _=Depends(require_role("admin")),
                 (price, item_id),
             )
         return {"ok": True, "value": price}
-    return {"ok": False, "message": "No price found"}
+    return {"ok": False, "message": i18n.gettext("No price found")}
 
 
 
@@ -159,7 +160,7 @@ async def valuate_all(_=Depends(require_role("admin")),
         api_key = get_setting(db, "isbndb_api_key")
 
     if not api_key:
-        return {"ok": False, "message": "ISBNdb API key not configured"}
+        return {"ok": False, "message": i18n.gettext("ISBNdb API key not configured")}
 
     cache = isbndb._load_cache()
     results = {"priced": 0, "not_found": 0, "total": len(items), "total_value": 0.0}

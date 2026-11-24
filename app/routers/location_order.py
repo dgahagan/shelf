@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
+from app import i18n
 from app.auth import require_role
 from app.database import get_db
 from app.services import location_order as order_svc
@@ -62,10 +63,10 @@ async def save_location_order(
         body = {}
     copy_ids = _integer_ids(body.get("copy_ids") if isinstance(body, dict) else None)
     if copy_ids is None:
-        return JSONResponse({"ok": False, "message": "Invalid copy order"}, status_code=400)
+        return JSONResponse({"ok": False, "message": i18n.gettext("Invalid copy order")}, status_code=400)
     with get_db() as db:
         if not db.execute("SELECT 1 FROM locations WHERE id = ?", (location_id,)).fetchone():
-            return JSONResponse({"ok": False, "message": "Location not found"}, status_code=404)
+            return JSONResponse({"ok": False, "message": i18n.gettext("Location not found")}, status_code=404)
         try:
             order_svc.apply_copy_order(db, location_id, copy_ids)
         except ValueError as exc:
@@ -85,10 +86,10 @@ async def auto_location_order(
         body = {}
     sort_key = body.get("sort_key") if isinstance(body, dict) else None
     if not isinstance(sort_key, str):
-        return JSONResponse({"ok": False, "message": "Invalid sort order"}, status_code=400)
+        return JSONResponse({"ok": False, "message": i18n.gettext("Invalid sort order")}, status_code=400)
     with get_db() as db:
         if not db.execute("SELECT 1 FROM locations WHERE id = ?", (location_id,)).fetchone():
-            return JSONResponse({"ok": False, "message": "Location not found"}, status_code=404)
+            return JSONResponse({"ok": False, "message": i18n.gettext("Location not found")}, status_code=404)
         try:
             ids = order_svc.auto_order_copies(db, location_id, sort_key)
         except ValueError as exc:

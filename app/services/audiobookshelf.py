@@ -426,13 +426,22 @@ def get_playback_url(abs_url: str, abs_id: str, public_url: str | None = None) -
 
 
 def _normalize_title(title: str) -> str:
-    """Normalize title for fuzzy matching."""
+    """Normalize title for fuzzy matching.
+
+    Letters of every script survive, not only a-z. An ASCII-only filter turned
+    every Chinese, Japanese, Korean, Cyrillic or Greek title into "" (or into
+    its digits, so "罗马人的故事 8" became "8"), and `auto_link` then matched all
+    such titles to each other wherever the author guard let them through.
+    A title that still normalizes to "" never title-matches (see `auto_link`),
+    the same fail-closed call `title_match` makes.
+    """
     import re
-    title = title.lower().strip()
+    import unicodedata
+    title = unicodedata.normalize("NFKC", title or "").casefold().strip()
     title = re.sub(r"^(the|a|an)\s+", "", title)
     title = re.sub(r"\s*[:—–\-]\s.*$", "", title)  # strip subtitle
-    title = re.sub(r"[^a-z0-9\s]", "", title)
-    return title.strip()
+    title = re.sub(r"[^\w\s]|_", "", title)
+    return " ".join(title.split())
 
 
 def _authors_compatible(a: str | None, b: str | None) -> bool:
@@ -483,8 +492,9 @@ def auto_link(origin_ids) -> int:
             else:
                 matches = []
 
-            # Match by normalized title + compatible authors if no ISBN match
-            if not matches:
+            # Match by normalized title + compatible authors if no ISBN match.
+            # An empty normalized title (punctuation only) cannot tell: no match.
+            if not matches and norm_title:
                 all_items = db.execute(
                     "SELECT id, title, authors, media_type FROM items_live WHERE id != ?",
                     (origin["id"],),

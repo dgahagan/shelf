@@ -67,7 +67,7 @@ msgid "checked {date}"
 msgstr ""
 
 #: static/js/components-item.js:81 static/js/components-item.js:85
-#: static/js/components-item.js:154
+#: static/js/components-item.js:154 static/js/location-order.js:67
 msgid "Saving…"
 msgstr ""
 
@@ -272,6 +272,22 @@ msgstr "请将摄像头对准 UPC-A 或 EAN-13 商品条码。"
 #: static/js/item_edit.js:158
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
 msgstr "这不是有效的 UPC-A / EAN-13 商品条码，请重试。"
+
+#: static/js/location-order.js:32
+msgid "Order changed — save when ready."
+msgstr ""
+
+#: static/js/location-order.js:60
+msgid "Could not save shelf order"
+msgstr ""
+
+#: static/js/location-order.js:70
+msgid "Shelf order saved."
+msgstr ""
+
+#: static/js/location-order.js:81
+msgid "Ordering…"
+msgstr ""
 
 #: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165
 msgid "Want to"
@@ -589,4 +605,27 @@ msgstr "在线"
 #: static/js/store.js:367
 msgid "offline"
 msgstr "离线"
+
+#: static/js/wrapup.js:128
+msgid "Untitled"
+msgstr ""
+
+#: static/js/wrapup.js:205
+#, python-brace-format
+msgid "Finished in {period}"
+msgstr ""
+
+#: static/js/wrapup.js:205
+#, python-brace-format
+msgid "Added in {period}"
+msgstr ""
+
+#: static/js/wrapup.js:206
+#, python-brace-format
+msgid "Latest {shown} of {total}"
+msgstr ""
+
+#: static/js/wrapup.js:250
+msgid "This browser could not export the image."
+msgstr ""
 

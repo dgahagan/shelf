@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Valuation Report — Shelf{% endblock %}
+{% block title %}{{ _('Valuation Report') }} — Shelf{% endblock %}
 {% block head %}
 <style>
     @media print {
@@ -23,44 +23,44 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <div class="flex items-center justify-between mb-2">
-        <h1 class="text-2xl font-bold">Collection Valuation Report</h1>
+        <h1 class="text-2xl font-bold">{{ _('Collection Valuation Report') }}</h1>
         <button type="button" data-print-page class="no-print px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">
-            Print / Save as PDF
+            {{ _('Print / Save as PDF') }}
         </button>
     </div>
-    <p class="text-sm text-shelf-muted mb-6">Generated {{ report_date }}</p>
+    <p class="text-sm text-shelf-muted mb-6">{{ _('Generated %(date)s', date=report_date) }}</p>
 
     <!-- Summary -->
     <div class="summary-block bg-shelf-card rounded-xl border border-shelf-border p-6 mb-6">
-        <h2 class="text-lg font-semibold mb-4">Summary</h2>
+        <h2 class="text-lg font-semibold mb-4">{{ _('Summary') }}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
             <div>
-                <p class="text-shelf-muted">Total Items</p>
+                <p class="text-shelf-muted">{{ _('Total Items') }}</p>
                 <p class="text-xl font-bold">{{ total_items }}</p>
             </div>
             <div>
-                <p class="text-shelf-muted">Priced</p>
-                <p class="text-xl font-bold">{{ priced_count }} <span class="text-sm text-shelf-muted font-normal">/ {{ total_with_isbn }} with ISBN</span></p>
+                <p class="text-shelf-muted">{{ _('Priced') }}</p>
+                <p class="text-xl font-bold">{{ priced_count }} <span class="text-sm text-shelf-muted font-normal">{{ _('/ %(n)s with ISBN', n=total_with_isbn) }}</span></p>
             </div>
             <div>
-                <p class="text-shelf-muted">Not Priced</p>
+                <p class="text-shelf-muted">{{ _('Not Priced') }}</p>
                 <p class="text-xl font-bold">{{ unpriced_count }}</p>
             </div>
             <div>
-                <p class="text-shelf-muted">Total List Value</p>
+                <p class="text-shelf-muted">{{ _('Total List Value') }}</p>
                 <p class="text-xl font-bold text-shelf-success">{{ total_value|money }}</p>
             </div>
             <div>
-                <p class="text-shelf-muted">Est. Missing Value</p>
+                <p class="text-shelf-muted">{{ _('Est. Missing Value') }}</p>
                 <p class="text-xl font-bold">{{ estimated_missing|money }}</p>
-                <p class="text-xs text-shelf-muted">avg {{ avg_price|money }} x {{ unpriced_count }}</p>
+                <p class="text-xs text-shelf-muted">{{ _('avg %(price)s x %(n)s', price=avg_price|money, n=unpriced_count) }}</p>
             </div>
             <div>
-                <p class="text-shelf-muted">Grand Total Est.</p>
+                <p class="text-shelf-muted">{{ _('Grand Total Est.') }}</p>
                 <p class="text-xl font-bold text-shelf-accent2">{{ grand_total|money }}</p>
             </div>
         </div>
-        <p class="text-xs text-shelf-muted mt-4">Values are publisher list prices — appropriate for insurance replacement cost claims. Unpriced items are listed for inventory completeness.</p>
+        <p class="text-xs text-shelf-muted mt-4">{{ _('Values are publisher list prices — appropriate for insurance replacement cost claims. Unpriced items are listed for inventory completeness.') }}</p>
     </div>
 
     <!-- Per-location tables -->
@@ -69,18 +69,18 @@
     <div class="mb-6">
         <div class="flex items-baseline justify-between mb-2">
             <h2 class="text-lg font-semibold">{{ group.name }}</h2>
-            <p class="text-sm text-shelf-muted">{{ group['items']|length }} items{% if group.priced_count %} &middot; <span class="text-shelf-text font-mono">{{ group.subtotal|money }}</span>{% endif %}</p>
+            <p class="text-sm text-shelf-muted">{{ ngettext('%(num)s item', '%(num)s items', group['items']|length) }}{% if group.priced_count %} &middot; <span class="text-shelf-text font-mono">{{ group.subtotal|money }}</span>{% endif %}</p>
         </div>
         <div class="bg-shelf-card rounded-xl border border-shelf-border overflow-hidden">
             <table class="w-full text-sm">
                 <thead class="bg-shelf-hover text-shelf-muted text-xs uppercase">
                     <tr>
                         <th class="px-3 py-3 text-left w-10"></th>
-                        <th class="px-3 py-3 text-left">Title</th>
-                        <th class="px-3 py-3 text-left">Author</th>
-                        <th class="px-3 py-3 text-left">ISBN / UPC</th>
-                        <th class="px-3 py-3 text-left">Type</th>
-                        <th class="px-3 py-3 text-right">Value</th>
+                        <th class="px-3 py-3 text-left">{{ _('Title') }}</th>
+                        <th class="px-3 py-3 text-left">{{ _('Author') }}</th>
+                        <th class="px-3 py-3 text-left">{{ _('ISBN / UPC') }}</th>
+                        <th class="px-3 py-3 text-left">{{ _('Type') }}</th>
+                        <th class="px-3 py-3 text-right">{{ _('Value') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-shelf-border">
@@ -98,7 +98,7 @@
                         <td class="px-3 py-1.5 text-right font-mono">
                             {% if item.effective_value is not none %}{{ item.effective_value|money }}{% else %}&mdash;{% endif %}
                             {% if item.manual_value is not none %}
-                            <span class="ml-1 px-1.5 py-0.5 rounded-sm text-[10px] font-sans font-semibold uppercase tracking-wide bg-shelf-accent2/10 text-shelf-accent2" title="Owner-declared value">manual</span>
+                            <span class="ml-1 px-1.5 py-0.5 rounded-sm text-[10px] font-sans font-semibold uppercase tracking-wide bg-shelf-accent2/10 text-shelf-accent2" title="{{ _('Owner-declared value') }}">{{ _('manual') }}</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -106,7 +106,7 @@
                 </tbody>
                 <tfoot class="bg-shelf-hover font-semibold">
                     <tr>
-                        <td class="px-3 py-2.5" colspan="5">{{ group.name }} subtotal ({{ group.priced_count }} priced)</td>
+                        <td class="px-3 py-2.5" colspan="5">{{ _('%(group)s subtotal (%(n)s priced)', group=group.name, n=group.priced_count) }}</td>
                         <td class="px-3 py-2.5 text-right font-mono">{{ group.subtotal|money }}</td>
                     </tr>
                 </tfoot>
@@ -116,14 +116,14 @@
     {% endfor %}
 
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-4 flex items-baseline justify-between font-semibold">
-        <span>Total (priced items)</span>
+        <span>{{ _('Total (priced items)') }}</span>
         <span class="font-mono text-shelf-success">{{ total_value|money }}</span>
     </div>
     {% if currency().code != "USD" %}
-    <p class="text-xs text-shelf-muted mt-2">ISBNdb prices are USD list prices. Shelf applies no conversion — amounts above are USD values displayed with your configured currency symbol.</p>
+    <p class="text-xs text-shelf-muted mt-2">{{ _('ISBNdb prices are USD list prices. Shelf applies no conversion — amounts above are USD values displayed with your configured currency symbol.') }}</p>
     {% endif %}
     {% else %}
-    <p class="text-shelf-muted text-center py-8">No items in the library yet.</p>
+    <p class="text-shelf-muted text-center py-8">{{ _('No items in the library yet.') }}</p>
     {% endif %}
 </div>
 {% endblock %}

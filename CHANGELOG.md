@@ -8,6 +8,15 @@ All notable changes to Shelf are documented here. The format follows
 
 ### Fixed
 
+- **Audiobookshelf no longer links unrelated books with non-Latin titles.** The
+  title match behind auto-linking (also used by the Audible import's print-copy
+  links) kept only a-z and 0-9, so Chinese, Japanese, Korean, Cyrillic and Greek
+  titles all normalised to nothing, or to their digits, and were linked to each
+  other wherever the author check allowed: one book with no author collected
+  every such audiobook. Titles now keep letters of every script, and a title
+  that normalises to nothing never title-matches. Same-title, same-author books
+  in those scripts now link as they should.
+
 - **Audiobookshelf series group as one.** The sync stored ABS's display string,
   "Name #6", as the series name, so every volume became a series of its own and
   each sync wrote it back. The series name and its number are now stored
