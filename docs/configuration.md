@@ -43,6 +43,8 @@ priority** over anything stored:
 | `ISBNDB_API_KEY` | ISBNdb key (valuation, price alerts) |
 | `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray metadata **and** DVD cover search) — either the 32-character v3 API Key or the v4 Read Access Token |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video game metadata **and** game cover search — both fields are required) |
+| `BGG_API_TOKEN` | BoardGameGeek XML API token (board game metadata, box art and the Update from BGG button). BGG issues one per registered application |
+| `GAMEUPC_API_KEY` | Optional GameUPC key (board game barcode → BGG id). Unset, Shelf uses GameUPC's public test endpoint, which serves real data |
 | `LIBRARYTHING_TOKEN` | LibraryThing API token, for the English related-edition cover fallback (non-commercial use unless LibraryThing grants permission) |
 
 Useful with Docker secrets or a secrets manager. Vision-provider keys (Photo

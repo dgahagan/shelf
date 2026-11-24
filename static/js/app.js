@@ -37,7 +37,9 @@ var SCAN_WARN_STATUSES = [
 // the barcode named, which is the correct outcome, not a warning.
 // 'periodical_confirm' is a 977 scan waiting for the user to confirm the
 // publication and issue: nothing is filed yet, so neither success nor error.
-var SCAN_INFO_STATUSES = ['elsewhere', 'periodical_confirm'];
+// 'board_game_choice' is a board game barcode GameUPC could not pin to one
+// game: the card below lists the candidates and nothing is filed yet.
+var SCAN_INFO_STATUSES = ['elsewhere', 'periodical_confirm', 'board_game_choice'];
 
 function scanCardOutcome(root) {
     if (!root) return null;

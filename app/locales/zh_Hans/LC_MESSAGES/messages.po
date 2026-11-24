@@ -20,7 +20,7 @@ msgstr ""
 msgid "Title"
 msgstr "标题"
 
-#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:156
+#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:158
 #: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "作者"
@@ -40,7 +40,7 @@ msgid "Location"
 msgstr "位置"
 
 #: app/browse_columns.py:66 app/browse_filters.py:213
-#: app/templates/item_detail.html:232 app/templates/item_edit.html:138
+#: app/templates/item_detail.html:252 app/templates/item_edit.html:138
 msgid "Status"
 msgstr "状态"
 
@@ -133,7 +133,7 @@ msgstr "电子书"
 msgid "Magazine"
 msgstr "杂志"
 
-#: app/config.py:19 app/routers/items_catalog.py:523
+#: app/config.py:19 app/routers/items_catalog.py:525
 msgid "DVD / Blu-ray"
 msgstr "DVD / 蓝光"
 
@@ -162,88 +162,96 @@ msgid "Manga"
 msgstr "日漫"
 
 #: app/config.py:26 app/routers/items_catalog.py:185
-#: app/routers/items_common.py:870
+#: app/routers/items_common.py:879
 msgid "Video Game"
 msgstr "电子游戏"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:290
+#: app/config.py:27
+msgid "Board Game"
+msgstr ""
+
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:290
 msgid "Want to Read"
 msgstr "想读"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:294
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:294
 msgid "Reading"
 msgstr "在读"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:298
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:298
 msgid "Read"
 msgstr "已读"
 
-#: app/config.py:54
+#: app/config.py:55
 msgid "read"
 msgstr "已读"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Want to Watch"
 msgstr "想看"
 
-#: app/config.py:55 app/templates/series.html:89
+#: app/config.py:56 app/templates/series.html:89
 msgid "Watching"
 msgstr "在看"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Watched"
 msgstr "已看"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "watched"
 msgstr "已看"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Want to Play"
 msgstr "想玩"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Playing"
 msgstr "在玩"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Played"
 msgstr "已玩"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "played"
 msgstr "已玩"
 
-#: app/config.py:58 app/templates/scan.html:218
+#: app/config.py:59 app/templates/scan.html:218
 msgid "Want to"
 msgstr "想要"
 
-#: app/config.py:58 app/templates/scan.html:219
+#: app/config.py:59 app/templates/scan.html:219
 msgid "In progress"
 msgstr "进行中"
 
-#: app/config.py:58 app/templates/scan.html:220
+#: app/config.py:59 app/templates/scan.html:220
 #: app/templates/stats_wrapup.html:36
 msgid "Finished"
 msgstr "已完成"
 
-#: app/config.py:58
+#: app/config.py:59
 msgid "finished"
 msgstr "已完成"
 
-#: app/config.py:124
+#: app/config.py:125
 msgid "Author(s)"
 msgstr "作者"
 
-#: app/config.py:127
+#: app/config.py:128
 msgid "Developer"
 msgstr "开发商"
 
-#: app/config.py:128
+#: app/config.py:129
+msgid "Designer"
+msgstr ""
+
+#: app/config.py:130
 msgid "Director"
 msgstr "导演"
 
-#: app/config.py:131 app/templates/fragments/music_discogs.html:74
+#: app/config.py:133 app/templates/fragments/music_discogs.html:74
 #: app/templates/music.html:22 app/templates/music.html:23
 msgid "Artist"
 msgstr "艺术家"
@@ -329,7 +337,7 @@ msgid "South African Rand"
 msgstr ""
 
 #: app/features.py:159 app/templates/fragments/settings/library.html:255
-#: app/templates/item_detail.html:240
+#: app/templates/item_detail.html:260
 msgid "Lending"
 msgstr "借出"
 
@@ -675,7 +683,7 @@ msgstr "应还日期超出范围"
 
 #: app/routers/checkouts.py:137 app/routers/hardcover.py:250
 #: app/routers/item_copies.py:174 app/routers/item_copies.py:231
-#: app/routers/items_catalog.py:544 app/routers/related_media.py:44
+#: app/routers/items_catalog.py:546 app/routers/related_media.py:44
 #: app/routers/related_media.py:80 app/routers/related_media.py:103
 #: app/routers/related_media.py:120
 msgid "Item not found"
@@ -802,7 +810,7 @@ msgid "Not in your collection"
 msgstr "不在你的藏品中"
 
 #: app/routers/items.py:476 app/routers/items.py:702
-#: app/routers/items_catalog.py:276
+#: app/routers/items_catalog.py:278
 msgid "Invalid ISBN"
 msgstr "无效的 ISBN"
 
@@ -810,16 +818,16 @@ msgstr "无效的 ISBN"
 msgid "Network error during lookup — check connectivity"
 msgstr "查询时网络出错 — 请检查网络连接"
 
-#: app/routers/items.py:589 app/routers/items_common.py:554
-#: app/routers/items_common.py:746
+#: app/routers/items.py:589 app/routers/items_board_games.py:273
+#: app/routers/items_common.py:563 app/routers/items_common.py:755
 msgid "Not found — add manually below"
 msgstr "未找到 — 请在下方手动添加"
 
-#: app/routers/items.py:673 app/routers/items_catalog.py:440
+#: app/routers/items.py:673 app/routers/items_catalog.py:442
 msgid "Title is required"
 msgstr "标题为必填项"
 
-#: app/routers/items.py:713 app/routers/items_catalog.py:448
+#: app/routers/items.py:713 app/routers/items_catalog.py:450
 msgid "Invalid publish year"
 msgstr "无效的出版年份"
 
@@ -861,6 +869,31 @@ msgstr ""
 msgid "Cannot merge \"%(title)s\" (#%(id)s): %(reason)s"
 msgstr ""
 
+#: app/routers/items_board_games.py:99
+msgid "No title for this game"
+msgstr ""
+
+#: app/routers/items_board_games.py:342 app/routers/items_board_games.py:408
+msgid "Failed to fetch game details from BoardGameGeek"
+msgstr ""
+
+#: app/routers/items_board_games.py:388
+msgid "Add a BoardGameGeek token in Settings first"
+msgstr ""
+
+#: app/routers/items_board_games.py:402
+#, python-format
+msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
+msgstr ""
+
+#: app/routers/items_board_games.py:406
+msgid "Could not reach BoardGameGeek — check connectivity and try again."
+msgstr ""
+
+#: app/routers/items_board_games.py:427
+msgid "Updated from BoardGameGeek"
+msgstr ""
+
 #: app/routers/items_catalog.py:92
 msgid "Unrecognised game platform — pick one and try again"
 msgstr "无法识别的游戏平台 — 请选择后重试"
@@ -869,41 +902,41 @@ msgstr "无法识别的游戏平台 — 请选择后重试"
 msgid "Failed to fetch game details from IGDB"
 msgstr "从 IGDB 获取游戏详情失败"
 
-#: app/routers/items_catalog.py:268
+#: app/routers/items_catalog.py:270
 msgid "Unrecognised media type — pick one and try again"
 msgstr "无法识别的媒体类型 — 请选择后重试"
 
-#: app/routers/items_catalog.py:320
+#: app/routers/items_catalog.py:322
 msgid "Could not fetch metadata for this ISBN"
 msgstr "无法获取该 ISBN 的元数据"
 
-#: app/routers/items_catalog.py:553
+#: app/routers/items_catalog.py:555
 msgid "This item has no ASIN to look up."
 msgstr "此条目没有可查询的 ASIN。"
 
-#: app/routers/items_catalog.py:561
+#: app/routers/items_catalog.py:563
 #, python-format
 msgid "Not in the Audible catalogue for the %(region)s marketplace. Check Settings → Library → Audible marketplace."
 msgstr "%(region)s 商城的 Audible 目录中没有此书。请检查 设置 → 书库 → Audible 商城。"
 
-#: app/routers/items_catalog.py:566
+#: app/routers/items_catalog.py:568
 msgid "The Audible catalogue is rate-limiting requests. Try again in a minute."
 msgstr "Audible 目录正在限制请求频率，请一分钟后重试。"
 
-#: app/routers/items_catalog.py:569
+#: app/routers/items_catalog.py:571
 msgid "Could not reach the Audible catalogue (Audnexus)."
 msgstr "无法连接 Audible 目录（Audnexus）。"
 
-#: app/routers/items_catalog.py:574
+#: app/routers/items_catalog.py:576
 msgid "Nothing to fill — every detail Audible has is already set."
 msgstr "没有可补全的内容——Audible 提供的信息都已填写。"
 
-#: app/routers/items_catalog.py:580
+#: app/routers/items_catalog.py:582
 #, python-format
 msgid "Audible's details could not be saved: %(error)s"
 msgstr "无法保存来自 Audible 的信息：%(error)s"
 
-#: app/routers/items_catalog.py:582
+#: app/routers/items_catalog.py:584
 #, python-format
 msgid "Filled %(count)s field from Audible: %(fields)s."
 msgid_plural "Filled %(count)s fields from Audible: %(fields)s."
@@ -913,21 +946,25 @@ msgstr[0] "已从 Audible 补全 %(count)s 个字段：%(fields)s。"
 msgid "Metadata lookup failed — check connectivity"
 msgstr "元数据查询失败 — 请检查网络连接"
 
-#: app/routers/items_covers.py:75 app/routers/valuation.py:110
+#: app/routers/items_covers.py:76 app/routers/valuation.py:110
 #: app/templates/fragments/book_search_results.html:35
 msgid "No ISBN"
 msgstr "无 ISBN"
 
-#: app/routers/items_covers.py:88
+#: app/routers/items_covers.py:89
 msgid "No cover found"
 msgstr "未找到封面"
+
+#: app/routers/items_covers.py:105
+msgid "Board game cover search needs a BoardGameGeek token — add one in Settings → Integrations."
+msgstr ""
 
 #: app/routers/items_csv.py:102
 #, python-format
 msgid "Unknown import mode '%(mode)s' (use skip or update)"
 msgstr ""
 
-#: app/routers/items_csv.py:111 app/routers/settings.py:490
+#: app/routers/items_csv.py:111 app/routers/settings.py:492
 msgid "No file uploaded"
 msgstr ""
 
@@ -1142,106 +1179,106 @@ msgstr ""
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr ""
 
-#: app/routers/settings.py:90 app/routers/settings.py:92
-#: app/routers/settings.py:96 app/routers/settings.py:424
-#: app/routers/settings.py:426 app/routers/settings.py:434
+#: app/routers/settings.py:92 app/routers/settings.py:94
+#: app/routers/settings.py:98 app/routers/settings.py:426
+#: app/routers/settings.py:428 app/routers/settings.py:436
 msgid "Invalid request"
 msgstr ""
 
-#: app/routers/settings.py:102
+#: app/routers/settings.py:104
 msgid "No API key configured"
 msgstr ""
 
-#: app/routers/settings.py:127
+#: app/routers/settings.py:129
 msgid "Unknown vision provider"
 msgstr ""
 
-#: app/routers/settings.py:130
+#: app/routers/settings.py:132
 msgid "Ollama image size must be a whole number of pixels"
 msgstr ""
 
-#: app/routers/settings.py:133
+#: app/routers/settings.py:135
 msgid "OpenAI image size must be a whole number of pixels"
 msgstr ""
 
-#: app/routers/settings.py:172
+#: app/routers/settings.py:174
 msgid "Overdue days must be a whole number"
 msgstr ""
 
-#: app/routers/settings.py:175
+#: app/routers/settings.py:177
 msgid "Unknown notification format"
 msgstr ""
 
-#: app/routers/settings.py:204
+#: app/routers/settings.py:206
 msgid "Retention days must be a whole number"
-msgstr ""
-
-#: app/routers/settings.py:236
-#, python-format
-msgid "Drop threshold must be a whole number from 1 to %(max)s"
 msgstr ""
 
 #: app/routers/settings.py:238
 #, python-format
+msgid "Drop threshold must be a whole number from 1 to %(max)s"
+msgstr ""
+
+#: app/routers/settings.py:240
+#, python-format
 msgid "Books per night must be a whole number from 1 to %(max)s"
 msgstr ""
 
-#: app/routers/settings.py:298
+#: app/routers/settings.py:300
 #, python-format
 msgid "Series per day must be a whole number from 1 to %(max)s"
 msgstr ""
 
-#: app/routers/settings.py:443
+#: app/routers/settings.py:445
 msgid "No URL provided"
 msgstr ""
 
-#: app/routers/settings.py:446
+#: app/routers/settings.py:448
 msgid "Test notification sent"
 msgstr ""
 
-#: app/routers/settings.py:446
+#: app/routers/settings.py:448
 msgid "Send failed — check the URL and server logs"
 msgstr ""
 
-#: app/routers/settings.py:495
+#: app/routers/settings.py:497
 msgid "File too large (max 500 MB)"
 msgstr ""
 
-#: app/routers/settings.py:501
+#: app/routers/settings.py:503
 msgid "This backup is encrypted — enter its passphrase"
 msgstr ""
 
-#: app/routers/settings.py:528
+#: app/routers/settings.py:530
 msgid "Database contains triggers — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:537
+#: app/routers/settings.py:539
 msgid "Database contains views — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:547
+#: app/routers/settings.py:549
 msgid "Database contains virtual tables — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:554
+#: app/routers/settings.py:556
 msgid "Database has attached databases — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:569
+#: app/routers/settings.py:571
 #, python-format
 msgid "Not a valid Shelf database (missing tables: %(tables)s)"
 msgstr ""
 
-#: app/routers/settings.py:584
+#: app/routers/settings.py:586
 #, python-format
 msgid "Incompatible schema: '%(table)s' table is missing columns: %(columns)s"
 msgstr ""
 
-#: app/routers/settings.py:590
+#: app/routers/settings.py:592
 msgid "Invalid database file — must be a valid Shelf SQLite database"
 msgstr ""
 
-#: app/routers/settings.py:644
+#: app/routers/settings.py:646
 msgid "Database restored. All sessions invalidated. Restart the container to apply."
 msgstr ""
 
@@ -1451,7 +1488,7 @@ msgstr "朗读者"
 msgid "Duration"
 msgstr "时长"
 
-#: app/services/audnexus.py:209 app/templates/item_detail.html:126
+#: app/services/audnexus.py:209 app/templates/item_detail.html:146
 msgid "Synopsis"
 msgstr "简介"
 
@@ -1656,59 +1693,59 @@ msgstr[0] ""
 msgid "Main menu"
 msgstr "主菜单"
 
-#: app/templates/base.html:109
+#: app/templates/base.html:142
 msgid "Keyboard shortcuts (?)"
 msgstr "键盘快捷键 (?)"
 
-#: app/templates/base.html:115
+#: app/templates/base.html:148
 msgid "Keyboard Shortcuts"
 msgstr "键盘快捷键"
 
-#: app/templates/base.html:122
+#: app/templates/base.html:155
 msgid "Global"
 msgstr "全局"
 
-#: app/templates/base.html:124
+#: app/templates/base.html:157
 msgid "Focus search"
 msgstr "定位到搜索框"
 
-#: app/templates/base.html:125
+#: app/templates/base.html:158
 msgid "Go to Scan"
 msgstr "前往扫码"
 
-#: app/templates/base.html:126
+#: app/templates/base.html:159
 msgid "Go to Browse"
 msgstr "前往浏览"
 
-#: app/templates/base.html:127
+#: app/templates/base.html:160
 msgid "Show shortcuts"
 msgstr "显示快捷键"
 
-#: app/templates/base.html:131
+#: app/templates/base.html:164
 msgid "Browse Page"
 msgstr "浏览页"
 
-#: app/templates/base.html:133
+#: app/templates/base.html:166
 msgid "Toggle grid / list view"
 msgstr "切换网格 / 列表视图"
 
-#: app/templates/base.html:134
+#: app/templates/base.html:167
 msgid "Toggle select mode"
 msgstr "开关选择模式"
 
-#: app/templates/base.html:135
+#: app/templates/base.html:168
 msgid "Toggle filters (mobile)"
 msgstr "显示/隐藏筛选（移动端）"
 
-#: app/templates/base.html:136 app/templates/fragments/item_grid.html:61
+#: app/templates/base.html:169 app/templates/fragments/item_grid.html:61
 msgid "Clear all filters"
 msgstr "清除全部筛选"
 
-#: app/templates/base.html:137
+#: app/templates/base.html:170
 msgid "Exit select / blur search"
 msgstr "退出选择 / 离开搜索框"
 
-#: app/templates/base.html:142
+#: app/templates/base.html:175
 msgid "Shortcuts are disabled when typing in inputs"
 msgstr "在输入框中打字时快捷键不生效"
 
@@ -1843,7 +1880,7 @@ msgstr "已拥有"
 #: app/templates/fragments/item_card.html:7
 #: app/templates/fragments/item_row.html:51
 #: app/templates/fragments/settings/data.html:297 app/templates/home.html:36
-#: app/templates/home.html:118 app/templates/item_detail.html:58
+#: app/templates/home.html:118 app/templates/item_detail.html:65
 #: app/templates/series.html:226 app/templates/series.html:304
 #: app/templates/stats.html:20
 msgid "Wishlist"
@@ -1975,7 +2012,7 @@ msgstr ""
 msgid "added %(date)s"
 msgstr ""
 
-#: app/templates/duplicates.html:44 app/templates/item_detail.html:95
+#: app/templates/duplicates.html:44 app/templates/item_detail.html:102
 msgid "ISBN:"
 msgstr "ISBN："
 
@@ -2075,7 +2112,7 @@ msgstr ""
 msgid "Scan item"
 msgstr ""
 
-#: app/templates/home.html:14 app/templates/scan.html:266
+#: app/templates/home.html:14 app/templates/scan.html:267
 msgid "Add by hand"
 msgstr "手动添加"
 
@@ -2319,6 +2356,7 @@ msgid "Default tags — e.g. Cookbook; Signed"
 msgstr "默认标签 — 例如：食谱；签名本"
 
 #: app/templates/fragments/audit_report.html:118
+#: app/templates/fragments/board_game_search_results.html:48
 #: app/templates/fragments/book_search_results.html:31
 #: app/templates/fragments/dvd_search_results.html:29
 #: app/templates/fragments/game_search_results.html:31
@@ -2386,201 +2424,225 @@ msgstr "重新查询 ASIN"
 msgid "Find cover"
 msgstr "查找封面"
 
-#: app/templates/item_detail.html:59
+#: app/templates/item_detail.html:55
+msgid "Update from BGG"
+msgstr ""
+
+#: app/templates/item_detail.html:66
 #, python-format
 msgid "List price %(price)s"
 msgstr "定价 %(price)s"
 
-#: app/templates/item_detail.html:59 app/templates/item_detail.html:120
+#: app/templates/item_detail.html:66 app/templates/item_detail.html:140
 #, python-format
 msgid "as of %(date)s"
 msgstr "截至 %(date)s"
 
-#: app/templates/item_detail.html:59
+#: app/templates/item_detail.html:66
 #, python-format
 msgid "was %(price)s on %(date)s"
 msgstr "%(date)s 时为 %(price)s"
 
-#: app/templates/item_detail.html:77
+#: app/templates/item_detail.html:84
 msgid "Type:"
 msgstr "类型："
 
-#: app/templates/item_detail.html:80
+#: app/templates/item_detail.html:87
 msgid "Language:"
 msgstr "语言："
 
-#: app/templates/item_detail.html:83
+#: app/templates/item_detail.html:90
 msgid "Platform:"
 msgstr "平台："
 
-#: app/templates/item_detail.html:86
+#: app/templates/item_detail.html:93
 msgid "Publisher:"
 msgstr "出版社："
 
-#: app/templates/item_detail.html:89
+#: app/templates/item_detail.html:96
 msgid "Year:"
 msgstr "年份："
 
-#: app/templates/item_detail.html:92
+#: app/templates/item_detail.html:99
 msgid "Pages:"
 msgstr "页数："
 
-#: app/templates/item_detail.html:98
+#: app/templates/item_detail.html:105
 msgid "Series:"
 msgstr "系列："
 
-#: app/templates/item_detail.html:105
+#: app/templates/item_detail.html:112
 #, python-format
 msgid "you own %(owned)s of 1–%(top)s"
 msgstr "第 1–%(top)s 册中你有 %(owned)s 册"
 
-#: app/templates/item_detail.html:105
+#: app/templates/item_detail.html:112
 msgid "missing"
 msgstr "缺"
 
-#: app/templates/item_detail.html:106
+#: app/templates/item_detail.html:113
 #, python-format
 msgid "%(count)s in series (Hardcover)"
 msgstr "系列共 %(count)s 本（Hardcover）"
 
-#: app/templates/item_detail.html:111
+#: app/templates/item_detail.html:118
 msgid "Narrator:"
 msgstr "朗读者："
 
-#: app/templates/item_detail.html:114
+#: app/templates/item_detail.html:122
+msgid "Players:"
+msgstr ""
+
+#: app/templates/item_detail.html:125
+msgid "Play time:"
+msgstr ""
+
+#: app/templates/item_detail.html:128
+msgid "Age:"
+msgstr ""
+
+#: app/templates/item_detail.html:131
+msgid "View on BoardGameGeek"
+msgstr ""
+
+#: app/templates/item_detail.html:131
+msgid "Powered by BGG"
+msgstr ""
+
+#: app/templates/item_detail.html:134
 msgid "Duration:"
 msgstr "时长："
 
-#: app/templates/item_detail.html:118
+#: app/templates/item_detail.html:138
 msgid "Value:"
 msgstr "价值："
 
-#: app/templates/item_detail.html:118
+#: app/templates/item_detail.html:138
 msgid "(manual)"
 msgstr "（手动）"
 
-#: app/templates/item_detail.html:120
+#: app/templates/item_detail.html:140
 msgid "Est. Value:"
 msgstr "估计价值："
 
-#: app/templates/item_detail.html:133
+#: app/templates/item_detail.html:153
 msgid "Read more"
 msgstr "展开"
 
-#: app/templates/item_detail.html:133
+#: app/templates/item_detail.html:153
 msgid "Show less"
 msgstr "收起"
 
-#: app/templates/item_detail.html:142 app/templates/series.html:96
+#: app/templates/item_detail.html:162 app/templates/series.html:96
 msgid "Fetch synopsis"
 msgstr "获取简介"
 
-#: app/templates/item_detail.html:143
+#: app/templates/item_detail.html:163
 msgid "Searching…"
 msgstr "搜索中…"
 
-#: app/templates/item_detail.html:145
+#: app/templates/item_detail.html:165
 msgid "No synopsis found on Open Library or Google Books."
 msgstr "在 Open Library 和 Google Books 上均未找到简介。"
 
-#: app/templates/item_detail.html:155
+#: app/templates/item_detail.html:175
 msgid "Fill details from Audible"
 msgstr "从 Audible 补全信息"
 
-#: app/templates/item_detail.html:167
+#: app/templates/item_detail.html:187
 msgid "Loading related media…"
 msgstr "正在加载相关媒体…"
 
-#: app/templates/item_detail.html:172
+#: app/templates/item_detail.html:192
 msgid "Notes:"
 msgstr "备注："
 
 #: app/templates/fragments/settings/integrations.html:57
-#: app/templates/item_detail.html:181
+#: app/templates/item_detail.html:201
 msgid "Read on Audiobookshelf"
 msgstr "在 Audiobookshelf 中阅读"
 
-#: app/templates/item_detail.html:181
+#: app/templates/item_detail.html:201
 msgid "Listen on Audiobookshelf"
 msgstr "在 Audiobookshelf 收听"
 
-#: app/templates/item_detail.html:197
+#: app/templates/item_detail.html:217
 msgid "Synced to Hardcover"
 msgstr "已同步到 Hardcover"
 
-#: app/templates/item_detail.html:197
+#: app/templates/item_detail.html:217
 msgid "Push to Hardcover"
 msgstr "推送到 Hardcover"
 
 #: app/templates/fragments/settings/integrations.html:106
-#: app/templates/item_detail.html:198
+#: app/templates/item_detail.html:218
 msgid "Syncing..."
 msgstr "同步中…"
 
-#: app/templates/item_detail.html:204
+#: app/templates/item_detail.html:224
 msgid "Added to your Hardcover library"
 msgstr "已添加到你的 Hardcover 书库"
 
-#: app/templates/item_detail.html:216
+#: app/templates/item_detail.html:236
 #, python-format
 msgid "Also in Audiobookshelf (%(type)s)"
 msgstr "Audiobookshelf 中也有（%(type)s）"
 
-#: app/templates/item_detail.html:243
+#: app/templates/item_detail.html:263
 msgid "Lent to"
 msgstr "借给"
 
-#: app/templates/item_detail.html:244
+#: app/templates/item_detail.html:264
 #, python-format
 msgid "on %(date)s"
 msgstr "于 %(date)s"
 
-#: app/templates/item_detail.html:246
+#: app/templates/item_detail.html:266
 msgid "Due:"
 msgstr "应还："
 
-#: app/templates/item_detail.html:252
+#: app/templates/item_detail.html:272
 msgid "Check In"
 msgstr "归还"
 
-#: app/templates/item_detail.html:260
+#: app/templates/item_detail.html:280
 msgid "Lend this item"
 msgstr "借出此条目"
 
-#: app/templates/item_detail.html:271
+#: app/templates/item_detail.html:291
 msgid "2 weeks"
 msgstr "2 周"
 
-#: app/templates/item_detail.html:272
+#: app/templates/item_detail.html:292
 msgid "1 week"
 msgstr "1 周"
 
-#: app/templates/item_detail.html:273
+#: app/templates/item_detail.html:293
 msgid "1 month"
 msgstr "1 个月"
 
-#: app/templates/item_detail.html:274
+#: app/templates/item_detail.html:294
 msgid "No due date"
 msgstr "无应还日期"
 
-#: app/templates/item_detail.html:276
+#: app/templates/item_detail.html:296
 msgid "Check Out"
 msgstr "借出"
 
-#: app/templates/item_detail.html:279
+#: app/templates/item_detail.html:299
 msgid "Add borrowers in <a href=\"/settings\" class=\"text-shelf-accent2\">Settings</a> first."
 msgstr "请先在<a href=\"/settings\" class=\"text-shelf-accent2\">设置</a>中添加借阅人。"
 
-#: app/templates/item_detail.html:286
+#: app/templates/item_detail.html:306
 msgid "Checkout history"
 msgstr "借阅记录"
 
-#: app/templates/item_detail.html:293
+#: app/templates/item_detail.html:313
 #, python-format
 msgid "returned %(date)s"
 msgstr "%(date)s 归还"
 
-#: app/templates/item_detail.html:295
+#: app/templates/item_detail.html:315
 msgid "out"
 msgstr "未归还"
 
@@ -2589,36 +2651,36 @@ msgstr "未归还"
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/settings/library.html:134
 #: app/templates/fragments/settings/tags.html:29
-#: app/templates/item_detail.html:309
+#: app/templates/item_detail.html:329
 msgid "Edit"
 msgstr "编辑"
 
-#: app/templates/item_detail.html:312
+#: app/templates/item_detail.html:332
 msgid "Add another like this"
 msgstr "照此再添加一条"
 
 #: app/templates/fragments/settings/tags.html:24
 #: app/templates/fragments/settings/users.html:33
-#: app/templates/item_detail.html:318
+#: app/templates/item_detail.html:338
 msgid "Delete"
 msgstr "删除"
 
-#: app/templates/item_detail.html:324
+#: app/templates/item_detail.html:344
 #, python-format
 msgid "Added %(date)s"
 msgstr "添加于 %(date)s"
 
-#: app/templates/item_detail.html:324
+#: app/templates/item_detail.html:344
 #, python-format
 msgid "Updated %(date)s"
 msgstr "更新于 %(date)s"
 
-#: app/templates/item_detail.html:324
+#: app/templates/item_detail.html:344
 #, python-format
 msgid "via %(source)s"
 msgstr "来源：%(source)s"
 
-#: app/templates/item_detail.html:329
+#: app/templates/item_detail.html:349
 msgid "Integration IDs"
 msgstr "集成 ID"
 
@@ -3339,23 +3401,27 @@ msgstr "适用于卡带或无条码的游戏 — 按名称和平台搜索 IGDB�
 msgid "Search TMDb for movies by title."
 msgstr "在 TMDb 中按片名搜索电影。"
 
-#: app/templates/scan.html:240
+#: app/templates/scan.html:238
+msgid "Search BoardGameGeek for board games by title."
+msgstr ""
+
+#: app/templates/scan.html:241
 msgid "Search Open Library for books by title, author, or keyword."
 msgstr "在 Open Library 中按书名、作者或关键词搜索图书。"
 
-#: app/templates/scan.html:241
+#: app/templates/scan.html:242
 msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
 msgstr "按标题搜索时没有条码可供识别，因此默认搜索图书。如需搜索 TMDb 或 IGDB，请在上方选择媒体类型。"
 
-#: app/templates/scan.html:266
+#: app/templates/scan.html:267
 msgid "Hide manual entry"
 msgstr "隐藏手动输入"
 
-#: app/templates/scan.html:273
+#: app/templates/scan.html:274
 msgid "Add by Hand"
 msgstr "手动添加"
 
-#: app/templates/scan.html:274
+#: app/templates/scan.html:275
 msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
 msgstr "无需查询 — 只填标题即可。其他内容均为可选，之后也能编辑。"
 
@@ -4162,11 +4228,32 @@ msgstr ""
 msgid "Reload to see them"
 msgstr "刷新页面即可看到"
 
-#: app/templates/fragments/book_search_results.html:43
-#, python-format
-msgid "No books found for \"%(query)s\". Try a different search."
-msgstr "没有找到“%(query)s”相关的图书，请换个关键词。"
+#: app/templates/fragments/board_game_search_results.html:12
+msgid "Choose the matching game below"
+msgstr ""
 
+#: app/templates/fragments/board_game_search_results.html:13
+#, python-format
+msgid "Which game is barcode %(upc)s?"
+msgstr ""
+
+#: app/templates/fragments/board_game_search_results.html:27
+msgid "players"
+msgstr ""
+
+#: app/templates/fragments/board_game_search_results.html:29
+msgid "Expansion"
+msgstr ""
+
+#: app/templates/fragments/board_game_search_results.html:53
+msgid "Powered by"
+msgstr ""
+
+#: app/templates/fragments/board_game_search_results.html:58
+msgid "No board games found. Try a different title."
+msgstr ""
+
+#: app/templates/fragments/board_game_search_results.html:63
 #: app/templates/fragments/book_search_results.html:48
 #: app/templates/fragments/dvd_search_results.html:43
 #: app/templates/fragments/game_search_results.html:45
@@ -4174,6 +4261,11 @@ msgstr "没有找到“%(query)s”相关的图书，请换个关键词。"
 #: app/templates/fragments/scan_result.html:256
 msgid "Add it by hand"
 msgstr "手动添加"
+
+#: app/templates/fragments/book_search_results.html:43
+#, python-format
+msgid "No books found for \"%(query)s\". Try a different search."
+msgstr "没有找到“%(query)s”相关的图书，请换个关键词。"
 
 #: app/templates/fragments/cover_review_item.html:18
 msgid "That's the end of this pass"

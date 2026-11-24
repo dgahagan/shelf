@@ -24,6 +24,7 @@ MEDIA_TYPES = {
     "comic": N_("Comic / Graphic Novel"),
     "manga": N_("Manga"),
     "video_game": N_("Video Game"),
+    "board_game": N_("Board Game"),
 }
 
 # The book family: media types that are read, carry ISBNs, and belong to a
@@ -58,7 +59,7 @@ PLAY_LABELS = StatusLabels("play", N_("Want to Play"), N_("Playing"), N_("Played
 NEUTRAL_LABELS = StatusLabels("neutral", N_("Want to"), N_("In progress"), N_("Finished"), N_("finished"))
 
 # Overrides only, as CREATOR_LABELS does; every other type reads.
-STATUS_VERBS = {"dvd": WATCH_LABELS, "video_game": PLAY_LABELS}
+STATUS_VERBS = {"dvd": WATCH_LABELS, "video_game": PLAY_LABELS, "board_game": PLAY_LABELS}
 
 # A type with its own verb gets its own status control on the item page.
 STATUS_MEDIA_TYPES = BOOK_MEDIA_TYPES | frozenset(STATUS_VERBS)
@@ -125,6 +126,7 @@ DEFAULT_CREATOR_LABEL = N_("Author(s)")
 
 CREATOR_LABELS = {
     "video_game": N_("Developer"),
+    "board_game": N_("Designer"),
     "dvd": N_("Director"),
     # Derived from MUSIC_MEDIA_TYPES rather than retyped, so a fifth music
     # format added above cannot silently fall back to "Author(s)".
@@ -172,6 +174,9 @@ TAG_SUGGESTIONS = {
              "Signed", "First edition", "Book club"],
     "dvd": ["Movie", "TV series", "Kids", "Documentary", "Blu-ray", "4K"],
     "video_game": ["Multiplayer", "Co-op", "Kids", "Collector's edition", "Sealed"],
+    "board_game": ["Family", "Strategy", "Party Game", "Puzzle",
+                   "Cooperative", "Children's Game",
+                   "Two-player", "Expansion"],
     "cd": MUSIC_GENRES,
     "vinyl": MUSIC_GENRES,
     "cassette": MUSIC_GENRES,
@@ -311,6 +316,10 @@ HOST_RATE_LIMITS: dict[str, float] = {
     "images-na.ssl-images-amazon.com": 0.5,  # image CDN; politeness only
     "m.media-amazon.com": 0.5,  # Audible cover CDN (audible-cli cover hints); politeness only
     "api.igdb.com": 0.25,  # IGDB publishes 4 req/s
+    # BGG publishes no number; its XML API terms ask clients not to hammer it
+    # and community clients settle on one request every few seconds.
+    "boardgamegeek.com": 2.0,
+    "api.gameupc.com": 1.0,  # community-run service; publishes no limit
     "api.themoviedb.org": 0.1,  # no hard per-second cap
     # MusicBrainz asks ordinary clients to stay at or below one request per
     # second. Give the limiter a little margin instead of sitting exactly on
@@ -410,6 +419,8 @@ SECRET_ENV_VARS = {
     "tmdb_api_key": "TMDB_API_KEY",
     "igdb_client_id": "IGDB_CLIENT_ID",
     "igdb_client_secret": "IGDB_CLIENT_SECRET",
+    "bgg_api_token": "BGG_API_TOKEN",
+    "gameupc_api_key": "GAMEUPC_API_KEY",
 }
 
 

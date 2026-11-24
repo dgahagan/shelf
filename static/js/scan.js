@@ -71,10 +71,10 @@ function scanPage() {
         get barcodePlaceholder() {
             if (this.barcodeOnly) return t('Scan barcode...');
             if (this.mediaType === 'auto') return t('Scan any barcode...');
-            return this.mediaType === 'video_game' ? t('Scan UPC barcode...') : t('Scan or type ISBN...');
+            return (this.mediaType === 'video_game' || this.mediaType === 'board_game') ? t('Scan UPC barcode...') : t('Scan or type ISBN...');
         },
         get titlePlaceholder() {
-            return {auto: t('Title or author...'), video_game: t('Game title...'), dvd: t('Movie title...')}[this.mediaType] ||
+            return {auto: t('Title or author...'), video_game: t('Game title...'), board_game: t('Game title...'), dvd: t('Movie title...')}[this.mediaType] ||
                 t('Book title or author...');
         },
         get resultsHeading() {
@@ -476,7 +476,7 @@ function scanPage() {
                 // typed digits. Stop scanning so another frame cannot enqueue
                 // a second unresolved choice and swap the card out from
                 // under the user.
-                if (outcome && (outcome.status === 'legacy_ambiguous' || outcome.status === 'legacy_incomplete')) {
+                if (outcome && (outcome.status === 'legacy_ambiguous' || outcome.status === 'legacy_incomplete' || outcome.status === 'board_game_choice')) {
                     if (this.scanner) {
                         try { await this.scanner.stop(); } catch (e) {}
                         this.scanner = false;
@@ -485,7 +485,8 @@ function scanPage() {
                     this.scanPaused = false;
                     this.scanLoading = false;
                     this.scanResult = false;
-                    showToast(outcome.status === 'legacy_ambiguous' ? t('Choose the matching book below') : t('Type the five digits below'), 'warning');
+                    showToast(outcome.status === 'board_game_choice' ? t('Choose the matching game below')
+                        : outcome.status === 'legacy_ambiguous' ? t('Choose the matching book below') : t('Type the five digits below'), 'warning');
                     return;
                 }
 
@@ -493,7 +494,7 @@ function scanPage() {
                     ok: outcome.ok,
                     warn: outcome.warn,
                     info: outcome.info,
-                    label: outcome.label || 'done',
+                    label: outcome.label || t('done'),
                     title: outcome.title,
                     authors: outcome.authors,
                     cover: outcome.cover ? outcome.cover.replace(/^\//, '') : null,

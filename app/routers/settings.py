@@ -29,6 +29,8 @@ _INTEGRATION_KEYS = (
     "librarything_token",
     "igdb_client_id",
     "igdb_client_secret",
+    "bgg_api_token",
+    "gameupc_api_key",
     "discogs_token",
 )
 
