@@ -148,8 +148,9 @@ async def lookup(isbn13: str, client: httpx.AsyncClient) -> provider_result.Prov
 
     Never raises. Returns a `ProviderResult`: `found("bnf", metadata)` on a real
     hit; `no_match` for a 200 with no title-bearing record, malformed XML, a
-    record the field mapping cannot read, or any other non-200, non-429 status;
-    `rate_limited` for a 429; `transport_failed` for any `httpx.HTTPError`.
+    record the field mapping cannot read, or any other non-200, non-429,
+    non-5xx status; `rate_limited` for a 429; `transport_failed` for a 5xx
+    (carrying its status) or any `httpx.HTTPError`.
     """
     await _rate_limit()
     try:

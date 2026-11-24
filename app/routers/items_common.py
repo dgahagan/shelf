@@ -125,6 +125,9 @@ async def _lookup_metadata(isbn13: str, hc_token: str | None, client: httpx.Asyn
                     "cover_url": hc_data.get("cover_url"),
                 }
 
+    if not metadata:  # one line naming every leg; WARNING only if one failed (#190)
+        level, summary = scan_outcome.cascade_log(legs)
+        logger.log(level, "No metadata for ISBN %s: %s", isbn13, summary)
     return metadata, source, hc_ids, provider_result.combine(legs, provider="isbn-cascade")
 
 def _save_item(metadata: dict, isbn13: str, media_type: str, location_id: int | None,
@@ -458,7 +461,7 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
     # (G47) — without a handler that reads as live when nothing can raise.
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         product_result = await upcitemdb.lookup(upc_norm, client)
-    if product_result.outcome == "transport_failed":
+    if scan_outcome.enrich_status(product_result) == "offline":  # a 5xx falls through (#190)
         return _upc_lookup_error(request, templates, upc_norm, media_type, mode, product_result)
     product = product_result.payload
 
@@ -519,7 +522,8 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         # No transport handler here, deliberately: `tmdb.lookup_by_title`
         # returns `transport_failed` as a `ProviderResult`, never a raise, so
         # a handler here would be dead code that reads as live (`G47`). A TMDb
-        # outage reads as "no TMDb match"; the error card is the product lookup's.
+        # 5xx renders the result card's `unavailable` arm (#190); the
+        # connectivity card is the product lookup's.
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             tmdb_result, _matched = await _first_hit(
                 queries,
@@ -542,12 +546,13 @@ async def _scan_upc(request: Request, templates, upc_code: str, media_type: str,
         # is ever computed. Without the state below, a rate-limited barcode is
         # rendered as an unknown one — the same dishonesty as #44, one phase
         # earlier. The `not_found` card renders it beside the message.
-        _log_scan(upc_norm, media_type, "not_found", mode=mode)
+        state = scan_outcome.not_found_status(product_result)
+        _log_scan(upc_norm, media_type, "error" if state == "unavailable" else "not_found", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": media_type,
              "message": i18n.gettext("Not found — add manually below"), "preview_cover": None,
-             "enrich_status": scan_outcome.not_found_status(product_result),
+             "enrich_status": state, "enrich_provider": scan_outcome.provider_label(product_result),
              "locations": _manual_form_locations()},
         )
 
@@ -730,12 +735,13 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
         # The film branch's twin: a product-lookup 429 leaves no title, so this
         # returns above the `enrich_status` ladder and is the one place the
         # product record's own failure channel is what the card has to report.
-        _log_scan(upc_norm, "video_game", "not_found", mode=mode)
+        state = scan_outcome.not_found_status(product_result)
+        _log_scan(upc_norm, "video_game", "error" if state == "unavailable" else "not_found", mode=mode)
         return templates.TemplateResponse(
             request, "fragments/scan_result.html",
             {"status": "not_found", "isbn": upc_norm, "media_type": "video_game",
              "message": i18n.gettext("Not found — add manually below"), "preview_cover": None,
-             "enrich_status": scan_outcome.not_found_status(product_result),
+             "enrich_status": state, "enrich_provider": scan_outcome.provider_label(product_result),
              "locations": _manual_form_locations()},
         )
 

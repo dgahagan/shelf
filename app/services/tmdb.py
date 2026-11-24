@@ -59,7 +59,8 @@ async def lookup_by_title(
     same response (`provider_result.classify_response`'s own ordering).
     `transport_failed` for a dead socket or any other exception raised by the
     request itself; `no_match` for an empty result set, a malformed body, or
-    any other non-200. Only the request and the parse sit inside their own
+    any other non-200 that is not a 5xx (a 5xx is `transport_failed` carrying
+    its status). Only the request and the parse sit inside their own
     catch-all handlers, so the auth/rate-limit signal cannot be eaten by them.
     """
     extra_params, headers = _auth(api_key)
@@ -107,7 +108,8 @@ async def search_movies(
     via `provider_result.classify_response`, auth outranking the rate-limit
     signal on the same response), `transport_failed` for a dead socket or any
     other exception raised by the request itself, `no_match` for a 200 whose
-    parsed movie list is empty or for any other non-200, and `found` for a
+    parsed movie list is empty or for any other non-200 that is not a 5xx (a 5xx is
+    `transport_failed` carrying its status), and `found` for a
     200 with at least one movie — payload the `list[dict]` built below.
     """
     extra_params, headers = _auth(api_key)

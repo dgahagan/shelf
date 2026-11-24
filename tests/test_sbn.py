@@ -147,14 +147,14 @@ class TestSbnLookup:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_a_server_error_is_no_match(self):
+    async def test_a_server_error_is_transport_failed(self):
         respx.get("https://opac.sbn.it/opacmobilegw/search.json").mock(
             return_value=httpx.Response(500)
         )
         async with httpx.AsyncClient() as client:
             result = await sbn.lookup("9788842092995", client)
 
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
         assert result.status == 500
 
     @respx.mock

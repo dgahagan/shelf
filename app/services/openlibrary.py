@@ -35,8 +35,9 @@ async def lookup(isbn: str, client: httpx.AsyncClient) -> provider_result.Provid
 
     Returns a `ProviderResult`: `found("openlibrary", metadata)` on a real
     hit; `no_match` for a 200 with no usable title, an unreadable body, or any
-    other non-200, non-429 status; `rate_limited` for a 429; `transport_failed`
-    for a dead socket or timeout on the *edition* request. The follow-up
+    other non-200, non-429, non-5xx status; `rate_limited` for a 429;
+    `transport_failed` for a 5xx (carrying its status) or a dead socket or
+    timeout on the *edition* request. The follow-up
     requests never undo the hit: a failed work fetch leaves both `authors`
     and `description` unset, and a failed author request drops only that
     author's name while the others are kept.
@@ -262,7 +263,8 @@ async def _search(
 
     The `classify_response` call below takes no `auth_statuses`: Open Library
     needs no API key, so nothing it returns can be a rejected credential. A
-    429 is `rate_limited` and any other non-200 is `no_match`.
+    429 is `rate_limited`, a 5xx is `transport_failed` with its status, and any
+    other non-200 is `no_match`.
     """
     await _rate_limit()
     try:

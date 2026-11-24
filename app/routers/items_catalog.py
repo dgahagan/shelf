@@ -305,14 +305,16 @@ async def add_book_from_search(
         google_api_key = get_setting(db, "google_books_api_key") or None
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-        # `_` = the rate-limited flag. *Add by ISBN* has no scan card to
-        # render it on — deliberate, not an oversight.
-        metadata, source, hc_ids, _ = await items_common._lookup_metadata(
+        # *Add by ISBN* has no scan card to render the cascade's state on —
+        # deliberate, not an oversight — but its scan-log row still tells a
+        # provider 5xx (`error`) from a genuine miss (#190).
+        metadata, source, hc_ids, cascade = await items_common._lookup_metadata(
             isbn13, hc_token, client, google_api_key=google_api_key
         )
 
         if not metadata:
-            items_common._log_scan(isbn13, media_type, "not_found")
+            state = scan_outcome.not_found_status(cascade)
+            items_common._log_scan(isbn13, media_type, "error" if state == "unavailable" else "not_found")
             return templates.TemplateResponse(
                 request, "fragments/scan_result.html",
                 {"status": "error", "isbn": isbn13, "message": i18n.gettext("Could not fetch metadata for this ISBN")},

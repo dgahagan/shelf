@@ -142,8 +142,8 @@ async def lookup(upc: str, client: httpx.AsyncClient) -> provider_result.Provide
     `found`'s payload is `{"title", "category", "brand", "images"}` — the
     whole useful part of the response, not just the title.
 
-    `no_match` for every failure that means "no such record": a non-200, a
-    malformed body, an empty `items` list. That is the contract the bare catch
+    `no_match` for every failure that means "no such record": a non-200 that is
+    not a 5xx, a malformed body, an empty `items` list. That is the contract the bare catch
     existed for — an unresolvable UPC must reach the scan page's "not found"
     manual-add form rather than an error.
 
@@ -151,6 +151,8 @@ async def lookup(upc: str, client: httpx.AsyncClient) -> provider_result.Provide
     `httpx.NetworkError` are recorded as `transport_failed` rather than folded
     into `no_match`, so `_scan_upc` can render the connectivity card and log
     the scan as `error`. Offline is not "no such record" (GOTCHAS G47).
+
+    a 5xx is `transport_failed` carrying its status.
 
     `rate_limited` for a 429 — a rate-limited product lookup is not "unknown
     barcode" either.

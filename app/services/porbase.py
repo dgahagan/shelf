@@ -188,8 +188,9 @@ async def lookup(
 
     Never raises. A record with a usable title returns ``found``; the
     ``<error>`` body, an empty or malformed response, or any other non-200,
-    non-429 status falls through as ``no_match``; a 429 is ``rate_limited``;
-    an unreachable endpoint is ``transport_failed``.
+    non-429, non-5xx status falls through as ``no_match``; a 429 is
+    ``rate_limited``; a 5xx (carrying its status) or an unreachable endpoint is
+    ``transport_failed``.
     """
     root, failure = await _fetch_record(isbn13, client)
     if failure is not None:

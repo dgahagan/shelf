@@ -134,13 +134,14 @@ class TestDnbLookup:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_http_error_is_no_match_without_raising(self):
+    async def test_http_error_is_transport_failed_without_raising(self):
         respx.get("https://services.dnb.de/sru/dnb").mock(
             return_value=httpx.Response(500)
         )
         async with httpx.AsyncClient() as client:
             result = await dnb.lookup("9783608963762", client)
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
+        assert result.status == 500
 
     @respx.mock
     @pytest.mark.asyncio

@@ -248,29 +248,43 @@ async def search_covers(
         google_api_key=creds.get("google_books_api_key"),
     )
     audible = await _audible_asin_candidate(item, typed, client, creds)
-    if audible:
-        merged = await _book_leg_candidates(item, typed, client, creds, result)
-        candidates = _dedupe_by_url(audible + (merged.payload if merged.found else []))
+    merged = await _book_leg_candidates(item, typed, client, creds, result)
+    if audible is None:
+        return merged
+    if audible.found:
+        candidates = _dedupe_by_url(audible.payload + (merged.payload if merged.found else []))
         return provider_result.found(merged.provider if merged.found else "audnexus", candidates)
-    return await _book_leg_candidates(item, typed, client, creds, result)
+    if merged.found:
+        return merged
+    # Neither leg has a cover: an Audnexus outage must not read as a genuine
+    # miss (issue #190, G47), so its outcome competes with the book legs'.
+    return provider_result.combine([merged, audible], provider=merged.provider)
 
 
-async def _audible_asin_candidate(item, typed: bool, client, creds: dict) -> list[dict]:
+async def _audible_asin_candidate(
+    item, typed: bool, client, creds: dict
+) -> provider_result.ProviderResult | None:
     """The Audible edition's own cover, first in the grid, by ASIN.
 
     Audiobook with an ASIN and an untyped query only: a typed query searches
-    its text alone. Any Audnexus outcome but `found` with an image yields
-    nothing, leaving the book path's result untouched. The image is fetched
-    later through `_download_to_item` (G11).
+    its text alone, and any other item returns None (the leg was not asked).
+    Otherwise the Audnexus outcome is returned as it stands, so a failure can
+    reach the picker's notice; `found` without an image is a `no_match`. The
+    image is fetched later through `_download_to_item` (G11).
     """
     asin = (_col(item, "asin") or "").strip()
     if typed or _col(item, "media_type") != "audiobook" or not asin:
-        return []
+        return None
     found = await audnexus.lookup(asin, client, region=creds.get("audible_region") or "us")
-    url = found.payload.get("cover_url") if found.found else None
+    if not found.found:
+        return found
+    url = found.payload.get("cover_url")
     if not url:
-        return []
-    return [{"url": url, "thumbnail": url, "source": "Audible · ASIN match", "match": "asin"}]
+        return provider_result.no_match("audnexus")
+    return provider_result.found(
+        "audnexus",
+        [{"url": url, "thumbnail": url, "source": "Audible · ASIN match", "match": "asin"}],
+    )
 
 
 async def _book_leg_candidates(item, typed: bool, client, creds: dict, result):

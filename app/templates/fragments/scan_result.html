@@ -121,7 +121,7 @@
             <p class="font-medium font-mono" data-scan-title>{{ isbn }}</p>
             <p class="text-sm text-shelf-muted">{{ message }}{% if preview_cover %} {{ _('(cover found on Amazon)') }}{% endif %}</p>
             {# G58: a state name and a bare provider name from the router, the
-               copy here. Two arms, because two are all this card can be
+               copy here. Three arms, because three are all this card can be
                given: the router suppresses `no_match` (it would repeat the
                message above in a second vocabulary), and no branch that
                renders this card can produce `no_credential` — the ISBN
@@ -130,9 +130,12 @@
                A third arm would be live-looking dead copy, which is the class
                of defect this card's history is made of. `offline` is absent
                for the same reason and not by oversight: every branch that
-               renders this card checks `transport_failed` first and renders
-               the connectivity card instead, so the state cannot arrive here
-               (G65's corollary). `no_lookup` is absent for the same kind of
+               renders this card projects the lookup first and renders the
+               connectivity card for `offline`, so the state cannot arrive
+               here (G65's corollary). `unavailable` is present because it
+               does arrive, on purpose: the provider answered with a server
+               error, so the network is fine and the manual form still
+               belongs here (issue #190). `no_lookup` is absent for the same kind of
                reason: it is assigned only on the film branch's file-it path,
                which renders the result card below, never this one — a
                hardware detection needs a product title to name, and every
@@ -146,10 +149,12 @@
             <p class="text-xs text-shelf-warning mt-1">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations, or add it below.', provider=enrich_provider) }}</p>
             {% elif enrich_status == 'quota' %}
             <p class="text-xs text-shelf-warning mt-1">{{ _('A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below.') }}</p>
+            {% elif enrich_status == 'unavailable' %}
+            <p class="text-xs text-shelf-warning mt-1">{{ _('%(provider)s returned an error &mdash; this may not be a genuine miss. Try again shortly, or add it below.', provider=enrich_provider) }}</p>
             {% endif %}
         </div>
         <span class="text-xs px-2 py-1 rounded-full shrink-0 bg-shelf-warning/20 text-shelf-warning"
-              data-scan-badge>{{ _('not found') }}</span>
+              data-scan-badge>{% if enrich_status == 'unavailable' %}{{ _('try again') }}{% else %}{{ _('not found') }}{% endif %}</span>
     </div>
 
     {% include "fragments/manual_add_form.html" with context %}
@@ -278,6 +283,8 @@
         <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; a metadata provider is rate-limiting us right now. Re-scan later to fill it in.') }}</p>
         {% elif enrich_status == 'offline' %}
         <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; could not reach %(provider)s. Check connectivity and re-scan later to fill it in.', provider=enrich_provider) }}</p>
+        {% elif enrich_status == 'unavailable' %}
+        <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; %(provider)s returned an error. Re-scan later to fill it in.', provider=enrich_provider) }}</p>
         {% elif enrich_status == 'no_provider' %}
         <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; Shelf has no metadata source for this format yet.') }}</p>
         {% elif enrich_status == 'no_match' %}

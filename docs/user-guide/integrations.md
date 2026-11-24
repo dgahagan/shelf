@@ -78,6 +78,12 @@ and an item whose ISBN in ABS fails its check digit is left without it; each
 gets a line in the server log naming the item. An ASIN you set yourself, or
 one an Audible import stamped, stays when ABS sends none.
 
+**Series are stored as a name and a position.** ABS reports an item's series
+as one string, "Discworld #3", and several series comma-joined. The sync keeps
+the first series, stores "Discworld" as the series name and 3 as its position,
+so the volumes group as one series. A series name with no number is kept as it
+is, and a position you set by hand stays when ABS sends none.
+
 **The first sync after upgrading may count items as Updated.** Every ABS
 item whose record has an ASIN gains it on that sync, which is a change. Later
 syncs go back to counting them as **Unchanged**. ABS fills the ASIN from its

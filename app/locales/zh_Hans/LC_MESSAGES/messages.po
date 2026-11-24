@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-23 20:48+0100\n"
+"PO-Revision-Date: 2026-11-23 22:44-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -48,7 +48,7 @@ msgstr "状态"
 msgid "Value"
 msgstr "价值"
 
-#: app/browse_columns.py:68 app/nav.py:41 app/services/audnexus.py:211
+#: app/browse_columns.py:68 app/nav.py:41 app/services/audnexus.py:210
 #: app/templates/browse.html:49
 #: app/templates/fragments/manual_add_form.html:155 app/templates/home.html:89
 #: app/templates/item_edit.html:79 app/templates/item_edit.html:217
@@ -57,13 +57,13 @@ msgstr "价值"
 msgid "Series"
 msgstr "系列"
 
-#: app/browse_columns.py:69 app/services/audnexus.py:207
+#: app/browse_columns.py:69 app/services/audnexus.py:206
 #: app/templates/fragments/manual_add_form.html:96
 #: app/templates/item_edit.html:118
 msgid "Publisher"
 msgstr "出版社"
 
-#: app/browse_columns.py:70 app/services/audnexus.py:208
+#: app/browse_columns.py:70 app/services/audnexus.py:207
 #: app/templates/fragments/manual_add_form.html:99
 #: app/templates/item_edit.html:119
 msgid "Year"
@@ -131,7 +131,7 @@ msgstr "电子书"
 msgid "Magazine"
 msgstr "杂志"
 
-#: app/config.py:19 app/routers/items_catalog.py:521
+#: app/config.py:19 app/routers/items_catalog.py:523
 msgid "DVD / Blu-ray"
 msgstr "DVD / 蓝光"
 
@@ -160,7 +160,7 @@ msgid "Manga"
 msgstr "日漫"
 
 #: app/config.py:26 app/routers/items_catalog.py:185
-#: app/routers/items_common.py:857
+#: app/routers/items_common.py:863
 msgid "Video Game"
 msgstr "电子游戏"
 
@@ -401,7 +401,7 @@ msgstr "应还日期超出范围"
 
 #: app/routers/checkouts.py:137 app/routers/hardcover.py:250
 #: app/routers/item_copies.py:174 app/routers/item_copies.py:231
-#: app/routers/items_catalog.py:542 app/routers/related_media.py:44
+#: app/routers/items_catalog.py:544 app/routers/related_media.py:44
 #: app/routers/related_media.py:80 app/routers/related_media.py:103
 #: app/routers/related_media.py:120
 msgid "Item not found"
@@ -423,7 +423,7 @@ msgstr "该借出记录已归还"
 msgid "Title required"
 msgstr ""
 
-#: app/routers/hardcover.py:201 app/templates/fragments/scan_result.html:217
+#: app/routers/hardcover.py:201 app/templates/fragments/scan_result.html:222
 msgid "Added to wishlist"
 msgstr "已加入心愿单"
 
@@ -507,41 +507,41 @@ msgstr "已识别旧版图书条码，但没有找到唯一匹配的书——请
 msgid "Not in your collection"
 msgstr "不在你的藏品中"
 
-#: app/routers/items.py:476 app/routers/items.py:696
+#: app/routers/items.py:476 app/routers/items.py:702
 #: app/routers/items_catalog.py:276
 msgid "Invalid ISBN"
 msgstr "无效的 ISBN"
 
-#: app/routers/items.py:567
+#: app/routers/items.py:572
 msgid "Network error during lookup — check connectivity"
 msgstr "查询时网络出错 — 请检查网络连接"
 
-#: app/routers/items.py:583 app/routers/items_common.py:549
-#: app/routers/items_common.py:737
+#: app/routers/items.py:589 app/routers/items_common.py:554
+#: app/routers/items_common.py:743
 msgid "Not found — add manually below"
 msgstr "未找到 — 请在下方手动添加"
 
-#: app/routers/items.py:667 app/routers/items_catalog.py:438
+#: app/routers/items.py:673 app/routers/items_catalog.py:440
 msgid "Title is required"
 msgstr "标题为必填项"
 
-#: app/routers/items.py:707 app/routers/items_catalog.py:446
+#: app/routers/items.py:713 app/routers/items_catalog.py:448
 msgid "Invalid publish year"
 msgstr "无效的出版年份"
 
-#: app/routers/items.py:995
+#: app/routers/items.py:1001
 msgid "No items or updates specified"
 msgstr "未指定条目或更新内容"
 
-#: app/routers/items.py:1000 app/routers/tags.py:71 app/routers/tags.py:76
+#: app/routers/items.py:1006 app/routers/tags.py:71 app/routers/tags.py:76
 msgid "Invalid item IDs"
 msgstr "无效的条目 ID"
 
-#: app/routers/items.py:1005
+#: app/routers/items.py:1011
 msgid "No valid fields to update"
 msgstr "没有可更新的有效字段"
 
-#: app/routers/items.py:1011
+#: app/routers/items.py:1017
 msgid "Series name cannot be empty"
 msgstr "系列名称不能为空"
 
@@ -557,43 +557,43 @@ msgstr "从 IGDB 获取游戏详情失败"
 msgid "Unrecognised media type — pick one and try again"
 msgstr "无法识别的媒体类型 — 请选择后重试"
 
-#: app/routers/items_catalog.py:318
+#: app/routers/items_catalog.py:320
 msgid "Could not fetch metadata for this ISBN"
 msgstr "无法获取该 ISBN 的元数据"
 
-#: app/routers/items_catalog.py:551
+#: app/routers/items_catalog.py:553
 msgid "This item has no ASIN to look up."
 msgstr "此条目没有可查询的 ASIN。"
 
-#: app/routers/items_catalog.py:559
+#: app/routers/items_catalog.py:561
 #, python-format
 msgid "Not in the Audible catalogue for the %(region)s marketplace. Check Settings → Library → Audible marketplace."
 msgstr "%(region)s 商城的 Audible 目录中没有此书。请检查 设置 → 书库 → Audible 商城。"
 
-#: app/routers/items_catalog.py:564
+#: app/routers/items_catalog.py:566
 msgid "The Audible catalogue is rate-limiting requests. Try again in a minute."
 msgstr "Audible 目录正在限制请求频率，请一分钟后重试。"
 
-#: app/routers/items_catalog.py:567
+#: app/routers/items_catalog.py:569
 msgid "Could not reach the Audible catalogue (Audnexus)."
 msgstr "无法连接 Audible 目录（Audnexus）。"
 
-#: app/routers/items_catalog.py:572
+#: app/routers/items_catalog.py:574
 msgid "Nothing to fill — every detail Audible has is already set."
 msgstr "没有可补全的内容——Audible 提供的信息都已填写。"
 
-#: app/routers/items_catalog.py:578
+#: app/routers/items_catalog.py:580
 #, python-format
 msgid "Audible's details could not be saved: %(error)s"
 msgstr "无法保存来自 Audible 的信息：%(error)s"
 
-#: app/routers/items_catalog.py:580
+#: app/routers/items_catalog.py:582
 #, python-format
 msgid "Filled %(count)s field from Audible: %(fields)s."
 msgid_plural "Filled %(count)s fields from Audible: %(fields)s."
 msgstr[0] "已从 Audible 补全 %(count)s 个字段：%(fields)s。"
 
-#: app/routers/items_common.py:408
+#: app/routers/items_common.py:411
 msgid "Metadata lookup failed — check connectivity"
 msgstr "元数据查询失败 — 请检查网络连接"
 
@@ -902,67 +902,67 @@ msgstr ""
 msgid "This audit is for %(place)s — switch the location back, or finish it and start a new one"
 msgstr ""
 
-#: app/services/audnexus.py:52
+#: app/services/audnexus.py:53
 msgid "Australia"
 msgstr "澳大利亚"
 
-#: app/services/audnexus.py:53
+#: app/services/audnexus.py:54
 msgid "Canada"
 msgstr "加拿大"
 
-#: app/services/audnexus.py:54
+#: app/services/audnexus.py:55
 msgid "Germany"
 msgstr "德国"
 
-#: app/services/audnexus.py:55
+#: app/services/audnexus.py:56
 msgid "Spain"
 msgstr "西班牙"
 
-#: app/services/audnexus.py:56
+#: app/services/audnexus.py:57
 msgid "France"
 msgstr "法国"
 
-#: app/services/audnexus.py:57
+#: app/services/audnexus.py:58
 msgid "India"
 msgstr "印度"
 
-#: app/services/audnexus.py:58
+#: app/services/audnexus.py:59
 msgid "Italy"
 msgstr "意大利"
 
-#: app/services/audnexus.py:59
+#: app/services/audnexus.py:60
 msgid "Japan"
 msgstr "日本"
 
-#: app/services/audnexus.py:60
+#: app/services/audnexus.py:61
 msgid "United Kingdom"
 msgstr "英国"
 
-#: app/services/audnexus.py:61
+#: app/services/audnexus.py:62
 msgid "United States"
 msgstr "美国"
 
-#: app/services/audnexus.py:204 app/templates/item_edit.html:104
+#: app/services/audnexus.py:203 app/templates/item_edit.html:104
 msgid "Subtitle"
 msgstr "副标题"
 
-#: app/services/audnexus.py:205
+#: app/services/audnexus.py:204
 msgid "Authors"
 msgstr "作者"
 
-#: app/services/audnexus.py:206 app/templates/item_edit.html:366
+#: app/services/audnexus.py:205 app/templates/item_edit.html:366
 msgid "Narrator"
 msgstr "朗读者"
 
-#: app/services/audnexus.py:209
+#: app/services/audnexus.py:208
 msgid "Duration"
 msgstr "时长"
 
-#: app/services/audnexus.py:210 app/templates/item_detail.html:126
+#: app/services/audnexus.py:209 app/templates/item_detail.html:126
 msgid "Synopsis"
 msgstr "简介"
 
-#: app/services/audnexus.py:212
+#: app/services/audnexus.py:211
 msgid "Series number"
 msgstr "系列序号"
 
@@ -3380,7 +3380,7 @@ msgid "Mark missing"
 msgstr ""
 
 #: app/templates/fragments/audit_report.html:120
-#: app/templates/fragments/scan_result.html:198
+#: app/templates/fragments/scan_result.html:203
 msgid "Open Trash"
 msgstr "打开回收站"
 
@@ -3470,7 +3470,7 @@ msgstr "没有找到“%(query)s”相关的图书，请换个关键词。"
 #: app/templates/fragments/dvd_search_results.html:43
 #: app/templates/fragments/game_search_results.html:45
 #: app/templates/fragments/scan_result.html:105
-#: app/templates/fragments/scan_result.html:251
+#: app/templates/fragments/scan_result.html:256
 msgid "Add it by hand"
 msgstr "手动添加"
 
@@ -4109,173 +4109,188 @@ msgstr "看不清？请改扫印刷的 ISBN，或"
 msgid "(cover found on Amazon)"
 msgstr "（封面来自 Amazon）"
 
-#: app/templates/fragments/scan_result.html:146
+#: app/templates/fragments/scan_result.html:149
 #, python-format
 msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations, or add it below."
 msgstr "%(provider)s 拒绝了已配置的密钥 &mdash; 这可能不是真的查不到。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中检查，或在下方手动添加。"
 
-#: app/templates/fragments/scan_result.html:148
+#: app/templates/fragments/scan_result.html:151
 msgid "A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below."
 msgstr "某个资料来源正在限制请求频率 &mdash; 这可能不是真的查不到。请稍后重试，或在下方手动添加。"
 
-#: app/templates/fragments/scan_result.html:152
-#: app/templates/fragments/scan_result.html:314
+#: app/templates/fragments/scan_result.html:153
+#, python-format
+msgid "%(provider)s returned an error &mdash; this may not be a genuine miss. Try again shortly, or add it below."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:157
+msgid "try again"
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:157
+#: app/templates/fragments/scan_result.html:321
 msgid "not found"
 msgstr "未找到"
 
-#: app/templates/fragments/scan_result.html:191
+#: app/templates/fragments/scan_result.html:196
 msgid "Restored from Trash"
 msgstr "已从回收站恢复"
 
-#: app/templates/fragments/scan_result.html:196
+#: app/templates/fragments/scan_result.html:201
 #, python-format
 msgid "Copy %(n)s is in Trash &mdash; restore it from the Trash page"
 msgstr "第 %(n)s 册在回收站中 &mdash; 请在回收站页面恢复"
 
-#: app/templates/fragments/scan_result.html:200
+#: app/templates/fragments/scan_result.html:205
 #, python-format
 msgid "In Trash since %(date)s &mdash; restore it to lend, move or rate it"
 msgstr "自 %(date)s 起在回收站中 &mdash; 恢复后才能借出、移动或评分"
 
-#: app/templates/fragments/scan_result.html:211
+#: app/templates/fragments/scan_result.html:216
 #: app/templates/fragments/trash_list.html:83
 #: app/templates/fragments/trash_list.html:130
 msgid "Restore"
 msgstr "恢复"
 
-#: app/templates/fragments/scan_result.html:215
-#: app/templates/fragments/scan_result.html:217
+#: app/templates/fragments/scan_result.html:220
+#: app/templates/fragments/scan_result.html:222
 #, python-format
 msgid "%(type)s via %(source)s"
 msgstr "%(type)s · 来源：%(source)s"
 
-#: app/templates/fragments/scan_result.html:219
+#: app/templates/fragments/scan_result.html:224
 msgid "Now owned &mdash; was on your wishlist"
 msgstr "现已拥有 &mdash; 原在心愿单中"
 
-#: app/templates/fragments/scan_result.html:221
+#: app/templates/fragments/scan_result.html:226
 msgid "Already in collection"
 msgstr "已在收藏中"
 
-#: app/templates/fragments/scan_result.html:272
+#: app/templates/fragments/scan_result.html:277
 msgid "Added with title only &mdash; the title names console hardware, so no film or game lookup was attempted. Change the type on the item if that's wrong."
 msgstr "仅以标题添加 &mdash; 标题是游戏机硬件名称，因此没有查询电影或游戏资料。如有误，请在条目中更改类型。"
 
-#: app/templates/fragments/scan_result.html:274
+#: app/templates/fragments/scan_result.html:279
 #, python-format
 msgid "Added with title only. Add an %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
 msgstr "仅以标题添加。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中添加 %(provider)s API 密钥，以获取简介和封面。"
 
-#: app/templates/fragments/scan_result.html:274
+#: app/templates/fragments/scan_result.html:279
 #, python-format
 msgid "Added with title only. Add a %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
 msgstr "仅以标题添加。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中添加 %(provider)s API 密钥，以获取简介和封面。"
 
-#: app/templates/fragments/scan_result.html:276
+#: app/templates/fragments/scan_result.html:281
 #, python-format
 msgid "Added with title only &mdash; %(provider)s rejected the configured key."
 msgstr "仅以标题添加 &mdash; %(provider)s 拒绝了已配置的密钥。"
 
-#: app/templates/fragments/scan_result.html:278
+#: app/templates/fragments/scan_result.html:283
 msgid "Added with title only &mdash; a metadata provider is rate-limiting us right now. Re-scan later to fill it in."
 msgstr "仅以标题添加 &mdash; 某个资料来源正在限制请求频率。请稍后重新扫码补全。"
 
-#: app/templates/fragments/scan_result.html:280
+#: app/templates/fragments/scan_result.html:285
 #, python-format
 msgid "Added with title only &mdash; could not reach %(provider)s. Check connectivity and re-scan later to fill it in."
 msgstr "仅以标题添加 &mdash; 无法连接 %(provider)s。请检查网络，稍后重新扫码补全。"
 
-#: app/templates/fragments/scan_result.html:282
+#: app/templates/fragments/scan_result.html:287
+#, python-format
+msgid "Added with title only &mdash; %(provider)s returned an error. Re-scan later to fill it in."
+msgstr ""
+
+#: app/templates/fragments/scan_result.html:289
 msgid "Added with title only &mdash; Shelf has no metadata source for this format yet."
 msgstr "仅以标题添加 &mdash; Shelf 暂时没有这种格式的资料来源。"
 
-#: app/templates/fragments/scan_result.html:284
+#: app/templates/fragments/scan_result.html:291
 #, python-format
 msgid "Added with title only &mdash; no %(provider)s match for this barcode."
 msgstr "仅以标题添加 &mdash; %(provider)s 中没有与此条码匹配的结果。"
 
-#: app/templates/fragments/scan_result.html:304
+#: app/templates/fragments/scan_result.html:311
 msgid "restored"
 msgstr "已恢复"
 
-#: app/templates/fragments/scan_result.html:305
+#: app/templates/fragments/scan_result.html:312
 msgid "wishlisted"
 msgstr "已加入心愿单"
 
-#: app/templates/fragments/scan_result.html:306
+#: app/templates/fragments/scan_result.html:313
 msgid "owned"
 msgstr "已拥有"
 
-#: app/templates/fragments/scan_result.html:307
+#: app/templates/fragments/scan_result.html:314
 msgid "lent"
 msgstr "已借出"
 
-#: app/templates/fragments/scan_result.html:308
+#: app/templates/fragments/scan_result.html:315
 msgid "returned"
 msgstr "已归还"
 
-#: app/templates/fragments/scan_result.html:309
+#: app/templates/fragments/scan_result.html:316
 msgid "moved"
 msgstr "已移动"
 
-#: app/templates/fragments/scan_result.html:310
+#: app/templates/fragments/scan_result.html:317
 msgid "confirmed"
 msgstr "已确认"
 
-#: app/templates/fragments/scan_result.html:311
+#: app/templates/fragments/scan_result.html:318
 msgid "relocated"
 msgstr "已换位置"
 
-#: app/templates/fragments/scan_result.html:312
+#: app/templates/fragments/scan_result.html:319
 msgid "elsewhere"
 msgstr "在别处"
 
-#: app/templates/fragments/scan_result.html:313
+#: app/templates/fragments/scan_result.html:320
 msgid "found"
 msgstr "已找到"
 
-#: app/templates/fragments/scan_result.html:316
+#: app/templates/fragments/scan_result.html:323
 msgid "already lent"
 msgstr "已借出"
 
-#: app/templates/fragments/scan_result.html:317
+#: app/templates/fragments/scan_result.html:324
 msgid "not lent"
 msgstr "未借出"
 
-#: app/templates/fragments/scan_result.html:318
+#: app/templates/fragments/scan_result.html:325
 msgid "in Trash"
 msgstr "在回收站中"
 
-#: app/templates/fragments/scan_result.html:319
+#: app/templates/fragments/scan_result.html:326
 msgid "added"
 msgstr "已添加"
 
-#: app/templates/fragments/scan_result.html:320
+#: app/templates/fragments/scan_result.html:327
 msgid "duplicate"
 msgstr "重复"
 
-#: app/templates/fragments/scan_result.html:321
+#: app/templates/fragments/scan_result.html:328
 msgid "error"
 msgstr "错误"
 
-#: app/templates/fragments/search_status_notice.html:18
+#: app/templates/fragments/search_status_notice.html:22
 #, python-format
 msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
 msgstr "%(provider)s 拒绝了已配置的密钥 &mdash; 这可能不是真的查不到。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中检查。"
 
-#: app/templates/fragments/search_status_notice.html:20
+#: app/templates/fragments/search_status_notice.html:24
 #, python-format
 msgid "%(provider)s is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later."
 msgstr "%(provider)s 正在限制请求频率 &mdash; 这可能不是真的查不到。请稍后重试。"
 
-#: app/templates/fragments/search_status_notice.html:22
-msgid "LibraryThing unavailable. Try again later."
-msgstr "LibraryThing 暂不可用，请稍后重试。"
-
-#: app/templates/fragments/search_status_notice.html:22
+#: app/templates/fragments/search_status_notice.html:26
 #, python-format
 msgid "Could not reach %(provider)s &mdash; check connectivity and try again."
 msgstr "无法连接 %(provider)s &mdash; 请检查网络后重试。"
+
+#: app/templates/fragments/search_status_notice.html:28
+#, python-format
+msgid "%(provider)s returned an error &mdash; this may not be a genuine miss. Try again shortly."
+msgstr ""
 
 #: app/templates/fragments/shelf_fill_result.html:12
 #, python-format

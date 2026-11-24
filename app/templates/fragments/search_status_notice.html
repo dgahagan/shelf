@@ -13,11 +13,17 @@
    defect G65's corollary exists to name. `no_match` has none either: the
    route projects through `scan_outcome.not_found_status`, which squelches it
    so the surface's own "nothing found" line is not said twice in two
-   vocabularies. #}
+   vocabularies.
+
+   `offline` means Shelf could not reach the provider at all; `unavailable`
+   means it answered with a server error (issue #190), so the network is fine
+   and the miss may not be genuine. #}
 {% if search_status == 'rejected' %}
 <p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations.', provider=search_provider) }}</p>
 {% elif search_status == 'quota' %}
 <p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('%(provider)s is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later.', provider=search_provider) }}</p>
 {% elif search_status == 'offline' %}
-<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{% if search_provider == "LibraryThing" %}{{ _('LibraryThing unavailable. Try again later.') }}{% else %}{{ _('Could not reach %(provider)s &mdash; check connectivity and try again.', provider=search_provider) }}{% endif %}</p>
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('Could not reach %(provider)s &mdash; check connectivity and try again.', provider=search_provider) }}</p>
+{% elif search_status == 'unavailable' %}
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('%(provider)s returned an error &mdash; this may not be a genuine miss. Try again shortly.', provider=search_provider) }}</p>
 {% endif %}

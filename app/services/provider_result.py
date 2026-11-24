@@ -105,8 +105,8 @@ def rate_limited(provider: str, *, status: int | None = 429) -> ProviderResult:
     return ProviderResult("rate_limited", provider, None, status)
 
 
-def transport_failed(provider: str) -> ProviderResult:
-    return ProviderResult("transport_failed", provider, None, None)
+def transport_failed(provider: str, *, status: int | None = None) -> ProviderResult:
+    return ProviderResult("transport_failed", provider, None, status)
 
 
 def classify_response(
@@ -129,11 +129,17 @@ def classify_response(
     `outbound.RETRY_STATUSES` — those two ask different questions ("should the
     user be told to come back?" vs. "is another attempt worth making?") and
     conflating them would file a 503 as a spent quota (GOTCHAS G60).
+
+    A 5xx is `transport_failed` carrying its status: the provider could not
+    answer, which is not the same as "no such record" (issue #190). Any other
+    non-200 (a 404, a 400) is `no_match`.
     """
     if resp.status_code in auth_statuses:
         return rejected(provider, status=resp.status_code)
     if outbound.is_rate_limited(resp):
         return rate_limited(provider, status=resp.status_code)
+    if 500 <= resp.status_code <= 599:
+        return transport_failed(provider, status=resp.status_code)
     if resp.status_code != 200:
         return no_match(provider, status=resp.status_code)
     return None

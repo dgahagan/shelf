@@ -92,3 +92,18 @@ def test_sync_keeps_a_series_without_sequence(db):
     asyncio.run(sync(ABS, "token"))
 
     assert _series(db) == ("Dune Chronicles", None)
+
+
+@respx.mock
+def test_sync_keeps_a_hand_set_position_when_abs_sends_none(db):
+    # A series name without "#<n>" says nothing about the position, so a
+    # position typed by hand survives the sync.
+    _insert_item(db, title="Guo Lun 6", isbn=None, media_type="audiobook",
+                 abs_id="li_1", abs_library_id="lib_audio",
+                 series_name="Dune Chronicles", series_position=4.0)
+    db.execute("COMMIT")
+    _mock_library("Dune Chronicles")
+
+    asyncio.run(sync(ABS, "token"))
+
+    assert _series(db) == ("Dune Chronicles", 4.0)

@@ -102,12 +102,14 @@ class TestGetTokenAuthSignal:
             "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "rate_limited"
 
     async def test_a_500_from_the_token_endpoint_is_not_an_auth_failure(self, fake_fetch):
-        """A provider outage is not a rejected key — a miss, never a rejection."""
+        """A provider outage is not a rejected key — a transport failure, never a rejection."""
         fake_fetch.return_value = StubResponse(500)
-        assert (await igdb._get_token(
-            CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
-        assert (await igdb.search_games(
-            "Halo", CLIENT_ID, CLIENT_SECRET, object())).outcome == "no_match"
+        token = await igdb._get_token(CLIENT_ID, CLIENT_SECRET, object())
+        assert token.outcome == "transport_failed"
+        assert token.status == 500
+        search = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert search.outcome == "transport_failed"
+        assert search.status == 500
 
     async def test_a_transport_exception_is_not_an_auth_failure(self, fake_fetch):
         """A network blip is not a credential problem — the comment in the code says so."""
@@ -231,6 +233,15 @@ class TestSearchGamesReportsARateLimit:
         igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
         result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
         assert result.outcome == "no_match"
+        assert igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] == ("tok", 1e12)
+
+    async def test_a_503_on_the_search_call_keeps_the_token(self, fake_fetch):
+        """A provider outage says nothing about the key — no eviction."""
+        fake_fetch.return_value = StubResponse(503)
+        igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] = ("tok", 1e12)
+        result = await igdb.search_games("Halo", CLIENT_ID, CLIENT_SECRET, object())
+        assert result.outcome == "transport_failed"
+        assert result.status == 503
         assert igdb._token_cache[(CLIENT_ID, CLIENT_SECRET)] == ("tok", 1e12)
 
     async def test_a_429_keeps_the_token(self, fake_fetch):

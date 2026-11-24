@@ -179,8 +179,8 @@ pre-ISBN books, retro game cartridges, discs with a scuffed UPC:
   platform for "Super Mario Bros." ambiguity.
 
 An empty result box tells you *why* it is empty, in the same words the scan
-card uses: a rejected key, a provider that is rate-limiting us, or a provider
-Shelf could not reach at all. "No books found for …" now means only what it
+card uses: a rejected key, a provider that is rate-limiting us, a provider that
+answered with a server error, or a provider Shelf could not reach at all. "No books found for …" now means only what it
 says — the provider answered and genuinely had nothing.
 
 An item added from the results takes the [default tags](#default-tags) and
@@ -393,7 +393,7 @@ When no provider matches, the item is still added under its own title — use
 **Retry cover** or **Find cover** on the item page, or edit the title and type
 directly in the item editor, to fill it in.
 
-**And the card says why it was thin**, because the six reasons need six
+**And the card says why it was thin**, because the seven reasons need seven
 different responses:
 
 - **no lookup was attempted** — nothing to fix. The title named console
@@ -403,6 +403,9 @@ different responses:
 - **the key was rejected** — fix it. The provider answered, and said no.
 - **a provider is rate-limiting us** — wait and re-scan. This may not be a
   genuine miss, so it is worth trying again before adding anything by hand.
+- **a provider returned an error** — wait and re-scan. The provider was
+  reached but answered with a server error, so this may not be a genuine miss.
+  The card names the provider when it knows which one failed.
 - **Shelf has no metadata source for this format yet** — nothing to fix. CDs
   are the case today: there is no music provider wired up, so a scanned CD is
   filed under its barcode title. That now happens on **Auto** — the CD is
@@ -420,6 +423,10 @@ would be a guess. See
 A **Not found** card can carry the rate-limit line too. That one matters: it
 means the barcode may well be catalogued, and typing the book in by hand is
 probably wasted effort. Try again later first.
+
+When a provider answered with a server error, the **Not found** card keeps its
+add-by-hand form and says the miss may not be genuine. Its badge reads **try
+again**, and the camera overlay shows that same text.
 
 ## Tips
 

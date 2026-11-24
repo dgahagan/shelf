@@ -152,12 +152,12 @@ class TestPorbaseLookup:
         assert (await _lookup()).outcome == "rate_limited"
 
     @respx.mock
-    async def test_server_error_is_no_match(self):
+    async def test_server_error_is_transport_failed(self):
         respx.get(URL).mock(return_value=httpx.Response(500))
 
         result = await _lookup()
 
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
         assert result.status == 500
 
     @respx.mock

@@ -16,6 +16,7 @@ from pathlib import Path
 
 import pytest
 
+from app.services import national
 from app.services import provider_result as pr
 from app.services.scan_outcome import (
     ENRICH_STATES,
@@ -318,3 +319,14 @@ class TestManualAddOfferOnTheErrorCard:
         `offer_manual`, the loop it was written to prevent is back."""
         src = Path("app/routers/items.py").read_text()
         assert src.count("offer_manual") == 1
+
+
+def test_status_carrying_transport_failure_is_unavailable():
+    failed = pr.transport_failed("google", status=503)
+    assert enrich_status(failed) == "unavailable"
+    assert not_found_status(failed) == "unavailable"
+
+
+def test_every_national_provider_has_a_label():
+    names = {m.__name__.rsplit(".", 1)[-1] for m in national.PREFIX_PROVIDERS.values()}
+    assert names <= PROVIDER_LABELS.keys()

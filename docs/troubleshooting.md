@@ -61,7 +61,8 @@ has a barcode for this).
   Add by hand panel with what you typed already in the title field. A title
   typed into the barcode box reaches the same offer from its error card.
 - A **connectivity card** is a different problem: the lookup could not reach
-  the provider at all (DNS, no route, a timeout). It is not a missing record,
+  the provider at all (DNS, no route, a timeout). That is "could not reach";
+  the provider-error case below is "reached, and got a server error". It is not a missing record,
   and the scan is logged as `error` rather than `not_found`. Check the
   container's network before hunting for the barcode. The wording differs by
   what you scanned — an ISBN gives **"Network error during lookup — check
@@ -70,11 +71,19 @@ has a barcode for this).
   catalog used to turn an unreachable network into a plain "not found", so a
   Shelf that was simply offline reported the books as unknown. The SBN
   catalog, which answers Italian ISBNs, reaches it too.
+- A card that says **"<provider> returned an error — this may not be a
+  genuine miss"**, or a **try again** badge on the camera overlay, is a
+  provider outage. Shelf reached the provider and it answered with an HTTP
+  5xx server error, so the barcode may well be catalogued. Wait a little and
+  re-scan, or add the item by hand from the same card. The scan is logged as
+  `error`, not `not_found`. The server log names the cause: a WARNING line
+  `No metadata for ISBN …` lists each source and its outcome with its HTTP
+  status, for example `google=transport_failed(503)`.
 - **Italian books quietly stop enriching** — titles still file, but with no
   author, publisher or year, and the lookup falls back to Open Library. The
   SBN endpoint is undocumented and reverse-engineered, so ICCU can move or
   retire it without notice. Nothing is broken and nothing is lost: an
-  unreachable or unreadable SBN answers "not found" and the ordinary cascade
+  unreachable, erroring or unreadable SBN is passed over and the ordinary cascade
   takes over. The fix is a Shelf update, not anything you can configure.
 - If several barcodes in a row come back empty, the provider's daily quota
   may be spent rather than the records missing — see [A scan comes back empty
@@ -169,6 +178,10 @@ time:
   it in."** — nothing is broken. The provider answered with HTTP 429. Wait and
   re-scan; the item is already filed. No provider is named because a book
   lookup consults up to four and any subset can be starved at once.
+- **"Added with title only — <provider> returned an error. Re-scan later to
+  fill it in."** — the provider answered with a server error (HTTP 5xx).
+  Nothing is wrong with your key or the item. Wait and re-scan; the item is
+  already filed.
 - **"the title names console hardware, so no film or game lookup was
   attempted."** — nothing to fix. The shortened title Shelf would have
   searched on is just `PlayStation` or `Nintendo`, or a brand name such as
@@ -228,6 +241,9 @@ usually means one of three things:
   wait and try again; nothing is wrong with your key or the item.
 - **Shelf could not reach the provider.** *"Could not reach TMDb — check
   connectivity"*: DNS, no route, or a timeout. Not a missing record.
+- **The provider answered with a server error.** *"TMDb returned an error —
+  this may not be a genuine miss. Try again shortly."* Shelf reached the
+  provider and it failed on its side. Wait and search again.
 - **The game's platform is narrowing the search.** A game searches IGDB with
   the platform recorded on the item, so a title IGDB does not list for that
   platform returns nothing — and typing a different query does not lift the

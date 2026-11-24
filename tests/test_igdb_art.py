@@ -120,10 +120,10 @@ class TestSearchGameArt:
         result = await igdb.search_game_art("Mario", "cid", "secret", object())
         assert result.outcome == "rejected"
 
-    async def test_an_http_500_is_a_miss(self, fake_fetch):
+    async def test_an_http_500_is_a_transport_failure(self, fake_fetch):
         fake_fetch.side_effect = [TOKEN_RESPONSE, StubResponse(500)]
         result = await igdb.search_game_art("Mario", "cid", "secret", object())
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
         assert result.status == 500
 
     async def test_a_raised_transport_error_is_transport_failed(self, fake_fetch):

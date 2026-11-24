@@ -67,15 +67,14 @@ class TestOpenLibrarySearch:
     @respx.mock
     @pytest.mark.asyncio
     async def test_search_handles_api_error(self):
-        """A non-200, non-429 response (Open Library takes no API key, so this
-        can never be a rejected credential) is `no_match`, carrying the status
-        that caused it."""
+        """A 5xx (Open Library takes no API key, so this can never be a rejected
+        credential) is `transport_failed`, carrying the status that caused it."""
         respx.get("https://openlibrary.org/search.json").mock(
             return_value=httpx.Response(500)
         )
         async with httpx.AsyncClient() as client:
             result = await search_books("test", client)
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
         assert result.status == 500
 
     @respx.mock
@@ -363,7 +362,7 @@ class TestAutoNeverReachesTheDatabase:
         from app.routers import items_common
 
         async def _no_metadata(*a, **kw):
-            return None, "manual", {}, False
+            return None, "manual", {}, provider_result.no_match("stub")
 
         monkeypatch.setattr(items_common, "_lookup_metadata", _no_metadata)
         monkeypatch.setattr(

@@ -299,7 +299,6 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                             "narrator": narrator,
                             "isbn": isbn,
                             "series_name": series_name,
-                            "series_position": series_position,
                             "publisher": publisher,
                             "publish_year": pub_year,
                             "description": description,
@@ -308,6 +307,11 @@ async def sync(abs_url: str, abs_token: str, on_progress=None) -> dict:
                             "abs_id": abs_id,
                             "abs_library_id": lib_id,
                         }
+                        if series_position is not None:
+                            # Only ever set, like the ASIN below: a position
+                            # typed by hand survives a sync whose series name
+                            # carries no "#<n>".
+                            desired["series_position"] = series_position
                         if asin is not None:
                             # Only ever set: an ASIN stamped by hand or by an
                             # import survives a sync where ABS sends none or

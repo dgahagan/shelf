@@ -6,22 +6,64 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.82.1] - 2026-11-23
+
+When a metadata provider failed with a server error, Shelf said the book was
+"not found". A scan during a Google Books outage looked exactly like a book no
+catalogue knew, so people added it by hand or gave up on a book that would have
+been found a minute later. Shelf now says which provider failed and that the
+miss may not be genuine. This release also carries two Audiobookshelf sync
+fixes from [@litong5969](https://github.com/litong5969) and more of the
+interface in Italian from [@vjandrea](https://github.com/vjandrea).
+
+### Added
+
+- **Home, Stats, Wrap-up, Valuation, Labels, Trash and Audits are translated
+  into Italian,** including the messages their actions show. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#198](https://github.com/dgahagan/shelf/pull/198).
+
+### Changed
+
+- **A provider server error is no longer reported as "not found".** When a
+  provider answers with a 5xx error, the scan card names it, for example
+  "Google Books returned an error — this may not be a genuine miss", and its
+  badge reads **try again**. The manual-add form and the preview cover stay on
+  the card, so you can still add the item by hand. Title search, the game and
+  film searches, and the cover picker show the same notice. Reported by
+  [@smellychunks](https://github.com/smellychunks) in
+  [#190](https://github.com/dgahagan/shelf/issues/190).
+- **Recent scans records a provider outage as `error`, not `not_found`.**
+  Add by ISBN does the same.
+- **The connectivity card now means only that Shelf could not reach the
+  provider.** A provider that answered with an error gets the card above
+  instead.
+- **The server log says why an ISBN lookup found nothing.** One line names
+  each source, its answer and its HTTP status. It is a WARNING when a source
+  failed and an INFO line when every source was a genuine miss.
+- **Audiobookshelf series group as one.** The sync stored the ABS display
+  string, "Name #6", as the series name, so every volume became a series of
+  its own. The name and the number are now stored separately (the first
+  series when ABS lists several). Items synced before are repaired by the
+  next sync. A series position you set by hand is kept when the ABS series
+  carries no number. Contributed by [@litong5969](https://github.com/litong5969)
+  in [#196](https://github.com/dgahagan/shelf/pull/196).
+
 ### Fixed
 
-- **Audiobookshelf no longer links unrelated books with non-Latin titles.** The
-  title match behind auto-linking (also used by the Audible import's print-copy
-  links) kept only a-z and 0-9, so Chinese, Japanese, Korean, Cyrillic and Greek
-  titles all normalised to nothing, or to their digits, and were linked to each
-  other wherever the author check allowed: one book with no author collected
-  every such audiobook. Titles now keep letters of every script, and a title
-  that normalises to nothing never title-matches. Same-title, same-author books
-  in those scripts now link as they should.
-
-- **Audiobookshelf series group as one.** The sync stored ABS's display string,
-  "Name #6", as the series name, so every volume became a series of its own and
-  each sync wrote it back. The series name and its number are now stored
-  separately (the first series when ABS lists several, as Komga's "Name (6)"
-  already is), and items synced before are repaired by the next sync.
+- **Audiobookshelf no longer links unrelated books with non-Latin titles.**
+  The title match behind auto-linking (also used by the Audible import's
+  print-copy links) kept only a-z and 0-9. Chinese, Japanese, Korean,
+  Cyrillic and Greek titles all became empty, or only their digits, and were
+  linked to each other wherever the author check allowed. Titles now keep
+  letters of every script, and a title with no letters never title-matches.
+  Links the old match already made are not removed; unlink them by hand.
+  Contributed by [@litong5969](https://github.com/litong5969) in
+  [#197](https://github.com/dgahagan/shelf/pull/197).
+- **A server error from MusicBrainz, Audnexus, LibraryThing or IGDB is
+  reported the same way as any other provider's,** instead of each client's
+  own wording or a silent miss. LibraryThing's old "LibraryThing unavailable"
+  message is gone.
 
 ## [0.82.0] - 2026-11-23
 
@@ -5944,6 +5986,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.82.1]: https://github.com/dgahagan/shelf/releases/tag/v0.82.1
 [0.82.0]: https://github.com/dgahagan/shelf/releases/tag/v0.82.0
 [0.81.1]: https://github.com/dgahagan/shelf/releases/tag/v0.81.1
 [0.81.0]: https://github.com/dgahagan/shelf/releases/tag/v0.81.0

@@ -88,8 +88,8 @@ async def _get_token(
     string. `rejected` when Twitch refuses the credential pair, `rate_limited`
     when the token endpoint 429s — a channel it never had, which is why a
     spent Twitch quota used to render as "no such game" (issue #49 part 1) —
-    `no_match` for any other non-200, and `transport_failed` for a blip or an
-    unparseable body. Every consumer projects its own contract from this.
+    `no_match` for any other non-200 that is not a 5xx, and `transport_failed`
+    (with its status for a 5xx) for a blip or an unparseable body. Every consumer projects its own contract from this.
     """
     key = (client_id, client_secret)
     cached = _token_cache.get(key)
@@ -159,12 +159,9 @@ def _classify_search(
             resp.status_code,
         )
         return provider_result.rejected("igdb", status=resp.status_code)
-    if outbound.is_rate_limited(resp):
-        return provider_result.rate_limited("igdb", status=resp.status_code)
     if resp.status_code != 200:
         logger.debug("IGDB search failed: HTTP %d — %s", resp.status_code, resp.text[:200])
-        return provider_result.no_match("igdb", status=resp.status_code)
-    return None
+    return provider_result.classify_response("igdb", resp)
 
 
 async def search_games(

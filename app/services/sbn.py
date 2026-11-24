@@ -23,8 +23,9 @@ read straight off the payload — that is where NFC comes from, and it is what
 keeps this provider's text comparable with DNB's and Open Library's (G26).
 
 Durability: the endpoint is undocumented and was reverse-engineered from
-ICCU's mobile app. If ICCU moves or retires it, this client sees a non-200
-or an unparseable body, answers `no_match`, and Italian ISBNs revert to
+ICCU's mobile app. If ICCU moves or retires it, this client sees a 4xx
+or an unparseable body, answers `no_match` (a 5xx answers `transport_failed`
+with its status), and Italian ISBNs revert to
 exactly the cascade they get today (Open Library -> Hardcover -> Google
 Books). The failure mode is silent reversion, not breakage — that is what a
 reader of this file needs to know when Italian lookups quietly stop
@@ -154,8 +155,8 @@ async def lookup(isbn13: str, client: httpx.AsyncClient) -> provider_result.Prov
     on a real hit; `no_match` for `numFound: 0`, for a payload with no
     exact-ISBN record, for a selected record with no usable `titolo`, for
     malformed JSON, for any exception raised by the field mapping, and for
-    any other non-200, non-429 status; `rate_limited` for a 429;
-    `transport_failed` for any `httpx.HTTPError` — the endpoint being
+    any other non-200, non-429, non-5xx status; `rate_limited` for a 429;
+    `transport_failed` for a 5xx (carrying its status) or any `httpx.HTTPError` — the endpoint being
     unreachable is not the same as the book being unknown, and the scan card
     says so.
     """

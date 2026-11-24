@@ -128,7 +128,7 @@ class TestKbLookup:
 
     @respx.mock
     @pytest.mark.asyncio
-    async def test_server_error_is_no_match(self):
+    async def test_server_error_is_transport_failed(self):
         respx.get("https://data.bibliotheken.nl/sparql").mock(
             return_value=httpx.Response(500)
         )
@@ -136,7 +136,7 @@ class TestKbLookup:
         async with httpx.AsyncClient() as client:
             result = await kb.lookup("9789026101632", client)
 
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
         assert result.status == 500
 
     @respx.mock

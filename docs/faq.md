@@ -24,8 +24,8 @@ quota that nobody else is sharing.
 
 The scan card tells you which of these happened rather than making you guess:
 no key configured, a key the provider rejected, a provider that is
-rate-limiting you right now, a format Shelf has no metadata source for (CDs,
-today), or a genuine miss. See
+rate-limiting you right now, a provider that answered with a server error, a
+format Shelf has no metadata source for (CDs, today), or a genuine miss. See
 [Troubleshooting](troubleshooting.md#a-scan-comes-back-empty-and-the-log-says-a-provider-asked-for-a-long-wait).
 
 **Why HTTPS with a self-signed certificate?**

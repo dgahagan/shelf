@@ -37,8 +37,8 @@ async def lookup(
 
     Returns a `ProviderResult`: `found("google", metadata)` on a real hit;
     `rejected` for 400/401/403 when `api_key` was sent (G64); `rate_limited`
-    for a 429; `transport_failed` for a dead socket; `no_match` for anything
-    else, including a 200 with no usable title.
+    for a 429; `transport_failed` for a dead socket or a 5xx (carrying its status);
+    `no_match` for anything else, including a 200 with no usable title.
     """
     try:
         resp = await outbound.fetch(

@@ -546,6 +546,8 @@ transaction has committed, on a fresh connection:
 for the synced rows, and after an Audible CSV import for the audiobooks it
 created or matched. It links an origin to a live row of a different media
 type that shares its ISBN, or else its normalized title and first author.
+The title normalisation keeps letters of every script, and a title that
+normalises to nothing never title-matches.
 The Related Media panel never infers one: a `related` or `adaptation` link
 exists because someone made it.
 
@@ -1001,7 +1003,8 @@ are in precedence order:
 | `no_credential` | nothing was asked, because nothing could be |
 | `rejected` | the provider refused the configured credential — outranks `quota`, being the one the user can act on |
 | `quota` | the provider answered 429; this may not be a genuine miss |
-| `offline` | Shelf could not reach the provider at all — below `quota`, because a refusal the provider *sent* is a stronger statement than one it never answered |
+| `offline` | Shelf could not reach the provider at all. Status-less: no HTTP answer came back. Below `quota`, because a refusal the provider *sent* is a stronger statement than one it never answered |
+| `unavailable` | the provider answered with a server error (a `transport_failed` record that carries its status). The miss may not be genuine. Below `quota` too |
 | `no_match` | the provider was asked and had nothing |
 
 A state with no arm in the template renders nothing rather than raising, so
@@ -1012,14 +1015,19 @@ whose cascade was starved and for a UPC whose *product* lookup was.
 `services/scan_outcome.py`'s `enrich_status` is a **projection** over one
 `ProviderResult` (plus a `has_provider` flag), not a reassembly from booleans
 the caller had to keep in step — a branch that holds no flags at all can still
-call it and get back one of the six *projected* states above. A
-`transport_failed` record answers `offline` rather than `no_match`: the scan routers pick the
-connectivity card *before* this function whenever the product or cascade
+call it and get back one of the seven *projected* states above. A
+`transport_failed` record answers `offline` (no status) or `unavailable` (a
+status) rather than `no_match`. Routers branch on that projected state, not on
+the raw record. The scan routers pick the connectivity card *before* this function whenever the product or cascade
 lookup was what failed, so what reaches here is an enrichment-leg failure on
 an item that was filed anyway. The `offline` arm therefore lives in the
 **added** card only — every branch that renders the `not_found` card turns a
-transport failure into the connectivity card first, so an arm there would be
-copy nothing can produce. Its sibling
+status-less transport failure into the connectivity card first, so an arm
+there would be copy nothing can produce. `unavailable` is the deliberate
+exception: the network is fine, so it reaches the `not_found` card, which
+keeps its manual-add form and shows a "may not be a genuine miss" notice with
+a **try again** badge. It also has an arm on the added card, in search
+notices and in the cover picker. Its sibling
 `not_found_status` answers the same projection but suppresses `no_match`,
 because a "Not found" card already says that in its own words; `provider_label`
 reads the display name straight off the record's `provider` field. Because the
@@ -1047,7 +1055,9 @@ bearer the provider has stopped honouring. `classify_response` turns a raw respo
 client did not have to parse into that outcome — an auth status (401/403 for
 Hardcover; 400, 401 or 403 for Google Books, which answers a bad key with 400
 rather than 401 or 403) outranks a 429, so a status that could be read as
-either resolves to the one the user can act on. No client raises for a
+either resolves to the one the user can act on. A 500–599 maps to
+`transport_failed` carrying that status, never to `rate_limited`, so a server
+error is not read as a spent quota. No client raises for a
 rejected credential or a spent quota any more.
 
 Three of the four ISBN sources never enter `outbound.fetch` at all: they call
@@ -1082,6 +1092,11 @@ asked should not speak over one that was asked and refused) — and the winner
 is returned **as it stands**, keeping the leg's own provider so the card can
 name the credential that was refused. The ISBN cascade, the UPC product
 lookup and the TMDb/IGDB query ladder above all resolve through it.
+When an ISBN lookup finds nothing, `scan_outcome.cascade_log` formats the one
+server-log line `No metadata for ISBN <isbn>: provider=outcome(status), …`. It
+logs at WARNING if any source failed to answer and at INFO if every source was
+a genuine miss, so an outage is not buried under ordinary misses. It carries
+ids, outcomes and statuses only.
 
 **Outbound pacing** (`services/outbound.py`, limits in `config.py`): every
 external host has a minimum interval matching its published rate limit,

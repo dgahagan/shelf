@@ -117,10 +117,11 @@ class TestLookupByTitleAuthSignal:
         assert result.outcome == "no_match"
         assert result.payload is None
 
-    async def test_a_500_is_no_match(self, fake_fetch):
+    async def test_a_500_is_transport_failed(self, fake_fetch):
         fake_fetch.return_value = StubResponse(500)
         result = await tmdb.lookup_by_title("Dune", V4_TOKEN, object())
-        assert result.outcome == "no_match"
+        assert result.outcome == "transport_failed"
+        assert result.status == 500
 
     async def test_a_transport_error_is_transport_failed(self, fake_fetch):
         fake_fetch.side_effect = RuntimeError("boom")

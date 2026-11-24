@@ -558,7 +558,12 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
             # anybody is not a book that does not exist. Only an Open
             # Library exception used to reach this card; the other three
             # legs swallowed their transport failures into `not_found`.
-            if cascade.outcome == "transport_failed":
+            # A provider 5xx is neither: it is not a missing record (logged
+            # `error`) and not a network failure (no connectivity card — the
+            # manual form still belongs here). `scan_outcome` decides which,
+            # as `offline` vs `unavailable` (issue #190).
+            state = scan_outcome.not_found_status(cascade)
+            if state == "offline":
                 logger.warning("Network error looking up ISBN %s", isbn13)
                 items_common._log_scan(isbn13, media_type, "error", mode=mode)
                 return templates.TemplateResponse(
@@ -568,7 +573,8 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                 )
 
             preview_cover = await items_common._fetch_preview_cover(isbn13, client)
-            items_common._log_scan(isbn13, media_type, "not_found", mode=mode)
+            items_common._log_scan(isbn13, media_type,
+                                   "error" if state == "unavailable" else "not_found", mode=mode)
             # The same vocabulary the added-card notice uses, projected
             # from the cascade record — so `rejected` reaches the arm
             # `fragments/scan_result.html` has always carried for it and
@@ -582,7 +588,7 @@ async def _scan_isbn_inner(request, isbn, media_type, location_id, platform, mod
                     "status": "not_found", "isbn": isbn13, "media_type": media_type,
                     "message": i18n.gettext("Not found — add manually below"),
                     "preview_cover": preview_cover,
-                    "enrich_status": scan_outcome.not_found_status(cascade),
+                    "enrich_status": state,
                     "enrich_provider": scan_outcome.provider_label(cascade),
                     "locations": items_common._manual_form_locations(),
                 },

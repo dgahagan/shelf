@@ -15,8 +15,9 @@ Failure contract. `lookup` never raises. Every exit path returns a
 - 200 with a JSON object body: `found`, payload is the normalized dict.
 - 404: `no_match` (the ASIN is not in the catalogue).
 - 429 (or another status `outbound.is_rate_limited` accepts): `rate_limited`.
-- 5xx: `transport_failed` (the service is down, which is not the same as
-  "not in the catalogue"; same mapping as `musicbrainz.py`).
+- 5xx: `transport_failed` carrying the status (the service could not answer,
+  which is not the same as "not in the catalogue"; `classify_response` does
+  this for every client).
 - any other non-200 status: `no_match`.
 - a connection error, timeout or any other exception from the request:
   `transport_failed`.
@@ -156,8 +157,6 @@ async def lookup(
         logger.debug("audnexus request failed", exc_info=True)
         return provider_result.transport_failed(PROVIDER)
 
-    if resp.status_code >= 500 and not outbound.is_rate_limited(resp):
-        return provider_result.transport_failed(PROVIDER)
     classified = provider_result.classify_response(PROVIDER, resp)
     if classified is not None:
         return classified

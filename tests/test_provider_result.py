@@ -24,6 +24,12 @@ class TestConstructors:
         assert pr.rate_limited("google").outcome == "rate_limited"
         assert pr.transport_failed("upcitemdb").outcome == "transport_failed"
 
+    def test_transport_failed_carries_an_optional_keyword_status(self):
+        assert pr.transport_failed("x", status=503).status == 503
+        assert pr.transport_failed("x").status is None
+        with pytest.raises(TypeError):
+            pr.transport_failed("x", 503)  # type: ignore[misc]
+
     def test_found_is_true_only_for_a_hit(self):
         assert pr.found("tmdb", {"title": "Alien"}).found is True
         for other in (
@@ -104,10 +110,16 @@ class TestClassifyResponse:
         )
         assert result.outcome == "rejected"
 
-    @pytest.mark.parametrize("status", [400, 404, 500, 503])
+    @pytest.mark.parametrize("status", [400, 404])
     def test_any_other_non_200_is_a_miss(self, status):
         result = pr.classify_response("dnb", httpx.Response(status))
         assert result.outcome == "no_match"
+        assert result.status == status
+
+    @pytest.mark.parametrize("status", [500, 502, 503, 504, 599])
+    def test_a_5xx_is_a_transport_failure_carrying_its_status(self, status):
+        result = pr.classify_response("dnb", httpx.Response(status))
+        assert result.outcome == "transport_failed"
         assert result.status == status
 
     def test_an_auth_status_not_declared_is_a_miss(self):
@@ -120,7 +132,9 @@ class TestClassifyResponse:
         503 is worth retrying but is not the provider telling the user to come
         back later, and telling them to is wrong (GOTCHAS G60).
         """
-        assert pr.classify_response("google", httpx.Response(503)).outcome == "no_match"
+        result = pr.classify_response("google", httpx.Response(503))
+        assert result.outcome != "rate_limited"
+        assert result.outcome == "transport_failed"
 
 
 class TestCombine:

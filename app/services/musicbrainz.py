@@ -171,8 +171,6 @@ async def _request_json(
 
     classified = provider_result.classify_response(provider, resp)
     if classified is not None:
-        if resp.status_code == 503:
-            return provider_result.transport_failed(provider)
         return classified
     try:
         return provider_result.found(provider, resp.json(), status=resp.status_code)

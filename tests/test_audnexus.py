@@ -82,12 +82,16 @@ class TestLookup:
     @respx.mock
     async def test_503_is_transport_failed(self):
         respx.get(URL).mock(return_value=httpx.Response(503))
-        assert (await _lookup()).outcome == "transport_failed"
+        result = await _lookup()
+        assert result.outcome == "transport_failed"
+        assert result.status == 503
 
     @respx.mock
     async def test_500_is_transport_failed(self):
         respx.get(URL).mock(return_value=httpx.Response(500))
-        assert (await _lookup()).outcome == "transport_failed"
+        result = await _lookup()
+        assert result.outcome == "transport_failed"
+        assert result.status == 500
 
     @respx.mock
     async def test_other_non_200_is_no_match(self):

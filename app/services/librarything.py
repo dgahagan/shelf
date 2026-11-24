@@ -102,7 +102,7 @@ async def related_isbns(isbn, token, client) -> provider_result.ProviderResult:
 def _response_outcome(provider, response, *, auth_statuses=()):
     classified = provider_result.classify_response(provider, response, auth_statuses=auth_statuses)
     if classified is not None and classified.outcome == "no_match" and response.status_code != 404:
-        return provider_result.transport_failed(provider)
+        return provider_result.transport_failed(provider, status=response.status_code)
     return classified
 
 

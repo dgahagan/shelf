@@ -337,8 +337,8 @@ async def test_edition_failures_survive_other_provider_miss(failure, expected):
 
 @pytest.mark.parametrize("surface", ["item", "review", "failed-selection"])
 @pytest.mark.parametrize("failure,message", [
-    (403, "LibraryThing unavailable"), (401, "LibraryThing rejected the configured key"),
-    (429, "LibraryThing is rate-limiting"), ("timeout", "LibraryThing unavailable"),
+    (403, "LibraryThing returned an error"), (401, "LibraryThing rejected the configured key"),
+    (429, "LibraryThing is rate-limiting"), ("timeout", "Could not reach LibraryThing"),
     ("empty", "No covers found for this title."),
 ])
 def test_picker_reports_real_librarything_outcome(admin_client, monkeypatch, surface, failure, message):

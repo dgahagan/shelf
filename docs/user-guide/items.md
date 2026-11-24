@@ -40,7 +40,8 @@ its home.
   for it.
 
   The same is true once the credential is *there* but the provider will not
-  answer. A key the provider rejects, a provider that is rate-limiting us, and
+  answer. A key the provider rejects, a provider that is rate-limiting us, a
+  provider that answered with a server error, and
   a provider Shelf could not reach each say so by name — so **"No covers found
   for this title." now means only that the provider answered and had nothing.**
 - **Metadata** — title, authors, publisher, year, pages, ISBN, language,
