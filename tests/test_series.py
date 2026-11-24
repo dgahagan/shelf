@@ -220,6 +220,68 @@ class TestSeriesCheck:
         assert by_id[103] == "missing"      # matched by hardcover_book_id, but neither owned nor wishlisted
         assert by_id[104] == "missing"      # no local match at all
 
+    def test_position_fallback_when_title_differs(self, admin_client, db):
+        """#166: a volume catalogued under a different-language or edition
+        title (no hardcover_book_id, no title match) still matches at its
+        shelved series_position instead of reading as missing."""
+        _insert_item(db, title="Il settimo volume", isbn="9789000007771",
+                     series_name="Dune Saga", series_position=7)
+        _insert_item(db, title="Il dodicesimo volume", isbn="9789000007788",
+                     series_name="Dune Saga", series_position=12)
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+        books = [
+            {"hardcover_book_id": 501, "title": "Volume Seven", "authors": "A",
+             "cover_url": None, "year": 2000, "series_position": 7},
+            {"hardcover_book_id": 502, "title": "Volume Eight", "authors": "A",
+             "cover_url": None, "year": 2001, "series_position": 8},
+            {"hardcover_book_id": 503, "title": "Volume Twelve", "authors": "A",
+             "cover_url": None, "year": 2002, "series_position": 12},
+        ]
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=books)):
+            data = admin_client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+        by_id = {b["hardcover_book_id"]: b["status"] for b in data["books"]}
+        assert by_id == {501: "owned", 502: "missing", 503: "owned"}
+        assert data["missing"] == 1
+
+    def test_position_fallback_wishlisted_row(self, admin_client, db):
+        """A wishlisted local row at the position reports 'wishlist',
+        not 'missing'."""
+        _insert_item(db, title="Il terzo volume", isbn="9789000007795",
+                     series_name="Dune Saga", series_position=3,
+                     owned=0, wishlisted=True)
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+        books = [
+            {"hardcover_book_id": 501, "title": "Volume Three", "authors": "A",
+             "cover_url": None, "year": 2000, "series_position": 3},
+        ]
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=books)):
+            data = admin_client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+        assert data["books"][0]["status"] == "wishlist"
+
+    def test_position_fallback_skips_claimed_rows(self, admin_client, db):
+        """A local row already matched by id/title cannot also fill a
+        position for a different Hardcover book."""
+        _insert_item(db, title="Dune", isbn="9789000003013",
+                     series_name="Dune Saga", series_position=2,
+                     hardcover_book_id=101)
+        db.execute("INSERT INTO settings (key, value) VALUES ('hardcover_token', 'tok')")
+        db.execute("COMMIT")
+        books = [
+            {"hardcover_book_id": 101, "title": "Dune", "authors": "Frank Herbert",
+             "cover_url": None, "year": 1965, "series_position": 1},
+            {"hardcover_book_id": 102, "title": "Dune Messiah", "authors": "Frank Herbert",
+             "cover_url": None, "year": 1969, "series_position": 2},
+        ]
+        with patch("app.services.hardcover.get_series_books",
+                   new=AsyncMock(return_value=books)):
+            data = admin_client.get("/api/series/check", params={"name": "Dune Saga"}).json()
+        by_id = {b["hardcover_book_id"]: b["status"] for b in data["books"]}
+        assert by_id == {101: "owned", 102: "missing"}
+
     def test_no_token(self, admin_client):
         data = admin_client.get("/api/series/check", params={"name": "X"}).json()
         assert data["ok"] is False
