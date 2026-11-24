@@ -1066,19 +1066,19 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
         return {"ok": False, "message": "Invalid item IDs"}
 
     if not keep_id or not merge_ids:
-        return {"ok": False, "message": "Specify keep_id and merge_ids"}
+        return {"ok": False, "message": i18n.gettext("Specify keep_id and merge_ids")}
 
     # Drop the kept row and repeats before anything is written. Both end in
     # `DELETE FROM items WHERE id = keep_id` further down, destroying the row
     # the caller asked to keep (#86).
     targets = list(dict.fromkeys(mid for mid in merge_ids if mid != keep_id))
     if not targets:
-        return {"ok": False, "message": "Cannot merge an item into itself"}
+        return {"ok": False, "message": i18n.gettext("Cannot merge an item into itself")}
 
     with get_db() as db:
         primary = db.execute("SELECT * FROM items_live WHERE id = ?", (keep_id,)).fetchone()
         if not primary:
-            return {"ok": False, "message": "Primary item not found"}
+            return {"ok": False, "message": i18n.gettext("Primary item not found")}
 
         # Refuse before writing anything: the merge is one transaction, and a
         # kept row holding two open loans is a state no surface can show.
@@ -1094,9 +1094,8 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
             ]
             return {
                 "ok": False,
-                "message": "Cannot merge items that are both on loan: "
-                           + ", ".join(f'"{t}"' for t in titles)
-                           + ". Check one in first.",
+                "message": i18n.gettext("Cannot merge items that are both on loan: %(titles)s. Check one in first.")
+                           % {"titles": ", ".join(f'"{t}"' for t in titles)},
             }
 
         merged = 0
@@ -1127,7 +1126,7 @@ async def merge_items(request: Request, _=Depends(require_role("admin"))):
                     # tell which item carried it.
                     return {
                         "ok": False,
-                        "message": f"Cannot merge \"{other['title']}\" (#{mid}): {e}",
+                        "message": i18n.gettext("Cannot merge \"%(title)s\" (#%(id)s): %(reason)s") % {"title": other["title"], "id": mid, "reason": e},
                         "item_id": mid,
                     }
 

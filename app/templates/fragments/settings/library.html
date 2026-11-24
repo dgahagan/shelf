@@ -8,11 +8,11 @@
 
     <!-- Stats -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-2">Collection</h2>
-        <p class="text-shelf-muted mb-4">{{ item_count }} items in your library</p>
+        <h2 class="text-lg font-semibold mb-2">{{ _('Collection') }}</h2>
+        <p class="text-shelf-muted mb-4">{{ ngettext('%(num)s item in your library', '%(num)s items in your library', item_count) }}</p>
         <form action="/api/settings/display" method="post" class="space-y-3">
             <div>
-                <label for="currency" class="block text-sm font-medium text-shelf-muted mb-2">Display currency</label>
+                <label for="currency" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Display currency') }}</label>
                 {# Options come straight from the CURRENCIES registry in
                    app/currency.py — the single source of truth, so adding a
                    currency there is the only edit needed (design revisit
@@ -21,23 +21,23 @@
                 <select id="currency" name="currency"
                         class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     {% for code, cur in currencies.items() %}
-                    <option value="{{ code }}" {% if selected_currency == code %}selected{% endif %}>{{ code }} — {{ cur.name }} ({{ cur.symbol }})</option>
+                    <option value="{{ code }}" {% if selected_currency == code %}selected{% endif %}>{{ code }} — {{ _(cur.name) }} ({{ cur.symbol }})</option>
                     {% endfor %}
                 </select>
-                <p class="text-xs text-shelf-muted mt-2">Display only — Shelf never converts amounts between currencies.</p>
+                <p class="text-xs text-shelf-muted mt-2">{{ _('Display only — Shelf never converts amounts between currencies.') }}</p>
             </div>
             <div>
-                <label for="metadata_search_lang" class="block text-sm font-medium text-shelf-muted mb-2">Metadata search language</label>
+                <label for="metadata_search_lang" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Metadata search language') }}</label>
                 {# Options come straight from the SEARCH_LANGS registry in
                    app/services/national.py. #}
                 {% set selected_search_lang = settings.get("metadata_search_lang", "en") %}
                 <select id="metadata_search_lang" name="metadata_search_lang"
                         class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     {% for code, name in search_langs.items() %}
-                    <option value="{{ code }}" {% if selected_search_lang == code %}selected{% endif %}>{{ name }}</option>
+                    <option value="{{ code }}" {% if selected_search_lang == code %}selected{% endif %}>{{ _(name) }}</option>
                     {% endfor %}
                 </select>
-                <p class="text-xs text-shelf-muted mt-2">Preferred language for Open Library title searches — browse search, CSV-import ISBN recovery, and shelf-photo intake.</p>
+                <p class="text-xs text-shelf-muted mt-2">{{ _('Preferred language for Open Library title searches — browse search, CSV-import ISBN recovery, and shelf-photo intake.') }}</p>
             </div>
             <div>
                 <label for="audible_region" class="block text-sm font-medium text-shelf-muted mb-2">Audible marketplace</label>
@@ -51,18 +51,18 @@
                 <p class="text-xs text-shelf-muted mt-2">Used to look up audiobook covers and details by ASIN. A title your marketplace does not sell is reported as not in the catalogue.</p>
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
     </div>
 
     <!-- Navigation -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-1">Navigation</h2>
-        <p class="text-sm text-shelf-muted mb-4">Choose which tabs show in the nav bar. Browse and Settings always stay visible. Tabs for integrations that aren't set up stay hidden until you configure them, and a tab whose feature is turned off is turned off in Features, not here.</p>
+        <h2 class="text-lg font-semibold mb-1">{{ _('Navigation') }}</h2>
+        <p class="text-sm text-shelf-muted mb-4">{{ _("Choose which tabs show in the nav bar. Browse and Settings always stay visible. Tabs for integrations that aren't set up stay hidden until you configure them, and a tab whose feature is turned off is turned off in Features, not here.") }}</p>
         <form action="/api/settings/nav" method="post" class="space-y-3">
             <div>
-                <span class="block text-sm font-medium text-shelf-muted mb-2">Show in navigation</span>
+                <span class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Show in navigation') }}</span>
                 <div class="space-y-2">
                     {% for tab in hideable_nav_tab_states %}
                     {# The checkbox means "not manually hidden" and stays enabled even when the
@@ -78,17 +78,17 @@
                         </label>
                         {% if tab.feature_off %}
                         <span class="text-xs text-shelf-muted">
-                            Turned off in Features —
+                            {{ _('Turned off in Features —') }}
                             <button type="button" data-testid="features-{{ tab.key }}"
                                     @click="setTab('features')"
-                                    class="text-shelf-accent2 hover:underline">Features</button>
+                                    class="text-shelf-accent2 hover:underline">{{ _('Features') }}</button>
                         </span>
                         {% elif not tab.available %}
                         <span class="text-xs text-shelf-muted">
-                            Hidden until {{ tab.requirement_label }} is set —
+                            {{ _('Hidden until %(what)s is set —', what=_(tab.requirement_label)) }}
                             <button type="button" data-testid="configure-{{ tab.key }}"
                                     @click="setTab('integrations')"
-                                    class="text-shelf-accent2 hover:underline">Configure</button>
+                                    class="text-shelf-accent2 hover:underline">{{ _('Configure') }}</button>
                         </span>
                         {% endif %}
                     </div>
@@ -96,23 +96,23 @@
                 </div>
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save Navigation
+                {{ _('Save Navigation') }}
             </button>
         </form>
     </div>
 
     <!-- Locations -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-4">Locations</h2>
-        <p class="text-sm text-shelf-muted mb-4">Locations can be nested to whatever depth your collection needs, for example Living Room → Bookcase 1 → Shelf 3. A parent can also be used as a location itself.</p>
+        <h2 class="text-lg font-semibold mb-4">{{ _('Locations') }}</h2>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('Locations can be nested to whatever depth your collection needs, for example Living Room → Bookcase 1 → Shelf 3. A parent can also be used as a location itself.') }}</p>
 
         {% set location_error = request.query_params.get('location_error') %}
         {% if location_error in ('parent_missing', 'invalid_parent', 'has_children') %}
         <div data-testid="location-tree-error-banner"
              class="bg-shelf-bg text-shelf-error border border-shelf-border rounded-lg px-4 py-2 text-sm mb-4">
-            {% if location_error == 'parent_missing' %}The selected parent location no longer exists.{% endif %}
-            {% if location_error == 'invalid_parent' %}A location cannot be moved inside itself or one of its children.{% endif %}
-            {% if location_error == 'has_children' %}Move or remove this location's child locations before deleting it.{% endif %}
+            {% if location_error == 'parent_missing' %}{{ _('The selected parent location no longer exists.') }}{% endif %}
+            {% if location_error == 'invalid_parent' %}{{ _('A location cannot be moved inside itself or one of its children.') }}{% endif %}
+            {% if location_error == 'has_children' %}{{ _("Move or remove this location's child locations before deleting it.") }}{% endif %}
         </div>
         {% endif %}
 
@@ -122,36 +122,36 @@
             <div class="bg-shelf-bg rounded-lg px-4 py-2" data-testid="location-row-{{ loc.id }}">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <span>{{ loc.name }}</span>
-                    <a href="/locations/{{ loc.id }}/arrange" class="text-shelf-accent2 hover:underline text-sm">Arrange</a>
+                    <a href="/locations/{{ loc.id }}/arrange" class="text-shelf-accent2 hover:underline text-sm">{{ _('Arrange') }}</a>
                     <form action="/api/locations/{{ loc.id }}/delete" method="post" class="inline"
                           data-confirm="Delete location '{{ loc.name }}'?">
                         <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
-                            Remove
+                            {{ _('Remove') }}
                         </button>
                     </form>
                 </div>
                 <details>
-                    <summary class="text-shelf-muted text-sm">Edit</summary>
+                    <summary class="text-shelf-muted text-sm">{{ _('Edit') }}</summary>
                     <form action="/api/locations/{{ loc.id }}/update" method="post" class="space-y-2">
                         <div>
-                            <label for="location-name-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Name</label>
+                            <label for="location-name-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Name') }}</label>
                             <input id="location-name-{{ loc.id }}" type="text" name="name" value="{{ loc.label or loc.name }}" required
                                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                         </div>
                         <div>
-                            <label for="location-parent-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">Parent</label>
+                            <label for="location-parent-{{ loc.id }}" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Parent') }}</label>
                             <select id="location-parent-{{ loc.id }}" name="parent_id"
                                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                                <option value="">Top level</option>
+                                <option value="">{{ _('Top level') }}</option>
                                 {% for parent in locations %}
                                 {% if parent.id != loc.id and loc.id not in parent.ancestor_ids %}
-                                <option value="{{ parent.id }}" {% if loc.parent_id == parent.id %}selected{% endif %}>Inside {{ parent.name }}</option>
+                                <option value="{{ parent.id }}" {% if loc.parent_id == parent.id %}selected{% endif %}>{{ _('Inside %(place)s', place=parent.name) }}</option>
                                 {% endif %}
                                 {% endfor %}
                             </select>
                         </div>
                         <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                            Save location
+                            {{ _('Save location') }}
                         </button>
                     </form>
                 </details>
@@ -161,17 +161,17 @@
         {% endif %}
 
         <form action="/api/locations" method="post" class="space-y-2">
-            <input type="text" name="name" placeholder="New location name..." required
+            <input type="text" name="name" placeholder="{{ _('New location name...') }}" required
                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             <select name="parent_id"
                     class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
-                <option value="">Top level</option>
+                <option value="">{{ _('Top level') }}</option>
                 {% for loc in locations %}
-                <option value="{{ loc.id }}">Inside {{ loc.name }}</option>
+                <option value="{{ loc.id }}">{{ _('Inside %(place)s', place=loc.name) }}</option>
                 {% endfor %}
             </select>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Add
+                {{ _('Add') }}
             </button>
         </form>
     </div>
@@ -180,7 +180,7 @@
 
     <!-- Borrowers -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-4">Borrowers</h2>
+        <h2 class="text-lg font-semibold mb-4">{{ _('Borrowers') }}</h2>
         {{ feature_notes.feature_off_note('lending') }}
 
         {% if borrower_error_message %}
@@ -199,7 +199,7 @@
                 <form action="/api/borrowers/{{ b.id }}/delete" method="post" class="inline" data-testid="borrower-remove"
                       {% if b.returned_loan_count %}data-confirm="Remove borrower '{{ b.name }}'? This also permanently deletes their {{ b.returned_loan_count }} past loan record(s)."{% else %}data-confirm="Remove borrower '{{ b.name }}'?"{% endif %}>
                     <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
-                        Remove
+                        {{ _('Remove') }}
                     </button>
                 </form>
                 {% endif %}
@@ -210,10 +210,10 @@
 
         {% if feature_on('lending') %}
         <form action="/api/borrowers" method="post" class="flex gap-2" data-testid="borrower-add">
-            <input type="text" name="name" placeholder="Add borrower..." required
+            <input type="text" name="name" placeholder="{{ _('Add borrower...') }}" required
                    class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Add
+                {{ _('Add') }}
             </button>
         </form>
         {% endif %}
@@ -221,8 +221,8 @@
 
     <!-- Game Platforms -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-4">Game Platforms</h2>
-        <p class="text-xs text-shelf-muted mb-4">Platforms available when adding video games. Custom platforms can be added for niche or retro systems.</p>
+        <h2 class="text-lg font-semibold mb-4">{{ _('Game Platforms') }}</h2>
+        <p class="text-xs text-shelf-muted mb-4">{{ _('Platforms available when adding video games. Custom platforms can be added for niche or retro systems.') }}</p>
 
         {% if game_platforms_list %}
         <div class="space-y-2 mb-4 max-h-64 overflow-y-auto">
@@ -230,9 +230,9 @@
             <div class="flex flex-wrap items-center justify-between gap-2 bg-shelf-bg rounded-lg px-4 py-2">
                 <span>{{ p.name }} <span class="text-shelf-muted text-xs">({{ p.slug }})</span></span>
                 <form action="/api/platforms/{{ p.id }}/delete" method="post" class="inline"
-                      data-confirm="Delete platform '{{ p.name }}'? Items using it will have their platform cleared.">
+                      data-confirm="{{ _("Delete platform '%(name)s'? Items using it will have their platform cleared.", name=p.name) }}">
                     <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
-                        Remove
+                        {{ _('Remove') }}
                     </button>
                 </form>
             </div>
@@ -241,10 +241,10 @@
         {% endif %}
 
         <form action="/api/platforms" method="post" class="flex gap-2">
-            <input type="text" name="name" placeholder="Platform name (e.g. TurboGrafx-16)..." required
+            <input type="text" name="name" placeholder="{{ _('Platform name (e.g. TurboGrafx-16)...') }}" required
                    class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Add
+                {{ _('Add') }}
             </button>
         </form>
     </div>
@@ -252,23 +252,23 @@
     <!-- Lending -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6" x-data="lendingPanel"
          data-notify-saved="{{ '1' if secrets_present['notify_url'] else '' }}">
-        <h2 class="text-lg font-semibold mb-1">Lending</h2>
+        <h2 class="text-lg font-semibold mb-1">{{ _('Lending') }}</h2>
         {{ feature_notes.feature_off_note('lending') }}
-        <p class="text-sm text-shelf-muted mb-4">Loans past their due date — or, when no due date was set, out longer than the window below — show an <span class="text-shelf-error">Overdue</span> badge. Configure a notification URL to get a daily digest of overdue loans.</p>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('Loans past their due date — or, when no due date was set, out longer than the window below — show an') }} <span class="text-shelf-error">{{ _('Overdue') }}</span> {{ _('badge. Configure a notification URL to get a daily digest of overdue loans.') }}</p>
         <form method="POST" action="/api/settings/lending" class="space-y-4">
             <div>
-                <label for="lending_overdue_days" class="block text-sm font-medium text-shelf-muted mb-1">Overdue after (days, for loans without a due date — 0 disables)</label>
+                <label for="lending_overdue_days" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Overdue after (days, for loans without a due date — 0 disables)') }}</label>
                 <input type="number" id="lending_overdue_days" name="lending_overdue_days" min="0" step="1"
                        value="{{ settings.get('lending_overdue_days', '28') }}"
                        class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <div>
-                <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">Notification URL (ntfy topic or webhook)</label>
+                <label for="notify-url-input" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Notification URL (ntfy topic or webhook)') }}</label>
                 <div class="flex flex-wrap gap-2">
                     <select id="notify-format-input" name="notify_format" x-ref="notifyFormat"
                             class="shrink-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
-                        <option value="ntfy" {% if settings.get('notify_format', 'ntfy') == 'ntfy' %}selected{% endif %}>ntfy</option>
-                        <option value="webhook" {% if settings.get('notify_format') == 'webhook' %}selected{% endif %}>Webhook (JSON)</option>
+                        <option value="ntfy" {% if settings.get('notify_format', 'ntfy') == 'ntfy' %}selected{% endif %}>{{ _('ntfy') }}</option>
+                        <option value="webhook" {% if settings.get('notify_format') == 'webhook' %}selected{% endif %}>{{ _('Webhook (JSON)') }}</option>
                     </select>
                     <input type="text" id="notify-url-input" name="notify_url" x-ref="notifyUrl" autocomplete="off"
                            placeholder="{% if secrets_saved['notify_url'] %}Saved — leave blank to keep{% else %}https://ntfy.sh/your-private-topic{% endif %}"
@@ -277,8 +277,8 @@
                             @click="testNotify"
                             :disabled="ntTesting"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
-                        <span x-show="!ntTesting">Test</span>
-                        <span x-show="ntTesting" style="display:none">Sending...</span>
+                        <span x-show="!ntTesting">{{ _('Test') }}</span>
+                        <span x-show="ntTesting" style="display:none">{{ _('Sending...') }}</span>
                     </button>
                 </div>
                 <template x-if="ntStatus">
@@ -286,12 +286,12 @@
                 </template>
                 {% if secrets_saved['notify_url'] %}
                 <label class="flex items-center gap-2 text-xs text-shelf-muted mt-1">
-                    <input type="checkbox" name="clear_notify_url" class="rounded-sm border-shelf-border"> Remove saved URL (disables reminders)
+                    <input type="checkbox" name="clear_notify_url" class="rounded-sm border-shelf-border"> {{ _('Remove saved URL (disables reminders)') }}
                 </label>
                 {% endif %}
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save Lending Settings
+                {{ _('Save Lending Settings') }}
             </button>
         </form>
     </div>
@@ -300,23 +300,23 @@
 
     <!-- Copy labels -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-1">Copy labels</h2>
+        <h2 class="text-lg font-semibold mb-1">{{ _('Copy labels') }}</h2>
         {{ feature_notes.feature_off_note('collector') }}
         {% if feature_on('collector') %}
-        <p class="text-sm text-shelf-muted mb-4">Generated codes read PREFIX-000001. Changing the prefix does not renumber existing labels.</p>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('Generated codes read PREFIX-000001. Changing the prefix does not renumber existing labels.') }}</p>
         {% if request.query_params.get('labels_prefix_error') %}
-        <p class="text-sm text-shelf-error mb-3" data-testid="labels-prefix-error">The prefix must be 1 to 8 letters or digits.</p>
+        <p class="text-sm text-shelf-error mb-3" data-testid="labels-prefix-error">{{ _('The prefix must be 1 to 8 letters or digits.') }}</p>
         {% endif %}
         <form method="POST" action="/api/settings/labels" class="space-y-4">
             <div>
-                <label for="copy_barcode_prefix" class="block text-sm font-medium text-shelf-muted mb-1">Code prefix</label>
+                <label for="copy_barcode_prefix" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Code prefix') }}</label>
                 <input type="text" id="copy_barcode_prefix" name="copy_barcode_prefix" maxlength="8"
                        pattern="[A-Za-z0-9]{1,8}" required autocomplete="off"
                        value="{{ settings.get('copy_barcode_prefix') or 'SHF' }}"
                        class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text font-mono uppercase focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
         {% endif %}
@@ -324,18 +324,18 @@
 
     <!-- Trash -->
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
-        <h2 class="text-lg font-semibold mb-1">Trash</h2>
-        <p class="text-sm text-shelf-muted mb-4">Deleted items and copies stay in Trash until someone restores them or an admin deletes them permanently. Nothing is deleted on a timer: past this window, an admin is prompted to empty them.</p>
+        <h2 class="text-lg font-semibold mb-1">{{ _('Trash') }}</h2>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('Deleted items and copies stay in Trash until someone restores them or an admin deletes them permanently. Nothing is deleted on a timer: past this window, an admin is prompted to empty them.') }}</p>
         <form method="POST" action="/api/settings/trash" class="space-y-4">
             <div>
-                <label for="trash_retention_days" class="block text-sm font-medium text-shelf-muted mb-1">Prompt to empty Trash after (days — 0 never prompts)</label>
+                <label for="trash_retention_days" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Prompt to empty Trash after (days — 0 never prompts)') }}</label>
                 <input type="number" id="trash_retention_days" name="trash_retention_days" min="0" max="36500" step="1" required
                        value="{{ settings.get('trash_retention_days', '180') }}"
                        class="w-32 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
-            <p class="text-xs text-shelf-muted">Browse the deleted items and copies themselves from the account menu → Library → Trash.</p>
+            <p class="text-xs text-shelf-muted">{{ _('Browse the deleted items and copies themselves from the account menu → Library → Trash.') }}</p>
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
     </div>

@@ -20,6 +20,9 @@ install has none, and reads as Everything.
 """
 
 import logging
+
+from app import i18n
+from app.i18n import N_
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -153,8 +156,8 @@ def _intake_configured() -> bool:
 
 FEATURES: dict[str, Feature] = {
     "lending": Feature(
-        label="Lending",
-        description="Lend items to borrowers, track loans and send overdue reminders.",
+        label=N_("Lending"),
+        description=N_("Lend items to borrowers, track loans and send overdue reminders."),
         profile="standard",
         scan_modes=("lend", "return"),
         job="loan_reminders",
@@ -162,24 +165,24 @@ FEATURES: dict[str, Feature] = {
         modules=("app.routers.checkouts",),
     ),
     "series": Feature(
-        label="Series",
-        description="Track series, find gaps and mark series complete.",
+        label=N_("Series"),
+        description=N_("Track series, find gaps and mark series complete."),
         profile="standard",
         nav_tabs=("series",),
         entry_path="/series",
         modules=("app.routers.series",),
     ),
     "stats": Feature(
-        label="Statistics",
-        description="Charts and counts about your collection.",
+        label=N_("Statistics"),
+        description=N_("Charts and counts about your collection."),
         profile="standard",
         nav_tabs=("stats",),
         entry_path="/stats",
         routes=(("GET", "/stats"), ("GET", "/stats/wrapup")),
     ),
     "store": Feature(
-        label="Store Mode",
-        description="An offline page for checking what you own while out shopping.",
+        label=N_("Store Mode"),
+        description=N_("An offline page for checking what you own while out shopping."),
         profile="standard",
         nav_tabs=("store",),
         entry_path="/store",
@@ -189,8 +192,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "share": Feature(
-        label="Sharing",
-        description="Public read-only links to your collection.",
+        label=N_("Sharing"),
+        description=N_("Public read-only links to your collection."),
         profile="everything",
         probes=(_probe_share_links,),
         modules=("app.routers.share",),
@@ -199,8 +202,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "valuation": Feature(
-        label="Valuation",
-        description="Price lookups and the insurance valuation report.",
+        label=N_("Valuation"),
+        description=N_("Price lookups and the insurance valuation report."),
         profile="everything",
         modules=("app.routers.valuation",),
         ungated={
@@ -209,8 +212,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "price_alerts": Feature(
-        label="Price alerts",
-        description="Watch wishlist list prices nightly and send a drop digest.",
+        label=N_("Price alerts"),
+        description=N_("Watch wishlist list prices nightly and send a drop digest."),
         profile="everything",
         job="price_alerts",
         entry_path="/settings",
@@ -224,16 +227,16 @@ FEATURES: dict[str, Feature] = {
         configured=_buy_links_configured,
     ),
     "music": Feature(
-        label="Music",
-        description="Music releases with Discogs details.",
+        label=N_("Music"),
+        description=N_("Music releases with Discogs details."),
         profile="standard",
         nav_tabs=("music",),
         entry_path="/music",
         modules=("app.routers.music",),
     ),
     "periodicals": Feature(
-        label="Periodicals",
-        description="Magazines and other periodicals, grouped by publication.",
+        label=N_("Periodicals"),
+        description=N_("Magazines and other periodicals, grouped by publication."),
         profile="standard",
         nav_tabs=("periodicals",),
         entry_path="/periodicals",
@@ -245,16 +248,16 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "shelf_fill": Feature(
-        label="Shelf Fill",
-        description="Place items on shelves and see how full each location is.",
+        label=N_("Shelf Fill"),
+        description=N_("Place items on shelves and see how full each location is."),
         profile="standard",
         nav_tabs=("shelf-fill",),
         entry_path="/shelf-fill",
         modules=("app.routers.shelf_fill",),
     ),
     "intake": Feature(
-        label="Photo Intake",
-        description="Add many books at once from a photo of a shelf.",
+        label=N_("Photo Intake"),
+        description=N_("Add many books at once from a photo of a shelf."),
         profile="everything",
         nav_tabs=("intake",),
         entry_path="/intake",
@@ -263,8 +266,8 @@ FEATURES: dict[str, Feature] = {
         configured=_intake_configured,
     ),
     "hardcover": Feature(
-        label="Hardcover",
-        description="Discover, reading-status sync and transfers with Hardcover.",
+        label=N_("Hardcover"),
+        description=N_("Discover, reading-status sync and transfers with Hardcover."),
         profile="everything",
         nav_tabs=("discover",),
         job="hardcover_sync",
@@ -286,8 +289,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "abs_sync": Feature(
-        label="Audiobookshelf sync",
-        description="Import and link items from Audiobookshelf libraries.",
+        label=N_("Audiobookshelf sync"),
+        description=N_("Import and link items from Audiobookshelf libraries."),
         profile="everything",
         job="abs_sync",
         modules=("app.routers.sync",),
@@ -300,8 +303,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "komga": Feature(
-        label="Komga",
-        description="Link comics and manga to a Komga server.",
+        label=N_("Komga"),
+        description=N_("Link comics and manga to a Komga server."),
         profile="everything",
         modules=("app.routers.komga",),
         configured=_komga_configured,
@@ -315,8 +318,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "romm": Feature(
-        label="RomM",
-        description="Link video games to a RomM server.",
+        label=N_("RomM"),
+        description=N_("Link video games to a RomM server."),
         profile="everything",
         modules=("app.routers.romm",),
         configured=_romm_configured,
@@ -330,8 +333,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "collector": Feature(
-        label="Collector tools",
-        description="Copy barcode labels, shelf audits and the duplicate finder.",
+        label=N_("Collector tools"),
+        description=N_("Copy barcode labels, shelf audits and the duplicate finder."),
         profile="everything",
         nav_tabs=("labels", "audits", "duplicates"),
         entry_path="/labels",
@@ -343,8 +346,8 @@ FEATURES: dict[str, Feature] = {
         },
     ),
     "release_radar": Feature(
-        label="Release radar",
-        description="Watch series for newly announced volumes and send a daily digest.",
+        label=N_("Release radar"),
+        description=N_("Watch series for newly announced volumes and send a daily digest."),
         profile="everything",
         job="release_radar",
         entry_path="/upcoming",
@@ -356,8 +359,8 @@ FEATURES: dict[str, Feature] = {
         configured=_hardcover_configured,
     ),
     "api": Feature(
-        label="API tokens",
-        description="Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read.",
+        label=N_("API tokens"),
+        description=N_("Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read."),
         profile="everything",
         modules=("app.routers.api_v1", "app.routers.api_tokens"),
         client=("apiTokensPanel", "adminTokensPanel"),
@@ -577,7 +580,7 @@ def profile_rows(rows: list[dict]) -> list[dict]:
 
 
 def disabled_message(key: str) -> str:
-    return f"{FEATURES[key].label} is turned off on this Shelf."
+    return i18n.gettext("%(feature)s is turned off on this Shelf.") % {"feature": i18n.gettext(FEATURES[key].label)}
 
 
 def disabled_page(request, key: str):

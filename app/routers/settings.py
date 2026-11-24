@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, FileResponse
 
+from app import i18n
 from app.auth import require_role
 from app.config import DATABASE_PATH, DATA_DIR
 from app.crypto import SENSITIVE_KEYS, encrypt_value, get_encryption_key
@@ -86,19 +87,19 @@ async def test_google_books(request: Request):
     try:
         body = await request.json()
     except Exception:
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     if not isinstance(body, dict):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
 
     raw_api_key = body.get("api_key")
     if raw_api_key is not None and not isinstance(raw_api_key, str):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     api_key = (raw_api_key or "").strip()
     if not api_key:
         with get_db() as db:
             api_key = get_setting(db, "google_books_api_key")
     if not api_key:
-        return {"ok": False, "message": "No API key configured"}
+        return {"ok": False, "message": i18n.gettext("No API key configured")}
     return await googlebooks.test_connection(api_key)
 
 
@@ -123,13 +124,13 @@ async def update_vision_settings(
     the other integration credentials.
     """
     if vision_provider not in ("", "anthropic", "openai", "ollama"):
-        return {"ok": False, "message": "Unknown vision provider"}
+        return {"ok": False, "message": i18n.gettext("Unknown vision provider")}
     ollama_long_edge = ollama_ingest_long_edge.strip()
     if ollama_long_edge and not ollama_long_edge.isdigit():
-        return {"ok": False, "message": "Ollama image size must be a whole number of pixels"}
+        return {"ok": False, "message": i18n.gettext("Ollama image size must be a whole number of pixels")}
     openai_long_edge = openai_ingest_long_edge.strip()
     if openai_long_edge and not openai_long_edge.isdigit():
-        return {"ok": False, "message": "OpenAI image size must be a whole number of pixels"}
+        return {"ok": False, "message": i18n.gettext("OpenAI image size must be a whole number of pixels")}
     # Each API key clears independently via its own checkbox.
     clears = {"anthropic_api_key": clear_anthropic_api_key == "on",
               "openai_api_key": clear_openai_api_key == "on"}
@@ -168,10 +169,10 @@ async def update_lending_settings(
 
     days = lending_overdue_days.strip() or "28"
     if not days.isdigit():
-        return {"ok": False, "message": "Overdue days must be a whole number"}
+        return {"ok": False, "message": i18n.gettext("Overdue days must be a whole number")}
     fmt = (notify_format or "").strip()
     if fmt not in FORMATS:
-        return {"ok": False, "message": "Unknown notification format"}
+        return {"ok": False, "message": i18n.gettext("Unknown notification format")}
 
     with get_db() as db:
         for key, value in [
@@ -200,7 +201,7 @@ async def update_trash_settings(trash_retention_days: str = Form("180")):
     except ValueError:
         days = -1
     if not 0 <= days <= trash.MAX_TRASH_RETENTION_DAYS:
-        return {"ok": False, "message": "Retention days must be a whole number"}
+        return {"ok": False, "message": i18n.gettext("Retention days must be a whole number")}
 
     with get_db() as db:
         _upsert_setting(db, "trash_retention_days", str(days))
@@ -232,9 +233,9 @@ async def update_price_alert_settings(
     threshold = _whole(price_alert_threshold_pct)
     cap = _whole(price_alert_nightly_cap)
     if not 1 <= threshold <= price_alerts.MAX_THRESHOLD_PCT:
-        return {"ok": False, "message": f"Drop threshold must be a whole number from 1 to {price_alerts.MAX_THRESHOLD_PCT}"}
+        return {"ok": False, "message": i18n.gettext("Drop threshold must be a whole number from 1 to %(max)s") % {"max": price_alerts.MAX_THRESHOLD_PCT}}
     if not 1 <= cap <= price_alerts.MAX_NIGHTLY_CAP:
-        return {"ok": False, "message": f"Books per night must be a whole number from 1 to {price_alerts.MAX_NIGHTLY_CAP}"}
+        return {"ok": False, "message": i18n.gettext("Books per night must be a whole number from 1 to %(max)s") % {"max": price_alerts.MAX_NIGHTLY_CAP}}
 
     with get_db() as db:
         _upsert_setting(db, "price_alert_threshold_pct", str(threshold))
@@ -294,7 +295,7 @@ async def update_release_radar_settings(release_radar_cap: str = Form("50")):
     except ValueError:
         cap = -1
     if not 1 <= cap <= release_radar.MAX_CAP:
-        return {"ok": False, "message": f"Series per day must be a whole number from 1 to {release_radar.MAX_CAP}"}
+        return {"ok": False, "message": i18n.gettext("Series per day must be a whole number from 1 to %(max)s") % {"max": release_radar.MAX_CAP}}
 
     with get_db() as db:
         _upsert_setting(db, "release_radar_cap", str(cap))
@@ -420,9 +421,9 @@ async def notify_test(request: Request):
     try:
         body = await request.json()
     except Exception:
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     if not isinstance(body, dict):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
 
     raw_url = body.get("url")
     raw_fmt = body.get("format")
@@ -430,7 +431,7 @@ async def notify_test(request: Request):
         (raw_url is not None and not isinstance(raw_url, str))
         or (raw_fmt is not None and not isinstance(raw_fmt, str))
     ):
-        return {"ok": False, "message": "Invalid request"}
+        return {"ok": False, "message": i18n.gettext("Invalid request")}
     url = (raw_url or "").strip()
     fmt = raw_fmt or "ntfy"
     if not url:
@@ -439,10 +440,10 @@ async def notify_test(request: Request):
         with get_db() as db:
             url = get_setting(db, "notify_url")
     if not url:
-        return {"ok": False, "message": "No URL provided"}
+        return {"ok": False, "message": i18n.gettext("No URL provided")}
 
     ok = await send_notification(url, "Shelf test notification", "Loan reminders are working!", fmt)
-    return {"ok": ok, "message": "Test notification sent" if ok else "Send failed — check the URL and server logs"}
+    return {"ok": ok, "message": i18n.gettext("Test notification sent") if ok else i18n.gettext("Send failed — check the URL and server logs")}
 
 
 def _vacuum_backup():

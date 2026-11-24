@@ -15,6 +15,8 @@ settings read must not take down every page that renders a price.
 import logging
 from dataclasses import dataclass
 
+from app.i18n import N_
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,26 +32,26 @@ class Currency:
 CURRENCIES: dict[str, Currency] = {
     c.code: c
     for c in (
-        Currency("USD", "US Dollar", "$"),
-        Currency("EUR", "Euro", "€"),
-        Currency("GBP", "British Pound", "£"),
-        Currency("CAD", "Canadian Dollar", "CA$"),
-        Currency("AUD", "Australian Dollar", "A$"),
-        Currency("NZD", "New Zealand Dollar", "NZ$"),
-        Currency("CHF", "Swiss Franc", "CHF"),
-        Currency("JPY", "Japanese Yen", "¥", decimals=0),
-        Currency("CNY", "Chinese Yuan", "¥"),
-        Currency("KRW", "South Korean Won", "₩", decimals=0),
-        Currency("INR", "Indian Rupee", "₹"),
-        Currency("SEK", "Swedish Krona", "kr", suffix=True),
-        Currency("NOK", "Norwegian Krone", "kr", suffix=True),
-        Currency("DKK", "Danish Krone", "kr", suffix=True),
-        Currency("PLN", "Polish Złoty", "zł", suffix=True),
-        Currency("CZK", "Czech Koruna", "Kč", suffix=True),
-        Currency("HUF", "Hungarian Forint", "Ft", suffix=True, decimals=0),
-        Currency("BRL", "Brazilian Real", "R$"),
-        Currency("MXN", "Mexican Peso", "$"),
-        Currency("ZAR", "South African Rand", "R"),
+        Currency("USD", N_("US Dollar"), "$"),
+        Currency("EUR", N_("Euro"), "€"),
+        Currency("GBP", N_("British Pound"), "£"),
+        Currency("CAD", N_("Canadian Dollar"), "CA$"),
+        Currency("AUD", N_("Australian Dollar"), "A$"),
+        Currency("NZD", N_("New Zealand Dollar"), "NZ$"),
+        Currency("CHF", N_("Swiss Franc"), "CHF"),
+        Currency("JPY", N_("Japanese Yen"), "¥", decimals=0),
+        Currency("CNY", N_("Chinese Yuan"), "¥"),
+        Currency("KRW", N_("South Korean Won"), "₩", decimals=0),
+        Currency("INR", N_("Indian Rupee"), "₹"),
+        Currency("SEK", N_("Swedish Krona"), "kr", suffix=True),
+        Currency("NOK", N_("Norwegian Krone"), "kr", suffix=True),
+        Currency("DKK", N_("Danish Krone"), "kr", suffix=True),
+        Currency("PLN", N_("Polish Złoty"), "zł", suffix=True),
+        Currency("CZK", N_("Czech Koruna"), "Kč", suffix=True),
+        Currency("HUF", N_("Hungarian Forint"), "Ft", suffix=True, decimals=0),
+        Currency("BRL", N_("Brazilian Real"), "R$"),
+        Currency("MXN", N_("Mexican Peso"), "$"),
+        Currency("ZAR", N_("South African Rand"), "R"),
     )
 }
 

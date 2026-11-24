@@ -67,7 +67,8 @@ msgid "checked {date}"
 msgstr ""
 
 #: static/js/components-item.js:81 static/js/components-item.js:85
-#: static/js/components-item.js:154 static/js/location-order.js:67
+#: static/js/components-item.js:154 static/js/components-settings.js:889
+#: static/js/location-order.js:67
 msgid "Saving…"
 msgstr ""
 
@@ -202,6 +203,28 @@ msgstr "作者"
 msgid "Could not copy from that item."
 msgstr "无法从该条目复制。"
 
+#: static/js/components-settings.js:21
+msgid "Network error — check your connection"
+msgstr ""
+
+#: static/js/components-settings.js:26
+msgid "Unexpected response from server"
+msgstr ""
+
+#: static/js/components-settings.js:26
+#, python-brace-format
+msgid "Request failed ({status})"
+msgstr ""
+
+#: static/js/components-settings.js:82
+msgid "Request failed"
+msgstr ""
+
+#: static/js/components-settings.js:753
+#, python-brace-format
+msgid "Delete user {name}?"
+msgstr ""
+
 #: static/js/components-settings.js:767
 msgid "Never"
 msgstr "从未"
@@ -214,14 +237,32 @@ msgstr "已复制"
 msgid "Copy"
 msgstr "复制"
 
-#: static/js/components-settings.js:807
+#: static/js/components-settings.js:807 static/js/components-settings.js:847
 #, python-brace-format
 msgid "Revoke token {name}?"
 msgstr "撤销令牌 {name}？"
 
+#: static/js/components-settings.js:910
+msgid "Could not refresh feature settings"
+msgstr ""
+
+#: static/js/components-settings.js:926
+msgid "Could not save feature settings"
+msgstr ""
+
 #: static/js/components.js:82
 msgid "Could not change the language"
 msgstr "无法切换语言"
+
+#: static/js/duplicates.js:53
+#, python-brace-format
+msgid "That did not go through ({why}) — reload and try again"
+msgstr ""
+
+#: static/js/duplicates.js:152
+#, python-brace-format
+msgid "Merge {count} records into \"{title}\"? The merged-away records cannot be restored."
+msgstr ""
 
 #: static/js/intake.js:186
 msgid "No camera found. Use Choose photo instead."

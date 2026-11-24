@@ -9,6 +9,7 @@ import secrets
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
+from app import i18n
 from app import features
 from app.auth import require_role
 from app.database import get_db
@@ -32,7 +33,7 @@ async def share_page(request: Request, token: str):
             "SELECT * FROM share_links WHERE token = ?", (token,)
         ).fetchone() if enabled else None
         if not link:
-            return HTMLResponse("Not found", status_code=404,
+            return HTMLResponse(i18n.gettext("Not found"), status_code=404,
                                 headers={"X-Robots-Tag": "noindex"})
 
         # The scope is a WHERE string, not a bound parameter: "wishlist" now
@@ -67,7 +68,7 @@ async def create_share_link(
 ):
     if scope not in SCOPES:
         return JSONResponse(
-            {"ok": False, "message": "Invalid share scope"}, status_code=400
+            {"ok": False, "message": i18n.gettext("Invalid share scope")}, status_code=400
         )
     token = secrets.token_urlsafe(16)
     with get_db() as db:
@@ -85,6 +86,6 @@ async def revoke_share_link(link_id: int, _=Depends(require_role("admin")),
         cursor = db.execute("DELETE FROM share_links WHERE id = ?", (link_id,))
         if cursor.rowcount != 1:
             return JSONResponse(
-                {"ok": False, "message": "Share link not found"}, status_code=404
+                {"ok": False, "message": i18n.gettext("Share link not found")}, status_code=404
             )
     return RedirectResponse(url="/settings", status_code=303)
