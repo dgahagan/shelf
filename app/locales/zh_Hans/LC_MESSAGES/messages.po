@@ -4500,7 +4500,98 @@ msgstr "完成：%(date)s"
 msgid "%(status)s %(count)s times"
 msgstr "%(status)s %(count)s 次"
 
-#: app/templates/fragments/recent_scans.html:30
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:326
+msgid "added"
+msgstr "已添加"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:312
+msgid "wishlisted"
+msgstr "已加入心愿单"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:327
+msgid "duplicate"
+msgstr "重复"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "promoted"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:311
+msgid "restored"
+msgstr "已恢复"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "checked_out"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:315
+msgid "returned"
+msgstr "已归还"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:316
+msgid "moved"
+msgstr "已移动"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:317
+msgid "confirmed"
+msgstr "已确认"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:318
+msgid "relocated"
+msgstr "已换位置"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:320
+msgid "found"
+msgstr "已找到"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:319
+msgid "elsewhere"
+msgstr "在别处"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "marked_read"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "not_found"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "not_owned"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "already_checked_out"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "not_checked_out"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "in_trash"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:328
+msgid "error"
+msgstr "错误"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "periodical_confirm"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:32
 msgid "No recent activity for this mode."
 msgstr "此模式暂无最近活动。"
 
@@ -4707,14 +4798,6 @@ msgstr "仅以标题添加 &mdash; Shelf 暂时没有这种格式的资料来源
 msgid "Added with title only &mdash; no %(provider)s match for this barcode."
 msgstr "仅以标题添加 &mdash; %(provider)s 中没有与此条码匹配的结果。"
 
-#: app/templates/fragments/scan_result.html:311
-msgid "restored"
-msgstr "已恢复"
-
-#: app/templates/fragments/scan_result.html:312
-msgid "wishlisted"
-msgstr "已加入心愿单"
-
 #: app/templates/fragments/scan_result.html:313
 msgid "owned"
 msgstr "已拥有"
@@ -4722,30 +4805,6 @@ msgstr "已拥有"
 #: app/templates/fragments/scan_result.html:314
 msgid "lent"
 msgstr "已借出"
-
-#: app/templates/fragments/scan_result.html:315
-msgid "returned"
-msgstr "已归还"
-
-#: app/templates/fragments/scan_result.html:316
-msgid "moved"
-msgstr "已移动"
-
-#: app/templates/fragments/scan_result.html:317
-msgid "confirmed"
-msgstr "已确认"
-
-#: app/templates/fragments/scan_result.html:318
-msgid "relocated"
-msgstr "已换位置"
-
-#: app/templates/fragments/scan_result.html:319
-msgid "elsewhere"
-msgstr "在别处"
-
-#: app/templates/fragments/scan_result.html:320
-msgid "found"
-msgstr "已找到"
 
 #: app/templates/fragments/scan_result.html:323
 msgid "already lent"
@@ -4758,18 +4817,6 @@ msgstr "未借出"
 #: app/templates/fragments/scan_result.html:325
 msgid "in Trash"
 msgstr "在回收站中"
-
-#: app/templates/fragments/scan_result.html:326
-msgid "added"
-msgstr "已添加"
-
-#: app/templates/fragments/scan_result.html:327
-msgid "duplicate"
-msgstr "重复"
-
-#: app/templates/fragments/scan_result.html:328
-msgid "error"
-msgstr "错误"
 
 #: app/templates/fragments/search_status_notice.html:22
 #, python-format
