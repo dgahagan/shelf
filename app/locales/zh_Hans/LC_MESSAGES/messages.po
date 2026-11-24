@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-23 12:05-0500\n"
+"PO-Revision-Date: 2026-11-23 20:48+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -16,20 +16,23 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit"
 
 #: app/browse_columns.py:62 app/templates/intake.html:181
-#: app/templates/item_edit.html:103
+#: app/templates/item_edit.html:103 app/templates/valuation_report.html:79
 msgid "Title"
 msgstr "标题"
 
 #: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:156
+#: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "作者"
 
 #: app/browse_columns.py:64 app/browse_filters.py:209
+#: app/templates/valuation_report.html:82
 msgid "Type"
 msgstr "类型"
 
 #: app/browse_columns.py:65 app/browse_filters.py:211
 #: app/templates/fragments/item_copy_edit.html:37
+#: app/templates/fragments/labels_scope.html:12
 #: app/templates/fragments/manual_add_form.html:160
 #: app/templates/intake.html:202 app/templates/item_edit.html:81
 #: app/templates/item_edit.html:301 app/templates/item_edit.html:306
@@ -41,13 +44,13 @@ msgstr "位置"
 msgid "Status"
 msgstr "状态"
 
-#: app/browse_columns.py:67
+#: app/browse_columns.py:67 app/templates/valuation_report.html:83
 msgid "Value"
 msgstr "价值"
 
 #: app/browse_columns.py:68 app/nav.py:41 app/services/audnexus.py:211
 #: app/templates/browse.html:49
-#: app/templates/fragments/manual_add_form.html:155
+#: app/templates/fragments/manual_add_form.html:155 app/templates/home.html:89
 #: app/templates/item_edit.html:79 app/templates/item_edit.html:217
 #: app/templates/item_edit.html:221 app/templates/series.html:2
 #: app/templates/series.html:7 app/templates/upcoming.html:6
@@ -77,6 +80,7 @@ msgid "Language"
 msgstr "语言"
 
 #: app/browse_columns.py:73 app/templates/intake.html:233
+#: app/templates/stats_wrapup.html:40
 msgid "Added"
 msgstr "添加日期"
 
@@ -208,15 +212,16 @@ msgstr "已玩"
 msgid "played"
 msgstr "已玩"
 
-#: app/config.py:58 app/templates/scan.html:212
+#: app/config.py:58 app/templates/scan.html:218
 msgid "Want to"
 msgstr "想要"
 
-#: app/config.py:58 app/templates/scan.html:213
+#: app/config.py:58 app/templates/scan.html:219
 msgid "In progress"
 msgstr "进行中"
 
-#: app/config.py:58 app/templates/scan.html:214
+#: app/config.py:58 app/templates/scan.html:220
+#: app/templates/stats_wrapup.html:36
 msgid "Finished"
 msgstr "已完成"
 
@@ -241,12 +246,13 @@ msgstr "导演"
 msgid "Artist"
 msgstr "艺术家"
 
-#: app/nav.py:34 app/templates/browse.html:2
+#: app/nav.py:34 app/templates/browse.html:2 app/templates/home.html:84
 msgid "Browse"
 msgstr "浏览"
 
 #: app/nav.py:35 app/templates/scan.html:2 app/templates/scan.html:107
-#: app/templates/shelf_fill.html:88
+#: app/templates/scan.html:184 app/templates/shelf_fill.html:88
+#: app/templates/shelf_fill.html:96
 msgid "Scan"
 msgstr "扫码"
 
@@ -277,11 +283,11 @@ msgstr "期刊"
 msgid "Discover"
 msgstr "发现"
 
-#: app/nav.py:45
+#: app/nav.py:45 app/templates/stats.html:2 app/templates/stats_wrapup.html:10
 msgid "Stats"
 msgstr "统计"
 
-#: app/nav.py:46
+#: app/nav.py:46 app/templates/trash.html:2 app/templates/trash.html:6
 msgid "Trash"
 msgstr "回收站"
 
@@ -289,11 +295,12 @@ msgstr "回收站"
 msgid "Library"
 msgstr "书库"
 
-#: app/nav.py:48
+#: app/nav.py:48 app/templates/labels.html:2
 msgid "Labels"
 msgstr "条码标签"
 
-#: app/nav.py:50
+#: app/nav.py:50 app/templates/audit.html:6 app/templates/audits.html:2
+#: app/templates/audits.html:6
 msgid "Audits"
 msgstr "盘点记录"
 
@@ -590,7 +597,7 @@ msgstr[0] "已从 Audible 补全 %(count)s 个字段：%(fields)s。"
 msgid "Metadata lookup failed — check connectivity"
 msgstr "元数据查询失败 — 请检查网络连接"
 
-#: app/routers/items_covers.py:75
+#: app/routers/items_covers.py:75 app/routers/valuation.py:110
 #: app/templates/fragments/book_search_results.html:35
 msgid "No ISBN"
 msgstr "无 ISBN"
@@ -601,6 +608,7 @@ msgstr "未找到封面"
 
 #: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:159
 #: app/routers/items_scan_modes.py:230 app/routers/scan_inventory.py:208
+#: app/templates/fragments/audit_report.html:81
 msgid "no location"
 msgstr "无位置"
 
@@ -645,7 +653,8 @@ msgstr "未选择目标位置"
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/item_copies.html:108
-#: app/templates/fragments/item_copy_edit.html:40 app/templates/intake.html:56
+#: app/templates/fragments/item_copy_edit.html:40
+#: app/templates/fragments/trash_list.html:123 app/templates/intake.html:56
 #: app/templates/intake.html:203 app/templates/music.html:75
 msgid "No location"
 msgstr "未指定位置"
@@ -683,6 +692,18 @@ msgstr "位置：%(place)s"
 #, python-format
 msgid "Marked as %(status)s"
 msgstr "已标记为 %(status)s"
+
+#: app/routers/location_order.py:66
+msgid "Invalid copy order"
+msgstr ""
+
+#: app/routers/location_order.py:69 app/routers/location_order.py:92
+msgid "Location not found"
+msgstr ""
+
+#: app/routers/location_order.py:89
+msgid "Invalid sort order"
+msgstr ""
 
 #: app/routers/periodicals.py:120
 msgid "This periodical issue is already in the collection"
@@ -817,6 +838,69 @@ msgstr "已为 %(count)s 个条目添加标签 %(tags)s"
 #, python-format
 msgid "Removed %(tags)s from %(count)s item(s)"
 msgstr "已从 %(count)s 个条目移除标签 %(tags)s"
+
+#: app/routers/trash.py:113
+msgid "That item no longer exists"
+msgstr ""
+
+#: app/routers/valuation.py:36 app/routers/valuation.py:40
+msgid "Invalid request body"
+msgstr ""
+
+#: app/routers/valuation.py:56 app/routers/valuation.py:95
+msgid "No key configured"
+msgstr ""
+
+#: app/routers/valuation.py:68
+msgid "Key is valid"
+msgstr ""
+
+#: app/routers/valuation.py:70
+msgid "Invalid or expired key"
+msgstr ""
+
+#: app/routers/valuation.py:72
+#, python-format
+msgid "Unexpected response: HTTP %(code)s"
+msgstr ""
+
+#: app/routers/valuation.py:74
+msgid "Connection failed — check network"
+msgstr ""
+
+#: app/routers/valuation.py:113 app/routers/valuation.py:163
+msgid "ISBNdb API key not configured"
+msgstr ""
+
+#: app/routers/valuation.py:128
+msgid "No price found"
+msgstr ""
+
+#: app/services/audits.py:68
+#, python-format
+msgid "%(name)s (deleted)"
+msgstr ""
+
+#: app/services/audits.py:91 app/services/audits.py:94
+msgid "Pick a location to audit, or start a whole-library audit"
+msgstr ""
+
+#: app/services/audits.py:174
+msgid "That audit was deleted — start a new one"
+msgstr ""
+
+#: app/services/audits.py:175
+msgid "That audit is finished — start a new one"
+msgstr ""
+
+#: app/services/audits.py:188
+msgid "That audit's location was deleted — start a new one"
+msgstr ""
+
+#: app/services/audits.py:191
+#, python-format
+msgid "This audit is for %(place)s — switch the location back, or finish it and start a new one"
+msgstr ""
 
 #: app/services/audnexus.py:52
 msgid "Australia"
@@ -966,6 +1050,119 @@ msgstr "中文"
 #: app/services/national.py:104
 msgid "Korean"
 msgstr "韩语"
+
+#: app/services/wrapups.py:35
+msgid "January"
+msgstr ""
+
+#: app/services/wrapups.py:35
+msgid "February"
+msgstr ""
+
+#: app/services/wrapups.py:35
+msgid "March"
+msgstr ""
+
+#: app/services/wrapups.py:35
+msgid "April"
+msgstr ""
+
+#: app/services/wrapups.py:35
+msgid "May"
+msgstr ""
+
+#: app/services/wrapups.py:35
+msgid "June"
+msgstr ""
+
+#: app/services/wrapups.py:36
+msgid "July"
+msgstr ""
+
+#: app/services/wrapups.py:36
+msgid "August"
+msgstr ""
+
+#: app/services/wrapups.py:36
+msgid "September"
+msgstr ""
+
+#: app/services/wrapups.py:36
+msgid "October"
+msgstr ""
+
+#: app/services/wrapups.py:36
+msgid "November"
+msgstr ""
+
+#: app/services/wrapups.py:36
+msgid "December"
+msgstr ""
+
+#: app/templates/audit.html:2 app/templates/audit.html:7
+#, python-format
+msgid "Audit: %(name)s"
+msgstr ""
+
+#: app/templates/audit.html:9
+#, python-format
+msgid "Started %(date)s"
+msgstr ""
+
+#: app/templates/audit.html:9 app/templates/audits.html:21
+#, python-format
+msgid "finished %(date)s"
+msgstr ""
+
+#: app/templates/audit.html:10
+#, python-format
+msgid "%(num)s scan recorded."
+msgid_plural "%(num)s scans recorded."
+msgstr[0] ""
+
+#: app/templates/audit.html:11
+msgid "Read against the collection as it stands now."
+msgstr ""
+
+#: app/templates/audit.html:11
+msgid "Still open &mdash; scans from any device land here."
+msgstr ""
+
+#: app/templates/audit.html:17 app/templates/fragments/audit_strip.html:39
+msgid "Finish audit"
+msgstr ""
+
+#: app/templates/audit.html:25
+msgid "Delete audit"
+msgstr ""
+
+#: app/templates/audits.html:8
+msgid "Shelf audits, newest first. Start one from Scan &rarr; Inventory; each report reads the collection as it stands now."
+msgstr ""
+
+#: app/templates/audits.html:13
+msgid "No audits yet &mdash; start one from Scan &rarr; Inventory."
+msgstr ""
+
+#: app/templates/audits.html:19 app/templates/fragments/audit_strip.html:17
+#, python-format
+msgid "started %(date)s"
+msgstr ""
+
+#: app/templates/audits.html:21
+#, python-format
+msgid "%(n)s min"
+msgstr ""
+
+#: app/templates/audits.html:23
+msgid "open"
+msgstr ""
+
+#: app/templates/audits.html:25
+#, python-format
+msgid "%(num)s scan"
+msgid_plural "%(num)s scans"
+msgstr[0] ""
 
 #: app/templates/base.html:60
 msgid "Main menu"
@@ -1147,15 +1344,18 @@ msgid "All"
 msgstr "全部"
 
 #: app/templates/browse.html:234
-#: app/templates/fragments/filter_counts_oob.html:27
+#: app/templates/fragments/filter_counts_oob.html:27 app/templates/home.html:32
+#: app/templates/stats.html:16
 msgid "Owned"
 msgstr "已拥有"
 
 #: app/templates/browse.html:235
 #: app/templates/fragments/filter_counts_oob.html:28
 #: app/templates/fragments/item_card.html:7
-#: app/templates/fragments/item_row.html:51 app/templates/item_detail.html:58
+#: app/templates/fragments/item_row.html:51 app/templates/home.html:36
+#: app/templates/home.html:118 app/templates/item_detail.html:58
 #: app/templates/series.html:226 app/templates/series.html:303
+#: app/templates/stats.html:20
 msgid "Wishlist"
 msgstr "心愿单"
 
@@ -1244,6 +1444,95 @@ msgstr ""
 
 #: app/templates/discover.html:33
 msgid "Search Hardcover's catalog to explore books."
+msgstr ""
+
+#: app/templates/home.html:2 app/templates/home.html:7
+msgid "Home"
+msgstr ""
+
+#: app/templates/home.html:8
+msgid "A quick view of your collection. Use Browse when you want to search, filter or organise it."
+msgstr ""
+
+#: app/templates/home.html:11
+msgid "Browse collection"
+msgstr ""
+
+#: app/templates/home.html:13
+msgid "Scan item"
+msgstr ""
+
+#: app/templates/home.html:14 app/templates/scan.html:266
+msgid "Add by hand"
+msgstr "手动添加"
+
+#: app/templates/home.html:17 app/templates/home.html:95
+msgid "Statistics"
+msgstr ""
+
+#: app/templates/home.html:28 app/templates/music.html:7
+#: app/templates/periodicals.html:7
+msgid "Catalogue"
+msgstr ""
+
+#: app/templates/home.html:41
+msgid "Lent out"
+msgstr ""
+
+#: app/templates/home.html:46
+msgid "Missing covers"
+msgstr ""
+
+#: app/templates/home.html:50
+msgid "Media types"
+msgstr ""
+
+#: app/templates/home.html:58
+msgid "Collection mix"
+msgstr ""
+
+#: app/templates/home.html:59
+msgid "Browse all"
+msgstr ""
+
+#: app/templates/home.html:76
+msgid "Your collection is empty."
+msgstr ""
+
+#: app/templates/home.html:81
+msgid "Useful places"
+msgstr ""
+
+#: app/templates/home.html:85
+msgid "Search, filter, sort and bulk-edit the full catalogue."
+msgstr ""
+
+#: app/templates/home.html:90
+msgid "See runs, gaps and completeness without crowding Browse."
+msgstr ""
+
+#: app/templates/home.html:96
+msgid "Open the deeper collection dashboard and charts."
+msgstr ""
+
+#: app/templates/home.html:106
+msgid "Recently added"
+msgstr ""
+
+#: app/templates/home.html:107
+msgid "The latest items to enter your catalogue."
+msgstr ""
+
+#: app/templates/home.html:109
+msgid "See more"
+msgstr ""
+
+#: app/templates/home.html:138
+msgid "No items yet."
+msgstr ""
+
+#: app/templates/home.html:138
+msgid "Start scanning"
 msgstr ""
 
 #: app/templates/intake.html:6
@@ -1381,6 +1670,7 @@ msgstr "正在添加图书…"
 msgid "Looking up metadata for each selected book &mdash; a few seconds per book."
 msgstr "正在为每本选中的书查找资料 &mdash; 每本需要几秒。"
 
+#: app/templates/fragments/audit_strip.html:27
 #: app/templates/fragments/item_copies.html:74 app/templates/intake.html:147
 msgid "Found"
 msgstr "已找到"
@@ -1409,7 +1699,7 @@ msgstr "按封面识别"
 msgid "Media type"
 msgstr "媒体类型"
 
-#: app/templates/intake.html:212 app/templates/scan.html:190
+#: app/templates/intake.html:212 app/templates/scan.html:196
 #: app/templates/shelf_fill.html:51
 msgid "Default tags"
 msgstr "默认标签"
@@ -1418,6 +1708,7 @@ msgstr "默认标签"
 msgid "Default tags — e.g. Cookbook; Signed"
 msgstr "默认标签 — 例如：食谱；签名本"
 
+#: app/templates/fragments/audit_report.html:118
 #: app/templates/fragments/book_search_results.html:31
 #: app/templates/fragments/dvd_search_results.html:29
 #: app/templates/fragments/game_search_results.html:31
@@ -1817,7 +2108,7 @@ msgstr "媒体类型"
 
 #: app/templates/item_edit.html:142 app/templates/item_edit.html:178
 #: app/templates/item_edit.html:309 app/templates/item_edit.html:358
-#: app/templates/scan.html:134 app/templates/scan.html:211
+#: app/templates/scan.html:134 app/templates/scan.html:217
 msgid "None"
 msgstr "无"
 
@@ -1833,7 +2124,7 @@ msgstr "完成日期"
 msgid "Description"
 msgstr "简介"
 
-#: app/templates/item_edit.html:161
+#: app/templates/fragments/audit_notes.html:4 app/templates/item_edit.html:161
 msgid "Notes"
 msgstr "备注"
 
@@ -1962,6 +2253,134 @@ msgstr "保存"
 msgid "Tags save as you add or remove them."
 msgstr "标签在添加或移除时即自动保存。"
 
+#: app/templates/labels.html:9
+msgid "Copy labels"
+msgstr ""
+
+#: app/templates/labels.html:11
+msgid "Give copies a barcode, then print the codes on label sheets. Scanning a label in any Scan mode acts on that exact copy. Codes read"
+msgstr ""
+
+#: app/templates/labels.html:11
+msgid "change the prefix in Settings"
+msgstr ""
+
+#: app/templates/labels.html:17 app/templates/labels.html:26
+msgid "Assign codes"
+msgstr ""
+
+#: app/templates/labels.html:18
+msgid "Copies that already have a barcode — generated or typed — are never changed."
+msgstr ""
+
+#: app/templates/labels.html:34
+msgid "Print labels"
+msgstr ""
+
+#: app/templates/labels.html:35
+msgid "Prints copies that have a barcode. To print one item's labels, use \"Print labels for this item\" on its page."
+msgstr ""
+
+#: app/templates/labels.html:40 app/templates/labels_sheet.html:2
+#: app/templates/labels_sheet.html:39
+msgid "Label sheet"
+msgstr ""
+
+#: app/templates/labels.html:49
+msgid "Start at label"
+msgstr ""
+
+#: app/templates/labels.html:54
+#, python-format
+msgid "Start at a later position to use up a part-used sheet. Print at 100%% scale with no fit-to-page."
+msgstr ""
+
+#: app/templates/labels.html:57
+msgid "Print sheet"
+msgstr ""
+
+#: app/templates/labels_sheet.html:41
+#, python-format
+msgid "Labels %(first)s&ndash;%(last)s"
+msgstr ""
+
+#: app/templates/labels_sheet.html:45
+msgid "Previous"
+msgstr ""
+
+#: app/templates/labels_sheet.html:46
+msgid "Next"
+msgstr ""
+
+#: app/templates/labels_sheet.html:47
+msgid "Print"
+msgstr ""
+
+#: app/templates/labels_sheet.html:48
+msgid "Back to Labels"
+msgstr ""
+
+#: app/templates/labels_sheet.html:52
+msgid "One page holds at most 300 labels. Print this one, then use Next for the rest."
+msgstr ""
+
+#: app/templates/labels_sheet.html:54
+#, python-format
+msgid "Print at 100%% scale, with no fit-to-page and no headers or footers."
+msgstr ""
+
+#: app/templates/fragments/shelf_fill_result.html:12
+#: app/templates/labels_sheet.html:65
+#, python-format
+msgid "copy %(n)s"
+msgstr "第 %(n)s 册"
+
+#: app/templates/labels_sheet.html:73
+msgid "No labels match this selection."
+msgstr ""
+
+#: app/templates/location_order.html:2
+#, python-format
+msgid "Arrange %(place)s"
+msgstr ""
+
+#: app/templates/location_order.html:7
+msgid "← Settings"
+msgstr ""
+
+#: app/templates/location_order.html:9
+#, python-format
+msgid "%(num)s physical copy stored directly here."
+msgid_plural "%(num)s physical copies stored directly here."
+msgstr[0] ""
+
+#: app/templates/location_order.html:15
+msgid "Inside this location"
+msgstr ""
+
+#: app/templates/location_order.html:27
+msgid "Auto order:"
+msgstr ""
+
+#: app/templates/location_order.html:31
+msgid "Save order"
+msgstr ""
+
+#: app/templates/location_order.html:33
+msgid "Drag copies into their physical left-to-right/top-to-bottom order, then save. Optional Periodicals and Music metadata is used automatically when available."
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:31
+#: app/templates/fragments/audit_report.html:33
+#: app/templates/location_order.html:55
+#, python-format
+msgid "Copy %(n)s"
+msgstr ""
+
+#: app/templates/location_order.html:62
+msgid "No physical copies are stored directly at this location yet."
+msgstr ""
+
 #: app/templates/login.html:6 app/templates/login.html:37
 msgid "Sign In"
 msgstr "登录"
@@ -1979,10 +2398,6 @@ msgstr "用户名"
 #: app/templates/setup.html:40
 msgid "Password"
 msgstr "密码"
-
-#: app/templates/music.html:7 app/templates/periodicals.html:7
-msgid "Catalogue"
-msgstr ""
 
 #: app/templates/music.html:9
 msgid "Search exact MusicBrainz releases and keep the pressing, medium and track list you actually own."
@@ -2207,67 +2622,63 @@ msgstr "选择借阅人…"
 msgid "No borrowers yet. Add them in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Settings</a>."
 msgstr "还没有借阅人。请在<a href=\"/settings\" class=\"text-shelf-accent2 underline\">设置</a>中添加。"
 
-#: app/templates/scan.html:194 app/templates/shelf_fill.html:54
+#: app/templates/scan.html:200 app/templates/shelf_fill.html:54
 msgid "e.g. Cookbook; Signed"
 msgstr "例如：食谱；签名本"
 
-#: app/templates/scan.html:197
+#: app/templates/scan.html:203
 msgid "Added to every new item. Separate several with <code>;</code>."
 msgstr "会添加到每个新条目。多个标签之间用 <code>;</code> 分隔。"
 
-#: app/templates/scan.html:206
+#: app/templates/scan.html:212
 msgid "Default status"
 msgstr "默认状态"
 
-#: app/templates/scan.html:216
+#: app/templates/scan.html:222
 msgid "Set on every new item. No dates are recorded."
 msgstr "会设置到每个新条目上。不记录日期。"
 
-#: app/templates/scan.html:220
+#: app/templates/scan.html:226
 msgid "Select a borrower before scanning."
 msgstr "扫码前请先选择借阅人。"
 
-#: app/templates/scan.html:221
+#: app/templates/scan.html:227
 msgid "Select a target location before scanning."
 msgstr "扫码前请先选择目标位置。"
 
-#: app/templates/scan.html:222
+#: app/templates/scan.html:228
 msgid "Select the location you are auditing before scanning."
 msgstr "扫码前请先选择要盘点的位置。"
 
-#: app/templates/scan.html:229
+#: app/templates/scan.html:235
 msgid "Search by Title"
 msgstr "按标题搜索"
 
-#: app/templates/scan.html:230
+#: app/templates/scan.html:236
 msgid "For cartridges or games without a barcode — search IGDB by name and platform."
 msgstr "适用于卡带或无条码的游戏 — 按名称和平台搜索 IGDB。"
 
-#: app/templates/scan.html:231
+#: app/templates/scan.html:237
 msgid "Search TMDb for movies by title."
 msgstr "在 TMDb 中按片名搜索电影。"
 
-#: app/templates/scan.html:234
+#: app/templates/scan.html:240
 msgid "Search Open Library for books by title, author, or keyword."
 msgstr "在 Open Library 中按书名、作者或关键词搜索图书。"
 
-#: app/templates/scan.html:235
+#: app/templates/scan.html:241
 msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
 msgstr "按标题搜索时没有条码可供识别，因此默认搜索图书。如需搜索 TMDb 或 IGDB，请在上方选择媒体类型。"
 
-#: app/templates/scan.html:260
-msgid "Add by hand"
-msgstr "手动添加"
-
-#: app/templates/scan.html:260
+#: app/templates/scan.html:266
 msgid "Hide manual entry"
 msgstr "隐藏手动输入"
 
-#: app/templates/scan.html:267
+#: app/templates/scan.html:273
 msgid "Add by Hand"
 msgstr "手动添加"
 
-#: app/templates/scan.html:268
+#: app/templates/scan.html:274
 msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
 msgstr "无需查询 — 只填标题即可。其他内容均为可选，之后也能编辑。"
 
@@ -2504,6 +2915,7 @@ msgstr "先选定一层实体书架，再按书在架上的排列顺序逐本扫
 msgid "Shelf location"
 msgstr "上架位置"
 
+#: app/templates/fragments/labels_scope.html:15
 #: app/templates/shelf_fill.html:21
 msgid "Choose a location…"
 msgstr "选择位置…"
@@ -2536,13 +2948,132 @@ msgstr "正在上架条目…"
 msgid "ISBN / UPC / copy barcode"
 msgstr "ISBN / UPC / 册条码"
 
-#: app/templates/shelf_fill.html:91
+#: app/templates/shelf_fill.html:92
 msgid "Scan or type a barcode…"
 msgstr "扫码或输入条码…"
 
-#: app/templates/shelf_fill.html:96
+#: app/templates/shelf_fill.html:102
 msgid "Filed this session"
 msgstr "本次已上架"
+
+#: app/templates/stats.html:5
+msgid "Collection Statistics"
+msgstr ""
+
+#: app/templates/stats.html:8
+#, python-format
+msgid "%(year)s in Books"
+msgstr ""
+
+#: app/templates/stats.html:10
+msgid "Wrap-up"
+msgstr ""
+
+#: app/templates/stats.html:24 app/templates/stats_wrapup.html:64
+#, python-format
+msgid "Finished in %(period)s"
+msgstr ""
+
+#: app/templates/stats.html:29
+msgid "Est. Value"
+msgstr ""
+
+#: app/templates/stats.html:34
+msgid "With Covers"
+msgstr ""
+
+#: app/templates/stats.html:38
+msgid "Without ISBN"
+msgstr ""
+
+#: app/templates/stats.html:46
+msgid "Books Read per Year"
+msgstr ""
+
+#: app/templates/stats.html:50
+msgid "Collection Growth"
+msgstr ""
+
+#: app/templates/stats.html:54
+msgid "Top Authors"
+msgstr ""
+
+#: app/templates/stats.html:59
+msgid "Collection Value Over Time"
+msgstr ""
+
+#: app/templates/stats.html:63
+msgid "Run batch valuations (Settings &rarr; Integrations &rarr; ISBNdb) at least twice to see value history."
+msgstr ""
+
+#: app/templates/stats.html:72
+msgid "By Media Type"
+msgstr ""
+
+#: app/templates/stats.html:88 app/templates/stats.html:110
+msgid "No items yet"
+msgstr ""
+
+#: app/templates/stats.html:94
+msgid "By Location"
+msgstr ""
+
+#: app/templates/stats.html:118
+msgid "Recently Added (Last 30 Days)"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:2 app/templates/stats_wrapup.html:9
+#, python-format
+msgid "%(period)s Wrap-up"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:14
+msgid "Period"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:20
+msgid "Show"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:25
+#, python-format
+msgid "Nothing was finished or added in %(period)s."
+msgstr ""
+
+#: app/templates/stats_wrapup.html:45
+msgid "Top author"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:54
+#, python-format
+msgid "Wrap-up image for %(period)s"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:55
+msgid "Drawing…"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:57
+msgid "Download image"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:58
+msgid "Share"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:60
+msgid "Drawn in your browser. Nothing is stored or published."
+msgstr ""
+
+#: app/templates/stats_wrapup.html:64
+#, python-format
+msgid "Added in %(period)s"
+msgstr ""
+
+#: app/templates/stats_wrapup.html:64
+#, python-format
+msgid "latest %(shown)s of %(total)s"
+msgstr ""
 
 #: app/templates/store.html:6
 msgid "Store Mode - Shelf"
@@ -2588,6 +3119,15 @@ msgstr "在此设备上安装 Shelf"
 msgid "Scans of books not in your library are added to your wishlist automatically when you're back online."
 msgstr "扫到书库中没有的图书，会在恢复联网后自动加入心愿单。"
 
+#: app/templates/trash.html:9
+#, python-format
+msgid "Deleted items and copies wait here until you restore them. After %(days)s days they are marked expired, and an admin is prompted to empty them."
+msgstr ""
+
+#: app/templates/trash.html:11
+msgid "Deleted items and copies wait here until you restore them. Nothing is ever marked expired — the retention setting is 0."
+msgstr ""
+
 #: app/templates/upcoming.html:8
 msgid "Announced volumes in the series you watch, checked once a day."
 msgstr ""
@@ -2604,7 +3144,7 @@ msgstr ""
 msgid "announced — date TBA"
 msgstr ""
 
-#: app/templates/upcoming.html:46
+#: app/templates/fragments/trash_nag.html:18 app/templates/upcoming.html:46
 msgid "Dismiss"
 msgstr ""
 
@@ -2615,6 +3155,100 @@ msgstr ""
 
 #: app/templates/upcoming.html:58
 msgid "Powered by Hardcover"
+msgstr ""
+
+#: app/templates/valuation_report.html:2
+msgid "Valuation Report"
+msgstr ""
+
+#: app/templates/valuation_report.html:26
+msgid "Collection Valuation Report"
+msgstr ""
+
+#: app/templates/valuation_report.html:28
+msgid "Print / Save as PDF"
+msgstr ""
+
+#: app/templates/valuation_report.html:31
+#, python-format
+msgid "Generated %(date)s"
+msgstr ""
+
+#: app/templates/valuation_report.html:35
+msgid "Summary"
+msgstr ""
+
+#: app/templates/valuation_report.html:38
+msgid "Total Items"
+msgstr ""
+
+#: app/templates/valuation_report.html:42
+msgid "Priced"
+msgstr ""
+
+#: app/templates/valuation_report.html:43
+#, python-format
+msgid "/ %(n)s with ISBN"
+msgstr ""
+
+#: app/templates/valuation_report.html:46
+msgid "Not Priced"
+msgstr ""
+
+#: app/templates/valuation_report.html:50
+msgid "Total List Value"
+msgstr ""
+
+#: app/templates/valuation_report.html:54
+msgid "Est. Missing Value"
+msgstr ""
+
+#: app/templates/valuation_report.html:56
+#, python-format
+msgid "avg %(price)s x %(n)s"
+msgstr ""
+
+#: app/templates/valuation_report.html:59
+msgid "Grand Total Est."
+msgstr ""
+
+#: app/templates/valuation_report.html:63
+msgid "Values are publisher list prices — appropriate for insurance replacement cost claims. Unpriced items are listed for inventory completeness."
+msgstr ""
+
+#: app/templates/valuation_report.html:72
+#, python-format
+msgid "%(num)s item"
+msgid_plural "%(num)s items"
+msgstr[0] ""
+
+#: app/templates/valuation_report.html:81
+msgid "ISBN / UPC"
+msgstr ""
+
+#: app/templates/valuation_report.html:101
+msgid "Owner-declared value"
+msgstr ""
+
+#: app/templates/valuation_report.html:101
+msgid "manual"
+msgstr ""
+
+#: app/templates/valuation_report.html:109
+#, python-format
+msgid "%(group)s subtotal (%(n)s priced)"
+msgstr ""
+
+#: app/templates/valuation_report.html:119
+msgid "Total (priced items)"
+msgstr ""
+
+#: app/templates/valuation_report.html:123
+msgid "ISBNdb prices are USD list prices. Shelf applies no conversion — amounts above are USD values displayed with your configured currency symbol."
+msgstr ""
+
+#: app/templates/valuation_report.html:126
+msgid "No items in the library yet."
 msgstr ""
 
 #: app/templates/fragments/account_menu.html:3
@@ -2713,6 +3347,115 @@ msgstr "撤销"
 #: app/templates/fragments/also_available_as.html:4
 msgid "Also available as:"
 msgstr "其他格式："
+
+#: app/templates/fragments/audit_notes.html:9
+msgid "Save notes"
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:20
+msgid "a record since deleted"
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:31
+#: app/templates/fragments/item_copies.html:74
+#, python-format
+msgid "missing since %(date)s"
+msgstr "自 %(date)s 起缺失"
+
+#: app/templates/fragments/audit_report.html:59
+msgid "This audit's location was deleted, so nothing is expected here any more. Its scans are still listed."
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:81
+#, python-format
+msgid "It was this one &mdash; move it here (Copy %(n)s, now at %(place)s)"
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:98
+msgid "Mark all missing"
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:107
+msgid "Mark missing"
+msgstr ""
+
+#: app/templates/fragments/audit_report.html:120
+#: app/templates/fragments/scan_result.html:198
+msgid "Open Trash"
+msgstr "打开回收站"
+
+#: app/templates/fragments/audit_strip.html:16
+#, python-format
+msgid "Auditing %(name)s"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:22
+msgid "Scanning at"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:22
+msgid "&mdash; each scan files the book there."
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:26
+msgid "scanned"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:28
+msgid "Moved here"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:29
+msgid "Elsewhere"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:30
+msgid "Unexpected"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:32
+msgid "still unaccounted"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:43
+msgid "Leave"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:46
+msgid "Report so far"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:52
+#, python-format
+msgid "Audit finished &mdash; %(num)s scan recorded. Turn on Collector tools to read the report."
+msgid_plural "Audit finished &mdash; %(num)s scans recorded. Turn on Collector tools to read the report."
+msgstr[0] ""
+
+#: app/templates/fragments/audit_strip.html:55
+msgid "Start an audit to get a report. Scans without one still confirm and move items, but record nothing."
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:61
+msgid "Start audit of the selected location"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:67
+msgid "Start whole-library audit"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:72
+msgid "Open audits:"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:79
+#, python-format
+msgid "Join %(name)s"
+msgstr ""
+
+#: app/templates/fragments/audit_strip.html:79
+#, python-format
+msgid "%(n)s scanned"
+msgstr ""
 
 #: app/templates/fragments/audnexus_fill_result.html:1
 msgid "Reload to see them"
@@ -2877,6 +3620,7 @@ msgstr "逾期"
 
 #: app/templates/fragments/item_card.html:13
 #: app/templates/fragments/item_row.html:58
+#: app/templates/fragments/trash_list.html:69
 msgid "Loaned"
 msgstr "已借出"
 
@@ -2895,11 +3639,6 @@ msgstr "新"
 #: app/templates/fragments/item_card.html:53
 msgid "Open in RomM"
 msgstr "在 RomM 中打开"
-
-#: app/templates/fragments/item_copies.html:74
-#, python-format
-msgid "missing since %(date)s"
-msgstr "自 %(date)s 起缺失"
 
 #: app/templates/fragments/item_copies.html:84
 #: app/templates/fragments/item_copies.html:87
@@ -2929,6 +3668,7 @@ msgid "+ Add copy"
 msgstr "+ 添加一册"
 
 #: app/templates/fragments/item_copy_edit.html:31
+#: app/templates/fragments/trash_list.html:117
 #, python-format
 msgid "Copy #%(n)s"
 msgstr "第 %(n)s 册"
@@ -3005,6 +3745,46 @@ msgstr "开始扫码录入图书"
 #: app/templates/fragments/item_tags.html:19
 msgid "+ tag"
 msgstr "+ 标签"
+
+#: app/templates/fragments/labels_assigned.html:2
+#, python-format
+msgid "%(num)s code assigned, %(first)s to %(last)s."
+msgid_plural "%(num)s codes assigned, %(first)s to %(last)s."
+msgstr[0] ""
+
+#: app/templates/fragments/labels_assigned.html:2
+#, python-format
+msgid "%(num)s code assigned, %(first)s."
+msgid_plural "%(num)s codes assigned, %(first)s."
+msgstr[0] ""
+
+#: app/templates/fragments/labels_assigned.html:4
+msgid "Print these labels"
+msgstr ""
+
+#: app/templates/fragments/labels_assigned.html:6
+msgid "Nothing to assign &mdash; every copy here has a barcode."
+msgstr ""
+
+#: app/templates/fragments/labels_scope.html:5
+msgid "Which copies"
+msgstr ""
+
+#: app/templates/fragments/labels_scope.html:7
+msgid "Every copy"
+msgstr ""
+
+#: app/templates/fragments/labels_scope.html:8
+msgid "Copies of items with no ISBN or UPC"
+msgstr ""
+
+#: app/templates/fragments/labels_scope.html:9
+msgid "Copies at one location"
+msgstr ""
+
+#: app/templates/fragments/labels_scope.html:20
+msgid "That location only, not the places inside it."
+msgstr ""
 
 #: app/templates/fragments/manual_add_form.html:51
 msgid "ISBN or barcode (optional)"
@@ -3352,16 +4132,14 @@ msgstr "已从回收站恢复"
 msgid "Copy %(n)s is in Trash &mdash; restore it from the Trash page"
 msgstr "第 %(n)s 册在回收站中 &mdash; 请在回收站页面恢复"
 
-#: app/templates/fragments/scan_result.html:198
-msgid "Open Trash"
-msgstr "打开回收站"
-
 #: app/templates/fragments/scan_result.html:200
 #, python-format
 msgid "In Trash since %(date)s &mdash; restore it to lend, move or rate it"
 msgstr "自 %(date)s 起在回收站中 &mdash; 恢复后才能借出、移动或评分"
 
 #: app/templates/fragments/scan_result.html:211
+#: app/templates/fragments/trash_list.html:83
+#: app/templates/fragments/trash_list.html:130
 msgid "Restore"
 msgstr "恢复"
 
@@ -3514,11 +4292,6 @@ msgstr "已从心愿单转为拥有并上架到 %(place)s"
 msgid "Shelved at %(place)s"
 msgstr "已上架到 %(place)s"
 
-#: app/templates/fragments/shelf_fill_result.html:12
-#, python-format
-msgid "copy %(n)s"
-msgstr "第 %(n)s 册"
-
 #: app/templates/fragments/shelf_fill_result.html:20
 msgid "Position on this shelf"
 msgstr "在本层的位置"
@@ -3550,4 +4323,70 @@ msgstr "%(n)s 个尚未排序"
 #: app/templates/fragments/shelf_fill_summary.html:16
 msgid "Arrange"
 msgstr "排架"
+
+#: app/templates/fragments/trash_list.html:15
+msgid "Show all"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:18
+msgid "Show expired only"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:25
+#, python-format
+msgid "Delete %(n)s expired items and copies permanently?"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:27
+#, python-format
+msgid "Empty expired (%(n)s)"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:35
+#, python-format
+msgid "Permanently deleted %(num)s row."
+msgid_plural "Permanently deleted %(num)s rows."
+msgstr[0] ""
+
+#: app/templates/fragments/trash_list.html:42
+msgid "That row is not in Trash anymore."
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:47
+msgid "This copy's item is in Trash too — restore the item and its copies come back with it."
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:73
+#: app/templates/fragments/trash_list.html:120
+msgid "Expired"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:76
+#: app/templates/fragments/trash_list.html:123
+#, python-format
+msgid "Deleted %(date)s"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:91
+#: app/templates/fragments/trash_list.html:138
+msgid "Delete permanently"
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:153
+msgid "Nothing in Trash has passed the retention window yet."
+msgstr ""
+
+#: app/templates/fragments/trash_list.html:155
+msgid "Trash is empty."
+msgstr ""
+
+#: app/templates/fragments/trash_nag.html:10
+#, python-format
+msgid "%(num)s item in Trash has been there longer than your retention window."
+msgid_plural "%(num)s items in Trash have been there longer than your retention window."
+msgstr[0] ""
+
+#: app/templates/fragments/trash_nag.html:13
+msgid "Review expired items"
+msgstr ""
 

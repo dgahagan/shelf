@@ -22,6 +22,8 @@ import re
 from dataclasses import dataclass
 from datetime import date
 
+from app import i18n
+from app.i18n import N_
 from app.config import PLAY_LABELS, READ_LABELS, WATCH_LABELS, status_labels
 
 _PERIOD_RE = re.compile(r"^\d{4}(-(0[1-9]|1[0-2]))?$")
@@ -30,8 +32,8 @@ _PERIOD_RE = re.compile(r"^\d{4}(-(0[1-9]|1[0-2]))?$")
 _VERB_ORDER = (("read", READ_LABELS), ("watch", WATCH_LABELS), ("play", PLAY_LABELS))
 
 _MONTH_NAMES = (
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December",
+    N_("January"), N_("February"), N_("March"), N_("April"), N_("May"), N_("June"),
+    N_("July"), N_("August"), N_("September"), N_("October"), N_("November"), N_("December"),
 )
 
 
@@ -56,7 +58,7 @@ def _current_month_period(today: date) -> Period:
     return Period(
         kind="month",
         key=today.strftime("%Y-%m"),
-        label=f"{_MONTH_NAMES[today.month - 1]} {today.year}",
+        label=f"{i18n.gettext(_MONTH_NAMES[today.month - 1])} {today.year}",
     )
 
 
@@ -79,7 +81,7 @@ def parse_period(raw: str | None, today: date) -> Period:
     year, month = int(year_str), int(month_str)
     if (year, month) > (today.year, today.month):
         return _current_month_period(today)
-    return Period(kind="month", key=raw, label=f"{_MONTH_NAMES[month - 1]} {year}")
+    return Period(kind="month", key=raw, label=f"{i18n.gettext(_MONTH_NAMES[month - 1])} {year}")
 
 
 def summarize(db, period: Period, cap: int = 24) -> Summary:
@@ -102,7 +104,7 @@ def summarize(db, period: Period, cap: int = 24) -> Summary:
         by_verb_key[verb_key] = by_verb_key.get(verb_key, 0) + row["c"]
 
     finished = [
-        (by_verb_key.get(verb_key, 0), labels.done_lower)
+        (by_verb_key.get(verb_key, 0), i18n.gettext(labels.done_lower))
         for verb_key, labels in _VERB_ORDER
     ]
     finished = [(count, word) for count, word in finished if count > 0]

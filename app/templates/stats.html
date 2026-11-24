@@ -1,41 +1,41 @@
 {% extends "base.html" %}
-{% block title %}Stats — Shelf{% endblock %}
+{% block title %}{{ _('Stats') }} — Shelf{% endblock %}
 {% block content %}
 <div class="flex flex-wrap items-baseline justify-between gap-3 mb-6">
-    <h1 class="text-2xl font-bold">Collection Statistics</h1>
+    <h1 class="text-2xl font-bold">{{ _('Collection Statistics') }}</h1>
     <div class="flex flex-wrap gap-4 text-sm">
         {% if year_in_books %}
-        <a href="/stats/wrapup?period={{ year_in_books }}" class="text-shelf-accent hover:underline" data-testid="stats-year-in-books">{{ year_in_books }} in Books</a>
+        <a href="/stats/wrapup?period={{ year_in_books }}" class="text-shelf-accent hover:underline" data-testid="stats-year-in-books">{{ _('%(year)s in Books', year=year_in_books) }}</a>
         {% endif %}
-        <a href="/stats/wrapup" class="text-shelf-accent hover:underline" data-testid="stats-wrapup-link">Wrap-up</a>
+        <a href="/stats/wrapup" class="text-shelf-accent hover:underline" data-testid="stats-wrapup-link">{{ _('Wrap-up') }}</a>
     </div>
 </div>
 
 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-        <p class="text-shelf-muted text-sm">Owned</p>
+        <p class="text-shelf-muted text-sm">{{ _('Owned') }}</p>
         <p class="text-3xl font-bold">{{ owned_count }}</p>
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-        <p class="text-shelf-muted text-sm">Wishlist</p>
+        <p class="text-shelf-muted text-sm">{{ _('Wishlist') }}</p>
         <p class="text-3xl font-bold">{{ wishlist_count }}</p>
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="stats-finished-year">
-        <p class="text-shelf-muted text-sm">Finished in {{ current_year }}</p>
+        <p class="text-shelf-muted text-sm">{{ _('Finished in %(period)s', period=current_year) }}</p>
         <p class="text-3xl font-bold">{% if finished_this_year %}{% for n, word in finished_this_year %}{% if not loop.first %} · {% endif %}{{ n }} <span class="text-sm text-shelf-muted font-normal">{{ word }}</span>{% endfor %}{% else %}0{% endif %}</p>
     </div>
     {% if feature_on('valuation') %}
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="stats-est-value">
-        <p class="text-shelf-muted text-sm">Est. Value</p>
+        <p class="text-shelf-muted text-sm">{{ _('Est. Value') }}</p>
         <p class="text-3xl font-bold">{% if current_value %}{{ current_value|money(0) }}{% else %}—{% endif %}</p>
     </div>
     {% endif %}
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-        <p class="text-shelf-muted text-sm">With Covers</p>
+        <p class="text-shelf-muted text-sm">{{ _('With Covers') }}</p>
         <p class="text-3xl font-bold">{{ with_covers }} <span class="text-sm text-shelf-muted font-normal">/ {{ total }}</span></p>
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-        <p class="text-shelf-muted text-sm">Without ISBN</p>
+        <p class="text-shelf-muted text-sm">{{ _('Without ISBN') }}</p>
         <p class="text-3xl font-bold">{{ without_isbn }}</p>
     </div>
 </div>
@@ -43,24 +43,24 @@
 <!-- Charts -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-read">
-        <h2 class="text-lg font-semibold mb-3">Books Read per Year</h2>
+        <h2 class="text-lg font-semibold mb-3">{{ _('Books Read per Year') }}</h2>
         {{ chart_read|safe }}
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-growth">
-        <h2 class="text-lg font-semibold mb-3">Collection Growth</h2>
+        <h2 class="text-lg font-semibold mb-3">{{ _('Collection Growth') }}</h2>
         {{ chart_growth|safe }}
     </div>
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-authors">
-        <h2 class="text-lg font-semibold mb-3">Top Authors</h2>
+        <h2 class="text-lg font-semibold mb-3">{{ _('Top Authors') }}</h2>
         {{ chart_authors|safe }}
     </div>
     {% if feature_on('valuation') %}
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5" data-testid="chart-valuation">
-        <h2 class="text-lg font-semibold mb-3">Collection Value Over Time</h2>
+        <h2 class="text-lg font-semibold mb-3">{{ _('Collection Value Over Time') }}</h2>
         {% if chart_valuation %}
         {{ chart_valuation|safe }}
         {% else %}
-        <p class="text-sm text-shelf-muted py-8 text-center">Run batch valuations (Settings &rarr; Integrations &rarr; ISBNdb) at least twice to see value history.</p>
+        <p class="text-sm text-shelf-muted py-8 text-center">{{ _('Run batch valuations (Settings &rarr; Integrations &rarr; ISBNdb) at least twice to see value history.') }}</p>
         {% endif %}
     </div>
     {% endif %}
@@ -69,7 +69,7 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
     <!-- By Media Type -->
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-        <h2 class="text-lg font-semibold mb-4">By Media Type</h2>
+        <h2 class="text-lg font-semibold mb-4">{{ _('By Media Type') }}</h2>
         {% if by_type %}
         <div class="space-y-3">
             {% for row in by_type %}
@@ -85,13 +85,13 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-shelf-muted text-sm">No items yet</p>
+        <p class="text-shelf-muted text-sm">{{ _('No items yet') }}</p>
         {% endif %}
     </div>
 
     <!-- By Location -->
     <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-        <h2 class="text-lg font-semibold mb-4">By Location</h2>
+        <h2 class="text-lg font-semibold mb-4">{{ _('By Location') }}</h2>
         {% if by_location %}
         <div class="space-y-3">
             {% for row in by_location %}
@@ -107,7 +107,7 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-shelf-muted text-sm">No items yet</p>
+        <p class="text-shelf-muted text-sm">{{ _('No items yet') }}</p>
         {% endif %}
     </div>
 </div>
@@ -115,7 +115,7 @@
 <!-- Recent Additions -->
 {% if recent %}
 <div class="bg-shelf-card border border-shelf-border rounded-lg p-5">
-    <h2 class="text-lg font-semibold mb-4">Recently Added (Last 30 Days)</h2>
+    <h2 class="text-lg font-semibold mb-4">{{ _('Recently Added (Last 30 Days)') }}</h2>
     <div class="space-y-2">
         {% for item in recent %}
         <a href="/item/{{ item.id }}?from=stats" class="flex items-center gap-3 p-2 rounded-sm hover:bg-shelf-hover transition-colors">

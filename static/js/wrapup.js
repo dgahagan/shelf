@@ -125,7 +125,7 @@
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             var maxLines = Math.max(1, Math.floor((h - size) / (size * 1.25)));
-            var lines = wrapLines(ctx, tile.title || 'Untitled', w - size * 1.5, Math.min(maxLines, 6));
+            var lines = wrapLines(ctx, tile.title || t('Untitled'), w - size * 1.5, Math.min(maxLines, 6));
             var lineH = size * 1.25;
             var top = y + h / 2 - (lines.length - 1) * lineH / 2;
             lines.forEach(function (l, i) { ctx.fillText(l, x + w / 2, top + i * lineH); });
@@ -202,8 +202,8 @@
         ctx.textAlign = 'right';
         ctx.fillStyle = COLOR.muted;
         ctx.font = font(400, 26);
-        var caption = (data.showing === 'finished' ? 'Finished in ' : 'Added in ') + data.label;
-        if (data.tileCount > tiles.length) caption = 'Latest ' + tiles.length + ' of ' + data.tileCount + ' · ' + caption;
+        var caption = (data.showing === 'finished' ? t('Finished in {period}') : t('Added in {period}')).replace('{period}', data.label);
+        if (data.tileCount > tiles.length) caption = t('Latest {shown} of {total}').replace('{shown}', tiles.length).replace('{total}', data.tileCount) + ' · ' + caption;
         ctx.fillText(ellipsize(ctx, caption, inner - 200), W - PAD, H - PAD);
     }
 
@@ -247,7 +247,7 @@
                 draw(canvas, data, tiles, results[1]);
                 canvas.toBlob(function (blob) {
                     if (!blob) {
-                        if (status) status.textContent = 'This browser could not export the image.';
+                        if (status) status.textContent = t('This browser could not export the image.');
                         return;
                     }
                     if (objectUrl) URL.revokeObjectURL(objectUrl);

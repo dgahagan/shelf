@@ -1,14 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Trash — Shelf{% endblock %}
+{% block title %}{{ _('Trash') }} — Shelf{% endblock %}
 {% block content %}
 <div class="max-w-5xl mx-auto">
     <div class="mb-6">
-        <h1 class="text-2xl font-bold">Trash</h1>
+        <h1 class="text-2xl font-bold">{{ _('Trash') }}</h1>
         <p class="text-sm text-shelf-muted mt-1">
             {% if retention_days > 0 %}
-            Deleted items and copies wait here until you restore them. After {{ retention_days }} days they are marked expired, and an admin is prompted to empty them.
+            {{ _('Deleted items and copies wait here until you restore them. After %(days)s days they are marked expired, and an admin is prompted to empty them.', days=retention_days) }}
             {% else %}
-            Deleted items and copies wait here until you restore them. Nothing is ever marked expired — the retention setting is 0.
+            {{ _('Deleted items and copies wait here until you restore them. Nothing is ever marked expired — the retention setting is 0.') }}
             {% endif %}
         </p>
     </div>
