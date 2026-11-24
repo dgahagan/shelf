@@ -18,11 +18,20 @@ Two properties are fixed by the design and must not be relaxed:
 - **Titles only.** Subtitles are not consulted as a separate field and authors
   are never compared here — author matching lives in `app.services.authors`
   (G22).
+
+`game_title_agrees` is the **UPC game-scan** guard. It compares whole titles,
+with no prefix or similarity rule: a candidate agrees only when its key equals
+the barcode title's first field, or when its platform-stripped form equals the
+barcode's stripped form. Its two extra rules, `&` read as "and" and the
+platform/"game only" strip, are justified by the #191 sample alone, which is
+why `titles_match_exactly` is left untouched.
 """
 
 import difflib
 import re
 import unicodedata
+
+from app.services import upcitemdb
 
 # A trailing "(...)" or a ": subtitle" tail — series/edition decoration that
 # one side may carry and the other may not.
@@ -163,5 +172,49 @@ def titles_match_exactly(row_title: str, catalog_title: str | None) -> bool:
 
         a, b = norm(row_title), norm(catalog_title)
         return bool(a) and bool(b) and a == b
+    except Exception:  # pragma: no cover - fail closed on anything unexpected
+        return False
+
+
+def _game_key(title: str) -> str:
+    """`titles_match_exactly`'s key with `&` read as " and " first."""
+    normalized = _normalize(_fold(title.replace("&", " and ")))
+    return " ".join(_ROMAN.get(tok, tok) for tok in normalized.split())
+
+
+def game_title_agrees(candidate: str, f1: str, stripped: str | None) -> bool:
+    """True when an IGDB candidate's title is the barcode's title, whole.
+
+    Agrees when `candidate` keys equal to `f1`, or when `stripped` is given
+    and `candidate` with its platform words stripped
+    (`upcitemdb.strip_game_words`) keys equal to `stripped`. An empty key on
+    either side never agrees, so a candidate that strips to nothing ("Wii")
+    cannot match an empty `stripped`, and an empty `f1` refuses outright. Non-str input is a refusal.
+
+    Note the strip path also admits "New Super Mario Bros." for a barcode
+    titled "New Super Mario Bros"; keeping a Wii scan off that title needs a
+    platform filter outside this function (`title_lookup.game_attempts`,
+    which never falls back to an unfiltered search); this one compares
+    titles only.
+    """
+    try:
+        if not isinstance(candidate, str) or not isinstance(f1, str):
+            return False
+        if stripped is not None and not isinstance(stripped, str):
+            return False
+
+        cand = _game_key(candidate)
+        if not cand:
+            return False
+        want = _game_key(f1)
+        if not want:
+            return False
+        if cand == want:
+            return True
+        if stripped:
+            want_stripped = _game_key(stripped)
+            cand_stripped = _game_key(upcitemdb.strip_game_words(candidate))
+            return bool(want_stripped) and bool(cand_stripped) and cand_stripped == want_stripped
+        return False
     except Exception:  # pragma: no cover - fail closed on anything unexpected
         return False

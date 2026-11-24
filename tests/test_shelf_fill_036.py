@@ -642,3 +642,63 @@ class TestShelfFillScanPassesDefaultTags:
 
         assert filed.status_code == 200
         assert db.execute("SELECT COUNT(*) FROM tags").fetchone()[0] == 0
+
+
+def test_an_unknown_game_upc_files_the_agreeing_igdb_title_and_places_it(
+    editor_client, db, monkeypatch
+):
+    """#191 through Shelf Fill's indirect path (G113): `shelf_fill_scan` →
+    `items.scan_isbn` → `items_common._scan_upc` → `_scan_upc_game`. The chosen
+    platform must reach IGDB, the agreeing candidate (not IGDB's first) must be
+    stored, and the new game must land on the shelf with a position."""
+    from app.services import igdb
+
+    shelf = location_svc.create_location(db, "Game shelf")
+    db.commit()
+
+    async def _lookup(upc, client):
+        return provider_result.found("upcitemdb", {
+            "title": "Super Mario: Odyssey - Nintendo Switch",
+            "category": "Video Games", "brand": None, "images": [],
+        })
+
+    calls = []
+
+    async def _search_games(query, cid, secret, client, platform=None, limit=10):
+        calls.append({"query": query, "platform": platform})
+        return provider_result.found("igdb", [
+            {"igdb_id": 1, "title": "Super Mario Odyssey + Bowser's Fury Double Pack",
+             "description": "Two games.", "publisher": "Nintendo", "publish_year": 2021,
+             "cover_url": None, "developer": None},
+            {"igdb_id": 2, "title": "Super Mario Odyssey",
+             "description": "Mario travels the globe.", "publisher": "Nintendo",
+             "publish_year": 2017, "cover_url": None, "developer": None},
+        ])
+
+    monkeypatch.setattr(upcitemdb, "lookup", _lookup)
+    monkeypatch.setattr(igdb, "search_games", _search_games)
+    monkeypatch.setenv("IGDB_CLIENT_ID", "cid")
+    monkeypatch.setenv("IGDB_CLIENT_SECRET", "secret")
+
+    resp = editor_client.post("/api/shelf-fill/scan", data={
+        "isbn": "045496590741", "location_id": shelf,
+        "media_type": "video_game", "platform": "switch",
+    })
+
+    assert resp.status_code == 200
+    assert calls[0]["platform"] == "switch"
+    item = db.execute(
+        "SELECT id, title, description, source, location_id FROM items "
+        "WHERE media_type = 'video_game'"
+    ).fetchone()
+    assert item["title"] == "Super Mario Odyssey"
+    assert item["description"] == "Mario travels the globe."
+    assert item["source"] == "igdb"
+    assert item["location_id"] == shelf
+    copy = db.execute(
+        "SELECT position_order FROM item_copies WHERE item_id = ? AND is_primary = 1",
+        (item["id"],),
+    ).fetchone()
+    assert copy["position_order"] == 1
+    assert 'data-testid="shelf-fill-position"' in resp.text
+    assert 'data-testid="shelf-fill-summary-counts"' in resp.text

@@ -30,7 +30,7 @@ from app.database import get_db, get_setting
 from app.services import audnexus, covers, detect, googlebooks, hardcover, national, openlibrary, provider_result
 from app.services import cover_queue
 from app.services import authors as authors_svc
-from app.services import scan_outcome, title_lookup, upcitemdb
+from app.services import scan_outcome, title_lookup, title_match, upcitemdb
 from app.services import upc as upc_svc
 from app.services import isbn as isbn_svc
 from app.services.item_write import ItemValueError, insert_item, update_item_fields
@@ -689,9 +689,10 @@ async def _first_hit(queries, search):
 
     `search` is a coroutine answering a `ProviderResult` whose payload, on a
     hit, is a metadata **dict** — the game adapter unwraps its provider's list
-    to `[0]` before handing it over, so the ladder never carries a list (G45).
-    Both UPC paths climb this one ladder, so the film and game paths cannot
-    drift apart, and the rung floor stays `upcitemdb.search_queries`' (G46).
+    to the *accepted* candidate first, so this never carries a list (G45). The
+    film path climbs `upcitemdb.search_queries`' ladder, floor at
+    `MIN_SOLO_WORD` (G46); the game path sends `game_queries` × `game_attempts`,
+    with no shortened rung.
 
     The first `found` returns with its query. A `rejected`, `rate_limited` or
     `transport_failed` **stops the ladder** and returns `(that record, None)`:
@@ -727,9 +728,11 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     *both* branches or one barcode gets two stories. It is read only where the
     ladder never runs: below, the card projects from the IGDB record alone.
     """
-    # Step 1: normalise the retail title into a search ladder. Same ladder as
-    # the film path, from the same record.
-    queries = upcitemdb.search_queries((product or {}).get("title") or "")
+    # Step 1: the barcode title's first field, and that field stripped of brand
+    # and platform words (#191). Not the film path's shortening ladder.
+    title, brand = (product or {}).get("title") or "", (product or {}).get("brand")
+    f1, stripped = upcitemdb.game_title_fields(title, brand)
+    queries = upcitemdb.game_queries(title, brand)
 
     if not queries:
         # The film branch's twin: a product-lookup 429 leaves no title, so this
@@ -756,12 +759,15 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     igdb_result = provider_result.no_credential("igdb")
     if igdb_id and igdb_secret:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
-            # IGDB's list payload is unwrapped inside the helper now (G45).
-            # `platform` stays unforwarded: this ladder never filtered on it.
+            # The helper unwraps the first candidate whose whole title agrees
+            # (G45, G74). `platform` IS forwarded, on purpose (#191, reversing
+            # G77's note): filtered only for an IGDB slug, never unfiltered
+            # after it — the title guard cannot tell platforms apart.
             igdb_result, _matched = await _first_hit(
-                queries,
-                lambda q: title_lookup.lookup_by_title(
-                    q, "video_game", client,
+                title_lookup.game_attempts(queries, platform),
+                lambda a: title_lookup.lookup_by_title(
+                    a[0], "video_game", client, platform=a[1],
+                    accept=lambda t: title_match.game_title_agrees(t, f1, stripped),
                     creds={"igdb_client_id": igdb_id, "igdb_client_secret": igdb_secret}),
             )
             if igdb_result.outcome == "rejected":
@@ -782,7 +788,8 @@ async def _scan_upc_game(request: Request, templates, upc_norm: str, product: di
     # No `has_provider`: a video game always has IGDB.
     enrich_status = scan_outcome.enrich_status(igdb_result)
 
-    # Save item — with IGDB metadata if found, otherwise the cleaned UPC title
+    # Save item — IGDB metadata if found, else title-only under the barcode's
+    # title field (F1: `game_queries` puts it first)
     source = "igdb" if metadata else "upc"
     game_title = metadata["title"] if metadata else queries[0]
 

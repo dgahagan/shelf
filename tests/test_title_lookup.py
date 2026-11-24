@@ -401,3 +401,131 @@ class TestNoLogLineCarriesAUrl:
         for record in caplog.records:
             assert "http" not in record.getMessage()
             assert "api_key" not in record.getMessage()
+
+
+class TestAnAcceptCallbackPicksTheCandidate:
+    """`accept` makes the helper ask for ten and choose, so the selection is
+    decided where the list is visible (G74). Assertions are on the stored
+    record, not on the request."""
+
+    async def _game(self, accept, **kw):
+        return await title_lookup.lookup_by_title(
+            "Mario", "video_game", client=None, creds=ALL_CREDS, accept=accept, **kw,
+        )
+
+    async def test_it_asks_for_ten(self, igdb_stub):
+        rec = igdb_stub(provider_result.found("igdb", [GAME]))
+
+        await self._game(lambda t: True)
+
+        assert rec.calls[0]["limit"] == 10
+
+    async def test_a_falsey_callable_still_asks_for_ten(self, igdb_stub):
+        """`accept` is tested by identity, not truthiness (diff-review codex
+        MAJ1): a callable object whose `__bool__` is False is still a filter."""
+        class Falsey:
+            def __bool__(self):
+                return False
+
+            def __call__(self, title):
+                return title == "Super Mario Odyssey"
+
+        rec = igdb_stub(provider_result.found(
+            "igdb", [{"title": "Mario Party", "igdb_id": 1}, GAME]))
+
+        result = await self._game(Falsey())
+
+        assert rec.calls[0]["limit"] == 10
+        assert result.payload["title"] == "Super Mario Odyssey"
+
+    async def test_the_second_candidate_is_returned_as_a_dict(self, igdb_stub):
+        igdb_stub(provider_result.found("igdb", [{"title": "Mario Party", "igdb_id": 1}, GAME]))
+
+        result = await self._game(lambda t: t == "Super Mario Odyssey")
+
+        assert result.found
+        assert isinstance(result.payload, dict)
+        assert result.payload["title"] == "Super Mario Odyssey"
+        assert result.payload["igdb_id"] == 1029
+
+    async def test_no_accepted_candidate_is_a_miss_with_the_stubs_status(self, igdb_stub):
+        igdb_stub(provider_result.found("igdb", [GAME], status=200))
+
+        result = await self._game(lambda t: False)
+
+        assert result.outcome == "no_match"
+        assert result.provider == "igdb"
+        assert result.status == 200
+        assert result.payload is None
+
+    async def test_a_candidate_with_no_title_is_offered_as_empty(self, igdb_stub):
+        igdb_stub(provider_result.found("igdb", [{"igdb_id": 5}]))
+        seen = []
+
+        result = await self._game(lambda t: seen.append(t) or False)
+
+        assert seen == [""]
+        assert result.outcome == "no_match"
+
+    async def test_found_with_an_empty_list_is_a_miss(self, igdb_stub):
+        igdb_stub(provider_result.found("igdb", []))
+
+        result = await self._game(lambda t: True)
+
+        assert result.outcome == "no_match"
+        assert result.provider == "igdb"
+
+    @pytest.mark.parametrize("outcome", ["rejected", "rate_limited", "transport_failed"])
+    async def test_a_non_found_outcome_passes_through_without_calling_accept(
+        self, igdb_stub, outcome,
+    ):
+        igdb_stub({
+            "rejected": provider_result.rejected("igdb", status=400),
+            "rate_limited": provider_result.rate_limited("igdb"),
+            "transport_failed": provider_result.transport_failed("igdb"),
+        }[outcome])
+        seen = []
+
+        result = await self._game(lambda t: seen.append(t) or True)
+
+        assert result.outcome == outcome
+        assert seen == []
+
+    async def test_a_raising_accept_answers_transport_failed(self, igdb_stub):
+        igdb_stub(provider_result.found("igdb", [GAME]))
+
+        def boom(title):
+            raise RuntimeError("guard blew up")
+
+        result = await self._game(boom)
+
+        assert result.outcome == "transport_failed"
+        assert result.provider == "igdb"
+
+    async def test_the_film_branch_ignores_accept(self, tmdb_stub):
+        tmdb_stub(provider_result.found("tmdb", FILM))
+
+        result = await title_lookup.lookup_by_title(
+            "Mad Max", "dvd", client=None, creds=ALL_CREDS, accept=lambda t: False,
+        )
+
+        assert result.found
+        assert result.payload == FILM
+
+
+class TestGameAttempts:
+    def test_a_known_platform_is_filtered_only(self):
+        """No unfiltered fallback: the title guard cannot tell platforms
+        apart (diff-review codex B1)."""
+        assert title_lookup.game_attempts(["A", "B"], "switch") == [
+            ("A", "switch"), ("B", "switch"),
+        ]
+
+    def test_an_unknown_platform_is_unfiltered_only(self):
+        assert title_lookup.game_attempts(["A", "B"], "ps9") == [("A", None), ("B", None)]
+
+    def test_no_platform_is_unfiltered_only(self):
+        assert title_lookup.game_attempts(["A", "B"], None) == [("A", None), ("B", None)]
+
+    def test_no_queries_is_no_attempts(self):
+        assert title_lookup.game_attempts([], "switch") == []

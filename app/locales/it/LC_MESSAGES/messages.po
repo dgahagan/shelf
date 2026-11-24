@@ -158,7 +158,7 @@ msgid "Manga"
 msgstr "Manga"
 
 #: app/config.py:26 app/routers/items_catalog.py:185
-#: app/routers/items_common.py:863
+#: app/routers/items_common.py:870
 msgid "Video Game"
 msgstr "Videogioco"
 
@@ -745,7 +745,7 @@ msgid "Network error during lookup — check connectivity"
 msgstr "Errore di rete durante la ricerca: controlla la connessione"
 
 #: app/routers/items.py:589 app/routers/items_common.py:554
-#: app/routers/items_common.py:743
+#: app/routers/items_common.py:746
 msgid "Not found — add manually below"
 msgstr "Non trovato: aggiungilo a mano qui sotto"
 

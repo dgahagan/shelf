@@ -155,6 +155,57 @@ class TestSearchQueries:
         assert upcitemdb.search_queries("[DVD]") == []
 
 
+class TestGameQueries:
+    COD = "Call of Duty: Black Ops III  Activision  PlayStation 4  047875874589"
+    WII = "Nintendo Wii Fit Plus - Game Only (Wii)"
+    # (raw title, brand, expected f1, expected stripped)
+    CASES = [
+        (COD, None, "Call of Duty: Black Ops III", "Call of Duty: Black Ops III"),
+        ("New Super Mario Bros | Nintendo Wii", None,
+         "New Super Mario Bros", "New Super Mario Bros"),
+        ("PS2 GRAND THEFT AUTO VICE CITY", None,
+         "PS2 GRAND THEFT AUTO VICE CITY", "GRAND THEFT AUTO VICE CITY"),
+        (WII, None, "Nintendo Wii Fit Plus - Game Only", "Fit Plus"),
+        ("Capcom Ultra Street Fighter 2: The Final Challenge", "Capcom",
+         "Capcom Ultra Street Fighter 2: The Final Challenge",
+         "Ultra Street Fighter 2: The Final Challenge"),
+        ("Revita for Playstation 4", None, "Revita for Playstation 4", "Revita"),
+    ]
+
+    @pytest.mark.parametrize("raw,brand,f1,stripped", CASES)
+    def test_fields_come_from_the_first_field_of_the_title(self, raw, brand, f1, stripped):
+        assert upcitemdb.game_title_fields(raw, brand) == (f1, stripped)
+
+    def test_f1_keeps_the_wii_in_wii_fit_plus(self):
+        f1, stripped = upcitemdb.game_title_fields(self.WII, None)
+        assert "Wii Fit Plus" in f1
+        assert stripped == "Fit Plus"
+
+    def test_a_title_that_strips_to_itself_yields_one_query(self):
+        assert upcitemdb.game_queries(MARIO, None) == ["Super Mario: Odyssey"]
+
+    @pytest.mark.parametrize("raw,brand,f1,stripped", CASES)
+    def test_no_result_is_a_shortened_rung(self, raw, brand, f1, stripped):
+        queries = upcitemdb.game_queries(raw, brand)
+        assert set(queries) <= {f1, stripped}
+        assert "Call of Duty" not in queries
+        assert "Grand Theft Auto" not in queries
+
+    @pytest.mark.parametrize("raw", [None, "", "   ", "[DVD]"])
+    def test_an_empty_or_format_only_title_yields_no_queries(self, raw):
+        assert upcitemdb.game_queries(raw, None) == []
+        assert upcitemdb.game_title_fields(raw, None) == ("", "")
+
+    @pytest.mark.parametrize("raw,brand,f1,stripped", CASES)
+    def test_at_most_two_queries_and_the_first_is_f1(self, raw, brand, f1, stripped):
+        queries = upcitemdb.game_queries(raw, brand)
+        assert 1 <= len(queries) <= 2
+        assert queries[0] == upcitemdb.game_title_fields(raw, brand)[0]
+
+    def test_leading_whitespace_does_not_empty_the_first_field(self):
+        assert upcitemdb.game_queries("  " + self.COD, None)[0] == "Call of Duty: Black Ops III"
+
+
 class TestLookup:
     async def test_it_returns_the_whole_useful_product(self, fake_fetch):
         fake_fetch.return_value = StubResponse(200, json_data={"items": [{

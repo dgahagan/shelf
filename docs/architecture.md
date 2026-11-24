@@ -842,11 +842,21 @@ A retail title is not a search query —
 `Goodfellas [DVD]  Feature Thriller Drama …` matches nothing — so the same
 module normalises it (format tags, platform suffixes, edition noise) and
 builds a short **ladder** of progressively shorter queries, tried in order
-until a provider answers. Both the film and game paths climb that one ladder.
+until a provider answers. Only the film path climbs that ladder. The game path
+sends at most two queries (`upcitemdb.game_queries`: the title field, and the
+field with brand, platform and "game" words removed) and no shortened rung. It
+asks IGDB for up to ten candidates per query, filtered by platform alone when
+the user chose an IGDB platform (`title_lookup.game_attempts`, with no
+unfiltered fallback — the title check cannot tell two platforms' same-named
+games apart), and accepts
+only a candidate whose whole title agrees with the barcode's
+(`title_match.game_title_agrees`). When none agrees it files the game
+title-only under the title field. "First hit wins" therefore no longer holds
+on the game path: the first *agreeing* candidate wins.
 TMDb accepts either credential type: a 32-hex v3 API Key authenticates as a
 query parameter, anything else as a Bearer token, decided in one helper that
 the Settings key test shares. A credential rejection is distinguishable from
-an empty result set, and files the item title-only rather than silently. The
+an empty result set, and files the item title-only rather than silently. On both paths the
 ladder stops at the first rung that reports a rejection, a rate limit or a
 transport failure instead of trying a shorter query — the same credential
 cannot answer differently on a shorter phrasing of the same request, and a

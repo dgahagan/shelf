@@ -176,7 +176,9 @@ pre-ISBN books, retro game cartridges, discs with a scuffed UPC:
   ranks matching editions first.
 - **Movies** — TMDb title search (needs a TMDb key).
 - **Video games** — IGDB title search (needs IGDB credentials); filter by
-  platform for "Super Mario Bros." ambiguity.
+  platform for "Super Mario Bros." ambiguity. The same goes for scanning:
+  choose the platform **before** you scan, and Shelf searches only that
+  platform's games.
 
 An empty result box tells you *why* it is empty, in the same words the scan
 card uses: a rejected key, a provider that is rate-limiting us, a provider that
@@ -354,10 +356,23 @@ rather than claiming a detection it did not make.
 A UPC scan brings back a synopsis, a year and cover art when TMDb (discs) or
 IGDB (games) is configured. Barcode databases store retail shelf titles rather
 than film or game titles — `Goodfellas [DVD]  Feature Thriller Drama …` — so
-Shelf strips format tags, platform suffixes and edition wording, and if that
-still finds nothing it retries with progressively shorter versions of the
-title. It stops short of searching a single short word, because a one-word
-search comes back with a *different* film rather than nothing.
+Shelf strips format tags, platform suffixes and edition wording.
+
+For a disc, if that still finds nothing it retries with progressively shorter
+versions of the title. It stops short of searching a single short word,
+because a one-word search comes back with a *different* film rather than
+nothing.
+
+A game is matched more strictly, and it is never shortened. Shelf searches
+IGDB for the barcode's title as it stands, and again with the brand, platform
+and "game" words removed. It looks at up to ten results for each search and
+takes one only when the whole title matches the barcode's. A close but
+different game — *Grand Theft Auto V* for a *Vice City* barcode — is not
+taken. If you chose a platform before scanning, Shelf looks only among that
+platform's games, so it never files another platform's game of the same name. When no result
+matches, Shelf adds the game under its barcode title with a "no IGDB match for
+this barcode" notice. Fix it with the game title search below the barcode
+field, or edit the item.
 
 For one class of scan it does not search at all. When the retail title names
 console hardware — a console, controller or headset **together with** a

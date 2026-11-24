@@ -24,6 +24,7 @@ would silently stop landing (GOTCHAS G37).
 """
 
 import logging
+from collections.abc import Callable
 
 import httpx
 
@@ -58,12 +59,32 @@ def required_credentials(media_type: str | None) -> tuple[str, ...]:
     return covers.CREDENTIAL_KEYS.get(provider or "", ())
 
 
+def game_attempts(
+    queries: list[str], platform: str | None,
+) -> list[tuple[str, str | None]]:
+    """The `(query, platform)` pairs to try for one game, in order.
+
+    With a platform IGDB knows (`igdb.PLATFORM_IDS`), only filtered pairs.
+    There is deliberately no unfiltered fallback: the title guard compares
+    titles only, so an unfiltered pass would accept another platform's
+    same-named game (a Wii scan filing the DS "New Super Mario Bros."), and
+    the #191 replay showed the fallback found nothing the filtered pass
+    missed. With no platform, or one IGDB does not know, only unfiltered
+    pairs: `igdb.search_games` silently drops the filter for an unknown
+    slug. Pure — it makes no call.
+    """
+    if platform in igdb.PLATFORM_IDS:
+        return [(q, platform) for q in queries]
+    return [(q, None) for q in queries]
+
+
 async def lookup_by_title(
     title: str,
     media_type: str,
     client: httpx.AsyncClient,
     *,
     platform: str | None = None,
+    accept: Callable[[str], bool] | None = None,
     creds: dict[str, str | None],
 ) -> provider_result.ProviderResult:
     """Look one title up against the provider its media type maps to.
@@ -80,15 +101,23 @@ async def lookup_by_title(
 
     **`found`'s payload is always a single dict, never a list** (GOTCHAS G45).
     `tmdb.lookup_by_title` answers a dict and `igdb.search_games` answers a
-    list; the `[0]` unwrap happens here so no caller ever meets the asymmetry,
-    and `found` carrying an *empty* list is answered `no_match` rather than
+    list; the unwrap happens here so no caller ever meets the asymmetry. For a
+    game it is `[0]` without `accept` and the first accepted candidate with
+    it. `found` carrying an *empty* list is answered `no_match` rather than
     raising `IndexError`.
 
-    **The caller is required to guard the result** (GOTCHAS G74). IGDB is asked
-    with `limit=1`, so what comes back is its *first* guess at the title, not a
-    record it vouches for — this helper does no title matching at all. Photo
-    intake guards it with `title_match.titles_match_exactly`; a caller that
-    skips that step files whatever the provider guessed.
+    **Who guards the IGDB result** (GOTCHAS G74). Without `accept`, IGDB is
+    asked with `limit=1`, so what comes back is its *first* guess at the
+    title, not a record it vouches for — this helper does no title matching
+    and the caller is required to guard the result. Photo intake guards it
+    with `title_match.titles_match_exactly`. With `accept`, the helper asks
+    for ten and returns the first candidate, in IGDB's order, whose `title`
+    `accept` approves, or `no_match` when none is. The selection is then
+    decided here, in the one place that sees the list. `accept` exists for
+    the UPC game scan. A non-`found` result is returned as it stands and
+    `accept` is not called on it. If `accept` raises, the result is
+    `transport_failed`, like any other exception below. The TMDb branch
+    ignores `accept`.
 
     **Log outcomes and titles, never a URL** (GOTCHAS G76). TMDb's v3 key
     travels as `?api_key=` in the query string, and only the `httpx` logger
@@ -117,7 +146,7 @@ async def lookup_by_title(
                 creds["igdb_client_secret"],
                 client,
                 platform=platform,
-                limit=1,
+                limit=10 if accept is not None else 1,
             )
             if not result.found:
                 return result
@@ -125,7 +154,12 @@ async def lookup_by_title(
             # carrying nothing as the miss it is rather than an IndexError.
             if not result.payload:
                 return provider_result.no_match(provider, status=result.status)
-            return result.with_payload(result.payload[0])
+            if accept is None:
+                return result.with_payload(result.payload[0])
+            for candidate in result.payload:
+                if accept(candidate.get("title") or ""):
+                    return result.with_payload(candidate)
+            return provider_result.no_match(provider, status=result.status)
     except Exception:
         logger.debug(
             "Title lookup raised for %s (%s) — reporting transport_failed",

@@ -6,6 +6,48 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.82.2] - 2026-11-24
+
+Scanning a video game often filed the wrong game. Shelf sent IGDB the
+barcode's whole product title, or a shortened piece of it, and took IGDB's
+first answer. A *Grand Theft Auto: Vice City* barcode could become *Grand
+Theft Auto V*, and *Call of Duty: Black Ops III* could become plain *Call of
+Duty*. On a test set of 40 real game barcodes, 17 were filed as the wrong
+game. Shelf now takes an IGDB record only when its whole title matches the
+barcode's, and files the game under its barcode title otherwise. On the same
+40 barcodes, run live, none was filed wrong. This release also carries more
+of the interface in Italian from [@vjandrea](https://github.com/vjandrea).
+
+### Added
+
+- **Duplicates, Logs, Share, the feature-off pages and the Settings Library
+  tab are translated into Italian.** Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#199](https://github.com/dgahagan/shelf/pull/199).
+
+### Changed
+
+- **A game scan files an IGDB record only when its title matches the
+  barcode's.** Shelf searches IGDB for the barcode's title, and again with
+  the brand, platform and "game" words removed, and looks at up to ten
+  results for each search. Small differences in punctuation, "&" for "and",
+  and Roman numerals ("Black Ops 3" and "Black Ops III") still match. A close
+  but different game does not. Reported by
+  [@LocalBoomer](https://github.com/LocalBoomer) in
+  [#191](https://github.com/dgahagan/shelf/issues/191).
+- **When no IGDB title matches, the game is added with its barcode title
+  only,** and the card says "no IGDB match for this barcode". This is
+  deliberate: a game with no metadata is easy to spot and fix with the game
+  search, and a wrong game is not. Some barcodes whose product title carries
+  extra words ("Mario Kart 8 Deluxe racing video game") are now added this
+  way where Shelf used to guess.
+- **Choosing a platform before you scan a game limits the IGDB search to
+  that platform.** Shelf no longer falls back to every platform, so a Wii
+  scan cannot pick up the DS game of the same name. With no platform chosen,
+  Shelf searches every platform, as before.
+- **A game scan no longer shortens the barcode's title** to find a match.
+  Film scans still do.
+
 ## [0.82.1] - 2026-11-23
 
 When a metadata provider failed with a server error, Shelf said the book was
@@ -5986,6 +6028,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.82.2]: https://github.com/dgahagan/shelf/releases/tag/v0.82.2
 [0.82.1]: https://github.com/dgahagan/shelf/releases/tag/v0.82.1
 [0.82.0]: https://github.com/dgahagan/shelf/releases/tag/v0.82.0
 [0.81.1]: https://github.com/dgahagan/shelf/releases/tag/v0.81.1

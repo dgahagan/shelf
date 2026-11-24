@@ -8,7 +8,7 @@ may change; these rows may not.
 
 import pytest
 
-from app.services.title_match import titles_agree, titles_match_exactly
+from app.services.title_match import game_title_agrees, titles_agree, titles_match_exactly
 
 
 # Matrix row label -> (row title, catalog title, must accept).
@@ -247,3 +247,62 @@ class TestTitlesMatchExactly:
 
     def test_cjk_only_title_normalizes_empty(self):
         assert titles_match_exactly("東京", "Tokyo Story") is False
+
+
+class TestGameTitleAgrees:
+    @pytest.mark.parametrize(
+        "candidate, f1, stripped",
+        [
+            ("Grand Theft Auto: Vice City", "Grand Theft Auto Vice City", None),
+            ("Call of Duty: Black Ops III", "Call of Duty: Black Ops 3", None),
+            ("My Universe: Doctors & Nurses", "My Universe: Doctors and Nurses", None),
+            ("Wii Fit Plus", "Wii Fit Plus", "Fit Plus"),
+            ("Super Smash Bros. Brawl", "Nintendo Super Smash Bros Brawl", "Super Smash Bros Brawl"),
+            # strip path: the candidate carries a platform word the barcode lacks
+            ("Mario Kart Wii", "Nintendo Mario Kart - Racing", "Mario Kart"),
+            # documented: a platform-suffixed sibling agrees; the caller's platform filter prevents it
+            ("New Super Mario Bros.", "New Super Mario Bros", "New Super Mario Bros"),
+        ],
+    )
+    def test_agrees(self, candidate, f1, stripped):
+        assert game_title_agrees(candidate, f1, stripped) is True
+
+    @pytest.mark.parametrize(
+        "candidate, f1, stripped",
+        [
+            ("Grand Theft Auto V", "Grand Theft Auto Vice City", "Grand Theft Auto Vice City"),
+            ("Grand Theft Auto", "Grand Theft Auto Vice City", "Grand Theft Auto Vice City"),
+            ("Call of Duty", "Call of Duty: Black Ops III", "Call of Duty: Black Ops III"),
+            ("Call of Duty: Black Ops", "Call of Duty: Black Ops III", "Call of Duty: Black Ops III"),
+            (
+                "Mario Kart 8 Deluxe + Super Mario Party Double Pack",
+                "Mario Kart 8 Deluxe",
+                "Mario Kart 8 Deluxe",
+            ),
+            ("Titanfall 2", "Titanfall", "Titanfall"),
+        ],
+    )
+    def test_refuses_sibling_titles(self, candidate, f1, stripped):
+        assert game_title_agrees(candidate, f1, stripped) is False
+
+    @pytest.mark.parametrize("stripped", ["", None])
+    def test_candidate_that_strips_empty_never_agrees(self, stripped):
+        assert game_title_agrees("Wii", "Nintendo Wii Console", stripped) is False
+
+    def test_empty_f1_fails_closed(self):
+        assert game_title_agrees("Wii", "", "") is False
+        assert game_title_agrees("Dune", "", None) is False
+        assert game_title_agrees("Dune", "", "Dune") is False
+
+    def test_empty_candidate_fails_closed(self):
+        assert game_title_agrees("", "", "") is False
+        assert game_title_agrees("", "Dune", "Dune") is False
+
+    def test_non_str_input_fails_closed(self):
+        assert game_title_agrees(None, "Dune", "Dune") is False
+        assert game_title_agrees("Dune", None, "Dune") is False
+        assert game_title_agrees("Dune", "Dune", 7) is False
+        assert game_title_agrees(7, "Dune", None) is False
+
+    def test_intake_guard_is_not_widened(self):
+        assert titles_match_exactly("Doctors & Nurses", "Doctors and Nurses") is False

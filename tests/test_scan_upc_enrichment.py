@@ -201,43 +201,189 @@ class TestDvdScanClimbsTheLadder:
         assert row["title"] == upcitemdb.search_queries(GOODFELLAS)[0]
 
 
-class TestGameScanClimbsTheSameLadder:
-    def test_a_hit_stores_the_igdb_metadata_not_the_result_list(
-        self, editor_client, db, monkeypatch, stub_upc
-    ):
-        """igdb.search_games returns a list; the save tail requires a dict."""
-        stub_upc(MARIO)
-        seen = []
+def _game(title, **extra):
+    record = {"igdb_id": abs(hash(title)) % 10_000, "title": title,
+              "description": None, "publisher": None, "publish_year": None,
+              "cover_url": None, "developer": None}
+    record.update(extra)
+    return record
+
+
+WRONG = _game("Super Mario Odyssey + Bowser's Fury Double Pack",
+              description="Two games in one box.", publisher="Nintendo", publish_year=2021)
+RIGHT = _game("Super Mario Odyssey", description="Mario travels the globe.",
+              publisher="Nintendo", publish_year=2017, developer="Nintendo EPD")
+GTA_V = _game("Grand Theft Auto V", description="Los Santos.", publisher="Rockstar Games",
+              publish_year=2013, cover_url="https://images.igdb.com/gta5.jpg")
+GTA = _game("Grand Theft Auto", description="Liberty City, 1997.", publisher="DMA Design",
+            publish_year=1997, cover_url="https://images.igdb.com/gta1.jpg")
+VICE_CITY_UPC = "Grand Theft Auto Vice City  Rockstar Games  PlayStation 2"
+BLACK_OPS_UPC = "Call of Duty: Black Ops III  Activision  PlayStation 4  047875874589"
+NSMB_UPC = "New Super Mario Bros | Nintendo Wii"
+
+
+class TestGameScanAcceptsOnlyAnAgreeingTitle:
+    """#191: IGDB's first guess is not a match. The scan asks for ten
+    candidates per query and files the first whose whole title agrees with the
+    barcode's title field — or files title-only. Every stub here answers every
+    query with a confident wrong hit, so no pin can pass by landing in the miss
+    branch by accident (G46), and each pins stored fields, not calls (G74)."""
+
+    def _scan(self, editor_client, monkeypatch, answer, platform=None):
+        calls = []
 
         async def _search_games(query, cid, secret, client, platform=None, limit=10):
-            seen.append(query)
-            if len(seen) == 1:
-                return provider_result.no_match("igdb")
-            return provider_result.found("igdb", [{
-                "igdb_id": 1,
-                "title": "Super Mario Odyssey",
-                "description": "Mario travels the globe.",
-                "publisher": "Nintendo",
-                "publish_year": 2017,
-                "cover_url": None,
-                "developer": "Nintendo EPD",
-            }])
+            calls.append({"query": query, "platform": platform, "limit": limit})
+            return answer(query, platform)
 
         monkeypatch.setattr(igdb, "search_games", _search_games)
         _set_igdb_creds(monkeypatch)
+        data = {"isbn": GAME_UPC, "media_type": "video_game"}
+        if platform:
+            data["platform"] = platform
+        resp = editor_client.post("/api/scan", data=data)
+        return resp, calls
 
-        resp = editor_client.post(
-            "/api/scan", data={"isbn": GAME_UPC, "media_type": "video_game"}
-        )
+    def _row(self, db):
+        return db.execute("SELECT * FROM items WHERE media_type = 'video_game'").fetchone()
+
+    def test_a_hit_stores_the_igdb_metadata_not_the_result_list(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """The agreeing candidate is second; it is stored as a dict (G45)."""
+        stub_upc(MARIO)
+        resp, calls = self._scan(editor_client, monkeypatch,
+                                 lambda q, p: provider_result.found("igdb", [WRONG, RIGHT]))
 
         assert resp.status_code == 200
-        assert seen == upcitemdb.search_queries(MARIO)[:2]
-        row = db.execute("SELECT * FROM items WHERE media_type = 'video_game'").fetchone()
+        assert [c["query"] for c in calls] == ["Super Mario: Odyssey"]
+        assert calls[0]["limit"] == 10
+        row = self._row(db)
         assert row["title"] == "Super Mario Odyssey"
         assert row["description"] == "Mario travels the globe."
         assert row["publisher"] == "Nintendo"
         assert row["publish_year"] == 2017
         assert row["source"] == "igdb"
+
+    def test_vice_city_never_files_gta_v_or_gta(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(VICE_CITY_UPC)
+        resp, calls = self._scan(editor_client, monkeypatch,
+                                 lambda q, p: provider_result.found("igdb", [GTA_V, GTA]))
+
+        assert calls, "the ladder must have asked IGDB"
+        row = self._row(db)
+        assert row["title"] == "Grand Theft Auto Vice City"
+        assert row["source"] == "upc"
+        assert row["description"] is None
+        assert row["publisher"] is None
+        assert row["publish_year"] is None
+        assert row["cover_path"] is None
+        assert "no IGDB match for this barcode" in resp.text
+
+    def test_black_ops_iii_never_files_its_series_parents(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(BLACK_OPS_UPC)
+        parents = [_game("Call of Duty", description="1943.", publisher="Activision"),
+                   _game("Call of Duty: Black Ops", description="1968.", publisher="Activision")]
+        resp, _calls = self._scan(editor_client, monkeypatch,
+                                  lambda q, p: provider_result.found("igdb", parents))
+
+        row = self._row(db)
+        assert row["title"] == "Call of Duty: Black Ops III"
+        assert row["source"] == "upc"
+        assert row["description"] is None
+        assert "047875874589" not in row["title"]
+
+    def test_a_multi_field_title_sends_only_its_game_queries(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(BLACK_OPS_UPC)
+        _resp, calls = self._scan(editor_client, monkeypatch,
+                                  lambda q, p: provider_result.no_match("igdb"))
+
+        sent = [c["query"] for c in calls]
+        assert sent == upcitemdb.game_queries(BLACK_OPS_UPC, None)
+        assert "Call of Duty" not in sent
+
+    def test_a_chosen_platform_filters_first_and_files_the_platform_edition(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(NSMB_UPC)
+
+        def answer(query, platform):
+            if platform == "wii":
+                return provider_result.found("igdb", [_game("New Super Mario Bros. Wii")])
+            return provider_result.found("igdb", [_game("New Super Mario Bros.")])
+
+        _resp, calls = self._scan(editor_client, monkeypatch, answer, platform="wii")
+
+        assert calls[0]["platform"] == "wii"
+        assert self._row(db)["title"] == "New Super Mario Bros. Wii"
+
+    def test_a_filtered_miss_never_files_another_platforms_same_named_game(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """diff-review codex B1: the filtered pass finds nothing agreeing, and an
+        unfiltered search would have offered the DS game. The title guard alone
+        would accept it, so no unfiltered query may be sent."""
+        stub_upc(NSMB_UPC)
+
+        def answer(query, platform):
+            if platform == "wii":
+                return provider_result.no_match("igdb")
+            return provider_result.found("igdb", [_game("New Super Mario Bros.")])
+
+        _resp, calls = self._scan(editor_client, monkeypatch, answer, platform="wii")
+
+        assert calls
+        assert all(c["platform"] == "wii" for c in calls)
+        row = self._row(db)
+        assert row["source"] == "upc"
+        assert row["description"] is None
+
+    def test_no_platform_sends_only_unfiltered_queries(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        stub_upc(BLACK_OPS_UPC)
+        _resp, calls = self._scan(editor_client, monkeypatch,
+                                  lambda q, p: provider_result.no_match("igdb"))
+
+        assert calls
+        assert all(c["platform"] is None for c in calls)
+
+    def test_an_unknown_platform_sends_no_filtered_query(
+        self, editor_client, db, monkeypatch, stub_upc
+    ):
+        """`ps9` is not an IGDB slug: a 'filtered' pass would repeat the
+        unfiltered request, so none is made. The scan still ends on the
+        bad-platform error card (asserted elsewhere)."""
+        stub_upc(BLACK_OPS_UPC)
+        _resp, calls = self._scan(editor_client, monkeypatch,
+                                  lambda q, p: provider_result.no_match("igdb"),
+                                  platform="ps9")
+
+        assert len(calls) == len(upcitemdb.game_queries(BLACK_OPS_UPC, None))
+
+    @pytest.mark.parametrize("stop, copy", [
+        (provider_result.rejected("igdb", status=401), "IGDB rejected the configured key"),
+        (provider_result.transport_failed("igdb", status=503), "IGDB returned an error"),
+    ])
+    def test_a_stop_on_the_filtered_pass_ends_the_search(
+        self, editor_client, db, monkeypatch, stub_upc, stop, copy
+    ):
+        stub_upc(BLACK_OPS_UPC)
+        resp, calls = self._scan(editor_client, monkeypatch, lambda q, p: stop,
+                                 platform="switch")
+
+        assert len(calls) == 1
+        assert calls[0]["platform"] == "switch"
+        assert copy in resp.text
+        row = self._row(db)
+        assert row["title"] == "Call of Duty: Black Ops III"
+        assert row["source"] == "upc"
 
     def test_no_hit_files_the_cleaned_title_from_upc(
         self, editor_client, db, monkeypatch, stub_upc

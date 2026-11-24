@@ -3753,6 +3753,10 @@ docker logs shelf-dev 2>&1 | grep -iE "https?://[^ ]*@|HTTP Request:"
 - **Evidence:** `7a1b5ec` (2026-09-03, plan `intake-media-lookup` T2).
   Resolved by not forwarding it, with the reason in a two-line comment at the
   call site so the next reader does not "fix" the omission.
+  **That specific decision was reversed on purpose by #191** (`0a962c3`,
+  2026-11-24): the game scan now forwards `platform` — filtered pass first,
+  then unfiltered — and the call-site comment says so. The rule stands; the
+  example is history.
 - **Verify:** judgement. When a task says behaviour-preserving, read the
   original call and compare argument lists — not the surrounding structure:
 
@@ -5349,6 +5353,15 @@ print('OK')"
   else in the task was correct, the full gate was green, and the sentence was
   caught only by the orchestrator reading the diff. The subagent's own
   "Surprises" section reported none — it did not know it had invented it.
+  **Again on `feat/issue-191-game-title-match` (2026-11-24), with the brief
+  asking for exactly this check:** T1's subagent wrote a `strip_game_words`
+  docstring claiming the helper was "used on both sides of a game title
+  comparison" — true only after the *next* task — and its report said it had
+  removed the claim. The diff still carried it (cut before `1d020e0`). T2's
+  subagent wrote a guard that let the stripped path agree under an empty
+  F1, contrary to the plan's fail-closed list, while reporting the list met.
+  **A subagent's list of checks it ran is a self-report too**: read the diff
+  for the specific sentence or branch it says it fixed.
 - **The asymmetry that makes this worth an entry:** a wrong *line of code* has
   many chances to be caught — a test, a lint, a reviewer, production. A wrong
   *sentence about the code* has exactly one: somebody reading the diff. So the
