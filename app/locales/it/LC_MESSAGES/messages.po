@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-24 09:37+0100\n"
+"PO-Revision-Date: 2026-11-24 09:56+0100\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -4637,11 +4637,11 @@ msgstr "Una fonte di dati sta limitando le richieste, quindi il risultato potreb
 #: app/templates/fragments/scan_result.html:153
 #, python-format
 msgid "%(provider)s returned an error &mdash; this may not be a genuine miss. Try again shortly, or add it below."
-msgstr ""
+msgstr "%(provider)s ha restituito un errore, quindi il risultato potrebbe non essere affidabile. Riprova tra poco o aggiungi l'elemento qui sotto."
 
 #: app/templates/fragments/scan_result.html:157
 msgid "try again"
-msgstr ""
+msgstr "riprova"
 
 #: app/templates/fragments/scan_result.html:157
 #: app/templates/fragments/scan_result.html:321
@@ -4707,7 +4707,7 @@ msgstr "Aggiunto solo con il titolo: impossibile raggiungere %(provider)s. Contr
 #: app/templates/fragments/scan_result.html:287
 #, python-format
 msgid "Added with title only &mdash; %(provider)s returned an error. Re-scan later to fill it in."
-msgstr ""
+msgstr "Aggiunto solo con il titolo: %(provider)s ha restituito un errore. Scansionalo di nuovo più tardi per completarlo."
 
 #: app/templates/fragments/scan_result.html:289
 msgid "Added with title only &mdash; Shelf has no metadata source for this format yet."
@@ -4800,7 +4800,7 @@ msgstr "Impossibile raggiungere %(provider)s: controlla la connessione e riprova
 #: app/templates/fragments/search_status_notice.html:28
 #, python-format
 msgid "%(provider)s returned an error &mdash; this may not be a genuine miss. Try again shortly."
-msgstr ""
+msgstr "%(provider)s ha restituito un errore, quindi il risultato potrebbe non essere affidabile. Riprova tra poco."
 
 #: app/templates/fragments/shelf_fill_result.html:12
 #, python-format
