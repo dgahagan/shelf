@@ -114,11 +114,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.82.1](https://github.com/dgahagan/shelf/releases/tag/v0.82.1) | **A provider outage is not a "not found".** When Google Books or another source fails with a server error, the scan card names it and says to try again, instead of calling the book unknown. Also: Audiobookshelf series group as one, non-Latin titles no longer link unrelated audiobooks, and more of the interface in Italian. |
 | [0.82.0](https://github.com/dgahagan/shelf/releases/tag/v0.82.0) | **A Scan button for typed barcodes.** Scan and Shelf Fill have a button beside the barcode field, so a code typed on a phone can be sent; Shelf Fill also clears its field after each scan. Also: Series, Upcoming, Discover, Music and Periodicals in Italian, contributed by @vjandrea, and six more areas in Simplified Chinese, contributed by @litong5969. |
 | [0.81.0](https://github.com/dgahagan/shelf/releases/tag/v0.81.0) | **Shelf on a Raspberry Pi.** The Docker image is published for `arm64` as well as `amd64`, so an ARM64 machine such as a Raspberry Pi pulls it directly instead of building it. Contributed by @Chrisser73. |
 | [0.80.0](https://github.com/dgahagan/shelf/releases/tag/v0.80.0) | **Audiobook covers and details from Audible.** An audiobook with an ASIN, such as one from a Libation or audible-cli import, gets its cover from the Audible catalogue, and **Fill details from Audible** fills its empty fields. Choose your Audible marketplace in Settings. Also: Photo Intake, Shelf Fill and Store Mode in Italian, contributed by @vjandrea. |
 | [0.79.1](https://github.com/dgahagan/shelf/releases/tag/v0.79.1) | **"Also available as" follows Related Media.** Linking or unlinking another format on an item updates its "Also available as" links straight away, without a reload. Contributed by @sudo-rpaisley. |
-| [0.79.0](https://github.com/dgahagan/shelf/releases/tag/v0.79.0) | **The Scan page in Italian.** The mode tabs, the form, and every card and message a scan returns are translated, and the labels follow the mode and the media type. Contributed by @vjandrea. |
 ---
 
 ## Suggesting something
