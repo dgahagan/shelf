@@ -234,9 +234,10 @@ def test_store_camera_uses_zxing_on_ios(live_server, browser, setup_admin):
         ctx.close()
 
 
-def test_store_camera_uses_html5_qrcode_by_default(live_server, browser, setup_admin):
-    """Default UA -> html5-qrcode renders into #reader; ZXing stays hidden."""
-    ctx = browser.new_context()
+def test_store_camera_uses_html5_qrcode_on_touch_devices(live_server, browser, setup_admin):
+    """A non-iOS touch device -> html5-qrcode renders into #reader; ZXing stays
+    hidden. (A desktop without touch gets ZXing, as iOS does.)"""
+    ctx = browser.new_context(has_touch=True)
     try:
         pg = _start_store_camera(live_server, ctx, setup_admin)
 

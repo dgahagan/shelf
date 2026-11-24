@@ -144,7 +144,21 @@
         };
     }
 
+    // A desktop webcam: the primary pointer is a mouse or touchpad. html5-qrcode
+    // opens it at the browser's default (often 640x480) and decodes only the
+    // small qrbox, which a fixed-focus webcam rarely resolves an EAN-13 in.
+    // ZXing asks for 1080p and decodes the whole frame with TRY_HARDER.
+    // Only the primary pointer counts: a laptop with a touch screen, or a
+    // Windows PC whose drivers report touch points, is still a webcam desk.
+    function isDesktop() {
+        if (!window.matchMedia) return false;
+        return window.matchMedia('(pointer: fine)').matches && window.matchMedia('(hover: hover)').matches;
+    }
+
     window.createBarcodeScanner = function (opts) {
-        return isIosDevice() ? createZxingEngine(opts) : createHtml5Engine(opts);
+        var zxing = isIosDevice() || isDesktop();
+        // One line in the console says which engine a device got, for support.
+        if (window.console && console.info) console.info('[scanner] engine: ' + (zxing ? 'zxing' : 'html5-qrcode'));
+        return zxing ? createZxingEngine(opts) : createHtml5Engine(opts);
     };
 })();
