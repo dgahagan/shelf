@@ -1,5 +1,5 @@
 """Tests for ABS cross-linking (_auto_link_items author guard, detail badge)."""
-from app.services.audiobookshelf import _authors_compatible, _auto_link_items, auto_link
+from app.services.audiobookshelf import _authors_compatible, _auto_link_items, _normalize_title, auto_link
 from tests.conftest import _insert_item
 
 
@@ -84,6 +84,51 @@ class TestAutoLinkOrigins:
 
     def test_empty_origin_set_does_nothing(self, db):
         assert auto_link([]) == 0
+
+
+class TestNonLatinTitles:
+    """`_normalize_title` used to keep only a-z0-9, so CJK titles all became "" (or
+    their digits) and matched each other; the author guard lets a missing author
+    through, so one author-less book collected every such audiobook."""
+
+    def test_normalize_keeps_letters_of_every_script(self):
+        assert _normalize_title("三体") == "三体"
+        assert _normalize_title("Война и мир") == "война и мир"
+        assert _normalize_title("The Hobbit: There and Back Again") == "hobbit"
+        assert _normalize_title("Philosopher\u2019s  Stone!") == "philosophers stone"
+        assert _normalize_title("ＤＵＮＥ") == "dune"  # NFKC folds full-width letters
+
+    def test_unrelated_cjk_titles_are_not_linked(self, db):
+        _insert_item(db, title="变法与党争", isbn=None, media_type="book", authors=None)
+        _insert_item(db, title="精读中国历史", isbn=None, media_type="audiobook",
+                     authors="七言", abs_id="li_abc")
+        db.execute("COMMIT")
+        _auto_link_items()
+        assert _links(db) == []
+
+    def test_cjk_titles_sharing_only_a_digit_are_not_linked(self, db):
+        _insert_item(db, title="罗马人的故事 8", isbn=None, media_type="book", authors="盐野七生")
+        _insert_item(db, title="盗墓笔记全8部", isbn=None, media_type="audiobook",
+                     authors=None, abs_id="li_abc")
+        db.execute("COMMIT")
+        _auto_link_items()
+        assert _links(db) == []
+
+    def test_same_cjk_title_same_author_links(self, db):
+        a = _insert_item(db, title="张居正", isbn=None, media_type="book", authors="熊召政")
+        b = _insert_item(db, title="张居正", isbn=None, media_type="audiobook",
+                         authors="熊召政", abs_id="li_abc")
+        db.execute("COMMIT")
+        _auto_link_items()
+        assert [tuple(r) for r in _links(db)] == [(min(a, b), max(a, b))]
+
+    def test_punctuation_only_titles_never_title_match(self, db):
+        _insert_item(db, title="???", isbn=None, media_type="book", authors=None)
+        _insert_item(db, title="!!!", isbn=None, media_type="audiobook",
+                     authors=None, abs_id="li_abc")
+        db.execute("COMMIT")
+        _auto_link_items()
+        assert _links(db) == []
 
 
 class TestAlsoInAbsBadge:
