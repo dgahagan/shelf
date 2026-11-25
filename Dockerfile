@@ -24,5 +24,12 @@ RUN chmod +x entrypoint.sh
 
 EXPOSE 18888
 
+# GET /health on loopback (app/healthcheck.py, stdlib only). The probe reads
+# SHELF_TLS and SHELF_PORT at run time with entrypoint.sh's defaults, so a port
+# or TLS change needs no rebuild. A Compose `healthcheck:` block overrides this,
+# and `healthcheck: { disable: true }` turns it off.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD ["python", "/app/app/healthcheck.py"]
+
 # Entrypoint runs as root for cert generation, then drops to shelf user
 CMD ["./entrypoint.sh"]

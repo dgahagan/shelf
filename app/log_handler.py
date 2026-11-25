@@ -139,3 +139,28 @@ class RedactQueryFilter(logging.Filter):
         except Exception:
             pass
         return True
+
+
+class HealthProbeAccessFilter(logging.Filter):
+    """Drop the uvicorn access-log line for a successful `/health` probe.
+
+    Docker probes `/health` every interval, so the line would drown the log.
+    Matches the call at uvicorn 0.42.0 `protocols/http/h11_impl.py:480` and
+    `httptools_impl.py:483`:
+    `access_logger.info('%s - "%s %s HTTP/%s" %d', client_addr, method,
+    path_with_query_string, http_version, status)`.
+
+    Drops only a 2xx on `/health` (query string ignored); a 503 still logs.
+    Any other shape of record is kept — an unknown shape is never dropped.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args
+        if not isinstance(args, tuple) or len(args) != 5:
+            return True
+        status = args[4]
+        if isinstance(status, bool) or not isinstance(status, int):
+            return True
+        if str(args[2]).split("?", 1)[0] != "/health":
+            return True
+        return not (200 <= status < 300)

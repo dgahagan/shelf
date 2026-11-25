@@ -33,7 +33,7 @@ def run_entrypoint(tmp_path):
     _stub(bin_dir, "openssl", "printf 'OPENSSL_RAN=1\\n'\nexit 0")
     _stub(bin_dir, "gosu", 'printf \'FAI=%s\\n\' "${FORWARDED_ALLOW_IPS-<unset>}"\nprintf \'ARGV=%s\\n\' "$*"\nexit 0')
 
-    def run(trust_proxy=None, tls=None):
+    def run(trust_proxy=None, tls=None, port=None):
         # Built from scratch: an inherited FORWARDED_ALLOW_IPS, SHELF_TRUST_PROXY or
         # SHELF_TLS on the host would make the unset cases lie (G50).
         env = {"PATH": f"{bin_dir}:/usr/bin:/bin"}
@@ -41,6 +41,8 @@ def run_entrypoint(tmp_path):
             env["SHELF_TRUST_PROXY"] = trust_proxy
         if tls is not None:
             env["SHELF_TLS"] = tls
+        if port is not None:
+            env["SHELF_PORT"] = port
         return subprocess.run(
             ["/bin/sh", str(ENTRYPOINT)], env=env, capture_output=True, text=True, timeout=10,
         )
@@ -129,3 +131,22 @@ def test_tls_invalid_values_refuse_to_start(run_entrypoint, value):
     assert f"'{value}'" in result.stderr
     assert "Must be 'on' or 'off'." in result.stderr
     assert "ARGV=" not in result.stdout
+
+
+@pytest.mark.parametrize("tls", [None, "", "on", "off"])
+@pytest.mark.parametrize("port", [None, "18889"])
+def test_healthcheck_probe_agrees_with_entrypoint(run_entrypoint, tls, port):
+    """app/healthcheck.py mirrors the entrypoint's TLS and port defaults; this keeps them in step."""
+    from app import healthcheck
+
+    env = {}
+    if tls is not None:
+        env["SHELF_TLS"] = tls
+    if port is not None:
+        env["SHELF_PORT"] = port
+    result = run_entrypoint(tls=tls, port=port)
+    assert result.returncode == 0, result.stderr
+    argv = _argv(result).split()
+    served_port = argv[argv.index("--port") + 1]
+    served_scheme = "https" if "--ssl-certfile" in argv else "http"
+    assert healthcheck.probe_url(env) == f"{served_scheme}://127.0.0.1:{served_port}/health"

@@ -4,7 +4,7 @@ import logging
 
 import httpx
 
-from app.log_handler import REDACT_QUERY_KEYS, RedactQueryFilter
+from app.log_handler import REDACT_QUERY_KEYS, HealthProbeAccessFilter, RedactQueryFilter
 
 
 HTTPX_MSG = 'HTTP Request: %s %s "%s %d %s"'
@@ -209,3 +209,51 @@ class TestHttpxRequestLogIsSilenced:
         import app.main  # noqa: F401  — importing installs the logging config
 
         assert logging.getLogger("httpx").level == logging.WARNING
+
+
+ACCESS_MSG = '%s - "%s %s HTTP/%s" %d'
+
+
+def _access_record(path, status=200, args=None):
+    """A LogRecord shaped like uvicorn's access line (h11_impl.py:480)."""
+    return logging.LogRecord(
+        name="uvicorn.access",
+        level=logging.INFO,
+        pathname=__file__,
+        lineno=1,
+        msg=ACCESS_MSG,
+        args=("127.0.0.1:1234", "GET", path, "1.1", status) if args is None else args,
+        exc_info=None,
+    )
+
+
+class TestHealthProbeAccessFilter:
+    def test_health_200_dropped(self):
+        assert HealthProbeAccessFilter().filter(_access_record("/health")) is False
+
+    def test_health_with_query_200_dropped(self):
+        assert HealthProbeAccessFilter().filter(_access_record("/health?x=1")) is False
+
+    def test_health_503_kept(self):
+        assert HealthProbeAccessFilter().filter(_access_record("/health", 503)) is True
+
+    def test_other_path_kept(self):
+        assert HealthProbeAccessFilter().filter(_access_record("/api/items")) is True
+
+    def test_healthz_kept(self):
+        assert HealthProbeAccessFilter().filter(_access_record("/healthz")) is True
+
+    def test_wrong_length_args_kept(self):
+        record = _access_record("/health", args=("only", "two"))
+        assert HealthProbeAccessFilter().filter(record) is True
+
+    def test_wired_on_uvicorn_access_logger(self):
+        import app.main  # noqa: F401  (inside the test: G14)
+
+        filters = logging.getLogger("uvicorn.access").filters
+        assert any(isinstance(f, HealthProbeAccessFilter) for f in filters)
+
+    def test_non_tuple_args_kept(self):
+        record = _access_record("/health")
+        record.args = "not-a-tuple"
+        assert HealthProbeAccessFilter().filter(record) is True

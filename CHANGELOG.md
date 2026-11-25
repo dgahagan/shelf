@@ -6,6 +6,32 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.83.0] - 2026-11-25
+
+The Docker image had no health check, though Shelf has had a `/health`
+endpoint for exactly that purpose. `docker ps` showed only `Up`, so a container
+whose server had hung, or whose database would not open, looked the same as a
+working one to Compose, Portainer and uptime monitors. The image now checks
+itself.
+
+### Added
+
+- **The Docker image reports its health.** Every 30 seconds it asks `/health`,
+  which opens the database. Three failures in a row mark the container
+  `unhealthy` in `docker ps`, and Compose `depends_on: condition:
+  service_healthy` can now wait for it. The check follows `SHELF_TLS` and
+  `SHELF_PORT` on its own, so nothing needs configuring. It talks to Shelf
+  directly inside the container, so an `HTTP_PROXY` set for outbound lookups
+  does not affect it. A Compose `healthcheck:` block changes or disables it. Docker does not restart a
+  container for being unhealthy. Nothing changes for an existing install
+  beyond the new status.
+
+### Changed
+
+- **Passing health checks leave no line in the container log.** A check every
+  30 seconds would otherwise add almost 3,000 lines a day. A failing check
+  still logs its `GET /health` 503, and so does every other request.
+
 ## [0.82.3] - 2026-11-24
 
 The Docker image was built on `python:3.12-slim` by tag, and a tag is a
@@ -6051,6 +6077,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.83.0]: https://github.com/dgahagan/shelf/releases/tag/v0.83.0
 [0.82.3]: https://github.com/dgahagan/shelf/releases/tag/v0.82.3
 [0.82.2]: https://github.com/dgahagan/shelf/releases/tag/v0.82.2
 [0.82.1]: https://github.com/dgahagan/shelf/releases/tag/v0.82.1

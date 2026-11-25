@@ -56,6 +56,13 @@ and pick a feature profile, and you're in.
 > The `:z` on the volume is an SELinux relabel flag. It is harmless on systems
 > without SELinux and required on Fedora/RHEL-family hosts.
 
+The image reports its health to Docker, so `docker ps` shows `healthy` once
+Shelf answers. Nothing needs configuring: the check follows `SHELF_TLS` and
+`SHELF_PORT` by itself. To change its timing or switch it off, add a
+`healthcheck:` block to the service. `healthcheck: { disable: true }` turns it
+off. See [Troubleshooting](troubleshooting.md#docker-ps-says-unhealthy) for
+what `unhealthy` means.
+
 ## `docker run`
 
 ```bash

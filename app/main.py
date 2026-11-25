@@ -26,9 +26,12 @@ logging.basicConfig(
 # emits nothing at warning or error, so raising its level drops that line and
 # nothing else. The filter stays as defence in depth: it strips userinfo and
 # blanks credential query values on anything httpx does still emit.
-from app.log_handler import RedactQueryFilter, SQLiteHandler
+from app.log_handler import HealthProbeAccessFilter, RedactQueryFilter, SQLiteHandler
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpx").addFilter(RedactQueryFilter())
+
+# Docker probes /health every interval; drop the 2xx access lines (a 503 still logs).
+logging.getLogger("uvicorn.access").addFilter(HealthProbeAccessFilter())
 
 # Add SQLite handler so logs are viewable in the web UI
 _db_handler = SQLiteHandler()

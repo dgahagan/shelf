@@ -2055,3 +2055,17 @@ and stays out of the question entirely: the optional Google Books key travels
 only in `X-Goog-Api-Key`, and TMDb v3, which requires its key in the query
 string, is the reason the query half of that filter exists at all.
 See [SECURITY.md](../SECURITY.md).
+
+**The container reports its own health.** The image's `HEALTHCHECK` runs
+`app/healthcheck.py`, which sends `GET /health` to `127.0.0.1` inside the
+container and exits 0 on a 2xx. The probe uses the standard library only and
+never imports `app`. It reads `SHELF_TLS` and `SHELF_PORT` at run time **with
+the same defaults as `entrypoint.sh`**: unset or empty `SHELF_TLS` means HTTPS,
+and the port falls back to `18888`. A probe that disagreed with the entrypoint
+would report a working container as unhealthy forever, so
+`tests/test_entrypoint.py` runs both over the same environment and fails if
+they differ. Certificate verification is off for this one call. The target is
+loopback and the certificate is the container's own self-signed one, which
+names no IP address. `HealthProbeAccessFilter` on the `uvicorn.access` logger
+drops the access line for a 2xx `/health` response, so a probe every interval
+does not bury the container log. A 503 still logs.
