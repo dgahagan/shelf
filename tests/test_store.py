@@ -52,6 +52,19 @@ class TestStorePage:
         assert '"start_url": "/store"' in resp.text
 
 
+def _with_sw_version(version: str) -> str:
+    """sw.js with SW_VERSION set to `version`, whatever it holds now.
+
+    Not a replace of the *expected* value: on a pull-request build a precached
+    file can have changed without a restamp (by design, see the skip on
+    `test_sw_version_matches_precache_digest`), and then that string is not in
+    the file at all, so the replace silently did nothing.
+    """
+    text, n = re.subn(r"SW_VERSION = '[^']*'", f"SW_VERSION = '{version}'", SW_PATH.read_text(), count=1)
+    assert n == 1, "SW_VERSION assignment not found in sw.js"
+    return text
+
+
 class TestSwPrecacheDigest:
     """SW_VERSION is derived, not typed — these are the gate that keeps it so.
 
@@ -91,10 +104,7 @@ class TestSwPrecacheDigest:
         that; it fails the moment someone precaches the worker itself.
         """
         sw_copy = tmp_path / "sw.js"
-        sw_copy.write_text(SW_PATH.read_text().replace(
-            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
-            "SW_VERSION = 'vSTALE'",
-        ))
+        sw_copy.write_text(_with_sw_version("vSTALE"))
         monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
 
         first_changed, _current, first_expected = stamp_sw_version.stamp()
@@ -109,10 +119,7 @@ class TestSwPrecacheDigest:
 
     def test_hand_edited_version_fails_the_gate(self, tmp_path, monkeypatch):
         sw_copy = tmp_path / "sw.js"
-        sw_copy.write_text(SW_PATH.read_text().replace(
-            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
-            "SW_VERSION = 'v9'",
-        ))
+        sw_copy.write_text(_with_sw_version("v9"))
         monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
 
         changed, current, expected = stamp_sw_version.stamp(check_only=True)
@@ -132,10 +139,7 @@ class TestSwPrecacheDigest:
         since `make check-sw-version` calls `main()`, not `stamp()` directly.
         """
         sw_copy = tmp_path / "sw.js"
-        sw_copy.write_text(SW_PATH.read_text().replace(
-            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
-            "SW_VERSION = 'vSTALE'",
-        ))
+        sw_copy.write_text(_with_sw_version("vSTALE"))
         monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
         monkeypatch.setattr("sys.argv", ["stamp_sw_version.py", "--check"])
         monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
@@ -146,10 +150,7 @@ class TestSwPrecacheDigest:
     def test_check_still_fails_on_push_and_unset(self, tmp_path, monkeypatch, capsys):
         """The same stale stamp fails `--check` everywhere except a PR build."""
         sw_copy = tmp_path / "sw.js"
-        sw_copy.write_text(SW_PATH.read_text().replace(
-            f"SW_VERSION = '{stamp_sw_version.expected_version()}'",
-            "SW_VERSION = 'vSTALE'",
-        ))
+        sw_copy.write_text(_with_sw_version("vSTALE"))
         monkeypatch.setattr(stamp_sw_version, "SW_PATH", sw_copy)
         monkeypatch.setattr("sys.argv", ["stamp_sw_version.py", "--check"])
 
