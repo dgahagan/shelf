@@ -6,6 +6,29 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.84.1] - 2026-11-25
+
+Every time the container started, it gave every file under `/data` to the
+Shelf user again, even when nothing needed fixing. That changed each file's
+change time, so backup tools that look for changed files, such as restic,
+read all of your covers again after every restart or upgrade. On storage
+where the container cannot change ownership, such as NFS with `root_squash`,
+it also stopped the container from starting, even though the files were
+already owned correctly. It now changes only the files whose owner is wrong.
+
+### Changed
+
+- **Starting the container leaves correctly owned files alone.** A data
+  directory that already belongs to UID 1000 is not touched at all, so
+  restarts and upgrades no longer make backups re-read every cover. Files
+  with the wrong owner or group, for example after a backup was restored as
+  root, are still fixed on the next start. Symbolic links are fixed as links,
+  and anything they point to outside the data directory is never changed.
+- **A clear message when ownership cannot be fixed.** If the container cannot
+  give a wrong-owned file to the Shelf user, it stops and says so, naming
+  `/data`, UID 1000 and the troubleshooting entry. Before, it stopped with
+  only `chown`'s own error.
+
 ## [0.84.0] - 2026-11-25
 
 Shelf's translated interface now speaks German, and a server can choose the
@@ -6152,6 +6175,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.84.1]: https://github.com/dgahagan/shelf/releases/tag/v0.84.1
 [0.84.0]: https://github.com/dgahagan/shelf/releases/tag/v0.84.0
 [0.83.0]: https://github.com/dgahagan/shelf/releases/tag/v0.83.0
 [0.82.3]: https://github.com/dgahagan/shelf/releases/tag/v0.82.3

@@ -28,12 +28,21 @@ def _stub(bin_dir: Path, name: str, body: str) -> None:
 def run_entrypoint(tmp_path):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
-    for name in ("mkdir", "chown"):
-        _stub(bin_dir, name, "exit 0")
+    chown_log = tmp_path / "chown.log"
+    _stub(bin_dir, "mkdir", "exit 0")
+    # Logs one line per call; STUB_CHOWN_FAIL makes it fail like a mount root cannot chown.
+    _stub(bin_dir, "chown", f'echo "$*" >> "{chown_log}"\n[ -n "${{STUB_CHOWN_FAIL-}}" ] && exit 1\nexit 0')
+    # Prints the |-separated STUB_FIND_OUT entries NUL-terminated; nothing when unset.
+    _stub(
+        bin_dir,
+        "find",
+        '[ -n "${STUB_FIND_OUT-}" ] || exit 0\n'
+        "old_ifs=$IFS\nIFS='|'\nfor p in $STUB_FIND_OUT; do printf '%s\\0' \"$p\"; done\nIFS=$old_ifs\nexit 0",
+    )
     _stub(bin_dir, "openssl", "printf 'OPENSSL_RAN=1\\n'\nexit 0")
     _stub(bin_dir, "gosu", 'printf \'FAI=%s\\n\' "${FORWARDED_ALLOW_IPS-<unset>}"\nprintf \'ARGV=%s\\n\' "$*"\nexit 0')
 
-    def run(trust_proxy=None, tls=None, port=None):
+    def run(trust_proxy=None, tls=None, port=None, find_out=None, chown_fail=False):
         # Built from scratch: an inherited FORWARDED_ALLOW_IPS, SHELF_TRUST_PROXY or
         # SHELF_TLS on the host would make the unset cases lie (G50).
         env = {"PATH": f"{bin_dir}:/usr/bin:/bin"}
@@ -43,10 +52,15 @@ def run_entrypoint(tmp_path):
             env["SHELF_TLS"] = tls
         if port is not None:
             env["SHELF_PORT"] = port
+        if find_out is not None:
+            env["STUB_FIND_OUT"] = "|".join(find_out)
+        if chown_fail:
+            env["STUB_CHOWN_FAIL"] = "1"
         return subprocess.run(
             ["/bin/sh", str(ENTRYPOINT)], env=env, capture_output=True, text=True, timeout=10,
         )
 
+    run.chown_log = chown_log
     return run
 
 
@@ -150,3 +164,32 @@ def test_healthcheck_probe_agrees_with_entrypoint(run_entrypoint, tls, port):
     served_port = argv[argv.index("--port") + 1]
     served_scheme = "https" if "--ssl-certfile" in argv else "http"
     assert healthcheck.probe_url(env) == f"{served_scheme}://127.0.0.1:{served_port}/health"
+
+
+def _chown_calls(run_entrypoint) -> list[str]:
+    log = run_entrypoint.chown_log
+    lines = log.read_text().splitlines() if log.exists() else []
+    # The cert step's own "chown shelf:shelf key cert" is not the ownership sweep.
+    return [line for line in lines if line.startswith("-h ")]
+
+
+def test_correctly_owned_tree_gets_no_chown(run_entrypoint):
+    result = run_entrypoint(find_out=[])
+    assert result.returncode == 0, result.stderr
+    assert _chown_calls(run_entrypoint) == []
+    assert "ARGV=" in result.stdout
+
+
+def test_only_wrong_owned_entries_are_chowned(run_entrypoint):
+    result = run_entrypoint(find_out=["/data/covers/a.jpg", "/data/shelf.db"])
+    assert result.returncode == 0, result.stderr
+    assert _chown_calls(run_entrypoint) == ["-h shelf:shelf /data/covers/a.jpg /data/shelf.db"]
+    assert "ARGV=" in result.stdout
+
+
+def test_failed_chown_refuses_to_start(run_entrypoint):
+    result = run_entrypoint(find_out=["/data/shelf.db"], chown_fail=True)
+    assert result.returncode != 0
+    assert "/data" in result.stderr
+    assert "troubleshooting" in result.stderr
+    assert "ARGV=" not in result.stdout

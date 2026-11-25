@@ -298,6 +298,10 @@ Read the log. Common causes:
   entries only.
 - **Permission denied on `/data`** — the container runs as UID 1000; on
   SELinux hosts add `:z` to the volume; elsewhere `chown -R 1000:1000 data`.
+  At each start the container gives any wrong-owned file to UID 1000 itself;
+  when the storage refuses that (NFS with `root_squash`, for example) it stops
+  with "could not give /data to the shelf user", and the `chown` above, run
+  on the host or the file server, is the fix.
 - **Port in use** — change the host side of the mapping.
 
 A crash-loop right after an *upgrade* on an old database was a known bug

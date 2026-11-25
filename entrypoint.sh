@@ -13,9 +13,20 @@ if [ "$_SHELF_TLS" != "on" ] && [ "$_SHELF_TLS" != "off" ]; then
     exit 1
 fi
 
-# Ensure data directories exist and are owned by shelf user
+# Ensure data directories exist; ownership is fixed only where it is wrong.
 mkdir -p /data/certs /data/covers
-chown -R shelf:shelf /data
+# Only wrong-owned entries are re-owned, so a correctly owned tree gets no chown
+# call: no ctime churn for backup tools, no EPERM on mounts where root cannot chown.
+# find without -L does not follow symlinks, and chown -h re-owns the link itself,
+# never a target outside /data.
+# /bin/sh is dash with no pipefail, so the pipeline's status is xargs's: a failing
+# chown (xargs exits 123) stops the start, a failing find would not. Accepted:
+# root can read /data on the mounts this targets.
+if ! find /data \( ! -user shelf -o ! -group shelf \) -print0 | xargs -0 -r chown -h shelf:shelf; then
+    echo "ERROR: could not give /data to the shelf user (UID 1000)." >&2
+    echo "       See docs/troubleshooting.md, 'Permission denied on /data'." >&2
+    exit 1
+fi
 
 if [ "$_SHELF_TLS" = "on" ]; then
     # Generate self-signed certificate if it doesn't exist
