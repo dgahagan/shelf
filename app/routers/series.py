@@ -163,7 +163,7 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
         on = feature_enabled("buy_links")
         cfg = buy_links.configured(db) if on else None
         local = db.execute(
-            "SELECT title, owned, hardcover_book_id, "
+            "SELECT id, title, owned, hardcover_book_id, series_position, "
             f"{lists.WISHLISTED_SQL} AS wishlisted FROM items_live i "
             "WHERE series_name = ? COLLATE NOCASE",
             (name,),
@@ -175,11 +175,37 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
 
     by_hc_id = {r["hardcover_book_id"]: r for r in local if r["hardcover_book_id"]}
     by_title = {r["title"].casefold().strip(): r for r in local}
+    # Position fallback: a volume catalogued from another provider (ISBN scan,
+    # CSV import, a different-language edition) has no hardcover_book_id and a
+    # title that may differ from Hardcover's, so neither key above finds it and
+    # an owned volume reads as missing (#166). The position it was shelved at
+    # is still a series fact. An owned row wins a shared position over an
+    # unowned one.
+    by_pos: dict[float, dict] = {}
+    for r in local:
+        try:
+            pos = float(r["series_position"])
+        except (TypeError, ValueError):
+            continue
+        prev = by_pos.get(pos)
+        if prev is None or (r["owned"] and not prev["owned"]):
+            by_pos[pos] = r
 
+    matched_ids = set()
     out = []
     for b in books:
         match = by_hc_id.get(b["hardcover_book_id"]) or by_title.get(b["title"].casefold().strip())
+        if match is None:
+            try:
+                candidate = by_pos.get(float(b["series_position"]))
+            except (TypeError, ValueError):
+                candidate = None
+            # A row already claimed by an id/title match is a different
+            # volume — one local book cannot fill two positions.
+            if candidate is not None and candidate["id"] not in matched_ids:
+                match = candidate
         if match:
+            matched_ids.add(match["id"])
             status = "owned" if match["owned"] else "wishlist" if match["wishlisted"] else "missing"
         else:
             status = "missing"
