@@ -1341,8 +1341,10 @@ counts via out-of-band swaps, scan results); Alpine.js **CSP build** for
 client state (scan modes, selection bars, settings cards) — expressions
 must be simple, which is why the lint exists. Tailwind compiled locally to
 `static/css/app.css` and committed. Camera scanning uses a shared engine
-(`static/js/scanner-engine.js`) choosing ZXing on iOS Safari and
-html5-qrcode elsewhere.
+(`static/js/scanner-engine.js`) choosing ZXing on iOS Safari and on
+desktops (a fine, hovering primary pointer: a webcam, which html5-qrcode's
+default resolution and small qrbox read poorly) and html5-qrcode on other
+touch devices.
 
 **A click- or submit-triggered htmx control is guarded by default.** A
 delegated listener in `static/js/app.js` marks the control that issued a
