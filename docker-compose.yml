@@ -11,6 +11,8 @@ services:
       - SHELF_SESSION_DAYS=${SHELF_SESSION_DAYS:-}
       - SECRET_KEY=${SECRET_KEY:-}
       - SHELF_ENCRYPTION_KEY=${SHELF_ENCRYPTION_KEY:-}
+      - SHELF_I18N=${SHELF_I18N:-}
+      - SHELF_DEFAULT_LANGUAGE=${SHELF_DEFAULT_LANGUAGE:-}
     volumes:
       - ${SHELF_DATA:-./data-dev}:/data:z
     restart: unless-stopped

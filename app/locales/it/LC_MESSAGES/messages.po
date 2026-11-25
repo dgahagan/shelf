@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-24 09:56+0100\n"
+"PO-Revision-Date: 2026-11-25 13:16-0500\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -496,6 +496,15 @@ msgstr "Tutto"
 #: app/features.py:378
 msgid "Every feature, including sharing, valuation, photo intake and the integrations."
 msgstr "Ogni funzionalità, compresi condivisione, valutazione, acquisizione da foto e integrazioni."
+
+#: app/features.py:521 app/features.py:550
+msgid "Turn it off anyway?"
+msgstr "Disattivarla comunque?"
+
+#: app/features.py:577
+#, python-format
+msgid "Apply %(profile)s anyway?"
+msgstr "Applicare %(profile)s comunque?"
 
 #: app/features.py:583 app/templates/feature_disabled.html:7
 #, python-format
@@ -1053,53 +1062,53 @@ msgstr "era in %(old)s, spostato in %(new)s"
 msgid "Was at %(old)s, updated to %(new)s"
 msgstr "Era in %(old)s, spostato in %(new)s"
 
-#: app/routers/series.py:157 app/routers/series.py:329
-#: app/routers/series.py:384 app/routers/series.py:479
-#: app/routers/series.py:575 app/routers/series.py:606
+#: app/routers/series.py:174 app/routers/series.py:380
+#: app/routers/series.py:435 app/routers/series.py:530
+#: app/routers/series.py:626 app/routers/series.py:657
 msgid "Series name required"
 msgstr "Il nome della serie è obbligatorio"
 
-#: app/routers/series.py:162 app/routers/series.py:611
+#: app/routers/series.py:179 app/routers/series.py:662
 msgid "Hardcover integration not configured"
 msgstr "L'integrazione con Hardcover non è configurata"
 
-#: app/routers/series.py:174
+#: app/routers/series.py:191
 msgid "Series not found on Hardcover (or lookup failed)"
 msgstr "Serie non trovata su Hardcover (o ricerca non riuscita)"
 
-#: app/routers/series.py:388
+#: app/routers/series.py:439
 msgid "complete must be '0' or '1'"
 msgstr "complete deve essere '0' o '1'"
 
-#: app/routers/series.py:397 app/routers/series.py:496
-#: app/routers/series.py:584
+#: app/routers/series.py:448 app/routers/series.py:547
+#: app/routers/series.py:635
 msgid "Series not found"
 msgstr "Serie non trovata"
 
-#: app/routers/series.py:452
+#: app/routers/series.py:503
 #, python-format
 msgid "Watching %(name)s"
 msgstr "Segui %(name)s"
 
-#: app/routers/series.py:452
+#: app/routers/series.py:503
 #, python-format
 msgid "Stopped watching %(name)s"
 msgstr "Non segui più %(name)s"
 
-#: app/routers/series.py:481
+#: app/routers/series.py:532
 msgid "New series name required"
 msgstr "Il nuovo nome della serie è obbligatorio"
 
-#: app/routers/series.py:484
+#: app/routers/series.py:535
 #, python-format
 msgid "Series name too long (max %(max)s chars)"
 msgstr "Nome della serie troppo lungo (massimo %(max)s caratteri)"
 
-#: app/routers/series.py:488
+#: app/routers/series.py:539
 msgid "That is already the series name"
 msgstr "La serie si chiama già così"
 
-#: app/routers/series.py:619
+#: app/routers/series.py:670
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr "Hardcover non ha una sinossi per questa serie: aggiungila qui sotto"
 
@@ -1762,7 +1771,7 @@ msgstr "Posseduti"
 #: app/templates/fragments/item_row.html:51
 #: app/templates/fragments/settings/data.html:297 app/templates/home.html:36
 #: app/templates/home.html:118 app/templates/item_detail.html:58
-#: app/templates/series.html:226 app/templates/series.html:303
+#: app/templates/series.html:226 app/templates/series.html:304
 #: app/templates/stats.html:20
 msgid "Wishlist"
 msgstr "Lista desideri"
@@ -3415,34 +3424,42 @@ msgid "you have them all!"
 msgstr "li hai tutti!"
 
 #: app/templates/series.html:242
+msgid "none missing;"
+msgstr "nessuno mancante;"
+
+#: app/templates/series.html:242
+msgid "on your wishlist."
+msgstr "nella lista desideri."
+
+#: app/templates/series.html:243
 msgid "missing:"
 msgstr "mancanti:"
 
-#: app/templates/series.html:265 app/templates/upcoming.html:43
+#: app/templates/series.html:266 app/templates/upcoming.html:43
 msgid "+ Wishlist"
 msgstr "+ Lista desideri"
 
-#: app/templates/series.html:267
+#: app/templates/series.html:268
 msgid "Wishlisted"
 msgstr "In lista desideri"
 
-#: app/templates/series.html:286
+#: app/templates/series.html:287
 msgid "Unassigned"
 msgstr "Senza serie"
 
-#: app/templates/series.html:288
+#: app/templates/series.html:289
 #, python-format
 msgid "%(num)s book with no series"
 msgid_plural "%(num)s books with no series"
 msgstr[0] "%(num)s libro senza serie"
 msgstr[1] "%(num)s libri senza serie"
 
-#: app/templates/series.html:289
+#: app/templates/series.html:290
 #, python-format
 msgid "showing %(n)s"
 msgstr "ne vedi %(n)s"
 
-#: app/templates/series.html:290
+#: app/templates/series.html:291
 msgid "These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card."
 msgstr "Questi libri non appartengono ancora a una serie. Aprine uno e imposta la serie nella pagina di modifica per spostarlo in una scheda serie."
 
@@ -4138,6 +4155,7 @@ msgid "Current: English cover from another edition"
 msgstr "Attuale: copertina inglese di un'altra edizione"
 
 #: app/templates/fragments/cover_search.html:42
+#: app/templates/fragments/settings/features.html:45
 msgid "Current"
 msgstr "Attuale"
 
@@ -5422,6 +5440,11 @@ msgstr "Attiva: %(features)s"
 msgid "Turns off: %(features)s"
 msgstr "Disattiva: %(features)s"
 
+#: app/templates/fragments/settings/features.html:45
+#, python-format
+msgid "Apply %(profile)s"
+msgstr "Applica %(profile)s"
+
 #: app/templates/fragments/settings/features.html:51
 msgid "Custom — the switches below match none of these."
 msgstr "Personalizzato: gli interruttori qui sotto non corrispondono a nessuno di questi."
@@ -5437,6 +5460,14 @@ msgstr "Disattiva"
 #: app/templates/fragments/settings/features.html:68
 msgid "Needs setup — configure it under Integrations before it can do anything."
 msgstr "Da configurare: impostala in Integrazioni prima che possa fare qualcosa."
+
+#: app/templates/fragments/settings/features.html:76
+msgid "Turn off"
+msgstr "Disattiva"
+
+#: app/templates/fragments/settings/features.html:76
+msgid "Turn on"
+msgstr "Attiva"
 
 #: app/templates/fragments/settings/library.html:12
 #, python-format

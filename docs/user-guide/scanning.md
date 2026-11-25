@@ -7,7 +7,9 @@ plus title search and **Add by hand** for the things a barcode cannot reach.
 ## Input methods
 
 **Phone or tablet camera.** Tap the camera button. Shelf picks the decoder
-for the device — ZXing on iOS Safari, html5-qrcode everywhere else — and
+for the device — ZXing on iOS Safari and on desktops and laptops (a mouse or
+touchpad as the main pointer, so a webcam), html5-qrcode on Android and other
+touch devices — and
 reads EAN-13, EAN-8, UPC-A, UPC-E and Code 128 copy labels
 ([Copy labels](labels.md)). Requires HTTPS (the default, or a TLS reverse proxy in front) and a
 one-time camera permission. Hold steady about 10–15 cm away; the viewfinder

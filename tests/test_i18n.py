@@ -367,3 +367,21 @@ def test_recent_scan_words_are_translated(admin_client, db):
     admin_client.post("/api/account/language", data={"language": "de"})
     page = admin_client.get("/api/recent-scans").text
     assert "nicht gefunden" in page and "not_found" not in page
+
+
+def test_feature_buttons_and_confirms_are_translated(admin_client):
+    """The Features tab's profile and toggle buttons, and the confirm
+    question each carries, follow the user's language."""
+    admin_client.post("/api/account/language", data={"language": "it"})
+    page = admin_client.get("/settings").text
+    for text in ("Applica Essenziale", "Disattiva"):
+        assert text in page, text
+    assert "Turn off" not in page and "Apply Essenziale" not in page
+    token = i18n.current_locale.set("it")
+    try:
+        rows = [{"key": k, "label": f.label, "enabled": True, "phrases": ["x."]}
+                for k, f in features.FEATURES.items()]
+        confirms = [r["confirm"] for r in features.profile_rows(rows) if r["confirm"]]
+        assert confirms and all(c.endswith("comunque?") for c in confirms), confirms
+    finally:
+        i18n.current_locale.reset(token)

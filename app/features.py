@@ -518,7 +518,7 @@ def profile_choices() -> list[dict]:
 def confirm_message(key: str) -> str:
     """The warning shown before turning `key` off, or "" when nothing is lost
     for anyone but the admin (every probe reads zero)."""
-    return _confirm_text(_probe_phrases(key), "Turn it off anyway?")
+    return _confirm_text(_probe_phrases(key), i18n.gettext("Turn it off anyway?"))
 
 
 def _probe_phrases(key: str) -> list[str]:
@@ -547,7 +547,7 @@ def feature_rows() -> list[dict]:
             "description": f.description,
             "enabled": flags[key],
             "configured": f.configured() if f.configured else None,
-            "confirm": _confirm_text(phrases, "Turn it off anyway?"),
+            "confirm": _confirm_text(phrases, i18n.gettext("Turn it off anyway?")),
             "phrases": phrases,
         })
     return rows
@@ -574,7 +574,7 @@ def profile_rows(rows: list[dict]) -> list[dict]:
             "current": enabled == keys,
             "turns_on": [i18n.gettext(label) for label in (r["label"] for r in rows if not r["enabled"] and r["key"] in keys)],
             "turns_off": [i18n.gettext(label) for label in (r["label"] for r in rows if r["enabled"] and r["key"] not in keys)],
-            "confirm": _confirm_text(phrases, f"Apply {choice['label']} anyway?"),
+            "confirm": _confirm_text(phrases, i18n.gettext("Apply %(profile)s anyway?") % {"profile": choice["label"]}),
         })
     return out
 

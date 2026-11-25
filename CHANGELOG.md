@@ -6,6 +6,80 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.84.0] - 2026-11-25
+
+Shelf's translated interface now speaks German, and a server can choose the
+language that new users see. The series completeness check also stops
+reporting owned volumes as missing when they were catalogued under a different
+title, and a desktop webcam now reads barcodes it used to miss. Every change in
+this release is a community contribution, from
+[@samuel-hartenstein](https://github.com/samuel-hartenstein),
+[@draarivpatel-ui](https://github.com/draarivpatel-ui) and
+[@vjandrea](https://github.com/vjandrea).
+
+### Added
+
+- **German.** Everything Shelf translates is now available in German, except
+  the four Settings tabs this release translates into Italian. Those show
+  English in German for now. Pick Deutsch in the Account dialog, or let a
+  browser set to German choose it. The translated interface still needs
+  `SHELF_I18N=on`. Contributed by
+  [@samuel-hartenstein](https://github.com/samuel-hartenstein) in
+  [#204](https://github.com/dgahagan/shelf/pull/204).
+- **`SHELF_DEFAULT_LANGUAGE` sets the language for users who have not picked
+  one** and whose browser asks for none that Shelf has (`de`, `it` or
+  `zh_Hans`). A user's own choice still wins, then the browser's language.
+  Unset, nothing changes, and Shelf falls back to English. An unknown value is
+  ignored. Contributed by
+  [@samuel-hartenstein](https://github.com/samuel-hartenstein) in
+  [#204](https://github.com/dgahagan/shelf/pull/204).
+- **The Settings Features, Tags, Users and Data tabs are translated into
+  Italian,** including the messages that their actions and the CSV import
+  show. CSV column names and values stay in English, so a file exported in
+  one language imports in any other. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#201](https://github.com/dgahagan/shelf/pull/201).
+
+### Changed
+
+- **Desktop and laptop webcams scan with the same engine as iPhones.** On a
+  computer whose main pointer is a mouse or touchpad, the camera scanner now
+  uses ZXing. ZXing asks for a 1080p picture and reads the whole frame. The
+  previous engine opened most webcams at 640×480 and read only a small box,
+  so it rarely read an EAN-13 through a fixed-focus lens. Android phones and
+  tablets keep the engine they had. The scan frame on a desktop is now the
+  full width of the video, as it is on iOS. Contributed by
+  [@samuel-hartenstein](https://github.com/samuel-hartenstein) in
+  [#202](https://github.com/dgahagan/shelf/pull/202).
+- **The series completeness check finds a volume by its position.** Before,
+  a volume had to match Hardcover's book ID or its exact title. A volume
+  added by ISBN scan, by CSV, or as a translated edition matched neither, so
+  it was reported missing although you own it. Now, when neither matches,
+  Shelf uses the series position you gave the volume. A volume already matched
+  to one book cannot fill a second position, whatever order Hardcover lists
+  the books in. An owned volume at a position, such as an omnibus shelved at
+  #1, counts for that position even beside an unowned single edition. Titles
+  also match across curly and straight apostrophes, so `Ender’s Game` is
+  Hardcover's `Ender's Game`. Series you have checked before can show fewer
+  missing volumes afterwards. Contributed by
+  [@draarivpatel-ui](https://github.com/draarivpatel-ui) in
+  [#200](https://github.com/dgahagan/shelf/pull/200), fixing
+  [#166](https://github.com/dgahagan/shelf/issues/166).
+- **A series check says how many volumes are on your wishlist.** Before, it
+  said "you have them all!" when nothing was missing, even when most of the
+  volumes were only wishlisted. Now it reads "you have them all!" only when
+  you own every volume. Otherwise it reads "none missing;" and gives the
+  number on your wishlist.
+- **The Settings Features tab's buttons and confirm questions are
+  translated:** Apply, Current, Turn off and Turn on, in Italian and German.
+
+### Fixed
+
+- **`SHELF_I18N` and `SHELF_DEFAULT_LANGUAGE` set in `.env` now reach the
+  container** when you use the bundled `docker-compose.yml`. Before, the
+  compose file passed neither variable through, so the translated interface
+  stayed off.
+
 ## [0.83.0] - 2026-11-25
 
 The Docker image had no health check, though Shelf has had a `/health`
@@ -6077,6 +6151,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.84.0]: https://github.com/dgahagan/shelf/releases/tag/v0.84.0
 [0.83.0]: https://github.com/dgahagan/shelf/releases/tag/v0.83.0
 [0.82.3]: https://github.com/dgahagan/shelf/releases/tag/v0.82.3
 [0.82.2]: https://github.com/dgahagan/shelf/releases/tag/v0.82.2

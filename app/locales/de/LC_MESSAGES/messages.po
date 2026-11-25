@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-25 12:04-0500\n"
+"PO-Revision-Date: 2026-11-25 13:16-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
 "Language-Team: de <LL@li.org>\n"
@@ -499,6 +499,15 @@ msgstr ""
 #: app/features.py:378
 msgid "Every feature, including sharing, valuation, photo intake and the integrations."
 msgstr ""
+
+#: app/features.py:521 app/features.py:550
+msgid "Turn it off anyway?"
+msgstr "Trotzdem ausschalten?"
+
+#: app/features.py:577
+#, python-format
+msgid "Apply %(profile)s anyway?"
+msgstr "%(profile)s trotzdem anwenden?"
 
 #: app/features.py:583 app/templates/feature_disabled.html:7
 #, python-format
@@ -1056,53 +1065,53 @@ msgstr "war in %(old)s, geändert zu %(new)s"
 msgid "Was at %(old)s, updated to %(new)s"
 msgstr "War in %(old)s, geändert zu %(new)s"
 
-#: app/routers/series.py:157 app/routers/series.py:329
-#: app/routers/series.py:384 app/routers/series.py:479
-#: app/routers/series.py:575 app/routers/series.py:606
+#: app/routers/series.py:174 app/routers/series.py:380
+#: app/routers/series.py:435 app/routers/series.py:530
+#: app/routers/series.py:626 app/routers/series.py:657
 msgid "Series name required"
 msgstr "Name der Reihe erforderlich"
 
-#: app/routers/series.py:162 app/routers/series.py:611
+#: app/routers/series.py:179 app/routers/series.py:662
 msgid "Hardcover integration not configured"
 msgstr "Hardcover-Anbindung nicht eingerichtet"
 
-#: app/routers/series.py:174
+#: app/routers/series.py:191
 msgid "Series not found on Hardcover (or lookup failed)"
 msgstr "Reihe auf Hardcover nicht gefunden (oder Abfrage fehlgeschlagen)"
 
-#: app/routers/series.py:388
+#: app/routers/series.py:439
 msgid "complete must be '0' or '1'"
 msgstr "complete muss '0' oder '1' sein"
 
-#: app/routers/series.py:397 app/routers/series.py:496
-#: app/routers/series.py:584
+#: app/routers/series.py:448 app/routers/series.py:547
+#: app/routers/series.py:635
 msgid "Series not found"
 msgstr "Reihe nicht gefunden"
 
-#: app/routers/series.py:452
+#: app/routers/series.py:503
 #, python-format
 msgid "Watching %(name)s"
 msgstr "%(name)s wird beobachtet"
 
-#: app/routers/series.py:452
+#: app/routers/series.py:503
 #, python-format
 msgid "Stopped watching %(name)s"
 msgstr "%(name)s wird nicht mehr beobachtet"
 
-#: app/routers/series.py:481
+#: app/routers/series.py:532
 msgid "New series name required"
 msgstr "Neuer Name der Reihe erforderlich"
 
-#: app/routers/series.py:484
+#: app/routers/series.py:535
 #, python-format
 msgid "Series name too long (max %(max)s chars)"
 msgstr "Name der Reihe zu lang (max. %(max)s Zeichen)"
 
-#: app/routers/series.py:488
+#: app/routers/series.py:539
 msgid "That is already the series name"
 msgstr "So heißt die Reihe schon"
 
-#: app/routers/series.py:619
+#: app/routers/series.py:670
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr "Hardcover hat keine Zusammenfassung für diese Reihe – füge unten eine hinzu"
 
@@ -1765,7 +1774,7 @@ msgstr "Im Besitz"
 #: app/templates/fragments/item_row.html:51
 #: app/templates/fragments/settings/data.html:297 app/templates/home.html:36
 #: app/templates/home.html:118 app/templates/item_detail.html:58
-#: app/templates/series.html:226 app/templates/series.html:303
+#: app/templates/series.html:226 app/templates/series.html:304
 #: app/templates/stats.html:20
 msgid "Wishlist"
 msgstr "Wunschliste"
@@ -3418,34 +3427,42 @@ msgid "you have them all!"
 msgstr "du hast alle!"
 
 #: app/templates/series.html:242
+msgid "none missing;"
+msgstr "keiner fehlt;"
+
+#: app/templates/series.html:242
+msgid "on your wishlist."
+msgstr "auf deiner Wunschliste."
+
+#: app/templates/series.html:243
 msgid "missing:"
 msgstr "fehlen:"
 
-#: app/templates/series.html:265 app/templates/upcoming.html:43
+#: app/templates/series.html:266 app/templates/upcoming.html:43
 msgid "+ Wishlist"
 msgstr "+ Wunschliste"
 
-#: app/templates/series.html:267
+#: app/templates/series.html:268
 msgid "Wishlisted"
 msgstr "Auf der Wunschliste"
 
-#: app/templates/series.html:286
+#: app/templates/series.html:287
 msgid "Unassigned"
 msgstr "Ohne Reihe"
 
-#: app/templates/series.html:288
+#: app/templates/series.html:289
 #, python-format
 msgid "%(num)s book with no series"
 msgid_plural "%(num)s books with no series"
 msgstr[0] "%(num)s Buch ohne Reihe"
 msgstr[1] "%(num)s Bücher ohne Reihe"
 
-#: app/templates/series.html:289
+#: app/templates/series.html:290
 #, python-format
 msgid "showing %(n)s"
 msgstr "%(n)s angezeigt"
 
-#: app/templates/series.html:290
+#: app/templates/series.html:291
 msgid "These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card."
 msgstr "Diese Bücher gehören noch zu keiner Reihe. Öffne eines und setze auf der Bearbeiten-Seite eine Reihe, damit es in eine Reihenkarte wandert."
 
@@ -4141,6 +4158,7 @@ msgid "Current: English cover from another edition"
 msgstr "Aktuell: englisches Cover einer anderen Ausgabe"
 
 #: app/templates/fragments/cover_search.html:42
+#: app/templates/fragments/settings/features.html:45
 msgid "Current"
 msgstr "Aktuell"
 
@@ -5425,6 +5443,11 @@ msgstr ""
 msgid "Turns off: %(features)s"
 msgstr ""
 
+#: app/templates/fragments/settings/features.html:45
+#, python-format
+msgid "Apply %(profile)s"
+msgstr "%(profile)s anwenden"
+
 #: app/templates/fragments/settings/features.html:51
 msgid "Custom — the switches below match none of these."
 msgstr ""
@@ -5440,6 +5463,14 @@ msgstr ""
 #: app/templates/fragments/settings/features.html:68
 msgid "Needs setup — configure it under Integrations before it can do anything."
 msgstr ""
+
+#: app/templates/fragments/settings/features.html:76
+msgid "Turn off"
+msgstr "Ausschalten"
+
+#: app/templates/fragments/settings/features.html:76
+msgid "Turn on"
+msgstr "Einschalten"
 
 #: app/templates/fragments/settings/library.html:12
 #, python-format

@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-6534%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-6540%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![E2E tests](https://img.shields.io/badge/e2e%20tests-400%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
@@ -150,8 +150,9 @@ of this whole directory carries the keys next to the data they protect.
 | **Lookup** | Scan to check if an item is in your collection — no changes made |
 | **Quick Rate** | Scan to mark items read, watched or played |
 
-Camera scanning picks its decoder to suit the device: iOS Safari drives the
-camera with ZXing, every other platform uses html5-qrcode. The scan page and
+Camera scanning picks its decoder to suit the device: iOS Safari and desktop
+webcams (a mouse or touchpad as the main pointer) use ZXing, which reads the
+whole 1080p frame; Android and other touch devices use html5-qrcode. The scan page and
 Store Mode share one engine, so both behave the same everywhere. Retail
 barcodes are covered — EAN-13, EAN-8, UPC-A and UPC-E — and so are Shelf's own
 Code 128 copy labels, on iPhone and iPad as well. USB and Bluetooth

@@ -42,7 +42,7 @@
                     <button type="submit" data-testid="profile-apply-{{ p.name }}"
                             {% if p.current %}disabled aria-current="true"{% endif %}
                             class="mt-auto self-start px-3 py-1.5 rounded-lg text-sm transition-colors {{ 'border border-shelf-accent text-shelf-text cursor-default' if p.current else 'bg-shelf-hover text-shelf-text hover:bg-shelf-border' }}">
-                        {{ 'Current' if p.current else 'Apply ' ~ p.label }}
+                        {{ _('Current') if p.current else _('Apply %(profile)s', profile=p.label) }}
                     </button>
                 </form>
                 {% endfor %}
@@ -73,7 +73,7 @@
                     <input type="hidden" name="enabled" value="{{ '0' if row.enabled else '1' }}">
                     <button type="submit" data-testid="feature-toggle-{{ row.key }}"
                             class="px-3 py-1.5 rounded-lg text-sm transition-colors {{ 'bg-shelf-hover text-shelf-text hover:bg-shelf-border' if row.enabled else 'bg-shelf-accent text-white hover:bg-shelf-accent2' }}">
-                        {{ 'Turn off' if row.enabled else 'Turn on' }}
+                        {{ _('Turn off') if row.enabled else _('Turn on') }}
                     </button>
                 </form>
             </div>

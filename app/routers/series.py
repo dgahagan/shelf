@@ -148,6 +148,23 @@ async def series_page(request: Request, _=Depends(require_role("viewer")),
     )
 
 
+_TYPOGRAPHIC = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"'})
+
+
+def _title_key(title: str) -> str:
+    """A title as the completeness check compares it: case-folded, trimmed,
+    and with typographic quotes folded to straight ones, so `Ender’s Game`
+    from one provider meets `Ender's Game` from Hardcover."""
+    return (title or "").translate(_TYPOGRAPHIC).casefold().strip()
+
+
+def _position(value) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @router.get("/api/series/check")
 async def check_series(name: str = "", _=Depends(require_role("viewer")),
                        __=Depends(require_feature("series"))):
@@ -174,38 +191,45 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
         return {"ok": False, "message": i18n.gettext("Series not found on Hardcover (or lookup failed)")}
 
     by_hc_id = {r["hardcover_book_id"]: r for r in local if r["hardcover_book_id"]}
-    by_title = {r["title"].casefold().strip(): r for r in local}
+    by_title = {_title_key(r["title"]): r for r in local}
     # Position fallback: a volume catalogued from another provider (ISBN scan,
     # CSV import, a different-language edition) has no hardcover_book_id and a
     # title that may differ from Hardcover's, so neither key above finds it and
     # an owned volume reads as missing (#166). The position it was shelved at
-    # is still a series fact. An owned row wins a shared position over an
-    # unowned one.
-    by_pos: dict[float, dict] = {}
+    # is still a series fact.
+    by_pos: dict[float, list] = {}
     for r in local:
-        try:
-            pos = float(r["series_position"])
-        except (TypeError, ValueError):
-            continue
-        prev = by_pos.get(pos)
-        if prev is None or (r["owned"] and not prev["owned"]):
-            by_pos[pos] = r
+        pos = _position(r["series_position"])
+        if pos is not None:
+            by_pos.setdefault(pos, []).append(r)
 
-    matched_ids = set()
+    # Pass 1: id and title matches. They run over every book before any
+    # position fallback, so a row a later book matches by id or title is
+    # already claimed when the fallback looks for a candidate — one local
+    # book cannot fill two positions, whatever order Hardcover lists them in.
+    matches = [by_hc_id.get(b["hardcover_book_id"]) or by_title.get(_title_key(b["title"])) for b in books]
+    claimed = {m["id"] for m in matches if m}
+
+    # Pass 2: the position fallback. An owned row wins a shared position over
+    # an unowned one, and that rule holds for a position an id/title match
+    # filled with a row you do not own, wishlisted or not: an owned omnibus
+    # shelved at #1 still answers "owned" for book 1 beside a single edition
+    # you only wishlisted.
+    for i, b in enumerate(books):
+        if matches[i] is not None and matches[i]["owned"]:
+            continue
+        pos = _position(b["series_position"])
+        free = [r for r in by_pos.get(pos, ()) if r["id"] not in claimed] if pos is not None else []
+        candidate = next((r for r in free if r["owned"]), None)
+        if candidate is None and matches[i] is None:
+            candidate = free[0] if free else None
+        if candidate is not None:
+            matches[i] = candidate
+            claimed.add(candidate["id"])
+
     out = []
-    for b in books:
-        match = by_hc_id.get(b["hardcover_book_id"]) or by_title.get(b["title"].casefold().strip())
-        if match is None:
-            try:
-                candidate = by_pos.get(float(b["series_position"]))
-            except (TypeError, ValueError):
-                candidate = None
-            # A row already claimed by an id/title match is a different
-            # volume — one local book cannot fill two positions.
-            if candidate is not None and candidate["id"] not in matched_ids:
-                match = candidate
+    for b, match in zip(books, matches):
         if match:
-            matched_ids.add(match["id"])
             status = "owned" if match["owned"] else "wishlist" if match["wishlisted"] else "missing"
         else:
             status = "missing"
@@ -218,6 +242,7 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
         out.append(row)
 
     missing = sum(1 for b in out if b["status"] == "missing")
+    wishlisted = sum(1 for b in out if b["status"] == "wishlist")
 
     # Cache the result only for a series the library actually holds. This is a
     # viewer-role GET, so without the guard any name Hardcover recognises would
@@ -234,6 +259,7 @@ async def check_series(name: str = "", _=Depends(require_role("viewer")),
     disclosure = {"bookshop": any(l["store"] == "bookshop" for l in links)} if links else None
 
     return {"ok": True, "series": name, "total": len(out), "missing": missing,
+            "wishlisted": wishlisted,
             "books": out, "buy_links_disclosure": disclosure}
 
 
