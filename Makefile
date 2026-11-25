@@ -18,6 +18,7 @@ PYTEST_PAR   ?= -n auto --dist loadfile
 .PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n \
         badges check-badges check-roadmap lock lock-upgrade check-lock check-lock-selftest \
+        pin-base check-base-image \
         checks checks-fast \
         report-review report-security report-test reports \
         qa fix verify release-check status \
@@ -131,6 +132,40 @@ check-lock:
 	{ echo "ERROR: a lock is not what 'make lock' produces. Run 'make lock' and commit both .txt files."; \
 	  echo "Causes: a .in edit that was not relocked; a hand-edited --hash= line; or PyPI added a file to a version already pinned (not caused by your change)."; exit 1; }
 
+# The Dockerfile's base image is pinned by digest; these two keep the pin
+# current. The tag stays in the FROM line as the record of what the digest
+# stands for, and both targets read it from there. The digest is the image
+# INDEX digest, not one platform's manifest: docker-publish.yml builds
+# linux/amd64 and linux/arm64 from this Dockerfile, and an amd64 manifest
+# digest would break the arm64 build. check-base-image needs Docker Hub, so it
+# is in `make checks` and NOT in checks-fast or CI: upstream republishes the
+# tag every few days, which would turn unrelated pull requests red.
+# A failed lookup fails the check with its own message, never as a pass. A
+# lookup only counts when its whole output is ONE digest line: a warning
+# beside the digest would otherwise read as drift and break pin-base's sed.
+DOCKERFILE ?= Dockerfile
+BASE_REF = set -e; \
+	from=$$(grep -m1 -E '^FROM[[:space:]]' "$(DOCKERFILE)" | awk '{print $$2}'); \
+	ref=$${from%%@*}; pinned=""; \
+	case "$$from" in *@*) pinned=$${from\#*@};; esac; \
+	if ! got=$$(docker buildx imagetools inspect "$$ref" --format '{{.Manifest.Digest}}' 2>&1) || \
+	   ! printf '%s\n' "$$got" | awk 'NR == 1 && /^sha256:[0-9a-f]+$$/ && length($$0) == 71 { ok = 1 } END { exit !(ok && NR == 1) }'; then \
+	  echo "ERROR: could not resolve $$ref (registry unreachable, rate-limited, or the tag does not exist) — the pin was NOT checked."; \
+	  echo "$$got" | head -3; exit 1; fi
+
+pin-base:
+	@$(BASE_REF); \
+	if [ "$$pinned" = "$$got" ]; then echo "pin-base: $$ref is already pinned to $$got"; exit 0; fi; \
+	sed -i "0,/^FROM[[:space:]]/s|^FROM[[:space:]].*|FROM $$ref@$$got|" "$(DOCKERFILE)"; \
+	echo "pin-base: pinned $$ref to $$got — commit $(DOCKERFILE)."
+
+check-base-image:
+	@$(BASE_REF); \
+	if [ "$$pinned" != "$$got" ]; then \
+	  echo "ERROR: $(DOCKERFILE) pins $$ref to $${pinned:-<no digest>}, but the tag now points at $$got."; \
+	  echo "Run 'make pin-base' and commit the Dockerfile."; exit 1; fi; \
+	echo "check-base-image: $$ref is pinned to its current digest ($$got)."
+
 # Proves check-lock can fail: a clean copy must pass, then one invented digest
 # must turn it red WITH that digest in the diff, so a network error cannot pass
 # as a caught mutation (G108). Output goes to files, never a pipe (G63).
@@ -228,7 +263,7 @@ checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-versio
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.
-checks: checks-fast check-lock check-lock-selftest check-deps check-licenses
+checks: checks-fast check-lock check-lock-selftest check-deps check-licenses check-base-image
 
 # ---------------------------------------------------------------------------
 # Claude agent reports

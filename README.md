@@ -376,6 +376,8 @@ make install-playwright   # downloads headless Chromium
 | `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
 | `make check-lock` | Fail if a lock (versions or hashes) is not what `make lock` produces |
 | `make check-lock-selftest` | Prove `check-lock` fails on an invented hash |
+| `make pin-base` | Refresh the Dockerfile's base-image digest pin to the tag's current one |
+| `make check-base-image` | Fail if the Dockerfile's base-image digest is not the tag's current one |
 | `make check-licenses` | License compliance report |
 | `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
 | `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |

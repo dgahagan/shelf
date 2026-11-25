@@ -20,7 +20,7 @@ invest time — see CONTRIBUTING.md.
 
 - [ ] `make test` passes
 - [ ] `make test-e2e` passes
-- [ ] `make checks` passes
+- [ ] `make checks-fast check-lock check-lock-selftest check-deps check-licenses` passes
 - [ ] No generated output in this PR — `static/css/app.css`, `static/sw.js`'s
       `SW_VERSION`, and README's test-count badges are regenerated on `main`
       by CI
