@@ -11,11 +11,12 @@ All notable changes to Shelf are documented here. The format follows
 Shelf's translated interface now speaks German, and a server can choose the
 language that new users see. The series completeness check also stops
 reporting owned volumes as missing when they were catalogued under a different
-title, and a desktop webcam now reads barcodes it used to miss. Every change in
-this release is a community contribution, from
+title, and a desktop webcam now reads barcodes it used to miss. The four
+headline changes are community contributions, from
 [@samuel-hartenstein](https://github.com/samuel-hartenstein),
 [@draarivpatel-ui](https://github.com/draarivpatel-ui) and
-[@vjandrea](https://github.com/vjandrea).
+[@vjandrea](https://github.com/vjandrea). Testing them on a real collection
+led to the smaller fixes beside them.
 
 ### Added
 
