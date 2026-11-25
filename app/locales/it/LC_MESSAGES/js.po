@@ -64,7 +64,7 @@ msgid "checked {date}"
 msgstr "verificata il {date}"
 
 #: static/js/components-item.js:81 static/js/components-item.js:85
-#: static/js/components-item.js:154 static/js/components-settings.js:889
+#: static/js/components-item.js:154 static/js/components-settings.js:894
 #: static/js/location-order.js:67
 msgid "Saving…"
 msgstr "Salvataggio…"
@@ -217,33 +217,288 @@ msgstr "Richiesta non riuscita ({status})"
 msgid "Request failed"
 msgstr "Richiesta non riuscita"
 
-#: static/js/components-settings.js:753
+#: static/js/components-settings.js:396
+msgid "Hide details"
+msgstr "Nascondi dettagli"
+
+#: static/js/components-settings.js:396
+#, python-brace-format
+msgid "Show details ({count} items)"
+msgstr "Mostra dettagli ({count} elementi)"
+
+#: static/js/components-settings.js:452 static/js/components-settings.js:547
+msgid "Import failed"
+msgstr "Importazione non riuscita"
+
+#: static/js/components-settings.js:515
+msgid "Preview failed"
+msgstr "Anteprima non riuscita"
+
+#: static/js/components-settings.js:586
+#, python-brace-format
+msgid "Import {count} item"
+msgstr "Importa {count} elemento"
+
+#: static/js/components-settings.js:586
+#, python-brace-format
+msgid "Import {count} items"
+msgstr "Importa {count} elementi"
+
+#: static/js/components-settings.js:601
+#, python-brace-format
+msgid "{count} new item"
+msgstr "{count} elemento nuovo"
+
+#: static/js/components-settings.js:601
+#, python-brace-format
+msgid "{count} new items"
+msgstr "{count} elementi nuovi"
+
+#: static/js/components-settings.js:602
+#, python-brace-format
+msgid "{count} restored from Trash"
+msgstr "{count} ripristinati dal cestino"
+
+#: static/js/components-settings.js:609
+#, python-brace-format
+msgid "{count} new"
+msgstr "{count} nuovi"
+
+#: static/js/components-settings.js:610
+#, python-brace-format
+msgid "{count} into Trash"
+msgstr "{count} nel cestino"
+
+#: static/js/components-settings.js:612
+#, python-brace-format
+msgid "{count} already in your library (skipped)"
+msgstr "{count} già nella tua biblioteca (saltati)"
+
+#: static/js/components-settings.js:613
+#, python-brace-format
+msgid "{count} to update"
+msgstr "{count} da aggiornare"
+
+#: static/js/components-settings.js:614
+#, python-brace-format
+msgid "{count} to restore from Trash"
+msgstr "{count} da ripristinare dal cestino"
+
+#: static/js/components-settings.js:622
+#, python-brace-format
+msgid "{count} matched by title/author"
+msgstr "{count} per titolo/autore"
+
+#: static/js/components-settings.js:623
+#, python-brace-format
+msgid "{count} by ISBN"
+msgstr "{count} per ISBN"
+
+#: static/js/components-settings.js:632
+#, python-brace-format
+msgid "{count} cover"
+msgstr "{count} copertina"
+
+#: static/js/components-settings.js:632
+#, python-brace-format
+msgid "{count} covers"
+msgstr "{count} copertine"
+
+#: static/js/components-settings.js:633
+#, python-brace-format
+msgid "{count} new series"
+msgstr "{count} serie nuove"
+
+#: static/js/components-settings.js:634
+#, python-brace-format
+msgid "{count} new location"
+msgstr "{count} posizione nuova"
+
+#: static/js/components-settings.js:634
+#, python-brace-format
+msgid "{count} new locations"
+msgstr "{count} posizioni nuove"
+
+#: static/js/components-settings.js:635
+#, python-brace-format
+msgid "{count} new tag"
+msgstr "{count} tag nuovo"
+
+#: static/js/components-settings.js:635
+#, python-brace-format
+msgid "{count} new tags"
+msgstr "{count} tag nuovi"
+
+#: static/js/components-settings.js:636
+#, python-brace-format
+msgid "{count} new borrower"
+msgstr "{count} persona nuova per i prestiti"
+
+#: static/js/components-settings.js:636
+#, python-brace-format
+msgid "{count} new borrowers"
+msgstr "{count} persone nuove per i prestiti"
+
+#: static/js/components-settings.js:637
+#, python-brace-format
+msgid "{count} reading-log entry"
+msgstr "{count} voce del registro di lettura"
+
+#: static/js/components-settings.js:637
+#, python-brace-format
+msgid "{count} reading-log entries"
+msgstr "{count} voci del registro di lettura"
+
+#: static/js/components-settings.js:638
+#, python-brace-format
+msgid "{count} loan"
+msgstr "{count} prestito"
+
+#: static/js/components-settings.js:638
+#, python-brace-format
+msgid "{count} loans"
+msgstr "{count} prestiti"
+
+#: static/js/components-settings.js:639
+#, python-brace-format
+msgid "Plus {list}."
+msgstr "Inoltre: {list}."
+
+#: static/js/components-settings.js:645
+#, python-brace-format
+msgid "Replace {count} existing cover"
+msgstr "Sostituisci {count} copertina esistente"
+
+#: static/js/components-settings.js:645
+#, python-brace-format
+msgid "Replace {count} existing covers"
+msgstr "Sostituisci {count} copertine esistenti"
+
+#: static/js/components-settings.js:645
+msgid "Replace existing covers"
+msgstr "Sostituisci le copertine esistenti"
+
+#: static/js/components-settings.js:654
+#, python-brace-format
+msgid "{count} valuation-history row (not mergeable — this library already has valuation history)"
+msgstr "{count} riga dello storico dei valori (non unibile: questa biblioteca ha già uno storico dei valori)"
+
+#: static/js/components-settings.js:655
+#, python-brace-format
+msgid "{count} valuation-history rows (not mergeable — this library already has valuation history)"
+msgstr "{count} righe dello storico dei valori (non unibili: questa biblioteca ha già uno storico dei valori)"
+
+#: static/js/components-settings.js:657
+#, python-brace-format
+msgid "{count} valuation-history row"
+msgstr "{count} riga dello storico dei valori"
+
+#: static/js/components-settings.js:657
+#, python-brace-format
+msgid "{count} valuation-history rows"
+msgstr "{count} righe dello storico dei valori"
+
+#: static/js/components-settings.js:664
+#, python-brace-format
+msgid "{count} new item not imported (deselected)"
+msgstr "{count} elemento nuovo non importato (deselezionato)"
+
+#: static/js/components-settings.js:664
+#, python-brace-format
+msgid "{count} new items not imported (deselected)"
+msgstr "{count} elementi nuovi non importati (deselezionati)"
+
+#: static/js/components-settings.js:665
+#, python-brace-format
+msgid "{count} item not updated (deselected)"
+msgstr "{count} elemento non aggiornato (deselezionato)"
+
+#: static/js/components-settings.js:665
+#, python-brace-format
+msgid "{count} items not updated (deselected)"
+msgstr "{count} elementi non aggiornati (deselezionati)"
+
+#: static/js/components-settings.js:666
+#, python-brace-format
+msgid "{count} cover not installed (deselected)"
+msgstr "{count} copertina non installata (deselezionata)"
+
+#: static/js/components-settings.js:666
+#, python-brace-format
+msgid "{count} covers not installed (deselected)"
+msgstr "{count} copertine non installate (deselezionate)"
+
+#: static/js/components-settings.js:667
+#, python-brace-format
+msgid "Reading log: {count} row not imported (deselected)"
+msgstr "Registro di lettura: {count} riga non importata (deselezionata)"
+
+#: static/js/components-settings.js:667
+#, python-brace-format
+msgid "Reading log: {count} rows not imported (deselected)"
+msgstr "Registro di lettura: {count} righe non importate (deselezionate)"
+
+#: static/js/components-settings.js:668
+#, python-brace-format
+msgid "Loans: {count} row not imported (deselected)"
+msgstr "Prestiti: {count} riga non importata (deselezionata)"
+
+#: static/js/components-settings.js:668
+#, python-brace-format
+msgid "Loans: {count} rows not imported (deselected)"
+msgstr "Prestiti: {count} righe non importate (deselezionate)"
+
+#: static/js/components-settings.js:669
+#, python-brace-format
+msgid "Valuation history: {count} row not imported (deselected)"
+msgstr "Cronologia delle valutazioni: {count} riga non importata (deselezionata)"
+
+#: static/js/components-settings.js:669
+#, python-brace-format
+msgid "Valuation history: {count} rows not imported (deselected)"
+msgstr "Cronologia delle valutazioni: {count} righe non importate (deselezionate)"
+
+#: static/js/components-settings.js:675
+#, python-brace-format
+msgid "{count} item changed between the preview and the import, and was left alone."
+msgstr "{count} elemento è cambiato tra l'anteprima e l'importazione ed è stato lasciato com'era."
+
+#: static/js/components-settings.js:676
+#, python-brace-format
+msgid "{count} items changed between the preview and the import, and were left alone."
+msgstr "{count} elementi sono cambiati tra l'anteprima e l'importazione e sono stati lasciati com'erano."
+
+#: static/js/components-settings.js:704
+msgid "Restore failed"
+msgstr "Ripristino non riuscito"
+
+#: static/js/components-settings.js:758
 #, python-brace-format
 msgid "Delete user {name}?"
 msgstr "Eliminare l'utente {name}?"
 
-#: static/js/components-settings.js:767
+#: static/js/components-settings.js:772
 msgid "Never"
 msgstr "Mai"
 
-#: static/js/components-settings.js:779
+#: static/js/components-settings.js:784
 msgid "Copied"
 msgstr "Copiato"
 
-#: static/js/components-settings.js:779
+#: static/js/components-settings.js:784
 msgid "Copy"
 msgstr "Copia"
 
-#: static/js/components-settings.js:807 static/js/components-settings.js:847
+#: static/js/components-settings.js:812 static/js/components-settings.js:852
 #, python-brace-format
 msgid "Revoke token {name}?"
 msgstr "Revocare il token {name}?"
 
-#: static/js/components-settings.js:910
+#: static/js/components-settings.js:915
 msgid "Could not refresh feature settings"
 msgstr "Impossibile aggiornare le impostazioni delle funzionalità"
 
-#: static/js/components-settings.js:926
+#: static/js/components-settings.js:931
 msgid "Could not save feature settings"
 msgstr "Impossibile salvare le impostazioni delle funzionalità"
 

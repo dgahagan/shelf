@@ -389,6 +389,12 @@ document.addEventListener('alpine:init', function () {
         return {
             retrying: false, retryResult: false,
             retryCurrent: 0, retryTotal: 0, retryLastTitle: '', retryLog: [], showRetryLog: false,
+            // The log toggles' wording; a CSP-build expression can't call t().
+            get retryLogToggle() { return this.logToggle(this.showRetryLog, this.retryLog.length); },
+            get synLogToggle() { return this.logToggle(this.showSynLog, this.synLog.length); },
+            logToggle(open, n) {
+                return open ? t('Hide details') : t('Show details ({count} items)').replace('{count}', n);
+            },
             synFetching: false, synResult: false,
             synCurrent: 0, synTotal: 0, synLastTitle: '', synLog: [], showSynLog: false,
             get retryPct() { return Math.round(this.retryCurrent / this.retryTotal * 100) + '%'; },
@@ -443,7 +449,7 @@ document.addEventListener('alpine:init', function () {
                 fetch('/api/import/csv', { method: 'POST', body: new FormData(e.target), headers: { 'X-CSRF-Token': window.csrfToken() } })
                     .then(r => r.json())
                     .then(d => { this.importResult = d; this.importing = false; })
-                    .catch(() => { this.importResult = { error: 'Import failed' }; this.importing = false; });
+                    .catch(() => { this.importResult = { error: t('Import failed') }; this.importing = false; });
             }
         };
     });
@@ -506,7 +512,7 @@ document.addEventListener('alpine:init', function () {
                     })
                     .catch(function () {
                         self.planning = false;
-                        self.errorMessage = 'Preview failed';
+                        self.errorMessage = t('Preview failed');
                     });
             },
 
@@ -538,7 +544,7 @@ document.addEventListener('alpine:init', function () {
                     })
                     .catch(function () {
                         self.importing = false;
-                        self.importResult = { error: 'Import failed' };
+                        self.importResult = { error: t('Import failed') };
                         self.deselectedLines = [];
                         self.step = 3;
                     });
@@ -556,8 +562,10 @@ document.addEventListener('alpine:init', function () {
                 this.resetSelection();
             },
 
-            plural(n, word) {
-                return n + ' ' + word + (n === 1 ? '' : 's');
+            // Both forms come in through t(), so extraction sees them; Italian
+            // splits singular from plural where English does.
+            plural(n, one, many) {
+                return (n === 1 ? one : many).replace('{count}', n);
             },
 
             importCount() {
@@ -575,12 +583,9 @@ document.addEventListener('alpine:init', function () {
             },
 
             importLabel() {
-                return 'Import ' + this.plural(this.importCount(), 'item');
+                return this.plural(this.importCount(), t('Import {count} item'), t('Import {count} items'));
             },
 
-            // Whether the "Include" section's new-items checkbox shows at
-            // all — a restore-only archive (nothing to create) still needs
-            // it, since a restore is gated by the same selCreates toggle.
             showCreatesCheckbox() {
                 if (!this.plan) { return false; }
                 var s = this.plan.summary;
@@ -593,32 +598,29 @@ document.addEventListener('alpine:init', function () {
                 if (!this.plan) { return ''; }
                 var s = this.plan.summary;
                 var parts = [];
-                if (s.create > 0) { parts.push(this.plural(s.create, 'new item')); }
-                if (s.restore) { parts.push(s.restore + ' restored from Trash'); }
+                if (s.create > 0) { parts.push(this.plural(s.create, t('{count} new item'), t('{count} new items'))); }
+                if (s.restore) { parts.push(t('{count} restored from Trash').replace('{count}', s.restore)); }
                 return parts.join(', ');
             },
 
-            // "494 new, 168 already in your library (skipped), 3 to update"
             verdictSentence() {
                 if (!this.plan) { return ''; }
                 var s = this.plan.summary;
-                var newPart = s.create + ' new';
-                if (s.create_in_trash) { newPart += ' (' + s.create_in_trash + ' into Trash)'; }
+                var newPart = t('{count} new').replace('{count}', s.create);
+                if (s.create_in_trash) { newPart += ' (' + t('{count} into Trash').replace('{count}', s.create_in_trash) + ')'; }
                 var parts = [newPart];
-                if (s.skip) { parts.push(s.skip + ' already in your library (skipped)'); }
-                if (s.update) { parts.push(s.update + ' to update'); }
-                if (s.restore) { parts.push(s.restore + ' to restore from Trash'); }
+                if (s.skip) { parts.push(t('{count} already in your library (skipped)').replace('{count}', s.skip)); }
+                if (s.update) { parts.push(t('{count} to update').replace('{count}', s.update)); }
+                if (s.restore) { parts.push(t('{count} to restore from Trash').replace('{count}', s.restore)); }
                 return parts.join(', ');
             },
 
-            // How many verdicts rest on the fuzzy title/author match — the
-            // path that covers most of an ISBN-less library.
             basisNote() {
                 if (!this.plan) { return ''; }
                 var b = this.plan.summary.by_basis || {};
                 var parts = [];
-                if (b.title_authors) { parts.push(b.title_authors + ' matched by title/author'); }
-                if (b.isbn) { parts.push(b.isbn + ' by ISBN'); }
+                if (b.title_authors) { parts.push(t('{count} matched by title/author').replace('{count}', b.title_authors)); }
+                if (b.isbn) { parts.push(t('{count} by ISBN').replace('{count}', b.isbn)); }
                 return parts.length ? parts.join(', ') : '';
             },
 
@@ -627,20 +629,20 @@ document.addEventListener('alpine:init', function () {
                 var s = this.plan.summary;
                 var wc = s.would_create || {};
                 var parts = [];
-                if (s.covers_install) { parts.push(this.plural(s.covers_install, 'cover')); }
-                if ((wc.series || []).length) { parts.push(wc.series.length + ' new series'); }
-                if ((wc.locations || []).length) { parts.push(this.plural(wc.locations.length, 'new location')); }
-                if ((wc.tags || []).length) { parts.push(this.plural(wc.tags.length, 'new tag')); }
-                if ((wc.borrowers || []).length) { parts.push(this.plural(wc.borrowers.length, 'new borrower')); }
-                if (s.reading_log) { parts.push(this.plural(s.reading_log, 'reading-log entry')); }
-                if (s.checkouts) { parts.push(this.plural(s.checkouts, 'loan')); }
-                return parts.length ? 'Plus ' + parts.join(', ') + '.' : '';
+                if (s.covers_install) { parts.push(this.plural(s.covers_install, t('{count} cover'), t('{count} covers'))); }
+                if ((wc.series || []).length) { parts.push(t('{count} new series').replace('{count}', wc.series.length)); }
+                if ((wc.locations || []).length) { parts.push(this.plural(wc.locations.length, t('{count} new location'), t('{count} new locations'))); }
+                if ((wc.tags || []).length) { parts.push(this.plural(wc.tags.length, t('{count} new tag'), t('{count} new tags'))); }
+                if ((wc.borrowers || []).length) { parts.push(this.plural(wc.borrowers.length, t('{count} new borrower'), t('{count} new borrowers'))); }
+                if (s.reading_log) { parts.push(this.plural(s.reading_log, t('{count} reading-log entry'), t('{count} reading-log entries'))); }
+                if (s.checkouts) { parts.push(this.plural(s.checkouts, t('{count} loan'), t('{count} loans'))); }
+                return parts.length ? t('Plus {list}.').replace('{list}', parts.join(', ')) : '';
             },
 
             replaceCoversNote() {
                 if (!this.plan) { return ''; }
                 var n = this.plan.summary.covers_replace;
-                return n ? 'Replace ' + this.plural(n, 'existing cover') : 'Replace existing covers';
+                return n ? this.plural(n, t('Replace {count} existing cover'), t('Replace {count} existing covers')) : t('Replace existing covers');
             },
 
             valuationNote() {
@@ -648,27 +650,30 @@ document.addEventListener('alpine:init', function () {
                 var v = this.plan.summary.valuation_history || {};
                 if (!v.rows) { return ''; }
                 if (!v.mergeable) {
-                    return this.plural(v.rows, 'valuation-history row') + ' (not mergeable — this library already has valuation history)';
+                    return this.plural(v.rows,
+                        t('{count} valuation-history row (not mergeable — this library already has valuation history)'),
+                        t('{count} valuation-history rows (not mergeable — this library already has valuation history)'));
                 }
-                return this.plural(v.rows, 'valuation-history row');
+                return this.plural(v.rows, t('{count} valuation-history row'), t('{count} valuation-history rows'));
             },
 
             buildDeselectedLines(report) {
                 var d = report && report.deselected;
                 if (!d) { return []; }
                 var lines = [];
-                if (d.creates) { lines.push(this.plural(d.creates, 'new item') + ' not imported (deselected)'); }
-                if (d.updates) { lines.push(this.plural(d.updates, 'item') + ' not updated (deselected)'); }
-                if (d.covers) { lines.push(this.plural(d.covers, 'cover') + ' not installed (deselected)'); }
-                if (d.reading_log) { lines.push('Reading log: ' + this.plural(d.reading_log, 'row') + ' not imported (deselected)'); }
-                if (d.checkouts) { lines.push('Loans: ' + this.plural(d.checkouts, 'row') + ' not imported (deselected)'); }
-                if (d.valuation_history) { lines.push('Valuation history: ' + this.plural(d.valuation_history, 'row') + ' not imported (deselected)'); }
+                if (d.creates) { lines.push(this.plural(d.creates, t('{count} new item not imported (deselected)'), t('{count} new items not imported (deselected)'))); }
+                if (d.updates) { lines.push(this.plural(d.updates, t('{count} item not updated (deselected)'), t('{count} items not updated (deselected)'))); }
+                if (d.covers) { lines.push(this.plural(d.covers, t('{count} cover not installed (deselected)'), t('{count} covers not installed (deselected)'))); }
+                if (d.reading_log) { lines.push(this.plural(d.reading_log, t('Reading log: {count} row not imported (deselected)'), t('Reading log: {count} rows not imported (deselected)'))); }
+                if (d.checkouts) { lines.push(this.plural(d.checkouts, t('Loans: {count} row not imported (deselected)'), t('Loans: {count} rows not imported (deselected)'))); }
+                if (d.valuation_history) { lines.push(this.plural(d.valuation_history, t('Valuation history: {count} row not imported (deselected)'), t('Valuation history: {count} rows not imported (deselected)'))); }
                 return lines;
             },
 
             driftedNote() {
                 var n = this.importResult && this.importResult.drifted;
-                return n ? this.plural(n, 'item') + ' changed between the preview and the import, and were left alone.' : '';
+                return n ? this.plural(n, t('{count} item changed between the preview and the import, and was left alone.'),
+                    t('{count} items changed between the preview and the import, and were left alone.')) : '';
             }
         };
     });
@@ -696,7 +701,7 @@ document.addEventListener('alpine:init', function () {
                 fetch('/api/settings/restore', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: new FormData(e.target) })
                     .then(r => r.json())
                     .then(d => { this.restoreResult = d; this.restoring = false; })
-                    .catch(() => { this.restoreResult = { error: 'Restore failed' }; this.restoring = false; });
+                    .catch(() => { this.restoreResult = { error: t('Restore failed') }; this.restoring = false; });
             }
         };
     });

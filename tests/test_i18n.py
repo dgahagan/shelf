@@ -289,6 +289,23 @@ def test_settings_library_tab_is_translated(admin_client):
         assert text in page, text
 
 
+def test_settings_features_tags_and_users_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/settings").text
+    for text in ("Essenziale", "Strumenti da collezionista", "Aggiungi utente", "Ancora nessun tag"):
+        assert text in page, text
+
+
+def test_settings_data_tab_is_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/settings").text
+    for text in ("Backup e ripristino", "Archivio portabile", "illeggibili senza <code>encryption.key</code>", '"Plus {list}.": "Inoltre: {list}."'):
+        assert text in page, text
+    assert admin_client.post("/api/import/csv", data={"mode": "bogus"}).json().get("error", "").startswith(("Modalità", "Nessun"))
+
+
 # --- German -----------------------------------------------------------------
 
 

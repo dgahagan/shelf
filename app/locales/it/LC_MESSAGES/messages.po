@@ -91,7 +91,8 @@ msgid "ISBN/UPC"
 msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
-#: app/templates/item_edit.html:83 app/templates/item_edit.html:390
+#: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
+#: app/templates/item_edit.html:390
 msgid "Tags"
 msgstr "Tag"
 
@@ -353,7 +354,7 @@ msgstr "Modalità negozio"
 msgid "An offline page for checking what you own while out shopping."
 msgstr "Una pagina offline per controllare cosa possiedi quando sei in negozio."
 
-#: app/features.py:195
+#: app/features.py:195 app/templates/fragments/settings/data.html:263
 msgid "Sharing"
 msgstr "Condivisione"
 
@@ -464,12 +465,37 @@ msgid "Watch series for newly announced volumes and send a daily digest."
 msgstr "Segui le serie per i nuovi volumi annunciati e invia un riepilogo giornaliero."
 
 #: app/features.py:362 app/templates/fragments/account_menu.html:94
+#: app/templates/fragments/settings/users.html:70
 msgid "API tokens"
 msgstr "Token API"
 
 #: app/features.py:363
 msgid "Read-only API tokens for dashboards and scripts, and the /api/v1 endpoints they read."
 msgstr "Token API di sola lettura per dashboard e script, e gli endpoint /api/v1 che leggono."
+
+#: app/features.py:374
+msgid "Minimal"
+msgstr "Essenziale"
+
+#: app/features.py:374
+msgid "Scan, catalogue and browse. Nothing optional."
+msgstr "Scansiona, cataloga e sfoglia. Niente di facoltativo."
+
+#: app/features.py:375
+msgid "Standard"
+msgstr "Standard"
+
+#: app/features.py:375
+msgid "The everyday extras for a home library."
+msgstr "Gli extra di tutti i giorni per una biblioteca di casa."
+
+#: app/features.py:377
+msgid "Everything"
+msgstr "Tutto"
+
+#: app/features.py:378
+msgid "Every feature, including sharing, valuation, photo intake and the integrations."
+msgstr "Ogni funzionalità, compresi condivisione, valutazione, acquisizione da foto e integrazioni."
 
 #: app/features.py:583 app/templates/feature_disabled.html:7
 #, python-format
@@ -857,6 +883,23 @@ msgstr "Nessun ISBN"
 msgid "No cover found"
 msgstr "Nessuna copertina trovata"
 
+#: app/routers/items_csv.py:102
+#, python-format
+msgid "Unknown import mode '%(mode)s' (use skip or update)"
+msgstr "Modalità di importazione sconosciuta '%(mode)s' (usa skip o update)"
+
+#: app/routers/items_csv.py:111 app/routers/settings.py:490
+msgid "No file uploaded"
+msgstr "Nessun file caricato"
+
+#: app/routers/items_csv.py:115
+msgid "File too large (max 50 MB)"
+msgstr "File troppo grande (massimo 50 MB)"
+
+#: app/routers/items_csv.py:124
+msgid "The file is not UTF-8 text. Re-export it as UTF-8 (in a spreadsheet app: Save As → CSV UTF-8) and upload it again."
+msgstr "Il file non è testo UTF-8. Esportalo di nuovo in UTF-8 (in un foglio di calcolo: Salva con nome → CSV UTF-8) e caricalo ancora."
+
 #: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:159
 #: app/routers/items_scan_modes.py:230 app/routers/scan_inventory.py:208
 #: app/templates/fragments/audit_report.html:81
@@ -1120,6 +1163,48 @@ msgstr "Notifica di prova inviata"
 #: app/routers/settings.py:446
 msgid "Send failed — check the URL and server logs"
 msgstr "Invio non riuscito: controlla l'URL e i log del server"
+
+#: app/routers/settings.py:495
+msgid "File too large (max 500 MB)"
+msgstr "File troppo grande (massimo 500 MB)"
+
+#: app/routers/settings.py:501
+msgid "This backup is encrypted — enter its passphrase"
+msgstr "Questo backup è criptato: inserisci la passphrase"
+
+#: app/routers/settings.py:528
+msgid "Database contains triggers — not allowed"
+msgstr "Il database contiene trigger: non è consentito"
+
+#: app/routers/settings.py:537
+msgid "Database contains views — not allowed"
+msgstr "Il database contiene viste: non è consentito"
+
+#: app/routers/settings.py:547
+msgid "Database contains virtual tables — not allowed"
+msgstr "Il database contiene tabelle virtuali: non è consentito"
+
+#: app/routers/settings.py:554
+msgid "Database has attached databases — not allowed"
+msgstr "Il database ha database collegati: non è consentito"
+
+#: app/routers/settings.py:569
+#, python-format
+msgid "Not a valid Shelf database (missing tables: %(tables)s)"
+msgstr "Non è un database Shelf valido (tabelle mancanti: %(tables)s)"
+
+#: app/routers/settings.py:584
+#, python-format
+msgid "Incompatible schema: '%(table)s' table is missing columns: %(columns)s"
+msgstr "Schema incompatibile: alla tabella '%(table)s' mancano le colonne: %(columns)s"
+
+#: app/routers/settings.py:590
+msgid "Invalid database file — must be a valid Shelf SQLite database"
+msgstr "File di database non valido: deve essere un database SQLite di Shelf valido"
+
+#: app/routers/settings.py:644
+msgid "Database restored. All sessions invalidated. Restart the container to apply."
+msgstr "Database ripristinato. Tutte le sessioni sono state invalidate. Riavvia il container per applicarlo."
 
 #: app/routers/share.py:36
 msgid "Not found"
@@ -1608,7 +1693,7 @@ msgstr "Rimuovi tag"
 msgid "Delete Selected"
 msgstr "Elimina selezionati"
 
-#: app/templates/browse.html:111
+#: app/templates/browse.html:111 app/templates/fragments/settings/data.html:298
 #: app/templates/fragments/settings/library.html:11
 msgid "Collection"
 msgstr "Collezione"
@@ -1674,7 +1759,8 @@ msgstr "Posseduti"
 #: app/templates/browse.html:235
 #: app/templates/fragments/filter_counts_oob.html:28
 #: app/templates/fragments/item_card.html:7
-#: app/templates/fragments/item_row.html:51 app/templates/home.html:36
+#: app/templates/fragments/item_row.html:51
+#: app/templates/fragments/settings/data.html:297 app/templates/home.html:36
 #: app/templates/home.html:118 app/templates/item_detail.html:58
 #: app/templates/series.html:226 app/templates/series.html:303
 #: app/templates/stats.html:20
@@ -1871,6 +1957,7 @@ msgstr "e"
 
 #: app/templates/duplicates.html:89
 #: app/templates/fragments/scan_result.html:216
+#: app/templates/fragments/settings/data.html:334
 #: app/templates/fragments/trash_list.html:83
 #: app/templates/fragments/trash_list.html:130
 msgid "Restore"
@@ -2416,6 +2503,7 @@ msgstr "in prestito"
 #: app/templates/fragments/item_copies.html:90
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/settings/library.html:134
+#: app/templates/fragments/settings/tags.html:29
 #: app/templates/item_detail.html:309
 msgid "Edit"
 msgstr "Modifica"
@@ -2424,6 +2512,8 @@ msgstr "Modifica"
 msgid "Add another like this"
 msgstr "Aggiungine un altro simile"
 
+#: app/templates/fragments/settings/tags.html:24
+#: app/templates/fragments/settings/users.html:33
 #: app/templates/item_detail.html:318
 msgid "Delete"
 msgstr "Elimina"
@@ -2832,7 +2922,8 @@ msgstr "Accedi"
 msgid "Sign in to your library"
 msgstr "Accedi alla tua biblioteca"
 
-#: app/templates/fragments/account_menu.html:100 app/templates/login.html:24
+#: app/templates/fragments/account_menu.html:100
+#: app/templates/fragments/settings/users.html:44 app/templates/login.html:24
 #: app/templates/setup.html:27
 msgid "Username"
 msgstr "Nome utente"
@@ -3857,6 +3948,8 @@ msgid "last used"
 msgstr "ultimo uso"
 
 #: app/templates/fragments/account_menu.html:204
+#: app/templates/fragments/settings/data.html:285
+#: app/templates/fragments/settings/users.html:90
 msgid "Revoke"
 msgstr "Revoca"
 
@@ -4966,6 +5059,385 @@ msgstr[1] "%(num)s elementi sono nel cestino da più del periodo di conservazion
 msgid "Review expired items"
 msgstr "Rivedi gli elementi scaduti"
 
+#: app/templates/fragments/settings/data.html:12
+msgid "Maintenance"
+msgstr "Manutenzione"
+
+#: app/templates/fragments/settings/data.html:18
+msgid "Retry Missing Covers"
+msgstr "Riprova le copertine mancanti"
+
+#: app/templates/fragments/settings/data.html:19
+msgid "Retrying..."
+msgstr "Nuovo tentativo..."
+
+#: app/templates/fragments/settings/data.html:41
+#: app/templates/fragments/settings/data.html:117
+msgid "Found:"
+msgstr "Trovate:"
+
+#: app/templates/fragments/settings/data.html:41
+#: app/templates/fragments/settings/data.html:117
+msgid ", Failed:"
+msgstr ", non riuscite:"
+
+#: app/templates/fragments/settings/data.html:42
+#: app/templates/fragments/settings/data.html:118
+msgid "of"
+msgstr "su"
+
+#: app/templates/fragments/settings/data.html:42
+#: app/templates/fragments/settings/data.html:118
+msgid "items"
+msgstr "elementi"
+
+#: app/templates/fragments/settings/data.html:49
+#, python-format
+msgid "%(num)s cover lookup queued"
+msgid_plural "%(num)s cover lookups queued"
+msgstr[0] "%(num)s ricerca di copertina in coda"
+msgstr[1] "%(num)s ricerche di copertina in coda"
+
+#: app/templates/fragments/settings/data.html:50
+#, python-format
+msgid "%(n)s gave up since startup"
+msgstr "%(n)s abbandonate dall'avvio"
+
+#: app/templates/fragments/settings/data.html:51
+#, python-format
+msgid "%(num)s item without a cover"
+msgid_plural "%(num)s items without a cover"
+msgstr[0] "%(num)s elemento senza copertina"
+msgstr[1] "%(num)s elementi senza copertina"
+
+#: app/templates/fragments/settings/data.html:85
+#, python-format
+msgid "Review covers needing attention (%(n)s)"
+msgstr "Rivedi le copertine da sistemare (%(n)s)"
+
+#: app/templates/fragments/settings/data.html:93
+msgid "Fetch Missing Synopses"
+msgstr "Recupera le sinossi mancanti"
+
+#: app/templates/fragments/settings/data.html:94
+msgid "Fetching..."
+msgstr "Recupero in corso..."
+
+#: app/templates/fragments/settings/data.html:96
+msgid "Looks up descriptions for books, ebooks, and audiobooks that don't have one (Google Books + Open Library)."
+msgstr "Cerca le descrizioni per libri, ebook e audiolibri che non ne hanno una (Google Books + Open Library)."
+
+#: app/templates/fragments/settings/data.html:144
+msgid "Import / Export"
+msgstr "Importazione / Esportazione"
+
+#: app/templates/fragments/settings/data.html:149
+msgid "Export CSV"
+msgstr "Esporta CSV"
+
+#: app/templates/fragments/settings/data.html:154
+msgid "Import items from a CSV file (columns: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)"
+msgstr "Importa elementi da un file CSV (colonne: title, authors, isbn, media_type, publisher, publish_year, page_count, series_name)"
+
+#: app/templates/fragments/settings/data.html:155
+msgid "<strong class=\"text-shelf-text\">Goodreads</strong>, <strong class=\"text-shelf-text\">StoryGraph</strong>, <strong class=\"text-shelf-text\">LibraryThing</strong> and <strong class=\"text-shelf-text\">Libib</strong> library exports, and <strong class=\"text-shelf-text\">Audible (audible-cli or Libation)</strong> exports, are detected automatically — reading status, dates, and owned/wishlist flags are mapped for you."
+msgstr "Le esportazioni di <strong class=\"text-shelf-text\">Goodreads</strong>, <strong class=\"text-shelf-text\">StoryGraph</strong>, <strong class=\"text-shelf-text\">LibraryThing</strong> e <strong class=\"text-shelf-text\">Libib</strong>, e quelle di <strong class=\"text-shelf-text\">Audible (audible-cli o Libation)</strong>, vengono riconosciute automaticamente: stato di lettura, date e indicatori posseduto/lista desideri vengono convertiti per te."
+
+#: app/templates/fragments/settings/data.html:160
+#: app/templates/fragments/settings/data.html:370
+msgid "Skip duplicates"
+msgstr "Salta i duplicati"
+
+#: app/templates/fragments/settings/data.html:161
+#: app/templates/fragments/settings/data.html:371
+msgid "Update duplicates"
+msgstr "Aggiorna i duplicati"
+
+#: app/templates/fragments/settings/data.html:165
+msgid "Import"
+msgstr "Importa"
+
+#: app/templates/fragments/settings/data.html:166
+#: app/templates/fragments/settings/data.html:443
+msgid "Importing..."
+msgstr "Importazione in corso..."
+
+#: app/templates/fragments/settings/data.html:172
+msgid "Fetch covers after import"
+msgstr "Recupera le copertine dopo l'importazione"
+
+#: app/templates/fragments/settings/data.html:176
+msgid "Import \"to read\" books as wishlist"
+msgstr "Importa i libri \"da leggere\" nella lista desideri"
+
+#: app/templates/fragments/settings/data.html:188
+#: app/templates/fragments/settings/data.html:191
+#: app/templates/fragments/settings/data.html:194
+#: app/templates/fragments/settings/data.html:197
+msgid "Detected"
+msgstr "Riconosciuta esportazione"
+
+#: app/templates/fragments/settings/data.html:188
+#: app/templates/fragments/settings/data.html:191
+#: app/templates/fragments/settings/data.html:194
+#: app/templates/fragments/settings/data.html:197
+msgid "export ·"
+msgstr "·"
+
+#: app/templates/fragments/settings/data.html:200
+msgid "Beta"
+msgstr "Beta"
+
+#: app/templates/fragments/settings/data.html:200
+msgid "— built from the documented export format — if a row imports wrongly, <a href=\"https://github.com/dgahagan/shelf/issues/new/choose\" target=\"_blank\" rel=\"noopener\" class=\"text-shelf-accent2 hover:underline\">open an issue</a> with your file's header row. ·"
+msgstr "(costruita sul formato di esportazione documentato: se una riga viene importata male, <a href=\"https://github.com/dgahagan/shelf/issues/new/choose\" target=\"_blank\" rel=\"noopener\" class=\"text-shelf-accent2 hover:underline\">apri una segnalazione</a> con la riga di intestazione del tuo file) ·"
+
+#: app/templates/fragments/settings/data.html:202
+#: app/templates/fragments/settings/data.html:460
+msgid "Imported:"
+msgstr "Importati:"
+
+#: app/templates/fragments/settings/data.html:202
+#: app/templates/fragments/settings/data.html:460
+msgid ", Skipped:"
+msgstr ", saltati:"
+
+#: app/templates/fragments/settings/data.html:204
+msgid ", Restored:"
+msgstr ", ripristinati:"
+
+#: app/templates/fragments/settings/data.html:210
+msgid ", To Trash:"
+msgstr ", nel cestino:"
+
+#: app/templates/fragments/settings/data.html:213
+msgid "· Fetching"
+msgstr "· Recupero di"
+
+#: app/templates/fragments/settings/data.html:213
+msgid "covers in background"
+msgstr "copertine in background"
+
+#: app/templates/fragments/settings/data.html:216
+#: app/templates/fragments/settings/data.html:474
+msgid "· Errors:"
+msgstr "· Errori:"
+
+#: app/templates/fragments/settings/data.html:229
+msgid "Created locations:"
+msgstr "Posizioni create:"
+
+#: app/templates/fragments/settings/data.html:246
+msgid "Not imported:"
+msgstr "Non importati:"
+
+#: app/templates/fragments/settings/data.html:249
+msgid "(items already in Shelf)"
+msgstr "(elementi già in Shelf)"
+
+#: app/templates/fragments/settings/data.html:249
+msgid "(game platform)"
+msgstr "(piattaforma di gioco)"
+
+#: app/templates/fragments/settings/data.html:265
+msgid "Public read-only links to your wishlist (for gift ideas) or collection. Anyone with the link can view titles, authors, and covers — never locations, loans, or values. Revoke a link at any time."
+msgstr "Link pubblici in sola lettura alla lista desideri (per idee regalo) o alla collezione. Chiunque abbia il link vede titoli, autori e copertine, mai posizioni, prestiti o valutazioni. Puoi revocare un link in qualsiasi momento."
+
+#: app/templates/fragments/settings/data.html:272
+msgid "Untitled link"
+msgstr "Link senza nome"
+
+#: app/templates/fragments/settings/data.html:279
+msgid "Copy link"
+msgstr "Copia il link"
+
+#: app/templates/fragments/settings/data.html:280
+msgid "Copied!"
+msgstr "Copiato!"
+
+#: app/templates/fragments/settings/data.html:283
+msgid "Open"
+msgstr "Apri"
+
+#: app/templates/fragments/settings/data.html:303
+msgid "Create Link"
+msgstr "Crea un link"
+
+#: app/templates/fragments/settings/data.html:311
+msgid "Backup &amp; Restore"
+msgstr "Backup e ripristino"
+
+#: app/templates/fragments/settings/data.html:316
+msgid "Passphrase (optional — encrypts the backup)"
+msgstr "Passphrase (facoltativa, cifra il backup)"
+
+#: app/templates/fragments/settings/data.html:319
+msgid "Download Backup"
+msgstr "Scarica il backup"
+
+#: app/templates/fragments/settings/data.html:322
+msgid "Downloads a copy of the SQLite database. With a passphrase, the file is AES-encrypted (.db.enc) — safe to store off-site, but unrecoverable without the passphrase."
+msgstr "Scarica una copia del database SQLite. Con una passphrase il file è cifrato AES (.db.enc): sicuro da conservare altrove, ma irrecuperabile senza la passphrase."
+
+#: app/templates/fragments/settings/data.html:323
+msgid "Without a passphrase the file is your database as-is: items, users’ password hashes, encrypted credentials and the recent application log — but no key material, so stored credentials stay unreadable without <code>encryption.key</code>."
+msgstr "Senza passphrase il file è il database così com'è: elementi, hash delle password degli utenti, credenziali cifrate e il log recente dell'applicazione, ma nessuna chiave, quindi le credenziali salvate restano illeggibili senza <code>encryption.key</code>."
+
+#: app/templates/fragments/settings/data.html:330
+msgid "Passphrase (if encrypted)"
+msgstr "Passphrase (se cifrato)"
+
+#: app/templates/fragments/settings/data.html:335
+msgid "Restoring..."
+msgstr "Ripristino in corso..."
+
+#: app/templates/fragments/settings/data.html:353
+msgid "Portable archive"
+msgstr "Archivio portabile"
+
+#: app/templates/fragments/settings/data.html:354
+msgid "For moving between instances or apps; no credentials included."
+msgstr "Per spostarsi tra istanze o app; nessuna credenziale inclusa."
+
+#: app/templates/fragments/settings/data.html:358
+msgid "Export Archive"
+msgstr "Esporta l'archivio"
+
+#: app/templates/fragments/settings/data.html:363
+msgid "Import a portable archive (.zip) exported from another Shelf instance, including covers. Nothing is written until you confirm the preview."
+msgstr "Importa un archivio portabile (.zip) esportato da un'altra istanza di Shelf, copertine comprese. Non viene scritto nulla finché non confermi l'anteprima."
+
+#: app/templates/fragments/settings/data.html:375
+msgid "Preview import"
+msgstr "Anteprima dell'importazione"
+
+#: app/templates/fragments/settings/data.html:376
+msgid "Reading archive..."
+msgstr "Lettura dell'archivio..."
+
+#: app/templates/fragments/settings/data.html:389
+msgid "This archive holds"
+msgstr "Questo archivio contiene"
+
+#: app/templates/fragments/settings/data.html:389
+msgid "items —"
+msgstr "elementi:"
+
+#: app/templates/fragments/settings/data.html:393
+msgid "Duplicate matching:"
+msgstr "Confronto dei duplicati:"
+
+#: app/templates/fragments/settings/data.html:393
+msgid ". Title/author matches are a heuristic."
+msgstr ". Le corrispondenze per titolo/autore sono una stima."
+
+#: app/templates/fragments/settings/data.html:397
+msgid "item(s) can't be imported and will be skipped."
+msgstr "elementi non si possono importare e verranno saltati."
+
+#: app/templates/fragments/settings/data.html:402
+msgid "Include"
+msgstr "Includi"
+
+#: app/templates/fragments/settings/data.html:409
+msgid "Update"
+msgstr "Aggiorna"
+
+#: app/templates/fragments/settings/data.html:409
+msgid "matched items"
+msgstr "elementi corrispondenti"
+
+#: app/templates/fragments/settings/data.html:413
+msgid "covers (only for items without one)"
+msgstr "copertine (solo per elementi che non ne hanno)"
+
+#: app/templates/fragments/settings/data.html:421
+msgid "reading-log entries"
+msgstr "voci del registro di lettura"
+
+#: app/templates/fragments/settings/data.html:425
+msgid "loans"
+msgstr "prestiti"
+
+#: app/templates/fragments/settings/data.html:432
+msgid "items already in your library are skipped either way."
+msgstr "elementi già nella tua biblioteca vengono saltati in ogni caso."
+
+#: app/templates/fragments/settings/data.html:435
+msgid "items in your Trash will be restored — they keep their own details, copies and history."
+msgstr "elementi nel cestino verranno ripristinati, con i loro dettagli, copie e storico."
+
+#: app/templates/fragments/settings/data.html:447
+#: app/templates/fragments/settings/data.html:493
+msgid "Start over"
+msgstr "Ricomincia"
+
+#: app/templates/fragments/settings/data.html:460
+msgid ", Updated:"
+msgstr ", aggiornati:"
+
+#: app/templates/fragments/settings/data.html:462
+msgid "· Restored:"
+msgstr "· Ripristinati:"
+
+#: app/templates/fragments/settings/data.html:465
+msgid "· To Trash:"
+msgstr "· Nel cestino:"
+
+#: app/templates/fragments/settings/data.html:468
+msgid "· Covers installed:"
+msgstr "· Copertine installate:"
+
+#: app/templates/fragments/settings/data.html:471
+msgid "· Covers replaced:"
+msgstr "· Copertine sostituite:"
+
+#: app/templates/fragments/settings/feature_off_note.html:15
+#: app/templates/fragments/settings/library.html:81
+msgid "Turned off in Features —"
+msgstr "Disattivata in Funzionalità:"
+
+#: app/templates/fragments/settings/feature_off_note.html:16
+#: app/templates/fragments/settings/features.html:10
+#: app/templates/fragments/settings/library.html:84
+#: app/templates/fragments/settings/sidebar.html:30
+msgid "Features"
+msgstr "Funzionalità"
+
+#: app/templates/fragments/settings/features.html:11
+msgid "Turn optional parts of Shelf on or off. A feature that is off hides its tab, refuses its pages and actions, and pauses its background job. Its data is kept, and turning it back on shows everything again. To hide a tab without turning its feature off, use Navigation under Library."
+msgstr "Attiva o disattiva le parti facoltative di Shelf. Una funzionalità disattivata nasconde la sua scheda, rifiuta le sue pagine e azioni e mette in pausa le sue attività in background. I suoi dati restano, e riattivandola torna tutto com'era. Per nascondere una scheda senza disattivare la funzionalità, usa Navigazione in Biblioteca."
+
+#: app/templates/fragments/settings/features.html:20
+msgid "Apply a profile to set every feature below at once."
+msgstr "Applica un profilo per impostare insieme tutte le funzionalità qui sotto."
+
+#: app/templates/fragments/settings/features.html:36
+#, python-format
+msgid "Turns on: %(features)s"
+msgstr "Attiva: %(features)s"
+
+#: app/templates/fragments/settings/features.html:39
+#, python-format
+msgid "Turns off: %(features)s"
+msgstr "Disattiva: %(features)s"
+
+#: app/templates/fragments/settings/features.html:51
+msgid "Custom — the switches below match none of these."
+msgstr "Personalizzato: gli interruttori qui sotto non corrispondono a nessuno di questi."
+
+#: app/templates/fragments/settings/features.html:61
+msgid "On"
+msgstr "Attiva"
+
+#: app/templates/fragments/settings/features.html:63
+msgid "Off"
+msgstr "Disattiva"
+
+#: app/templates/fragments/settings/features.html:68
+msgid "Needs setup — configure it under Integrations before it can do anything."
+msgstr "Da configurare: impostala in Integrazioni prima che possa fare qualcosa."
+
 #: app/templates/fragments/settings/library.html:12
 #, python-format
 msgid "%(num)s item in your library"
@@ -5000,15 +5472,6 @@ msgstr "Scegli quali schede mostrare nella barra di navigazione. Sfoglia e Impos
 #: app/templates/fragments/settings/library.html:65
 msgid "Show in navigation"
 msgstr "Mostra nella navigazione"
-
-#: app/templates/fragments/settings/library.html:81
-msgid "Turned off in Features —"
-msgstr "Disattivata in Funzionalità:"
-
-#: app/templates/fragments/settings/library.html:84
-#: app/templates/fragments/settings/sidebar.html:30
-msgid "Features"
-msgstr "Funzionalità"
 
 #: app/templates/fragments/settings/library.html:88
 #, python-format
@@ -5050,6 +5513,7 @@ msgid "Remove"
 msgstr "Rimuovi"
 
 #: app/templates/fragments/settings/library.html:137
+#: app/templates/fragments/settings/tags.html:32
 msgid "Name"
 msgstr "Nome"
 
@@ -5274,6 +5738,7 @@ msgid "Import, export, backups and maintenance."
 msgstr "Importazione, esportazione, backup e manutenzione."
 
 #: app/templates/fragments/settings/sidebar.html:24
+#: app/templates/fragments/settings/users.html:13
 msgid "Users"
 msgstr "Utenti"
 
@@ -5284,4 +5749,82 @@ msgstr "Account, ruoli e accessi."
 #: app/templates/fragments/settings/sidebar.html:31
 msgid "Turn optional parts of Shelf on or off."
 msgstr "Attiva o disattiva le parti facoltative di Shelf."
+
+#: app/templates/fragments/settings/tags.html:7
+msgid "A tag is created by applying it to an item — nothing here creates one. Scoping a tag to a type only narrows suggestions elsewhere; it never removes the tag from an item outside that type."
+msgstr "Un tag nasce quando lo applichi a un elemento: qui non se ne creano. Limitare un tag a un tipo restringe solo i suggerimenti altrove; non toglie mai il tag da un elemento di un altro tipo."
+
+#: app/templates/fragments/settings/tags.html:16
+#, python-format
+msgid "%(n)s active item(s)"
+msgstr "Elementi attivi: %(n)s"
+
+#: app/templates/fragments/settings/tags.html:18
+#, python-format
+msgid "%(n)s outside %(type)s"
+msgstr "%(n)s fuori da %(type)s"
+
+#: app/templates/fragments/settings/tags.html:37
+msgid "Scope"
+msgstr "Ambito"
+
+#: app/templates/fragments/settings/tags.html:40
+msgid "All types"
+msgstr "Tutti i tipi"
+
+#: app/templates/fragments/settings/tags.html:47
+msgid "Save tag"
+msgstr "Salva il tag"
+
+#: app/templates/fragments/settings/tags.html:55
+msgid "No tags yet. Add one to an item, or from the Browse bulk bar."
+msgstr "Ancora nessun tag. Aggiungine uno a un elemento o dalla barra delle azioni in blocco di Sfoglia."
+
+#: app/templates/fragments/settings/users.html:25
+#: app/templates/fragments/settings/users.html:54
+msgid "Admin"
+msgstr "Amministratore"
+
+#: app/templates/fragments/settings/users.html:26
+#: app/templates/fragments/settings/users.html:53
+msgid "Editor"
+msgstr "Editor"
+
+#: app/templates/fragments/settings/users.html:27
+#: app/templates/fragments/settings/users.html:52
+msgid "Viewer"
+msgstr "Visualizzatore"
+
+#: app/templates/fragments/settings/users.html:29
+msgid "Reset password"
+msgstr "Reimposta la password"
+
+#: app/templates/fragments/settings/users.html:30
+msgid "Reset PW"
+msgstr "Reimposta PW"
+
+#: app/templates/fragments/settings/users.html:32
+msgid "Delete user"
+msgstr "Elimina l'utente"
+
+#: app/templates/fragments/settings/users.html:37
+msgid "No users found."
+msgstr "Nessun utente trovato."
+
+#: app/templates/fragments/settings/users.html:42
+#: app/templates/fragments/settings/users.html:59
+msgid "Add User"
+msgstr "Aggiungi utente"
+
+#: app/templates/fragments/settings/users.html:46
+msgid "Display Name (optional)"
+msgstr "Nome visualizzato (facoltativo)"
+
+#: app/templates/fragments/settings/users.html:48
+msgid "Password (min 8 chars)"
+msgstr "Password (minimo 8 caratteri)"
+
+#: app/templates/fragments/settings/users.html:77
+msgid "No API tokens yet."
+msgstr "Ancora nessun token API."
 

@@ -371,11 +371,11 @@ FEATURES: dict[str, Feature] = {
 # one-line description). Custom is not a member: it is what "no profile's set
 # matches the enabled set" means (see current_profile).
 PROFILES: dict[str, tuple[str, str]] = {
-    "minimal": ("Minimal", "Scan, catalogue and browse. Nothing optional."),
-    "standard": ("Standard", "The everyday extras for a home library."),
+    "minimal": (N_("Minimal"), N_("Scan, catalogue and browse. Nothing optional.")),
+    "standard": (N_("Standard"), N_("The everyday extras for a home library.")),
     "everything": (
-        "Everything",
-        "Every feature, including sharing, valuation, photo intake and the integrations.",
+        N_("Everything"),
+        N_("Every feature, including sharing, valuation, photo intake and the integrations."),
     ),
 }
 
@@ -509,8 +509,8 @@ def profile_choices() -> list[dict]:
     for name, (label, description) in PROFILES.items():
         keys = profile_keys(name)
         added = keys - previous
-        adds = [f.label for key, f in FEATURES.items() if key in added]
-        choices.append({"name": name, "label": label, "description": description, "adds": adds})
+        adds = [i18n.gettext(f.label) for key, f in FEATURES.items() if key in added]
+        choices.append({"name": name, "label": i18n.gettext(label), "description": i18n.gettext(description), "adds": adds})
         previous = keys
     return choices
 
@@ -572,8 +572,8 @@ def profile_rows(rows: list[dict]) -> list[dict]:
         out.append({
             **choice,
             "current": enabled == keys,
-            "turns_on": [r["label"] for r in rows if not r["enabled"] and r["key"] in keys],
-            "turns_off": [r["label"] for r in rows if r["enabled"] and r["key"] not in keys],
+            "turns_on": [i18n.gettext(label) for label in (r["label"] for r in rows if not r["enabled"] and r["key"] in keys)],
+            "turns_off": [i18n.gettext(label) for label in (r["label"] for r in rows if r["enabled"] and r["key"] not in keys)],
             "confirm": _confirm_text(phrases, f"Apply {choice['label']} anyway?"),
         })
     return out
