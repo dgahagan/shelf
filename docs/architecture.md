@@ -1333,7 +1333,8 @@ CSP-safe pattern as Browse's filter config. Catalogs live in
 are committed so the image needs no Babel. `make i18n` extracts and compiles,
 and `make check-i18n` fails when a marked string is missing from a `.po` or a
 `.mo` is stale. Each user picks a language in the Account dialog (any role);
-"Automatic" stores NULL and follows the browser.
+"Automatic" stores NULL and follows the browser, and a browser that names
+no language Shelf has falls to `SHELF_DEFAULT_LANGUAGE` (else English).
 
 Jinja2 templates; HTMX for partial updates (Browse pagination, filter
 counts via out-of-band swaps, scan results); Alpine.js **CSP build** for

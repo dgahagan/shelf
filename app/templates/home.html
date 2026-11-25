@@ -63,7 +63,7 @@
                 {% for row in media_types %}
                 <a href="/browse?media_type_filter={{ row.media_type }}" class="block">
                     <div class="flex justify-between text-sm mb-1">
-                        <span>{{ media_type_labels.get(row.media_type, row.media_type) }}</span>
+                        <span>{{ _(media_type_labels.get(row.media_type, row.media_type)) }}</span>
                         <span class="text-shelf-muted">{{ row.item_count }}</span>
                     </div>
                     <div class="w-full bg-shelf-bg rounded-full h-2">
@@ -128,7 +128,7 @@
                 </div>
                 <div class="mt-2">
                     <p class="text-sm font-medium truncate">{{ item.title }}</p>
-                    <p class="text-xs text-shelf-muted truncate">{% if item.authors %}{{ item.authors }} · {% endif %}{{ media_type_labels.get(item.media_type, item.media_type) }}</p>
+                    <p class="text-xs text-shelf-muted truncate">{% if item.authors %}{{ item.authors }} · {% endif %}{{ _(media_type_labels.get(item.media_type, item.media_type)) }}</p>
                 </div>
             </a>
             {% endfor %}
