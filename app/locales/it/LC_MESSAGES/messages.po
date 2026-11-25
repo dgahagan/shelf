@@ -4604,7 +4604,98 @@ msgstr "Finito: %(date)s"
 msgid "%(status)s %(count)s times"
 msgstr "%(status)s %(count)s volte"
 
-#: app/templates/fragments/recent_scans.html:30
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:326
+msgid "added"
+msgstr "aggiunto"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:312
+msgid "wishlisted"
+msgstr "in lista desideri"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:327
+msgid "duplicate"
+msgstr "duplicato"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "promoted"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:311
+msgid "restored"
+msgstr "ripristinato"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "checked_out"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:315
+msgid "returned"
+msgstr "restituito"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:316
+msgid "moved"
+msgstr "spostato"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:317
+msgid "confirmed"
+msgstr "confermato"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:318
+msgid "relocated"
+msgstr "ricollocato"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:320
+msgid "found"
+msgstr "trovato"
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:319
+msgid "elsewhere"
+msgstr "altrove"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "marked_read"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "not_found"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "not_owned"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "already_checked_out"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "not_checked_out"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "in_trash"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:2
+#: app/templates/fragments/scan_result.html:328
+msgid "error"
+msgstr "errore"
+
+#: app/templates/fragments/recent_scans.html:2
+msgid "periodical_confirm"
+msgstr ""
+
+#: app/templates/fragments/recent_scans.html:32
 msgid "No recent activity for this mode."
 msgstr "Nessuna attività recente per questa modalità."
 
@@ -4811,14 +4902,6 @@ msgstr "Aggiunto solo con il titolo: Shelf non ha ancora una fonte di dati per q
 msgid "Added with title only &mdash; no %(provider)s match for this barcode."
 msgstr "Aggiunto solo con il titolo: nessuna corrispondenza su %(provider)s per questo codice a barre."
 
-#: app/templates/fragments/scan_result.html:311
-msgid "restored"
-msgstr "ripristinato"
-
-#: app/templates/fragments/scan_result.html:312
-msgid "wishlisted"
-msgstr "in lista desideri"
-
 #: app/templates/fragments/scan_result.html:313
 msgid "owned"
 msgstr "posseduto"
@@ -4826,30 +4909,6 @@ msgstr "posseduto"
 #: app/templates/fragments/scan_result.html:314
 msgid "lent"
 msgstr "prestato"
-
-#: app/templates/fragments/scan_result.html:315
-msgid "returned"
-msgstr "restituito"
-
-#: app/templates/fragments/scan_result.html:316
-msgid "moved"
-msgstr "spostato"
-
-#: app/templates/fragments/scan_result.html:317
-msgid "confirmed"
-msgstr "confermato"
-
-#: app/templates/fragments/scan_result.html:318
-msgid "relocated"
-msgstr "ricollocato"
-
-#: app/templates/fragments/scan_result.html:319
-msgid "elsewhere"
-msgstr "altrove"
-
-#: app/templates/fragments/scan_result.html:320
-msgid "found"
-msgstr "trovato"
 
 #: app/templates/fragments/scan_result.html:323
 msgid "already lent"
@@ -4862,18 +4921,6 @@ msgstr "non in prestito"
 #: app/templates/fragments/scan_result.html:325
 msgid "in Trash"
 msgstr "nel cestino"
-
-#: app/templates/fragments/scan_result.html:326
-msgid "added"
-msgstr "aggiunto"
-
-#: app/templates/fragments/scan_result.html:327
-msgid "duplicate"
-msgstr "duplicato"
-
-#: app/templates/fragments/scan_result.html:328
-msgid "error"
-msgstr "errore"
 
 #: app/templates/fragments/search_status_notice.html:22
 #, python-format

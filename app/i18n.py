@@ -18,12 +18,12 @@ from functools import lru_cache
 from pathlib import Path
 
 # Locale identifiers in gettext's directory form: `it`, `zh_Hans`, `pt_BR`.
-SUPPORTED = ("en", "it", "zh_Hans")
+SUPPORTED = ("en", "de", "it", "zh_Hans")
 DEFAULT = "en"
 LOCALE_DIR = Path(__file__).parent / "locales"
 # Each language named in itself, so a reader who can't read the current UI
 # can still find their own in the picker.
-LANGUAGE_NAMES = {"en": "English", "it": "Italiano", "zh_Hans": "简体中文"}
+LANGUAGE_NAMES = {"en": "English", "de": "Deutsch", "it": "Italiano", "zh_Hans": "简体中文"}
 # Regions that stand for a script, which no rule can derive (only Chinese).
 ALIASES = {"zh_TW": "zh_Hant", "zh_HK": "zh_Hant", "zh_MO": "zh_Hant",
            "zh_CN": "zh_Hans", "zh_SG": "zh_Hans"}
@@ -89,7 +89,16 @@ def resolve(user_language: str | None, accept_language: str | None) -> str:
                     q = 0.0
         if (locale := match(tag)) and q > 0:
             ranked.append((-q, position, locale))
-    return min(ranked)[2] if ranked else DEFAULT
+    return min(ranked)[2] if ranked else default_locale()
+
+
+def default_locale() -> str:
+    """The fallback when neither the user nor the browser names a language.
+
+    `SHELF_DEFAULT_LANGUAGE` (e.g. `de`), else English. Read per call so a
+    test can set it; an unsupported value falls back to English.
+    """
+    return match(os.environ.get("SHELF_DEFAULT_LANGUAGE")) or DEFAULT
 
 
 @lru_cache(maxsize=None)

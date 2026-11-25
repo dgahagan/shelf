@@ -6,6 +6,55 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.83.0] - 2026-11-25
+
+The Docker image had no health check, though Shelf has had a `/health`
+endpoint for exactly that purpose. `docker ps` showed only `Up`, so a container
+whose server had hung, or whose database would not open, looked the same as a
+working one to Compose, Portainer and uptime monitors. The image now checks
+itself.
+
+### Added
+
+- **The Docker image reports its health.** Every 30 seconds it asks `/health`,
+  which opens the database. Three failures in a row mark the container
+  `unhealthy` in `docker ps`, and Compose `depends_on: condition:
+  service_healthy` can now wait for it. The check follows `SHELF_TLS` and
+  `SHELF_PORT` on its own, so nothing needs configuring. It talks to Shelf
+  directly inside the container, so an `HTTP_PROXY` set for outbound lookups
+  does not affect it. A Compose `healthcheck:` block changes or disables it. Docker does not restart a
+  container for being unhealthy. Nothing changes for an existing install
+  beyond the new status.
+
+### Changed
+
+- **Passing health checks leave no line in the container log.** A check every
+  30 seconds would otherwise add almost 3,000 lines a day. A failing check
+  still logs its `GET /health` 503, and so does every other request.
+
+## [0.82.3] - 2026-11-24
+
+The Docker image was built on `python:3.12-slim` by tag, and a tag is a
+pointer its publisher can move. Two builds of the same Shelf release could
+therefore sit on different operating-system and Python layers, and nothing
+recorded which one shipped. Every other input to the published image was
+already pinned. This release pins the base too, so a Shelf version names
+exactly one image.
+
+### Changed
+
+- **The Docker image builds from a base image pinned by digest.** The
+  `python:3.12-slim` tag stays in the Dockerfile as a label; the digest is
+  what Docker uses. It covers every platform the image is published for. The
+  pin does not stop security updates: each release checks it against the
+  tag's current image and moves it forward first, so a release still ships
+  the newest base. Nothing changes for an existing install.
+- **Two new `make` targets for contributors building the image themselves.**
+  `make pin-base` moves the pin to the tag's current image, and
+  `make check-base-image` fails when the pin is out of date. The check needs
+  Docker Hub, so it runs before a release, not on pull requests. The
+  pull-request checklist names the checks a contributor should run.
+
 ## [0.82.2] - 2026-11-24
 
 Scanning a video game often filed the wrong game. Shelf sent IGDB the
@@ -6028,6 +6077,8 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.83.0]: https://github.com/dgahagan/shelf/releases/tag/v0.83.0
+[0.82.3]: https://github.com/dgahagan/shelf/releases/tag/v0.82.3
 [0.82.2]: https://github.com/dgahagan/shelf/releases/tag/v0.82.2
 [0.82.1]: https://github.com/dgahagan/shelf/releases/tag/v0.82.1
 [0.82.0]: https://github.com/dgahagan/shelf/releases/tag/v0.82.0

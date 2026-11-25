@@ -9,6 +9,10 @@ password in that URL, so the trace and the secret were the same line and both
 had to go. Shelf's own log lines are unaffected; a failed lookup or
 notification still names what it was talking to, by scheme and host.
 
+The container's own health check does not leave a line either while it passes.
+A failing check logs its `GET /health` 503. See
+[`docker ps` says `unhealthy`](#docker-ps-says-unhealthy).
+
 ## Browser says the connection isn't private
 
 Expected on first run — Shelf's certificate is self-signed. Click through,
@@ -298,6 +302,28 @@ Read the log. Common causes:
 
 A crash-loop right after an *upgrade* on an old database was a known bug
 fixed in 0.8.1 — upgrade to that or later and it heals itself.
+
+### `docker ps` says `unhealthy`
+
+The image checks its own health every 30 seconds. It asks Shelf's `/health`
+endpoint, which opens the database. Three failed checks in a row mark the
+container `unhealthy`. The usual causes are a database file Shelf cannot read,
+for example after copying `data/` in as another user, or a server that has
+stopped answering.
+
+Plain Docker does **not** restart a container because it is unhealthy. Only
+Swarm or a separate tool such as autoheal does. The status is there for you,
+for Compose `depends_on: condition: service_healthy`, and for monitors such as
+Uptime Kuma or Portainer.
+
+To see what the last checks returned:
+
+```bash
+docker inspect --format '{{json .State.Health}}' shelf
+```
+
+A failed check also leaves a `"GET /health HTTP/1.1" 503` line in the
+container log. Successful checks leave no line.
 
 ## Locked out
 

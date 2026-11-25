@@ -58,11 +58,13 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
 | `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges |
 | `make badges` | Restamp README's two test-count badges from `pytest --co` — CI runs this on the push to `main` (the `restamp` job below); run it locally to see your work, but **never commit the result in a pull request** |
-| `make checks` | All checks incl. `check-lock`, `check-lock-selftest`, `pip-audit` and licenses (network) |
+| `make checks` | All checks incl. `check-lock`, `check-lock-selftest`, `pip-audit`, licenses and `check-base-image` (network) |
 | `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
 | `make lock-upgrade` | The same, taking new versions of indirect dependencies |
 | `make check-lock` | Fail if a lock (versions or hashes) is not what `make lock` produces (network) |
 | `make check-lock-selftest` | Prove `check-lock` fails on an invented hash (network) |
+| `make pin-base` | Rewrite the Dockerfile's `python:3.12-slim` digest pin to the tag's current multi-arch digest (needs Docker Hub) |
+| `make check-base-image` | Fail if the Dockerfile's base-image digest is not the tag's current one; fix with `make pin-base` (needs Docker Hub) |
 | `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — run it after any template/JS change to see your work, **but leave the output out of a pull request** |
 
 Unit and E2E tests **cannot share one pytest invocation** — always use the
@@ -327,7 +329,8 @@ See [Architecture](architecture.md) for how the pieces fit.
 ## Submitting changes
 
 Read [CONTRIBUTING.md](../CONTRIBUTING.md). Short form: open an issue first
-for anything non-trivial, run `make test`, `make test-e2e` and `make checks`,
+for anything non-trivial, run `make test`, `make test-e2e` and
+`make checks-fast check-lock check-lock-selftest check-deps check-licenses`,
 and fill in the PR template. Run `make css` to see a template change rendered,
 but keep the generated output — `app.css`, `SW_VERSION`, the README badges —
 out of the pull request.

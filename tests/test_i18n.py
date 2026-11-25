@@ -27,7 +27,8 @@ def _i18n_on(monkeypatch):
     (None, "it;q=0.4,en;q=0.9", "en"),            # q-value beats position
     (None, "it;q=0", "en"),                       # q=0 means "not this one"
     (None, "it;level=1;q=0", "en"),               # q is read wherever it sits
-    (None, "de, *", "en"),
+    (None, "de, *", "de"),
+    (None, "nl, *", "en"),                        # an unsupported tag plus a wildcard falls back
     ("it", "en-US,en;q=0.9", "it"),               # the user's choice beats the browser
     ("xx", "it", "it"),                           # an unknown stored value falls through
     ("zh", None, "zh_Hans"),                      # a stored bare code still resolves
@@ -303,3 +304,66 @@ def test_settings_data_tab_is_translated(admin_client):
     for text in ("Backup e ripristino", "Archivio portabile", "illeggibili senza <code>encryption.key</code>", '"Plus {list}.": "Inoltre: {list}."'):
         assert text in page, text
     assert admin_client.post("/api/import/csv", data={"mode": "bogus"}).json().get("error", "").startswith(("Modalità", "Nessun"))
+
+
+# --- German -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize("env, header, expected", [
+    ("de", None, "de"),               # no browser hint: the configured default
+    ("de", "", "de"),
+    ("de", "it-IT,it;q=0.9", "it"),   # a supported browser language still wins
+    ("de", "fr-FR", "de"),            # an unsupported one falls to the default
+    ("xx", None, "en"),               # an unknown default is ignored
+    ("de-DE", None, "de"),            # a regional tag is matched like a header
+])
+def test_default_language_comes_from_the_environment(monkeypatch, env, header, expected):
+    monkeypatch.setenv("SHELF_DEFAULT_LANGUAGE", env)
+    assert i18n.resolve(None, header) == expected
+
+
+def test_german_is_offered_in_the_picker():
+    assert "de" in i18n.SUPPORTED
+    assert i18n.LANGUAGE_NAMES["de"] == "Deutsch"
+
+
+def test_home_and_scan_are_translated_into_german(admin_client, db):
+    _insert_item(db, title="Zelda", media_type="video_game", upc="045496590420")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "de"})
+
+    home = admin_client.get("/").text
+    assert '<html lang="de"' in home
+    for text in ("Sammlung ansehen", "Zuletzt hinzugefügt", "Videospiel", "Fehlende Cover"):
+        assert text in home, text
+
+    scan = admin_client.get("/scan").text
+    for text in ("Mit Kamera scannen", "Nach Titel suchen", "Videospiel"):
+        assert text in scan, text
+    assert '"Recently Added": "Zuletzt hinzugef\\u00fcgt"' in scan  # the results heading getter
+
+
+def test_scan_messages_are_translated_into_german(admin_client, db):
+    _insert_item(db, title="Buch", isbn="9780000000132")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "de"})
+    r = admin_client.post("/api/scan", data={"isbn": "9780000000132", "mode": "lend"})
+    assert "Keine Person ausgewählt" in r.text
+
+
+def test_settings_stats_and_trash_are_translated_into_german(admin_client):
+    admin_client.post("/api/account/language", data={"language": "de"})
+
+    settings = admin_client.get("/settings").text
+    for text in ("Orte", "US-Dollar", "Personen"):
+        assert text in settings, text
+    assert "Statistik der Sammlung" in admin_client.get("/stats").text
+    assert "Der Papierkorb ist leer." in admin_client.get("/trash").text
+
+
+def test_recent_scan_words_are_translated(admin_client, db):
+    db.execute("INSERT INTO scan_log (isbn, media_type, result) VALUES ('9780000000088', 'book', 'not_found')")
+    db.commit()
+    admin_client.post("/api/account/language", data={"language": "de"})
+    page = admin_client.get("/api/recent-scans").text
+    assert "nicht gefunden" in page and "not_found" not in page
