@@ -6650,6 +6650,33 @@ make --no-print-directory -s check-lock-selftest >/dev/null 2>&1 && echo "check:
 
 - **Status:** linted: `make check-lock` (self-tested by `make check-lock-selftest`, in `make checks` and CI's `test` job).
 
+## G160 — When `entrypoint.sh` decides whether a file in `data/certs/` is Shelf's to replace
+
+- **Rule:** provenance is the `cert.sha256` marker that Shelf writes when it
+  generates a certificate, never the certificate's name. A `CN=shelf` subject and
+  issuer prove nothing. Replace the live pair only through the temporary files
+  `.new-key.pem` and `.new-cert.pem`, after you have checked that the new
+  certificate parses and its public key matches the new key. A failed renewal
+  must leave `key.pem`, `cert.pem` and `cert.sha256` byte-for-byte unchanged.
+  That includes a failure after the first `mv`: copy all three to `.old-*` before
+  installing, and restore them if a later move or the marker write fails.
+- **Why:** anyone can make a self-signed `CN=shelf` certificate, so a name test
+  would overwrite a user's certificate and key. `openssl req` can rewrite
+  `-keyout` and then fail on `-out`, which leaves a key and certificate that
+  do not match. `-checkend` exits 1 for an unreadable file exactly as it does
+  for an expiring one, so parse the file first. Two separate moves leave a window
+  where the new key sits beside the old certificate; uvicorn then fails with
+  `KEY_VALUES_MISMATCH` while the log says the old certificate is still in use.
+- **Evidence:** `cert-renewal` plan review, codex R1 and R2, 2026-11-25. Built in
+  `6c4a517`. Install rollback: diff review codex B1, 2026-11-25. Live check: `archive/completed/plan-cert-renewal-probes/t2-live.txt`.
+- **Verify:**
+
+```bash
+python -m pytest tests/test_entrypoint.py -q -k "other_san_is_preserved or marker_mismatch or failed_renewal_keeps or unreadable or mismatched_new_keypair or restores_live_files" 2>&1 | tail -1
+```
+
+- **Status:** documented, and pinned by `tests/test_entrypoint.py`.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

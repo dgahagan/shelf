@@ -30,9 +30,24 @@ Download `data/certs/cert.pem` from the server and install it:
 - **Desktop** — import into the OS or browser trust store as a trusted root.
 
 Make sure `CERT_SAN` included the IP/hostname you actually type; a
-certificate trusted for `shelf` still warns for `192.168.1.100`. To
-regenerate: stop Shelf, delete `data/certs/`, set `CERT_SAN`, start again,
-then re-install the new cert on your devices.
+certificate trusted for `shelf` still warns for `192.168.1.100`. To fix it,
+change `CERT_SAN` and restart Shelf, then re-install the new cert on your
+devices.
+
+**Renewal.** Shelf checks its certificate at every HTTPS start. It replaces
+its own certificate when it is within 30 days of expiry (certificates last
+730 days) or no longer matches `CERT_SAN`, and the start-up log says so.
+Each replacement is a new certificate, so devices that trust `cert.pem`
+must install the new one. A container that runs for months without a restart
+renews at its next start.
+
+Shelf never replaces a certificate it did not generate. It records the
+fingerprint of each certificate it makes in `data/certs/cert.sha256`; a
+certificate you put there yourself, or replaced by hand, is left alone, with a
+warning in the log when it nears expiry. A certificate made by a Shelf from
+before automatic renewal is adopted on its first start if it still matches `CERT_SAN`; if
+you had already changed `CERT_SAN` before upgrading, delete `data/certs/` once
+and restart.
 
 Dashboards and scripts that read Shelf's API (Homepage, Home Assistant,
 `curl`) meet the same certificate; see
