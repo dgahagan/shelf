@@ -43,6 +43,12 @@ def N_(message: str) -> str:
     return message
 
 
+def NC_(context: str, message: str) -> str:
+    """`N_` with a gettext context, for a word that needs its own translation
+    in one place (a BGG category named "Book" is not the media type "Book")."""
+    return message
+
+
 def match(tag: str | None) -> str | None:
     """The supported locale for one language tag, most specific first.
 
@@ -104,6 +110,26 @@ def default_locale() -> str:
 @lru_cache(maxsize=None)
 def _catalog(domain: str, lang: str) -> _gettext.NullTranslations:
     return _gettext.translation(domain, LOCALE_DIR, [lang], fallback=True)
+
+
+def library_locale() -> str:
+    """The library's language: `SHELF_DEFAULT_LANGUAGE` while the translated
+    UI is on, else English. Stored data every user shares (tag names, for
+    one) is filed in it, whoever did the scan."""
+    return default_locale() if enabled() else DEFAULT
+
+
+def library_pgettext(context: str, message: str) -> str:
+    """Translate into the library's language rather than the viewer's.
+
+    For text that becomes stored data every user shares, such as a tag name
+    filed from a provider's vocabulary: it must not depend on who happened to
+    do the scan. The library's language is `SHELF_DEFAULT_LANGUAGE` while the
+    translated UI is on, else English.
+    """
+    if not enabled():
+        return message
+    return _catalog("messages", library_locale()).pgettext(context, message)
 
 
 def gettext(message: str) -> str:

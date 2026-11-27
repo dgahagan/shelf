@@ -17,17 +17,17 @@ msgstr ""
 msgid "Title"
 msgstr "Titolo"
 
-#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:158
+#: app/browse_columns.py:63 app/browse_filters.py:276 app/config.py:158
 #: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "Autore"
 
-#: app/browse_columns.py:64 app/browse_filters.py:209
+#: app/browse_columns.py:64 app/browse_filters.py:265
 #: app/templates/valuation_report.html:82
 msgid "Type"
 msgstr "Tipo"
 
-#: app/browse_columns.py:65 app/browse_filters.py:211
+#: app/browse_columns.py:65 app/browse_filters.py:267
 #: app/templates/fragments/item_copy_edit.html:37
 #: app/templates/fragments/labels_scope.html:12
 #: app/templates/fragments/manual_add_form.html:160
@@ -36,7 +36,7 @@ msgstr "Tipo"
 msgid "Location"
 msgstr "Posizione"
 
-#: app/browse_columns.py:66 app/browse_filters.py:213
+#: app/browse_columns.py:66 app/browse_filters.py:269
 #: app/templates/item_detail.html:252 app/templates/item_edit.html:138
 msgid "Status"
 msgstr "Stato"
@@ -70,7 +70,7 @@ msgstr "Anno"
 msgid "Pages"
 msgstr "Pagine"
 
-#: app/browse_columns.py:72 app/browse_filters.py:221
+#: app/browse_columns.py:72 app/browse_filters.py:277
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
 #: app/templates/item_edit.html:123
 msgid "Language"
@@ -96,23 +96,31 @@ msgstr "ISBN/UPC"
 msgid "Tags"
 msgstr "Tag"
 
-#: app/browse_filters.py:208
+#: app/browse_filters.py:264
 #: app/templates/fragments/periodical_scan_result.html:29
 #: app/templates/logs.html:32
 msgid "Search"
 msgstr "Ricerca"
 
-#: app/browse_filters.py:210 app/templates/fragments/item_copy_edit.html:67
+#: app/browse_filters.py:266 app/templates/fragments/item_copy_edit.html:67
 msgid "Source"
 msgstr "Origine"
 
-#: app/browse_filters.py:212
+#: app/browse_filters.py:268
 msgid "Sort"
 msgstr "Ordinamento"
 
-#: app/browse_filters.py:216 app/templates/browse.html:83
+#: app/browse_filters.py:272 app/templates/browse.html:83
 msgid "Tag"
 msgstr "Tag"
+
+#: app/browse_filters.py:279
+msgid "Players"
+msgstr ""
+
+#: app/browse_filters.py:280
+msgid "Play time"
+msgstr ""
 
 #: app/config.py:15
 msgid "Book"
@@ -815,7 +823,7 @@ msgstr "ISBN non valido"
 msgid "Network error during lookup — check connectivity"
 msgstr "Errore di rete durante la ricerca: controlla la connessione"
 
-#: app/routers/items.py:589 app/routers/items_board_games.py:277
+#: app/routers/items.py:589 app/routers/items_board_games.py:280
 #: app/routers/items_common.py:563 app/routers/items_common.py:755
 msgid "Not found — add manually below"
 msgstr "Non trovato: aggiungilo a mano qui sotto"
@@ -870,24 +878,24 @@ msgstr "Impossibile unire \"%(title)s\" (#%(id)s): %(reason)s"
 msgid "No title for this game"
 msgstr ""
 
-#: app/routers/items_board_games.py:346 app/routers/items_board_games.py:412
+#: app/routers/items_board_games.py:349 app/routers/items_board_games.py:417
 msgid "Failed to fetch game details from BoardGameGeek"
 msgstr ""
 
-#: app/routers/items_board_games.py:392
+#: app/routers/items_board_games.py:397
 msgid "Add a BoardGameGeek token in Settings first"
 msgstr ""
 
-#: app/routers/items_board_games.py:406
+#: app/routers/items_board_games.py:411
 #, python-format
 msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
 msgstr ""
 
-#: app/routers/items_board_games.py:410
+#: app/routers/items_board_games.py:415
 msgid "Could not reach BoardGameGeek — check connectivity and try again."
 msgstr ""
 
-#: app/routers/items_board_games.py:431
+#: app/routers/items_board_games.py:436
 msgid "Updated from BoardGameGeek"
 msgstr ""
 
@@ -1494,6 +1502,482 @@ msgstr "Sinossi"
 msgid "Series number"
 msgstr ""
 
+#: app/services/bgg_tags.py:32
+msgctxt "bgg"
+msgid "Abstract Strategy"
+msgstr ""
+
+#: app/services/bgg_tags.py:33
+msgctxt "bgg"
+msgid "Dexterity"
+msgstr ""
+
+#: app/services/bgg_tags.py:34
+msgctxt "bgg"
+msgid "Adventure"
+msgstr ""
+
+#: app/services/bgg_tags.py:35
+msgctxt "bgg"
+msgid "Age of Reason"
+msgstr ""
+
+#: app/services/bgg_tags.py:36
+msgctxt "bgg"
+msgid "American Civil War"
+msgstr ""
+
+#: app/services/bgg_tags.py:37
+msgctxt "bgg"
+msgid "American Indian Wars"
+msgstr ""
+
+#: app/services/bgg_tags.py:38
+msgctxt "bgg"
+msgid "American Revolutionary War"
+msgstr ""
+
+#: app/services/bgg_tags.py:39
+msgctxt "bgg"
+msgid "Wild West"
+msgstr ""
+
+#: app/services/bgg_tags.py:40
+msgctxt "bgg"
+msgid "Ancient"
+msgstr ""
+
+#: app/services/bgg_tags.py:41
+msgctxt "bgg"
+msgid "Animals"
+msgstr ""
+
+#: app/services/bgg_tags.py:42
+msgctxt "bgg"
+msgid "Arabian"
+msgstr ""
+
+#: app/services/bgg_tags.py:43
+msgctxt "bgg"
+msgid "Aviation"
+msgstr ""
+
+#: app/services/bgg_tags.py:44
+msgctxt "bgg"
+msgid "Bluffing"
+msgstr ""
+
+#: app/services/bgg_tags.py:45
+msgctxt "bgg"
+msgid "Gamebook"
+msgstr ""
+
+#: app/services/bgg_tags.py:46
+msgctxt "bgg"
+msgid "Card Game"
+msgstr ""
+
+#: app/services/bgg_tags.py:47
+msgctxt "bgg"
+msgid "Children's Game"
+msgstr ""
+
+#: app/services/bgg_tags.py:48
+msgctxt "bgg"
+msgid "City Building"
+msgstr ""
+
+#: app/services/bgg_tags.py:49
+msgctxt "bgg"
+msgid "Civil War"
+msgstr ""
+
+#: app/services/bgg_tags.py:50
+msgctxt "bgg"
+msgid "Civilization"
+msgstr ""
+
+#: app/services/bgg_tags.py:51
+msgctxt "bgg"
+msgid "Collectible"
+msgstr ""
+
+#: app/services/bgg_tags.py:52
+msgctxt "bgg"
+msgid "Comics"
+msgstr ""
+
+#: app/services/bgg_tags.py:53
+msgctxt "bgg"
+msgid "Deduction"
+msgstr ""
+
+#: app/services/bgg_tags.py:54
+msgctxt "bgg"
+msgid "Dice Game"
+msgstr ""
+
+#: app/services/bgg_tags.py:55
+msgctxt "bgg"
+msgid "Economic"
+msgstr ""
+
+#: app/services/bgg_tags.py:56
+msgctxt "bgg"
+msgid "Educational"
+msgstr ""
+
+#: app/services/bgg_tags.py:57
+msgctxt "bgg"
+msgid "Electronic"
+msgstr ""
+
+#: app/services/bgg_tags.py:58
+msgctxt "bgg"
+msgid "Environmental"
+msgstr ""
+
+#: app/services/bgg_tags.py:59 app/services/bgg_tags.py:61
+#: app/services/bgg_tags.py:136
+msgctxt "bgg"
+msgid "Expansion"
+msgstr ""
+
+#: app/services/bgg_tags.py:60
+msgctxt "bgg"
+msgid "Exploration"
+msgstr ""
+
+#: app/services/bgg_tags.py:62
+msgctxt "bgg"
+msgid "Fantasy"
+msgstr ""
+
+#: app/services/bgg_tags.py:63
+msgctxt "bgg"
+msgid "Farming"
+msgstr ""
+
+#: app/services/bgg_tags.py:64
+msgctxt "bgg"
+msgid "Fighting"
+msgstr ""
+
+#: app/services/bgg_tags.py:65
+msgctxt "bgg"
+msgid "Game System"
+msgstr ""
+
+#: app/services/bgg_tags.py:66
+msgctxt "bgg"
+msgid "Horror"
+msgstr ""
+
+#: app/services/bgg_tags.py:67
+msgctxt "bgg"
+msgid "Humor"
+msgstr ""
+
+#: app/services/bgg_tags.py:68
+msgctxt "bgg"
+msgid "Industry"
+msgstr ""
+
+#: app/services/bgg_tags.py:69
+msgctxt "bgg"
+msgid "Korean War"
+msgstr ""
+
+#: app/services/bgg_tags.py:70
+msgctxt "bgg"
+msgid "Mafia"
+msgstr ""
+
+#: app/services/bgg_tags.py:71
+msgctxt "bgg"
+msgid "Math"
+msgstr ""
+
+#: app/services/bgg_tags.py:72
+msgctxt "bgg"
+msgid "Adults Only"
+msgstr ""
+
+#: app/services/bgg_tags.py:73
+msgctxt "bgg"
+msgid "Maze"
+msgstr ""
+
+#: app/services/bgg_tags.py:74
+msgctxt "bgg"
+msgid "Medical"
+msgstr ""
+
+#: app/services/bgg_tags.py:75
+msgctxt "bgg"
+msgid "Medieval"
+msgstr ""
+
+#: app/services/bgg_tags.py:76 app/services/bgg_tags.py:131
+msgctxt "bgg"
+msgid "Memory"
+msgstr ""
+
+#: app/services/bgg_tags.py:77
+msgctxt "bgg"
+msgid "Miniatures"
+msgstr ""
+
+#: app/services/bgg_tags.py:78
+msgctxt "bgg"
+msgid "Modern Warfare"
+msgstr ""
+
+#: app/services/bgg_tags.py:79
+msgctxt "bgg"
+msgid "Movies & TV"
+msgstr ""
+
+#: app/services/bgg_tags.py:80
+msgctxt "bgg"
+msgid "Mystery"
+msgstr ""
+
+#: app/services/bgg_tags.py:81
+msgctxt "bgg"
+msgid "Music"
+msgstr ""
+
+#: app/services/bgg_tags.py:82
+msgctxt "bgg"
+msgid "Mythology"
+msgstr ""
+
+#: app/services/bgg_tags.py:83
+msgctxt "bgg"
+msgid "Napoleonic"
+msgstr ""
+
+#: app/services/bgg_tags.py:84
+msgctxt "bgg"
+msgid "Nautical"
+msgstr ""
+
+#: app/services/bgg_tags.py:85
+msgctxt "bgg"
+msgid "Negotiation"
+msgstr ""
+
+#: app/services/bgg_tags.py:86
+msgctxt "bgg"
+msgid "Based on a Novel"
+msgstr ""
+
+#: app/services/bgg_tags.py:87
+msgctxt "bgg"
+msgid "Numbers"
+msgstr ""
+
+#: app/services/bgg_tags.py:88
+msgctxt "bgg"
+msgid "Party Game"
+msgstr ""
+
+#: app/services/bgg_tags.py:89
+msgctxt "bgg"
+msgid "Pike and Shot"
+msgstr ""
+
+#: app/services/bgg_tags.py:90
+msgctxt "bgg"
+msgid "Pirates"
+msgstr ""
+
+#: app/services/bgg_tags.py:91
+msgctxt "bgg"
+msgid "Political"
+msgstr ""
+
+#: app/services/bgg_tags.py:92
+msgctxt "bgg"
+msgid "Post-Napoleonic"
+msgstr ""
+
+#: app/services/bgg_tags.py:93
+msgctxt "bgg"
+msgid "Prehistoric"
+msgstr ""
+
+#: app/services/bgg_tags.py:94
+msgctxt "bgg"
+msgid "Print & Play"
+msgstr ""
+
+#: app/services/bgg_tags.py:95
+msgctxt "bgg"
+msgid "Puzzle"
+msgstr ""
+
+#: app/services/bgg_tags.py:96
+msgctxt "bgg"
+msgid "Racing"
+msgstr ""
+
+#: app/services/bgg_tags.py:97
+msgctxt "bgg"
+msgid "Real-time"
+msgstr ""
+
+#: app/services/bgg_tags.py:98
+msgctxt "bgg"
+msgid "Religious"
+msgstr ""
+
+#: app/services/bgg_tags.py:99
+msgctxt "bgg"
+msgid "Renaissance"
+msgstr ""
+
+#: app/services/bgg_tags.py:100
+msgctxt "bgg"
+msgid "Science Fiction"
+msgstr ""
+
+#: app/services/bgg_tags.py:101
+msgctxt "bgg"
+msgid "Space"
+msgstr ""
+
+#: app/services/bgg_tags.py:102
+msgctxt "bgg"
+msgid "Spies"
+msgstr ""
+
+#: app/services/bgg_tags.py:103
+msgctxt "bgg"
+msgid "Sports"
+msgstr ""
+
+#: app/services/bgg_tags.py:104
+msgctxt "bgg"
+msgid "Territory Building"
+msgstr ""
+
+#: app/services/bgg_tags.py:105
+msgctxt "bgg"
+msgid "Trains"
+msgstr ""
+
+#: app/services/bgg_tags.py:106
+msgctxt "bgg"
+msgid "Transportation"
+msgstr ""
+
+#: app/services/bgg_tags.py:107
+msgctxt "bgg"
+msgid "Travel"
+msgstr ""
+
+#: app/services/bgg_tags.py:108
+msgctxt "bgg"
+msgid "Trivia"
+msgstr ""
+
+#: app/services/bgg_tags.py:109
+msgctxt "bgg"
+msgid "Video Game Theme"
+msgstr ""
+
+#: app/services/bgg_tags.py:110
+msgctxt "bgg"
+msgid "Vietnam War"
+msgstr ""
+
+#: app/services/bgg_tags.py:111
+msgctxt "bgg"
+msgid "Wargame"
+msgstr ""
+
+#: app/services/bgg_tags.py:112
+msgctxt "bgg"
+msgid "Word Game"
+msgstr ""
+
+#: app/services/bgg_tags.py:113
+msgctxt "bgg"
+msgid "World War I"
+msgstr ""
+
+#: app/services/bgg_tags.py:114
+msgctxt "bgg"
+msgid "World War II"
+msgstr ""
+
+#: app/services/bgg_tags.py:115
+msgctxt "bgg"
+msgid "Zombies"
+msgstr ""
+
+#: app/services/bgg_tags.py:120
+msgctxt "bgg"
+msgid "Cooperative"
+msgstr ""
+
+#: app/services/bgg_tags.py:121
+msgctxt "bgg"
+msgid "Solo"
+msgstr ""
+
+#: app/services/bgg_tags.py:122
+msgctxt "bgg"
+msgid "Teams"
+msgstr ""
+
+#: app/services/bgg_tags.py:123
+msgctxt "bgg"
+msgid "Deck Building"
+msgstr ""
+
+#: app/services/bgg_tags.py:124
+msgctxt "bgg"
+msgid "Worker Placement"
+msgstr ""
+
+#: app/services/bgg_tags.py:125
+msgctxt "bgg"
+msgid "Tile Placement"
+msgstr ""
+
+#: app/services/bgg_tags.py:126
+msgctxt "bgg"
+msgid "Roll and Move"
+msgstr ""
+
+#: app/services/bgg_tags.py:127
+msgctxt "bgg"
+msgid "Trick-taking"
+msgstr ""
+
+#: app/services/bgg_tags.py:128
+msgctxt "bgg"
+msgid "Hidden Roles"
+msgstr ""
+
+#: app/services/bgg_tags.py:129
+msgctxt "bgg"
+msgid "Legacy"
+msgstr ""
+
+#: app/services/bgg_tags.py:130
+msgctxt "bgg"
+msgid "Push Your Luck"
+msgstr ""
+
+#: app/services/bgg_tags.py:132 app/services/bgg_tags.py:133
+msgctxt "bgg"
+msgid "Drafting"
+msgstr ""
+
 #: app/services/browse_counts.py:16
 msgid "Manual"
 msgstr "Manuale"
@@ -1509,6 +1993,62 @@ msgstr "Coda negozio"
 #: app/services/browse_counts.py:34
 msgid "CSV Import"
 msgstr "Importazione CSV"
+
+#: app/services/browse_counts.py:41
+msgid "Solo"
+msgstr ""
+
+#: app/services/browse_counts.py:42
+msgid "2 players"
+msgstr ""
+
+#: app/services/browse_counts.py:43
+msgid "3 players"
+msgstr ""
+
+#: app/services/browse_counts.py:44
+msgid "4 players"
+msgstr ""
+
+#: app/services/browse_counts.py:45
+msgid "5 players"
+msgstr ""
+
+#: app/services/browse_counts.py:46
+msgid "6 players"
+msgstr ""
+
+#: app/services/browse_counts.py:47
+msgid "7 players"
+msgstr ""
+
+#: app/services/browse_counts.py:48
+msgid "8 players"
+msgstr ""
+
+#: app/services/browse_counts.py:49
+msgid "9 players"
+msgstr ""
+
+#: app/services/browse_counts.py:50
+msgid "10 or more players"
+msgstr ""
+
+#: app/services/browse_counts.py:56
+msgid "Up to 30 min"
+msgstr ""
+
+#: app/services/browse_counts.py:57
+msgid "31–60 min"
+msgstr ""
+
+#: app/services/browse_counts.py:58
+msgid "61–120 min"
+msgstr ""
+
+#: app/services/browse_counts.py:59
+msgid "Over 2 hours"
+msgstr ""
 
 #: app/services/national.py:90
 msgid "English"
@@ -1900,7 +2440,7 @@ msgid "Lent Out"
 msgstr "In prestito"
 
 #: app/templates/browse.html:256
-#: app/templates/fragments/filter_counts_oob.html:71
+#: app/templates/fragments/filter_counts_oob.html:75
 msgid "All Statuses"
 msgstr "Tutti gli stati"
 
@@ -1912,36 +2452,36 @@ msgstr "Tutti i tag"
 msgid "All Languages"
 msgstr "Tutte le lingue"
 
-#: app/templates/browse.html:294
+#: app/templates/browse.html:297
 #: app/templates/fragments/filter_counts_oob.html:53
 msgid "All Sources"
 msgstr "Tutte le origini"
 
-#: app/templates/browse.html:309
+#: app/templates/browse.html:312
 msgid "Most Recent"
 msgstr "Più recenti"
 
-#: app/templates/browse.html:310
+#: app/templates/browse.html:313
 msgid "Oldest First"
 msgstr "Meno recenti"
 
-#: app/templates/browse.html:311
+#: app/templates/browse.html:314
 msgid "Title A–Z"
 msgstr "Titolo A–Z"
 
-#: app/templates/browse.html:312
+#: app/templates/browse.html:315
 msgid "Title Z–A"
 msgstr "Titolo Z–A"
 
-#: app/templates/browse.html:315
+#: app/templates/browse.html:318
 msgid "Year (Newest)"
 msgstr "Anno (dal più recente)"
 
-#: app/templates/browse.html:316
+#: app/templates/browse.html:319
 msgid "Year (Oldest)"
 msgstr "Anno (dal meno recente)"
 
-#: app/templates/browse.html:329
+#: app/templates/browse.html:332
 msgid "Clear all"
 msgstr "Azzera tutto"
 
@@ -4246,6 +4786,14 @@ msgstr "%(n)s scansionati"
 
 #: app/templates/fragments/audnexus_fill_result.html:1
 msgid "Reload to see them"
+msgstr ""
+
+#: app/templates/fragments/board_game_filters.html:11
+msgid "Any number of players"
+msgstr ""
+
+#: app/templates/fragments/board_game_filters.html:25
+msgid "Any play time"
 msgstr ""
 
 #: app/templates/fragments/board_game_search_results.html:12

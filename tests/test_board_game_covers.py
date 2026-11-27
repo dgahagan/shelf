@@ -5,6 +5,7 @@ import pytest
 from app import i18n
 from app.routers import items_board_games
 from app.services import bgg, covers, provider_result
+from app.services import tags as tags_svc
 from tests.conftest import _insert_item
 from tests.test_board_games import _catan_meta
 
@@ -159,6 +160,18 @@ class TestUpdateFromBgg:
         assert (row["min_players"], row["max_players"]) == (3, 6)
         assert row["duration_mins"] == 120 and row["publisher"] == "KOSMOS"
         assert row["cover_path"] == f"data/covers/{item_id}.jpg"
+
+    def test_a_tag_the_user_removed_stays_removed(self, editor_client, db, refresh_stubs, monkeypatch):
+        # Filed with Economic and Puzzle; the user took Puzzle off. Update
+        # from BGG must not put it back, nor add any tag at all.
+        async def _lookup_game(bgg_id, token, client, *, versions=False):
+            return provider_result.found("bgg", {**_catan_meta(), "categories": ["Economic", "Puzzle"]})
+        monkeypatch.setattr(bgg, "lookup_game", _lookup_game)
+        item_id = _insert_item(db, title="Catan", isbn=None, media_type="board_game", bgg_id=13)
+        tags_svc.attach_tags(db, item_id, ["Economic"])
+        db.commit()
+        _refresh(editor_client, item_id)
+        assert {t["name"] for t in tags_svc.get_item_tags(db, item_id)} == {"Economic"}
 
     def test_keeps_an_existing_cover(self, editor_client, db, refresh_stubs):
         item_id = _insert_item(db, title="Catan", isbn=None, media_type="board_game", bgg_id=13,

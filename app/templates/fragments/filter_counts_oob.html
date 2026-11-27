@@ -61,6 +61,10 @@
 </select>
 {% endif %}
 
+{% if player_counts is defined %}
+{% with oob = true %}{% include "fragments/board_game_filters.html" %}{% endwith %}
+{% endif %}
+
 {% if reading_status_counts is defined %}
 {% set rsc = reading_status_counts or {} %}
 {% set sl = status_labels(active_type or none) %}

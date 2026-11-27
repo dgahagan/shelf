@@ -32,7 +32,7 @@ from app.auth import require_role
 from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
 from app.routers import items_common
-from app.services import bgg, covers, gameupc, item_write, provider_result, restore_report, scan_outcome
+from app.services import bgg, bgg_tags, covers, gameupc, item_write, provider_result, restore_report, scan_outcome
 from app.services import tags as tags_svc
 from app.services import upc as upc_svc
 from app.services.item_write import ItemValueError, insert_item
@@ -117,6 +117,9 @@ async def _file_game(
                     owned=0 if mode == "wishlist" else 1,
                     wishlisted=(mode == "wishlist"),
                 )
+                # BGG categories and a few mechanics as tags, in the same
+                # transaction as the row (G118), so Browse can filter by them.
+                tags_svc.attach_tags(db, item_id, bgg_tags.tag_names(meta))
             except ItemValueError as e:
                 value_error = str(e)
             except sqlite3.IntegrityError:
@@ -358,7 +361,9 @@ async def add_board_game(
 
 # Columns the refresh may fill. Only empty ones: a value on the item is
 # either BGG's own from the add, or something the user typed, and the user's
-# edit must win. The title is never touched for the same reason.
+# edit must win. The title is never touched for the same reason, and neither
+# are tags: those are filed once, with the row, and a tag the user removed
+# stays removed.
 _REFRESH_FIELDS = ("authors", "publisher", "publish_year", "description", "duration_mins",
                    "min_players", "max_players", "min_age", "bgg_id")
 

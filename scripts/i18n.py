@@ -34,7 +34,8 @@ LANGUAGES = ("de", "it", "zh_Hans")
 DOMAINS = {
     "messages": ("app", [("**.py", "python"), ("templates/**.html", "jinja2")],
                  {"_": None, "gettext": None, "ngettext": (1, 2),
-                  "pgettext": ((1, "c"), 2), "N_": None}),
+                  "pgettext": ((1, "c"), 2), "N_": None,
+                  "NC_": ((1, "c"), 2)}),
     "js": ("static/js", [("**.js", "javascript")], {"t": None}),
 }
 JINJA_OPTIONS = {"templates/**.html": {"extensions": "jinja2.ext.i18n"}}
