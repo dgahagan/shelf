@@ -405,6 +405,15 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
     # libraries. An edition identifier like isbn/upc.
     (56, "Add items ASIN", "ALTER TABLE items ADD COLUMN asin TEXT"),
     (57, "Index items ASIN", "CREATE INDEX IF NOT EXISTS idx_items_asin ON items(asin)"),
+    # Board games (#167). Migration-only, like 56: the columns are NOT in
+    # SCHEMA. Play time reuses `duration_mins`. `bgg_id` is not unique: two
+    # copies of one game in two editions share it, as two pressings share a
+    # MusicBrainz release group.
+    (58, "Add items BoardGameGeek id", "ALTER TABLE items ADD COLUMN bgg_id INTEGER"),
+    (59, "Add items minimum players", "ALTER TABLE items ADD COLUMN min_players INTEGER"),
+    (60, "Add items maximum players", "ALTER TABLE items ADD COLUMN max_players INTEGER"),
+    (61, "Add items minimum age", "ALTER TABLE items ADD COLUMN min_age INTEGER"),
+    (62, "Index items BoardGameGeek id", "CREATE INDEX IF NOT EXISTS idx_items_bgg_id ON items(bgg_id)"),
 )
 
 MIGRATION_TABLES = """

@@ -55,8 +55,8 @@ def test_the_words_are_pinned():
     assert NEUTRAL_LABELS.done_lower == "finished"
 
 
-def test_status_media_types_is_the_book_family_plus_disc_and_game():
-    assert STATUS_MEDIA_TYPES == BOOK_MEDIA_TYPES | {"dvd", "video_game"}
+def test_status_media_types_is_the_book_family_plus_disc_and_games():
+    assert STATUS_MEDIA_TYPES == BOOK_MEDIA_TYPES | {"dvd", "video_game", "board_game"}
 
 
 def test_status_verbs_holds_overrides_only():
