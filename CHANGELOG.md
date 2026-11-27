@@ -6,6 +6,20 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.86.1] - 2026-11-27
+
+Nothing changes for people who run Shelf. This release is for contributors.
+The development tools installed a test-coverage plugin and never used it, so
+there was no easy way to see which code no test reaches. There is now one
+command that shows it.
+
+### Added
+
+- **`make test-cov` reports test coverage.** It runs the unit tests the same
+  way `make test` does, then lists each file in `app/` with the lines that no
+  test runs. It only reports: no check fails on a coverage number, and it is
+  not part of any gate. See the development guide.
+
 ## [0.86.0] - 2026-11-27
 
 Polish books now get their details from Poland's national library. Before,
@@ -6250,6 +6264,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.86.1]: https://github.com/dgahagan/shelf/releases/tag/v0.86.1
 [0.86.0]: https://github.com/dgahagan/shelf/releases/tag/v0.86.0
 [0.85.0]: https://github.com/dgahagan/shelf/releases/tag/v0.85.0
 [0.84.1]: https://github.com/dgahagan/shelf/releases/tag/v0.84.1

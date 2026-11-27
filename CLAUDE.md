@@ -17,6 +17,7 @@ make setup                 # one-time: dev deps + npm (tailwind) + Playwright Ch
 make test                  # unit/integration tests — quiet + parallel (excludes tests/e2e/)
 make test-fast             # re-run only last run's failures (--lf, serial)
 make test-verbose          # per-test roll-call, for humans
+make test-cov              # unit suite + line coverage of app/ (missing lines per file) — reports, never gates
 make test-e2e              # Playwright E2E — spins up its own server, no dev server needed
 make test-contract         # live UPC Item DB contract check — run at release, never on a gate
 python -m pytest tests/test_items.py::test_name -v           # single unit test

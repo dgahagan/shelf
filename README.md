@@ -371,6 +371,7 @@ make install-playwright   # downloads headless Chromium
 | Target | What it does |
 |--------|-------------|
 | `make test` | Unit and integration tests (pytest, excludes E2E) |
+| `make test-cov` | Unit tests with line coverage of `app/`, missing lines per file (reports only; not on any gate) |
 | `make test-e2e` | Playwright E2E browser tests against a live local server |
 | `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `make test-all` | `test` and `test-e2e` |

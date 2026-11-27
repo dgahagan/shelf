@@ -52,6 +52,7 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `make test` | Unit + integration, quiet and parallel (~1500 tests, excludes `tests/e2e/`) |
 | `make test-fast` | Re-run only the last failures |
 | `make test-verbose` | Per-test output |
+| `make test-cov` | Unit suite with line coverage of `app/`, missing lines per file (reports only; not on any gate) |
 | `make test-e2e` | Playwright E2E; starts its own server |
 | `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |

@@ -115,11 +115,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.86.0](https://github.com/dgahagan/shelf/releases/tag/v0.86.0) | **Polish books from Poland's national library.** 978-83 ISBNs are looked up in the Biblioteka Narodowa before the general sources. Also: the Audiobookshelf and Hardcover settings in Italian. Contributed by @sudo-rpaisley and @vjandrea. |
 | [0.85.0](https://github.com/dgahagan/shelf/releases/tag/v0.85.0) | **The HTTPS certificate renews itself.** A certificate Shelf generated is replaced on start when it expires within 30 days or no longer matches `CERT_SAN`, so changing `CERT_SAN` now takes effect on restart. A certificate you placed yourself is never replaced. |
 | [0.84.1](https://github.com/dgahagan/shelf/releases/tag/v0.84.1) | **Restarts leave your files alone.** The container now changes ownership only of files under `/data` whose owner is wrong, so restarts and upgrades no longer make backup tools re-read every cover, and storage where root cannot change ownership no longer stops a correctly owned install from starting. |
 | [0.84.0](https://github.com/dgahagan/shelf/releases/tag/v0.84.0) | **Shelf in German.** The translated interface speaks German, and `SHELF_DEFAULT_LANGUAGE` sets the language for anyone whose browser asks for none Shelf has. Also: owned series volumes catalogued under another title count by their position, a desktop webcam scans with the decoder iPhones use, and four more Settings tabs in Italian. Contributed by @samuel-hartenstein, @draarivpatel-ui and @vjandrea. |
 | [0.83.0](https://github.com/dgahagan/shelf/releases/tag/v0.83.0) | **The container reports its health.** `docker ps` shows `healthy` or `unhealthy`, so Compose, Portainer and uptime monitors can tell a hung or broken Shelf from a working one. It follows `SHELF_TLS` and `SHELF_PORT` by itself, and passing checks leave nothing in the log. |
-| [0.82.2](https://github.com/dgahagan/shelf/releases/tag/v0.82.2) | **A game scan files the right game, or none.** Shelf takes an IGDB record only when its title matches the barcode's, so a *Vice City* barcode no longer becomes *Grand Theft Auto V*; when nothing matches, the game is added under its barcode title. A platform chosen before scanning limits the search to that platform. Also: Duplicates, Logs, Share and the Settings Library tab in Italian, contributed by @vjandrea. |
 ---
 
 ## Suggesting something

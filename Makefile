@@ -15,7 +15,7 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 # split. Never add -p no:cacheprovider here — test-fast's --lf needs the cache.
 PYTEST_PAR   ?= -n auto --dist loadfile
 
-.PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
+.PHONY: setup css test test-verbose test-fast test-cov test-e2e test-contract test-all \
         check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n check-workflows check-actions \
         badges check-badges check-roadmap lock lock-upgrade check-lock check-lock-selftest \
         pin-base check-base-image \
@@ -66,6 +66,12 @@ i18n:
 
 test:
 	python -m pytest tests/ --ignore=tests/e2e --ignore=tests/contract -m "not live" $(PYTEST_FLAGS) $(PYTEST_PAR)
+
+# Line coverage of app/ over the unit suite, missing lines listed per file.
+# Not on any gate: it reports, it never fails a build.
+test-cov:
+	python -m pytest tests/ --ignore=tests/e2e --ignore=tests/contract -m "not live" $(PYTEST_FLAGS) $(PYTEST_PAR) \
+		--cov=app --cov-report=term-missing:skip-covered
 
 # Per-test roll-call, for when a human is reading the output.
 test-verbose:
