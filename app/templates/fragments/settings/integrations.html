@@ -13,62 +13,62 @@
          data-abs-url-present="{{ '1' if abs_url_present else '' }}"
          data-abs-saved="{{ '1' if secrets_present['abs_token'] else '' }}">
         <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold">Audiobookshelf Sync</h2>
-            <button @click="showAbsHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
+            <h2 class="text-lg font-semibold">{{ _('Audiobookshelf Sync') }}</h2>
+            <button @click="showAbsHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ _('Setup guide') }}</button>
         </div>
         {{ feature_notes.feature_off_note('abs_sync') }}
 
         <!-- Help Modal -->
         <div x-show="showAbsHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showAbsHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-                <h3 class="text-lg font-bold mb-3">Connecting to Audiobookshelf</h3>
+                <h3 class="text-lg font-bold mb-3">{{ _('Connecting to Audiobookshelf') }}</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
-                    <li>Open your Audiobookshelf instance in a browser</li>
-                    <li>Go to <span class="text-shelf-text">Settings &rarr; Users</span> and select your user</li>
-                    <li>Scroll to <span class="text-shelf-text">API Token</span> — copy the token</li>
-                    <li>Enter your ABS server URL (e.g. <span class="text-shelf-accent2">http://localhost:13378</span>) and paste the token below</li>
+                    <li>{{ _('Open your Audiobookshelf instance in a browser') }}</li>
+                    <li>{{ _('Go to') }} <span class="text-shelf-text">Settings &rarr; Users</span> {{ _('and select your user') }}</li>
+                    <li>{{ _('Scroll to') }} <span class="text-shelf-text">{{ _('API Token') }}</span> {{ _('— copy the token') }}</li>
+                    <li>{{ _('Enter your ABS server URL (e.g.') }} <span class="text-shelf-accent2">http://localhost:13378</span>{{ _(') and paste the token below') }}</li>
                 </ol>
                 <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
-                    <p class="font-medium text-shelf-text mb-1">What does sync do?</p>
-                    <p>Sync imports your audiobooks and ebooks from Audiobookshelf into Shelf, including metadata and cover art. It also auto-links digital items to matching physical books in your collection.</p>
+                    <p class="font-medium text-shelf-text mb-1">{{ _('What does sync do?') }}</p>
+                    <p>{{ _('Sync imports your audiobooks and ebooks from Audiobookshelf into Shelf, including metadata and cover art. It also auto-links digital items to matching physical books in your collection.') }}</p>
                 </div>
-                <button @click="showAbsHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+                <button @click="showAbsHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Got it') }}</button>
             </div>
         </div>
 
         <form action="/api/settings" method="post" class="space-y-3 mb-4">
             <div>
-                <label for="abs_url" class="block text-sm font-medium text-shelf-muted mb-1">Audiobookshelf URL</label>
+                <label for="abs_url" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Audiobookshelf URL') }}</label>
                 <input type="url" id="abs_url" name="abs_url" x-model="absUrl" value="{{ settings.get('abs_url', '') }}" placeholder="http://localhost:13378"
                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
             </div>
             {# Optional browser-facing root. The URL above may be an internal
                Docker/LAN address that the user's browser cannot reach. #}
             <div>
-                <label for="abs_public_url" class="block text-sm font-medium text-shelf-muted mb-1">Browser URL <span class="text-shelf-muted font-normal">(optional)</span></label>
+                <label for="abs_public_url" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Browser URL') }} <span class="text-shelf-muted font-normal">{{ _('(optional)') }}</span></label>
                 {% if request.query_params.get('abs_public_url_error') == 'invalid' %}
                 <p class="mb-1.5 text-xs text-shelf-error" data-testid="abs-public-url-error">
-                    Browser URL must be a valid http:// or https:// URL.
+                    {{ _('Browser URL must be a valid http:// or https:// URL.') }}
                 </p>
                 {% endif %}
                 <input type="url" id="abs_public_url" name="abs_public_url" value="{{ settings.get('abs_public_url', '') }}" placeholder="https://audiobooks.example.com"
                        class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <p class="mt-1 text-xs text-shelf-muted">
-                    Used only for <span class="text-shelf-text">Listen</span> and <span class="text-shelf-text">Read on Audiobookshelf</span> links. Set it when Shelf reaches Audiobookshelf over a Docker or LAN address but your browser uses a reverse-proxy domain. Leave blank to use the URL above.
+                    {{ _('Used only for') }} <span class="text-shelf-text">{{ _('Listen') }}</span> {{ _('and') }} <span class="text-shelf-text">{{ _('Read on Audiobookshelf') }}</span> {{ _('links. Set it when Shelf reaches Audiobookshelf over a Docker or LAN address but your browser uses a reverse-proxy domain. Leave blank to use the URL above.') }}
                 </p>
             </div>
             <div>
-                <label for="abs_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
+                <label for="abs_token" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('API Token') }}</label>
                 <div class="flex gap-2">
                     <input type="password" id="abs_token" name="abs_token" x-model="absToken" autocomplete="new-password"
-                           placeholder="{% if secrets_saved['abs_token'] %}Saved — leave blank to keep{% else %}Bearer token from ABS settings{% endif %}"
+                           placeholder="{% if secrets_saved['abs_token'] %}{{ _('Saved — leave blank to keep') }}{% else %}{{ _('Bearer token from ABS settings') }}{% endif %}"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testAbs"
                             :disabled="absTesting || !absTestReady"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
-                        <span x-show="!absTesting">Test</span>
-                        <span x-show="absTesting">Testing...</span>
+                        <span x-show="!absTesting">{{ _('Test') }}</span>
+                        <span x-show="absTesting">{{ _('Testing...') }}</span>
                     </button>
                 </div>
                 <div class="mt-1.5 h-5">
@@ -88,11 +88,11 @@
             </div>
             {% if secrets_saved['abs_token'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_abs_token" class="rounded-sm border-shelf-border"> Remove saved token
+                <input type="checkbox" name="clear_abs_token" class="rounded-sm border-shelf-border"> {{ _('Remove saved token') }}
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
 
@@ -103,7 +103,7 @@
                     data-testid="abs-sync-now"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
                 <span x-show="!syncing" x-text="syncLabel"></span>
-                <span x-show="syncing">Syncing...</span>
+                <span x-show="syncing">{{ _('Syncing...') }}</span>
             </button>
             {% endif %}
 
@@ -126,12 +126,9 @@
                 </template>
                 <template x-if="result && !result.error">
                     <p class="text-shelf-success">
-                        Added: <span x-text="result.added"></span>,
-                        Updated: <span x-text="result.updated"></span>,
-                        Unchanged: <span x-text="result.unchanged"></span>,
-                        Skipped: <span x-text="result.skipped"></span>
+                        {{ _('Added:') }} <span x-text="result.added"></span>{{ _(', Updated:') }} <span x-text="result.updated"></span>{{ _(', Unchanged:') }} <span x-text="result.unchanged"></span>{{ _(', Skipped:') }} <span x-text="result.skipped"></span>
                         <template x-if="result.in_trash > 0">
-                            <span class="text-shelf-muted"> · In Trash: <span x-text="result.in_trash"></span></span>
+                            <span class="text-shelf-muted"> {{ _('· In Trash:') }} <span x-text="result.in_trash"></span></span>
                         </template>
                     </p>
                 </template>
@@ -140,7 +137,7 @@
             <!-- Detail log toggle -->
             <div x-show="syncLog.length > 0" class="mt-2">
                 <button @click="showSyncLog = !showSyncLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
-                    <span x-text="showSyncLog ? 'Hide details' : 'Show details (' + syncLog.length + ' items)'"></span>
+                    <span x-text="syncLogToggle"></span>
                 </button>
                 <div x-show="showSyncLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
                     <template x-for="entry in syncLog" :key="entry.i">
@@ -154,26 +151,26 @@
             </div>
 
             <form action="/api/sync/audiobookshelf/schedule" method="post" class="mt-3 flex items-center gap-2">
-                <label class="text-sm text-shelf-muted">Auto-sync:</label>
+                <label class="text-sm text-shelf-muted">{{ _('Auto-sync:') }}</label>
                 <select name="interval" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                    <option value="off" {% if settings.get('abs_sync_interval', 'off') == 'off' %}selected{% endif %}>Off</option>
-                    <option value="daily" {% if settings.get('abs_sync_interval') == 'daily' %}selected{% endif %}>Daily</option>
-                    <option value="weekly" {% if settings.get('abs_sync_interval') == 'weekly' %}selected{% endif %}>Weekly</option>
+                    <option value="off" {% if settings.get('abs_sync_interval', 'off') == 'off' %}selected{% endif %}>{{ _('Off') }}</option>
+                    <option value="daily" {% if settings.get('abs_sync_interval') == 'daily' %}selected{% endif %}>{{ _('Daily') }}</option>
+                    <option value="weekly" {% if settings.get('abs_sync_interval') == 'weekly' %}selected{% endif %}>{{ _('Weekly') }}</option>
                 </select>
-                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
+                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">{{ _('Save') }}</button>
             </form>
 
             <!-- Library selection -->
             <div class="mt-4 pt-4 border-t border-shelf-border" x-data="absLibraries">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm font-medium text-shelf-text">Libraries to sync</p>
-                        <p class="text-xs text-shelf-muted">Uncheck libraries you don't want in Shelf (e.g. a dump of files you're not cataloging).</p>
+                        <p class="text-sm font-medium text-shelf-text">{{ _('Libraries to sync') }}</p>
+                        <p class="text-xs text-shelf-muted">{{ _("Uncheck libraries you don't want in Shelf (e.g. a dump of files you're not cataloging).") }}</p>
                     </div>
                     <button @click="loadLibs()" x-show="!libs" :disabled="libsLoading"
                             class="px-3 py-1.5 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors disabled:opacity-50 shrink-0">
-                        <span x-show="!libsLoading">Manage Libraries</span>
-                        <span x-show="libsLoading">Loading&hellip;</span>
+                        <span x-show="!libsLoading">{{ _('Manage Libraries') }}</span>
+                        <span x-show="libsLoading">{{ _('Loading…') }}</span>
                     </button>
                 </div>
                 <p x-show="libsError" x-cloak class="text-xs text-shelf-error mt-2" x-text="libsError"></p>
@@ -190,21 +187,21 @@
                         <div class="flex items-center gap-2 pt-2">
                             <button @click="saveLibs()" :disabled="libsSaving"
                                     class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs hover:bg-shelf-accent2 transition-colors disabled:opacity-50">
-                                <span x-show="!libsSaving">Save Selection</span>
-                                <span x-show="libsSaving">Saving&hellip;</span>
+                                <span x-show="!libsSaving">{{ _('Save Selection') }}</span>
+                                <span x-show="libsSaving">{{ _('Saving…') }}</span>
                             </button>
                             {% if feature_on('abs_sync') %}
                             <button @click="cleanup()" :disabled="cleaning || excludedIds().length === 0"
                                     data-testid="abs-cleanup"
                                     class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors disabled:opacity-50">
-                                <span x-show="!cleaning">Move Excluded Items to Trash</span>
-                                <span x-show="cleaning">Moving&hellip;</span>
+                                <span x-show="!cleaning">{{ _('Move Excluded Items to Trash') }}</span>
+                                <span x-show="cleaning">{{ _('Moving…') }}</span>
                             </button>
                             {% endif %}
                         </div>
-                        <p class="text-xs text-shelf-muted">Saves the selection, then moves items already synced from unchecked libraries to Trash.</p>
+                        <p class="text-xs text-shelf-muted">{{ _('Saves the selection, then moves items already synced from unchecked libraries to Trash.') }}</p>
                         <template x-if="cleanResult && cleanResult.ok">
-                            <p class="text-xs text-shelf-success">Moved <span x-text="cleanResult.deleted"></span> items to Trash.</p>
+                            <p class="text-xs text-shelf-success">{{ _('Moved') }} <span x-text="cleanResult.deleted"></span> {{ _('items to Trash.') }}</p>
                         </template>
                     </div>
                 </template>
@@ -218,49 +215,49 @@
          data-hc-saved="{{ '1' if secrets_present['hardcover_token'] else '' }}">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold">Hardcover</h2>
-            <button @click="showHcHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">Setup guide</button>
+            <button @click="showHcHelp = true" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ _('Setup guide') }}</button>
         </div>
         {{ feature_notes.feature_off_note('hardcover') }}
 
         <!-- Help Modal -->
         <div x-show="showHcHelp" x-transition.opacity class="fixed inset-0 bg-black/60 z-200 flex items-center justify-center" @click.self="showHcHelp = false" style="display:none">
             <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl" @click.stop>
-                <h3 class="text-lg font-bold mb-3">Connecting to Hardcover</h3>
+                <h3 class="text-lg font-bold mb-3">{{ _('Connecting to Hardcover') }}</h3>
                 <ol class="space-y-2 text-sm text-shelf-muted list-decimal list-inside">
-                    <li>Create a free account at <span class="text-shelf-accent2">hardcover.app</span></li>
-                    <li>Go to <span class="text-shelf-text">Account Settings &rarr; Hardcover API</span></li>
-                    <li>Copy the API token shown at the top of the page</li>
-                    <li>Paste it into the field below and click <span class="text-shelf-text">Test</span></li>
+                    <li>{{ _('Create a free account at') }} <span class="text-shelf-accent2">{{ _('hardcover.app') }}</span></li>
+                    <li>{{ _('Go to') }} <span class="text-shelf-text">Account Settings &rarr; Hardcover API</span></li>
+                    <li>{{ _('Copy the API token shown at the top of the page') }}</li>
+                    <li>{{ _('Paste it into the field below and click') }} <span class="text-shelf-text">{{ _('Test') }}</span></li>
                 </ol>
                 <div class="mt-4 p-3 bg-shelf-bg rounded-lg text-xs text-shelf-muted">
-                    <p class="font-medium text-shelf-text mb-1">What does Hardcover do?</p>
-                    <p>Hardcover is a modern book tracking platform (like Goodreads). With an API token, Shelf can use Hardcover as a metadata source for richer book data including series info, descriptions, and cover art. Future updates will add library import/export and reading status sync.</p>
-                    <p class="mt-1">The API is completely free. Tokens expire after one year.</p>
+                    <p class="font-medium text-shelf-text mb-1">{{ _('What does Hardcover do?') }}</p>
+                    <p>{{ _('Hardcover is a modern book tracking platform (like Goodreads). With an API token, Shelf can use Hardcover as a metadata source for richer book data including series info, descriptions, and cover art. Future updates will add library import/export and reading status sync.') }}</p>
+                    <p class="mt-1">{{ _('The API is completely free. Tokens expire after one year.') }}</p>
                 </div>
-                <button @click="showHcHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">Got it</button>
+                <button @click="showHcHelp = false" class="mt-4 w-full text-center px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Got it') }}</button>
             </div>
         </div>
 
         <form action="/api/settings" method="post" class="space-y-3">
             <div>
-                <label for="hardcover_token" class="block text-sm font-medium text-shelf-muted mb-1">API Token</label>
+                <label for="hardcover_token" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('API Token') }}</label>
                 <div class="flex gap-2">
                     <input type="password" id="hardcover_token" name="hardcover_token" x-model="hcToken" autocomplete="new-password"
-                           placeholder="{% if secrets_saved['hardcover_token'] %}Saved — leave blank to keep{% else %}Your Hardcover API token{% endif %}"
+                           placeholder="{% if secrets_saved['hardcover_token'] %}{{ _('Saved — leave blank to keep') }}{% else %}{{ _('Your Hardcover API token') }}{% endif %}"
                            class="flex-1 min-w-0 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                     <button type="button"
                             @click="testHc"
                             :disabled="hcTesting || (!hcToken && !hcSaved)"
                             class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50 whitespace-nowrap shrink-0">
-                        <span x-show="!hcTesting">Test</span>
-                        <span x-show="hcTesting">Testing...</span>
+                        <span x-show="!hcTesting">{{ _('Test') }}</span>
+                        <span x-show="hcTesting">{{ _('Testing...') }}</span>
                     </button>
                 </div>
                 <div class="mt-1.5 h-5">
                     <template x-if="hcStatus && hcStatus.ok">
                         <p class="text-xs text-shelf-success flex items-center gap-1">
                             <span class="inline-block w-2 h-2 rounded-full bg-shelf-success"></span>
-                            Connected as <span x-text="hcStatus.username"></span>
+                            {{ _('Connected as') }} <span x-text="hcStatus.username"></span>
                         </p>
                     </template>
                     <template x-if="hcStatus && !hcStatus.ok">
@@ -273,54 +270,54 @@
             </div>
             {% if secrets_saved['hardcover_token'] %}
             <label class="flex items-center gap-2 text-xs text-shelf-muted">
-                <input type="checkbox" name="clear_hardcover_token" class="rounded-sm border-shelf-border"> Remove saved token
+                <input type="checkbox" name="clear_hardcover_token" class="rounded-sm border-shelf-border"> {{ _('Remove saved token') }}
             </label>
             {% endif %}
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
-                Save
+                {{ _('Save') }}
             </button>
         </form>
 
         {% if feature_on('hardcover') %}
         <!-- Import from Hardcover -->
         <div class="border-t border-shelf-border pt-4 mt-4" data-testid="hc-import">
-            <h3 class="text-sm font-semibold mb-3">Import Library from Hardcover</h3>
+            <h3 class="text-sm font-semibold mb-3">{{ _('Import Library from Hardcover') }}</h3>
 
             <!-- Status filter checkboxes -->
             <div class="flex flex-wrap gap-x-4 gap-y-1 mb-3">
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
                     <input type="checkbox" x-model="hcFilter1" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                    Want to Read
+                    {{ _('Want to Read') }}
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
                     <input type="checkbox" x-model="hcFilter2" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                    Reading
+                    {{ _('Reading') }}
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
                     <input type="checkbox" x-model="hcFilter3" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                    Read
+                    {{ _('Read') }}
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
                     <input type="checkbox" x-model="hcFilter4" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                    Paused
+                    {{ _('Paused') }}
                 </label>
                 <label class="flex items-center gap-1.5 text-sm text-shelf-muted cursor-pointer">
                     <input type="checkbox" x-model="hcFilter5" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                    Did Not Finish
+                    {{ _('Did Not Finish') }}
                 </label>
             </div>
 
             <!-- Overwrite toggle -->
             <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
                 <input type="checkbox" x-model="importOverwrite" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                Overwrite existing items with Hardcover data
+                {{ _('Overwrite existing items with Hardcover data') }}
             </label>
 
             <button @click="startImport()"
                     :disabled="importing || (!hcToken && !hcSaved)"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!importing" x-text="(hcToken || hcSaved) ? 'Import from Hardcover' : 'Enter token to import'"></span>
-                <span x-show="importing">Importing...</span>
+                <span x-show="!importing" x-text="importButtonLabel"></span>
+                <span x-show="importing">{{ _('Importing...') }}</span>
             </button>
 
             <!-- Progress bar -->
@@ -337,7 +334,7 @@
 
             <!-- Fetching indicator (before total is known) -->
             <div x-show="importing && importTotal === 0" class="mt-3">
-                <p class="text-xs text-shelf-muted animate-pulse" x-text="importLastTitle || 'Connecting to Hardcover...'"></p>
+                <p class="text-xs text-shelf-muted animate-pulse" x-text="importProgressLabel"></p>
             </div>
 
             <!-- Result -->
@@ -347,14 +344,12 @@
                 </template>
                 <template x-if="importResult && !importResult.error">
                     <p class="text-shelf-muted">
-                        Added: <span x-text="importResult.added" class="text-shelf-success"></span>,
-                        Updated: <span x-text="importResult.updated" class="text-shelf-accent2"></span>,
-                        Skipped: <span x-text="importResult.skipped"></span>
+                        {{ _('Added:') }} <span x-text="importResult.added" class="text-shelf-success"></span>{{ _(', Updated:') }} <span x-text="importResult.updated" class="text-shelf-accent2"></span>{{ _(', Skipped:') }} <span x-text="importResult.skipped"></span>
                         <template x-if="importResult.in_trash > 0">
-                            <span class="text-shelf-muted"> · In Trash: <span x-text="importResult.in_trash"></span></span>
+                            <span class="text-shelf-muted"> {{ _('· In Trash:') }} <span x-text="importResult.in_trash"></span></span>
                         </template>
                         <template x-if="importResult.errors > 0">
-                            <span class="text-shelf-error"> · Errors: <span x-text="importResult.errors"></span></span>
+                            <span class="text-shelf-error"> {{ _('· Errors:') }} <span x-text="importResult.errors"></span></span>
                         </template>
                     </p>
                 </template>
@@ -363,7 +358,7 @@
             <!-- Detail log toggle -->
             <div x-show="importLog.length > 0" class="mt-2">
                 <button @click="showImportLog = !showImportLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
-                    <span x-text="showImportLog ? 'Hide details' : 'Show details (' + importLog.length + ' items)'"></span>
+                    <span x-text="importLogToggle"></span>
                 </button>
                 <div x-show="showImportLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
                     <template x-for="entry in importLog" :key="entry.i">
@@ -380,35 +375,35 @@
 
         <!-- Sync Schedule -->
         <div class="border-t border-shelf-border pt-4 mt-4">
-            <h3 class="text-sm font-semibold mb-2">Reading Status Sync</h3>
-            <p class="text-xs text-shelf-muted mb-3">Pull reading status changes from Hardcover automatically. Status changes made in Shelf are pushed to Hardcover instantly.</p>
+            <h3 class="text-sm font-semibold mb-2">{{ _('Reading Status Sync') }}</h3>
+            <p class="text-xs text-shelf-muted mb-3">{{ _('Pull reading status changes from Hardcover automatically. Status changes made in Shelf are pushed to Hardcover instantly.') }}</p>
             <form action="/api/hardcover/schedule" method="post" class="flex items-center gap-2">
-                <label class="text-sm text-shelf-muted">Auto-sync:</label>
+                <label class="text-sm text-shelf-muted">{{ _('Auto-sync:') }}</label>
                 <select name="interval" class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
-                    <option value="off" {% if settings.get('hc_sync_interval', 'off') == 'off' %}selected{% endif %}>Off</option>
-                    <option value="daily" {% if settings.get('hc_sync_interval') == 'daily' %}selected{% endif %}>Daily</option>
-                    <option value="weekly" {% if settings.get('hc_sync_interval') == 'weekly' %}selected{% endif %}>Weekly</option>
+                    <option value="off" {% if settings.get('hc_sync_interval', 'off') == 'off' %}selected{% endif %}>{{ _('Off') }}</option>
+                    <option value="daily" {% if settings.get('hc_sync_interval') == 'daily' %}selected{% endif %}>{{ _('Daily') }}</option>
+                    <option value="weekly" {% if settings.get('hc_sync_interval') == 'weekly' %}selected{% endif %}>{{ _('Weekly') }}</option>
                 </select>
-                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">Save</button>
+                <button type="submit" class="px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">{{ _('Save') }}</button>
             </form>
         </div>
 
         {% if feature_on('hardcover') %}
         <!-- Export to Hardcover -->
         <div class="border-t border-shelf-border pt-4 mt-4" data-testid="hc-export">
-            <h3 class="text-sm font-semibold mb-3">Export to Hardcover</h3>
-            <p class="text-xs text-shelf-muted mb-3">Push your Shelf collection to your Hardcover library. Only items with an ISBN can be exported.</p>
+            <h3 class="text-sm font-semibold mb-3">{{ _('Export to Hardcover') }}</h3>
+            <p class="text-xs text-shelf-muted mb-3">{{ _('Push your Shelf collection to your Hardcover library. Only items with an ISBN can be exported.') }}</p>
 
             <label class="flex items-center gap-2 text-sm text-shelf-muted mb-3 cursor-pointer">
                 <input type="checkbox" x-model="exportOwnedOnly" class="rounded-sm border-shelf-border bg-shelf-bg text-shelf-accent focus:ring-shelf-accent">
-                Owned items only (exclude wishlist)
+                {{ _('Owned items only (exclude wishlist)') }}
             </label>
 
             <button @click="startExport()"
                     :disabled="exporting || (!hcToken && !hcSaved)"
                     class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors disabled:opacity-50">
-                <span x-show="!exporting" x-text="(hcToken || hcSaved) ? 'Export to Hardcover' : 'Enter token to export'"></span>
-                <span x-show="exporting">Exporting...</span>
+                <span x-show="!exporting" x-text="exportButtonLabel"></span>
+                <span x-show="exporting">{{ _('Exporting...') }}</span>
             </button>
 
             <!-- Progress bar -->
@@ -430,11 +425,9 @@
                 </template>
                 <template x-if="exportResult && !exportResult.error">
                     <p class="text-shelf-muted">
-                        Pushed: <span x-text="exportResult.pushed" class="text-shelf-success"></span>,
-                        Updated: <span x-text="exportResult.updated" class="text-shelf-accent2"></span>,
-                        Not found: <span x-text="exportResult.not_found"></span>
+                        {{ _('Pushed:') }} <span x-text="exportResult.pushed" class="text-shelf-success"></span>{{ _(', Updated:') }} <span x-text="exportResult.updated" class="text-shelf-accent2"></span>{{ _(', Not found:') }} <span x-text="exportResult.not_found"></span>
                         <template x-if="exportResult.errors > 0">
-                            <span class="text-shelf-error"> · Errors: <span x-text="exportResult.errors"></span></span>
+                            <span class="text-shelf-error"> {{ _('· Errors:') }} <span x-text="exportResult.errors"></span></span>
                         </template>
                     </p>
                 </template>
@@ -443,7 +436,7 @@
             <!-- Detail log toggle -->
             <div x-show="exportLog.length > 0" class="mt-2">
                 <button @click="showExportLog = !showExportLog" class="text-xs text-shelf-accent2 hover:text-shelf-accent transition-colors">
-                    <span x-text="showExportLog ? 'Hide details' : 'Show details (' + exportLog.length + ' items)'"></span>
+                    <span x-text="exportLogToggle"></span>
                 </button>
                 <div x-show="showExportLog" x-transition class="mt-2 max-h-48 overflow-y-auto bg-shelf-bg rounded-lg p-2 text-xs font-mono space-y-0.5">
                     <template x-for="entry in exportLog" :key="entry.i">

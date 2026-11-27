@@ -385,3 +385,11 @@ def test_feature_buttons_and_confirms_are_translated(admin_client):
         assert confirms and all(c.endswith("comunque?") for c in confirms), confirms
     finally:
         i18n.current_locale.reset(token)
+
+
+def test_settings_sync_integrations_are_translated(admin_client):
+    admin_client.post("/api/account/language", data={"language": "it"})
+
+    page = admin_client.get("/settings").text
+    for text in ("Sincronizzazione Audiobookshelf", "Importa la biblioteca da Hardcover", '"Import from Hardcover": "Importa da Hardcover"'):
+        assert text in page, text

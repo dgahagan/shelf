@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.responses import StreamingResponse
 
+from app import i18n
 from app.auth import require_role
 from app.features import require_feature
 from app.config import HTTP_TIMEOUT
@@ -36,13 +37,13 @@ async def test_audiobookshelf(request: Request):
     if body is None:
         body = {}
     if not isinstance(body, dict):
-        return {"ok": False, "message": "Invalid request body"}
+        return {"ok": False, "message": i18n.gettext("Invalid request body")}
 
     raw_url = body.get("url")
     raw_token = body.get("token")
     if ((raw_url is not None and not isinstance(raw_url, str)) or
             (raw_token is not None and not isinstance(raw_token, str))):
-        return {"ok": False, "message": "Invalid request body"}
+        return {"ok": False, "message": i18n.gettext("Invalid request body")}
 
     url = (raw_url or "").strip().rstrip("/")
     token = (raw_token or "").strip()
@@ -54,7 +55,7 @@ async def test_audiobookshelf(request: Request):
             token = token or get_setting(db, "abs_token")
 
     if not url or not token:
-        return {"ok": False, "message": "URL and token are required"}
+        return {"ok": False, "message": i18n.gettext("URL and token are required")}
 
     url_err = _validate_abs_url(url)
     if url_err:
@@ -68,15 +69,15 @@ async def test_audiobookshelf(request: Request):
             )
         if resp.status_code == 200:
             libs = resp.json().get("libraries", [])
-            return {"ok": True, "message": f"Connected — {len(libs)} library(ies) found"}
+            return {"ok": True, "message": i18n.gettext("Connected — %(n)s library(ies) found") % {"n": len(libs)}}
         elif resp.status_code == 401 or resp.status_code == 403:
-            return {"ok": False, "message": "Invalid or expired API token"}
+            return {"ok": False, "message": i18n.gettext("Invalid or expired API token")}
         else:
-            return {"ok": False, "message": f"Unexpected response: HTTP {resp.status_code}"}
+            return {"ok": False, "message": i18n.gettext("Unexpected response: HTTP %(code)s") % {"code": resp.status_code}}
     except httpx.ConnectError:
-        return {"ok": False, "message": f"Cannot connect to {url}"}
+        return {"ok": False, "message": i18n.gettext("Cannot connect to %(url)s") % {"url": url}}
     except Exception:
-        return {"ok": False, "message": "Connection failed — check URL and network"}
+        return {"ok": False, "message": i18n.gettext("Connection failed — check URL and network")}
 
 
 @router.get("/audiobookshelf/libraries")
@@ -86,16 +87,16 @@ async def list_abs_libraries():
         url = get_setting(db, "abs_url")
         token = get_setting(db, "abs_token")
     if not url or not token:
-        return {"ok": False, "message": "Audiobookshelf is not configured"}
+        return {"ok": False, "message": i18n.gettext("Audiobookshelf is not configured")}
 
     try:
         async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             resp = await client.get(
                 f"{url}/api/libraries", headers={"Authorization": f"Bearer {token}"})
     except httpx.HTTPError:
-        return {"ok": False, "message": f"Cannot connect to {url}"}
+        return {"ok": False, "message": i18n.gettext("Cannot connect to %(url)s") % {"url": url}}
     if resp.status_code != 200:
-        return {"ok": False, "message": f"ABS returned HTTP {resp.status_code}"}
+        return {"ok": False, "message": i18n.gettext("ABS returned HTTP %(code)s") % {"code": resp.status_code}}
 
     excluded = audiobookshelf.get_excluded_libraries()
     libraries = [
@@ -113,11 +114,11 @@ async def save_abs_libraries(request: Request):
         body = await request.json()
         raw_excluded = body.get("excluded") or []
     except Exception:
-        return {"ok": False, "message": "Invalid request body"}
+        return {"ok": False, "message": i18n.gettext("Invalid request body")}
     if not isinstance(raw_excluded, list) or not all(
         isinstance(value, str) for value in raw_excluded
     ):
-        return {"ok": False, "message": "Invalid request body"}
+        return {"ok": False, "message": i18n.gettext("Invalid request body")}
     excluded = raw_excluded
 
     with get_db() as db:
@@ -140,13 +141,13 @@ async def cleanup_excluded_libraries():
     """
     excluded = audiobookshelf.get_excluded_libraries()
     if not excluded:
-        return {"ok": True, "deleted": 0, "message": "No libraries are excluded"}
+        return {"ok": True, "deleted": 0, "message": i18n.gettext("No libraries are excluded")}
 
     with get_db() as db:
         url = get_setting(db, "abs_url")
         token = get_setting(db, "abs_token")
     if not url or not token:
-        return {"ok": False, "message": "Audiobookshelf is not configured"}
+        return {"ok": False, "message": i18n.gettext("Audiobookshelf is not configured")}
 
     abs_ids: set[str] = set()
     try:
@@ -162,7 +163,7 @@ async def cleanup_excluded_libraries():
                         item.get("id") for item in resp.json().get("results", [])
                         if item.get("id"))
     except httpx.HTTPError:
-        return {"ok": False, "message": f"Cannot connect to {url}"}
+        return {"ok": False, "message": i18n.gettext("Cannot connect to %(url)s") % {"url": url}}
 
     deleted = 0
     with get_db() as db:
@@ -197,7 +198,7 @@ async def sync_audiobookshelf(request: Request):
         abs_token_val = get_setting(db, "abs_token")
 
     if not abs_url_val or not abs_token_val:
-        return {"error": "Audiobookshelf URL and API token must be configured in Settings"}
+        return {"error": i18n.gettext("Audiobookshelf URL and API token must be configured in Settings")}
 
     url_err = _validate_abs_url(abs_url_val)
     if url_err:
@@ -242,7 +243,7 @@ async def sync_audiobookshelf_stream(request: Request):
             await queue.put({"type": "done", **stats})
         except Exception:
             logger.exception("Audiobookshelf sync failed")
-            await queue.put({"type": "error", "message": "Sync failed — check server logs"})
+            await queue.put({"type": "error", "message": i18n.gettext("Sync failed — check server logs")})
 
     async def event_stream():
         task = asyncio.create_task(run_sync())
@@ -264,7 +265,7 @@ async def set_sync_schedule(interval: str = Form("off")):
     """Set the Audiobookshelf sync schedule. Values: off, daily, weekly."""
     if interval not in ("off", "daily", "weekly"):
         return JSONResponse(
-            {"ok": False, "message": "Invalid sync interval"}, status_code=400
+            {"ok": False, "message": i18n.gettext("Invalid sync interval")}, status_code=400
         )
     with get_db() as db:
         db.execute(
