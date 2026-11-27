@@ -95,7 +95,7 @@ msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
 #: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
-#: app/templates/item_edit.html:390
+#: app/templates/item_edit.html:398
 msgid "Tags"
 msgstr "标签"
 
@@ -818,7 +818,7 @@ msgstr "无效的 ISBN"
 msgid "Network error during lookup — check connectivity"
 msgstr "查询时网络出错 — 请检查网络连接"
 
-#: app/routers/items.py:589 app/routers/items_board_games.py:273
+#: app/routers/items.py:589 app/routers/items_board_games.py:277
 #: app/routers/items_common.py:563 app/routers/items_common.py:755
 msgid "Not found — add manually below"
 msgstr "未找到 — 请在下方手动添加"
@@ -873,24 +873,24 @@ msgstr ""
 msgid "No title for this game"
 msgstr ""
 
-#: app/routers/items_board_games.py:342 app/routers/items_board_games.py:408
+#: app/routers/items_board_games.py:346 app/routers/items_board_games.py:412
 msgid "Failed to fetch game details from BoardGameGeek"
 msgstr ""
 
-#: app/routers/items_board_games.py:388
+#: app/routers/items_board_games.py:392
 msgid "Add a BoardGameGeek token in Settings first"
 msgstr ""
 
-#: app/routers/items_board_games.py:402
+#: app/routers/items_board_games.py:406
 #, python-format
 msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
 msgstr ""
 
-#: app/routers/items_board_games.py:406
+#: app/routers/items_board_games.py:410
 msgid "Could not reach BoardGameGeek — check connectivity and try again."
 msgstr ""
 
-#: app/routers/items_board_games.py:427
+#: app/routers/items_board_games.py:431
 msgid "Updated from BoardGameGeek"
 msgstr ""
 
@@ -2220,7 +2220,7 @@ msgid "Capture"
 msgstr "拍摄"
 
 #: app/templates/fragments/item_copy_edit.html:103 app/templates/intake.html:49
-#: app/templates/item_edit.html:377 app/templates/series.html:150
+#: app/templates/item_edit.html:385 app/templates/series.html:150
 #: app/templates/series.html:164 app/templates/series.html:203
 msgid "Cancel"
 msgstr "取消"
@@ -2916,6 +2916,18 @@ msgstr "所选媒体类型专属的字段。"
 msgid "Duration (min)"
 msgstr "时长（分钟）"
 
+#: app/templates/item_edit.html:374
+msgid "Min. players"
+msgstr ""
+
+#: app/templates/item_edit.html:375
+msgid "Max. players"
+msgstr ""
+
+#: app/templates/item_edit.html:376
+msgid "Minimum age"
+msgstr ""
+
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
 #: app/templates/fragments/settings/integrations.html:95
@@ -2927,11 +2939,11 @@ msgstr "时长（分钟）"
 #: app/templates/fragments/settings/library.html:338
 #: app/templates/fragments/settings/price_alerts.html:35
 #: app/templates/fragments/settings/release_radar.html:27
-#: app/templates/item_edit.html:374 app/templates/series.html:199
+#: app/templates/item_edit.html:382 app/templates/series.html:199
 msgid "Save"
 msgstr "保存"
 
-#: app/templates/item_edit.html:391
+#: app/templates/item_edit.html:399
 msgid "Tags save as you add or remove them."
 msgstr "标签在添加或移除时即自动保存。"
 

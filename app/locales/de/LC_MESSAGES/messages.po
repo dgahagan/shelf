@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-27 15:02-0500\n"
+"PO-Revision-Date: 2026-11-27 22:43+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
 "Language-Team: de <LL@li.org>\n"
@@ -95,7 +95,7 @@ msgstr "ISBN/EAN"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
 #: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
-#: app/templates/item_edit.html:390
+#: app/templates/item_edit.html:398
 msgid "Tags"
 msgstr "Schlagwörter"
 
@@ -168,7 +168,7 @@ msgstr "Videospiel"
 
 #: app/config.py:27
 msgid "Board Game"
-msgstr ""
+msgstr "Brettspiel"
 
 #: app/config.py:55 app/templates/fragments/settings/integrations.html:290
 msgid "Want to Read"
@@ -245,7 +245,7 @@ msgstr "Entwickler"
 
 #: app/config.py:129
 msgid "Designer"
-msgstr ""
+msgstr "Spieleautor"
 
 #: app/config.py:130
 msgid "Director"
@@ -818,7 +818,7 @@ msgstr "Ungültige ISBN"
 msgid "Network error during lookup — check connectivity"
 msgstr "Netzwerkfehler bei der Suche – prüfe die Verbindung"
 
-#: app/routers/items.py:589 app/routers/items_board_games.py:273
+#: app/routers/items.py:589 app/routers/items_board_games.py:277
 #: app/routers/items_common.py:563 app/routers/items_common.py:755
 msgid "Not found — add manually below"
 msgstr "Nicht gefunden – unten von Hand eintragen"
@@ -871,28 +871,28 @@ msgstr "„%(title)s“ (#%(id)s) kann nicht zusammengeführt werden: %(reason)s
 
 #: app/routers/items_board_games.py:99
 msgid "No title for this game"
-msgstr ""
+msgstr "Kein Titel für dieses Spiel"
 
-#: app/routers/items_board_games.py:342 app/routers/items_board_games.py:408
+#: app/routers/items_board_games.py:346 app/routers/items_board_games.py:412
 msgid "Failed to fetch game details from BoardGameGeek"
-msgstr ""
+msgstr "Spieldaten konnten nicht von BoardGameGeek geladen werden"
 
-#: app/routers/items_board_games.py:388
+#: app/routers/items_board_games.py:392
 msgid "Add a BoardGameGeek token in Settings first"
-msgstr ""
-
-#: app/routers/items_board_games.py:402
-#, python-format
-msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
-msgstr ""
+msgstr "Hinterlege zuerst in den Einstellungen ein BoardGameGeek-Token"
 
 #: app/routers/items_board_games.py:406
-msgid "Could not reach BoardGameGeek — check connectivity and try again."
-msgstr ""
+#, python-format
+msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
+msgstr "Bei BoardGameGeek gibt es kein eindeutiges Spiel namens „%(title)s“ – nutze „Cover suchen“ oder korrigiere den Titel"
 
-#: app/routers/items_board_games.py:427
+#: app/routers/items_board_games.py:410
+msgid "Could not reach BoardGameGeek — check connectivity and try again."
+msgstr "BoardGameGeek war nicht erreichbar – prüfe die Verbindung und versuch es noch einmal."
+
+#: app/routers/items_board_games.py:431
 msgid "Updated from BoardGameGeek"
-msgstr ""
+msgstr "Von BoardGameGeek aktualisiert"
 
 #: app/routers/items_catalog.py:92
 msgid "Unrecognised game platform — pick one and try again"
@@ -958,7 +958,7 @@ msgstr "Kein Cover gefunden"
 
 #: app/routers/items_covers.py:105
 msgid "Board game cover search needs a BoardGameGeek token — add one in Settings → Integrations."
-msgstr ""
+msgstr "Die Cover-Suche für Brettspiele braucht ein BoardGameGeek-Token – trage es unter Einstellungen → Dienste ein."
 
 #: app/routers/items_csv.py:102
 #, python-format
@@ -2223,7 +2223,7 @@ msgid "Capture"
 msgstr "Aufnehmen"
 
 #: app/templates/fragments/item_copy_edit.html:103 app/templates/intake.html:49
-#: app/templates/item_edit.html:377 app/templates/series.html:150
+#: app/templates/item_edit.html:385 app/templates/series.html:150
 #: app/templates/series.html:164 app/templates/series.html:203
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -2429,7 +2429,7 @@ msgstr "Cover suchen"
 
 #: app/templates/item_detail.html:55
 msgid "Update from BGG"
-msgstr ""
+msgstr "Von BGG aktualisieren"
 
 #: app/templates/item_detail.html:66
 #, python-format
@@ -2494,23 +2494,23 @@ msgstr "Sprecher:"
 
 #: app/templates/item_detail.html:122
 msgid "Players:"
-msgstr ""
+msgstr "Spieler:"
 
 #: app/templates/item_detail.html:125
 msgid "Play time:"
-msgstr ""
+msgstr "Spieldauer:"
 
 #: app/templates/item_detail.html:128
 msgid "Age:"
-msgstr ""
+msgstr "Alter:"
 
 #: app/templates/item_detail.html:131
 msgid "View on BoardGameGeek"
-msgstr ""
+msgstr "Auf BoardGameGeek ansehen"
 
 #: app/templates/item_detail.html:131
 msgid "Powered by BGG"
-msgstr ""
+msgstr "Daten von BGG"
 
 #: app/templates/item_detail.html:134
 msgid "Duration:"
@@ -2919,6 +2919,18 @@ msgstr "Felder für den gewählten Medientyp."
 msgid "Duration (min)"
 msgstr "Dauer (Min.)"
 
+#: app/templates/item_edit.html:374
+msgid "Min. players"
+msgstr "Min. Spieler"
+
+#: app/templates/item_edit.html:375
+msgid "Max. players"
+msgstr "Max. Spieler"
+
+#: app/templates/item_edit.html:376
+msgid "Minimum age"
+msgstr "Mindestalter"
+
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
 #: app/templates/fragments/settings/integrations.html:95
@@ -2930,11 +2942,11 @@ msgstr "Dauer (Min.)"
 #: app/templates/fragments/settings/library.html:338
 #: app/templates/fragments/settings/price_alerts.html:35
 #: app/templates/fragments/settings/release_radar.html:27
-#: app/templates/item_edit.html:374 app/templates/series.html:199
+#: app/templates/item_edit.html:382 app/templates/series.html:199
 msgid "Save"
 msgstr "Speichern"
 
-#: app/templates/item_edit.html:391
+#: app/templates/item_edit.html:399
 msgid "Tags save as you add or remove them."
 msgstr "Schlagwörter werden sofort gespeichert."
 
@@ -3409,7 +3421,7 @@ msgstr "Filme bei TMDb nach Titel suchen."
 
 #: app/templates/scan.html:238
 msgid "Search BoardGameGeek for board games by title."
-msgstr ""
+msgstr "Brettspiele bei BoardGameGeek nach Titel suchen."
 
 #: app/templates/scan.html:241
 msgid "Search Open Library for books by title, author, or keyword."
@@ -4241,28 +4253,28 @@ msgstr "Neu laden, um sie zu sehen"
 
 #: app/templates/fragments/board_game_search_results.html:12
 msgid "Choose the matching game below"
-msgstr ""
+msgstr "Wähle unten das passende Spiel"
 
 #: app/templates/fragments/board_game_search_results.html:13
 #, python-format
 msgid "Which game is barcode %(upc)s?"
-msgstr ""
+msgstr "Welches Spiel hat den Barcode %(upc)s?"
 
 #: app/templates/fragments/board_game_search_results.html:27
 msgid "players"
-msgstr ""
+msgstr "Spieler"
 
 #: app/templates/fragments/board_game_search_results.html:29
 msgid "Expansion"
-msgstr ""
+msgstr "Erweiterung"
 
 #: app/templates/fragments/board_game_search_results.html:53
 msgid "Powered by"
-msgstr ""
+msgstr "Daten von"
 
 #: app/templates/fragments/board_game_search_results.html:58
 msgid "No board games found. Try a different title."
-msgstr ""
+msgstr "Keine Brettspiele gefunden. Versuch einen anderen Titel."
 
 #: app/templates/fragments/board_game_search_results.html:63
 #: app/templates/fragments/book_search_results.html:48

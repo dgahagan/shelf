@@ -44,7 +44,7 @@ priority** over anything stored:
 | `TMDB_API_KEY` | TMDb credential (DVD / Blu-ray metadata **and** DVD cover search) — either the 32-character v3 API Key or the v4 Read Access Token |
 | `IGDB_CLIENT_ID`, `IGDB_CLIENT_SECRET` | Twitch developer credentials (video game metadata **and** game cover search — both fields are required) |
 | `BGG_API_TOKEN` | BoardGameGeek XML API token (board game metadata, box art and the Update from BGG button). BGG issues one per registered application |
-| `GAMEUPC_API_KEY` | Optional GameUPC key (board game barcode → BGG id). Unset, Shelf uses GameUPC's public test endpoint, which serves real data |
+| `GAMEUPC_API_KEY` | Optional GameUPC key (board game barcode → BGG id). It decides two things. **Auto** asks GameUPC first on a UPC scan only with a key of your own; without one, Auto never asks GameUPC, so a board game scanned on Auto is not recognized as one. A scan with the media type set to **Board Game** works either way: without a key it uses GameUPC's shared public test endpoint, which serves real data but may be throttled or retired, and a miss there still leaves BGG title search |
 | `LIBRARYTHING_TOKEN` | LibraryThing API token, for the English related-edition cover fallback (non-commercial use unless LibraryThing grants permission) |
 
 Useful with Docker secrets or a secrets manager. Vision-provider keys (Photo
@@ -99,6 +99,7 @@ lives:
 | **Google Books** | Optional API key, **Test Key**. Authenticates the Google Books requests Shelf already makes; keyless access stays enabled without it |
 | **Movie Database (TMDb)** | API key for DVD / Blu-ray lookups, for **Find cover** on a DVD, and for the lookup a Photo Intake row typed DVD runs when you confirm it |
 | **Photo Intake (Vision)** | Provider: Anthropic (API key + model), OpenAI-compatible (base URL, optional key, model, ingest long-edge), or Ollama (URL, model, ingest long-edge) |
+| **BoardGameGeek (Board Games)** | BGG XML API token, for board game lookups (barcode scan, title search), **Find cover** on a board game (each printing's box art) and **Update from BGG**; an optional GameUPC key alongside it (see `GAMEUPC_API_KEY` above) |
 | **IGDB (Video Games)** | Twitch client ID + secret, for game lookups, for **Find cover** on a video game, and for the lookup a Photo Intake row typed Video Game runs when you confirm it |
 | **LibraryThing** | API token for the English related-edition cover fallback: a book whose own ISBN has no cover gets one from a verified English edition, in **Retry Missing Covers** and as extra **Find cover** tiles. Non-commercial use unless LibraryThing grants permission |
 | **Discogs** | Personal access token for optional exact-pressing lookup on Music item pages. MusicBrainz remains the canonical release identity; Shelf stores only the selected Discogs Release ID and fetches provider details on demand |
@@ -211,7 +212,7 @@ manage their own API tokens, from the account menu — not from Settings.
   such an audiobook, or when you press **Fill details from Audible**.
 - Media types are a fixed list: book, audiobook, eBook, magazine,
   DVD / Blu-ray, vinyl, cassette, CD, digital music, comic / graphic novel,
-  Manga, video game. A kids' book is a **book carrying a `Kids` tag**, not a
+  Manga, video game, board game. A kids' book is a **book carrying a `Kids` tag**, not a
   media type of its own — see [Items → Tags](user-guide/items.md).
   `kids_book` is still accepted on *input* (a CSV, an archive, or a device
   whose cached form still offers it) and is stored as `book`; from a CSV or

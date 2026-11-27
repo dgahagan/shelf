@@ -344,7 +344,11 @@ def test_bgg_box_art_passes_the_cover_allowlist():
 
 
 class TestAutoFindsBoardGames:
-    """Auto mode asks GameUPC first once board games are set up."""
+    """Auto mode asks GameUPC first, but only with a GameUPC key of its own."""
+
+    @pytest.fixture(autouse=True)
+    def _own_gameupc_key(self, board_game_stubs, monkeypatch):
+        monkeypatch.setattr(items_board_games, "_credentials", lambda: ("secret", "own-key"))
 
     def test_auto_files_a_game_gameupc_knows(self, editor_client, db, board_game_stubs, monkeypatch):
         from app.services import upcitemdb
@@ -381,6 +385,24 @@ class TestAutoFindsBoardGames:
         _scan(editor_client, CATAN_EAN, media_type="auto")
         assert not any(c[0] == "gameupc" for c in board_game_stubs["calls"])
 
+    def test_a_bgg_token_without_a_gameupc_key_does_not_probe(self, editor_client, db, board_game_stubs, monkeypatch):
+        """No install's Auto scans may depend on GameUPC's shared test key."""
+        from app.services import upcitemdb
+        monkeypatch.setattr(items_board_games, "_credentials", lambda: ("secret", None))
+
+        async def _upcitemdb(upc, client):
+            return provider_result.no_match("upcitemdb")
+        monkeypatch.setattr(upcitemdb, "lookup", _upcitemdb)
+        _scan(editor_client, CATAN_EAN, media_type="auto")
+        assert not any(c[0] == "gameupc" for c in board_game_stubs["calls"])
+
+    def test_an_explicit_board_game_scan_still_works_without_a_key(self, editor_client, db, board_game_stubs, monkeypatch):
+        """The explicit path may use GameUPC's test endpoint: the user asked for a game."""
+        monkeypatch.setattr(items_board_games, "_credentials", lambda: ("secret", None))
+        resp = _scan(editor_client, CATAN_EAN, media_type="board_game")
+        assert 'data-scan-status="added"' in resp.text
+        assert ("gameupc", CATAN_EAN) in board_game_stubs["calls"]
+
     def test_an_explicit_other_type_is_not_probed(self, editor_client, db, board_game_stubs, monkeypatch):
         from app.services import upcitemdb
 
@@ -389,3 +411,30 @@ class TestAutoFindsBoardGames:
         monkeypatch.setattr(upcitemdb, "lookup", _upcitemdb)
         _scan(editor_client, CATAN_EAN, media_type="dvd")
         assert not any(c[0] == "gameupc" for c in board_game_stubs["calls"])
+
+
+class TestEditForm:
+    def test_players_and_age_can_be_set_by_hand(self, editor_client, db):
+        from tests.conftest import _insert_item
+        item_id = _insert_item(db, title="Hausspiel", isbn=None, media_type="board_game")
+        db.commit()
+        page = editor_client.get(f"/item/{item_id}/edit").text
+        for name in ("min_players", "max_players", "min_age"):
+            assert f'name="{name}"' in page, name
+        resp = editor_client.post(f"/api/items/{item_id}", data={
+            "title": "Hausspiel", "media_type": "board_game",
+            "min_players": "2", "max_players": "5", "min_age": "8"},
+            follow_redirects=False)
+        assert resp.status_code == 303
+        row = db.execute("SELECT min_players, max_players, min_age FROM items_live WHERE id = ?",
+                         (item_id,)).fetchone()
+        assert tuple(row) == (2, 5, 8)
+
+    def test_a_non_number_is_refused(self, editor_client, db):
+        from tests.conftest import _insert_item
+        item_id = _insert_item(db, title="Hausspiel", isbn=None, media_type="board_game", min_players=2)
+        db.commit()
+        resp = editor_client.post(f"/api/items/{item_id}", data={"title": "Hausspiel", "min_players": "zwei"},
+                                  follow_redirects=False)
+        assert "error=invalid_number" in resp.headers["location"]
+        assert db.execute("SELECT min_players FROM items_live WHERE id = ?", (item_id,)).fetchone()[0] == 2

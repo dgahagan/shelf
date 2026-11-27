@@ -851,6 +851,37 @@ class TestRoundTripDuplicateDedupeKeys:
         ).fetchone()
         assert restored["cover_review_dismissed"] == 1
 
+    def test_round_trip_preserves_board_game_columns(self, db):
+        """BGG id, player range and minimum age survive export -> wipe -> import.
+
+        The same whitelist trap as the dismissal column above: a column added
+        by a migration but missing from `_ITEM_COLUMNS` exports as nothing and
+        restores as NULL, with no error to say so.
+        """
+        _insert_item(db, title="Catan", media_type="board_game", isbn=None,
+                     upc="4002051693602", bgg_id=13, min_players=3,
+                     max_players=4, min_age=10)
+        db.execute("COMMIT")
+
+        path = build_archive(db)
+        with zipfile.ZipFile(path) as zf:
+            exported = json.loads(zf.read("library.json"))["items"][0]
+        assert (exported["bgg_id"], exported["min_players"],
+                exported["max_players"], exported["min_age"]) == (13, 3, 4, 10)
+
+        _wipe_library(db)
+
+        with read_archive(path) as reader:
+            report = merge_archive(db, reader, mode="skip")
+        db.execute("COMMIT")
+        assert report["errors"] == []
+
+        restored = db.execute(
+            "SELECT bgg_id, min_players, max_players, min_age FROM items "
+            "WHERE title = 'Catan'"
+        ).fetchone()
+        assert tuple(restored) == (13, 3, 4, 10)
+
     def test_an_archive_predating_the_dismissal_column_still_imports(self, db):
         """Every archive written before migration 32 lacks the key entirely.
 

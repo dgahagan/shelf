@@ -320,6 +320,7 @@ HOST_RATE_LIMITS: dict[str, float] = {
     # and community clients settle on one request every few seconds.
     "boardgamegeek.com": 2.0,
     "api.gameupc.com": 1.0,  # community-run service; publishes no limit
+    "cf.geekdo-images.com": 0.5,  # BGG image CDN (box art); politeness only
     "api.themoviedb.org": 0.1,  # no hard per-second cap
     # MusicBrainz asks ordinary clients to stay at or below one request per
     # second. Give the limiter a little margin instead of sitting exactly on

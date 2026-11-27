@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-24 21:52+0000\n"
+"PO-Revision-Date: 2026-11-27 22:43+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
 "Language-Team: de <LL@li.org>\n"
@@ -835,7 +835,7 @@ msgstr "Wähle zuerst einen Ort aus"
 
 #: static/js/scan.js:488
 msgid "Choose the matching game below"
-msgstr ""
+msgstr "Wähle unten das passende Spiel"
 
 #: static/js/scan.js:489
 msgid "Choose the matching book below"
@@ -847,7 +847,7 @@ msgstr "Gib unten die fünf Ziffern ein"
 
 #: static/js/scan.js:497
 msgid "done"
-msgstr ""
+msgstr "erledigt"
 
 #: static/js/scan.js:508 static/js/shelf-fill.js:135
 msgid "error"

@@ -188,10 +188,10 @@ async def route_scan(request: Request, templates, upc_raw: str, media_type: str 
 
     An explicit Board Game pick always comes here. Under Auto, nothing in a
     board game's barcode or its UPC Item DB record says "board game", so
-    GameUPC is asked first, once a BGG token or GameUPC key says the household
-    has opted into board games. Only a barcode it ties to at least one BGG
-    game goes this way; a film or album GameUPC merely names, or a GameUPC
-    outage, carries on exactly as before.
+    GameUPC is asked first, but only with a GameUPC key of the library's own
+    (see `scan_upc_if_game`). Only a barcode it ties to at least one BGG game
+    goes this way; a film or album GameUPC merely names, or a GameUPC outage,
+    carries on exactly as before.
     """
     if media_type == MEDIA_TYPE:
         return await scan_upc(request, templates, upc_raw, location_id, mode=mode)
@@ -204,11 +204,15 @@ async def scan_upc_if_game(request: Request, templates, upc_raw: str, location_i
     """Auto-mode probe: the board game card if GameUPC ties this barcode to a
     BGG game, else `None` and the caller carries on with its own lookup.
 
-    Asks nothing unless board games are set up (a BGG token or a GameUPC key),
-    so a library without games pays no extra request per scan.
+    Asks nothing without a GameUPC key of the library's own. A BGG token alone
+    is not enough: the probe runs on every Auto scan, DVDs and CDs included,
+    and must not lean on GameUPC's shared public test key, which every keyless
+    install would hit at once and GameUPC may throttle or retire. Without a
+    key, board games still come in by title search, or by a scan with the
+    media type set to Board Game (`scan_upc`, which may use the test key).
     """
-    bgg_token, gameupc_key = _credentials()
-    if not (bgg_token or gameupc_key):
+    _bgg_token, gameupc_key = _credentials()
+    if not gameupc_key:
         return None
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         upc_result = await gameupc.lookup(upc_raw, client, api_key=gameupc_key)

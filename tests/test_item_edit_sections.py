@@ -31,6 +31,7 @@ def test_item_edit_is_sectioned_without_changing_the_save_contract():
         "title", "subtitle", "authors", "publisher", "publish_year", "isbn",
         "page_count", "series_name", "series_position", "narrator",
         "duration_mins", "asin", "date_started", "date_finished",
+        "min_players", "max_players", "min_age",
     ):
         assert f'field("{field}"' in template
 
@@ -44,7 +45,8 @@ def test_item_edit_is_sectioned_without_changing_the_save_contract():
     # Media-specific groups stay in the DOM so changing Media Type can reveal
     # them immediately without changing what the form submits.
     assert 'data-media-types="book audiobook ebook comic manga"' in template
-    assert 'data-media-types="video_game audiobook"' in template
+    assert 'data-media-types="video_game audiobook board_game"' in template
+    assert 'data-media-types="board_game"' in template
     assert "updateEditSectionVisibility" in script
     assert "mediaSelect.addEventListener('change'" in script
     assert "kids_book" not in template

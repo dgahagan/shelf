@@ -1592,8 +1592,9 @@ details: players, play time (stored in `duration_mins`), minimum age,
 designers, publisher and box art. A verified or clearly leading GameUPC
 candidate is filed at once; otherwise the card lists the candidates and the
 barcode rides along on the chosen one. Under Auto, `_scan_upc` asks GameUPC
-first, but only once a BGG token or GameUPC key is configured — a library
-without board games pays no extra request — and only a barcode GameUPC ties
+first, but only with a GameUPC key of the library's own — never on GameUPC's
+shared test key, which every keyless install would hit on every Auto scan,
+and a library without one pays no extra request — and only a barcode GameUPC ties
 to at least one BGG game goes this way; everything else carries on to UPC Item
 DB as before. Both hosts are paced through `outbound.py`. The cover picker
 asks BGG for the game's printings (`versions=1`) and offers each edition's box,
