@@ -1858,6 +1858,16 @@ grep -rn "post_data_buffer" tests/e2e/
   640px the input measured 73px of content. Fixed with `flex flex-wrap` and a
   `min-w-36` floor on the input, so the button wraps below it instead. Copying
   a row that passes on one page proves nothing about a narrower parent.
+  **Locale and user data are width axes too** (`feat/nav-grouping`,
+  2026-11-27). The ten-tab nav row fit in English with a short name and
+  overflowed by up to 203 px at 1024 in German/Italian with a 28-character
+  display name; the old guard sampled five widths in English only. A
+  `truncate` with no width never truncates — the account name span had one
+  and grew without bound. **And size a guard's input against the layout
+  *after* the fix, not the probe that found the bug:** once the row was
+  grouped, the probe's 28-character name fit even with the cap removed (de
+  kept 38 px), so the sweep could not see the cap; 40 characters made the
+  cap-removal mutation fail at 1024/1032 (`296c10d`).
 - **Verify:** the responsive gate measures every top-level page at
   320/390/430/640/768/1024 for both overflow *and* text columns squeezed under
   80px. A breakpoint's own width is the worst case for the layout it turns on,

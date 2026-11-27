@@ -294,7 +294,7 @@ class TestIdentityComesFromTheRow:
         db.commit()
         html = admin_client.get("/").text
         button = html[html.index('data-testid="account-menu-button"'):]
-        name = re.search(r'text-shelf-text truncate">([^<]*)</span>', button).group(1)
+        name = re.search(r'text-shelf-text truncate[^"]*">([^<]*)</span>', button).group(1)
         assert name == "Renamed"
 
 

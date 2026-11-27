@@ -59,6 +59,7 @@ from app.config import (
 )
 from app.currency import CURRENCIES, format_money, get_currency
 from app.features import feature_enabled
+from app.nav import nav_row
 from app.services.national import SEARCH_LANGS
 from app.services import audnexus
 from app.services.browse_counts import source_label
@@ -760,6 +761,7 @@ templates.env.globals["browse_column_config"] = browse_columns.client_config
 # key, so a fragment re-rendered from a new route can't forget it — an
 # unknown key raises rather than rendering as falsy.
 templates.env.globals["feature_on"] = feature_enabled
+templates.env.globals["nav_row"] = nav_row
 # The toggle route re-renders reading_status.html with only `item` in context,
 # so the status words must come from a global.
 templates.env.globals["status_labels"] = status_labels

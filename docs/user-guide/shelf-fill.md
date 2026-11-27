@@ -1,6 +1,6 @@
 # Shelf Fill
 
-Shelf Fill is a rapid filing workflow for physical media. Open **Shelf Fill**, choose the precise room/bookcase/shelf once, then scan items while you place them there.
+Shelf Fill is a rapid filing workflow for physical media. Open **Shelf Fill** (under **Tools** in the nav, or a tab of its own when it is the only tool available), choose the precise room/bookcase/shelf once, then scan items while you place them there.
 
 ## The workflow
 

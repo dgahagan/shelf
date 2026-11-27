@@ -821,3 +821,48 @@ def insert_item(data_dir: Path, wishlisted: bool = False, **kwargs) -> int:
         return cur.lastrowid
     finally:
         conn.close()
+
+
+# Mirrors app.nav.HIDEABLE_KEYS — kept literal here so a change to that set
+# is a visible diff in this test rather than a silent behavior change.
+HIDEABLE_KEYS = (
+    "scan", "intake", "store", "series", "discover", "stats", "logs",
+    "music", "periodicals", "shelf-fill", "trash", "labels", "audits", "duplicates",
+)
+
+
+def _csrf_headers(page):
+    return {"X-CSRF-Token": page.evaluate("() => window.csrfToken()")}
+
+
+def _reset_nav_baseline(live_server, page):
+    """Known-clean nav state: no vision provider, no Hardcover token, nothing
+    manually hidden. Goes through the real settings endpoints so the
+    server-side nav cache is invalidated, not the sqlite file directly."""
+    base = live_server["url"]
+    headers = _csrf_headers(page)
+    resp = page.request.post(
+        f"{base}/api/settings",
+        form={"hardcover_token": "", "clear_hardcover_token": "on"},
+        headers=headers,
+    )
+    assert resp.status in (200, 303)
+    resp = page.request.post(
+        f"{base}/api/settings/vision", form={"vision_provider": ""}, headers=headers
+    )
+    assert resp.status in (200, 303)
+    # Every hideable key present+checked => nav_hidden_tabs ends up empty.
+    resp = page.request.post(
+        f"{base}/api/settings/nav", form={k: "on" for k in HIDEABLE_KEYS}, headers=headers
+    )
+    assert resp.status in (200, 303)
+
+
+@pytest.fixture
+def nav_page(live_server, authed_page):
+    """authed_page with nav-relevant settings forced to a known baseline
+    before the test, and restored to that same baseline after — regardless
+    of what the test did in between."""
+    _reset_nav_baseline(live_server, authed_page)
+    yield authed_page
+    _reset_nav_baseline(live_server, authed_page)

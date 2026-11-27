@@ -26,7 +26,7 @@ enter the server URL and model. Both OpenAI-compatible and Ollama have an
 sets the size Shelf uploads when you send a photo as-is, and drives the
 tiling decision below; the defaults match common models.
 
-The **Photo Intake** nav tab appears once a provider is saved.
+**Photo Intake** appears in the nav, under **Tools**, once a provider is saved.
 
 ## Using it
 

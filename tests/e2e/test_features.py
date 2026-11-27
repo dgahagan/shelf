@@ -212,6 +212,7 @@ def test_minimal_install_then_apply_standard_from_settings(server_factory, brows
 
         # Standard, live, no restart: the Series nav tab and /series both
         # come back.
+        page.locator('[data-nav-group-button="explore"]').click()
         expect(page.locator('[data-nav-tab="series"]')).to_be_visible()
         page.goto(f"{base_url}/series")
         expect(page.locator('[data-testid="feature-disabled"]')).to_have_count(0)

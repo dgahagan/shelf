@@ -51,12 +51,14 @@ def test_non_admin_account_menus_do_not_offer_admin_settings(editor_client, view
 def test_settings_is_not_rendered_in_primary_nav(admin_client):
     html = admin_client.get("/browse").text
     desktop_start = html.index('<div class="hidden lg:flex items-center gap-1">')
-    desktop_end = html.index("</div>", desktop_start)
+    # End at fixed landmarks, not the first </div>: group disclosures nest
+    # <div>s inside the row, which would cut the slice short.
+    desktop_end = html.index('x-data="accountMenu"', desktop_start)
     desktop_nav = html[desktop_start:desktop_end]
     assert 'data-nav-tab="settings"' not in desktop_nav
 
     mobile_start = html.index('data-testid="nav-menu-panel"')
-    mobile_end = html.index("</div>", mobile_start)
+    mobile_end = html.index('<div class="hidden lg:flex items-center gap-1">', mobile_start)
     mobile_nav = html[mobile_start:mobile_end]
     assert 'data-nav-menu-tab="settings"' not in mobile_nav
 

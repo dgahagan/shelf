@@ -31,6 +31,27 @@ document.addEventListener('alpine:init', function () {
         };
     });
 
+    // base.html — one tab-row group disclosure (app.nav.nav_row decides which
+    // tabs fold into one). Several roots live on one page, one per group; the
+    // only page-level listener is the template's @keydown.escape.window, and
+    // Escape closing every open group at once is intended (G91), so no host
+    // marker is needed. Every member is a full navigation: nothing to persist.
+    Alpine.data('navGroup', function () {
+        return {
+            open: false,
+            toggle() { this.open = !this.open },
+            close() { this.open = false },
+            // Keyboard focus leaving the group closes it. Only a real element
+            // outside the root counts: a null relatedTarget (a click on
+            // something unfocusable, or Safari not focusing a clicked link)
+            // is left to @click.outside, so it can't close the panel under
+            // a click that is about to land on a member link.
+            leave(e) {
+                if (e.relatedTarget && !this.$root.contains(e.relatedTarget)) this.open = false;
+            }
+        };
+    });
+
     // base.html — user menu. Settings belongs with the signed-in user rather
     // than consuming one of the library's primary navigation tabs. Account
     // still opens the existing profile/password modal.
@@ -42,7 +63,13 @@ document.addEventListener('alpine:init', function () {
             close() { this.open = false },
             openAccount() { this.open = false; this.showAccount = true },
             closeAccount() { this.showAccount = false },
-            closeAll() { this.open = false; this.showAccount = false }
+            closeAll() { this.open = false; this.showAccount = false },
+            // As navGroup.leave: Tab past the last item closes the menu. The
+            // account modal sits inside this root, so focus moving into it
+            // never counts as leaving.
+            leave(e) {
+                if (e.relatedTarget && !this.$root.contains(e.relatedTarget)) this.open = false;
+            }
         };
     });
 

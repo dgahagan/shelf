@@ -29,7 +29,16 @@ on or off later, or applies a different profile in one step. See
 The nav bar adapts to what you've configured — tabs for integrations you
 haven't set up stay hidden (Settings → Library → Navigation controls this) —
 and to the features you have on. A tab below whose feature is off does not
-appear until you turn it on under Settings → Features. With everything on:
+appear until you turn it on under Settings → Features.
+
+The desktop bar keeps **Browse**, **Scan**, **Store** and **Discover** as tabs
+and gathers the rest into two menus: **Explore** (Series, Music, Periodicals,
+Stats) and **Tools** (Photo Intake, Shelf Fill). Click a menu's name to open
+it; Escape, a click elsewhere, or tabbing out of it closes it. A menu with only one page available
+— Tools without a vision provider, for instance — shows that page as a plain
+tab instead, and a menu with none does not appear. On a phone the bar folds
+into the ☰ menu, where the same groups appear as headings over their pages.
+With everything on:
 
 Shelf opens on **Home** — a read-only overview of your collection. Click
 **Shelf** in the menu bar to come back to it from anywhere.
@@ -39,12 +48,12 @@ Shelf opens on **Home** — a read-only overview of your collection. Click
 | **Home** | Totals, what is lent out, missing covers, media-type mix, recent additions. Not a tab — the **Shelf** link in the menu bar. [Home](home.md) |
 | **Scan** | The workhorse: camera or hardware scanner, eight modes, title search, and Add by hand for anything no lookup can find. [Scanning](scanning.md) |
 | **Browse** | Your catalog — grid or list, filters, search, bulk edit. [Browse & search](browse-and-search.md) |
-| **Shelf Fill** | Keep one shelf selected and scan items onto it (editors and admins). [Shelf Fill](shelf-fill.md) |
-| **Series** | Library grouped by series with gap detection. [Series](series.md) |
-| **Music** | Your releases, and MusicBrainz search to add more. [Music](music.md) |
-| **Periodicals** | Magazine publications and their issues. [Periodicals](periodicals.md) |
-| **Stats** | Charts: read per year, growth, top authors, value over time. [Stats & valuation](stats-and-valuation.md) |
-| **Photo Intake** | Bulk-add from a shelf photo (appears once a vision provider is configured). [Photo Intake](photo-intake.md) |
+| **Shelf Fill** (under Tools) | Keep one shelf selected and scan items onto it (editors and admins). [Shelf Fill](shelf-fill.md) |
+| **Series** (under Explore) | Library grouped by series with gap detection. [Series](series.md) |
+| **Music** (under Explore) | Your releases, and MusicBrainz search to add more. [Music](music.md) |
+| **Periodicals** (under Explore) | Magazine publications and their issues. [Periodicals](periodicals.md) |
+| **Stats** (under Explore) | Charts: read per year, growth, top authors, value over time. [Stats & valuation](stats-and-valuation.md) |
+| **Photo Intake** (under Tools) | Bulk-add from a shelf photo (appears once a vision provider is configured). [Photo Intake](photo-intake.md) |
 | **Store** | Offline bookstore mode. [Wishlist & Store Mode](wishlist-and-store-mode.md) |
 | **Discover** | Hardcover-powered recommendations (appears with a Hardcover token) |
 | **Settings** | Admin only, in the account menu under your name. [Configuration](../configuration.md) |

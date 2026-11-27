@@ -316,7 +316,7 @@ it posted from.
 ```
 app/
   main.py          FastAPI app, middleware (CSP, rate limit, auth, CSRF), lifespan tasks
-  nav.py           nav tab registry (auto-hide for unconfigured integrations)
+  nav.py           nav tab registry, groups, and auto-hide
   browse_filters.py  the Browse filter set — SQL, querystring and UI, declared once
   config.py        paths, media types, platforms, vision caps, per-host rate limits
   database.py      SCHEMA + append-only MIGRATIONS

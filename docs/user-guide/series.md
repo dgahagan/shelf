@@ -1,6 +1,6 @@
 # Series
 
-The **Series** page groups your library by series name, sorted by size, with
+The **Series** page (under **Explore** in the nav) groups your library by series name, sorted by size, with
 each volume's position and a cover strip. It is the fastest way to answer
 "which Discworld am I missing?"
 

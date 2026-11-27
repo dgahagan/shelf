@@ -128,6 +128,7 @@ def test_viewer_sees_read_only_product_ui_without_editor_mutations(
         page.wait_for_url(f"{base}/", timeout=10_000)
 
         # Viewer navigation exposes read-only product surfaces, not editor/admin tools.
+        page.locator('[data-nav-group-button="explore"]').click()
         for key in ("browse", "store", "series", "discover", "stats"):
             expect(page.locator(f'[data-nav-tab="{key}"]')).to_be_visible()
         for key in ("scan", "settings", "logs"):

@@ -6,6 +6,43 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.87.0] - 2026-11-27
+
+The navigation bar had grown one tab at a time to ten, and at the narrow end
+of a desktop window it no longer fitted. In German and Italian, or with a long
+display name, the row pushed your account menu off the right edge of the
+screen at widths from 1024 to about 1220 pixels. The bar now groups its tabs
+by what they are for, so it fits with room to spare in every language Shelf
+ships.
+
+### Changed
+
+- **The navigation bar groups its tabs into two menus.** **Explore** holds
+  Series, Music, Periodicals and Stats — the views onto what you own — and
+  **Tools** holds Photo Intake and Shelf Fill. Browse, Scan, Store and
+  Discover stay as tabs, so the collection and scanning are still one click
+  away. Click a menu's name to open it; Escape, a click elsewhere, or moving
+  keyboard focus out of it closes it. The menu's name is highlighted while
+  you are on one of its pages. A menu's name is only a menu, not a page of
+  its own.
+- **A menu with only one page available shows that page as a plain tab.**
+  With the Standard profile and no photo provider, for example, Tools holds
+  only Shelf Fill, so the bar shows **Shelf Fill** as a tab rather than a
+  menu with one item. A menu with nothing available does not appear, and
+  tabs you hide under Settings → Library leave their menu the same way.
+- **On a phone, the ☰ menu lists the same groups under headings,** with a
+  divider before and after each group, so the pages that follow a group do not
+  read as part of it.
+- **The account menu also closes when keyboard focus moves out of it.**
+
+### Fixed
+
+- **The navigation bar no longer pushes the account menu off the screen** at
+  widths from 1024 to about 1220 pixels in German and Italian, or with a long
+  display name.
+- **A long display name now truncates** in the account menu instead of
+  widening it without limit.
+
 ## [0.86.1] - 2026-11-27
 
 Nothing changes for people who run Shelf. This release is for contributors.
@@ -6264,6 +6301,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.87.0]: https://github.com/dgahagan/shelf/releases/tag/v0.87.0
 [0.86.1]: https://github.com/dgahagan/shelf/releases/tag/v0.86.1
 [0.86.0]: https://github.com/dgahagan/shelf/releases/tag/v0.86.0
 [0.85.0]: https://github.com/dgahagan/shelf/releases/tag/v0.85.0

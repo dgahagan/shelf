@@ -8,9 +8,11 @@ from app.nav import (
     ALWAYS_VISIBLE,
     HIDEABLE_KEYS,
     HIDEABLE_TABS,
+    NAV_GROUPS,
     NAV_TABS,
     hideable_tab_states,
     invalidate_cache,
+    nav_row,
     visible_tabs,
 )
 
@@ -39,8 +41,8 @@ VIEWER = {"id": 3, "username": "viewer", "role": "viewer"}
 
 def test_registry_covers_the_sixteen_tabs():
     assert [t["key"] for t in NAV_TABS] == [
-        "browse", "scan", "intake", "shelf-fill", "store", "series",
-        "music", "periodicals", "discover", "stats", "trash", "labels", "audits",
+        "browse", "scan", "series", "music", "periodicals", "stats", "intake",
+        "shelf-fill", "store", "discover", "trash", "labels", "audits",
         "duplicates", "settings", "logs",
     ]
     for tab in NAV_TABS:
@@ -65,6 +67,25 @@ def test_visible_tabs_carries_the_menu_destination(db):
     assert by_key["logs"]["menu"] == "account"
     assert by_key["settings"]["menu"] == "account"
     assert by_key["browse"]["menu"] == ""
+
+
+def test_every_group_value_is_a_declared_group():
+    assert {t["group"] for t in NAV_TABS if "group" in t} <= set(NAV_GROUPS)
+
+
+def test_no_tab_is_both_grouped_and_in_a_menu():
+    assert not [t["key"] for t in NAV_TABS if t.get("group") and t.get("menu")]
+
+
+def test_group_members_are_contiguous_in_the_registry():
+    for group in NAV_GROUPS:
+        idx = [i for i, t in enumerate(NAV_TABS) if t.get("group") == group]
+        assert idx == list(range(idx[0], idx[0] + len(idx))), group
+
+
+def test_every_group_has_at_least_two_members():
+    for group in NAV_GROUPS:
+        assert sum(1 for t in NAV_TABS if t.get("group") == group) >= 2, group
 
 
 def test_browse_and_settings_are_not_hideable():
@@ -94,7 +115,7 @@ def test_admin_sees_settings_and_logs(db):
 
 def test_anonymous_sees_only_ungated_tabs(db):
     keys = _keys(None)
-    assert keys == ["browse", "store", "series", "music", "periodicals", "stats"]
+    assert keys == ["browse", "series", "music", "periodicals", "stats", "store"]
 
 
 # --- Integration requirements ----------------------------------------------
@@ -346,6 +367,97 @@ def test_active_tab_is_highlighted(admin_client, db):
     assert "bg-shelf-hover text-white" in anchor
     other = re.search(r'<a[^>]*data-nav-tab="store"[^>]*>', html).group(0)
     assert "text-shelf-muted" in other
+
+
+# --- Rendered groups (app.nav.nav_row through base.html) -----------------------
+# Asserted on the data-nav-* hooks, never on the label words (G69).
+
+def _apply_profile(name):
+    from app.database import get_db
+    from app.features import apply_profile
+    with get_db() as conn:
+        apply_profile(conn, name)
+        conn.commit()
+
+
+def test_everything_renders_both_group_disclosures(admin_client, db):
+    _set(db, "vision_provider", "ollama")
+    _set(db, "hardcover_token", "hc-token")
+    _apply_profile("everything")
+    html = admin_client.get("/browse").text
+    assert html.count('data-nav-group="explore"') == 1
+    assert html.count('data-nav-group="tools"') == 1
+    for key in ("series", "music", "periodicals", "stats", "intake", "shelf-fill"):
+        assert html.count(f'data-nav-tab="{key}"') == 1, key
+
+
+def test_standard_shows_explore_and_shelf_fill_as_a_plain_tab(admin_client, db):
+    _apply_profile("standard")
+    html = admin_client.get("/browse").text
+    assert 'data-nav-group="explore"' in html
+    assert 'data-nav-group="tools"' not in html
+    assert 'data-nav-tab="shelf-fill"' in html
+    assert 'data-nav-menu-heading="tools"' not in html
+
+
+def test_minimal_renders_no_group(admin_client, db):
+    _apply_profile("minimal")
+    assert "data-nav-group=" not in admin_client.get("/browse").text
+
+
+def test_viewer_gets_no_tools_group(viewer_client, db):
+    _set(db, "vision_provider", "ollama")
+    assert 'data-nav-group="tools"' not in viewer_client.get("/browse").text
+
+
+def test_group_button_is_active_on_a_member_page(admin_client, db):
+    import re
+    pattern = r'<button[^>]*data-nav-group-button="explore"[^>]*>'
+    on_member = re.search(pattern, admin_client.get("/series").text).group(0)
+    assert "bg-shelf-hover text-white" in on_member
+    elsewhere = re.search(pattern, admin_client.get("/browse").text).group(0)
+    assert "text-shelf-muted" in elsewhere
+    assert "bg-shelf-hover text-white" not in elsewhere
+
+
+def test_hamburger_heads_each_group_with_its_members(admin_client, db):
+    html = admin_client.get("/browse").text
+    heading = html.index('data-nav-menu-heading="explore"')
+    assert html.index('data-nav-menu-tab="series"', heading) > heading
+    panel_end = html.index('<div class="hidden lg:flex items-center gap-1">')
+    assert heading < panel_end
+
+
+def _hamburger_sequence(html):
+    """The ☰ panel's children in order: tab keys, '#<group>' headings, '|' dividers."""
+    import re
+    start = html.index('data-testid="nav-menu-panel"')
+    end = html.index('<div class="hidden lg:flex items-center gap-1">', start)
+    seq = []
+    for m in re.finditer(
+        r'data-nav-menu-(?:tab="([^"]+)"|heading="([^"]+)"|(divider))', html[start:end]
+    ):
+        tab, heading, divider = m.groups()
+        seq.append(tab or (f"#{heading}" if heading else "|"))
+    return seq
+
+
+def test_hamburger_closes_a_group_before_a_plain_tab(admin_client, db):
+    """A plain tab after a group must not read as its member (qa Observation 1):
+    a divider opens each group after the first entry and closes it before a tab."""
+    _set(db, "vision_provider", "ollama")
+    _set(db, "hardcover_token", "hc-token")
+    _apply_profile("everything")
+    seq = _hamburger_sequence(admin_client.get("/browse").text)
+    assert seq == ["browse", "scan", "|", "#explore", "series", "music", "periodicals",
+                   "stats", "|", "#tools", "intake", "shelf-fill", "|", "store", "discover"]
+
+
+def test_hamburger_divider_after_a_group_before_a_singleton_tab(admin_client, db):
+    _apply_profile("standard")
+    seq = _hamburger_sequence(admin_client.get("/browse").text)
+    assert seq == ["browse", "scan", "|", "#explore", "series", "music", "periodicals",
+                   "stats", "|", "shelf-fill", "store"]
 
 
 # --- POST /api/settings/nav --------------------------------------------------
@@ -717,3 +829,70 @@ def test_every_browse_link_uses_a_registered_filter_name():
         "these links pass a parameter Browse does not know, so the filter is "
         f"silently dropped: {sorted(set(bad))}"
     )
+
+
+# --- nav_row ----------------------------------------------------------------
+
+def _t(key, group="", menu=""):
+    return {"key": key, "label": key, "path": "/" + key, "group": group, "menu": menu}
+
+
+def test_nav_row_folds_two_members_into_one_group_at_the_first_position():
+    row = nav_row([_t("a"), _t("s", "explore"), _t("b"), _t("m", "explore"), _t("c")])
+    assert [e["kind"] for e in row] == ["tab", "group", "tab", "tab"]
+    group = row[1]
+    assert group["key"] == "explore" and group["label"] == NAV_GROUPS["explore"]
+    assert [t["key"] for t in group["members"]] == ["s", "m"]
+    assert group["paths"] == ["/s", "/m"]
+
+
+def test_nav_row_emits_a_lone_member_as_a_plain_tab_in_place():
+    row = nav_row([_t("a"), _t("s", "explore"), _t("b")])
+    assert [(e["kind"], e["tab"]["key"]) for e in row] == [
+        ("tab", "a"), ("tab", "s"), ("tab", "b"),
+    ]
+
+
+def test_nav_row_emits_nothing_for_an_empty_group():
+    assert nav_row([_t("a")]) == [{"kind": "tab", "tab": _t("a")}]
+
+
+def test_nav_row_skips_menu_tabs():
+    row = nav_row([_t("a"), _t("logs", menu="account")])
+    assert [e["tab"]["key"] for e in row] == ["a"]
+
+
+def test_nav_row_of_nothing_is_nothing():
+    assert nav_row([]) == []
+
+
+def _row_shape(user):
+    return [(e["kind"], e.get("key") or e["tab"]["key"]) for e in nav_row(visible_tabs(user))]
+
+
+def test_viewer_has_no_tools_entry_at_all(db):
+    row = _row_shape(VIEWER)
+    assert ("group", "explore") in row
+    assert not [e for e in row if e[1] in ("tools", "intake", "shelf-fill")]
+
+
+def test_without_vision_tools_is_shelf_fill_as_a_plain_tab(db):
+    row = _row_shape(ADMIN)
+    assert ("tab", "shelf-fill") in row
+    assert not [e for e in row if e == ("group", "tools")]
+
+
+def test_disabled_shelf_fill_leaves_intake_as_a_plain_tab(db):
+    _set(db, "vision_provider", "ollama")
+    assert ("group", "tools") in _row_shape(ADMIN)
+    _set_feature("shelf_fill", False)
+    row = _row_shape(ADMIN)
+    assert ("tab", "intake") in row
+    assert ("group", "tools") not in row
+
+
+def test_hiding_three_explore_members_leaves_the_last_as_a_plain_tab(db):
+    _set(db, "nav_hidden_tabs", json.dumps(["series", "music", "periodicals"]))
+    row = _row_shape(ADMIN)
+    assert ("tab", "stats") in row
+    assert ("group", "explore") not in row

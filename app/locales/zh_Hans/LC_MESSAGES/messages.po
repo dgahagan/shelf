@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-24 09:37+0100\n"
+"PO-Revision-Date: 2026-11-27 15:02-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -48,7 +48,7 @@ msgstr "状态"
 msgid "Value"
 msgstr "价值"
 
-#: app/browse_columns.py:68 app/features.py:168 app/nav.py:41
+#: app/browse_columns.py:68 app/features.py:168 app/nav.py:45
 #: app/services/audnexus.py:210 app/templates/browse.html:49
 #: app/templates/fragments/manual_add_form.html:155 app/templates/home.html:89
 #: app/templates/item_edit.html:79 app/templates/item_edit.html:217
@@ -381,7 +381,7 @@ msgstr ""
 msgid "Watch wishlist list prices nightly and send a drop digest."
 msgstr ""
 
-#: app/features.py:230 app/nav.py:42 app/templates/music.html:2
+#: app/features.py:230 app/nav.py:46 app/templates/music.html:2
 #: app/templates/music.html:8 app/templates/music_item.html:2
 msgid "Music"
 msgstr "音乐"
@@ -390,7 +390,7 @@ msgstr "音乐"
 msgid "Music releases with Discogs details."
 msgstr ""
 
-#: app/features.py:238 app/nav.py:43
+#: app/features.py:238 app/nav.py:47
 #: app/templates/periodical_publication.html:2 app/templates/periodicals.html:2
 #: app/templates/periodicals.html:8
 msgid "Periodicals"
@@ -400,7 +400,7 @@ msgstr "期刊"
 msgid "Magazines and other periodicals, grouped by publication."
 msgstr ""
 
-#: app/features.py:251 app/nav.py:38 app/templates/shelf_fill.html:2
+#: app/features.py:251 app/nav.py:52 app/templates/shelf_fill.html:2
 #: app/templates/shelf_fill.html:9
 msgid "Shelf Fill"
 msgstr "定位上架"
@@ -514,87 +514,95 @@ msgstr ""
 msgid "%(feature)s is turned off on this Shelf."
 msgstr ""
 
-#: app/nav.py:34 app/templates/browse.html:2 app/templates/home.html:84
+#: app/nav.py:40
+msgid "Explore"
+msgstr "探索"
+
+#: app/nav.py:40
+msgid "Tools"
+msgstr "工具"
+
+#: app/nav.py:43 app/templates/browse.html:2 app/templates/home.html:84
 msgid "Browse"
 msgstr "浏览"
 
-#: app/nav.py:35 app/templates/scan.html:2 app/templates/scan.html:107
+#: app/nav.py:44 app/templates/scan.html:2 app/templates/scan.html:107
 #: app/templates/scan.html:184 app/templates/shelf_fill.html:88
 #: app/templates/shelf_fill.html:96
 msgid "Scan"
 msgstr "扫码"
 
-#: app/nav.py:36
-msgid "Intake"
-msgstr "拍照入库"
-
-#: app/nav.py:40
-msgid "Store"
-msgstr "书店模式"
-
-#: app/nav.py:44 app/templates/discover.html:2
-msgid "Discover"
-msgstr "发现"
-
-#: app/nav.py:45 app/templates/stats.html:2 app/templates/stats_wrapup.html:10
+#: app/nav.py:49 app/templates/stats.html:2 app/templates/stats_wrapup.html:10
 msgid "Stats"
 msgstr "统计"
 
-#: app/nav.py:46 app/templates/fragments/settings/library.html:327
+#: app/nav.py:50
+msgid "Intake"
+msgstr "拍照入库"
+
+#: app/nav.py:54
+msgid "Store"
+msgstr "书店模式"
+
+#: app/nav.py:55 app/templates/discover.html:2
+msgid "Discover"
+msgstr "发现"
+
+#: app/nav.py:56 app/templates/fragments/settings/library.html:327
 #: app/templates/trash.html:2 app/templates/trash.html:6
 msgid "Trash"
 msgstr "回收站"
 
-#: app/nav.py:47 app/nav.py:49 app/nav.py:51 app/nav.py:53
+#: app/nav.py:57 app/nav.py:59 app/nav.py:61 app/nav.py:63
 #: app/templates/fragments/settings/sidebar.html:6
 msgid "Library"
 msgstr "书库"
 
-#: app/nav.py:48 app/templates/labels.html:2
+#: app/nav.py:58 app/templates/labels.html:2
 msgid "Labels"
 msgstr "条码标签"
 
-#: app/nav.py:50 app/templates/audit.html:6 app/templates/audits.html:2
+#: app/nav.py:60 app/templates/audit.html:6 app/templates/audits.html:2
 #: app/templates/audits.html:6
 msgid "Audits"
 msgstr "盘点记录"
 
-#: app/nav.py:52 app/templates/duplicates.html:2
+#: app/nav.py:62 app/templates/duplicates.html:2
 #: app/templates/duplicates.html:7
 msgid "Duplicates"
 msgstr "重复项"
 
-#: app/nav.py:54 app/templates/fragments/settings/page_header.html:3
+#: app/nav.py:64 app/templates/fragments/settings/page_header.html:3
 #: app/templates/intake.html:11 app/templates/settings.html:2
 msgid "Settings"
 msgstr "设置"
 
-#: app/nav.py:55 app/nav.py:57
+#: app/nav.py:65 app/nav.py:67
 #: app/templates/fragments/settings/page_header.html:2
 msgid "Administration"
 msgstr "管理"
 
-#: app/nav.py:56 app/templates/logs.html:2 app/templates/logs.html:16
+#: app/nav.py:66 app/templates/logs.html:2 app/templates/logs.html:16
 msgid "Logs"
 msgstr "日志"
 
-#: app/nav.py:130
+#: app/nav.py:140
 msgid "a vision provider"
 msgstr ""
 
-#: app/nav.py:131
+#: app/nav.py:141
 msgid "a Hardcover token"
 msgstr ""
 
-#: app/nav.py:221
+#: app/nav.py:277
 msgid "Back to series"
 msgstr "返回系列"
 
-#: app/nav.py:222
+#: app/nav.py:278
 msgid "Back to stats"
 msgstr "返回统计"
 
-#: app/nav.py:224
+#: app/nav.py:280
 msgid "Back to collection"
 msgstr "返回藏品"
 
@@ -1467,67 +1475,67 @@ msgstr "书店模式队列"
 msgid "CSV Import"
 msgstr "CSV 导入"
 
-#: app/services/national.py:89
+#: app/services/national.py:90
 msgid "English"
 msgstr "英语"
 
-#: app/services/national.py:90
+#: app/services/national.py:91
 msgid "German"
 msgstr "德语"
 
-#: app/services/national.py:91
+#: app/services/national.py:92
 msgid "French"
 msgstr "法语"
 
-#: app/services/national.py:92
+#: app/services/national.py:93
 msgid "Spanish"
 msgstr "西班牙语"
 
-#: app/services/national.py:93
+#: app/services/national.py:94
 msgid "Italian"
 msgstr "意大利语"
 
-#: app/services/national.py:94
+#: app/services/national.py:95
 msgid "Dutch"
 msgstr "荷兰语"
 
-#: app/services/national.py:95
+#: app/services/national.py:96
 msgid "Portuguese"
 msgstr "葡萄牙语"
 
-#: app/services/national.py:96
+#: app/services/national.py:97
 msgid "Swedish"
 msgstr "瑞典语"
 
-#: app/services/national.py:97
+#: app/services/national.py:98
 msgid "Danish"
 msgstr "丹麦语"
 
-#: app/services/national.py:98
+#: app/services/national.py:99
 msgid "Norwegian"
 msgstr "挪威语"
 
-#: app/services/national.py:99
+#: app/services/national.py:100
 msgid "Polish"
 msgstr "波兰语"
 
-#: app/services/national.py:100
+#: app/services/national.py:101
 msgid "Czech"
 msgstr "捷克语"
 
-#: app/services/national.py:101
+#: app/services/national.py:102
 msgid "Japanese"
 msgstr "日语"
 
-#: app/services/national.py:102
+#: app/services/national.py:103
 msgid "Russian"
 msgstr "俄语"
 
-#: app/services/national.py:103
+#: app/services/national.py:104
 msgid "Chinese"
 msgstr "中文"
 
-#: app/services/national.py:104
+#: app/services/national.py:105
 msgid "Korean"
 msgstr "韩语"
 

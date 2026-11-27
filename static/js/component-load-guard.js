@@ -28,6 +28,7 @@
     var SCRIPTS = {
         setupForm: 'components.js',
         navMenu: 'components.js',
+        navGroup: 'components.js',
         accountMenu: 'components.js',
         accountModal: 'components.js',
 

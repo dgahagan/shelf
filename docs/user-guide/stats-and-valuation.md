@@ -2,7 +2,7 @@
 
 ## Stats
 
-The **Stats** tab renders server-side SVG charts (no JavaScript, print-
+The **Stats** page (under **Explore** in the nav) renders server-side SVG charts (no JavaScript, print-
 friendly), and its **Wrap-up** link makes a shareable image of a month or a
 year (see [Wrap-ups](#wrap-ups)). The page shows:
 

@@ -1,5 +1,6 @@
 """E2E tests: nav tabs — visibility rules, responsive layout, back links.
 
+`nav_page` (and its baseline reset) lives in conftest.py.
 `live_server` is session-scoped and shared with the rest of the e2e suite,
 and nav settings are cached in the server process. Every test that touches
 a nav-relevant setting goes through `nav_page`, which resets the baseline
@@ -7,55 +8,27 @@ a nav-relevant setting goes through `nav_page`, which resets the baseline
 after the test so state never leaks into other files.
 """
 import re
+import sqlite3
 
 import pytest
 from playwright.sync_api import expect
 
-from tests.e2e.conftest import insert_item
+from tests.e2e.conftest import (
+    ADMIN_DISPLAY,
+    _csrf_headers,
+    assert_page_clean,
+    attach_page_guard,
+    insert_item,
+)
 
 pytestmark = pytest.mark.e2e
 
-# Mirrors app.nav.HIDEABLE_KEYS — kept literal here so a change to that set
-# is a visible diff in this test rather than a silent behavior change.
-HIDEABLE_KEYS = ("scan", "intake", "store", "series", "discover", "stats", "logs")
-ALL_NAV_KEYS = ("browse", "scan", "intake", "store", "series", "discover", "stats", "settings", "logs")
+ALL_NAV_KEYS = (
+    "browse", "scan", "intake", "store", "series", "discover", "stats", "settings", "logs",
+    "music", "periodicals", "shelf-fill",
+)
 
-
-def _csrf_headers(page):
-    return {"X-CSRF-Token": page.evaluate("() => window.csrfToken()")}
-
-
-def _reset_nav_baseline(live_server, page):
-    """Known-clean nav state: no vision provider, no Hardcover token, nothing
-    manually hidden. Goes through the real settings endpoints so the
-    server-side nav cache is invalidated, not the sqlite file directly."""
-    base = live_server["url"]
-    headers = _csrf_headers(page)
-    resp = page.request.post(
-        f"{base}/api/settings",
-        form={"hardcover_token": "", "clear_hardcover_token": "on"},
-        headers=headers,
-    )
-    assert resp.status in (200, 303)
-    resp = page.request.post(
-        f"{base}/api/settings/vision", form={"vision_provider": ""}, headers=headers
-    )
-    assert resp.status in (200, 303)
-    # Every hideable key present+checked => nav_hidden_tabs ends up empty.
-    resp = page.request.post(
-        f"{base}/api/settings/nav", form={k: "on" for k in HIDEABLE_KEYS}, headers=headers
-    )
-    assert resp.status in (200, 303)
-
-
-@pytest.fixture
-def nav_page(live_server, authed_page):
-    """authed_page with nav-relevant settings forced to a known baseline
-    before the test, and restored to that same baseline after — regardless
-    of what the test did in between."""
-    _reset_nav_baseline(live_server, authed_page)
-    yield authed_page
-    _reset_nav_baseline(live_server, authed_page)
+LONG_DISPLAY_NAME = "Probe Administrator With A Long Name XYZ"  # 40 chars: long enough that an uncapped name overflows de at 1024 (the 28-char design probe value does not, once grouped)
 
 
 # ---------------------------------------------------------------------------
@@ -67,6 +40,8 @@ def test_unconfigured_instance_hides_intake_and_discover(live_server, nav_page):
     nav_page.goto(f"{live_server['url']}/browse")
     nav_page.wait_for_load_state("networkidle")
 
+    # Series and Stats live inside the Explore disclosure; open it first.
+    nav_page.locator('[data-nav-group-button="explore"]').click()
     for key in ("browse", "store", "series", "stats"):
         expect(nav_page.locator(f'[data-nav-tab="{key}"]')).to_be_visible()
     for key in ("intake", "discover"):
@@ -141,6 +116,7 @@ def test_navigation_card_round_trips(live_server, nav_page):
 
     nav_page.goto(f"{base}/browse")
     nav_page.wait_for_load_state("networkidle")
+    nav_page.locator('[data-nav-group-button="explore"]').click()
     expect(nav_page.locator('[data-nav-tab="series"]')).to_be_visible()
 
 
@@ -177,9 +153,30 @@ def test_configure_jumps_to_the_integrations_tab(live_server, nav_page):
 # ---------------------------------------------------------------------------
 
 
-def test_no_horizontal_overflow_with_all_tabs_configured(live_server, nav_page):
-    """Width sweep with all 9 tabs configured/visible — the worst case that
-    motivated the nav redesign. No width in the sweep should overflow."""
+_ROW_METRICS_JS = """() => {
+    const row = document.querySelector('nav .hidden.lg\\\\:flex');
+    const acct = document.querySelector('[data-testid=account-menu-button]');
+    const de = document.documentElement;
+    return {
+        scrollW: de.scrollWidth, clientW: de.clientWidth, innerW: window.innerWidth,
+        rowRight: row.getBoundingClientRect().right,
+        acctLeft: acct.getBoundingClientRect().left,
+        acctRight: acct.getBoundingClientRect().right,
+    };
+}"""
+
+
+@pytest.mark.parametrize("locale,html_lang", [("de-DE", "de"), ("it-IT", "it")])
+def test_nav_row_fits_across_the_lg_seam_in_long_locales(
+    live_server, browser, nav_page, setup_admin, locale, html_lang
+):
+    """The desktop row must fit from the lg seam (1024) to 1440 px in the
+    longest locales, with every tab configured and a long display name.
+
+    Measures the document and the element boxes (G43): the row ends before the
+    account button, and the button ends inside the viewport. Sub-lg overflow is
+    test_responsive.py's job (its VIEWPORTS run up to 1024).
+    """
     base = live_server["url"]
     headers = _csrf_headers(nav_page)
     resp = nav_page.request.post(
@@ -193,24 +190,59 @@ def test_no_horizontal_overflow_with_all_tabs_configured(live_server, nav_page):
 
     nav_page.goto(f"{base}/browse")
     nav_page.wait_for_load_state("networkidle")
-
     # Confirm the worst case actually landed before measuring anything.
     for key in ALL_NAV_KEYS:
         expect(nav_page.locator(f'[data-nav-tab="{key}"]')).to_have_count(1)
         expect(nav_page.locator(f'[data-nav-menu-tab="{key}"]')).to_have_count(1)
 
-    for width in (360, 768, 1024, 1440, 1920):
-        nav_page.set_viewport_size({"width": width, "height": 900})
-        nav_page.goto(f"{base}/browse")
-        nav_page.wait_for_load_state("networkidle")
-        metrics = nav_page.evaluate(
-            "() => ({scrollW: document.documentElement.scrollWidth, "
-            "clientW: document.documentElement.clientWidth})"
-        )
-        assert metrics["scrollW"] <= metrics["clientW"], (
-            f"horizontal overflow at {width}px: scrollWidth={metrics['scrollW']} "
-            f"clientWidth={metrics['clientW']}"
-        )
+    db_path = str(live_server["data_dir"] / "shelf.db")
+
+    def set_display_name(name):
+        conn = sqlite3.connect(db_path)
+        try:
+            conn.execute("UPDATE users SET display_name = ?", (name,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    failures = []
+    set_display_name(LONG_DISPLAY_NAME)
+    ctx = browser.new_context(locale=locale)
+    try:
+        page = attach_page_guard(ctx.new_page())
+        page.goto(f"{base}/login")
+        page.fill("input[name=username]", setup_admin["username"])
+        page.fill("input[name=password]", setup_admin["password"])
+        page.click("button[type=submit]")
+        page.wait_for_url(f"{base}/", timeout=10_000)
+
+        page.set_viewport_size({"width": 1024, "height": 900})
+        page.goto(f"{base}/browse")
+        page.wait_for_load_state("networkidle")
+        # Guards: the page is translated and carries the long name.
+        expect(page.locator("html")).to_have_attribute("lang", html_lang)
+        expect(page.get_by_test_id("account-menu-button")).to_contain_text(LONG_DISPLAY_NAME)
+
+        for width in range(1024, 1441, 8):
+            page.set_viewport_size({"width": width, "height": 900})
+            page.goto(f"{base}/browse")
+            expect(page.locator('[data-nav-tab="browse"]')).to_be_visible()
+            m = page.evaluate(_ROW_METRICS_JS)
+            problems = []
+            if m["scrollW"] > m["clientW"]:
+                problems.append(f"scrollWidth {m['scrollW']} > clientWidth {m['clientW']}")
+            if m["rowRight"] > m["acctLeft"]:
+                problems.append(f"row right {m['rowRight']:.0f} > account left {m['acctLeft']:.0f}")
+            if m["acctRight"] > m["innerW"]:
+                problems.append(f"account right {m['acctRight']:.0f} > innerWidth {m['innerW']}")
+            if problems:
+                failures.append(f"{locale} {width}px: " + "; ".join(problems))
+        assert_page_clean(page)
+    finally:
+        ctx.close()
+        set_display_name(ADMIN_DISPLAY)
+
+    assert not failures, "nav row does not fit:\n  " + "\n  ".join(failures)
 
 
 def test_desktop_row_and_hamburger_swap_at_1024(live_server, nav_page):

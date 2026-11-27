@@ -63,19 +63,52 @@
                         </button>
                         <div x-show="open" x-cloak data-testid="nav-menu-panel"
                              class="absolute left-0 top-full mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg shadow-xl py-1 z-50">
-                            {% for tab in nav_tabs %}
-                            {% if not tab.menu %}
+                            {# Grouping is decided in app.nav.nav_row; a group is a
+                               heading plus its members here, never a nested disclosure.
+                               A divider opens each group and closes it before a plain
+                               tab, so a tab after a group never reads as its member. #}
+                            {% for entry in nav_row(nav_tabs) %}
+                            {% if entry.kind == "group" %}
+                            {% if not loop.first %}<div data-nav-menu-divider class="my-1 border-t border-shelf-border"></div>{% endif %}
+                            <p data-nav-menu-heading="{{ entry.key }}" class="px-4 pt-2 pb-1 text-[10px] uppercase tracking-wider text-shelf-muted">{{ _(entry.label) }}</p>
+                            {% set links = entry.members %}
+                            {% else %}
+                            {% set links = [entry.tab] %}
+                            {% endif %}
+                            {% for tab in links %}
                             <a href="{{ tab.path }}" data-nav-menu-tab="{{ tab.key }}" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                                 {{ _(tab.label) }}
                             </a>
-                            {% endif %}
+                            {% endfor %}
+                            {% if entry.kind == "group" and loop.nextitem and loop.nextitem.kind == "tab" %}<div data-nav-menu-divider class="my-1 border-t border-shelf-border"></div>{% endif %}
                             {% endfor %}
                         </div>
                     </div>
 
+                    {# The tab row. Which tabs fold into a group disclosure (and
+                       when a group shows as a plain tab) is app.nav.nav_row. #}
                     <div class="hidden lg:flex items-center gap-1">
-                        {% for tab in nav_tabs %}
-                        {% if not tab.menu %}
+                        {% for entry in nav_row(nav_tabs) %}
+                        {% if entry.kind == "group" %}
+                        <div class="relative" x-data="navGroup" data-nav-group="{{ entry.key }}"
+                             @click.outside="close()" @keydown.escape.window="close()" @focusout="leave($event)">
+                            <button type="button" @click="toggle()" data-nav-group-button="{{ entry.key }}"
+                                    aria-haspopup="menu" :aria-expanded="open"
+                                    class="flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium {% if request.url.path in entry.paths %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                                {{ _(entry.label) }}
+                                <svg class="w-3 h-3 shrink-0" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                            </button>
+                            <div x-show="open" x-cloak data-nav-group-panel="{{ entry.key }}" role="menu"
+                                 class="absolute left-0 top-full mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg shadow-xl py-1 z-50">
+                                {% for tab in entry.members %}
+                                <a href="{{ tab.path }}" data-nav-tab="{{ tab.key }}" role="menuitem" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                                    {{ _(tab.label) }}
+                                </a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% else %}
+                        {% set tab = entry.tab %}
                         <a href="{{ tab.path }}" data-nav-tab="{{ tab.key }}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                             {{ _(tab.label) }}
                         </a>

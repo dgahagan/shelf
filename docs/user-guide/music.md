@@ -6,7 +6,7 @@ Supported music formats are **Vinyl**, **Cassette**, **CD** and **Digital Music*
 
 ## Add a release
 
-Open **Music** from the navigation bar. Search MusicBrainz by any combination of:
+Open **Explore → Music** from the navigation bar. Search MusicBrainz by any combination of:
 
 - release title;
 - artist;

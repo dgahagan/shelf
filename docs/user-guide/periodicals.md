@@ -44,7 +44,7 @@ When scanning an issue already in Shelf, a full carrier+supplement resolves dire
 
 ## Browse a publication
 
-Open **Periodicals** from the navigation bar to see continuing publications. Each publication page lists its concrete issues, newest first where dates are known, while retaining issue numbers and barcode supplements separately.
+Open **Explore → Periodicals** from the navigation bar to see continuing publications. Each publication page lists its concrete issues, newest first where dates are known, while retaining issue numbers and barcode supplements separately.
 
 ## Physical copies
 

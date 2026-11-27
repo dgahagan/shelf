@@ -30,19 +30,29 @@ _TAB_FEATURE = {tab: key for key, f in FEATURES.items() for tab in f.nav_tabs}
 # here so the templates ask the registry rather than testing for a key by name
 # — base.html used to skip `settings` with a hardcoded comparison in two
 # places, which is one place too many the moment a second tab moves.
+#
+# `group: "<key>"` is the opposite destination: the tab stays *in the row*,
+# inside the named disclosure from NAV_GROUPS. `menu` means "not in the row";
+# `group` means "in the row, inside this disclosure". A tab never has both.
+# Members of a group must be contiguous here, since `nav_row` places the
+# disclosure at its first member's position. Labels stay in `N_()` and are
+# translated by the template, never at module level.
+NAV_GROUPS = {"explore": N_("Explore"), "tools": N_("Tools")}
+
 NAV_TABS = [
     {"key": "browse", "label": N_("Browse"), "path": "/browse"},
     {"key": "scan", "label": N_("Scan"), "path": "/scan", "roles": ("admin", "editor")},
+    {"key": "series", "label": N_("Series"), "path": "/series", "group": "explore"},
+    {"key": "music", "label": N_("Music"), "path": "/music", "group": "explore"},
+    {"key": "periodicals", "label": N_("Periodicals"), "path": "/periodicals",
+     "group": "explore"},
+    {"key": "stats", "label": N_("Stats"), "path": "/stats", "group": "explore"},
     {"key": "intake", "label": N_("Intake"), "path": "/intake", "roles": ("admin", "editor"),
-     "requires": "vision"},
+     "requires": "vision", "group": "tools"},
     {"key": "shelf-fill", "label": N_("Shelf Fill"), "path": "/shelf-fill",
-     "roles": ("admin", "editor")},
+     "roles": ("admin", "editor"), "group": "tools"},
     {"key": "store", "label": N_("Store"), "path": "/store"},
-    {"key": "series", "label": N_("Series"), "path": "/series"},
-    {"key": "music", "label": N_("Music"), "path": "/music"},
-    {"key": "periodicals", "label": N_("Periodicals"), "path": "/periodicals"},
     {"key": "discover", "label": N_("Discover"), "path": "/discover", "requires": "hardcover"},
-    {"key": "stats", "label": N_("Stats"), "path": "/stats"},
     {"key": "trash", "label": N_("Trash"), "path": "/trash", "roles": ("admin", "editor"),
      "menu": "account", "heading": N_("Library")},
     {"key": "labels", "label": N_("Labels"), "path": "/labels", "roles": ("admin", "editor"),
@@ -208,8 +218,54 @@ def visible_tabs(user: dict | None) -> list[dict]:
             "path": tab["path"],
             "menu": tab.get("menu", ""),
             "heading": tab.get("heading", ""),
+            "group": tab.get("group", ""),
         })
     return tabs
+
+
+def nav_row(tabs: list[dict]) -> list[dict]:
+    """Fold the visible tabs into the entries the tab row renders.
+
+    Pure: no settings, no DB, no request. Takes the list `visible_tabs`
+    returns and skips `menu` tabs. Entries keep registry order; a group sits
+    where its first visible member sits.
+
+    -> [{"kind": "tab", "tab": tab}
+        | {"kind": "group", "key", "label", "members": [tab, ...], "paths": [path, ...]}]
+
+    A group with one visible member is emitted as that member's plain tab,
+    since a disclosure with a single item is just a longer way to click it.
+    A group with none emits nothing.
+    """
+    members: dict[str, list[dict]] = {}
+    for tab in tabs:
+        if tab.get("menu"):
+            continue
+        group = tab.get("group")
+        if group in NAV_GROUPS:
+            members.setdefault(group, []).append(tab)
+    row: list[dict] = []
+    placed: set[str] = set()
+    for tab in tabs:
+        if tab.get("menu"):
+            continue
+        group = tab.get("group")
+        if group not in NAV_GROUPS:
+            row.append({"kind": "tab", "tab": tab})
+        elif group not in placed:
+            placed.add(group)
+            found = members[group]
+            if len(found) == 1:
+                row.append({"kind": "tab", "tab": found[0]})
+            else:
+                row.append({
+                    "kind": "group",
+                    "key": group,
+                    "label": NAV_GROUPS[group],
+                    "members": found,
+                    "paths": [t["path"] for t in found],
+                })
+    return row
 
 
 # Where the item-detail "back" link goes when arriving from somewhere other
