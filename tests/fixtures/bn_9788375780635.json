@@ -1,0 +1,80 @@
+{
+  "nextPage": "https://data.bn.org.pl/api/institutions/bibs.json?boolean=true&isbnIssn=9788375780635+%7C+8375780634&limit=5&sinceId=1000006446439",
+  "bibs": [
+    {
+      "id": 5382027,
+      "deleted": false,
+      "language": "polski",
+      "isbnIssn": "9788375780635 9788375780710",
+      "author": "Sapkowski, Andrzej (1948- ) SuperNowa Sapkowski, Andrzej (1948- ).",
+      "title": "Ostatnie życzenie / Wiedźmin Wiedźmin",
+      "languageOfOriginal": "polski",
+      "marc": {
+        "leader": "03018nam a2200865 i 4500",
+        "fields": [
+          {"008": "170103s2014    pl           |000 j pol  "},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "9788375780635"}, {"q": "(oprawa miękka)"}]}},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"z": "9788375780710"}, {"q": "t. 1-8"}]}},
+          {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )"}, {"e": "Autor"}]}},
+          {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Ostatnie życzenie /"}, {"c": "Andrzej Sapkowski."}]}},
+          {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Warszawa :"}, {"b": "SuperNOWA,"}, {"c": "copyright 2014."}]}},
+          {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "330, [6] stron ;"}, {"c": "20 cm."}]}}
+        ]
+      }
+    },
+    {
+      "id": 1000000718873,
+      "deleted": false,
+      "language": "ukraiński",
+      "isbnIssn": "9786171204997 9788375780635",
+      "author": "Sapkowski, Andrzej (1948- ) Sapkowski, Andrzej (1948- ). Sapkowski, Andrzej (1948- ). Sapkowski, Andrzej (1948- ). Sapkowski, Andrzej (1948- ). Sapkowski, Andrzej (1948- ). Sapkowski, Andrzej (1948- ). Legeza, Sergìj Valerìjovič (1972- ) Sapkowski, Andrzej (1948- ). Sapkowski, Andrzej (1948- ).",
+      "title": "Ostannê bažannâ : roman / Ostatnie życzenie, Ostannê bažannâ Menše zlo Pitannâ cìni Kraj svìtu Krihta ìstini Vìd'mak Golos rozumu Vìd'mak",
+      "languageOfOriginal": "polski",
+      "marc": {
+        "leader": "03355nam a2200901 i 4500",
+        "fields": [
+          {"008": "200728s2020    un           |000 j ukroc"},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "9786171204997"}, {"q": "(oprawa twarda)"}]}},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"z": "9788375780635"}, {"q": "(oryginał)"}]}},
+          {"041": {"ind1": "1", "ind2": " ", "subfields": [{"a": "ukr"}, {"h": "pol"}]}},
+          {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )"}, {"e": "Autor"}]}},
+          {"245": {"ind1": "1", "ind2": "0", "subfields": [{"6": "880-01"}, {"a": "Ostannê bažannâ :"}, {"b": "roman /"}, {"c": "Andžej Sapkovs'kij ; [pereklad z pol's'koï Sergìâ Legezi]."}]}},
+          {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Harkìv :"}, {"b": "Klub sìmejnogo dozvìllâ,"}, {"c": "2020."}]}},
+          {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "285, [3] strony ;"}, {"c": "21 cm."}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Ostannê bažannâ"}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Menše zlo"}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Pitannâ cìni"}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Kraj svìtu"}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Krihta ìstini"}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Vìd'mak"}]}},
+          {"700": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Legeza, Sergìj Valerìjovič"}, {"d": "(1972- )"}, {"e": "Tłumaczenie"}]}},
+          {"700": {"ind1": "1", "ind2": "2", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )."}, {"t": "Golos rozumu"}]}}
+        ]
+      }
+    },
+    {
+      "id": 1000006446438,
+      "deleted": false,
+      "language": "ukraiński",
+      "isbnIssn": "9786171283510 9788375780635",
+      "author": "Sapkowski, Andrzej (1948- ) Stužuk, Olesâ (1974- ) Legeza, Sergìj Valerìjovič (1972- ) Sapkowski, Andrzej (1948- ).",
+      "title": "Ostannê bažannâ : roman / Ostatnie życzenie, Wiedźmin 1",
+      "languageOfOriginal": "polski",
+      "marc": {
+        "leader": "03628nam a2200913 i 4500",
+        "fields": [
+          {"008": "250929s2025    un           |000 j ukroc"},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"z": "9786171283510"}, {"q": "(ponownie nadany ;"}, {"q": "oprawa twarda)"}]}},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"z": "9788375780635"}, {"q": "(oryginał)"}]}},
+          {"041": {"ind1": "1", "ind2": " ", "subfields": [{"a": "ukr"}, {"h": "pol"}]}},
+          {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Sapkowski, Andrzej"}, {"d": "(1948- )"}, {"e": "Autor"}]}},
+          {"245": {"ind1": "1", "ind2": "0", "subfields": [{"6": "880-01"}, {"a": "Ostannê bažannâ :"}, {"b": "roman /"}, {"c": "Andžej Sapkovs'kij  ; [pereklad z polʹsʹkoï Sergìâ Legezi ; komentarì Sergìâ Legezi j Olesì Stužuk]."}]}},
+          {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Harkìv :"}, {"b": "KSD,"}, {"c": "2025."}]}},
+          {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "285, [3] strony ;"}, {"c": "21 cm."}]}},
+          {"700": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Stužuk, Olesâ"}, {"d": "(1974- )"}, {"e": "Komentarz"}]}},
+          {"700": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Legeza, Sergìj Valerìjovič"}, {"d": "(1972- )"}, {"e": "Komentarz"}, {"e": "Tłumaczenie"}]}}
+        ]
+      }
+    }
+  ]
+}

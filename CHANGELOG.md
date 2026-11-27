@@ -6,6 +6,13 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Polish ISBNs in the 978-83 group now try Biblioteka Narodowa's public,
+  keyless catalogue before the existing general book sources. Only an exact,
+  checksum-valid MARC ISBN is accepted; unavailable or unrelated records leave
+  the normal fallback cascade intact.
+
 ## [0.85.0] - 2026-11-25
 
 Shelf's built-in HTTPS certificate is valid for two years, and nothing ever
