@@ -1,0 +1,26 @@
+{
+  "nextPage": "https://data.bn.org.pl/api/institutions/bibs.json?boolean=true&isbnIssn=9788365646156+%7C+8365646153&limit=5&sinceId=5474568",
+  "bibs": [
+    {
+      "id": 5474567,
+      "deleted": false,
+      "language": "angielski",
+      "isbnIssn": "9788365646156",
+      "author": "Sacher-Masoch, Leopold von (1836-1895) Wydawnictwo [ze słownikiem]",
+      "title": "Venus in furs = Wenus w futrze : z podręcznym słownikiem angielsko-polskim / Venus im Peltz, Wenus w futrze Ze słownikiem (seria)",
+      "languageOfOriginal": "niemiecki",
+      "marc": {
+        "leader": "03315nam a2200925 i 4500",
+        "fields": [
+          {"008": "170313s2016    pl           |000 f eng  "},
+          {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "9788365646156"}, {"c": "zł 29"}]}},
+          {"041": {"ind1": "1", "ind2": " ", "subfields": [{"a": "eng"}, {"h": "ger"}]}},
+          {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Sacher-Masoch, Leopold von"}, {"d": "(1836-1895)"}, {"e": "Autor"}]}},
+          {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Venus in furs ="}, {"b": "Wenus w futrze : z podręcznym słownikiem angielsko-polskim /"}, {"c": "Leopold von Sacher-Masoch."}]}},
+          {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Ruda Śląska :"}, {"b": "Ze Słownikiem,"}, {"c": "2016."}]}},
+          {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "276, [1] strona ;"}, {"c": "21 cm."}]}}
+        ]
+      }
+    }
+  ]
+}

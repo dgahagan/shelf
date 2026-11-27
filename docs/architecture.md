@@ -576,8 +576,9 @@ for counting contributors. The funnel refuses a bare string (iterating one
 would store its characters) and a bare mapping (iterating one would store
 its keys), so a client whose payload may be a string wraps it at its own
 call site, and a client with no parse guard of its own drops any other
-shape before calling. The national-bibliography clients
-are the exception and build their own value: `dnb.py` joins a list that has
+shape before calling. BN (`bn.py`) uses the same funnel after MARC author-relator
+filtering, preserving distinct coauthors. The other national-bibliography clients
+build their own value: `dnb.py` joins a list that has
 already been through MARC relator filtering and `matches()` de-duplication,
 and `sbn.py` stores the record's single principal author. **Order is
 load-bearing** — Stats "Top Authors", the scan enrichment funnel, Photo
@@ -606,10 +607,12 @@ the next boot re-indexes everything.
 The national leg is a registry, `services/national.py`: unhyphenated ISBN-13
 registration-group prefixes mapped to provider modules, resolved by
 **longest** prefix match, so a narrow key can coexist with a broader one. It
-currently serves seven providers — **BnF** (`services/bnf.py`, UNIMARC over SRU at
+currently serves eight providers — **BnF** (`services/bnf.py`, UNIMARC over SRU at
 `catalogue.bnf.fr`) for the French-language 978-2 group and 979-10, **DNB** (`services/dnb.py`, MARC21 over SRU)
 for 978-3, **OSZK NEKTÁR** (`services/oszk.py`, HUNMARC over Z39.50 at
 `tagetes2.oszk.hu:1616/ANY`) for the Hungarian 978-615 and 978-963 groups,
+**BN** (`services/bn.py`, MARC JSON from the public, keyless CC0 catalogue at
+`data.bn.org.pl`) for the Polish 978-83 group,
 **SBN** (`services/sbn.py`, flat JSON over ICCU's OPAC endpoint) for the Italian
 978-88 and 979-12, **KB** (`services/kb.py`, SPARQL over the Nederlandse
 Bibliografie Totaal) for the Dutch 978-90 and 978-94 groups, **PORBASE**
@@ -627,12 +630,23 @@ All providers build stored bibliographic strings through
 `services/bib_normalize.py`, so text is NFC and comparable.
 An ISBN in no registered group skips the leg entirely and costs no request.
 Adding a provider is a module plus a registry entry — no call-site change.
+BN searches both ISBN-13 and its ISBN-10 equivalent in one paced request. Its
+`isbnIssn` index also finds cancelled ISBNs and related editions, so only a
+checksum-valid, exact MARC 020 $a identifies a hit; 020 $z and flattened display
+fields do not. Metadata comes from the selected record's MARC, including author
+relators and record language, not aggregate search fields. Five candidates, one
+request, a five-second request deadline and a 512 KiB raw-body ceiling bound the
+work; redirects, pagination and retries are not followed. Compressed responses
+are rejected before body consumption. The host uses a conservative one-second
+interval, not a claimed provider quota. Misses and provider failures retain the
+existing fallback cascade. The recorded public fixture projections and capture
+provenance are in `tests/fixtures/bn_README.md`.
 NEKTÁR uses `yaz-client` and `pymarc`; it paces each query against
 `tagetes2.oszk.hu` and accepts records only when a 020 ISBN exactly matches
 the requested edition. Its five-second query timeout and provider diagnostics
 stay server-side, while the scan surface receives only the normal provider
 outcome and `oszk` identifier.
-**The covers cascade and picker below are unchanged by this**: BnF, OSZK, SBN and KB
+**The covers cascade and picker below are unchanged by this**: BN, BnF, OSZK, SBN and KB
 contribute no cover source, and the DNB cover rung is a separate hand-written
 prefix test in `services/covers.py`, not a read of this registry. NeoDB returns a
 `cover_url` the way Google Books does, so its image is tried at the existing

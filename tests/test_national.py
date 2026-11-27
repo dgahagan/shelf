@@ -1,7 +1,7 @@
 """Tests for app.services.national — prefix-provider registry and the shared
 MARC <-> ISO 639-1 language mapper. Pure logic, no app/db needed (see G14)."""
 
-from app.services import bnf, dnb, kb, neodb, oszk, porbase, sbn
+from app.services import bn, bnf, dnb, kb, neodb, oszk, porbase, sbn
 from app.services.national import (
     PREFIX_PROVIDERS,
     SEARCH_LANGS,
@@ -44,6 +44,14 @@ class TestProviderFor:
     def test_hungarian_groups_return_oszk(self):
         assert provider_for("9786155420818") is oszk
         assert provider_for("9789630000000") is oszk
+
+    def test_polish_group_returns_bn(self):
+        assert provider_for("9788375780635") is bn
+        assert provider_for("9788386075652") is bn
+
+    def test_polish_group_does_not_swallow_neighbours(self):
+        assert provider_for("9788200000000") is None
+        assert provider_for("9788408175940") is None
 
     def test_italian_group_978_88_returns_sbn(self):
         assert provider_for("9788842092995") is sbn

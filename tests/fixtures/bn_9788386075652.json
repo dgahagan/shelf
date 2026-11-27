@@ -1,0 +1,75 @@
+{
+  "nextPage": "https://data.bn.org.pl/api/institutions/bibs.json?boolean=true&isbnIssn=9788386075652+%7C+8386075651&limit=5&sinceId=1292691",
+  "bibs": [
+    {
+      "id": 1000001, "deleted": false, "language": "polski", "isbnIssn": "8386075651",
+      "author": "Łochowska, Alicja Wydawnictwo Kram, Jerzy Mliczewski",
+      "title": "Wielka encyklopedia krzyżówkowicza : 40000 haseł /", "languageOfOriginal": "polski",
+      "marc": {"leader": "02070nam a2200589 i 4500", "fields": [
+        {"008": "970510s1995    pl           |000 0 pol  "},
+        {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "8386075651"}]}},
+        {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Łochowska, Alicja"}]}},
+        {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Wielka encyklopedia krzyżówkowicza :"}, {"b": "40000 haseł /"}, {"c": "Alicja Łochowska."}]}},
+        {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Warszawa :"}, {"b": "\"Kram\","}, {"c": "cop. 1995"}, {"e": "(Krak. :"}, {"f": "DNar.)."}]}},
+        {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "835, [1] s. ;"}, {"c": "25 cm."}]}}
+      ]}
+    },
+    {
+      "id": 1000002, "deleted": false, "language": "polski", "isbnIssn": "8386075651",
+      "author": "Łochowska, Alicja Wydawnictwo Kram, Jerzy Mliczewski",
+      "title": "Wielka encyklopedia krzyżówkowicza : 40000 haseł /", "languageOfOriginal": "polski",
+      "marc": {"leader": "02066nam a2200589 i 4500", "fields": [
+        {"008": "970510s1995    pl           |000 0 pol  "},
+        {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "8386075651"}]}},
+        {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Łochowska, Alicja"}]}},
+        {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Wielka encyklopedia krzyżówkowicza :"}, {"b": "40000 haseł /"}, {"c": "Alicja Łochowska."}]}},
+        {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Warszawa :"}, {"b": "\"Kram\","}, {"c": "cop. 1995"}, {"e": "(Krak. :"}, {"f": "UJ)."}]}},
+        {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "835, [1] s. ;"}, {"c": "25 cm."}]}}
+      ]}
+    },
+    {
+      "id": 1109540, "deleted": false, "language": "polski", "isbnIssn": "8386075651",
+      "author": "Łochowska, Alicja Wrzosek, Piotr Wydawnictwo Kram, Jerzy Mliczewski",
+      "title": "Wielka encyklopedia krzyżówkowicza : 45000 haseł od 3 do 15 liter /", "languageOfOriginal": "polski",
+      "marc": {"leader": "02219nam a2200637 i 4500", "fields": [
+        {"008": "980702s1996    pl           |000 0 pol  "},
+        {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "8386075651"}]}},
+        {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Łochowska, Alicja"}]}},
+        {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Wielka encyklopedia krzyżówkowicza :"}, {"b": "45000 haseł od 3 do 15 liter /"}, {"c": "Alicja Łochowska, Piotr Wrzosek."}]}},
+        {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Warszawa :"}, {"b": "\"Kram\","}, {"c": "cop. 1996"}, {"e": "(Krak. :"}, {"f": "UJ)."}]}},
+        {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "825, [1] s. ;"}, {"c": "24 cm."}]}},
+        {"700": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Wrzosek, Piotr"}]}}
+      ]}
+    },
+    {
+      "id": 1231215, "deleted": false, "language": "polski", "isbnIssn": "8386075651",
+      "author": "Łochowska, Alicja Wrzosek, Piotr Wydawnictwo Kram, Jerzy Mliczewski",
+      "title": "Wielka encyklopedia krzyżówkowicza : 45000 haseł od 3 do 15 liter /", "languageOfOriginal": "polski",
+      "marc": {"leader": "02199nam a2200613 i 4500", "fields": [
+        {"008": "990212s1997    pl           |000 0 pol  "},
+        {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "8386075651"}]}},
+        {"041": {"ind1": "0", "ind2": " ", "subfields": [{"a": "pol"}]}},
+        {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Łochowska, Alicja"}]}},
+        {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Wielka encyklopedia krzyżówkowicza :"}, {"b": "45000 haseł od 3 do 15 liter /"}, {"c": "Alicja Łochowska [oraz] Piotr Wrzosek."}]}},
+        {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Warszawa :"}, {"b": "\"Kram\","}, {"c": "cop. 1997."}]}},
+        {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "825, [1] s. ;"}, {"c": "23 cm."}]}},
+        {"700": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Wrzosek, Piotr"}]}}
+      ]}
+    },
+    {
+      "id": 1292690, "deleted": false, "language": "polski", "isbnIssn": "8386075651",
+      "author": "Łochowska, Alicja Wrzosek, Piotr Wydawnictwo Kram, Jerzy Mliczewski",
+      "title": "Wielka encyklopedia krzyżówkowicza : 45000 haseł od 3 do 15 liter /", "languageOfOriginal": "polski",
+      "marc": {"leader": "02291nam a2200637 i 4500", "fields": [
+        {"008": "990709s1998    pl           |000 0 pol  "},
+        {"020": {"ind1": " ", "ind2": " ", "subfields": [{"a": "8386075651"}]}},
+        {"041": {"ind1": "0", "ind2": " ", "subfields": [{"a": "pol"}]}},
+        {"100": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Łochowska, Alicja"}]}},
+        {"245": {"ind1": "1", "ind2": "0", "subfields": [{"a": "Wielka encyklopedia krzyżówkowicza :"}, {"b": "45000 haseł od 3 do 15 liter /"}, {"c": "Alicja Łochowska [oraz] Piotr Wrzosek."}]}},
+        {"260": {"ind1": " ", "ind2": " ", "subfields": [{"a": "Warszawa :"}, {"b": "\"Kram\","}, {"c": "cop. 1998."}]}},
+        {"300": {"ind1": " ", "ind2": " ", "subfields": [{"a": "825, [1] s. ;"}, {"c": "24 cm."}]}},
+        {"700": {"ind1": "1", "ind2": " ", "subfields": [{"a": "Wrzosek, Piotr"}]}}
+      ]}
+    }
+  ]
+}

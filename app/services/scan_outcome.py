@@ -64,6 +64,7 @@ PROVIDER_LABELS = {
     "hardcover": "Hardcover",
     "google": "Google Books",
     "bnf": "BnF",
+    "bn": "BN Poland",
     "neodb": "NeoDB",
     "dnb": "DNB",
     "oszk": "OSZK NEKTÁR",
