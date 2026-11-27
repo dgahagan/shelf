@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.i18n import N_
+from app.i18n import N_, NC_
 
 logger = logging.getLogger(__name__)
 
@@ -166,17 +166,17 @@ def browse_creator_label(media_type):
 # app.services.tags.suggestions_for(), shown only until the user scopes a
 # tag of their own to that type. The three music formats share one list
 # since a genre vocabulary does not vary by physical format.
-MUSIC_GENRES = ["Rock", "Pop", "Jazz", "Classical", "Hip-hop", "Country",
-                "Electronic", "Folk", "Soundtrack", "Kids"]
+MUSIC_GENRES = [NC_("tag", "Rock"), NC_("tag", "Pop"), NC_("tag", "Jazz"), NC_("tag", "Classical"), NC_("tag", "Hip-hop"), NC_("tag", "Country"),
+                NC_("tag", "Electronic"), NC_("tag", "Folk"), NC_("tag", "Soundtrack"), NC_("tag", "Kids")]
 
 TAG_SUGGESTIONS = {
-    "book": ["Fiction", "Non-fiction", "Kids", "Cookbook", "Reference",
-             "Signed", "First edition", "Book club"],
-    "dvd": ["Movie", "TV series", "Kids", "Documentary", "Blu-ray", "4K"],
-    "video_game": ["Multiplayer", "Co-op", "Kids", "Collector's edition", "Sealed"],
-    "board_game": ["Family", "Strategy", "Party Game", "Puzzle",
-                   "Cooperative", "Children's Game",
-                   "Two-player", "Expansion"],
+    "book": [NC_("tag", "Fiction"), NC_("tag", "Non-fiction"), NC_("tag", "Kids"), NC_("tag", "Cookbook"), NC_("tag", "Reference"),
+             NC_("tag", "Signed"), NC_("tag", "First edition"), NC_("tag", "Book club")],
+    "dvd": [NC_("tag", "Movie"), NC_("tag", "TV series"), NC_("tag", "Kids"), NC_("tag", "Documentary"), NC_("tag", "Blu-ray"), NC_("tag", "4K")],
+    "video_game": [NC_("tag", "Multiplayer"), NC_("tag", "Co-op"), NC_("tag", "Kids"), NC_("tag", "Collector's edition"), NC_("tag", "Sealed")],
+    "board_game": [NC_("tag", "Family"), NC_("tag", "Strategy"), NC_("tag", "Party Game"), NC_("tag", "Puzzle"),
+                   NC_("tag", "Cooperative"), NC_("tag", "Children's Game"),
+                   NC_("tag", "Two-player"), NC_("tag", "Expansion")],
     "cd": MUSIC_GENRES,
     "vinyl": MUSIC_GENRES,
     "cassette": MUSIC_GENRES,

@@ -69,6 +69,7 @@
                     <p class="text-xs text-shelf-muted" data-testid="buy-links-disclosure">Affiliate links carrying your own tags (Settings &rarr; Library &rarr; Buy links).{% for l in buy_links %}{% if l.store == 'bookshop' %} Bookshop.org supports independent bookstores.{% endif %}{% endfor %}</p>
                 </div>{% endif %}
                 {% if item.subtitle %}<p class="text-lg text-shelf-muted mb-2">{{ item.subtitle }}</p>{% endif %}
+                {% if item.original_title and item.original_title != item.title %}<p class="text-sm text-shelf-muted mb-2" data-testid="original-title">{{ _('Original title:') }} {{ item.original_title }}</p>{% endif %}
                 {% if item.authors %}
                 <p class="text-lg mb-4 wrap-break-word">
                     {%- if item_authors %}

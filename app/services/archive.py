@@ -80,6 +80,8 @@ _ITEM_COLUMNS = (
     # Board games (migrations 58-61). An absent key (an archive written
     # before them) imports as NULL, which all four columns allow.
     "bgg_id", "min_players", "max_players", "min_age",
+    # Migration 63; absent in older archives, so NULL on import.
+    "original_title",
     "created_at", "updated_at",
 )
 

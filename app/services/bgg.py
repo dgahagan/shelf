@@ -66,6 +66,61 @@ def versions_in_language(versions: list[dict], locale: str) -> list[dict]:
     return first + [v for v in with_art if v not in first]
 
 
+def wants_versions(locale: str) -> bool:
+    """Whether filing a game in `locale` needs BGG's version list: only to
+    find the title printed on a box in a language other than English."""
+    return BGG_LANGUAGES.get(locale) not in (None, "English")
+
+
+def localized_version(meta: dict, locale: str) -> dict | None:
+    """The printing whose title a library in `locale` files the game under,
+    or `None` (English, an unmapped language, or no printing in it).
+
+    The title most of that language's printings carry wins, so a one-off
+    "Codenames XXL" or "Azul Mini" does not rename the game; a tie goes to
+    the newer title. Of the printings with the winning title, the newest is
+    returned (its box art is the likeliest on the shelf).
+    """
+    if not wants_versions(locale):
+        return None
+    wanted = BGG_LANGUAGES[locale]
+    printed = [v for v in meta.get("versions") or []
+               if wanted in v.get("languages", []) and (v.get("title") or "").strip()]
+    if not printed:
+        return None
+    count: dict[str, int] = {}
+    newest: dict[str, dict] = {}
+    for v in printed:
+        title = v["title"].strip()
+        count[title] = count.get(title, 0) + 1
+        year = v.get("publish_year") or 0
+        if title not in newest or year >= (newest[title].get("publish_year") or 0):
+            newest[title] = v
+    best = max(count, key=lambda t: (count[t], newest[t].get("publish_year") or 0))
+    return newest[best]
+
+
+def localize(meta: dict, locale: str) -> dict:
+    """`meta` with the title (and box art, when it has its own) of the
+    printing `localized_version` picks. BGG's own name is kept as
+    `original_title` (stored, and matched by Browse search) and leads
+    `alternate_titles`, so nothing is lost. Unchanged when there is none."""
+    version = localized_version(meta, locale)
+    if version is None:
+        return meta
+    title = version["title"].strip()
+    out = {**meta, "title": title}
+    original = meta.get("title")
+    if original and original.casefold() != title.casefold():
+        out["original_title"] = original
+        out["alternate_titles"] = [original] + [t for t in meta.get("alternate_titles") or []
+                                                if t.casefold() != title.casefold()]
+    if version.get("cover_url"):
+        out["cover_url"] = version["cover_url"]
+        out["thumbnail_url"] = version.get("thumbnail_url") or version["cover_url"]
+    return out
+
+
 def api_url() -> str:
     """The XML API2 root: `SHELF_BGG_API_URL` (test stubs only), else BGG itself."""
     return (os.environ.get("SHELF_BGG_API_URL") or BGG_API_URL_DEFAULT).rstrip("/")

@@ -52,6 +52,11 @@ def _credentials() -> tuple[str | None, str | None]:
                 get_setting(db, "gameupc_api_key") or None)
 
 
+def _versions() -> bool:
+    """Ask BGG for its printings too: a German library files the German title."""
+    return bgg.wants_versions(i18n.library_locale())
+
+
 def _item_fields(meta: dict) -> dict:
     """A BGG (or GameUPC fallback) metadata dict -> `insert_item` columns."""
     return {
@@ -65,6 +70,7 @@ def _item_fields(meta: dict) -> dict:
         "max_players": meta.get("max_players"),
         "min_age": meta.get("min_age"),
         "bgg_id": meta.get("bgg_id"),
+        "original_title": meta.get("original_title"),
     }
 
 
@@ -92,6 +98,9 @@ async def _file_game(
     """
     upc_key = upc_svc.normalize_upc(upc_raw) if upc_raw else None
     log_key = upc_raw or ""
+    # The title on the box in the library's language, not BGG's English name,
+    # which stays on the row as `original_title`.
+    meta = bgg.localize(meta, i18n.library_locale())
     title = (meta.get("title") or "").strip()
     if not title:
         return templates.TemplateResponse(
@@ -242,7 +251,7 @@ async def scan_upc(request: Request, templates, upc_raw: str, location_id: int |
         pick = gameupc.auto_pick(found)
         if pick:
             if bgg_token:
-                bgg_result = await bgg.lookup_game(pick["bgg_id"], bgg_token, client)
+                bgg_result = await bgg.lookup_game(pick["bgg_id"], bgg_token, client, versions=_versions())
                 if bgg_result.found:
                     return await _file_game(request, templates, meta=bgg_result.payload, source="bgg",
                                             upc_raw=upc_raw, location_id=location_id, mode=mode)
@@ -331,7 +340,7 @@ async def add_board_game(
     meta, source = None, "bgg"
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         if bgg_token:
-            result = await bgg.lookup_game(bgg_id, bgg_token, client)
+            result = await bgg.lookup_game(bgg_id, bgg_token, client, versions=_versions())
             meta = result.payload if result.found else None
         elif upc_raw:
             # No BGG token: a scan's choice card came from GameUPC, so the
@@ -361,11 +370,12 @@ async def add_board_game(
 
 # Columns the refresh may fill. Only empty ones: a value on the item is
 # either BGG's own from the add, or something the user typed, and the user's
-# edit must win. The title is never touched for the same reason, and neither
-# are tags: those are filed once, with the row, and a tag the user removed
-# stays removed.
+# edit must win. The title is touched only while it is still BGG's English
+# name, to file it under the printed title of the library's language. Tags
+# are never touched: they are filed once, with the row, and a tag the user
+# removed stays removed.
 _REFRESH_FIELDS = ("authors", "publisher", "publish_year", "description", "duration_mins",
-                   "min_players", "max_players", "min_age", "bgg_id")
+                   "min_players", "max_players", "min_age", "bgg_id", "original_title")
 
 
 def _refresh_reply(message: str, ok: bool, item_id: int):
@@ -398,7 +408,7 @@ async def refresh_board_game(item_id: int, _=Depends(require_role("editor"))):
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         if item["bgg_id"]:
-            result = await bgg.lookup_game(item["bgg_id"], bgg_token, client)
+            result = await bgg.lookup_game(item["bgg_id"], bgg_token, client, versions=_versions())
             meta = result.payload if result.found else None
         else:
             result = await bgg.search_games(item["title"], bgg_token, client, limit=5)
@@ -416,14 +426,18 @@ async def refresh_board_game(item_id: int, _=Depends(require_role("editor"))):
                 if result.outcome == "transport_failed"
                 else i18n.gettext("Failed to fetch game details from BoardGameGeek"), False, item_id)
 
-        new = _item_fields(meta)
+        local = bgg.localize(meta, i18n.library_locale())
+        new = _item_fields(local)
         fields = {key: new[key] for key in _REFRESH_FIELDS
                   if new.get(key) not in (None, "") and item[key] in (None, "")}
+        if (meta.get("title") and item["title"].strip().casefold() == meta["title"].strip().casefold()
+                and local["title"] != meta["title"]):
+            fields["title"] = local["title"]
         with get_db() as db:
             if fields:
                 item_write.update_item_fields(db, item_id, fields)
 
-        cover_url = meta.get("cover_url") or meta.get("thumbnail_url")
+        cover_url = local.get("cover_url") or local.get("thumbnail_url")
         if not item["cover_path"] and cover_url:
             cover_path = await covers._download_to_item(item_id, cover_url, client)
             if cover_path:

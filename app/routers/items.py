@@ -1171,7 +1171,7 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                     "series_position", "narrator", "duration_mins", "location_id", "notes",
                     "reading_status", "date_started", "date_finished", "owned", "wishlisted",
                     "platform", "manual_value", "language", "asin",
-                    "min_players", "max_players", "min_age"):
+                    "min_players", "max_players", "min_age", "original_title"):
             val = form.get(key)
             if val is not None:
                 if key == "wishlisted":

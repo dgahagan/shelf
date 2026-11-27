@@ -414,6 +414,10 @@ MIGRATIONS: Sequence[tuple[int, str, str]] = (
     (60, "Add items maximum players", "ALTER TABLE items ADD COLUMN max_players INTEGER"),
     (61, "Add items minimum age", "ALTER TABLE items ADD COLUMN min_age INTEGER"),
     (62, "Index items BoardGameGeek id", "CREATE INDEX IF NOT EXISTS idx_items_bgg_id ON items(bgg_id)"),
+    # The name an item is known by in its original language, when it is filed
+    # under another: BGG's English name for a game filed under its German box
+    # title. Browse search matches it. Migration-only, like 56.
+    (63, "Add items original title", "ALTER TABLE items ADD COLUMN original_title TEXT"),
 )
 
 MIGRATION_TABLES = """

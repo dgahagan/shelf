@@ -1616,6 +1616,16 @@ scanned: they go through `i18n.library_pgettext`, marked with `NC_`, a
 context-carrying `N_`, so the category "Book" is not the media type "Book".
 The tags are filed once, with the row; **Update from BGG** leaves them alone,
 so a tag the user removed stays removed.
+The starter tag suggestions (`config.TAG_SUGGESTIONS`, marked `NC_("tag", …)`)
+are offered in the library's language for the same reason.
+
+A game is filed under the title most of the library language's BGG printings
+carry ("Zug um Zug" for Ticket to Ride; `bgg.localize`), with that printing's
+box art. BGG's own name is kept in `items.original_title` (migration 63),
+which Browse search matches, the item page shows and the edit form can
+change, so a search for "Ticket to Ride" still finds the game. **Update from
+BGG** renames a title only while it is still BGG's English name, and fills
+`original_title` only when it is empty.
 
 ### Writing items
 

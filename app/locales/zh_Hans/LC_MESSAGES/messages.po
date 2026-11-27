@@ -20,27 +20,27 @@ msgstr ""
 msgid "Title"
 msgstr "标题"
 
-#: app/browse_columns.py:63 app/browse_filters.py:276 app/config.py:158
+#: app/browse_columns.py:63 app/browse_filters.py:277 app/config.py:158
 #: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "作者"
 
-#: app/browse_columns.py:64 app/browse_filters.py:265
+#: app/browse_columns.py:64 app/browse_filters.py:266
 #: app/templates/valuation_report.html:82
 msgid "Type"
 msgstr "类型"
 
-#: app/browse_columns.py:65 app/browse_filters.py:267
+#: app/browse_columns.py:65 app/browse_filters.py:268
 #: app/templates/fragments/item_copy_edit.html:37
 #: app/templates/fragments/labels_scope.html:12
 #: app/templates/fragments/manual_add_form.html:160
 #: app/templates/intake.html:202 app/templates/item_edit.html:81
-#: app/templates/item_edit.html:301 app/templates/item_edit.html:306
+#: app/templates/item_edit.html:302 app/templates/item_edit.html:307
 msgid "Location"
 msgstr "位置"
 
-#: app/browse_columns.py:66 app/browse_filters.py:269
-#: app/templates/item_detail.html:252 app/templates/item_edit.html:138
+#: app/browse_columns.py:66 app/browse_filters.py:270
+#: app/templates/item_detail.html:253 app/templates/item_edit.html:139
 msgid "Status"
 msgstr "状态"
 
@@ -51,31 +51,31 @@ msgstr "价值"
 #: app/browse_columns.py:68 app/features.py:168 app/nav.py:45
 #: app/services/audnexus.py:210 app/templates/browse.html:49
 #: app/templates/fragments/manual_add_form.html:155 app/templates/home.html:89
-#: app/templates/item_edit.html:79 app/templates/item_edit.html:217
-#: app/templates/item_edit.html:221 app/templates/series.html:2
+#: app/templates/item_edit.html:79 app/templates/item_edit.html:218
+#: app/templates/item_edit.html:222 app/templates/series.html:2
 #: app/templates/series.html:7 app/templates/upcoming.html:6
 msgid "Series"
 msgstr "系列"
 
 #: app/browse_columns.py:69 app/services/audnexus.py:206
 #: app/templates/fragments/manual_add_form.html:96
-#: app/templates/item_edit.html:118
+#: app/templates/item_edit.html:119
 msgid "Publisher"
 msgstr "出版社"
 
 #: app/browse_columns.py:70 app/services/audnexus.py:207
 #: app/templates/fragments/manual_add_form.html:99
-#: app/templates/item_edit.html:119
+#: app/templates/item_edit.html:120
 msgid "Year"
 msgstr "年份"
 
-#: app/browse_columns.py:71 app/templates/item_edit.html:223
+#: app/browse_columns.py:71 app/templates/item_edit.html:224
 msgid "Pages"
 msgstr "页数"
 
-#: app/browse_columns.py:72 app/browse_filters.py:277
+#: app/browse_columns.py:72 app/browse_filters.py:278
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
-#: app/templates/item_edit.html:123
+#: app/templates/item_edit.html:124
 msgid "Language"
 msgstr "语言"
 
@@ -84,7 +84,7 @@ msgstr "语言"
 msgid "Added"
 msgstr "添加日期"
 
-#: app/browse_columns.py:74 app/templates/item_edit.html:355
+#: app/browse_columns.py:74 app/templates/item_edit.html:356
 #: app/templates/scan.html:148
 msgid "Platform"
 msgstr "平台"
@@ -95,33 +95,33 @@ msgstr "ISBN/UPC"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
 #: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
-#: app/templates/item_edit.html:398
+#: app/templates/item_edit.html:399
 msgid "Tags"
 msgstr "标签"
 
-#: app/browse_filters.py:264
+#: app/browse_filters.py:265
 #: app/templates/fragments/periodical_scan_result.html:29
 #: app/templates/logs.html:32
 msgid "Search"
 msgstr "搜索"
 
-#: app/browse_filters.py:266 app/templates/fragments/item_copy_edit.html:67
+#: app/browse_filters.py:267 app/templates/fragments/item_copy_edit.html:67
 msgid "Source"
 msgstr "来源"
 
-#: app/browse_filters.py:268
+#: app/browse_filters.py:269
 msgid "Sort"
 msgstr "排序"
 
-#: app/browse_filters.py:272 app/templates/browse.html:83
+#: app/browse_filters.py:273 app/templates/browse.html:83
 msgid "Tag"
 msgstr "标签"
 
-#: app/browse_filters.py:279
+#: app/browse_filters.py:280
 msgid "Players"
 msgstr ""
 
-#: app/browse_filters.py:280
+#: app/browse_filters.py:281
 msgid "Play time"
 msgstr ""
 
@@ -264,6 +264,176 @@ msgstr "导演"
 msgid "Artist"
 msgstr "艺术家"
 
+#: app/config.py:169
+msgctxt "tag"
+msgid "Rock"
+msgstr ""
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Pop"
+msgstr ""
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Jazz"
+msgstr ""
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Classical"
+msgstr ""
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Hip-hop"
+msgstr ""
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Country"
+msgstr ""
+
+#: app/config.py:170
+msgctxt "tag"
+msgid "Electronic"
+msgstr ""
+
+#: app/config.py:170
+msgctxt "tag"
+msgid "Folk"
+msgstr ""
+
+#: app/config.py:170
+msgctxt "tag"
+msgid "Soundtrack"
+msgstr ""
+
+#: app/config.py:170 app/config.py:173 app/config.py:175 app/config.py:176
+msgctxt "tag"
+msgid "Kids"
+msgstr ""
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Fiction"
+msgstr ""
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Non-fiction"
+msgstr ""
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Cookbook"
+msgstr ""
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Reference"
+msgstr ""
+
+#: app/config.py:174
+msgctxt "tag"
+msgid "Signed"
+msgstr ""
+
+#: app/config.py:174
+msgctxt "tag"
+msgid "First edition"
+msgstr ""
+
+#: app/config.py:174
+msgctxt "tag"
+msgid "Book club"
+msgstr ""
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "Movie"
+msgstr ""
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "TV series"
+msgstr ""
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "Documentary"
+msgstr ""
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "Blu-ray"
+msgstr ""
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "4K"
+msgstr ""
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Multiplayer"
+msgstr ""
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Co-op"
+msgstr ""
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Collector's edition"
+msgstr ""
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Sealed"
+msgstr ""
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Family"
+msgstr ""
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Strategy"
+msgstr ""
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Party Game"
+msgstr ""
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Puzzle"
+msgstr ""
+
+#: app/config.py:178
+msgctxt "tag"
+msgid "Cooperative"
+msgstr ""
+
+#: app/config.py:178
+msgctxt "tag"
+msgid "Children's Game"
+msgstr ""
+
+#: app/config.py:179
+msgctxt "tag"
+msgid "Two-player"
+msgstr ""
+
+#: app/config.py:179
+msgctxt "tag"
+msgid "Expansion"
+msgstr ""
+
 #: app/currency.py:35
 msgid "US Dollar"
 msgstr ""
@@ -345,7 +515,7 @@ msgid "South African Rand"
 msgstr ""
 
 #: app/features.py:159 app/templates/fragments/settings/library.html:255
-#: app/templates/item_detail.html:260
+#: app/templates/item_detail.html:261
 msgid "Lending"
 msgstr "借出"
 
@@ -826,7 +996,7 @@ msgstr "无效的 ISBN"
 msgid "Network error during lookup — check connectivity"
 msgstr "查询时网络出错 — 请检查网络连接"
 
-#: app/routers/items.py:589 app/routers/items_board_games.py:280
+#: app/routers/items.py:589 app/routers/items_board_games.py:289
 #: app/routers/items_common.py:563 app/routers/items_common.py:755
 msgid "Not found — add manually below"
 msgstr "未找到 — 请在下方手动添加"
@@ -877,28 +1047,28 @@ msgstr ""
 msgid "Cannot merge \"%(title)s\" (#%(id)s): %(reason)s"
 msgstr ""
 
-#: app/routers/items_board_games.py:99
+#: app/routers/items_board_games.py:108
 msgid "No title for this game"
 msgstr ""
 
-#: app/routers/items_board_games.py:349 app/routers/items_board_games.py:417
+#: app/routers/items_board_games.py:358 app/routers/items_board_games.py:427
 msgid "Failed to fetch game details from BoardGameGeek"
 msgstr ""
 
-#: app/routers/items_board_games.py:397
+#: app/routers/items_board_games.py:407
 msgid "Add a BoardGameGeek token in Settings first"
 msgstr ""
 
-#: app/routers/items_board_games.py:411
+#: app/routers/items_board_games.py:421
 #, python-format
 msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
 msgstr ""
 
-#: app/routers/items_board_games.py:415
+#: app/routers/items_board_games.py:425
 msgid "Could not reach BoardGameGeek — check connectivity and try again."
 msgstr ""
 
-#: app/routers/items_board_games.py:436
+#: app/routers/items_board_games.py:450
 msgid "Updated from BoardGameGeek"
 msgstr ""
 
@@ -1043,7 +1213,7 @@ msgid "Copy %(n)s is no longer in the collection"
 msgstr "第 %(n)s 册已不在藏品中"
 
 #: app/routers/items_scan_modes.py:197 app/routers/scan_inventory.py:181
-#: app/templates/item_edit.html:126
+#: app/templates/item_edit.html:127
 msgid "Unknown"
 msgstr "未知"
 
@@ -1488,7 +1658,7 @@ msgstr "副标题"
 msgid "Authors"
 msgstr "作者"
 
-#: app/services/audnexus.py:205 app/templates/item_edit.html:366
+#: app/services/audnexus.py:205 app/templates/item_edit.html:367
 msgid "Narrator"
 msgstr "朗读者"
 
@@ -1496,7 +1666,7 @@ msgstr "朗读者"
 msgid "Duration"
 msgstr "时长"
 
-#: app/services/audnexus.py:209 app/templates/item_detail.html:146
+#: app/services/audnexus.py:209 app/templates/item_detail.html:147
 msgid "Synopsis"
 msgstr "简介"
 
@@ -2552,7 +2722,7 @@ msgstr ""
 msgid "added %(date)s"
 msgstr ""
 
-#: app/templates/duplicates.html:44 app/templates/item_detail.html:102
+#: app/templates/duplicates.html:44 app/templates/item_detail.html:103
 msgid "ISBN:"
 msgstr "ISBN："
 
@@ -2760,7 +2930,7 @@ msgid "Capture"
 msgstr "拍摄"
 
 #: app/templates/fragments/item_copy_edit.html:103 app/templates/intake.html:49
-#: app/templates/item_edit.html:385 app/templates/series.html:150
+#: app/templates/item_edit.html:386 app/templates/series.html:150
 #: app/templates/series.html:164 app/templates/series.html:203
 msgid "Cancel"
 msgstr "取消"
@@ -2973,7 +3143,7 @@ msgstr ""
 msgid "List price %(price)s"
 msgstr "定价 %(price)s"
 
-#: app/templates/item_detail.html:66 app/templates/item_detail.html:140
+#: app/templates/item_detail.html:66 app/templates/item_detail.html:141
 #, python-format
 msgid "as of %(date)s"
 msgstr "截至 %(date)s"
@@ -2983,206 +3153,210 @@ msgstr "截至 %(date)s"
 msgid "was %(price)s on %(date)s"
 msgstr "%(date)s 时为 %(price)s"
 
-#: app/templates/item_detail.html:84
+#: app/templates/item_detail.html:72
+msgid "Original title:"
+msgstr ""
+
+#: app/templates/item_detail.html:85
 msgid "Type:"
 msgstr "类型："
 
-#: app/templates/item_detail.html:87
+#: app/templates/item_detail.html:88
 msgid "Language:"
 msgstr "语言："
 
-#: app/templates/item_detail.html:90
+#: app/templates/item_detail.html:91
 msgid "Platform:"
 msgstr "平台："
 
-#: app/templates/item_detail.html:93
+#: app/templates/item_detail.html:94
 msgid "Publisher:"
 msgstr "出版社："
 
-#: app/templates/item_detail.html:96
+#: app/templates/item_detail.html:97
 msgid "Year:"
 msgstr "年份："
 
-#: app/templates/item_detail.html:99
+#: app/templates/item_detail.html:100
 msgid "Pages:"
 msgstr "页数："
 
-#: app/templates/item_detail.html:105
+#: app/templates/item_detail.html:106
 msgid "Series:"
 msgstr "系列："
 
-#: app/templates/item_detail.html:112
+#: app/templates/item_detail.html:113
 #, python-format
 msgid "you own %(owned)s of 1–%(top)s"
 msgstr "第 1–%(top)s 册中你有 %(owned)s 册"
 
-#: app/templates/item_detail.html:112
+#: app/templates/item_detail.html:113
 msgid "missing"
 msgstr "缺"
 
-#: app/templates/item_detail.html:113
+#: app/templates/item_detail.html:114
 #, python-format
 msgid "%(count)s in series (Hardcover)"
 msgstr "系列共 %(count)s 本（Hardcover）"
 
-#: app/templates/item_detail.html:118
+#: app/templates/item_detail.html:119
 msgid "Narrator:"
 msgstr "朗读者："
 
-#: app/templates/item_detail.html:122
+#: app/templates/item_detail.html:123
 msgid "Players:"
 msgstr ""
 
-#: app/templates/item_detail.html:125
+#: app/templates/item_detail.html:126
 msgid "Play time:"
 msgstr ""
 
-#: app/templates/item_detail.html:128
+#: app/templates/item_detail.html:129
 msgid "Age:"
 msgstr ""
 
-#: app/templates/item_detail.html:131
+#: app/templates/item_detail.html:132
 msgid "View on BoardGameGeek"
 msgstr ""
 
-#: app/templates/item_detail.html:131
+#: app/templates/item_detail.html:132
 msgid "Powered by BGG"
 msgstr ""
 
-#: app/templates/item_detail.html:134
+#: app/templates/item_detail.html:135
 msgid "Duration:"
 msgstr "时长："
 
-#: app/templates/item_detail.html:138
+#: app/templates/item_detail.html:139
 msgid "Value:"
 msgstr "价值："
 
-#: app/templates/item_detail.html:138
+#: app/templates/item_detail.html:139
 msgid "(manual)"
 msgstr "（手动）"
 
-#: app/templates/item_detail.html:140
+#: app/templates/item_detail.html:141
 msgid "Est. Value:"
 msgstr "估计价值："
 
-#: app/templates/item_detail.html:153
+#: app/templates/item_detail.html:154
 msgid "Read more"
 msgstr "展开"
 
-#: app/templates/item_detail.html:153
+#: app/templates/item_detail.html:154
 msgid "Show less"
 msgstr "收起"
 
-#: app/templates/item_detail.html:162 app/templates/series.html:96
+#: app/templates/item_detail.html:163 app/templates/series.html:96
 msgid "Fetch synopsis"
 msgstr "获取简介"
 
-#: app/templates/item_detail.html:163
+#: app/templates/item_detail.html:164
 msgid "Searching…"
 msgstr "搜索中…"
 
-#: app/templates/item_detail.html:165
+#: app/templates/item_detail.html:166
 msgid "No synopsis found on Open Library or Google Books."
 msgstr "在 Open Library 和 Google Books 上均未找到简介。"
 
-#: app/templates/item_detail.html:175
+#: app/templates/item_detail.html:176
 msgid "Fill details from Audible"
 msgstr "从 Audible 补全信息"
 
-#: app/templates/item_detail.html:187
+#: app/templates/item_detail.html:188
 msgid "Loading related media…"
 msgstr "正在加载相关媒体…"
 
-#: app/templates/item_detail.html:192
+#: app/templates/item_detail.html:193
 msgid "Notes:"
 msgstr "备注："
 
 #: app/templates/fragments/settings/integrations.html:57
-#: app/templates/item_detail.html:201
+#: app/templates/item_detail.html:202
 msgid "Read on Audiobookshelf"
 msgstr "在 Audiobookshelf 中阅读"
 
-#: app/templates/item_detail.html:201
+#: app/templates/item_detail.html:202
 msgid "Listen on Audiobookshelf"
 msgstr "在 Audiobookshelf 收听"
 
-#: app/templates/item_detail.html:217
+#: app/templates/item_detail.html:218
 msgid "Synced to Hardcover"
 msgstr "已同步到 Hardcover"
 
-#: app/templates/item_detail.html:217
+#: app/templates/item_detail.html:218
 msgid "Push to Hardcover"
 msgstr "推送到 Hardcover"
 
 #: app/templates/fragments/settings/integrations.html:106
-#: app/templates/item_detail.html:218
+#: app/templates/item_detail.html:219
 msgid "Syncing..."
 msgstr "同步中…"
 
-#: app/templates/item_detail.html:224
+#: app/templates/item_detail.html:225
 msgid "Added to your Hardcover library"
 msgstr "已添加到你的 Hardcover 书库"
 
-#: app/templates/item_detail.html:236
+#: app/templates/item_detail.html:237
 #, python-format
 msgid "Also in Audiobookshelf (%(type)s)"
 msgstr "Audiobookshelf 中也有（%(type)s）"
 
-#: app/templates/item_detail.html:263
+#: app/templates/item_detail.html:264
 msgid "Lent to"
 msgstr "借给"
 
-#: app/templates/item_detail.html:264
+#: app/templates/item_detail.html:265
 #, python-format
 msgid "on %(date)s"
 msgstr "于 %(date)s"
 
-#: app/templates/item_detail.html:266
+#: app/templates/item_detail.html:267
 msgid "Due:"
 msgstr "应还："
 
-#: app/templates/item_detail.html:272
+#: app/templates/item_detail.html:273
 msgid "Check In"
 msgstr "归还"
 
-#: app/templates/item_detail.html:280
+#: app/templates/item_detail.html:281
 msgid "Lend this item"
 msgstr "借出此条目"
 
-#: app/templates/item_detail.html:291
+#: app/templates/item_detail.html:292
 msgid "2 weeks"
 msgstr "2 周"
 
-#: app/templates/item_detail.html:292
+#: app/templates/item_detail.html:293
 msgid "1 week"
 msgstr "1 周"
 
-#: app/templates/item_detail.html:293
+#: app/templates/item_detail.html:294
 msgid "1 month"
 msgstr "1 个月"
 
-#: app/templates/item_detail.html:294
+#: app/templates/item_detail.html:295
 msgid "No due date"
 msgstr "无应还日期"
 
-#: app/templates/item_detail.html:296
+#: app/templates/item_detail.html:297
 msgid "Check Out"
 msgstr "借出"
 
-#: app/templates/item_detail.html:299
+#: app/templates/item_detail.html:300
 msgid "Add borrowers in <a href=\"/settings\" class=\"text-shelf-accent2\">Settings</a> first."
 msgstr "请先在<a href=\"/settings\" class=\"text-shelf-accent2\">设置</a>中添加借阅人。"
 
-#: app/templates/item_detail.html:306
+#: app/templates/item_detail.html:307
 msgid "Checkout history"
 msgstr "借阅记录"
 
-#: app/templates/item_detail.html:313
+#: app/templates/item_detail.html:314
 #, python-format
 msgid "returned %(date)s"
 msgstr "%(date)s 归还"
 
-#: app/templates/item_detail.html:315
+#: app/templates/item_detail.html:316
 msgid "out"
 msgstr "未归还"
 
@@ -3191,36 +3365,36 @@ msgstr "未归还"
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/settings/library.html:134
 #: app/templates/fragments/settings/tags.html:29
-#: app/templates/item_detail.html:329
+#: app/templates/item_detail.html:330
 msgid "Edit"
 msgstr "编辑"
 
-#: app/templates/item_detail.html:332
+#: app/templates/item_detail.html:333
 msgid "Add another like this"
 msgstr "照此再添加一条"
 
 #: app/templates/fragments/settings/tags.html:24
 #: app/templates/fragments/settings/users.html:33
-#: app/templates/item_detail.html:338
+#: app/templates/item_detail.html:339
 msgid "Delete"
 msgstr "删除"
 
-#: app/templates/item_detail.html:344
+#: app/templates/item_detail.html:345
 #, python-format
 msgid "Added %(date)s"
 msgstr "添加于 %(date)s"
 
-#: app/templates/item_detail.html:344
+#: app/templates/item_detail.html:345
 #, python-format
 msgid "Updated %(date)s"
 msgstr "更新于 %(date)s"
 
-#: app/templates/item_detail.html:344
+#: app/templates/item_detail.html:345
 #, python-format
 msgid "via %(source)s"
 msgstr "来源：%(source)s"
 
-#: app/templates/item_detail.html:349
+#: app/templates/item_detail.html:350
 msgid "Integration IDs"
 msgstr "集成 ID"
 
@@ -3298,15 +3472,15 @@ msgstr "编辑页分区"
 msgid "General"
 msgstr "常规"
 
-#: app/templates/item_edit.html:78 app/templates/item_edit.html:168
+#: app/templates/item_edit.html:78 app/templates/item_edit.html:169
 msgid "Artwork"
 msgstr "封面"
 
-#: app/templates/item_edit.html:80 app/templates/item_edit.html:229
+#: app/templates/item_edit.html:80 app/templates/item_edit.html:230
 msgid "Identifiers"
 msgstr "标识符"
 
-#: app/templates/item_edit.html:82 app/templates/item_edit.html:350
+#: app/templates/item_edit.html:82 app/templates/item_edit.html:351
 msgid "Media Details"
 msgstr "媒体详情"
 
@@ -3314,157 +3488,161 @@ msgstr "媒体详情"
 msgid "Core catalogue metadata and reading details."
 msgstr "核心目录元数据与阅读信息。"
 
+#: app/templates/item_edit.html:105
+msgid "Original title"
+msgstr ""
+
 #: app/templates/fragments/manual_add_form.html:40
-#: app/templates/item_edit.html:108 app/templates/scan.html:113
+#: app/templates/item_edit.html:109 app/templates/scan.html:113
 msgid "Media Type"
 msgstr "媒体类型"
 
-#: app/templates/item_edit.html:142 app/templates/item_edit.html:178
-#: app/templates/item_edit.html:309 app/templates/item_edit.html:358
+#: app/templates/item_edit.html:143 app/templates/item_edit.html:179
+#: app/templates/item_edit.html:310 app/templates/item_edit.html:359
 #: app/templates/scan.html:134 app/templates/scan.html:217
 msgid "None"
 msgstr "无"
 
-#: app/templates/item_edit.html:149
+#: app/templates/item_edit.html:150
 msgid "Date Started"
 msgstr "开始日期"
 
-#: app/templates/item_edit.html:150
+#: app/templates/item_edit.html:151
 msgid "Date Finished"
 msgstr "完成日期"
 
-#: app/templates/item_edit.html:155
+#: app/templates/item_edit.html:156
 msgid "Description"
 msgstr "简介"
 
-#: app/templates/fragments/audit_notes.html:4 app/templates/item_edit.html:161
+#: app/templates/fragments/audit_notes.html:4 app/templates/item_edit.html:162
 msgid "Notes"
 msgstr "备注"
 
-#: app/templates/item_edit.html:169
+#: app/templates/item_edit.html:170
 msgid "Preview the current cover, upload a replacement, or use a public image URL."
 msgstr "预览当前封面、上传替换图片，或使用公开图片 URL。"
 
 #: app/templates/fragments/cover_search.html:40
-#: app/templates/item_edit.html:175
+#: app/templates/item_edit.html:176
 msgid "Current cover"
 msgstr "当前封面"
 
-#: app/templates/item_edit.html:177
+#: app/templates/item_edit.html:178
 msgid "Cover preview"
 msgstr "封面预览"
 
-#: app/templates/item_edit.html:188
+#: app/templates/item_edit.html:189
 msgid "Drop an image here or click to browse"
 msgstr "将图片拖到此处，或点击选择文件"
 
-#: app/templates/item_edit.html:190
+#: app/templates/item_edit.html:191
 msgid "The replacement is applied when you save the item."
 msgstr "替换图片将在保存条目时生效。"
 
-#: app/templates/item_edit.html:196
+#: app/templates/item_edit.html:197
 msgid "Cover image URL"
 msgstr "封面图片 URL"
 
-#: app/templates/item_edit.html:208
+#: app/templates/item_edit.html:209
 msgid "Use URL"
 msgstr "使用 URL"
 
-#: app/templates/item_edit.html:211
+#: app/templates/item_edit.html:212
 msgid "Public HTTPS image links only. Use URL applies the cover immediately; your other edits are still saved with Save Changes."
 msgstr "仅支持公开的 HTTPS 图片链接。「使用 URL」会立即应用封面；其他修改仍需点击「保存更改」才会保存。"
 
-#: app/templates/item_edit.html:218
+#: app/templates/item_edit.html:219
 msgid "Series membership, position and page count."
 msgstr "所属系列、序号与页数。"
 
-#: app/templates/item_edit.html:222
+#: app/templates/item_edit.html:223
 msgid "Series #"
 msgstr "系列序号"
 
-#: app/templates/item_edit.html:230
+#: app/templates/item_edit.html:231
 msgid "Identifiers printed on this edition."
 msgstr "印在此版本上的标识码。"
 
-#: app/templates/item_edit.html:233
+#: app/templates/item_edit.html:234
 msgid "ISBN"
 msgstr "ISBN"
 
-#: app/templates/item_edit.html:237
+#: app/templates/item_edit.html:238
 msgid "The stored ISBN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
 msgstr "已存储的 ISBN 校验位不通过。除非你在此修改，否则将原样保留 — 改正或清空时会照常校验。"
 
-#: app/templates/item_edit.html:242 app/templates/item_edit.html:249
+#: app/templates/item_edit.html:243 app/templates/item_edit.html:250
 msgid "Scan ISBN"
 msgstr "扫码录入 ISBN"
 
-#: app/templates/item_edit.html:250 app/templates/item_edit.html:283
+#: app/templates/item_edit.html:251 app/templates/item_edit.html:284
 msgid "Close scanner"
 msgstr "关闭扫码"
 
-#: app/templates/item_edit.html:266 app/templates/music.html:27
+#: app/templates/item_edit.html:267 app/templates/music.html:27
 msgid "UPC / EAN"
 msgstr "UPC / EAN"
 
-#: app/templates/item_edit.html:266
+#: app/templates/item_edit.html:267
 msgid "UPC-A or EAN-13"
 msgstr "UPC-A 或 EAN-13"
 
-#: app/templates/item_edit.html:270
+#: app/templates/item_edit.html:271
 msgid "The stored UPC / EAN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
 msgstr "已存储的 UPC / EAN 校验位不通过。除非你在此修改，否则将原样保留 — 改正或清空时会照常校验。"
 
-#: app/templates/item_edit.html:275 app/templates/item_edit.html:282
+#: app/templates/item_edit.html:276 app/templates/item_edit.html:283
 msgid "Scan UPC / EAN"
 msgstr "扫码录入 UPC / EAN"
 
-#: app/templates/item_edit.html:302
+#: app/templates/item_edit.html:303
 msgid "Ownership, physical location and collection value."
 msgstr "拥有状态、实体位置与藏品价值。"
 
-#: app/templates/item_edit.html:323
+#: app/templates/item_edit.html:324
 msgid "I own this item"
 msgstr "我拥有此条目"
 
-#: app/templates/item_edit.html:334
+#: app/templates/item_edit.html:335
 msgid "On my wishlist"
 msgstr "在我的心愿单中"
 
-#: app/templates/item_edit.html:336
+#: app/templates/item_edit.html:337
 msgid "Uncheck both for a book you read but don't own — reading history stays."
 msgstr "读过但未拥有的书，两项都取消勾选即可 — 阅读记录会保留。"
 
-#: app/templates/item_edit.html:341
+#: app/templates/item_edit.html:342
 #, python-format
 msgid "Value (%(symbol)s)"
 msgstr "价值（%(symbol)s）"
 
-#: app/templates/item_edit.html:344
+#: app/templates/item_edit.html:345
 msgid "Overrides the ISBNdb estimate everywhere it's shown"
 msgstr "在所有显示位置覆盖 ISBNdb 估值"
 
-#: app/templates/item_edit.html:344
+#: app/templates/item_edit.html:345
 #, python-format
 msgid "ISBNdb estimate: %(value)s"
 msgstr "ISBNdb 估值：%(value)s"
 
-#: app/templates/item_edit.html:351
+#: app/templates/item_edit.html:352
 msgid "Fields specific to the selected media type."
 msgstr "所选媒体类型专属的字段。"
 
-#: app/templates/item_edit.html:367
+#: app/templates/item_edit.html:368
 msgid "Duration (min)"
 msgstr "时长（分钟）"
 
-#: app/templates/item_edit.html:374
+#: app/templates/item_edit.html:375
 msgid "Min. players"
 msgstr ""
 
-#: app/templates/item_edit.html:375
+#: app/templates/item_edit.html:376
 msgid "Max. players"
 msgstr ""
 
-#: app/templates/item_edit.html:376
+#: app/templates/item_edit.html:377
 msgid "Minimum age"
 msgstr ""
 
@@ -3479,11 +3657,11 @@ msgstr ""
 #: app/templates/fragments/settings/library.html:338
 #: app/templates/fragments/settings/price_alerts.html:35
 #: app/templates/fragments/settings/release_radar.html:27
-#: app/templates/item_edit.html:382 app/templates/series.html:199
+#: app/templates/item_edit.html:383 app/templates/series.html:199
 msgid "Save"
 msgstr "保存"
 
-#: app/templates/item_edit.html:399
+#: app/templates/item_edit.html:400
 msgid "Tags save as you add or remove them."
 msgstr "标签在添加或移除时即自动保存。"
 
