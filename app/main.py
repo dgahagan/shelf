@@ -64,7 +64,7 @@ from app.services.national import SEARCH_LANGS
 from app.services import audnexus
 from app.services.browse_counts import source_label
 from app.database import init_db, get_db
-from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music, related_media, trash, labels, audits, duplicates, upcoming, api_v1
+from app.routers import pages, items, item_copies, items_covers, cover_review, cover_review_actions, items_csv, items_catalog, items_board_games, locations, location_order, platforms, settings, sync, checkouts, valuation, hardcover, store, series, share, tags, intake, archive, shelf_fill, romm, komga, periodicals, music, related_media, trash, labels, audits, duplicates, upcoming, api_v1
 from app.routers import auth_routes
 # Aliased: `api_tokens` inside the middlewares is the service module.
 from app.routers import api_tokens as api_token_routes
@@ -865,6 +865,7 @@ app.include_router(cover_review.router)
 app.include_router(cover_review_actions.router)
 app.include_router(items_csv.router)
 app.include_router(items_catalog.router)
+app.include_router(items_board_games.router)
 app.include_router(locations.router)
 app.include_router(location_order.router)
 app.include_router(platforms.router)

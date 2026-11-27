@@ -55,6 +55,8 @@ RAW_UPDATE_ALLOWLIST: dict[str, set[str]] = {
         "cover_path = NULL, cover_edition_isbn = NULL, cover_edition_language = NULL, cover_review_dismissed = 0, ",
     },
     "app/routers/items_common.py": {"cover_path = ?"},
+    # Board game scan/add: the BGG cover download, same as items_common.
+    "app/routers/items_board_games.py": {"cover_path = ?"},
     # The cover review queue's select/upload verbs — the same fetched-or-
     # uploaded image path as every other entry here, never a typed value.
     "app/routers/cover_review_actions.py": {

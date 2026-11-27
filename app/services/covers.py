@@ -26,6 +26,7 @@ ALLOWED_COVER_DOMAINS = {
     "rnod.bnportugal.gov.pt",  # PORBASE cover scans for Portuguese (978-989, 978-972) ISBNs
     "neodb.social",  # NeoDB cover images for Chinese (978-7, Taiwan, Hong Kong) ISBNs
     "coverartarchive.org",  # Cover Art Archive entry point for music releases
+    "cf.geekdo-images.com",  # BoardGameGeek box art (bgg.py, GameUPC candidates)
 }
 
 # Suffix-matched domains (subdomain rotates): covers.openlibrary.org serves
@@ -158,11 +159,13 @@ async def search_book_covers(
 MEDIA_TYPE_PROVIDERS: dict[str, str] = {
     "dvd": "tmdb",
     "video_game": "igdb",
+    "board_game": "bgg",
 }
 
 CREDENTIAL_KEYS: dict[str, tuple[str, ...]] = {
     "tmdb": ("tmdb_api_key",),
     "igdb": ("igdb_client_id", "igdb_client_secret"),
+    "bgg": ("bgg_api_token",),
 }
 
 # Six rows of the picker's two-column grid. Comparable to the book path's 10
@@ -239,6 +242,8 @@ async def search_covers(
         return await _tmdb_candidates(item, query, client, creds)
     if provider == "igdb":
         return await _igdb_candidates(item, query, client, creds)
+    if provider == "bgg":
+        return await _bgg_candidates(item, query, client, creds)
     typed = query.strip() != (_col(item, "title") or "").strip()
     result = await search_book_covers(
         query,
@@ -306,6 +311,58 @@ async def _book_leg_candidates(item, typed: bool, client, creds: dict, result):
     if result.found:
         return result.with_payload(_dedupe_by_url(result.payload))
     return result
+
+
+async def _bgg_candidates(
+    item, query: str, client: httpx.AsyncClient, creds: dict
+) -> provider_result.ProviderResult:
+    """Box art from BoardGameGeek, as a `ProviderResult`. Never raises.
+
+    A game filed from BGG knows its `bgg_id`, so the untyped search asks for
+    that game's printings: its main image, then every edition with box art,
+    those in the viewer's language first, so a German reader sees the German
+    boxes before the American one. A typed query, or a game added by hand
+    without a BGG id, searches BGG by title and offers each hit's main image.
+    """
+    from app import i18n
+    from app.services import bgg
+
+    token = (creds.get("bgg_api_token") or "").strip()
+    if not token:
+        return provider_result.no_credential(bgg.PROVIDER)
+    try:
+        typed = query.strip() != (_col(item, "title") or "").strip()
+        bgg_id = _col(item, "bgg_id")
+        candidates: list[dict] = []
+        if bgg_id and not typed:
+            result = await bgg.lookup_game(int(bgg_id), token, client, versions=True)
+            if not result.found:
+                return result
+            game = result.payload
+            if game.get("cover_url"):
+                candidates.append({"url": game["cover_url"],
+                                   "thumbnail": game.get("thumbnail_url") or game["cover_url"],
+                                   "source": f"BGG · {_label(game.get('title'))}"})
+            for version in bgg.versions_in_language(game.get("versions") or [],
+                                                    i18n.current_locale.get()):
+                label = version.get("name") or version.get("title")
+                candidates.append({"url": version["cover_url"],
+                                   "thumbnail": version.get("thumbnail_url") or version["cover_url"],
+                                   "source": f"BGG · {_label(label, 32)}"})
+        else:
+            result = await bgg.search_games(query, token, client, limit=MAX_CANDIDATES)
+            if not result.found:
+                return result
+            for game in result.payload:
+                if game.get("cover_url"):
+                    year = f" ({game['publish_year']})" if game.get("publish_year") else ""
+                    candidates.append({"url": game["cover_url"],
+                                       "thumbnail": game.get("thumbnail_url") or game["cover_url"],
+                                       "source": f"BGG · {_label(game.get('title'))}{year}"})
+        return provider_result.found(bgg.PROVIDER, _dedupe_by_url(candidates)[:MAX_CANDIDATES])
+    except Exception:
+        logger.debug("BGG cover search failed", exc_info=True)
+        return provider_result.transport_failed("bgg")
 
 
 def _dedupe_by_url(candidates: list[dict]) -> list[dict]:

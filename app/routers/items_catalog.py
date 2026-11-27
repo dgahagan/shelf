@@ -18,7 +18,7 @@ from app import i18n
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
 from app.database import get_db, get_game_platforms, get_setting
-from app.routers import items_common
+from app.routers import items_board_games, items_common
 from app.services import audnexus, covers, igdb, item_write, openlibrary, restore_report, scan_outcome, tmdb
 from app.services import tags as tags_svc
 from app.services import isbn as isbn_svc
@@ -204,6 +204,8 @@ async def title_search(
         return await search_games(request, q=q, platform=platform, _=_)
     if media_type == "dvd":
         return await search_dvds(request, q=q, _=_)
+    if media_type == "board_game":
+        return await items_board_games.search_board_games(request, q=q, _=_)
     # The `auto` guard. `scan.html`'s hx-include carries #media-type here, so once
     # Auto is in that picker this route receives `auto` — and there is no
     # barcode on this path, so `auto` has nothing to mean. Resolve it (and any

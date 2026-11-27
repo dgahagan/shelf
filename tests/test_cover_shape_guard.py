@@ -31,6 +31,8 @@ ALLOWLIST = {
         "provider search result (IGDB): never a music cover",
     "app/templates/fragments/dvd_search_results.html":
         "provider search result (TMDb): never a music cover",
+    "app/templates/fragments/board_game_search_results.html":
+        "provider search result (BGG / GameUPC): never a music cover",
     "app/templates/fragments/periodical_assisted_results.html":
         "provider search result for periodicals: never a music cover",
     "app/templates/series.html":
