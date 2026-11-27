@@ -18,15 +18,17 @@ jobs:
       attestations: write   # store the attestation on this repository
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Third-party actions in this job are pinned by commit SHA, not by tag:
-      # they run with the Docker Hub write token in scope, and a tag can be
-      # moved to different code. Bump the SHA and the version comment together.
+      # Every action in both workflows is pinned by commit SHA, not by tag, and
+      # `make check-workflows` enforces it; `make check-actions` proves each pin
+      # against the live tags. A tag can be moved to different code, and these
+      # steps run with the Docker Hub write token in scope. Bump the SHA and the
+      # version comment together, then run `make check-actions`.
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}

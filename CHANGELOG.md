@@ -6,12 +6,44 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.86.0] - 2026-11-27
+
+Polish books now get their details from Poland's national library. Before,
+a 978-83 ISBN went straight to the general sources, which often know little
+about Polish editions. The Italian interface also covers the Audiobookshelf
+and Hardcover settings now. Both are community contributions, from
+[@sudo-rpaisley](https://github.com/sudo-rpaisley) and
+[@vjandrea](https://github.com/vjandrea). Separately, the build that makes the
+published Docker image is now pinned to exact versions of the tools it uses.
+
 ### Added
 
-- Polish ISBNs in the 978-83 group now try Biblioteka Narodowa's public,
-  keyless catalogue before the existing general book sources. Only an exact,
-  checksum-valid MARC ISBN is accepted; unavailable or unrelated records leave
-  the normal fallback cascade intact.
+- **Polish ISBNs (978-83) are looked up in the Biblioteka Narodowa first.**
+  Title, subtitle, authors, publisher, year, pages and language come from the
+  National Library of Poland's public catalogue, which needs no key. Only a
+  record whose ISBN matches exactly is used, because the catalogue's search
+  also returns cancelled and related ISBNs. When it has no match or does not
+  answer, the scan carries on to Open Library, Hardcover and Google Books as
+  before. It supplies no cover art. Contributed by
+  [@sudo-rpaisley](https://github.com/sudo-rpaisley) in
+  [#211](https://github.com/dgahagan/shelf/pull/211).
+- **The Settings Audiobookshelf and Hardcover cards are translated into
+  Italian,** with the messages their sync, import and export actions show.
+  Menu paths in the other apps stay as those apps show them, so you can still
+  find them there. Contributed by
+  [@vjandrea](https://github.com/vjandrea) in
+  [#207](https://github.com/dgahagan/shelf/pull/207).
+
+### Changed
+
+- **The image build uses fixed versions of its tools.** Every GitHub Action
+  that builds, tests and publishes Shelf is pinned to an exact commit instead
+  of a version tag, which its publisher can move. All build jobs use the same
+  Python as the Docker image. Nothing changes for an existing install.
+- **Two new `make` targets for contributors.** `make check-workflows` fails
+  when an action is not pinned or a job sets its own Python or Node version.
+  It runs offline, as part of `make checks-fast`. `make check-actions` asks
+  GitHub whether each pinned commit is still what its version tag points at.
 
 ## [0.85.0] - 2026-11-25
 
@@ -6218,6 +6250,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.86.0]: https://github.com/dgahagan/shelf/releases/tag/v0.86.0
 [0.85.0]: https://github.com/dgahagan/shelf/releases/tag/v0.85.0
 [0.84.1]: https://github.com/dgahagan/shelf/releases/tag/v0.84.1
 [0.84.0]: https://github.com/dgahagan/shelf/releases/tag/v0.84.0

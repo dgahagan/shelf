@@ -16,7 +16,7 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-e2e test-contract test-all \
-        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n \
+        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n check-workflows check-actions \
         badges check-badges check-roadmap lock lock-upgrade check-lock check-lock-selftest \
         pin-base check-base-image \
         checks checks-fast \
@@ -258,12 +258,29 @@ check-badges:
 check-roadmap:
 	python scripts/check_roadmap_map.py
 
+# Lint .github/workflows/: every action pinned by commit SHA with an exact
+# version comment, and Python/Node set once (Python equal to the Dockerfile's).
+check-workflows:
+	python scripts/check_workflows.py
+
+# Proves each pinned action against its release tag: asks GitHub (git
+# ls-remote) what every `# vX.Y.Z` comment points at and compares it with the
+# pinned SHA, after running the check-workflows rules. It needs the network,
+# so it is in `make checks` and NOT in checks-fast or CI. An exact tag does not
+# move, so red means a typo or a re-tagged release; both are stop conditions,
+# not something to re-pin until green. A failed lookup fails with its own
+# message ("the pin was NOT checked"), never as a pass.
+check-actions:
+	python scripts/check_workflows.py --resolve
+
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-ruff check-badges check-roadmap check-i18n
+checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-ruff check-badges check-roadmap check-i18n check-workflows
 
 # Everything, including the network-bound pip-audit and the dated report files.
-# Keep this the full set: the release procedure in ../CLAUDE.md step 1 calls it.
-checks: checks-fast check-lock check-lock-selftest check-deps check-licenses check-base-image
+# Keep this the full set for running by hand. The release procedure in
+# ../CLAUDE.md step 1 lists its targets by name and does not call this one, so
+# a new network check must also be added to that list.
+checks: checks-fast check-lock check-lock-selftest check-deps check-licenses check-base-image check-actions
 
 # ---------------------------------------------------------------------------
 # Claude agent reports

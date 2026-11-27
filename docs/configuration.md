@@ -199,10 +199,10 @@ manage their own API tokens, from the account menu — not from Settings.
 
 - Metadata source order (a national bibliography where one covers the ISBN —
   DNB for German ISBNs, BnF for French ones, SBN for Italian ones, KB for Dutch
-  ones, NeoDB for Chinese-language ones → Open Library →
+  ones, BN for Polish ones, NeoDB for Chinese-language ones → Open Library →
   Hardcover → Google Books) is fixed; see [Architecture](architecture.md). National
   routing follows the ISBN's registration group and has no on/off switch, for
-  SBN, DNB, BnF, KB or NeoDB.
+  SBN, DNB, BnF, KB, BN or NeoDB.
 - Outbound API pacing per host is fixed to each provider's published limit.
 - The Audible catalogue (Audnexus) has no on/off switch. It is called only
   for an audiobook with an ASIN that has no cover, from the cover picker for

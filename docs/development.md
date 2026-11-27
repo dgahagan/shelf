@@ -56,15 +56,17 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
-| `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges |
+| `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges, workflow action pins |
 | `make badges` | Restamp README's two test-count badges from `pytest --co` — CI runs this on the push to `main` (the `restamp` job below); run it locally to see your work, but **never commit the result in a pull request** |
-| `make checks` | All checks incl. `check-lock`, `check-lock-selftest`, `pip-audit`, licenses and `check-base-image` (network) |
+| `make checks` | All checks incl. `check-lock`, `check-lock-selftest`, `pip-audit`, licenses, `check-base-image` and `check-actions` (network) |
 | `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
 | `make lock-upgrade` | The same, taking new versions of indirect dependencies |
 | `make check-lock` | Fail if a lock (versions or hashes) is not what `make lock` produces (network) |
 | `make check-lock-selftest` | Prove `check-lock` fails on an invented hash (network) |
 | `make pin-base` | Rewrite the Dockerfile's `python:3.12-slim` digest pin to the tag's current multi-arch digest (needs Docker Hub) |
 | `make check-base-image` | Fail if the Dockerfile's base-image digest is not the tag's current one; fix with `make pin-base` (needs Docker Hub) |
+| `make check-workflows` | Fail if a workflow action is not pinned by commit SHA with its exact version in a comment, or if a job sets its own Python or Node version (offline; part of `checks-fast`) |
+| `make check-actions` | Fail unless every pinned action's SHA is the commit its version tag points at; a lookup that fails is a failure, not a pass (needs GitHub) |
 | `make css` | Rebuild `static/css/app.css` and restamp `SW_VERSION` — run it after any template/JS change to see your work, **but leave the output out of a pull request** |
 
 Unit and E2E tests **cannot share one pytest invocation** — always use the
@@ -84,6 +86,14 @@ than on a push to `main`:
 | `e2e` | `make css`, then `make test-e2e` — the suite is always judged against a stylesheet rebuilt from the templates in that checkout |
 | `css` | Rebuilds with `make css`. The **rebuild** runs on every event, so a template or `static/css/input.css` change (it holds the `@theme` colours and the `@source` paths) that breaks compilation still fails cheaply. The **comparison** against the committed output fails on push to `main` and is advisory (a `::notice::`) on a pull request |
 | `generated-output` | Pull requests only. Fails if the merge result changes `static/css/app.css`, `sw.js`'s `SW_VERSION` or either README badge count, relative to the base branch |
+
+**Every action in both workflows is pinned by commit SHA**, with its exact
+release (`vX.Y.Z`) in a comment beside it, because a tag can be moved to
+different code and the `restamp` and publish jobs hold write tokens. Python
+and Node are set once, in `test.yml`'s top-level `env:`, and Python is held
+equal to the Dockerfile's `FROM python:X.Y`. `make check-workflows` enforces
+both. To upgrade an action, change the SHA and the version comment together,
+then run `make check-actions`, which asks GitHub what the tag points at.
 
 The split exists because **a pull request carries no generated output** — see
 [CONTRIBUTING.md](../CONTRIBUTING.md). Those three artefacts are regenerated on

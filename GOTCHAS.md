@@ -6677,6 +6677,28 @@ python -m pytest tests/test_entrypoint.py -q -k "other_san_is_preserved or marke
 
 - **Status:** documented, and pinned by `tests/test_entrypoint.py`.
 
+## G161 — When a line-based guard enforces a YAML invariant
+
+- **Rule:** test the spellings YAML treats as the same key, and the scopes that
+  can shadow a value — not only the formatter's canonical output. At minimum:
+  whitespace before `:`, a quoted key, and a job- or step-level `env:` that
+  redefines a name the workflow sets once at the top.
+- **Why:** YAML grammar is wider than a source regex. A guard can be green on
+  the repository's current formatting while it accepts an equivalent
+  declaration that bypasses the invariant. GitHub's `${{ env.NAME }}` also
+  resolves the nearest scope, so a lower `env:` changes the value without
+  changing the line the guard reads.
+- **Evidence:** 2026-11-27, `feat/ci-pinned-actions` diff review (codex M1,
+  M2). PyYAML accepted `uses : actions/checkout@v7` and a job-level
+  `PYTHON_VERSION: '3.13'`; `scripts/check_workflows.py` reported neither.
+  Fixed in `5f50c63`, with fixtures for both, each seen red against the
+  narrower regex and with the nested-scope rule disabled.
+- **Verify:** parse each adversarial fixture as YAML first, then require the
+  guard to reject it; mutation-check by restoring the narrower pattern.
+- **Status:** active. Covered for `check_workflows.py` by
+  `tests/test_workflow_lint.py`. A YAML parser would close the class; the
+  design keeps the lint stdlib-only, so the fixtures are the backstop.
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

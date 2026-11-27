@@ -226,7 +226,7 @@ wishlist price-drop digest and the release-radar digest. See
 Open Library, Google Books (anonymous by default), Amazon cover images, UPC Item DB,
 the Deutsche Nationalbibliothek for German ISBNs, the Bibliothèque nationale
 de France for French ones, and the Servizio Bibliotecario Nazionale for Italian
-ones. Apart from credentials you
+ones, and the Biblioteka Narodowa for Polish ones. Apart from credentials you
 explicitly configure, lookups send only the ISBN or UPC — never your account,
 collection or personal data. Requests to every provider are paced to its
 published rate limit. UPC Item DB's free tier is

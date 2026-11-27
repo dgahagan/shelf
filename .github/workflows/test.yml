@@ -11,6 +11,12 @@ on:
 permissions:
   contents: read
 
+# One Python and one Node for every job. Python is held equal to the
+# Dockerfile's FROM python line by `make check-workflows`.
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+
 jobs:
   # Every job pins ubuntu-24.04, not ubuntu-latest. `ubuntu-latest` moved to
   # Ubuntu 26.04 (from 2026-10-19), and Playwright 1.52 refuses to install
@@ -51,23 +57,23 @@ jobs:
       # fetch-depth: 0 — the push and the tip check both need real history, and
       # stamp_sw_version.py hashes files rather than revisions, so a shallow
       # checkout buys nothing here.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           ref: ${{ github.sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      # 3.12 with the pip cache, matching the `test` job below: `make badges`
+      # The workflow's Python, with the pip cache, matching the `test` job below: `make badges`
       # shells out to `pytest --co`, which imports the app, so this job needs
       # the full dependency install and not the stdlib-only one the `css` and
       # `generated-output` jobs get away with.
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: Install Tailwind
@@ -132,13 +138,13 @@ jobs:
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.restamp.outputs.sha || github.sha }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: Install dependencies
@@ -193,15 +199,15 @@ jobs:
       # fetch-depth: 2 — the default of 1 leaves the merge ref without its
       # first parent, and the comparison would then fail for a reason that
       # reads like a bug in the script rather than a shallow checkout.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 2
 
       # Stdlib only: the check imports the two stamp scripts for their
       # parsers, and neither has a third-party dependency. No pip install.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.13'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: A pull request must not change generated build output
         run: python scripts/check_pr_generated.py
@@ -224,20 +230,20 @@ jobs:
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.restamp.outputs.sha || github.sha }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       # `make css` also stamps SW_VERSION (scripts/stamp_sw_version.py, stdlib
       # only — no pip install needed).
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.13'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install Tailwind
         run: npm ci
@@ -272,13 +278,13 @@ jobs:
     if: ${{ !failure() && !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.restamp.outputs.sha || github.sha }}
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
 
       - name: Install dependencies
@@ -295,9 +301,9 @@ jobs:
       # Rebuilt on every event, not only pull requests: one code path, and on
       # a current `main` it is a no-op. Observed cost 16 s against 11 m 17 s
       # for the suite itself. Nothing built here is pushed anywhere.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install Tailwind
