@@ -8,7 +8,7 @@
             const response = await fetch(url, options);
             return await response.json();
         } catch (_) {
-            return {ok: false, message: 'Request failed'};
+            return {ok: false, message: t('Request failed')};
         }
     }
 
@@ -37,7 +37,7 @@
             if (!data.ok) return;
             url.value = data.url || '';
             publicUrl.value = data.public_url || '';
-            apiKey.placeholder = data.api_key_saved ? 'Saved — leave blank to keep' : 'Komga API key';
+            apiKey.placeholder = data.api_key_saved ? t('Saved — leave blank to keep') : t('Komga API key');
         }
 
         document.getElementById('komga-save').addEventListener('click', async function () {
@@ -52,7 +52,7 @@
                     clear_api_key: clearKey.checked
                 })
             });
-            setStatus(data.message || (data.ok ? 'Saved' : 'Save failed'), Boolean(data.ok));
+            setStatus(data.message || (data.ok ? t('Saved') : t('Save failed')), Boolean(data.ok));
             if (data.ok) {
                 apiKey.value = '';
                 clearKey.checked = false;
@@ -67,7 +67,7 @@
                 headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({url: url.value, api_key: apiKey.value})
             });
-            setStatus(data.message || (data.ok ? 'Connected' : 'Connection failed'), Boolean(data.ok));
+            setStatus(data.message || (data.ok ? t('Connected') : t('Connection failed')), Boolean(data.ok));
         });
 
         function renderLibraries(rows) {
@@ -93,7 +93,7 @@
                 ['comic', 'manga'].forEach(function (kind) {
                     const option = document.createElement('option');
                     option.value = kind;
-                    option.textContent = kind === 'manga' ? 'Manga' : 'Comics';
+                    option.textContent = kind === 'manga' ? t('Manga') : t('Comics');
                     option.selected = row.kind === kind;
                     select.appendChild(option);
                 });
@@ -105,10 +105,10 @@
         }
 
         document.getElementById('komga-load-libraries').addEventListener('click', async function () {
-            libraries.textContent = 'Loading libraries…';
+            libraries.textContent = t('Loading libraries…');
             const data = await readJSON(shelfUrl('/api/komga/libraries'));
             if (!data.ok) {
-                libraries.textContent = data.message || 'Could not load libraries';
+                libraries.textContent = data.message || t('Could not load libraries');
                 saveLibraries.hidden = true;
                 return;
             }
@@ -128,7 +128,7 @@
                 headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({libraries: rows})
             });
-            setStatus(data.message || (data.ok ? 'Library selection saved' : 'Save failed'), Boolean(data.ok));
+            setStatus(data.message || (data.ok ? t('Library selection saved') : t('Save failed')), Boolean(data.ok));
         });
 
         // The Sync Now button is gone while the Komga feature is off
@@ -138,7 +138,7 @@
         if (syncButton) {
             syncButton.addEventListener('click', function () {
                 result.textContent = '';
-                progress.textContent = 'Starting Komga sync…';
+                progress.textContent = t('Starting Komga sync…');
                 progressBar.style.width = '0%';
                 const stream = new EventSource(shelfUrl('/api/komga/sync/stream'));
                 stream.onmessage = function (event) {
@@ -149,18 +149,18 @@
                         progressBar.style.width = pct + '%';
                     } else if (data.type === 'done') {
                         progressBar.style.width = '100%';
-                        progress.textContent = 'Sync complete';
-                        result.textContent = 'Created: ' + data.created + ', adopted: ' + data.adopted + ', updated: ' + data.updated + ', skipped: ' + data.skipped + (data.in_trash ? ', in Trash: ' + data.in_trash : '') + ', errors: ' + data.errors;
+                        progress.textContent = t('Sync complete');
+                        result.textContent = t('Created: {created}, adopted: {adopted}, updated: {updated}, skipped: {skipped}').replace('{created}', data.created).replace('{adopted}', data.adopted).replace('{updated}', data.updated).replace('{skipped}', data.skipped) + (data.in_trash ? t(', in Trash: {count}').replace('{count}', data.in_trash) : '') + t(', errors: {count}').replace('{count}', data.errors);
                         stream.close();
                     } else if (data.type === 'error') {
                         progress.textContent = '';
-                        result.textContent = data.message || 'Sync failed';
+                        result.textContent = data.message || t('Sync failed');
                         result.className = 'mt-2 text-xs text-shelf-error';
                         stream.close();
                     }
                 };
                 stream.onerror = function () {
-                    result.textContent = 'Connection to sync stream was lost';
+                    result.textContent = t('Connection to sync stream was lost');
                     result.className = 'mt-2 text-xs text-shelf-error';
                     stream.close();
                 };

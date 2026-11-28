@@ -290,6 +290,10 @@ document.addEventListener('alpine:init', function () {
             valuating: false, valResult: false, keyStatus: false, testing: false, showHelp: false,
             apiKey: '', apiKeySaved: false,
             valCurrent: 0, valTotal: 0, valLastTitle: '', valLog: [], showValLog: false,
+            // Wording a CSP-build expression can't build: it can't call t().
+            get valuateButtonLabel() { return (this.apiKey || this.apiKeySaved) ? t('Valuate Collection') : t('Enter API key to valuate'); },
+            get valLogToggle() { return this.logToggle(this.showValLog, this.valLog.length); },
+            logToggle(open, n) { return open ? t('Hide details') : t('Show details ({count} items)').replace('{count}', n); },
             init() {
                 this.apiKeySaved = this.$el.dataset.apiKeySaved === '1';
             },
@@ -303,7 +307,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ key: this.apiKey })
                 }).then(r => r.json())
                   .then(d => { this.keyStatus = d; this.testing = false; })
-                  .catch(() => { this.keyStatus = { ok: false, message: 'Connection failed' }; this.testing = false; });
+                  .catch(() => { this.keyStatus = { ok: false, message: t('Connection failed') }; this.testing = false; });
             },
             startValuation() {
                 this.valuating = true; this.valResult = false; this.valCurrent = 0; this.valTotal = 0;
@@ -322,7 +326,7 @@ document.addEventListener('alpine:init', function () {
                         self.valResult = {message: d.message}; self.valuating = false; es.close();
                     }
                 };
-                es.onerror = function () { self.valResult = {message: 'Connection lost'}; self.valuating = false; es.close(); };
+                es.onerror = function () { self.valResult = {message: t('Connection lost')}; self.valuating = false; es.close(); };
             }
         };
     });
@@ -345,7 +349,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ api_key: this.googleBooksKey })
                 }).then(r => r.json())
                   .then(d => { this.googleBooksStatus = d; this.googleBooksTesting = false; })
-                  .catch(() => { this.googleBooksStatus = { ok: false, message: 'Connection failed' }; this.googleBooksTesting = false; });
+                  .catch(() => { this.googleBooksStatus = { ok: false, message: t('Connection failed') }; this.googleBooksTesting = false; });
             }
         };
     });
@@ -367,7 +371,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ key: this.tmdbKey })
                 }).then(r => r.json())
                   .then(d => { this.tmdbStatus = d; this.tmdbTesting = false; })
-                  .catch(() => { this.tmdbStatus = { ok: false, message: 'Connection failed' }; this.tmdbTesting = false; });
+                  .catch(() => { this.tmdbStatus = { ok: false, message: t('Connection failed') }; this.tmdbTesting = false; });
             }
         };
     });
@@ -389,7 +393,7 @@ document.addEventListener('alpine:init', function () {
                     body: JSON.stringify({ client_id: this.igdbId, client_secret: this.igdbSecret })
                 }).then(r => r.json())
                   .then(d => { this.igdbStatus = d; this.igdbTesting = false; })
-                  .catch(() => { this.igdbStatus = { ok: false, message: 'Connection failed' }; this.igdbTesting = false; });
+                  .catch(() => { this.igdbStatus = { ok: false, message: t('Connection failed') }; this.igdbTesting = false; });
             }
         };
     });
@@ -426,7 +430,7 @@ document.addEventListener('alpine:init', function () {
                         self.retryResult = {error: d.message}; self.retrying = false; es.close();
                     }
                 };
-                es.onerror = function () { self.retryResult = {error: 'Connection lost'}; self.retrying = false; es.close(); };
+                es.onerror = function () { self.retryResult = {error: t('Connection lost')}; self.retrying = false; es.close(); };
             },
             startSynopses() {
                 this.synFetching = true; this.synResult = false; this.synCurrent = 0; this.synTotal = 0;
@@ -445,7 +449,7 @@ document.addEventListener('alpine:init', function () {
                         self.synResult = {error: d.message}; self.synFetching = false; es.close();
                     }
                 };
-                es.onerror = function () { self.synResult = {error: 'Connection lost'}; self.synFetching = false; es.close(); };
+                es.onerror = function () { self.synResult = {error: t('Connection lost')}; self.synFetching = false; es.close(); };
             }
         };
     });

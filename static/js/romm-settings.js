@@ -7,7 +7,7 @@
             const response = await fetch(url, options);
             return await response.json();
         } catch (_) {
-            return {ok: false, message: 'Request failed'};
+            return {ok: false, message: t('Request failed')};
         }
     }
     function onReady() {
@@ -33,7 +33,7 @@
             if (!data.ok) return;
             url.value = data.url || '';
             publicUrl.value = data.public_url || '';
-            token.placeholder = data.token_saved ? 'Saved — leave blank to keep' : 'RomM client API token';
+            token.placeholder = data.token_saved ? t('Saved — leave blank to keep') : t('RomM client API token');
         }
 
         document.getElementById('romm-save').addEventListener('click', async function () {
@@ -42,7 +42,7 @@
                 method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({url: url.value, public_url: publicUrl.value, token: token.value, clear_token: clearToken.checked})
             });
-            setStatus(data.message || (data.ok ? 'Saved' : 'Save failed'), Boolean(data.ok));
+            setStatus(data.message || (data.ok ? t('Saved') : t('Save failed')), Boolean(data.ok));
             if (data.ok) { token.value = ''; clearToken.checked = false; await loadStatus(); }
         });
 
@@ -52,7 +52,7 @@
                 method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({url: url.value, token: token.value})
             });
-            setStatus(data.message || (data.ok ? 'Connected' : 'Connection failed'), Boolean(data.ok));
+            setStatus(data.message || (data.ok ? t('Connected') : t('Connection failed')), Boolean(data.ok));
         });
 
         function renderPlatforms(rows) {
@@ -76,9 +76,9 @@
         }
 
         document.getElementById('romm-load-platforms').addEventListener('click', async function () {
-            platforms.textContent = 'Loading platforms…';
+            platforms.textContent = t('Loading platforms…');
             const data = await readJSON(shelfUrl('/api/romm/platforms'));
-            if (!data.ok) { platforms.textContent = data.message || 'Could not load platforms'; savePlatforms.hidden = true; return; }
+            if (!data.ok) { platforms.textContent = data.message || t('Could not load platforms'); savePlatforms.hidden = true; return; }
             renderPlatforms(data.platforms || []);
         });
 
@@ -90,7 +90,7 @@
                 method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({platforms: rows})
             });
-            setStatus(data.message || (data.ok ? 'Platform selection saved' : 'Save failed'), Boolean(data.ok));
+            setStatus(data.message || (data.ok ? t('Platform selection saved') : t('Save failed')), Boolean(data.ok));
         });
 
         // The Sync Now button is gone while the RomM feature is off
@@ -100,7 +100,7 @@
         if (syncButton) {
             syncButton.addEventListener('click', function () {
                 result.textContent = ''; result.className = 'mt-2 text-xs text-shelf-muted';
-                progress.textContent = 'Starting RomM sync…'; progressBar.style.width = '0%';
+                progress.textContent = t('Starting RomM sync…'); progressBar.style.width = '0%';
                 const stream = new EventSource(shelfUrl('/api/romm/sync/stream'));
                 stream.onmessage = function (event) {
                     const data = JSON.parse(event.data);
@@ -109,16 +109,16 @@
                         progress.textContent = data.total ? data.current + ' / ' + data.total + ' — ' + data.title + ' (' + data.status + ')' : data.current + ' — ' + data.title + ' (' + data.status + ')';
                         if (data.total) progressBar.style.width = pct + '%';
                     } else if (data.type === 'done') {
-                        progressBar.style.width = '100%'; progress.textContent = 'Sync complete';
-                        result.textContent = 'Created: ' + data.created + ', updated: ' + data.updated + ', skipped: ' + data.skipped + (data.in_trash ? ', in Trash: ' + data.in_trash : '') + ', errors: ' + data.errors;
+                        progressBar.style.width = '100%'; progress.textContent = t('Sync complete');
+                        result.textContent = t('Created: {created}, updated: {updated}, skipped: {skipped}').replace('{created}', data.created).replace('{updated}', data.updated).replace('{skipped}', data.skipped) + (data.in_trash ? t(', in Trash: {count}').replace('{count}', data.in_trash) : '') + t(', errors: {count}').replace('{count}', data.errors);
                         stream.close();
                     } else if (data.type === 'error') {
-                        progress.textContent = ''; result.textContent = data.message || 'Sync failed';
+                        progress.textContent = ''; result.textContent = data.message || t('Sync failed');
                         result.className = 'mt-2 text-xs text-shelf-error'; stream.close();
                     }
                 };
                 stream.onerror = function () {
-                    result.textContent = 'Connection to sync stream was lost'; result.className = 'mt-2 text-xs text-shelf-error'; stream.close();
+                    result.textContent = t('Connection to sync stream was lost'); result.className = 'mt-2 text-xs text-shelf-error'; stream.close();
                 };
             });
         }

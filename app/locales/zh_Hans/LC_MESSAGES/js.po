@@ -67,7 +67,7 @@ msgid "checked {date}"
 msgstr ""
 
 #: static/js/components-item.js:81 static/js/components-item.js:85
-#: static/js/components-item.js:154 static/js/components-settings.js:904
+#: static/js/components-item.js:154 static/js/components-settings.js:909
 #: static/js/location-order.js:67
 msgid "Saving…"
 msgstr ""
@@ -158,6 +158,8 @@ msgid "Synopsis saved"
 msgstr ""
 
 #: static/js/components-item.js:250 static/js/components-item.js:253
+#: static/js/komga-settings.js:55 static/js/komga-settings.js:131
+#: static/js/romm-settings.js:45 static/js/romm-settings.js:93
 msgid "Save failed"
 msgstr ""
 
@@ -192,7 +194,10 @@ msgid "Synced to Hardcover"
 msgstr "已同步到 Hardcover"
 
 #: static/js/components-item.js:420 static/js/components-settings.js:133
-#: static/js/components-settings.js:234
+#: static/js/components-settings.js:234 static/js/components-settings.js:310
+#: static/js/components-settings.js:352 static/js/components-settings.js:374
+#: static/js/components-settings.js:396 static/js/komga-settings.js:70
+#: static/js/romm-settings.js:55
 msgid "Connection failed"
 msgstr "连接失败"
 
@@ -217,17 +222,18 @@ msgstr ""
 msgid "Request failed ({status})"
 msgstr ""
 
-#: static/js/components-settings.js:82
+#: static/js/components-settings.js:82 static/js/komga-settings.js:11
+#: static/js/romm-settings.js:10
 msgid "Request failed"
 msgstr ""
 
 #: static/js/components-settings.js:101 static/js/components-settings.js:208
-#: static/js/components-settings.js:406
+#: static/js/components-settings.js:296 static/js/components-settings.js:410
 msgid "Hide details"
 msgstr ""
 
 #: static/js/components-settings.js:101 static/js/components-settings.js:208
-#: static/js/components-settings.js:406
+#: static/js/components-settings.js:296 static/js/components-settings.js:410
 #, python-brace-format
 msgid "Show details ({count} items)"
 msgstr ""
@@ -245,7 +251,8 @@ msgid "Enter URL and token to sync"
 msgstr ""
 
 #: static/js/components-settings.js:154 static/js/components-settings.js:256
-#: static/js/components-settings.js:282
+#: static/js/components-settings.js:282 static/js/components-settings.js:329
+#: static/js/components-settings.js:433 static/js/components-settings.js:452
 msgid "Connection lost"
 msgstr ""
 
@@ -277,279 +284,287 @@ msgstr ""
 msgid "Enter token to export"
 msgstr ""
 
-#: static/js/components-settings.js:462 static/js/components-settings.js:557
+#: static/js/components-settings.js:294
+msgid "Valuate Collection"
+msgstr ""
+
+#: static/js/components-settings.js:294
+msgid "Enter API key to valuate"
+msgstr ""
+
+#: static/js/components-settings.js:466 static/js/components-settings.js:561
 msgid "Import failed"
 msgstr ""
 
-#: static/js/components-settings.js:525
+#: static/js/components-settings.js:529
 msgid "Preview failed"
 msgstr ""
 
-#: static/js/components-settings.js:596
+#: static/js/components-settings.js:600
 #, python-brace-format
 msgid "Import {count} item"
 msgstr ""
 
-#: static/js/components-settings.js:596
+#: static/js/components-settings.js:600
 #, python-brace-format
 msgid "Import {count} items"
 msgstr ""
 
-#: static/js/components-settings.js:611
+#: static/js/components-settings.js:615
 #, python-brace-format
 msgid "{count} new item"
 msgstr ""
 
-#: static/js/components-settings.js:611
+#: static/js/components-settings.js:615
 #, python-brace-format
 msgid "{count} new items"
 msgstr ""
 
-#: static/js/components-settings.js:612
+#: static/js/components-settings.js:616
 #, python-brace-format
 msgid "{count} restored from Trash"
 msgstr ""
 
-#: static/js/components-settings.js:619
+#: static/js/components-settings.js:623
 #, python-brace-format
 msgid "{count} new"
 msgstr ""
 
-#: static/js/components-settings.js:620
+#: static/js/components-settings.js:624
 #, python-brace-format
 msgid "{count} into Trash"
 msgstr ""
 
-#: static/js/components-settings.js:622
+#: static/js/components-settings.js:626
 #, python-brace-format
 msgid "{count} already in your library (skipped)"
 msgstr ""
 
-#: static/js/components-settings.js:623
+#: static/js/components-settings.js:627
 #, python-brace-format
 msgid "{count} to update"
 msgstr ""
 
-#: static/js/components-settings.js:624
+#: static/js/components-settings.js:628
 #, python-brace-format
 msgid "{count} to restore from Trash"
 msgstr ""
 
-#: static/js/components-settings.js:632
+#: static/js/components-settings.js:636
 #, python-brace-format
 msgid "{count} matched by title/author"
 msgstr ""
 
-#: static/js/components-settings.js:633
+#: static/js/components-settings.js:637
 #, python-brace-format
 msgid "{count} by ISBN"
 msgstr ""
 
-#: static/js/components-settings.js:642
+#: static/js/components-settings.js:646
 #, python-brace-format
 msgid "{count} cover"
 msgstr ""
 
-#: static/js/components-settings.js:642
+#: static/js/components-settings.js:646
 #, python-brace-format
 msgid "{count} covers"
 msgstr ""
 
-#: static/js/components-settings.js:643
+#: static/js/components-settings.js:647
 #, python-brace-format
 msgid "{count} new series"
 msgstr ""
 
-#: static/js/components-settings.js:644
+#: static/js/components-settings.js:648
 #, python-brace-format
 msgid "{count} new location"
 msgstr ""
 
-#: static/js/components-settings.js:644
+#: static/js/components-settings.js:648
 #, python-brace-format
 msgid "{count} new locations"
 msgstr ""
 
-#: static/js/components-settings.js:645
+#: static/js/components-settings.js:649
 #, python-brace-format
 msgid "{count} new tag"
 msgstr ""
 
-#: static/js/components-settings.js:645
+#: static/js/components-settings.js:649
 #, python-brace-format
 msgid "{count} new tags"
 msgstr ""
 
-#: static/js/components-settings.js:646
+#: static/js/components-settings.js:650
 #, python-brace-format
 msgid "{count} new borrower"
 msgstr ""
 
-#: static/js/components-settings.js:646
+#: static/js/components-settings.js:650
 #, python-brace-format
 msgid "{count} new borrowers"
 msgstr ""
 
-#: static/js/components-settings.js:647
+#: static/js/components-settings.js:651
 #, python-brace-format
 msgid "{count} reading-log entry"
 msgstr ""
 
-#: static/js/components-settings.js:647
+#: static/js/components-settings.js:651
 #, python-brace-format
 msgid "{count} reading-log entries"
 msgstr ""
 
-#: static/js/components-settings.js:648
+#: static/js/components-settings.js:652
 #, python-brace-format
 msgid "{count} loan"
 msgstr ""
 
-#: static/js/components-settings.js:648
+#: static/js/components-settings.js:652
 #, python-brace-format
 msgid "{count} loans"
 msgstr ""
 
-#: static/js/components-settings.js:649
+#: static/js/components-settings.js:653
 #, python-brace-format
 msgid "Plus {list}."
 msgstr ""
 
-#: static/js/components-settings.js:655
+#: static/js/components-settings.js:659
 #, python-brace-format
 msgid "Replace {count} existing cover"
 msgstr ""
 
-#: static/js/components-settings.js:655
+#: static/js/components-settings.js:659
 #, python-brace-format
 msgid "Replace {count} existing covers"
 msgstr ""
 
-#: static/js/components-settings.js:655
+#: static/js/components-settings.js:659
 msgid "Replace existing covers"
 msgstr ""
 
-#: static/js/components-settings.js:664
+#: static/js/components-settings.js:668
 #, python-brace-format
 msgid "{count} valuation-history row (not mergeable — this library already has valuation history)"
 msgstr ""
 
-#: static/js/components-settings.js:665
+#: static/js/components-settings.js:669
 #, python-brace-format
 msgid "{count} valuation-history rows (not mergeable — this library already has valuation history)"
 msgstr ""
 
-#: static/js/components-settings.js:667
+#: static/js/components-settings.js:671
 #, python-brace-format
 msgid "{count} valuation-history row"
 msgstr ""
 
-#: static/js/components-settings.js:667
+#: static/js/components-settings.js:671
 #, python-brace-format
 msgid "{count} valuation-history rows"
 msgstr ""
 
-#: static/js/components-settings.js:674
+#: static/js/components-settings.js:678
 #, python-brace-format
 msgid "{count} new item not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:674
+#: static/js/components-settings.js:678
 #, python-brace-format
 msgid "{count} new items not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:675
+#: static/js/components-settings.js:679
 #, python-brace-format
 msgid "{count} item not updated (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:675
+#: static/js/components-settings.js:679
 #, python-brace-format
 msgid "{count} items not updated (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:676
+#: static/js/components-settings.js:680
 #, python-brace-format
 msgid "{count} cover not installed (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:676
+#: static/js/components-settings.js:680
 #, python-brace-format
 msgid "{count} covers not installed (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:677
+#: static/js/components-settings.js:681
 #, python-brace-format
 msgid "Reading log: {count} row not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:677
+#: static/js/components-settings.js:681
 #, python-brace-format
 msgid "Reading log: {count} rows not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:678
+#: static/js/components-settings.js:682
 #, python-brace-format
 msgid "Loans: {count} row not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:678
+#: static/js/components-settings.js:682
 #, python-brace-format
 msgid "Loans: {count} rows not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:679
+#: static/js/components-settings.js:683
 #, python-brace-format
 msgid "Valuation history: {count} row not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:679
+#: static/js/components-settings.js:683
 #, python-brace-format
 msgid "Valuation history: {count} rows not imported (deselected)"
 msgstr ""
 
-#: static/js/components-settings.js:685
+#: static/js/components-settings.js:689
 #, python-brace-format
 msgid "{count} item changed between the preview and the import, and was left alone."
 msgstr ""
 
-#: static/js/components-settings.js:686
+#: static/js/components-settings.js:690
 #, python-brace-format
 msgid "{count} items changed between the preview and the import, and were left alone."
 msgstr ""
 
-#: static/js/components-settings.js:714
+#: static/js/components-settings.js:718
 msgid "Restore failed"
 msgstr ""
 
-#: static/js/components-settings.js:768
+#: static/js/components-settings.js:772
 #, python-brace-format
 msgid "Delete user {name}?"
 msgstr ""
 
-#: static/js/components-settings.js:782
+#: static/js/components-settings.js:786
 msgid "Never"
 msgstr "从未"
 
-#: static/js/components-settings.js:794
+#: static/js/components-settings.js:798
 msgid "Copied"
 msgstr "已复制"
 
-#: static/js/components-settings.js:794
+#: static/js/components-settings.js:798
 msgid "Copy"
 msgstr "复制"
 
-#: static/js/components-settings.js:822 static/js/components-settings.js:862
+#: static/js/components-settings.js:826 static/js/components-settings.js:866
 #, python-brace-format
 msgid "Revoke token {name}?"
 msgstr "撤销令牌 {name}？"
 
-#: static/js/components-settings.js:925
+#: static/js/components-settings.js:930
 msgid "Could not refresh feature settings"
 msgstr ""
 
-#: static/js/components-settings.js:941
+#: static/js/components-settings.js:946
 msgid "Could not save feature settings"
 msgstr ""
 
@@ -617,6 +632,73 @@ msgstr "请将摄像头对准 UPC-A 或 EAN-13 商品条码。"
 msgid "That is not a valid UPC-A / EAN-13 retail barcode. Try again."
 msgstr "这不是有效的 UPC-A / EAN-13 商品条码，请重试。"
 
+#: static/js/komga-settings.js:40 static/js/romm-settings.js:36
+msgid "Saved — leave blank to keep"
+msgstr ""
+
+#: static/js/komga-settings.js:40
+msgid "Komga API key"
+msgstr ""
+
+#: static/js/komga-settings.js:55 static/js/romm-settings.js:45
+msgid "Saved"
+msgstr ""
+
+#: static/js/komga-settings.js:70 static/js/romm-settings.js:55
+msgid "Connected"
+msgstr ""
+
+#: static/js/komga-settings.js:96
+msgid "Manga"
+msgstr ""
+
+#: static/js/komga-settings.js:96
+msgid "Comics"
+msgstr ""
+
+#: static/js/komga-settings.js:108
+msgid "Loading libraries…"
+msgstr ""
+
+#: static/js/komga-settings.js:111
+msgid "Could not load libraries"
+msgstr ""
+
+#: static/js/komga-settings.js:131
+msgid "Library selection saved"
+msgstr ""
+
+#: static/js/komga-settings.js:141
+msgid "Starting Komga sync…"
+msgstr ""
+
+#: static/js/komga-settings.js:152 static/js/romm-settings.js:112
+msgid "Sync complete"
+msgstr ""
+
+#: static/js/komga-settings.js:153
+#, python-brace-format
+msgid "Created: {created}, adopted: {adopted}, updated: {updated}, skipped: {skipped}"
+msgstr ""
+
+#: static/js/komga-settings.js:153 static/js/romm-settings.js:113
+#, python-brace-format
+msgid ", in Trash: {count}"
+msgstr ""
+
+#: static/js/komga-settings.js:153 static/js/romm-settings.js:113
+#, python-brace-format
+msgid ", errors: {count}"
+msgstr ""
+
+#: static/js/komga-settings.js:157 static/js/romm-settings.js:116
+msgid "Sync failed"
+msgstr ""
+
+#: static/js/komga-settings.js:163 static/js/romm-settings.js:121
+msgid "Connection to sync stream was lost"
+msgstr ""
+
 #: static/js/location-order.js:32
 msgid "Order changed — save when ready."
 msgstr ""
@@ -631,6 +713,31 @@ msgstr ""
 
 #: static/js/location-order.js:81
 msgid "Ordering…"
+msgstr ""
+
+#: static/js/romm-settings.js:36
+msgid "RomM client API token"
+msgstr ""
+
+#: static/js/romm-settings.js:79
+msgid "Loading platforms…"
+msgstr ""
+
+#: static/js/romm-settings.js:81
+msgid "Could not load platforms"
+msgstr ""
+
+#: static/js/romm-settings.js:93
+msgid "Platform selection saved"
+msgstr ""
+
+#: static/js/romm-settings.js:103
+msgid "Starting RomM sync…"
+msgstr ""
+
+#: static/js/romm-settings.js:113
+#, python-brace-format
+msgid "Created: {created}, updated: {updated}, skipped: {skipped}"
 msgstr ""
 
 #: static/js/scan.js:28 static/js/scan.js:163 static/js/scan.js:165

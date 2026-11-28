@@ -1032,6 +1032,36 @@ msgstr "位置：%(place)s"
 msgid "Marked as %(status)s"
 msgstr "已标记为 %(status)s"
 
+#: app/routers/komga.py:50 app/routers/komga.py:52 app/routers/komga.py:71
+#: app/routers/komga.py:73 app/routers/komga.py:97 app/routers/romm.py:50
+#: app/routers/romm.py:52 app/routers/romm.py:71 app/routers/romm.py:73
+#: app/routers/romm.py:97 app/routers/settings.py:90 app/routers/settings.py:92
+#: app/routers/settings.py:96 app/routers/settings.py:424
+#: app/routers/settings.py:426 app/routers/settings.py:434
+msgid "Invalid request"
+msgstr ""
+
+#: app/routers/komga.py:62
+msgid "Komga settings saved"
+msgstr ""
+
+#: app/routers/komga.py:79
+msgid "Could not connect to Komga"
+msgstr ""
+
+#: app/routers/komga.py:80 app/routers/sync.py:72
+#, python-format
+msgid "Connected — %(n)s library(ies) found"
+msgstr ""
+
+#: app/routers/komga.py:102
+msgid "Komga library selection saved"
+msgstr ""
+
+#: app/routers/komga.py:128
+msgid "Komga sync failed — check server logs"
+msgstr ""
+
 #: app/routers/location_order.py:66
 msgid "Invalid copy order"
 msgstr ""
@@ -1042,6 +1072,39 @@ msgstr ""
 
 #: app/routers/location_order.py:89
 msgid "Invalid sort order"
+msgstr ""
+
+#: app/routers/music.py:225
+msgid "Choose a music format before adding this release"
+msgstr ""
+
+#: app/routers/music.py:256
+msgid "Selected location no longer exists"
+msgstr ""
+
+#: app/routers/music.py:323 app/routers/music.py:376 app/routers/music.py:455
+#: app/routers/music.py:492
+msgid "Music release not found"
+msgstr ""
+
+#: app/routers/music.py:327
+msgid "MusicBrainz release ID is missing"
+msgstr ""
+
+#: app/routers/music.py:384
+msgid "Editor role required"
+msgstr ""
+
+#: app/routers/music.py:457
+msgid "Discogs is not configured"
+msgstr ""
+
+#: app/routers/music.py:462 app/routers/music.py:464
+msgid "Invalid Discogs release id"
+msgstr ""
+
+#: app/routers/music.py:473
+msgid "Discogs did not return a concrete release"
 msgstr ""
 
 #: app/routers/periodicals.py:120
@@ -1055,6 +1118,27 @@ msgstr "条目不能与自身关联"
 #: app/routers/related_media.py:122
 msgid "Related-media link not found"
 msgstr "未找到相关媒体关联"
+
+#: app/routers/romm.py:62
+msgid "RomM settings saved"
+msgstr ""
+
+#: app/routers/romm.py:79
+msgid "Could not connect to RomM"
+msgstr ""
+
+#: app/routers/romm.py:80
+#, python-format
+msgid "Connected — %(n)s platform(s) found"
+msgstr ""
+
+#: app/routers/romm.py:102
+msgid "RomM platform selection saved"
+msgstr ""
+
+#: app/routers/romm.py:128
+msgid "RomM sync failed — check server logs"
+msgstr ""
 
 #: app/routers/scan_inventory.py:63 app/routers/scan_inventory.py:80
 #, python-format
@@ -1146,12 +1230,6 @@ msgstr ""
 
 #: app/routers/series.py:671
 msgid "Hardcover has no synopsis for this series — add one below"
-msgstr ""
-
-#: app/routers/settings.py:90 app/routers/settings.py:92
-#: app/routers/settings.py:96 app/routers/settings.py:424
-#: app/routers/settings.py:426 app/routers/settings.py:434
-msgid "Invalid request"
 msgstr ""
 
 #: app/routers/settings.py:102
@@ -1271,7 +1349,7 @@ msgstr "该书架位置已不存在"
 msgid "Item no longer exists"
 msgstr "该条目已不存在"
 
-#: app/routers/shelf_fill.py:266
+#: app/routers/shelf_fill.py:267
 msgid "Enter or scan a barcode"
 msgstr "请输入条码或扫码"
 
@@ -1283,11 +1361,6 @@ msgstr ""
 
 #: app/routers/sync.py:58
 msgid "URL and token are required"
-msgstr ""
-
-#: app/routers/sync.py:72
-#, python-format
-msgid "Connected — %(n)s library(ies) found"
 msgstr ""
 
 #: app/routers/sync.py:74
@@ -2198,10 +2271,12 @@ msgstr "取消"
 msgid "Provider:"
 msgstr "数据源："
 
+#: app/templates/fragments/settings/integrations.html:751
 #: app/templates/intake.html:52
 msgid "OpenAI-compatible"
 msgstr "OpenAI 兼容接口"
 
+#: app/templates/fragments/settings/integrations.html:752
 #: app/templates/intake.html:52
 msgid "Ollama (local)"
 msgstr "Ollama（本地）"
@@ -2863,15 +2938,24 @@ msgstr "时长（分钟）"
 
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
+#: app/templates/fragments/settings/discogs.html:22
 #: app/templates/fragments/settings/integrations.html:95
 #: app/templates/fragments/settings/integrations.html:160
 #: app/templates/fragments/settings/integrations.html:277
 #: app/templates/fragments/settings/integrations.html:387
+#: app/templates/fragments/settings/integrations.html:523
+#: app/templates/fragments/settings/integrations.html:664
+#: app/templates/fragments/settings/integrations.html:733
+#: app/templates/fragments/settings/integrations.html:833
+#: app/templates/fragments/settings/integrations.html:909
+#: app/templates/fragments/settings/integrations.html:924
+#: app/templates/fragments/settings/komga.html:33
 #: app/templates/fragments/settings/library.html:54
 #: app/templates/fragments/settings/library.html:319
 #: app/templates/fragments/settings/library.html:338
 #: app/templates/fragments/settings/price_alerts.html:35
 #: app/templates/fragments/settings/release_radar.html:27
+#: app/templates/fragments/settings/romm.html:32
 #: app/templates/item_edit.html:374 app/templates/series.html:199
 msgid "Save"
 msgstr "保存"
@@ -3565,7 +3649,8 @@ msgid "Display Name"
 msgstr "显示名称"
 
 #: app/templates/fragments/settings/integrations.html:48
-#: app/templates/setup.html:35
+#: app/templates/fragments/settings/komga.html:19
+#: app/templates/fragments/settings/romm.html:17 app/templates/setup.html:35
 msgid "(optional)"
 msgstr "（可选）"
 
@@ -4032,6 +4117,7 @@ msgid "This is the only time the token is shown."
 msgstr "令牌只显示这一次，请立即复制保存。"
 
 #: app/templates/fragments/account_menu.html:186
+#: app/templates/fragments/settings/integrations.html:686
 msgid "Copy"
 msgstr "复制"
 
@@ -5492,6 +5578,30 @@ msgstr ""
 msgid "· Covers replaced:"
 msgstr ""
 
+#: app/templates/fragments/settings/discogs.html:6
+msgid "Optional exact-pressing and collector metadata for Music releases. MusicBrainz remains the canonical release identity."
+msgstr ""
+
+#: app/templates/fragments/settings/discogs.html:11
+msgid "Personal access token"
+msgstr ""
+
+#: app/templates/fragments/settings/discogs.html:15
+msgid "The token is encrypted at rest using Shelf's existing sensitive-settings mechanism and is never rendered back into this page."
+msgstr ""
+
+#: app/templates/fragments/settings/discogs.html:19
+#: app/templates/fragments/settings/integrations.html:91
+#: app/templates/fragments/settings/integrations.html:273
+#: app/templates/fragments/settings/integrations.html:923
+#: app/templates/fragments/settings/romm.html:29
+msgid "Remove saved token"
+msgstr ""
+
+#: app/templates/fragments/settings/discogs.html:25
+msgid "This only configures the optional provider. Discogs must not replace MusicBrainz release identity, Cover Art Archive artwork, or copy-specific condition/acquisition data."
+msgstr ""
+
 #: app/templates/fragments/settings/feature_off_note.html:15
 #: app/templates/fragments/settings/library.html:81
 msgid "Turned off in Features —"
@@ -5572,6 +5682,11 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:27
 #: app/templates/fragments/settings/integrations.html:228
+#: app/templates/fragments/settings/integrations.html:471
+#: app/templates/fragments/settings/integrations.html:607
+#: app/templates/fragments/settings/integrations.html:683
+#: app/templates/fragments/settings/integrations.html:684
+#: app/templates/fragments/settings/integrations.html:852
 msgid "Go to"
 msgstr ""
 
@@ -5611,6 +5726,10 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:35
 #: app/templates/fragments/settings/integrations.html:237
+#: app/templates/fragments/settings/integrations.html:481
+#: app/templates/fragments/settings/integrations.html:617
+#: app/templates/fragments/settings/integrations.html:693
+#: app/templates/fragments/settings/integrations.html:862
 msgid "Got it"
 msgstr ""
 
@@ -5619,6 +5738,8 @@ msgid "Audiobookshelf URL"
 msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:48
+#: app/templates/fragments/settings/komga.html:19
+#: app/templates/fragments/settings/romm.html:17
 msgid "Browser URL"
 msgstr ""
 
@@ -5640,6 +5761,13 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:64
 #: app/templates/fragments/settings/integrations.html:246
+#: app/templates/fragments/settings/integrations.html:491
+#: app/templates/fragments/settings/integrations.html:630
+#: app/templates/fragments/settings/integrations.html:702
+#: app/templates/fragments/settings/integrations.html:759
+#: app/templates/fragments/settings/integrations.html:786
+#: app/templates/fragments/settings/integrations.html:870
+#: app/templates/fragments/settings/integrations.html:877
 msgid "Saved — leave blank to keep"
 msgstr ""
 
@@ -5650,18 +5778,18 @@ msgstr ""
 #: app/templates/fragments/settings/integrations.html:70
 #: app/templates/fragments/settings/integrations.html:230
 #: app/templates/fragments/settings/integrations.html:252
+#: app/templates/fragments/settings/integrations.html:883
 #: app/templates/fragments/settings/library.html:280
 msgid "Test"
 msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:71
 #: app/templates/fragments/settings/integrations.html:253
+#: app/templates/fragments/settings/integrations.html:498
+#: app/templates/fragments/settings/integrations.html:637
+#: app/templates/fragments/settings/integrations.html:709
+#: app/templates/fragments/settings/integrations.html:884
 msgid "Testing..."
-msgstr ""
-
-#: app/templates/fragments/settings/integrations.html:91
-#: app/templates/fragments/settings/integrations.html:273
-msgid "Remove saved token"
 msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:129
@@ -5702,6 +5830,7 @@ msgid "Uncheck libraries you don't want in Shelf (e.g. a dump of files you're no
 msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:172
+#: app/templates/fragments/settings/komga.html:45
 msgid "Manage Libraries"
 msgstr ""
 
@@ -5819,6 +5948,503 @@ msgstr ""
 
 #: app/templates/fragments/settings/integrations.html:428
 msgid ", Not found:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:461
+msgid "Collection Valuation"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:462
+#: app/templates/fragments/settings/integrations.html:596
+#: app/templates/fragments/settings/integrations.html:675
+msgid "How to get a key?"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:469
+msgid "Getting an ISBNdb API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:471
+msgid "isbndb.com"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:471
+msgid "and create an account"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:472
+msgid "Subscribe to a plan that includes API access (Basic or higher)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "Navigate to your account dashboard and find the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "API Keys"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:473
+msgid "section"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:474
+msgid "Generate a new key, copy it, and paste it into the field below"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:477
+msgid "About ISBNdb"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:478
+msgid "ISBNdb is a book metadata service that provides publisher list prices (MSRP). These prices are used to estimate the replacement value of your collection for insurance purposes."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:479
+msgid "API access requires a paid subscription (Basic plan: $14.99/month or $149/year). Valuation results are cached for one year, so you can subscribe monthly, valuate your collection, then cancel — subsequent runs will use cached prices."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:487
+msgid "ISBNdb API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:491
+msgid "Your ISBNdb API key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:497
+#: app/templates/fragments/settings/integrations.html:609
+#: app/templates/fragments/settings/integrations.html:636
+#: app/templates/fragments/settings/integrations.html:708
+msgid "Test Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:519
+#: app/templates/fragments/settings/integrations.html:660
+#: app/templates/fragments/settings/integrations.html:729
+#: app/templates/fragments/settings/integrations.html:764
+#: app/templates/fragments/settings/integrations.html:791
+msgid "Remove saved key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:534
+msgid "Valuating..."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:539
+msgid "ISBNdb prices are USD list prices. Shelf applies no conversion — batch valuation will store USD amounts displayed with your configured currency symbol."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:561
+msgid "Priced:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:563
+msgid "· Total:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:585
+msgid "View Valuation Report"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:602
+msgid "Getting a Google Books API key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:603
+msgid "The key comes from Google Cloud, not from a Google Books account."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "Open the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "Google Cloud console"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:605
+msgid "and select a project, or create one — a personal project is fine and the Books API needs no billing"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "Enable the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "Books API"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:606
+msgid "for that project"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:607
+msgid "and copy the key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:608
+msgid "Recommended:"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:608
+msgid ", so a leaked key can do nothing else"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:609
+msgid "Paste it below and press"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:609
+msgid "before saving"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:612
+msgid "Why bother?"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:613
+msgid "Anonymous Google Books requests are rate-limited per source IP address, and that budget is shared with everyone else calling from the same address. A key gives you a quota of your own."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:614
+msgid "Google Books is the last book source tried on an ISBN scan, behind Open Library and Hardcover, so a key matters most if your scans often come back thin or you run bulk operations like the synopsis backfill."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:615
+msgid "Do not set an HTTP referrer restriction — Shelf calls the API from the server, not the browser, and a referrer restriction rejects every request."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:622
+msgid "Optional. Google Books continues to work anonymously without a key. When configured, the key is used only for Google Books API requests."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:626
+#: app/templates/fragments/settings/integrations.html:784
+msgid "API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:630
+msgid "Optional Google Books API key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "Stored encrypted and sent only in the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "X-Goog-Api-Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:641
+msgid "request header."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:674
+msgid "Movie Database (TMDb)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:681
+msgid "Getting a TMDb credential"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:683
+msgid "themoviedb.org"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:683
+msgid "and create a free account"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:684
+msgid "in your profile"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:685
+msgid "Request access (select \"Developer\" — it's instant for personal use)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "either"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "credential shown and paste it below: the 32-character"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "API Key (v3 auth)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "or the long"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid "API Read Access Token (v4 auth)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:686
+msgid ". Shelf detects which one you pasted."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:689
+msgid "About TMDb"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:690
+msgid "The Movie Database (TMDb) provides movie and TV metadata including poster art. It's used when you scan DVD or Blu-ray UPC barcodes — Shelf looks up the UPC to get the title, then fetches metadata and poster from TMDb."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:691
+msgid "TMDb's API is free for personal use with generous rate limits."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:699
+msgid "TMDb credential (API Key or Read Access Token)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:702
+msgid "Your TMDb API key or read access token"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:741
+msgid "Photo Intake (Vision)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:743
+msgid "Bulk-add books by photographing a shelf, a stack, or covers face-up &mdash; a vision model reads spines and recognizes covers. Use the Anthropic API (best accuracy, pay per photo), any OpenAI-compatible endpoint (OpenAI, OpenRouter, or a local server like vLLM / LM Studio), or a local Ollama model (free and private, needs a vision-capable model like gemma3)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:746
+msgid "Provider"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:749
+msgid "Disabled"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:750
+msgid "Anthropic API"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:757
+msgid "Anthropic API Key"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:761
+msgid "Get one at console.anthropic.com. Stored encrypted; only used server-side."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:769
+#: app/templates/fragments/settings/integrations.html:796
+#: app/templates/fragments/settings/integrations.html:818
+msgid "Model"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:771
+msgid "claude-opus-4-8 (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:777
+msgid "Base URL"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:781
+msgid "Any OpenAI-compatible"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:781
+msgid "endpoint &mdash; OpenAI, OpenRouter, or a local server (vLLM, LM Studio, LocalAI&hellip;)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:788
+msgid "Stored encrypted; only used server-side. Local servers that need no key can leave this blank."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:798
+msgid "gpt-4o-mini (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:800
+msgid "Must be a vision-capable model. Match this to whatever your endpoint serves."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:803
+#: app/templates/fragments/settings/integrations.html:825
+msgid "Image size (long edge, px)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:805
+msgid "2048 (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:807
+#: app/templates/fragments/settings/integrations.html:829
+msgid "Resolution the model effectively sees &mdash; sets the size Photo Intake uploads when you send a photo as-is, and when it offers high-res tiling."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:812
+msgid "Ollama URL"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:820
+msgid "gemma3:12b (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:822
+msgid "Must be a vision-capable model (gemma3, qwen2.5vl, llama3.2-vision&hellip;)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:827
+msgid "1024 (default)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:843
+msgid "IGDB (Video Games)"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:844
+msgid "How to get credentials?"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:850
+msgid "Getting IGDB Credentials"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:852
+msgid "dev.twitch.tv/console"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:852
+msgid "and log in with a Twitch account"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:853
+#: app/templates/fragments/settings/integrations.html:856
+msgid "Click"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:853
+msgid "Register Your Application"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:854
+msgid "Set any name, use"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:854
+msgid "as the OAuth redirect, and category"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "Copy the"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "Client ID"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:855
+msgid "from the app listing"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:856
+msgid "New Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:856
+msgid "to generate a Client Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:859
+msgid "About IGDB"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:860
+msgid "IGDB (Internet Game Database) is the community standard game database, owned by Twitch. It provides game metadata, cover art, platform info, and more. Authentication is via Twitch developer credentials (free)."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:868
+msgid "Twitch Client ID"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:870
+msgid "Your Twitch Client ID"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:874
+msgid "Twitch Client Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:877
+msgid "Your Twitch Client Secret"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:905
+msgid "Remove saved credentials"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:916
+msgid "Find English covers from related editions when existing cover sources fail. Your book's ISBN and metadata stay unchanged."
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:917
+msgid "Non-commercial use only unless LibraryThing grants permission. Get a token from"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:917
+msgid "LibraryThing Developer Hub"
+msgstr ""
+
+#: app/templates/fragments/settings/integrations.html:919
+msgid "API token"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:8
+msgid "Sync Comics and Manga libraries while keeping digital availability separate from physical location."
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:14
+msgid "Komga URL"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:22
+msgid "Use this when Shelf reaches Komga over Docker/LAN but browsers use a reverse-proxy address."
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:25
+msgid "API key"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:26
+msgid "Leave blank to keep the saved key"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:30
+msgid "Remove saved API key"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:34
+#: app/templates/fragments/settings/romm.html:33
+msgid "Test Connection"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:42
+msgid "Libraries"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:43
+msgid "Choose which libraries Shelf imports and explicitly classify each as Comics or Manga."
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:48
+msgid "Save Library Selection"
+msgstr ""
+
+#: app/templates/fragments/settings/komga.html:53
+#: app/templates/fragments/settings/romm.html:52
+msgid "Sync Now"
 msgstr ""
 
 #: app/templates/fragments/settings/library.html:12
@@ -6093,6 +6719,46 @@ msgstr ""
 
 #: app/templates/fragments/settings/release_radar.html:23
 msgid "Announcements are sent through the notification URL on the Library tab's Lending card."
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:7
+msgid "Sync digital game availability from selected RomM platforms without treating it as a physical cartridge or disc."
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:12
+msgid "RomM URL"
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:20
+msgid "Use this when Shelf connects over Docker/LAN but users open RomM through a reverse proxy."
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:23
+msgid "Client API token"
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:24
+msgid "Leave blank to keep the saved token"
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:26
+msgid "A long-lived RomM client token with platform and ROM read access is sufficient."
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:41
+msgid "Platforms"
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:42
+msgid "Choose which RomM platforms are represented in Shelf."
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:44
+msgid "Manage Platforms"
+msgstr ""
+
+#: app/templates/fragments/settings/romm.html:47
+msgid "Save Platform Selection"
 msgstr ""
 
 #: app/templates/fragments/settings/sidebar.html:2
