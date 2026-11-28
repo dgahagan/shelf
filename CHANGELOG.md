@@ -6,6 +6,43 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.90.0] - 2026-11-28
+
+Shelf's interface has spoken German, Italian and Simplified Chinese for a
+while, but only on a server whose admin had found `SHELF_I18N=on`. Everyone
+else got English, whatever their browser asked for. The translated interface
+is now on by default: Shelf follows each browser's language, and each user can
+pick their own. The translations are community work: Italian and the
+translation machinery from [@vjandrea](https://github.com/vjandrea)
+([#161](https://github.com/dgahagan/shelf/issues/161)), Simplified Chinese from
+[@litong5969](https://github.com/litong5969), and German from
+[@samuel-hartenstein](https://github.com/samuel-hartenstein).
+
+### Changed
+
+- **The interface follows your browser's language.** A user who has not
+  picked a language, and whose browser asks for German, Italian or Simplified
+  Chinese, sees that language from the first page after the upgrade. Text not
+  yet translated shows in English. Italian is nearly complete; German and
+  Chinese still show some English, mostly in Settings. Everyone else sees no
+  change.
+- **The Account dialog always has a Language field.** Pick a language there to
+  override the browser, or **English** to stay in English whatever the browser
+  says. Automatic follows the browser.
+- **`SHELF_I18N` is now an opt-out.** It is on unless set to `off` (or `0`,
+  `false`, `no`), which keeps Shelf in English for everyone and hides the
+  Language field. An existing `SHELF_I18N=on` still works. The setting stays,
+  so a server can choose English for the whole household.
+  `SHELF_DEFAULT_LANGUAGE` no longer needs it.
+
+### Fixed
+
+- **Shared lists declare the language they are written in.** A public share
+  page followed the visitor's browser language but still told the browser it
+  was English, which misleads screen readers and browser translation. Store
+  Mode wrote Simplified Chinese as `zh_Hans`, which browsers do not recognise;
+  it is now `zh-Hans`.
+
 ## [0.89.0] - 2026-11-28
 
 Scanning an item's ISBN or UPC in Move or Shelf Fill moves only its primary
@@ -6368,6 +6405,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.90.0]: https://github.com/dgahagan/shelf/releases/tag/v0.90.0
 [0.89.0]: https://github.com/dgahagan/shelf/releases/tag/v0.89.0
 [0.88.0]: https://github.com/dgahagan/shelf/releases/tag/v0.88.0
 [0.87.0]: https://github.com/dgahagan/shelf/releases/tag/v0.87.0

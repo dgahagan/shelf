@@ -6792,6 +6792,37 @@ python -m pytest tests/test_entrypoint.py -q -k "other_san_is_preserved or marke
   and check each third-party name against the locks.
 - **Status:** active. Lint candidate (import names vs. the locks is mechanical).
 
+## G166 — When a test or fixture wants the English interface
+
+- **Rule:** set `SHELF_I18N=off` explicitly. Never `delenv("SHELF_I18N")` and
+  expect English: an absent or empty `SHELF_I18N` means **on**.
+- **Why:** `i18n.enabled()` inverted at the translated-interface-on-by-default
+  change: only `0`/`off`/`false`/`no` turn it off. The unit client sends no
+  `Accept-Language`, so a test that deletes the flag still renders English by
+  accident unless it also stores a `users.language` or sends the header, and
+  then it fails in a way that reads like a translation bug.
+- **Evidence:** 2026-11-28, `fda80a5`. Open PRs #205 and #227 each add
+  `test_the_ui_flag_off_keeps_english_tags`, which `delenv`s the flag to mean
+  off (plan-review codex R3); both need `SHELF_I18N=off` on rebase.
+- **Verify:** `grep -rn 'delenv("SHELF_I18N"' tests/` — each hit must expect the
+  translated (on) behaviour, or be the conftest's isolation strip.
+- **Status:** active.
+
+## G167 — When a translated standalone template owns its own `<html>` element
+
+- **Rule:** write the root as `lang="{{ current_locale()|replace('_', '-') }}"`.
+  Never hard-code `lang="en"` on a template that calls `_()`, and never drop
+  the `replace` filter (`zh_Hans` is not BCP 47; `zh-Hans` is).
+- **Why:** templates extending `base.html` inherit its root; standalone ones
+  (`login`, `setup`, `share`, `store`) do not. `/share/` skips Auth but its
+  locale is set before the skip, so it rendered Italian text under an English
+  root — wrong for screen readers and browser translation.
+- **Evidence:** 2026-11-28, `818258b` (diff review codex B1, i18n-default-on);
+  `store.html` also emitted `lang="zh_Hans"`.
+- **Verify:** `grep -rn '<html' app/templates/` — every hit uses the line above.
+- **Status:** active. Lint candidate (a template containing `_(` whose `<html`
+  line lacks `current_locale()|replace` is mechanical).
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint

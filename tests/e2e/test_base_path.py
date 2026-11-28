@@ -22,7 +22,8 @@ PREFIX = "/ingress/test"
 @pytest.fixture(scope="module")
 def prefixed(upc_stub, browser):
     with _boot_server(
-        {"SHELF_BASE_PATH": PREFIX, "SHELF_I18N": "on"},
+        {"SHELF_BASE_PATH": PREFIX},
+        clear_env=("SHELF_I18N",),
         upc_stub_url=upc_stub["url"],
         target="tests.e2e.prefix_app:app", mount=PREFIX,
     ) as server:
@@ -84,6 +85,13 @@ def test_redirect_and_refresh_headers(server):
     resp = httpx.get(f"{server['url']}/browse?q=a", follow_redirects=False,
                      headers={"Sec-Fetch-Mode": "navigate", "Sec-Fetch-Site": "cross-site"})
     assert resp.headers["refresh"] == f"0;url={PREFIX}/browse?q=a"
+
+
+def test_translated_interface_is_on_under_the_prefix(server):
+    """The fixture clears SHELF_I18N, so a shell exporting `off` cannot hide
+    the Language picker from this walk (diff review codex M1)."""
+    resp = httpx.get(f"{server['url']}/login", headers={"Accept-Language": "it"})
+    assert '<html lang="it"' in resp.text
 
 
 def test_trailing_slash_stays_inside_the_prefix(server, browser):

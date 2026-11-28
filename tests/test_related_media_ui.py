@@ -407,8 +407,7 @@ def test_back_context_survives_lazy_panel_search_link_and_unlink(
         assert "?from=" not in panel.text + search.text + linked.text + unlinked.text
 
 
-def test_format_refresh_keeps_translated_heading_and_media_label(editor_client, db, monkeypatch):
-    monkeypatch.setenv("SHELF_I18N", "on")
+def test_format_refresh_keeps_translated_heading_and_media_label(editor_client, db):
     db.execute("UPDATE users SET language = 'it' WHERE username = 'editor'")
     a = _item(db, "Romanzo")
     b = _item(db, "Romanzo audio", "audiobook")

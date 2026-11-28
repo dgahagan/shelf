@@ -64,6 +64,11 @@ Tabs you do not want can be hidden under **Settings → Library**.
 Press **?** on any page (or the **?** button, bottom left) for the keyboard
 shortcut list; **Escape** closes it.
 
+Shelf follows your browser's language: German, Italian or Simplified Chinese,
+else English. **Account → Language** overrides that for your user, and
+**English** is always there to pick. Text that is not translated yet shows in
+English.
+
 ## 3. Add your first book
 
 On a phone: open **Scan**, leave the mode on **Add**, tap the camera button,

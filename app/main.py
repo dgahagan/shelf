@@ -236,7 +236,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
         # The UI locale (app/i18n.py), set before call_next so the route and its
         # templates run in this context and read it. The browser's choice first,
         # so the skipped prefixes below (the public /share/ page) follow it too.
-        # Off (SHELF_I18N unset), nothing is set and every request stays English.
+        # Off only when SHELF_I18N is an off-word (0/off/false/no); then nothing
+        # is set and every request stays English.
         i18n_on = i18n.enabled()
         accept_language = request.headers.get("accept-language")
         if i18n_on:

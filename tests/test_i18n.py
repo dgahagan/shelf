@@ -13,11 +13,6 @@ from tests.conftest import _insert_item
 ROOT = Path(__file__).resolve().parent.parent
 
 
-@pytest.fixture(autouse=True)
-def _i18n_on(monkeypatch):
-    monkeypatch.setenv("SHELF_I18N", "on")
-
-
 @pytest.mark.parametrize("user_language, header, expected", [
     (None, None, "en"),
     (None, "", "en"),
@@ -57,6 +52,27 @@ def test_match_prefers_the_most_specific_variant(monkeypatch, tag, expected):
 
 def test_html_lang_is_bcp47(client, admin_user):
     assert '<html lang="zh-Hans"' in client.get("/login", headers={"Accept-Language": "zh-CN"}).text
+
+
+def test_store_root_lang_is_bcp47(admin_client):
+    page = admin_client.get("/store", headers={"Accept-Language": "zh-CN"})
+    assert '<html lang="zh-Hans"' in page.text
+
+
+def test_public_share_page_root_lang_follows_its_text(admin_client, client):
+    """The share page skips Auth but follows the browser: its root lang must
+    name the language its text is in, not a hard-coded English."""
+    resp = admin_client.post("/api/share", data={"scope": "wishlist", "label": "x"},
+                             follow_redirects=False)
+    assert resp.status_code == 303
+    from app.database import get_db
+    with get_db() as db:
+        token = db.execute("SELECT token FROM share_links ORDER BY id DESC LIMIT 1").fetchone()[0]
+    client.cookies.clear()
+    page = client.get(f"/share/{token}", headers={"Accept-Language": "it"})
+    assert page.status_code == 200
+    assert '<html lang="it"' in page.text
+    assert "Ancora niente qui." in page.text
 
 
 def test_gettext_follows_the_locale():
@@ -182,19 +198,32 @@ def test_catalogs_are_complete_and_compiled():
     assert r.returncode == 0, r.stdout + r.stderr
 
 
-@pytest.mark.parametrize("value", [None, "", "off", "0", "nope"])
+@pytest.mark.parametrize("value", ["0", "off", "false", "no", "OFF", " Off "])
 def test_off_stays_english_and_hides_the_picker(admin_client, db, monkeypatch, value):
-    """Until every area is translated, the UI is English unless SHELF_I18N is on."""
-    if value is None:
-        monkeypatch.delenv("SHELF_I18N")
-    else:
-        monkeypatch.setenv("SHELF_I18N", value)
+    """An explicit off-word keeps the UI English and hides the picker, even
+    for a user who picked Italian."""
+    monkeypatch.setenv("SHELF_I18N", value)
     db.execute("UPDATE users SET language = 'it' WHERE username = 'admin'")
     db.commit()
     page = admin_client.get("/browse", headers={"Accept-Language": "it"})
     assert '<html lang="en"' in page.text
     assert "Sfoglia" not in page.text
     assert 'data-testid="account-language"' not in page.text
+
+
+@pytest.mark.parametrize("value", [None, "", "on", "nope"])
+def test_on_by_default_follows_the_language_and_shows_the_picker(admin_client, db, monkeypatch, value):
+    """Unset, empty (the compose pass-through) and any other value mean on."""
+    if value is None:
+        monkeypatch.delenv("SHELF_I18N", raising=False)
+    else:
+        monkeypatch.setenv("SHELF_I18N", value)
+    db.execute("UPDATE users SET language = 'it' WHERE username = 'admin'")
+    db.commit()
+    page = admin_client.get("/browse", headers={"Accept-Language": "it"})
+    assert '<html lang="it"' in page.text
+    assert "Sfoglia" in page.text
+    assert 'data-testid="account-language"' in page.text
 
 
 def test_item_edit_and_manual_add_are_translated(admin_client, db):

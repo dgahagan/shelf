@@ -33,6 +33,18 @@ Release notes for every version are in the
 [changelog](../CHANGELOG.md) and on the
 [releases page](https://github.com/dgahagan/shelf/releases).
 
+### After upgrading to 0.90.0
+
+**The interface now follows each browser's language.** A user who has not
+picked a language, and whose browser asks for German, Italian or Simplified
+Chinese, sees that language from the first page. Text that is not yet
+translated stays in English. Everyone else sees no change, except a new
+**Language** field in the Account dialog.
+
+There are two ways back. Per user, pick **English** in Account → Language.
+Per server, set `SHELF_I18N=off` in `.env`. No migration runs, and no other
+action is needed.
+
 ### After upgrading to 0.76.0
 
 **Two migrations run.** They add an `asin` column to `items`, for Audible's

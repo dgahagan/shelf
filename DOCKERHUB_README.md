@@ -164,6 +164,7 @@ key material.
 - CSV import/export, plus a portable archive — export the whole collection as one zip **including physical copies and cover art** and merge it into any Shelf instance without refetching a cover
 
 ### Multi-User
+- **Translated interface** — English, German, Italian and Simplified Chinese, following the browser or each user's choice
 - **Admin** — full control: settings, users, locations, tag rename/scope/delete, sync, bulk ops, logs, delete permanently / empty Trash
 - **Editor** — add/edit items, delete to Trash and restore, scan, manage covers, apply tags, checkout/checkin
 - **Viewer** — browse, search, set status (read, watched, played), export, view stats

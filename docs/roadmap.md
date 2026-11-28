@@ -62,14 +62,11 @@ Library, and thinner otherwise.
   the Koninklijke Bibliotheek, Hungarian ones to OSZK NEKTÁR and Portuguese
   ones to PORBASE, Polish ones to the Biblioteka Narodowa, and Chinese-language ones to NeoDB. Other
   countries deserve the same.
-- **A translated interface.** In progress. The translation machinery and the
-  Italian and German catalogs have landed, and each user can pick a language
-  or follow the browser; `SHELF_DEFAULT_LANGUAGE` sets the language for
-  everyone else. More languages are welcome. The page shell (navigation, sign-in,
-  setup, the Account dialog), Browse, the item page, item edit, manual add, Scan,
-  Photo Intake, Shelf Fill and Store Mode are translated, and in Italian also
-  Series, Upcoming, Discover, Music and Periodicals; the other feature pages
-  follow area by area. Until then it sits behind `SHELF_I18N`, off by default.
+- **A translated interface.** In progress. It is on by default, and the German,
+  Italian and Simplified Chinese catalogs have landed. Each user can pick a
+  language or follow the browser; `SHELF_DEFAULT_LANGUAGE` sets the language
+  for everyone else. Some text is still English: the provider cards in
+  Settings and some messages. More languages are welcome.
 
 ## Reading life
 
@@ -96,11 +93,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.89.0](https://github.com/dgahagan/shelf/releases/tag/v0.89.0) | **Move and Shelf Fill say when other copies stayed behind.** Scanning an item's ISBN or UPC moves only its primary copy; when the item has more copies, the card now says how many stayed where they were, and that a copy's own label moves that copy. |
 | [0.88.0](https://github.com/dgahagan/shelf/releases/tag/v0.88.0) | **Shelf under a URL sub-path.** `SHELF_BASE_PATH` serves Shelf at a path such as `/shelf` behind a proxy that strips it — several apps on one host, or Home Assistant ingress — with every link, redirect, cookie and Store Mode's offline copy kept under it. |
 | [0.87.0](https://github.com/dgahagan/shelf/releases/tag/v0.87.0) | **The navigation bar groups its tabs.** Series, Music, Periodicals and Stats sit under **Explore**, Photo Intake and Shelf Fill under **Tools**, so the bar fits at every desktop width in every language Shelf ships. This completes *Choose your features*, which began with the Features page and setup profiles in 0.55.0. |
 | [0.86.0](https://github.com/dgahagan/shelf/releases/tag/v0.86.0) | **Polish books from Poland's national library.** 978-83 ISBNs are looked up in the Biblioteka Narodowa before the general sources. Also: the Audiobookshelf and Hardcover settings in Italian. Contributed by @sudo-rpaisley and @vjandrea. |
 | [0.85.0](https://github.com/dgahagan/shelf/releases/tag/v0.85.0) | **The HTTPS certificate renews itself.** A certificate Shelf generated is replaced on start when it expires within 30 days or no longer matches `CERT_SAN`, so changing `CERT_SAN` now takes effect on restart. A certificate you placed yourself is never replaced. |
-| [0.84.1](https://github.com/dgahagan/shelf/releases/tag/v0.84.1) | **Restarts leave your files alone.** The container now changes ownership only of files under `/data` whose owner is wrong, so restarts and upgrades no longer make backup tools re-read every cover, and storage where root cannot change ownership no longer stops a correctly owned install from starting. |
 ---
 
 ## Suggesting something

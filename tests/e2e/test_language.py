@@ -1,6 +1,7 @@
 """E2E: picking a UI language in the Account dialog re-renders the page in it."""
 import sqlite3
 
+import httpx
 import pytest
 from playwright.sync_api import expect
 
@@ -33,3 +34,12 @@ def test_picking_italian_translates_the_page(live_server, authed_page):
             conn.commit()
         finally:
             conn.close()
+
+
+def test_factory_server_ignores_a_shell_turning_the_ui_off(server_factory, monkeypatch):
+    """`server_factory` clears SHELF_I18N like the other boot paths, so a
+    fresh server is on by default whatever the shell says (codex M1)."""
+    monkeypatch.setenv("SHELF_I18N", "off")
+    srv = server_factory()
+    resp = httpx.get(f"{srv['url']}/setup", headers={"Accept-Language": "it"})
+    assert '<html lang="it"' in resp.text

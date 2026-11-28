@@ -280,12 +280,13 @@ def _boot_server(
 def live_server(upc_stub):
     """Start a uvicorn process with a temp DB; yield the base URL.
 
-    Passes no `clear_env`, which is what preserves the pre-extraction contract
-    byte for byte: the whole parent environment, then the fixed E2E values.
+    Clears only `SHELF_I18N` and otherwise keeps the whole parent environment,
+    then applies the fixed E2E values.
     """
-    # The translated UI is off by default; turn it on so test_language.py can
-    # drive the picker. Playwright sends en-US, so every other test stays English.
-    with _boot_server({"SHELF_I18N": "on"}, upc_stub_url=upc_stub["url"]) as server:
+    # The translated UI is on by default. SHELF_I18N is cleared so a developer
+    # shell cannot turn it off, and Playwright sends en-US, so every test except
+    # test_language.py and the locale-context tests stays English.
+    with _boot_server(None, clear_env=("SHELF_I18N",), upc_stub_url=upc_stub["url"]) as server:
         yield server
 
 
@@ -304,7 +305,9 @@ def server_factory(upc_stub):
     fails for the host's state. A caller opts back in through `env_extra`. The
     factory also owns uvicorn's forwarded-header trust setting for the same
     reason: a host `FORWARDED_ALLOW_IPS` is not an unconfigured baseline either,
-    so it is cleared alongside the secrets rather than left to leak in.
+    so it is cleared alongside the secrets rather than left to leak in. So is
+    `SHELF_I18N`: a developer shell that turns the translated UI off must not
+    reach a factory server.
 
     Iterate `.values()` — SECRET_ENV_VARS is settings-key -> ENV_NAME, and
     `for name in SECRET_ENV_VARS` would yield 'abs_url' and clear nothing, a
@@ -321,7 +324,7 @@ def server_factory(upc_stub):
             return stack.enter_context(
                 _boot_server(
                     env_extra,
-                    clear_env=(*SECRET_ENV_VARS.values(), "FORWARDED_ALLOW_IPS"),
+                    clear_env=(*SECRET_ENV_VARS.values(), "FORWARDED_ALLOW_IPS", "SHELF_I18N"),
                     upc_stub_url=upc_stub["url"],
                 )
             )

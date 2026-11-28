@@ -31,11 +31,17 @@ ALIASES = {"zh_TW": "zh_Hant", "zh_HK": "zh_Hant", "zh_MO": "zh_Hant",
 current_locale: ContextVar[str] = ContextVar("current_locale", default=DEFAULT)
 
 
+_OFF = ("0", "off", "false", "no")
+
+
 def enabled() -> bool:
-    """Whether the translated UI is on. Off unless `SHELF_I18N` says on, while
-    only part of the UI is translated; the flag goes once every area is.
-    Read per call, so a test can flip it with monkeypatch."""
-    return os.environ.get("SHELF_I18N", "").strip().lower() in ("1", "on", "true", "yes")
+    """Whether the translated UI is on: unless `SHELF_I18N` is an off-word.
+
+    Unset, empty (what the compose file passes when `.env` names nothing) and
+    any other value mean on; an untranslated string falls back to English. The
+    flag stays so a server can keep the whole instance English. Read per
+    call, so a test can flip it with monkeypatch."""
+    return os.environ.get("SHELF_I18N", "").strip().lower() not in _OFF
 
 
 def N_(message: str) -> str:
