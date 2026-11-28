@@ -96,11 +96,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.88.0](https://github.com/dgahagan/shelf/releases/tag/v0.88.0) | **Shelf under a URL sub-path.** `SHELF_BASE_PATH` serves Shelf at a path such as `/shelf` behind a proxy that strips it — several apps on one host, or Home Assistant ingress — with every link, redirect, cookie and Store Mode's offline copy kept under it. |
 | [0.87.0](https://github.com/dgahagan/shelf/releases/tag/v0.87.0) | **The navigation bar groups its tabs.** Series, Music, Periodicals and Stats sit under **Explore**, Photo Intake and Shelf Fill under **Tools**, so the bar fits at every desktop width in every language Shelf ships. This completes *Choose your features*, which began with the Features page and setup profiles in 0.55.0. |
 | [0.86.0](https://github.com/dgahagan/shelf/releases/tag/v0.86.0) | **Polish books from Poland's national library.** 978-83 ISBNs are looked up in the Biblioteka Narodowa before the general sources. Also: the Audiobookshelf and Hardcover settings in Italian. Contributed by @sudo-rpaisley and @vjandrea. |
 | [0.85.0](https://github.com/dgahagan/shelf/releases/tag/v0.85.0) | **The HTTPS certificate renews itself.** A certificate Shelf generated is replaced on start when it expires within 30 days or no longer matches `CERT_SAN`, so changing `CERT_SAN` now takes effect on restart. A certificate you placed yourself is never replaced. |
 | [0.84.1](https://github.com/dgahagan/shelf/releases/tag/v0.84.1) | **Restarts leave your files alone.** The container now changes ownership only of files under `/data` whose owner is wrong, so restarts and upgrades no longer make backup tools re-read every cover, and storage where root cannot change ownership no longer stops a correctly owned install from starting. |
-| [0.84.0](https://github.com/dgahagan/shelf/releases/tag/v0.84.0) | **Shelf in German.** The translated interface speaks German, and `SHELF_DEFAULT_LANGUAGE` sets the language for anyone whose browser asks for none Shelf has. Also: owned series volumes catalogued under another title count by their position, a desktop webcam scans with the decoder iPhones use, and four more Settings tabs in Italian. Contributed by @samuel-hartenstein, @draarivpatel-ui and @vjandrea. |
 ---
 
 ## Suggesting something

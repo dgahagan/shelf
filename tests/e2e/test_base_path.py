@@ -119,14 +119,16 @@ def test_browse_filter_and_second_page(server, browser):
 
 
 def _seed_cover(data_dir, item):
-    """A real 2x3 JPEG on disk, so the page requests and decodes a cover (F5)."""
-    import io
+    """A real image on disk, so the page requests and decodes a cover (F5).
+
+    The app's own PNG icon, not one drawn here: Pillow is not a project
+    dependency, and CI has none (the browser sniffs the bytes, not the name).
+    """
     import sqlite3
-    from PIL import Image
-    buf = io.BytesIO()
-    Image.new("RGB", (2, 3), (90, 90, 200)).save(buf, "JPEG")
+    from tests.e2e.conftest import APP_DIR
+    image = (APP_DIR / "static" / "icons" / "icon-192.png").read_bytes()
     (data_dir / "covers").mkdir(exist_ok=True)
-    (data_dir / "covers" / f"{item}.jpg").write_bytes(buf.getvalue())
+    (data_dir / "covers" / f"{item}.jpg").write_bytes(image)
     conn = sqlite3.connect(str(data_dir / "shelf.db"))
     try:
         conn.execute("UPDATE items SET cover_path = ? WHERE id = ?", (f"covers/{item}.jpg", item))
