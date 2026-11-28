@@ -6,6 +6,36 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.89.0] - 2026-11-28
+
+Scanning an item's ISBN or UPC in Move or Shelf Fill moves only its primary
+copy. Other copies stay where they are, which is what you want when two copies
+live on two shelves. But the card did not say so: for a three-copy book it read
+"Living Room → Office", and two of the three were still in the living room.
+Both cards now say when that happens.
+
+### Changed
+
+- **Move and Shelf Fill say when other copies stayed behind.** When you scan an
+  item's ISBN or UPC and the item has more than one copy, the result card adds
+  "Primary copy only — 2 other copies stayed where they are. Scan a copy's own
+  label to move it." What gets moved is unchanged. An item with one copy shows
+  the same card as before, and so does a scan of a copy's own label, which
+  already moves that exact copy.
+- **The Shelf Fill help page compares itself to Move correctly.** The old table
+  said Move, given a copy's own barcode, moves the primary copy; it moves that
+  exact copy. New rows cover an item barcode with several copies, and wishlisted
+  items. Move stays a way to relocate one thing. Shelf Fill stays the way to
+  fill a shelf in order.
+
+### Fixed
+
+- **Shelf Fill now shelves a wishlisted item it finds while adding.** In rare
+  cases, a barcode Shelf Fill did not recognise turned out, during the add, to
+  belong to an item on your wishlist. Shelf marked it owned but did not put it
+  on the shelf, so it got no location and no position. It is now shelved and
+  numbered like any other scan, and its card says it moved from your wishlist.
+
 ## [0.88.0] - 2026-11-27
 
 Shelf assumed it owned the root of its host name. Behind a proxy that serves
@@ -6338,6 +6368,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.89.0]: https://github.com/dgahagan/shelf/releases/tag/v0.89.0
 [0.88.0]: https://github.com/dgahagan/shelf/releases/tag/v0.88.0
 [0.87.0]: https://github.com/dgahagan/shelf/releases/tag/v0.87.0
 [0.86.1]: https://github.com/dgahagan/shelf/releases/tag/v0.86.1

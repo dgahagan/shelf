@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-27 19:29-0500\n"
+"PO-Revision-Date: 2026-11-27 23:58-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -797,7 +797,7 @@ msgstr "暂时无法可靠核验这个旧版图书条码——请稍后重试，
 msgid "Older book barcode recognized, but no unique book match was found — scan the printed ISBN instead"
 msgstr "已识别旧版图书条码，但没有找到唯一匹配的书——请改扫印刷的 ISBN"
 
-#: app/routers/items.py:386 app/routers/items_scan_modes.py:218
+#: app/routers/items.py:386 app/routers/items_scan_modes.py:242
 msgid "Not in your collection"
 msgstr "不在你的藏品中"
 
@@ -939,48 +939,54 @@ msgstr ""
 msgid "The file is not UTF-8 text. Re-export it as UTF-8 (in a spreadsheet app: Save As → CSV UTF-8) and upload it again."
 msgstr ""
 
-#: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:159
-#: app/routers/items_scan_modes.py:230 app/routers/scan_inventory.py:208
+#: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:179
+#: app/routers/items_scan_modes.py:254 app/routers/scan_inventory.py:208
 #: app/templates/fragments/audit_report.html:81
 msgid "no location"
 msgstr "无位置"
 
-#: app/routers/items_scan_modes.py:65 app/routers/items_scan_modes.py:117
+#: app/routers/items_scan_modes.py:74
+#, python-format
+msgid "Primary copy only — %(num)s other copy stayed where it is. Scan a copy's own label to move it."
+msgid_plural "Primary copy only — %(num)s other copies stayed where they are. Scan a copy's own label to move it."
+msgstr[0] "仅移动了主副本——另有 %(num)s 个副本仍在原处。扫描某个副本自己的标签即可移动该副本。"
+
+#: app/routers/items_scan_modes.py:85 app/routers/items_scan_modes.py:137
 msgid "Lending is turned off on this Shelf."
 msgstr "此 Shelf 已关闭借出功能。"
 
-#: app/routers/items_scan_modes.py:70
+#: app/routers/items_scan_modes.py:90
 msgid "No borrower selected"
 msgstr "未选择借阅人"
 
-#: app/routers/items_scan_modes.py:86
+#: app/routers/items_scan_modes.py:106
 #, python-format
 msgid "Already lent to %(name)s"
 msgstr "已经借给 %(name)s 了"
 
-#: app/routers/items_scan_modes.py:93
+#: app/routers/items_scan_modes.py:113
 msgid "Borrower not found"
 msgstr "未找到借阅人"
 
-#: app/routers/items_scan_modes.py:107
+#: app/routers/items_scan_modes.py:127
 #, python-format
 msgid "Lent to %(name)s"
 msgstr "已借给 %(name)s"
 
-#: app/routers/items_scan_modes.py:131
+#: app/routers/items_scan_modes.py:151
 msgid "Not currently checked out"
 msgstr "当前未借出"
 
-#: app/routers/items_scan_modes.py:144
+#: app/routers/items_scan_modes.py:164
 #, python-format
 msgid "Returned from %(name)s"
 msgstr "已从 %(name)s 处归还"
 
-#: app/routers/items_scan_modes.py:154
+#: app/routers/items_scan_modes.py:174
 msgid "No target location selected"
 msgstr "未选择目标位置"
 
-#: app/routers/items_scan_modes.py:161 app/routers/scan_inventory.py:211
+#: app/routers/items_scan_modes.py:181 app/routers/scan_inventory.py:211
 #: app/templates/browse.html:220
 #: app/templates/fragments/filter_counts_oob.html:39
 #: app/templates/fragments/item_copies.html:90
@@ -992,36 +998,36 @@ msgstr "未选择目标位置"
 msgid "No location"
 msgstr "未指定位置"
 
-#: app/routers/items_scan_modes.py:182
+#: app/routers/items_scan_modes.py:204
 #, python-format
 msgid "Copy %(n)s is no longer in the collection"
 msgstr "第 %(n)s 册已不在藏品中"
 
-#: app/routers/items_scan_modes.py:197 app/routers/scan_inventory.py:181
+#: app/routers/items_scan_modes.py:219 app/routers/scan_inventory.py:181
 #: app/templates/item_edit.html:126
 msgid "Unknown"
 msgstr "未知"
 
-#: app/routers/items_scan_modes.py:200
+#: app/routers/items_scan_modes.py:222
 #, python-format
 msgid "Copy %(n)s: %(detail)s"
 msgstr "第 %(n)s 册：%(detail)s"
 
-#: app/routers/items_scan_modes.py:231
+#: app/routers/items_scan_modes.py:255
 #, python-format
 msgid "Copy %(n)s · %(place)s"
 msgstr "第 %(n)s 册 · %(place)s"
 
-#: app/routers/items_scan_modes.py:236
+#: app/routers/items_scan_modes.py:260
 msgid "No location set"
 msgstr "未设置位置"
 
-#: app/routers/items_scan_modes.py:238
+#: app/routers/items_scan_modes.py:262
 #, python-format
 msgid "Location: %(place)s"
 msgstr "位置：%(place)s"
 
-#: app/routers/items_scan_modes.py:264
+#: app/routers/items_scan_modes.py:288
 #, python-format
 msgid "Marked as %(status)s"
 msgstr "已标记为 %(status)s"

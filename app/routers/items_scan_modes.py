@@ -57,6 +57,26 @@ def _format_copy_places(copies) -> str:
     return f"{', '.join(places[:-1])} and {places[-1]}"
 
 
+def _stayed_behind_note(db, item_id: int) -> str:
+    """Say how many other copies an item-level move left where they were.
+
+    Call on the caller's connection after the location write: the write
+    guarantees a live primary, so any non-primary live copy stayed behind.
+    Returns "" when none did. Counts through `copies_live` (G105).
+    """
+    n = db.execute(
+        "SELECT COUNT(*) AS n FROM copies_live WHERE item_id = ? AND is_primary = 0",
+        (item_id,),
+    ).fetchone()["n"]
+    if not n:
+        return ""
+    return i18n.ngettext(
+        "Primary copy only — %(num)s other copy stayed where it is. Scan a copy's own label to move it.",
+        "Primary copy only — %(num)s other copies stayed where they are. Scan a copy's own label to move it.",
+        n,
+    ) % {"num": n}
+
+
 def _scan_mode_lend(request, templates, item: dict, borrower_id: int | None, raw: str):
     """Handle lend mode: check out an item to a borrower."""
     if not features.feature_enabled("lending"):
@@ -162,6 +182,7 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
 
     # A deleted location used to be a foreign-key 500 here (#54).
     value_error = None
+    note = ""
     with get_db() as db:
         if copy_id:
             # A copy label names the copy in hand: move that one, under one
@@ -178,6 +199,7 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
         try:
             if not copy_id:
                 update_item_fields(db, item["id"], {"location_id": location_id})
+                note = _stayed_behind_note(db, item["id"])
             elif copy is None:
                 value_error = i18n.gettext("Copy %(n)s is no longer in the collection") % {"n": item["copy_number"]}
             else:
@@ -198,6 +220,8 @@ def _scan_mode_move(request, templates, item: dict, location_id: int | None, raw
     message = f"{old_location} → {new_name}"
     if copy_id:
         message = i18n.gettext("Copy %(n)s: %(detail)s") % {"n": item["copy_number"], "detail": message}
+    elif note:
+        message = f"{message} · {note}"
     items_common._log_scan(raw, item.get("media_type", ""), "moved", item["id"], "move")
     resp = templates.TemplateResponse(
         request, "fragments/scan_result.html",

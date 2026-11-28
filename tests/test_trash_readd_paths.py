@@ -353,6 +353,9 @@ class TestShelfFillHandlesTheStatus:
             "a status shelf_fill does not list falls through its whole "
             "post-processing block, silently"
         )
+        assert "promoted" in match, (
+            "a promoted wishlist scan must be placed, not dropped (codex-R1)"
+        )
 
 
 class TestCatalogueGameAndDvdCannotRestore:

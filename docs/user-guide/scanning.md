@@ -37,7 +37,7 @@ device last left in one of them opens in **Add**.
 | **Wishlist** | Same lookup, but the item is added to your wishlist, not as owned. A barcode already in your library is left as it is |
 | **Lend** | Pick a borrower first; each scan checks that item out to them. Optional due date |
 | **Return** | Each scan checks the item back in, whoever had it |
-| **Move** | Pick a location first; each scan relocates the item there. To work along a shelf putting things away in order, use [Shelf Fill](shelf-fill.md) instead — it keeps the shelf selected and numbers each scan's position |
+| **Move** | Pick a location first; each scan relocates the item there. A copy's own label moves that exact copy. An item's ISBN or UPC moves only its primary copy, and the card says when other copies stayed where they are. A wishlisted item is moved but stays on the wishlist. To work along a shelf putting things away in order, use [Shelf Fill](shelf-fill.md) instead — it keeps the shelf selected and numbers each scan's position |
 | **Inventory** | Pick a location and scan what is physically there: each scan confirms the item, or moves it here. **Start audit** first to get a report — scans then count from any device, survive a reload, and **Finish audit** lists what was found, moved, seen elsewhere, on loan, missing and unexpected. See [Audits](audits.md). Counts *copies*, not records — see [Auditing a shelf with more than one copy](#auditing-a-shelf-with-more-than-one-copy) |
 | **Lookup** | Read-only: tells you whether the item is in your library (and where, and whether it's lent out). Changes nothing |
 | **Quick Rate** | Marks the item finished with today's date — Watched for a disc, Played for a game, Read otherwise |

@@ -3,7 +3,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: andrea@bergamasco.me\n"
-"PO-Revision-Date: 2026-11-27 19:29-0500\n"
+"PO-Revision-Date: 2026-11-27 23:58-0500\n"
 "Last-Translator: Andrea Bergamasco\n"
 "Language: it\n"
 "Language-Team: Italian\n"
@@ -794,7 +794,7 @@ msgstr "Al momento non è possibile verificare con certezza il codice a barre di
 msgid "Older book barcode recognized, but no unique book match was found — scan the printed ISBN instead"
 msgstr "Codice a barre del libro vecchio riconosciuto, ma non corrisponde a un solo libro: scansiona invece l'ISBN stampato"
 
-#: app/routers/items.py:386 app/routers/items_scan_modes.py:218
+#: app/routers/items.py:386 app/routers/items_scan_modes.py:242
 msgid "Not in your collection"
 msgstr "Non è nella tua collezione"
 
@@ -937,48 +937,55 @@ msgstr "File troppo grande (massimo 50 MB)"
 msgid "The file is not UTF-8 text. Re-export it as UTF-8 (in a spreadsheet app: Save As → CSV UTF-8) and upload it again."
 msgstr "Il file non è testo UTF-8. Esportalo di nuovo in UTF-8 (in un foglio di calcolo: Salva con nome → CSV UTF-8) e caricalo ancora."
 
-#: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:159
-#: app/routers/items_scan_modes.py:230 app/routers/scan_inventory.py:208
+#: app/routers/items_scan_modes.py:47 app/routers/items_scan_modes.py:179
+#: app/routers/items_scan_modes.py:254 app/routers/scan_inventory.py:208
 #: app/templates/fragments/audit_report.html:81
 msgid "no location"
 msgstr "nessuna posizione"
 
-#: app/routers/items_scan_modes.py:65 app/routers/items_scan_modes.py:117
+#: app/routers/items_scan_modes.py:74
+#, python-format
+msgid "Primary copy only — %(num)s other copy stayed where it is. Scan a copy's own label to move it."
+msgid_plural "Primary copy only — %(num)s other copies stayed where they are. Scan a copy's own label to move it."
+msgstr[0] "Solo la copia principale — %(num)s altra copia è rimasta dov'era. Scansiona l'etichetta di una copia per spostare quella."
+msgstr[1] "Solo la copia principale — %(num)s altre copie sono rimaste dove erano. Scansiona l'etichetta di una copia per spostare quella."
+
+#: app/routers/items_scan_modes.py:85 app/routers/items_scan_modes.py:137
 msgid "Lending is turned off on this Shelf."
 msgstr "I prestiti sono disattivati su questo Shelf."
 
-#: app/routers/items_scan_modes.py:70
+#: app/routers/items_scan_modes.py:90
 msgid "No borrower selected"
 msgstr "Nessuna persona selezionata per il prestito"
 
-#: app/routers/items_scan_modes.py:86
+#: app/routers/items_scan_modes.py:106
 #, python-format
 msgid "Already lent to %(name)s"
 msgstr "Già in prestito presso %(name)s"
 
-#: app/routers/items_scan_modes.py:93
+#: app/routers/items_scan_modes.py:113
 msgid "Borrower not found"
 msgstr "Persona non trovata"
 
-#: app/routers/items_scan_modes.py:107
+#: app/routers/items_scan_modes.py:127
 #, python-format
 msgid "Lent to %(name)s"
 msgstr "In prestito presso %(name)s"
 
-#: app/routers/items_scan_modes.py:131
+#: app/routers/items_scan_modes.py:151
 msgid "Not currently checked out"
 msgstr "Al momento non è in prestito"
 
-#: app/routers/items_scan_modes.py:144
+#: app/routers/items_scan_modes.py:164
 #, python-format
 msgid "Returned from %(name)s"
 msgstr "Restituito da %(name)s"
 
-#: app/routers/items_scan_modes.py:154
+#: app/routers/items_scan_modes.py:174
 msgid "No target location selected"
 msgstr "Nessuna posizione di destinazione selezionata"
 
-#: app/routers/items_scan_modes.py:161 app/routers/scan_inventory.py:211
+#: app/routers/items_scan_modes.py:181 app/routers/scan_inventory.py:211
 #: app/templates/browse.html:220
 #: app/templates/fragments/filter_counts_oob.html:39
 #: app/templates/fragments/item_copies.html:90
@@ -990,36 +997,36 @@ msgstr "Nessuna posizione di destinazione selezionata"
 msgid "No location"
 msgstr "Nessuna posizione"
 
-#: app/routers/items_scan_modes.py:182
+#: app/routers/items_scan_modes.py:204
 #, python-format
 msgid "Copy %(n)s is no longer in the collection"
 msgstr "La copia %(n)s non è più nella collezione"
 
-#: app/routers/items_scan_modes.py:197 app/routers/scan_inventory.py:181
+#: app/routers/items_scan_modes.py:219 app/routers/scan_inventory.py:181
 #: app/templates/item_edit.html:126
 msgid "Unknown"
 msgstr "Sconosciuto"
 
-#: app/routers/items_scan_modes.py:200
+#: app/routers/items_scan_modes.py:222
 #, python-format
 msgid "Copy %(n)s: %(detail)s"
 msgstr "Copia %(n)s: %(detail)s"
 
-#: app/routers/items_scan_modes.py:231
+#: app/routers/items_scan_modes.py:255
 #, python-format
 msgid "Copy %(n)s · %(place)s"
 msgstr "Copia %(n)s · %(place)s"
 
-#: app/routers/items_scan_modes.py:236
+#: app/routers/items_scan_modes.py:260
 msgid "No location set"
 msgstr "Nessuna posizione impostata"
 
-#: app/routers/items_scan_modes.py:238
+#: app/routers/items_scan_modes.py:262
 #, python-format
 msgid "Location: %(place)s"
 msgstr "Posizione: %(place)s"
 
-#: app/routers/items_scan_modes.py:264
+#: app/routers/items_scan_modes.py:288
 #, python-format
 msgid "Marked as %(status)s"
 msgstr "Segnato come %(status)s"

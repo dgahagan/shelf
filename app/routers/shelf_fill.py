@@ -162,14 +162,15 @@ def _shelf_summary(db, location_id: int) -> dict:
     }
 
 
-def _render_result(request: Request, placed: dict, *, newly_added: bool = False):
+def _render_result(request: Request, placed: dict, *, newly_added: bool = False,
+                   stayed_note: str = ""):
     with get_db() as db:
         summary = _shelf_summary(db, placed["location_id"])
     return request.app.state.templates.TemplateResponse(
         request,
         "fragments/shelf_fill_result.html",
         {**placed, "newly_added": newly_added, "summary": summary,
-         "render_oob_summary": True},
+         "render_oob_summary": True, "stayed_note": stayed_note},
     )
 
 
@@ -297,10 +298,13 @@ async def shelf_fill_scan(
         try:
             with get_db() as db:
                 placed = _place_item(db, existing["id"], location_id)
+                # An item barcode moves the primary copy only; say so when
+                # others stayed behind. Same connection, after the write.
+                note = items_scan_modes._stayed_behind_note(db, placed["item_id"])
         except ValueError as exc:
             return _render_error(request, raw, str(exc))
         items_common._log_scan(raw, placed["media_type"], "moved", placed["item_id"], "move")
-        return _render_result(request, placed)
+        return _render_result(request, placed, stayed_note=note)
 
     # Unknown barcode: reuse Shelf's normal Add pipeline, including detection,
     # provider pacing, validation and duplicate guards. Passing the precise
@@ -338,12 +342,18 @@ async def shelf_fill_scan(
     # `restored` joins the set: a re-add of a trashed book is a successful
     # placement, and a status this gate does not list falls straight through
     # the whole post-processing block — the position assignment, the OOB
-    # summary refresh and _render_result (G103).
-    if item_id and status in {"added", "duplicate", "restored"}:
+    # summary refresh and _render_result (G103).  `promoted` is a wishlisted
+    # book bought: scan_isbn has already set owned=1, so _place_item reads it
+    # as owned and would not say it came from the wishlist.
+    if item_id and status in {"added", "duplicate", "restored", "promoted"}:
         try:
             with get_db() as db:
                 placed = _place_item(db, int(item_id), location_id)
+                note = items_scan_modes._stayed_behind_note(db, placed["item_id"])
         except ValueError as exc:
             return _render_error(request, raw, str(exc))
-        return _render_result(request, placed, newly_added=status == "added")
+        if status == "promoted":
+            placed["was_wishlist"] = True
+        return _render_result(request, placed, newly_added=status == "added",
+                              stayed_note=note)
     return response

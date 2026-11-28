@@ -6775,6 +6775,23 @@ python -m pytest tests/test_entrypoint.py -q -k "other_san_is_preserved or marke
   the URL under test.
 - **Status:** active.
 
+## G165 — When a test imports a package to build a fixture
+
+- **Rule:** import only what `requirements-dev.txt` (or `requirements.txt`)
+  installs. For an image, copy a file the repo already holds
+  (`static/icons/icon-192.png`); do not draw one with Pillow.
+- **Why:** the release machine's Python carries user-site packages the
+  project never declared, so the local gate passes and public CI — which
+  installs only the locks — fails. The failure surfaces after the sync
+  push, on a commit that is already public.
+- **Evidence:** 2026-11-27, 0.88.0: `tests/e2e/test_base_path.py` seeded a
+  cover with `from PIL import Image`; local E2E 419 passed, CI E2E failed
+  `ModuleNotFoundError: No module named 'PIL'` on sync `4bf4e0c`. Fixed
+  forward in `2770efb` before tagging.
+- **Verify:** `grep -rn "^\s*\(from\|import\) " tests/ | grep -v "app\|tests\|pytest\|playwright"`
+  and check each third-party name against the locks.
+- **Status:** active. Lint candidate (import names vs. the locks is mechanical).
+
 ## Graveyard
 
 Retired entries land here with a one-line reason (refactored away, lint
