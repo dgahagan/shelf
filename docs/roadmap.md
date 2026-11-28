@@ -15,25 +15,6 @@ building it. *Exploring* means the idea is accepted but the shape is not.
 
 ---
 
-## Choose your features
-
-**Planned.** Shelf has grown a lot of surface, and not everyone wants all of it.
-A setup step and a settings page to turn whole feature areas on and off, so an
-install that only catalogues books does not carry lending, valuation, store mode
-and the rest in its navigation. The settings page shipped in 0.55.0 as
-Settings → **Features**, and the setup wizard now asks for a profile —
-Minimal, Standard or Everything — which Features can change later.
-
-Most of the groups below arrive switched off behind this, which is why it comes
-early.
-
-**A navigation rework goes with it.** The tab bar has grown one tab at a time
-and is now long enough that the next feature makes it worse. The plan is to
-group the tabs by what you are actually doing — the views onto your collection
-in one place, the scanner-and-camera tools in another — rather than keep adding
-to a single row. Turning feature areas off and grouping what is left are two
-halves of the same problem, so they are being designed together.
-
 ## Homelab integration
 
 **Planned.** Shelf should behave like the rest of your stack. The first part shipped in 0.74.0.
@@ -115,11 +96,11 @@ or not, is in the [changelog](../CHANGELOG.md).
 
 | Version | What landed |
 |---|---|
+| [0.87.0](https://github.com/dgahagan/shelf/releases/tag/v0.87.0) | **The navigation bar groups its tabs.** Series, Music, Periodicals and Stats sit under **Explore**, Photo Intake and Shelf Fill under **Tools**, so the bar fits at every desktop width in every language Shelf ships. This completes *Choose your features*, which began with the Features page and setup profiles in 0.55.0. |
 | [0.86.0](https://github.com/dgahagan/shelf/releases/tag/v0.86.0) | **Polish books from Poland's national library.** 978-83 ISBNs are looked up in the Biblioteka Narodowa before the general sources. Also: the Audiobookshelf and Hardcover settings in Italian. Contributed by @sudo-rpaisley and @vjandrea. |
 | [0.85.0](https://github.com/dgahagan/shelf/releases/tag/v0.85.0) | **The HTTPS certificate renews itself.** A certificate Shelf generated is replaced on start when it expires within 30 days or no longer matches `CERT_SAN`, so changing `CERT_SAN` now takes effect on restart. A certificate you placed yourself is never replaced. |
 | [0.84.1](https://github.com/dgahagan/shelf/releases/tag/v0.84.1) | **Restarts leave your files alone.** The container now changes ownership only of files under `/data` whose owner is wrong, so restarts and upgrades no longer make backup tools re-read every cover, and storage where root cannot change ownership no longer stops a correctly owned install from starting. |
 | [0.84.0](https://github.com/dgahagan/shelf/releases/tag/v0.84.0) | **Shelf in German.** The translated interface speaks German, and `SHELF_DEFAULT_LANGUAGE` sets the language for anyone whose browser asks for none Shelf has. Also: owned series volumes catalogued under another title count by their position, a desktop webcam scans with the decoder iPhones use, and four more Settings tabs in Italian. Contributed by @samuel-hartenstein, @draarivpatel-ui and @vjandrea. |
-| [0.83.0](https://github.com/dgahagan/shelf/releases/tag/v0.83.0) | **The container reports its health.** `docker ps` shows `healthy` or `unhealthy`, so Compose, Portainer and uptime monitors can tell a hung or broken Shelf from a working one. It follows `SHELF_TLS` and `SHELF_PORT` by itself, and passing checks leave nothing in the log. |
 ---
 
 ## Suggesting something

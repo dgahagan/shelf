@@ -67,6 +67,7 @@ CERT_SAN=IP:192.168.1.100,DNS:shelf,DNS:localhost
 | `SHELF_ENCRYPTION_KEY` | *(auto-generated)* | Encryption key for stored API credentials. Auto-generated at `/data/encryption.key` if not set. Set it explicitly (e.g. `openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
 | `SHELF_TLS` | `on` | `on` serves HTTPS with a self-signed certificate. `off` serves plain HTTP for a TLS-terminating reverse proxy — without a proxy, plain HTTP loses the camera scanner and offline Store Mode. Any other value stops the container at startup |
 | `SHELF_TRUST_PROXY` | *(unset)* | The reverse proxy's address as Shelf sees it: comma-separated IPs or CIDRs (e.g. `127.0.0.1` for a same-host proxy, `172.17.0.1` under `docker run -p`). Forwarded headers are honoured only from these peers. The legacy `1` means `127.0.0.1` and prints a startup warning. Leave unset without a proxy |
+| `SHELF_BASE_PATH` | *(unset)* | URL sub-path Shelf is served under, behind a proxy that strips it (Home Assistant ingress, several apps on one host), e.g. `/shelf`. Letters, digits and `. _ ~ - /` only; anything else stops the container at startup. See [Serving under a sub-path](https://github.com/dgahagan/shelf/blob/main/docs/configuration.md#serving-under-a-sub-path) |
 
 ## Persistent Data
 

@@ -20,10 +20,10 @@
             {% if can_edit %}
             <div class="flex gap-2">
                 <button type="button"
-                        hx-get="/api/music/items/{{ item.id }}/discogs?details=1"
+                        hx-get="{{ base_path }}/api/music/items/{{ item.id }}/discogs?details=1"
                         hx-target="#discogs-panel" hx-swap="outerHTML"
                         class="px-3 py-1.5 border border-shelf-border rounded-lg text-xs text-shelf-muted hover:text-shelf-text">{{ _('Load fresh details') }}</button>
-                <form method="post" action="/api/music/items/{{ item.id }}/discogs/clear">
+                <form method="post" action="{{ base_path }}/api/music/items/{{ item.id }}/discogs/clear">
                     <button type="submit" class="px-3 py-1.5 border border-shelf-border rounded-lg text-xs text-shelf-muted hover:text-shelf-error">{{ _('Clear selection') }}</button>
                 </form>
             </div>
@@ -60,8 +60,8 @@
 
     {% if can_edit %}
         {% if configured %}
-        <form method="get" action="/api/music/items/{{ item.id }}/discogs"
-              hx-get="/api/music/items/{{ item.id }}/discogs"
+        <form method="get" action="{{ base_path }}/api/music/items/{{ item.id }}/discogs"
+              hx-get="{{ base_path }}/api/music/items/{{ item.id }}/discogs"
               hx-target="#discogs-panel" hx-swap="outerHTML"
               class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             <input type="hidden" name="search" value="1">
@@ -90,7 +90,7 @@
             </div>
         </form>
         {% else %}
-        <p class="text-sm text-shelf-muted mb-4">{{ _('Configure a Discogs personal access token in') }} <a href="/settings" class="text-shelf-accent2">{{ _('Settings → Integrations') }}</a> {{ _('to identify the exact pressing.') }}</p>
+        <p class="text-sm text-shelf-muted mb-4">{{ _('Configure a Discogs personal access token in') }} <a href="{{ base_path }}/settings" class="text-shelf-accent2">{{ _('Settings → Integrations') }}</a> {{ _('to identify the exact pressing.') }}</p>
         {% endif %}
     {% endif %}
 
@@ -111,7 +111,7 @@
                 <a href="{{ candidate.discogs_url }}" target="_blank" rel="noopener" class="text-xs text-shelf-accent2 mt-1 inline-block">{{ _('View release ↗') }}</a>
             </div>
             {% if can_edit and candidate.discogs_release_id %}
-            <form method="post" action="/api/music/items/{{ item.id }}/discogs/select" class="shrink-0">
+            <form method="post" action="{{ base_path }}/api/music/items/{{ item.id }}/discogs/select" class="shrink-0">
                 <input type="hidden" name="release_id" value="{{ candidate.discogs_release_id }}">
                 <button type="submit" class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Use this pressing') }}</button>
             </form>

@@ -48,6 +48,8 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, RedirectResponse
 
 from app import browse_columns, browse_filters, i18n
+from app import config as app_config
+from app.base_path import BasePathHeadersMiddleware
 from app.config import (
     COVERS_DIR,
     CREATOR_LABELS,
@@ -159,7 +161,8 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         if path in _SKIP_AUTH_PATHS or path.startswith(_SKIP_AUTH_PREFIXES):
             return await call_next(request)
 
-        cookie_token = request.cookies.get("csrf_token")
+        from app.auth import read_cookie
+        cookie_token = read_cookie(request, "csrf_token")
         if not cookie_token:
             return Response("CSRF token missing", status_code=403)
 
@@ -226,7 +229,7 @@ async def _bearer_dispatch(request: Request, call_next, header: str) -> Response
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
-        from app.auth import get_current_user, should_refresh_token, set_auth_cookie, get_user_count
+        from app.auth import get_current_user, should_refresh_token, set_auth_cookie, get_user_count, read_cookie
 
         path = request.url.path
 
@@ -283,7 +286,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
         if user:
             fresh_token = should_refresh_token(request, user)
             if fresh_token:
-                set_auth_cookie(request, response, fresh_token, request.cookies.get("csrf_token"))
+                set_auth_cookie(request, response, fresh_token, read_cookie(request, "csrf_token"))
 
         return response
 
@@ -693,6 +696,11 @@ app.add_middleware(CSRFMiddleware)
 app.add_middleware(AuthMiddleware)
 app.add_middleware(RateLimitMiddleware, requests_per_minute=60)
 app.add_middleware(SecurityHeadersMiddleware)
+# Outermost, and only when a sub-path is set (#165): prefixes the URL in every
+# Location / HX-Redirect / HX-Location / Refresh header, including the ones the
+# stages above return themselves. add_middleware prepends, so this line wins.
+if app_config.BASE_PATH:
+    app.add_middleware(BasePathHeadersMiddleware, base_path=app_config.BASE_PATH)
 
 # Exception handler for auth dependency responses
 from app.auth import _ResponseException
@@ -727,6 +735,8 @@ templates.env.add_extension("jinja2.ext.i18n")
 templates.env.install_gettext_callables(
     i18n.gettext, i18n.ngettext, newstyle=True, pgettext=i18n.pgettext,
 )
+# Every URL a template emits starts {{ base_path }} (#165); "" when unset.
+templates.env.globals["base_path"] = app_config.BASE_PATH
 templates.env.globals["current_locale"] = i18n.current_locale.get
 templates.env.globals["js_catalog"] = i18n.js_catalog
 templates.env.globals["language_names"] = i18n.LANGUAGE_NAMES

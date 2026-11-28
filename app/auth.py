@@ -8,7 +8,9 @@ import bcrypt
 import jwt
 from fastapi import Request, Response
 from fastapi.responses import RedirectResponse, HTMLResponse
+from starlette.requests import cookie_parser
 
+import app.config as app_config
 from app.config import SECRET_KEY, JWT_ALGORITHM, JWT_EXPIRY_SECONDS
 from app.database import get_db
 
@@ -192,10 +194,35 @@ def decode_token(token: str) -> dict | None:
         return None
 
 
+def read_cookie(request: Request, name: str, default: str | None = None) -> str | None:
+    """The value of the cookie Shelf set, when a same-name cookie also exists.
+
+    Under SHELF_BASE_PATH the session pair is scoped to the sub-path, and the
+    host may hold another `access_token` / `csrf_token` at `Path=/` — another
+    app's, or this Shelf's from before the setting. A browser sends the
+    longer-path cookie first (RFC 6265 §5.4); `request.cookies` keeps the
+    last of a repeated name, so it would read the `/` one and never the one
+    Shelf just set. Read the first occurrence instead, which is also the one
+    the page scripts read (#165, diff review F1; GOTCHAS G163).
+    """
+    if not app_config.BASE_PATH:
+        return request.cookies.get(name, default)
+    for chunk in request.headers.get("cookie", "").split(";"):
+        key, sep, _ = chunk.partition("=")
+        if sep and key.strip() == name:
+            value = cookie_parser(chunk).get(name)
+            if value is not None:
+                return value
+    return default
+
+
 def set_auth_cookie(request: Request, response: Response, token: str, csrf_token: str | None = None) -> None:
     # The browser-facing scheme: uvicorn rewrites it from X-Forwarded-Proto only
     # for SHELF_TRUST_PROXY peers, so an untrusted peer cannot claim https.
     secure = request.url.scheme == "https"
+    # Scoped to the sub-path Shelf is served under (#165), so a host that serves
+    # other apps beside it never sends them Shelf's session.
+    cookie_path = app_config.BASE_PATH or "/"
     response.set_cookie(
         key="access_token",
         value=token,
@@ -203,7 +230,7 @@ def set_auth_cookie(request: Request, response: Response, token: str, csrf_token
         secure=secure,
         samesite="strict",
         max_age=JWT_EXPIRY_SECONDS,
-        path="/",
+        path=cookie_path,
     )
     # Set a paired CSRF token cookie (readable by JS for double-submit)
     if csrf_token is None:
@@ -215,13 +242,20 @@ def set_auth_cookie(request: Request, response: Response, token: str, csrf_token
         secure=secure,
         samesite="strict",
         max_age=JWT_EXPIRY_SECONDS,
-        path="/",
+        path=cookie_path,
     )
 
 
 def clear_auth_cookie(response: Response) -> None:
-    response.delete_cookie(key="access_token", path="/")
-    response.delete_cookie(key="csrf_token", path="/")
+    paths = [app_config.BASE_PATH or "/"]
+    # An install that turned SHELF_BASE_PATH on still holds a path=/ pair from
+    # before; without this second delete, logout leaves it and the user is
+    # signed straight back in (#165).
+    if app_config.BASE_PATH:
+        paths.append("/")
+    for path in paths:
+        response.delete_cookie(key="access_token", path=path)
+        response.delete_cookie(key="csrf_token", path=path)
 
 
 def get_current_user(request: Request) -> dict | None:
@@ -231,7 +265,7 @@ def get_current_user(request: Request) -> dict | None:
     version or username no longer matches the row (a password change, a role
     change, an id reused after a restore) resolves to no session.
     """
-    token = request.cookies.get("access_token")
+    token = read_cookie(request, "access_token")
     if not token:
         return None
     payload = decode_token(token)
@@ -261,7 +295,7 @@ def get_current_user(request: Request) -> dict | None:
 
 def should_refresh_token(request: Request, user: dict) -> str | None:
     """If the token is past half-life, return a fresh one minted from the resolved user."""
-    token = request.cookies.get("access_token")
+    token = read_cookie(request, "access_token")
     if not token:
         return None
     payload = decode_token(token)

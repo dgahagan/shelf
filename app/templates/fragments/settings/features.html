@@ -25,7 +25,7 @@
                wrong once more is on. #}
             <div class="grid gap-3 sm:grid-cols-3">
                 {% for p in profile_rows %}
-                <form method="post" action="/api/settings/profile" data-testid="profile-form-{{ p.name }}"
+                <form method="post" action="{{ base_path }}/api/settings/profile" data-testid="profile-form-{{ p.name }}"
                       class="flex flex-col gap-2 rounded-lg border p-3 {{ 'border-shelf-accent' if p.current else 'border-shelf-border' }}"
                       {% if p.confirm %}data-confirm="{{ p.confirm }}"{% endif %}>
                     <input type="hidden" name="profile" value="{{ p.name }}">
@@ -68,7 +68,7 @@
                     <p class="text-xs text-shelf-muted mt-1" data-feature-needs-setup>{{ _('Needs setup — configure it under Integrations before it can do anything.') }}</p>
                     {% endif %}
                 </div>
-                <form method="post" action="/api/settings/features/{{ row.key }}"
+                <form method="post" action="{{ base_path }}/api/settings/features/{{ row.key }}"
                       {% if row.enabled and row.confirm %}data-confirm="{{ row.confirm }}"{% endif %}>
                     <input type="hidden" name="enabled" value="{{ '0' if row.enabled else '1' }}">
                     <button type="submit" data-testid="feature-toggle-{{ row.key }}"

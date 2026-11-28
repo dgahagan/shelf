@@ -53,7 +53,7 @@ def test_romm_action_is_a_sibling_of_the_normal_item_link():
     src = CARD.read_text()
     action_at = src.index('data-testid="romm-card-action"')
     normal_link_closes_at = src.index("</a>")
-    assert src.startswith('<div class="relative">\n<a href="/item/{{ item.id }}"')
+    assert src.startswith('<div class="relative">\n<a href="{{ base_path }}/item/{{ item.id }}"')
     assert action_at > normal_link_closes_at
     assert "{% if item.source == 'romm' %}" in src
 

@@ -9,7 +9,7 @@
         <p class="text-sm text-shelf-muted mb-4" data-testid="buy-links-honesty">These links pay you, through your own affiliate accounts. Shelf earns nothing. A Bookshop.org link without an ISBN is a plain search and pays nobody.</p>
         {% set bs_host = settings.get('buy_links_bookshop_host') or buy_links_bookshop_hosts[0] %}
         {% set amz_host = settings.get('buy_links_amazon_host') or buy_links_amazon_hosts[0] %}
-        <form method="POST" action="/api/settings/buy-links" class="space-y-4">
+        <form method="POST" action="{{ base_path }}/api/settings/buy-links" class="space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label for="buy_links_bookshop_id" class="block text-sm font-medium text-shelf-muted mb-1">Bookshop.org affiliate id (blank turns it off)</label>

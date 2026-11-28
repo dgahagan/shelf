@@ -19,7 +19,7 @@
             {% endif %}
         </div>
         {% if book.isbn %}
-        <form hx-post="/api/books/add" hx-target="#scan-results" hx-swap="afterbegin"
+        <form hx-post="{{ base_path }}/api/books/add" hx-target="#scan-results" hx-swap="afterbegin"
               data-after-request="clear-title-search">
             <input type="hidden" name="isbn" value="{{ book.isbn }}">
             <input type="hidden" name="media_type" value="{{ media_type }}">

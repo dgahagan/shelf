@@ -14,6 +14,7 @@ import httpx
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import HTMLResponse
 
+from app import config as app_config
 from app import i18n
 from app.auth import require_role
 from app.config import HTTP_TIMEOUT, MEDIA_TYPES, canonical_media_type
@@ -49,7 +50,7 @@ async def search_games(
     if not igdb_id or not igdb_secret:
         return HTMLResponse(
             '<p class="text-sm text-shelf-error">IGDB credentials not configured. '
-            'Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
+            'Add them in <a href="' + app_config.BASE_PATH + '/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
         )
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
@@ -400,7 +401,7 @@ async def search_dvds(
     if not tmdb_key:
         return HTMLResponse(
             '<p class="text-sm text-shelf-error">TMDb API key not configured. '
-            'Add it in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
+            'Add it in <a href="' + app_config.BASE_PATH + '/settings" class="text-shelf-accent2 underline">Settings</a>.</p>'
         )
 
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:

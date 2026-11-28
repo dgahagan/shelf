@@ -26,7 +26,7 @@
     </div>
 
     <!-- Filters -->
-    <form x-ref="filters" method="GET" action="/logs" class="bg-shelf-card rounded-xl border border-shelf-border p-4">
+    <form x-ref="filters" method="GET" action="{{ base_path }}/logs" class="bg-shelf-card rounded-xl border border-shelf-border p-4">
         <div class="flex flex-wrap items-end gap-3">
             <div class="flex-1 min-w-[180px]">
                 <label class="block text-xs font-medium text-shelf-muted mb-1">{{ _('Search') }}</label>
@@ -59,7 +59,7 @@
                     {{ _('Filter') }}
                 </button>
                 {% if filter_level or filter_module or filter_q %}
-                <a href="/logs" class="px-4 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:text-white transition-colors">
+                <a href="{{ base_path }}/logs" class="px-4 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:text-white transition-colors">
                     {{ _('Clear') }}
                 </a>
                 {% endif %}
@@ -103,13 +103,13 @@
             </div>
             <div class="flex gap-2">
                 {% if has_prev %}
-                <a href="/logs?page={{ page - 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
+                <a href="{{ base_path }}/logs?page={{ page - 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
                    class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded-sm text-xs hover:text-white transition-colors">
                     {{ _('Previous') }}
                 </a>
                 {% endif %}
                 {% if has_next %}
-                <a href="/logs?page={{ page + 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
+                <a href="{{ base_path }}/logs?page={{ page + 1 }}{% if filter_level %}&level={{ filter_level }}{% endif %}{% if filter_module %}&module={{ filter_module }}{% endif %}{% if filter_q %}&q={{ filter_q }}{% endif %}"
                    class="px-3 py-1 bg-shelf-hover text-shelf-muted rounded-sm text-xs hover:text-white transition-colors">
                     {{ _('Next') }}
                 </a>

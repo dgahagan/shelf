@@ -38,9 +38,9 @@ def test_music_templates_keep_exact_release_workflow_visible():
     library = (root / "music.html").read_text()
     detail = (root / "music_item.html").read_text()
 
-    assert 'action="/api/music/add"' in library
+    assert 'action="{{ base_path }}/api/music/add"' in library
     assert "Search MusicBrainz" in library
-    assert 'href="/music/item/{{ item.id }}"' in library
-    assert 'action="/api/music/items/{{ item.id }}/refresh"' in detail
+    assert 'href="{{ base_path }}/music/item/{{ item.id }}"' in library
+    assert 'action="{{ base_path }}/api/music/items/{{ item.id }}/refresh"' in detail
     assert "Track listing" in detail
     assert "musicbrainz.org/release/" in detail

@@ -24,6 +24,7 @@ python -m pytest tests/test_items.py::test_name -v           # single unit test
 python -m pytest tests/e2e/test_scan.py -v -m e2e            # single E2E file
 make css                   # rebuild committed Tailwind stylesheet + restamp SW_VERSION (required after template/JS changes; right on a monorepo branch, refused on a GitHub PR)
 make check-csrf            # lint: raw fetch() calls must send X-CSRF-Token
+make check-base-path       # lint: every emitted URL carries SHELF_BASE_PATH — {{ base_path }}/… in templates, shelfUrl('/…') in JS
 make check-deleted         # lint: reads of items/item_copies must go through items_live/copies_live
 make check-alpine          # lint: templates stay compatible with Alpine CSP build
 make check-sw-version      # lint: SW_VERSION matches the precache digest (generated, never hand-edited)
@@ -95,6 +96,8 @@ or changed route:
 
 `SecurityHeadersMiddleware` → `RateLimitMiddleware` → `AuthMiddleware` → `CSRFMiddleware`
 
+With `SHELF_BASE_PATH` set, `BasePathHeadersMiddleware` (`app/base_path.py`) sits outside all four and prefixes redirect headers; it is not installed at the default.
+
 Rate limiting is disabled by `SHELF_DISABLE_RATE_LIMIT` (the test fixtures rely on
 it). `templates.TemplateResponse` is wrapped in main.py to auto-inject `user` and
 `nav_tabs` into every template context — routes don't pass them explicitly.
@@ -117,6 +120,7 @@ Paths live in `app/config.py` (`DATA_DIR`, `DATABASE_PATH`, `COVERS_DIR`). `from
 
 - **CSP is strict**: no inline `<script>`, no `eval`. All JS lives in `static/` (vendored — never add a CDN reference).
 - **Alpine is the CSP build**: expressions must be simple/parseable; nested or bracketed `x-model` bindings silently drop input — keep bindings flat (`make check-alpine` enforces).
+- **Never emit a root-relative URL** (Shelf may run under `SHELF_BASE_PATH`): `{{ base_path }}/…` in templates, `shelfUrl('/…')` in JS; `make check-base-path` enforces. Server path variables stay prefix-free and the template prepends `{{ base_path }}`.
 - **Raw `fetch()` must send the `X-CSRF-Token` header** (`make check-csrf` enforces; HTMX is configured globally in base.html).
 - Tailwind output (`static/css/app.css`) is built locally and committed — run `make css` after changing templates or classes. It also restamps `static/sw.js`'s `SW_VERSION` from the precache digest, so commit both; never hand-edit that constant. **Committing the build is correct on a monorepo branch and refused on a GitHub pull request** — the `generated-output` job rejects a PR carrying `app.css`, the `SW_VERSION` value or a README badge count, because those collide across a batch of PRs. Work here produces no `pull_request` build, so nothing changes for plan tasks, the absorb branch or a release.
 

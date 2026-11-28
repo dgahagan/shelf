@@ -55,7 +55,7 @@
 
     function loadPayload() {
         if (!payload) {
-            payload = fetch('/api/tags', {
+            payload = fetch(shelfUrl('/api/tags'), {
                 headers: { 'X-CSRF-Token': window.csrfToken ? window.csrfToken() : '' }
             }).then(function (resp) {
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);

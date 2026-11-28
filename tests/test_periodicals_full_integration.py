@@ -30,7 +30,7 @@ def test_periodical_scan_template_requires_confirmation_not_supplement_guessing(
     scan = (root / "fragments" / "periodical_scan_result.html").read_text()
     publication = (root / "periodical_publication.html").read_text()
 
-    assert 'action="/api/periodicals/confirm"' in scan
+    assert 'action="{{ base_path }}/api/periodicals/confirm"' in scan
     assert 'name="issue_number"' in scan
     assert 'name="issue_date"' in scan
     assert 'name="cover_date_label"' in scan

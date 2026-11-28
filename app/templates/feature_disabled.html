@@ -7,7 +7,7 @@
         <p class="text-sm text-shelf-muted mt-2">{{ _('%(feature)s is turned off on this Shelf.', feature=_(feature.label)) }}</p>
         <p class="text-sm text-shelf-muted mt-1">{{ _(feature.description) }}</p>
         {% if is_admin %}
-        <form method="post" action="/api/settings/features/{{ feature.key }}/enable" class="mt-4" data-testid="feature-enable-form">
+        <form method="post" action="{{ base_path }}/api/settings/features/{{ feature.key }}/enable" class="mt-4" data-testid="feature-enable-form">
             <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">{{ _('Turn on %(feature)s', feature=_(feature.label)) }}</button>
         </form>
         {% else %}

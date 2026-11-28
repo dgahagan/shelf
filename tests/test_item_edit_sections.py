@@ -20,7 +20,7 @@ def test_item_edit_is_sectioned_without_changing_the_save_contract():
 
     # This is still the existing item edit form: sectioning must not create
     # another persistence path or make navigation itself save anything.
-    assert 'action="/api/items/{{ item.id }}"' in template
+    assert 'action="{{ base_path }}/api/items/{{ item.id }}"' in template
     assert 'method="post"' in template
     assert 'enctype="multipart/form-data"' in template
     assert 'data-testid="save-btn"' in template
@@ -55,6 +55,6 @@ def test_item_edit_is_sectioned_without_changing_the_save_contract():
     # unsaved metadata remains in the DOM.
     assert 'id="edit-cover-url"' in template
     assert 'data-testid="edit-cover-url-submit"' in template
-    assert 'hx-post="/api/items/{{ item.id }}/cover-url"' in template
+    assert 'hx-post="{{ base_path }}/api/items/{{ item.id }}/cover-url"' in template
     assert 'hx-include="#edit-cover-url"' in template
     assert 'hx-vals=\'{"return_to":"edit"}\'' in template

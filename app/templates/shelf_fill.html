@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ _('Shelf Fill') }} — Shelf{% endblock %}
 {% block head %}
-<script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
-<script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
+<script src="{{ base_path }}/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+<script src="{{ base_path }}/static/vendor/zxing-browser-0.1.5.min.js"></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="shelfFillPage">
@@ -15,7 +15,7 @@
                 <label for="shelf-fill-location" class="block text-sm font-medium text-shelf-muted mb-1">{{ _('Shelf location') }}</label>
                 <select id="shelf-fill-location" name="location_id" form="shelf-fill-form"
                         x-model="location" @change="persistLocation()"
-                        hx-get="/api/shelf-fill/summary" hx-trigger="change"
+                        hx-get="{{ base_path }}/api/shelf-fill/summary" hx-trigger="change"
                         hx-target="#shelf-fill-summary" hx-swap="outerHTML"
                         class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden">
                     <option value="">{{ _('Choose a location…') }}</option>
@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    <form id="shelf-fill-form" hx-post="/api/shelf-fill/scan" hx-target="#shelf-fill-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
+    <form id="shelf-fill-form" hx-post="{{ base_path }}/api/shelf-fill/scan" hx-target="#shelf-fill-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
         {# A default button, visually hidden: Enter in the barcode field submits a
            form implicitly only while it has a single text field or has a
            submit button. The Default tags field is a second text field, so
@@ -102,7 +102,7 @@
     <h2 class="text-lg font-semibold mb-3">{{ _('Filed this session') }}</h2>
     <div id="shelf-fill-results" class="space-y-3"></div>
 </div>
-<script src="/static/js/scanner-engine.js"></script>
-<script src="/static/js/shelf-fill.js"></script>
-<script src="/static/js/tag-suggest.js"></script>
+<script src="{{ base_path }}/static/js/scanner-engine.js"></script>
+<script src="{{ base_path }}/static/js/shelf-fill.js"></script>
+<script src="{{ base_path }}/static/js/tag-suggest.js"></script>
 {% endblock %}

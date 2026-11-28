@@ -109,7 +109,7 @@ function shelfFillPage() {
             formData.set('platform', this.platform);
             formData.set('tags', (document.getElementById('default-tags') || {}).value || '');
             try {
-                var resp = await fetch('/api/shelf-fill/scan', {
+                var resp = await fetch(shelfUrl('/api/shelf-fill/scan'), {
                     method: 'POST',
                     headers: {'X-CSRF-Token': window.csrfToken()},
                     body: formData

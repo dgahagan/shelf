@@ -2,16 +2,16 @@
 {% block title %}{{ item.title }} — Shelf{% endblock %}
 {% block head %}
 {% if feature_on('romm') %}
-<script src="/static/js/romm-item.js"></script>
+<script src="{{ base_path }}/static/js/romm-item.js"></script>
 {% endif %}
 {% if feature_on('komga') %}
-<script src="/static/js/komga-item.js"></script>
+<script src="{{ base_path }}/static/js/komga-item.js"></script>
 {% endif %}
 {% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <!-- Back link -->
-    <a href="{{ back.path }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; {{ _(back.label) }}</a>
+    <a href="{{ base_path }}{{ back.path }}" class="text-shelf-muted hover:text-shelf-text text-sm mb-4 inline-block">&larr; {{ _(back.label) }}</a>
 
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <div class="flex flex-col sm:flex-row gap-6">
@@ -20,7 +20,7 @@
                picker's controls below have a real budget to lay out inside. #}
             <div class="w-48 shrink-0">
                 {% if item.cover_path %}
-                <img src="/{{ item.cover_path }}" alt="{{ item.title }}" class="w-48 rounded-lg shadow-lg">
+                <img src="{{ base_path }}/{{ item.cover_path }}" alt="{{ item.title }}" class="w-48 rounded-lg shadow-lg">
                 {% if item.cover_edition_language == "en" %}<p class="text-xs text-shelf-muted mt-2">{{ _('English cover from another edition') }}</p>{% endif %}
                 {% else %}
                 <div class="h-72 bg-shelf-hover rounded-lg flex flex-col items-center justify-center text-shelf-muted gap-2">
@@ -32,7 +32,7 @@
                     {% if user and user.role in ('admin', 'editor') %}
                     {# Retry ISBN re-runs the automatic download chain, so it means
                        nothing once a cover exists — it alone stays missing-only. #}
-                    <button hx-post="/api/items/{{ item.id }}/retry-cover" hx-swap="none"
+                    <button hx-post="{{ base_path }}/api/items/{{ item.id }}/retry-cover" hx-swap="none"
                             data-after-request="reload"
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
                         {{ _('Retry ISBN') if item.isbn else _('Retry ASIN') }}
@@ -44,7 +44,7 @@
 
                 {% if user and user.role in ('admin', 'editor') %}
                 <div class="flex flex-col gap-1 mt-2" data-testid="cover-controls">
-                    <button hx-get="/api/items/{{ item.id }}/cover-search" hx-target="#cover-candidates" hx-swap="innerHTML"
+                    <button hx-get="{{ base_path }}/api/items/{{ item.id }}/cover-search" hx-target="#cover-candidates" hx-swap="innerHTML"
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
                         {{ _('Find cover') }}
                     </button>
@@ -65,7 +65,7 @@
                 {% if item.authors %}
                 <p class="text-lg mb-4 wrap-break-word">
                     {%- if item_authors %}
-                    {%- for author_id, author_name, author_role in item_authors %}<a href="/browse?author_filter={{ author_id }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ author_name }}</a>{% if author_role %} <span class="text-shelf-muted">&middot; {{ author_role }}</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor -%}
+                    {%- for author_id, author_name, author_role in item_authors %}<a href="{{ base_path }}/browse?author_filter={{ author_id }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ author_name }}</a>{% if author_role %} <span class="text-shelf-muted">&middot; {{ author_role }}</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor -%}
                     {%- else -%}
                     {{ item.authors }}
                     {%- endif %}
@@ -97,7 +97,7 @@
                     {% if item.series_name %}
                     <div><span class="text-shelf-muted">{{ _('Series:') }}</span>
                         {% if feature_on('series') %}
-                        <a href="/series" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.series_name }}</a>{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}
+                        <a href="{{ base_path }}/series" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.series_name }}</a>{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}
                         {% else %}
                         <span data-testid="series-name">{{ item.series_name }}</span>{% if item.series_position is not none %} #{{ item.series_position|int if item.series_position == item.series_position|int else item.series_position }}{% endif %}
                         {% endif %}
@@ -108,7 +108,7 @@
                     </div>
                     {% endif %}
                     {% if item.narrator %}
-                    <div><span class="text-shelf-muted">{{ _('Narrator:') }}</span> <a href="/browse?q={{ item.narrator|urlencode }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.narrator }}</a></div>
+                    <div><span class="text-shelf-muted">{{ _('Narrator:') }}</span> <a href="{{ base_path }}/browse?q={{ item.narrator|urlencode }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.narrator }}</a></div>
                     {% endif %}
                     {% if item.duration_mins %}
                     <div><span class="text-shelf-muted">{{ _('Duration:') }}</span> {{ (item.duration_mins // 60) }}h {{ item.duration_mins % 60 }}m</div>
@@ -148,7 +148,7 @@
 
                 {% if user and user.role in ('admin', 'editor') and item.media_type == 'audiobook' and item.asin %}
                 <div class="mb-6">
-                    <button hx-post="/api/items/{{ item.id }}/fill-from-audible"
+                    <button hx-post="{{ base_path }}/api/items/{{ item.id }}/fill-from-audible"
                             hx-target="#audnexus-fill-result" hx-swap="innerHTML" hx-disabled-elt="this"
                             data-testid="fill-from-audible"
                             class="inline-flex items-center gap-1 px-3 py-1.5 bg-shelf-hover text-shelf-muted rounded-lg text-sm hover:bg-shelf-border hover:text-shelf-text transition-colors disabled:opacity-50">
@@ -163,7 +163,7 @@
                 {# Outside #item-tags: tag mutations swap that fragment
                    whole, and a loader inside it would reload (and briefly
                    duplicate) this panel on every add/remove. #}
-                <div hx-get="/api/related-media/items/{{ item_id }}/panel{% if back.key %}?from={{ back.key }}{% endif %}" hx-trigger="load" hx-swap="outerHTML">
+                <div hx-get="{{ base_path }}/api/related-media/items/{{ item_id }}/panel{% if back.key %}?from={{ back.key }}{% endif %}" hx-trigger="load" hx-swap="outerHTML">
                     <div class="mt-4 text-xs text-shelf-muted">{{ _('Loading related media…') }}</div>
                 </div>
 
@@ -247,7 +247,7 @@
                         {% endif %}
                         </p>
                         {% if user and user.role in ('admin', 'editor') %}
-                        <form action="/api/checkouts/{{ current_checkout.id }}/checkin" method="post" class="mt-2">
+                        <form action="{{ base_path }}/api/checkouts/{{ current_checkout.id }}/checkin" method="post" class="mt-2">
                             <button type="submit" class="px-3 py-1 bg-shelf-success/20 text-shelf-success rounded-sm text-xs hover:bg-shelf-success/30 transition-colors">
                                 {{ _('Check In') }}
                             </button>
@@ -261,7 +261,7 @@
                     </button>
                     <div x-show="showLendForm" x-transition class="mt-2" style="display:none">
                         {% if borrowers %}
-                        <form action="/api/items/{{ item.id }}/checkout" method="post" class="flex flex-wrap gap-2 items-end">
+                        <form action="{{ base_path }}/api/items/{{ item.id }}/checkout" method="post" class="flex flex-wrap gap-2 items-end">
                             <select name="borrower_id" required class="bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text">
                                 {% for b in borrowers %}
                                 <option value="{{ b.id }}">{{ b.name }}</option>
@@ -276,7 +276,7 @@
                             <button type="submit" class="px-3 py-1 bg-shelf-accent text-white rounded-lg text-xs">{{ _('Check Out') }}</button>
                         </form>
                         {% else %}
-                        <p class="text-xs text-shelf-muted">{{ _('Add borrowers in <a href="/settings" class="text-shelf-accent2">Settings</a> first.') }}</p>
+                        <p class="text-xs text-shelf-muted">{{ _('Add borrowers in <a href="%(settings_url)s" class="text-shelf-accent2">Settings</a> first.', settings_url=base_path ~ '/settings') }}</p>
                         {% endif %}
                     </div>
                     {% endif %}
@@ -305,15 +305,15 @@
                 <!-- Actions -->
                 <div class="flex gap-3">
                     {% if user and user.role in ('admin', 'editor') %}
-                    <a href="/item/{{ item.id }}/edit{% if back.key %}?from={{ back.key }}{% endif %}" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
+                    <a href="{{ base_path }}/item/{{ item.id }}/edit{% if back.key %}?from={{ back.key }}{% endif %}" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
                         {{ _('Edit') }}
                     </a>
-                    <a href="/scan?add=manual&from={{ item.id }}" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">
+                    <a href="{{ base_path }}/scan?add=manual&from={{ item.id }}" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">
                         {{ _('Add another like this') }}
                     </a>
                     {% endif %}
                     {% if user and user.role in ('admin', 'editor') %}
-                    <button hx-delete="/api/items/{{ item.id }}" hx-confirm="Move '{{ item.title }}' to Trash?" data-after-request="goto-browse"
+                    <button hx-delete="{{ base_path }}/api/items/{{ item.id }}" hx-confirm="Move '{{ item.title }}' to Trash?" data-after-request="goto-browse"
                             class="px-4 py-2 bg-shelf-error/20 text-shelf-error rounded-lg text-sm hover:bg-shelf-error/30 transition-colors">
                         {{ _('Delete') }}
                     </button>

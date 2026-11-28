@@ -93,7 +93,7 @@ document.addEventListener('alpine:init', function () {
                 var self = this;
                 var body = new URLSearchParams();
                 body.set('watch', this.watched ? '0' : '1');
-                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/watch', {
+                fetch(shelfUrl('/api/series/' + encodeURIComponent(this.seriesName) + '/watch'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.csrfToken() },
                     body: body.toString()
@@ -115,7 +115,7 @@ document.addEventListener('alpine:init', function () {
                 var target = this.complete ? '0' : '1';
                 var body = new URLSearchParams();
                 body.set('complete', target);
-                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/complete', {
+                fetch(shelfUrl('/api/series/' + encodeURIComponent(this.seriesName) + '/complete'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.csrfToken() },
                     body: body.toString()
@@ -160,7 +160,7 @@ document.addEventListener('alpine:init', function () {
                 var self = this;
                 var body = new URLSearchParams();
                 body.set('new_name', this.renameDraft);
-                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/rename', {
+                fetch(shelfUrl('/api/series/' + encodeURIComponent(this.seriesName) + '/rename'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.csrfToken() },
                     body: body.toString()
@@ -199,7 +199,7 @@ document.addEventListener('alpine:init', function () {
                 this.removing = true;
                 this.removeError = '';
                 var self = this;
-                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/remove-all', {
+                fetch(shelfUrl('/api/series/' + encodeURIComponent(this.seriesName) + '/remove-all'), {
                     method: 'POST',
                     headers: { 'X-CSRF-Token': window.csrfToken() }
                 })
@@ -234,7 +234,7 @@ document.addEventListener('alpine:init', function () {
                 // Endpoint takes a Form body (mirrors tags.py), not JSON.
                 var body = new URLSearchParams();
                 body.set('description', this.draft);
-                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/description', {
+                fetch(shelfUrl('/api/series/' + encodeURIComponent(this.seriesName) + '/description'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.csrfToken() },
                     body: body.toString()
@@ -255,7 +255,7 @@ document.addEventListener('alpine:init', function () {
             fetchDescription() {
                 this.fetching = true;
                 var self = this;
-                fetch('/api/series/' + encodeURIComponent(this.seriesName) + '/fetch-description', {
+                fetch(shelfUrl('/api/series/' + encodeURIComponent(this.seriesName) + '/fetch-description'), {
                     method: 'POST',
                     headers: { 'X-CSRF-Token': window.csrfToken() }
                 })
@@ -283,7 +283,7 @@ document.addEventListener('alpine:init', function () {
             check() {
                 this.checking = true; this.error = false;
                 var self = this;
-                fetch('/api/series/check?name=' + encodeURIComponent(this.seriesName))
+                fetch(shelfUrl('/api/series/check?name=' + encodeURIComponent(this.seriesName)))
                     .then(r => r.json())
                     .then(d => {
                         self.checking = false;
@@ -303,7 +303,7 @@ document.addEventListener('alpine:init', function () {
                     .catch(() => { self.checking = false; self.error = t('Check failed'); });
             },
             addToWishlist(b) {
-                fetch('/api/hardcover/add-to-shelf', {
+                fetch(shelfUrl('/api/hardcover/add-to-shelf'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ title: b.title, authors: b.authors, cover_url: b.cover_url, hardcover_book_id: b.hardcover_book_id, series_name: b.series_name, series_position: b.series_position })
@@ -331,7 +331,7 @@ document.addEventListener('alpine:init', function () {
                 var d = rootEl.dataset;
                 var pos = d.seriesPosition === '' ? null : Number(d.seriesPosition);
                 self.busy = true;
-                fetch('/api/hardcover/add-to-shelf', {
+                fetch(shelfUrl('/api/hardcover/add-to-shelf'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ title: d.title, authors: d.authors || null, cover_url: d.coverUrl || null, hardcover_book_id: Number(d.hardcoverBookId), series_name: d.seriesName, series_position: pos })
@@ -396,7 +396,7 @@ document.addEventListener('alpine:init', function () {
             },
             fetchSynopsis() {
                 this.fetching = true; this.failed = false;
-                fetch('/api/items/' + this.itemId + '/fetch-synopsis', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() } })
+                fetch(shelfUrl('/api/items/' + this.itemId + '/fetch-synopsis'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() } })
                     .then(r => r.json())
                     .then(d => { if (d.ok) { location.reload(); } else { this.failed = true; this.fetching = false; } })
                     .catch(() => { this.failed = true; this.fetching = false; });
@@ -414,7 +414,7 @@ document.addEventListener('alpine:init', function () {
             },
             push() {
                 this.hcPushing = true; this.hcResult = false;
-                fetch('/api/hardcover/push/' + this.itemId, { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() } })
+                fetch(shelfUrl('/api/hardcover/push/' + this.itemId), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() } })
                     .then(r => r.json())
                     .then(d => { this.hcResult = d; this.hcPushing = false; if (d.ok) showToast(t('Synced to Hardcover')); })
                     .catch(() => { this.hcResult = { ok: false, message: t('Connection failed') }; this.hcPushing = false; });
@@ -434,7 +434,7 @@ document.addEventListener('alpine:init', function () {
             addBook(ev) {
                 this.adding = true; this.error = false;
                 var d = JSON.parse(ev.currentTarget.dataset.book);
-                fetch('/api/hardcover/add-to-shelf', {
+                fetch(shelfUrl('/api/hardcover/add-to-shelf'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify(d)
@@ -558,7 +558,7 @@ document.addEventListener('alpine:init', function () {
             },
             search(q) {
                 var self = this;
-                fetch('/api/items/suggest?q=' + encodeURIComponent(q), {
+                fetch(shelfUrl('/api/items/suggest?q=' + encodeURIComponent(q)), {
                     headers: { 'X-CSRF-Token': window.csrfToken() }
                 })
                     .then(r => r.json())
@@ -570,7 +570,7 @@ document.addEventListener('alpine:init', function () {
                 this.suggestions = [];
                 this.copyQuery = '';
                 this.copyError = '';
-                fetch('/api/items/' + s.id + '/copy-template', {
+                fetch(shelfUrl('/api/items/' + s.id + '/copy-template'), {
                     headers: { 'X-CSRF-Token': window.csrfToken() }
                 })
                     .then(r => r.json())

@@ -20,8 +20,8 @@
     function loadFonts() {
         if (typeof FontFace === 'undefined' || !document.fonts) return Promise.resolve(false);
         var faces = [
-            new FontFace('Inter', 'url(/static/vendor/inter-4.1-regular.woff2)', { weight: '400' }),
-            new FontFace('Inter', 'url(/static/vendor/inter-4.1-bold.woff2)', { weight: '700' }),
+            new FontFace('Inter', 'url(' + shelfUrl('/static/vendor/inter-4.1-regular.woff2') + ')', { weight: '400' }),
+            new FontFace('Inter', 'url(' + shelfUrl('/static/vendor/inter-4.1-bold.woff2') + ')', { weight: '700' }),
         ];
         return Promise.all(faces.map(function (f) { return f.load(); })).then(function (loaded) {
             loaded.forEach(function (f) { document.fonts.add(f); });

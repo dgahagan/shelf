@@ -66,7 +66,7 @@
             save.disabled = true;
             message(t('Saving…'), false);
             try {
-                await post('/api/locations/' + locationId + '/order', {copy_ids: ids()});
+                await post(shelfUrl('/api/locations/' + locationId + '/order'), {copy_ids: ids()});
                 message(t('Shelf order saved.'), false);
             } catch (error) {
                 message(error.message, true);
@@ -80,7 +80,7 @@
                 button.disabled = true;
                 message(t('Ordering…'), false);
                 try {
-                    await post('/api/locations/' + locationId + '/auto-order', {sort_key: button.dataset.autoOrder});
+                    await post(shelfUrl('/api/locations/' + locationId + '/auto-order'), {sort_key: button.dataset.autoOrder});
                     window.location.reload();
                 } catch (error) {
                     message(error.message, true);

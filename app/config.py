@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -396,6 +397,38 @@ def session_days(raw: str | None) -> int:
 
 
 JWT_EXPIRY_SECONDS = session_days(os.environ.get("SHELF_SESSION_DAYS")) * 24 * 3600
+
+# URL sub-path (#165). Shelf behind a proxy that strips a prefix — Home
+# Assistant ingress, a shared nginx host — still has to *emit* that prefix in
+# every URL it renders. The value is configuration, never request data, and it
+# is refused rather than repaired: it is interpolated into HTML attributes,
+# Alpine expressions, JS strings and response headers, and this alphabet holds
+# no character that can break out of any of them.
+_BASE_PATH_ALLOWED = re.compile(r"[A-Za-z0-9._~/-]*")
+
+
+def base_path(raw: str | None) -> str:
+    """Normalise SHELF_BASE_PATH to "" or "/seg/seg"; raise ValueError on a bad value."""
+    value = (raw or "").strip(" \t\r\n\f\v")
+    if not _BASE_PATH_ALLOWED.fullmatch(value):
+        raise ValueError(
+            f"SHELF_BASE_PATH={raw!r} is not a URL path: use only letters, digits "
+            "and . _ ~ - / (for example /shelf or /api/hassio_ingress/<token>)"
+        )
+    value = value.rstrip("/")
+    if not value:
+        return ""
+    if not value.startswith("/"):
+        value = "/" + value
+    segments = value[1:].split("/")
+    if any(seg in ("", ".", "..") for seg in segments):
+        raise ValueError(
+            f"SHELF_BASE_PATH={raw!r} has an empty, '.' or '..' segment"
+        )
+    return value
+
+
+BASE_PATH = base_path(os.environ.get("SHELF_BASE_PATH"))
 
 # API secret env var overrides (take priority over DB settings when set)
 # Map: settings key -> env var name

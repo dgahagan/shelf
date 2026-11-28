@@ -32,3 +32,7 @@ certificate for just this host, or a tunnel (Cloudflare Tunnel, Tailscale
 Funnel) — see [HTTPS & reverse proxy](../https-and-reverse-proxy.md). The
 self-signed certificate will make a recipient's browser complain, so a real
 cert matters more for sharing than for your own use.
+
+Under a URL sub-path (`SHELF_BASE_PATH`) the copied link includes the
+prefix. Behind Home Assistant ingress it opens only for people signed in to
+Home Assistant, because ingress controls access to everything under it.

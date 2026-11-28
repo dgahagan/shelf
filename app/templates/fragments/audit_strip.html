@@ -34,7 +34,7 @@
     </p>
     <div class="flex flex-wrap items-center gap-2 mt-3">
         <button type="button" data-testid="audit-finish"
-                hx-post="/api/audits/{{ session.id }}/finish" hx-target="#audit-strip" hx-swap="innerHTML"
+                hx-post="{{ base_path }}/api/audits/{{ session.id }}/finish" hx-target="#audit-strip" hx-swap="innerHTML"
                 class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
             {{ _('Finish audit') }}
         </button>
@@ -43,7 +43,7 @@
             {{ _('Leave') }}
         </button>
         {% if feature_on('collector') %}
-        <a href="/audits/{{ session.id }}" class="text-sm text-shelf-accent2 hover:underline" data-testid="audit-report-link">{{ _('Report so far') }}</a>
+        <a href="{{ base_path }}/audits/{{ session.id }}" class="text-sm text-shelf-accent2 hover:underline" data-testid="audit-report-link">{{ _('Report so far') }}</a>
         {% endif %}
     </div>
     {% else %}
@@ -55,13 +55,13 @@
     <p class="text-sm text-shelf-muted">{{ _('Start an audit to get a report. Scans without one still confirm and move items, but record nothing.') }}</p>
     <div class="flex flex-wrap gap-2 mt-3">
         <button type="button" data-testid="audit-start-location"
-                hx-post="/api/audits" hx-include="#location" hx-vals='{"scope": "location"}'
+                hx-post="{{ base_path }}/api/audits" hx-include="#location" hx-vals='{"scope": "location"}'
                 hx-target="#audit-strip" hx-swap="innerHTML"
                 class="px-3 py-1.5 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
             {{ _('Start audit of the selected location') }}
         </button>
         <button type="button" data-testid="audit-start-library"
-                hx-post="/api/audits" hx-vals='{"scope": "library"}'
+                hx-post="{{ base_path }}/api/audits" hx-vals='{"scope": "library"}'
                 hx-target="#audit-strip" hx-swap="innerHTML"
                 class="px-3 py-1.5 border border-shelf-border rounded-lg text-sm hover:bg-shelf-hover transition-colors">
             {{ _('Start whole-library audit') }}
@@ -73,7 +73,7 @@
         <div class="flex flex-wrap gap-2">
             {% for s in open_sessions %}
             <button type="button" data-testid="audit-join-{{ s.id }}"
-                    hx-get="/api/audits/summary" hx-vals='{"audit_id": "{{ s.id }}"}'
+                    hx-get="{{ base_path }}/api/audits/summary" hx-vals='{"audit_id": "{{ s.id }}"}'
                     hx-target="#audit-strip" hx-swap="innerHTML"
                     class="px-3 py-1.5 border border-shelf-border rounded-lg text-sm hover:bg-shelf-hover transition-colors">
                 {{ _('Join %(name)s', name=s.label) }} <span class="text-xs text-shelf-muted">({{ _('%(n)s scanned', n=s.scans) }})</span>

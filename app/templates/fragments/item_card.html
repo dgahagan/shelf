@@ -1,5 +1,5 @@
 <div class="relative">
-<a href="/item/{{ item.id }}" class="group relative block" data-item-id="{{ item.id }}" @click.prevent="openOrToggle({{ item.id }}, '/item/{{ item.id }}', $event)">
+<a href="{{ base_path }}/item/{{ item.id }}" class="group relative block" data-item-id="{{ item.id }}" @click.prevent="openOrToggle({{ item.id }}, '{{ base_path }}/item/{{ item.id }}', $event)">
     <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg"
          data-cover-shape="{{ cover_shape(item.media_type) }}"
          :class="selectedIds.includes({{ item.id }}) ? 'ring-2 ring-shelf-accent' : ''">
@@ -29,7 +29,7 @@
             </div>
         </div>
         {% if item.cover_path %}
-        <img src="/{{ item.cover_path }}" alt="{{ item.title }}" loading="lazy">
+        <img src="{{ base_path }}/{{ item.cover_path }}" alt="{{ item.title }}" loading="lazy">
         {% else %}
         <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-linear-to-br from-shelf-card to-shelf-hover">
             <p class="text-shelf-text text-sm font-medium leading-tight mb-1">{{ item.title[:60] }}</p>
@@ -47,7 +47,7 @@
 </a>
 {% if item.source == 'romm' %}
 {% if feature_on('romm') %}
-<a href="/api/romm/items/{{ item.id }}/open" target="_blank" rel="noopener"
+<a href="{{ base_path }}/api/romm/items/{{ item.id }}/open" target="_blank" rel="noopener"
    x-show="!selectMode" data-testid="romm-card-action"
    class="absolute top-2 left-2 z-20 px-2 py-1 rounded-md bg-black/70 border border-white/20 text-white text-[10px] font-medium hover:bg-black/90 transition-colors"
    title="{{ _('Open in RomM') }}">RomM ↗</a>

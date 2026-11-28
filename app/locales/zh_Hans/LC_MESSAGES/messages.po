@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-27 15:02-0500\n"
+"PO-Revision-Date: 2026-11-27 19:29-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_Hans\n"
 "Language-Team: zh_Hans <LL@li.org>\n"
@@ -20,7 +20,7 @@ msgstr ""
 msgid "Title"
 msgstr "标题"
 
-#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:156
+#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:157
 #: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "作者"
@@ -117,133 +117,133 @@ msgstr "排序"
 msgid "Tag"
 msgstr "标签"
 
-#: app/config.py:15
+#: app/config.py:16
 msgid "Book"
 msgstr "图书"
 
-#: app/config.py:16
+#: app/config.py:17
 msgid "Audiobook"
 msgstr "有声书"
 
-#: app/config.py:17
+#: app/config.py:18
 msgid "eBook"
 msgstr "电子书"
 
-#: app/config.py:18 app/templates/fragments/periodical_scan_result.html:8
+#: app/config.py:19 app/templates/fragments/periodical_scan_result.html:8
 msgid "Magazine"
 msgstr "杂志"
 
-#: app/config.py:19 app/routers/items_catalog.py:523
+#: app/config.py:20 app/routers/items_catalog.py:524
 msgid "DVD / Blu-ray"
 msgstr "DVD / 蓝光"
 
-#: app/config.py:20
+#: app/config.py:21
 msgid "Vinyl"
 msgstr "黑胶唱片"
 
-#: app/config.py:21
+#: app/config.py:22
 msgid "Cassette"
 msgstr "磁带"
 
-#: app/config.py:22
+#: app/config.py:23
 msgid "CD"
 msgstr "CD"
 
-#: app/config.py:23
+#: app/config.py:24
 msgid "Digital Music"
 msgstr "数字音乐"
 
-#: app/config.py:24
+#: app/config.py:25
 msgid "Comic / Graphic Novel"
 msgstr "漫画 / 图像小说"
 
-#: app/config.py:25
+#: app/config.py:26
 msgid "Manga"
 msgstr "日漫"
 
-#: app/config.py:26 app/routers/items_catalog.py:185
+#: app/config.py:27 app/routers/items_catalog.py:186
 #: app/routers/items_common.py:870
 msgid "Video Game"
 msgstr "电子游戏"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:290
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:290
 msgid "Want to Read"
 msgstr "想读"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:294
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:294
 msgid "Reading"
 msgstr "在读"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:298
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:298
 msgid "Read"
 msgstr "已读"
 
-#: app/config.py:54
+#: app/config.py:55
 msgid "read"
 msgstr "已读"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Want to Watch"
 msgstr "想看"
 
-#: app/config.py:55 app/templates/series.html:89
+#: app/config.py:56 app/templates/series.html:89
 msgid "Watching"
 msgstr "在看"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Watched"
 msgstr "已看"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "watched"
 msgstr "已看"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Want to Play"
 msgstr "想玩"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Playing"
 msgstr "在玩"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Played"
 msgstr "已玩"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "played"
 msgstr "已玩"
 
-#: app/config.py:58 app/templates/scan.html:218
+#: app/config.py:59 app/templates/scan.html:218
 msgid "Want to"
 msgstr "想要"
 
-#: app/config.py:58 app/templates/scan.html:219
+#: app/config.py:59 app/templates/scan.html:219
 msgid "In progress"
 msgstr "进行中"
 
-#: app/config.py:58 app/templates/scan.html:220
+#: app/config.py:59 app/templates/scan.html:220
 #: app/templates/stats_wrapup.html:36
 msgid "Finished"
 msgstr "已完成"
 
-#: app/config.py:58
+#: app/config.py:59
 msgid "finished"
 msgstr "已完成"
 
-#: app/config.py:124
+#: app/config.py:125
 msgid "Author(s)"
 msgstr "作者"
 
-#: app/config.py:127
+#: app/config.py:128
 msgid "Developer"
 msgstr "开发商"
 
-#: app/config.py:128
+#: app/config.py:129
 msgid "Director"
 msgstr "导演"
 
-#: app/config.py:131 app/templates/fragments/music_discogs.html:74
+#: app/config.py:132 app/templates/fragments/music_discogs.html:74
 #: app/templates/music.html:22 app/templates/music.html:23
 msgid "Artist"
 msgstr "艺术家"
@@ -349,7 +349,7 @@ msgstr ""
 msgid "Charts and counts about your collection."
 msgstr ""
 
-#: app/features.py:184 app/templates/store.html:20
+#: app/features.py:184 app/templates/store.html:22
 msgid "Store Mode"
 msgstr "书店模式"
 
@@ -633,7 +633,7 @@ msgid "Password must be at least 8 characters"
 msgstr "密码至少需要 8 个字符"
 
 #: app/routers/auth_routes.py:123 app/templates/fragments/account_menu.html:153
-#: app/templates/setup.html:53
+#: app/templates/setup.html:55
 msgid "Passwords do not match"
 msgstr "两次输入的密码不一致"
 
@@ -675,7 +675,7 @@ msgstr "应还日期超出范围"
 
 #: app/routers/checkouts.py:137 app/routers/hardcover.py:250
 #: app/routers/item_copies.py:174 app/routers/item_copies.py:231
-#: app/routers/items_catalog.py:544 app/routers/related_media.py:44
+#: app/routers/items_catalog.py:545 app/routers/related_media.py:44
 #: app/routers/related_media.py:80 app/routers/related_media.py:103
 #: app/routers/related_media.py:120
 msgid "Item not found"
@@ -802,7 +802,7 @@ msgid "Not in your collection"
 msgstr "不在你的藏品中"
 
 #: app/routers/items.py:476 app/routers/items.py:702
-#: app/routers/items_catalog.py:276
+#: app/routers/items_catalog.py:277
 msgid "Invalid ISBN"
 msgstr "无效的 ISBN"
 
@@ -815,11 +815,11 @@ msgstr "查询时网络出错 — 请检查网络连接"
 msgid "Not found — add manually below"
 msgstr "未找到 — 请在下方手动添加"
 
-#: app/routers/items.py:673 app/routers/items_catalog.py:440
+#: app/routers/items.py:673 app/routers/items_catalog.py:441
 msgid "Title is required"
 msgstr "标题为必填项"
 
-#: app/routers/items.py:713 app/routers/items_catalog.py:448
+#: app/routers/items.py:713 app/routers/items_catalog.py:449
 msgid "Invalid publish year"
 msgstr "无效的出版年份"
 
@@ -861,49 +861,49 @@ msgstr ""
 msgid "Cannot merge \"%(title)s\" (#%(id)s): %(reason)s"
 msgstr ""
 
-#: app/routers/items_catalog.py:92
+#: app/routers/items_catalog.py:93
 msgid "Unrecognised game platform — pick one and try again"
 msgstr "无法识别的游戏平台 — 请选择后重试"
 
-#: app/routers/items_catalog.py:109
+#: app/routers/items_catalog.py:110
 msgid "Failed to fetch game details from IGDB"
 msgstr "从 IGDB 获取游戏详情失败"
 
-#: app/routers/items_catalog.py:268
+#: app/routers/items_catalog.py:269
 msgid "Unrecognised media type — pick one and try again"
 msgstr "无法识别的媒体类型 — 请选择后重试"
 
-#: app/routers/items_catalog.py:320
+#: app/routers/items_catalog.py:321
 msgid "Could not fetch metadata for this ISBN"
 msgstr "无法获取该 ISBN 的元数据"
 
-#: app/routers/items_catalog.py:553
+#: app/routers/items_catalog.py:554
 msgid "This item has no ASIN to look up."
 msgstr "此条目没有可查询的 ASIN。"
 
-#: app/routers/items_catalog.py:561
+#: app/routers/items_catalog.py:562
 #, python-format
 msgid "Not in the Audible catalogue for the %(region)s marketplace. Check Settings → Library → Audible marketplace."
 msgstr "%(region)s 商城的 Audible 目录中没有此书。请检查 设置 → 书库 → Audible 商城。"
 
-#: app/routers/items_catalog.py:566
+#: app/routers/items_catalog.py:567
 msgid "The Audible catalogue is rate-limiting requests. Try again in a minute."
 msgstr "Audible 目录正在限制请求频率，请一分钟后重试。"
 
-#: app/routers/items_catalog.py:569
+#: app/routers/items_catalog.py:570
 msgid "Could not reach the Audible catalogue (Audnexus)."
 msgstr "无法连接 Audible 目录（Audnexus）。"
 
-#: app/routers/items_catalog.py:574
+#: app/routers/items_catalog.py:575
 msgid "Nothing to fill — every detail Audible has is already set."
 msgstr "没有可补全的内容——Audible 提供的信息都已填写。"
 
-#: app/routers/items_catalog.py:580
+#: app/routers/items_catalog.py:581
 #, python-format
 msgid "Audible's details could not be saved: %(error)s"
 msgstr "无法保存来自 Audible 的信息：%(error)s"
 
-#: app/routers/items_catalog.py:582
+#: app/routers/items_catalog.py:583
 #, python-format
 msgid "Filled %(count)s field from Audible: %(fields)s."
 msgid_plural "Filled %(count)s fields from Audible: %(fields)s."
@@ -1652,63 +1652,63 @@ msgid "%(num)s scan"
 msgid_plural "%(num)s scans"
 msgstr[0] ""
 
-#: app/templates/base.html:60
+#: app/templates/base.html:62
 msgid "Main menu"
 msgstr "主菜单"
 
-#: app/templates/base.html:109
+#: app/templates/base.html:144
 msgid "Keyboard shortcuts (?)"
 msgstr "键盘快捷键 (?)"
 
-#: app/templates/base.html:115
+#: app/templates/base.html:150
 msgid "Keyboard Shortcuts"
 msgstr "键盘快捷键"
 
-#: app/templates/base.html:122
+#: app/templates/base.html:157
 msgid "Global"
 msgstr "全局"
 
-#: app/templates/base.html:124
+#: app/templates/base.html:159
 msgid "Focus search"
 msgstr "定位到搜索框"
 
-#: app/templates/base.html:125
+#: app/templates/base.html:160
 msgid "Go to Scan"
 msgstr "前往扫码"
 
-#: app/templates/base.html:126
+#: app/templates/base.html:161
 msgid "Go to Browse"
 msgstr "前往浏览"
 
-#: app/templates/base.html:127
+#: app/templates/base.html:162
 msgid "Show shortcuts"
 msgstr "显示快捷键"
 
-#: app/templates/base.html:131
+#: app/templates/base.html:166
 msgid "Browse Page"
 msgstr "浏览页"
 
-#: app/templates/base.html:133
+#: app/templates/base.html:168
 msgid "Toggle grid / list view"
 msgstr "切换网格 / 列表视图"
 
-#: app/templates/base.html:134
+#: app/templates/base.html:169
 msgid "Toggle select mode"
 msgstr "开关选择模式"
 
-#: app/templates/base.html:135
+#: app/templates/base.html:170
 msgid "Toggle filters (mobile)"
 msgstr "显示/隐藏筛选（移动端）"
 
-#: app/templates/base.html:136 app/templates/fragments/item_grid.html:61
+#: app/templates/base.html:171 app/templates/fragments/item_grid.html:61
 msgid "Clear all filters"
 msgstr "清除全部筛选"
 
-#: app/templates/base.html:137
+#: app/templates/base.html:172
 msgid "Exit select / blur search"
 msgstr "退出选择 / 离开搜索框"
 
-#: app/templates/base.html:142
+#: app/templates/base.html:177
 msgid "Shortcuts are disabled when typing in inputs"
 msgstr "在输入框中打字时快捷键不生效"
 
@@ -2568,8 +2568,9 @@ msgid "Check Out"
 msgstr "借出"
 
 #: app/templates/item_detail.html:279
-msgid "Add borrowers in <a href=\"/settings\" class=\"text-shelf-accent2\">Settings</a> first."
-msgstr "请先在<a href=\"/settings\" class=\"text-shelf-accent2\">设置</a>中添加借阅人。"
+#, python-format
+msgid "Add borrowers in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2\">Settings</a> first."
+msgstr "请先在<a href=\"%(settings_url)s\" class=\"text-shelf-accent2\">设置</a>中添加借阅人。"
 
 #: app/templates/item_detail.html:286
 msgid "Checkout history"
@@ -3012,12 +3013,12 @@ msgstr "登录你的书库"
 
 #: app/templates/fragments/account_menu.html:100
 #: app/templates/fragments/settings/users.html:44 app/templates/login.html:24
-#: app/templates/setup.html:27
+#: app/templates/setup.html:29
 msgid "Username"
 msgstr "用户名"
 
 #: app/templates/fragments/account_menu.html:91 app/templates/login.html:30
-#: app/templates/setup.html:40
+#: app/templates/setup.html:42
 msgid "Password"
 msgstr "密码"
 
@@ -3259,7 +3260,7 @@ msgid "No periodical publications are catalogued yet. Scan a 977 barcode from th
 msgstr ""
 
 #: app/templates/scan.html:40 app/templates/shelf_fill.html:67
-#: app/templates/store.html:36
+#: app/templates/store.html:38
 msgid "Scan with Camera"
 msgstr "用摄像头扫码"
 
@@ -3296,8 +3297,9 @@ msgid "Select borrower..."
 msgstr "选择借阅人…"
 
 #: app/templates/scan.html:170
-msgid "No borrowers yet. Add them in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Settings</a>."
-msgstr "还没有借阅人。请在<a href=\"/settings\" class=\"text-shelf-accent2 underline\">设置</a>中添加。"
+#, python-format
+msgid "No borrowers yet. Add them in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 underline\">Settings</a>."
+msgstr "还没有借阅人。请在<a href=\"%(settings_url)s\" class=\"text-shelf-accent2 underline\">设置</a>中添加。"
 
 #: app/templates/scan.html:200 app/templates/shelf_fill.html:54
 msgid "e.g. Cookbook; Signed"
@@ -3540,57 +3542,57 @@ msgstr ""
 msgid "These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card."
 msgstr ""
 
-#: app/templates/setup.html:6
+#: app/templates/setup.html:7
 msgid "Welcome"
 msgstr "初始设置"
 
-#: app/templates/setup.html:15
+#: app/templates/setup.html:17
 msgid "Welcome to Shelf"
 msgstr "欢迎使用 Shelf"
 
-#: app/templates/setup.html:16
+#: app/templates/setup.html:18
 msgid "Create your admin account to get started."
 msgstr "创建管理员账号即可开始使用。"
 
-#: app/templates/fragments/account_menu.html:105 app/templates/setup.html:33
+#: app/templates/fragments/account_menu.html:105 app/templates/setup.html:35
 msgid "Display Name"
 msgstr "显示名称"
 
 #: app/templates/fragments/settings/integrations.html:48
-#: app/templates/setup.html:33
+#: app/templates/setup.html:35
 msgid "(optional)"
 msgstr "（可选）"
 
-#: app/templates/setup.html:35
+#: app/templates/setup.html:37
 msgid "How your name appears in the app"
 msgstr "你的名字在应用中的显示方式"
 
-#: app/templates/fragments/account_menu.html:146 app/templates/setup.html:44
+#: app/templates/fragments/account_menu.html:146 app/templates/setup.html:46
 msgid "Must be at least 8 characters"
 msgstr "至少 8 个字符"
 
-#: app/templates/setup.html:48
+#: app/templates/setup.html:50
 msgid "Confirm Password"
 msgstr "确认密码"
 
-#: app/templates/setup.html:60
+#: app/templates/setup.html:62
 msgid "How much of Shelf do you want to start with?"
 msgstr "想从哪个功能档位开始？"
 
-#: app/templates/setup.html:70
+#: app/templates/setup.html:72
 #, python-format
 msgid "Adds: %(features)s"
 msgstr "新增：%(features)s"
 
-#: app/templates/setup.html:75
+#: app/templates/setup.html:77
 msgid "You can change this any time in Settings → Features."
 msgstr "之后可随时在 设置 → 功能 中修改。"
 
-#: app/templates/setup.html:81
+#: app/templates/setup.html:83
 msgid "Create Account"
 msgstr "创建账号"
 
-#: app/templates/setup.html:85
+#: app/templates/setup.html:87
 msgid "This will be the admin account with full access to your library."
 msgstr "这将是管理员账号，拥有书库的全部权限。"
 
@@ -3782,43 +3784,43 @@ msgstr ""
 msgid "latest %(shown)s of %(total)s"
 msgstr ""
 
-#: app/templates/store.html:6
+#: app/templates/store.html:7
 msgid "Store Mode - Shelf"
 msgstr "书店模式 - Shelf"
 
-#: app/templates/store.html:19
+#: app/templates/store.html:21
 msgid "Back to Shelf"
 msgstr "返回 Shelf"
 
-#: app/templates/store.html:21
+#: app/templates/store.html:23
 msgid "Connection status"
 msgstr "连接状态"
 
-#: app/templates/store.html:27
+#: app/templates/store.html:29
 msgid "Loading library data…"
 msgstr "正在加载书库数据…"
 
-#: app/templates/store.html:42
+#: app/templates/store.html:44
 msgid "Type or paste ISBN..."
 msgstr "输入或粘贴 ISBN..."
 
-#: app/templates/store.html:46
+#: app/templates/store.html:48
 msgid "Check"
 msgstr "查询"
 
-#: app/templates/store.html:61
+#: app/templates/store.html:63
 msgid "Pending sync ("
 msgstr "待同步 ("
 
-#: app/templates/store.html:64
+#: app/templates/store.html:66
 msgid "Sync now"
 msgstr "立即同步"
 
-#: app/templates/store.html:80
+#: app/templates/store.html:82
 msgid "Install Shelf on this device"
 msgstr "在此设备上安装 Shelf"
 
-#: app/templates/store.html:84
+#: app/templates/store.html:86
 msgid "Scans of books not in your library are added to your wishlist automatically when you're back online."
 msgstr "扫到书库中没有的图书，会在恢复联网后自动加入心愿单。"
 
@@ -4900,8 +4902,8 @@ msgstr "（封面来自 Amazon）"
 
 #: app/templates/fragments/scan_result.html:149
 #, python-format
-msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations, or add it below."
-msgstr "%(provider)s 拒绝了已配置的密钥 &mdash; 这可能不是真的查不到。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中检查，或在下方手动添加。"
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations, or add it below."
+msgstr "%(provider)s 拒绝了已配置的密钥 &mdash; 这可能不是真的查不到。请在<a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中检查，或在下方手动添加。"
 
 #: app/templates/fragments/scan_result.html:151
 msgid "A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below."
@@ -4955,13 +4957,13 @@ msgstr "仅以标题添加 &mdash; 标题是游戏机硬件名称，因此没有
 
 #: app/templates/fragments/scan_result.html:279
 #, python-format
-msgid "Added with title only. Add an %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
-msgstr "仅以标题添加。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中添加 %(provider)s API 密钥，以获取简介和封面。"
+msgid "Added with title only. Add an %(provider)s API key in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
+msgstr "仅以标题添加。请在<a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中添加 %(provider)s API 密钥，以获取简介和封面。"
 
 #: app/templates/fragments/scan_result.html:279
 #, python-format
-msgid "Added with title only. Add a %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
-msgstr "仅以标题添加。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中添加 %(provider)s API 密钥，以获取简介和封面。"
+msgid "Added with title only. Add a %(provider)s API key in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
+msgstr "仅以标题添加。请在<a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中添加 %(provider)s API 密钥，以获取简介和封面。"
 
 #: app/templates/fragments/scan_result.html:281
 #, python-format
@@ -5013,8 +5015,8 @@ msgstr "在回收站中"
 
 #: app/templates/fragments/search_status_notice.html:22
 #, python-format
-msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
-msgstr "%(provider)s 拒绝了已配置的密钥 &mdash; 这可能不是真的查不到。请在<a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中检查。"
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
+msgstr "%(provider)s 拒绝了已配置的密钥 &mdash; 这可能不是真的查不到。请在<a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">设置</a> &rarr; 集成中检查。"
 
 #: app/templates/fragments/search_status_notice.html:24
 #, python-format

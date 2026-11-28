@@ -4,7 +4,7 @@
 <div class="max-w-4xl mx-auto" data-location-order data-location-id="{{ location.id }}" data-can-edit="{{ '1' if can_edit else '0' }}">
     <div class="flex flex-wrap items-start justify-between gap-3 mb-6">
         <div>
-            <a href="/settings" class="text-sm text-shelf-muted hover:text-shelf-text">{{ _('← Settings') }}</a>
+            <a href="{{ base_path }}/settings" class="text-sm text-shelf-muted hover:text-shelf-text">{{ _('← Settings') }}</a>
             <h1 class="text-2xl font-bold mt-2">{{ location.name }}</h1>
             <p class="text-sm text-shelf-muted mt-1">{{ ngettext('%(num)s physical copy stored directly here.', '%(num)s physical copies stored directly here.', copies|length) }}</p>
         </div>
@@ -15,7 +15,7 @@
         <h2 class="font-semibold mb-2">{{ _('Inside this location') }}</h2>
         <div class="flex flex-wrap gap-2">
             {% for child in children %}
-            <a href="/locations/{{ child.id }}/arrange" class="px-3 py-1.5 rounded-lg bg-shelf-bg text-sm hover:bg-shelf-hover">{{ child.label or child.name }}</a>
+            <a href="{{ base_path }}/locations/{{ child.id }}/arrange" class="px-3 py-1.5 rounded-lg bg-shelf-bg text-sm hover:bg-shelf-hover">{{ child.label or child.name }}</a>
             {% endfor %}
         </div>
     </div>
@@ -42,12 +42,12 @@
              class="bg-shelf-card rounded-xl border border-shelf-border p-3 flex items-center gap-3">
             {% if can_edit %}<span data-drag-handle class="text-shelf-muted cursor-move select-none" aria-hidden="true">⋮⋮</span>{% endif %}
             {% if copy.cover_path %}
-            <img src="/{{ copy.cover_path }}" alt="" class="w-10 h-14 object-cover rounded-sm bg-shelf-bg shrink-0" data-cover-shape="{{ cover_shape(copy.media_type) }}">
+            <img src="{{ base_path }}/{{ copy.cover_path }}" alt="" class="w-10 h-14 object-cover rounded-sm bg-shelf-bg shrink-0" data-cover-shape="{{ cover_shape(copy.media_type) }}">
             {% else %}
             <div class="w-10 h-14 rounded-sm bg-shelf-bg shrink-0"></div>
             {% endif %}
             <div class="min-w-0 flex-1">
-                <a href="/item/{{ copy.item_id }}" class="font-medium hover:text-shelf-accent2">{{ copy.title }}</a>
+                <a href="{{ base_path }}/item/{{ copy.item_id }}" class="font-medium hover:text-shelf-accent2">{{ copy.title }}</a>
                 <div class="text-sm text-shelf-muted truncate">
                     {% if copy.authors %}{{ copy.authors }}{% endif %}
                     {% if copy.series_name %} · {{ copy.series_name }}{% if copy.series_position is not none %} #{{ copy.series_position|int if copy.series_position == copy.series_position|int else copy.series_position }}{% endif %}{% endif %}
@@ -62,5 +62,5 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center text-shelf-muted">{{ _('No physical copies are stored directly at this location yet.') }}</div>
     {% endif %}
 </div>
-<script src="/static/js/location-order.js" defer></script>
+<script src="{{ base_path }}/static/js/location-order.js" defer></script>
 {% endblock %}

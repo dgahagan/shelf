@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}{{ _('Scan') }} — Shelf{% endblock %}
 {% block head %}
-<script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
-<script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
+<script src="{{ base_path }}/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+<script src="{{ base_path }}/static/vendor/zxing-browser-0.1.5.min.js"></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto" x-data="scanPage" data-off-modes="{{ off_scan_modes }}"
@@ -68,7 +68,7 @@
                 </div>
                 <template x-if="scanResult">
                     <div>
-                        <img x-show="scanResult.cover" :src="scanResult.cover ? '/' + scanResult.cover : null" class="w-16 object-cover rounded-sm mx-auto mb-3" alt="">
+                        <img x-show="scanResult.cover" :src="scanResult.cover ? '/' + scanResult.cover : null" class="w-16 object-cover rounded-sm mx-auto mb-3" alt="">{# base-path: ok — scanResult.cover is the rendered src with one slash stripped by scan.js, so '/' restores the already-prefixed value #}
                         <p class="text-white font-medium text-lg mb-1" x-text="scanResult.title || scanResult.isbn"></p>
                         <p x-show="scanResult.authors" class="text-shelf-muted text-sm mb-2" x-text="scanResult.authors"></p>
                         <span class="text-xs px-3 py-1 rounded-full inline-block mb-4"
@@ -90,7 +90,7 @@
     </div>
 
     <!-- Scan Form -->
-    <form hx-post="/api/scan" hx-target="#scan-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
+    <form hx-post="{{ base_path }}/api/scan" hx-target="#scan-results" hx-swap="afterbegin" data-after-request="clear-scan-input">
         {# The id is what the manual panel's form pulls in with hx-include:
            the panel lives in its own x-data scope, and a cross-scope Alpine
            read under the CSP build fails silently. #}
@@ -167,7 +167,7 @@
                         {% endfor %}
                     </select>
                     {% if not borrowers %}
-                    <p class="text-xs text-shelf-muted mt-1">{{ _('No borrowers yet. Add them in <a href="/settings" class="text-shelf-accent2 underline">Settings</a>.') }}</p>
+                    <p class="text-xs text-shelf-muted mt-1">{{ _('No borrowers yet. Add them in <a href="%(settings_url)s" class="text-shelf-accent2 underline">Settings</a>.', settings_url=base_path ~ '/settings') }}</p>
                     {% endif %}
                 </div>
 
@@ -243,7 +243,7 @@
                 <input type="text" id="title-search-input"
                        :placeholder="titlePlaceholder"
                        class="flex-1 bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2.5 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50"
-                       hx-get="/api/title-search" hx-trigger="keyup changed delay:400ms"
+                       hx-get="{{ base_path }}/api/title-search" hx-trigger="keyup changed delay:400ms"
                        hx-target="#title-search-results" hx-swap="innerHTML"
                        hx-include="#platform, #location, #media-type"
                        name="q">
@@ -293,7 +293,7 @@
     </div>
 </div>
 
-<script src="/static/js/scanner-engine.js"></script>
-<script src="/static/js/scan.js"></script>
-<script src="/static/js/tag-suggest.js"></script>
+<script src="{{ base_path }}/static/js/scanner-engine.js"></script>
+<script src="{{ base_path }}/static/js/scan.js"></script>
+<script src="{{ base_path }}/static/js/tag-suggest.js"></script>
 {% endblock %}

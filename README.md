@@ -3,8 +3,8 @@
 [![Release](https://img.shields.io/github/v/release/dgahagan/shelf)](https://github.com/dgahagan/shelf/releases)
 [![Docker Pulls](https://img.shields.io/docker/pulls/dangahagan/shelf)](https://hub.docker.com/r/dangahagan/shelf)
 [![CI](https://github.com/dgahagan/shelf/actions/workflows/test.yml/badge.svg)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![Unit tests](https://img.shields.io/badge/unit%20tests-6739%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
-[![E2E tests](https://img.shields.io/badge/e2e%20tests-407%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![Unit tests](https://img.shields.io/badge/unit%20tests-6876%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
+[![E2E tests](https://img.shields.io/badge/e2e%20tests-419%20passing-brightgreen)](https://github.com/dgahagan/shelf/actions/workflows/test.yml)
 [![License: AGPL-3.0](https://img.shields.io/github/license/dgahagan/shelf)](LICENSE)
 
 A self-hosted home library catalog with barcode scanning, multi-mode scanning workflows, automatic metadata lookup, cover art, and collection management — all in a single Docker container.
@@ -96,6 +96,7 @@ CERT_SAN=IP:192.168.1.100,DNS:shelf,DNS:localhost
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CERT_SAN` | `DNS:shelf,DNS:localhost` | TLS certificate Subject Alternative Names |
+| `SHELF_BASE_PATH` | *(unset)* | URL sub-path Shelf is served under, behind a proxy that strips it (Home Assistant ingress, several apps on one host), e.g. `/shelf`. Letters, digits and `. _ ~ - /` only; anything else stops the container at startup. See [Serving under a sub-path](docs/configuration.md#serving-under-a-sub-path) |
 | `SECRET_KEY` | *(auto-generated)* | JWT signing key. If unset, generated at `data/signing.key` (0600) on first start; an existing key from before 0.30 is moved there from the database on the first start after upgrading, so sessions survive. Set it explicitly to run several instances against one database |
 | `SHELF_SESSION_DAYS` | `7` | How long a login lasts, in whole days (`1`–`365`). A session in use is renewed past half its length. An invalid value logs a warning and uses 7 |
 | `SHELF_ENCRYPTION_KEY` | *(auto-generated)* | Encryption key for stored API credentials. Auto-generated at `data/encryption.key` if not set — never stored in the DB, so backups contain ciphertext only. Set it (e.g. `openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
@@ -386,6 +387,7 @@ make install-playwright   # downloads headless Chromium
 | `make check-licenses` | License compliance report |
 | `make check-secrets` | Scan tracked files for accidentally hardcoded secrets |
 | `make check-csrf` | Lint that raw `fetch()` calls send the CSRF token |
+| `make check-base-path` | Lint that every URL a template or script emits carries `SHELF_BASE_PATH` |
 | `make check-deleted` | Lint that every read of `items` goes through `items_live`, and every read of `item_copies` through `copies_live` |
 | `make check-alpine` | Verify templates stay compatible with the Alpine CSP build, and that the script load order in `<head>` is intact |
 | `make check-sw-version` | Verify the service worker's cache version matches what it caches |

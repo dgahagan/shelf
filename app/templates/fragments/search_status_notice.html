@@ -19,7 +19,7 @@
    means it answered with a server error (issue #190), so the network is fine
    and the miss may not be genuine. #}
 {% if search_status == 'rejected' %}
-<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations.', provider=search_provider) }}</p>
+<p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="%(settings_url)s" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations.', provider=search_provider, settings_url=base_path ~ '/settings') }}</p>
 {% elif search_status == 'quota' %}
 <p class="text-sm text-shelf-warning" data-search-status="{{ search_status }}">{{ _('%(provider)s is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later.', provider=search_provider) }}</p>
 {% elif search_status == 'offline' %}

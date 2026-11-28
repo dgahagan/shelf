@@ -59,7 +59,7 @@
 
     function refreshData() {
         if (!navigator.onLine) return Promise.resolve();
-        return fetch('/api/store/data', { headers: { 'Accept': 'application/json' } })
+        return fetch(shelfUrl('/api/store/data'), { headers: { 'Accept': 'application/json' } })
             .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
             .then(function (data) {
                 localStorage.setItem(DATA_KEY, JSON.stringify(data));
@@ -143,7 +143,7 @@
     // is written (G137), so the index only ever holds answers.
     function flushRound(batch, totals) {
         var isbns = batch.map(function (e) { return e.isbn; });
-        return fetch('/api/store/queue', {
+        return fetch(shelfUrl('/api/store/queue'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken() },
             body: JSON.stringify({ isbns: isbns }),
@@ -390,7 +390,7 @@
         flushQueue().then(refreshData, refreshData);
 
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').catch(function () {
+            navigator.serviceWorker.register(shelfUrl('/sw.js')).catch(function () {
                 // Untrusted cert or unsupported browser — page still works online
             });
         }

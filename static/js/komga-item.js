@@ -1,10 +1,10 @@
 (function () {
     async function addAction() {
-        const match = window.location.pathname.match(/^\/item\/(\d+)$/);
+        const match = shelfPath().match(/^\/item\/(\d+)$/);
         if (!match) return;
         let data;
         try {
-            const response = await fetch('/api/komga/items/' + match[1] + '/action');
+            const response = await fetch(shelfUrl('/api/komga/items/' + match[1] + '/action'));
             data = await response.json();
         } catch (_) {
             return;

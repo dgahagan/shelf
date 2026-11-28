@@ -49,7 +49,23 @@ class TestStorePage:
     def test_manifest_served(self, admin_client):
         resp = admin_client.get("/static/manifest.webmanifest")
         assert resp.status_code == 200
-        assert '"start_url": "/store"' in resp.text
+        # Relative to the manifest's own URL, so it is right at any sub-path (#165).
+        data = resp.json()
+        assert data["start_url"] == "../store"
+        assert data["scope"] == "../"
+        assert [i["src"] for i in data["icons"]] == [
+            "icons/icon-192.png", "icons/icon-512.png", "icons/icon-512.png",
+        ]
+
+    def test_sw_resolves_urls_against_its_scope(self, client, admin_user):
+        """No quoted root path outside PRECACHE (the stamp input); purge only our caches."""
+        import re
+        text = client.get("/sw.js").text
+        body = re.sub(r"const PRECACHE = \[.*?\];", "", text, flags=re.S)
+        body = re.sub(r"//[^\n]*|/\*.*?\*/", "", body, flags=re.S)
+        assert re.findall(r"(?<!shelfUrl\()'/[a-z]", body) == []
+        assert "self.registration.scope" in text
+        assert "n.indexOf('shelf-store-') === 0 && n !== CACHE" in text
 
 
 def _with_sw_version(version: str) -> str:

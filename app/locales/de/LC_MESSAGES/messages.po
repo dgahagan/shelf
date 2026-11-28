@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-27 15:02-0500\n"
+"PO-Revision-Date: 2026-11-27 19:29-0500\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
 "Language-Team: de <LL@li.org>\n"
@@ -20,7 +20,7 @@ msgstr ""
 msgid "Title"
 msgstr "Titel"
 
-#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:156
+#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:157
 #: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "Autor"
@@ -117,133 +117,133 @@ msgstr "Sortierung"
 msgid "Tag"
 msgstr "Schlagwort"
 
-#: app/config.py:15
+#: app/config.py:16
 msgid "Book"
 msgstr "Buch"
 
-#: app/config.py:16
+#: app/config.py:17
 msgid "Audiobook"
 msgstr "Hörbuch"
 
-#: app/config.py:17
+#: app/config.py:18
 msgid "eBook"
 msgstr "E-Book"
 
-#: app/config.py:18 app/templates/fragments/periodical_scan_result.html:8
+#: app/config.py:19 app/templates/fragments/periodical_scan_result.html:8
 msgid "Magazine"
 msgstr "Zeitschrift"
 
-#: app/config.py:19 app/routers/items_catalog.py:523
+#: app/config.py:20 app/routers/items_catalog.py:524
 msgid "DVD / Blu-ray"
 msgstr "DVD / Blu-ray"
 
-#: app/config.py:20
+#: app/config.py:21
 msgid "Vinyl"
 msgstr "Schallplatte"
 
-#: app/config.py:21
+#: app/config.py:22
 msgid "Cassette"
 msgstr "Kassette"
 
-#: app/config.py:22
+#: app/config.py:23
 msgid "CD"
 msgstr "CD"
 
-#: app/config.py:23
+#: app/config.py:24
 msgid "Digital Music"
 msgstr "Digitale Musik"
 
-#: app/config.py:24
+#: app/config.py:25
 msgid "Comic / Graphic Novel"
 msgstr "Comic / Graphic Novel"
 
-#: app/config.py:25
+#: app/config.py:26
 msgid "Manga"
 msgstr "Manga"
 
-#: app/config.py:26 app/routers/items_catalog.py:185
+#: app/config.py:27 app/routers/items_catalog.py:186
 #: app/routers/items_common.py:870
 msgid "Video Game"
 msgstr "Videospiel"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:290
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:290
 msgid "Want to Read"
 msgstr "Möchte ich lesen"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:294
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:294
 msgid "Reading"
 msgstr "Lese ich gerade"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:298
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:298
 msgid "Read"
 msgstr "Gelesen"
 
-#: app/config.py:54
+#: app/config.py:55
 msgid "read"
 msgstr "gelesen"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Want to Watch"
 msgstr "Möchte ich sehen"
 
-#: app/config.py:55 app/templates/series.html:89
+#: app/config.py:56 app/templates/series.html:89
 msgid "Watching"
 msgstr "Schaue ich gerade"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Watched"
 msgstr "Gesehen"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "watched"
 msgstr "angesehen"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Want to Play"
 msgstr "Möchte ich spielen"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Playing"
 msgstr "Spiele ich gerade"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Played"
 msgstr "Gespielt"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "played"
 msgstr "gespielt"
 
-#: app/config.py:58 app/templates/scan.html:218
+#: app/config.py:59 app/templates/scan.html:218
 msgid "Want to"
 msgstr "Geplant"
 
-#: app/config.py:58 app/templates/scan.html:219
+#: app/config.py:59 app/templates/scan.html:219
 msgid "In progress"
 msgstr "In Arbeit"
 
-#: app/config.py:58 app/templates/scan.html:220
+#: app/config.py:59 app/templates/scan.html:220
 #: app/templates/stats_wrapup.html:36
 msgid "Finished"
 msgstr "Fertig"
 
-#: app/config.py:58
+#: app/config.py:59
 msgid "finished"
 msgstr "fertig"
 
-#: app/config.py:124
+#: app/config.py:125
 msgid "Author(s)"
 msgstr "Autor(en)"
 
-#: app/config.py:127
+#: app/config.py:128
 msgid "Developer"
 msgstr "Entwickler"
 
-#: app/config.py:128
+#: app/config.py:129
 msgid "Director"
 msgstr "Regie"
 
-#: app/config.py:131 app/templates/fragments/music_discogs.html:74
+#: app/config.py:132 app/templates/fragments/music_discogs.html:74
 #: app/templates/music.html:22 app/templates/music.html:23
 msgid "Artist"
 msgstr "Künstler"
@@ -349,7 +349,7 @@ msgstr "Statistik"
 msgid "Charts and counts about your collection."
 msgstr "Diagramme und Zahlen zu deiner Sammlung."
 
-#: app/features.py:184 app/templates/store.html:20
+#: app/features.py:184 app/templates/store.html:22
 msgid "Store Mode"
 msgstr "Laden-Modus"
 
@@ -633,7 +633,7 @@ msgid "Password must be at least 8 characters"
 msgstr "Das Passwort muss mindestens 8 Zeichen haben"
 
 #: app/routers/auth_routes.py:123 app/templates/fragments/account_menu.html:153
-#: app/templates/setup.html:53
+#: app/templates/setup.html:55
 msgid "Passwords do not match"
 msgstr "Die Passwörter stimmen nicht überein"
 
@@ -675,7 +675,7 @@ msgstr "Das Rückgabedatum liegt außerhalb des gültigen Bereichs"
 
 #: app/routers/checkouts.py:137 app/routers/hardcover.py:250
 #: app/routers/item_copies.py:174 app/routers/item_copies.py:231
-#: app/routers/items_catalog.py:544 app/routers/related_media.py:44
+#: app/routers/items_catalog.py:545 app/routers/related_media.py:44
 #: app/routers/related_media.py:80 app/routers/related_media.py:103
 #: app/routers/related_media.py:120
 msgid "Item not found"
@@ -802,7 +802,7 @@ msgid "Not in your collection"
 msgstr "Nicht in deiner Sammlung"
 
 #: app/routers/items.py:476 app/routers/items.py:702
-#: app/routers/items_catalog.py:276
+#: app/routers/items_catalog.py:277
 msgid "Invalid ISBN"
 msgstr "Ungültige ISBN"
 
@@ -815,11 +815,11 @@ msgstr "Netzwerkfehler bei der Suche – prüfe die Verbindung"
 msgid "Not found — add manually below"
 msgstr "Nicht gefunden – unten von Hand eintragen"
 
-#: app/routers/items.py:673 app/routers/items_catalog.py:440
+#: app/routers/items.py:673 app/routers/items_catalog.py:441
 msgid "Title is required"
 msgstr "Ein Titel ist nötig"
 
-#: app/routers/items.py:713 app/routers/items_catalog.py:448
+#: app/routers/items.py:713 app/routers/items_catalog.py:449
 msgid "Invalid publish year"
 msgstr "Ungültiges Erscheinungsjahr"
 
@@ -861,49 +861,49 @@ msgstr "Einträge, die beide verliehen sind, können nicht zusammengeführt werd
 msgid "Cannot merge \"%(title)s\" (#%(id)s): %(reason)s"
 msgstr "„%(title)s“ (#%(id)s) kann nicht zusammengeführt werden: %(reason)s"
 
-#: app/routers/items_catalog.py:92
+#: app/routers/items_catalog.py:93
 msgid "Unrecognised game platform — pick one and try again"
 msgstr "Unbekannte Plattform – wähle eine aus und versuch es noch einmal"
 
-#: app/routers/items_catalog.py:109
+#: app/routers/items_catalog.py:110
 msgid "Failed to fetch game details from IGDB"
 msgstr "Spieldaten konnten nicht von IGDB geladen werden"
 
-#: app/routers/items_catalog.py:268
+#: app/routers/items_catalog.py:269
 msgid "Unrecognised media type — pick one and try again"
 msgstr "Unbekannter Medientyp – wähle einen aus und versuch es noch einmal"
 
-#: app/routers/items_catalog.py:320
+#: app/routers/items_catalog.py:321
 msgid "Could not fetch metadata for this ISBN"
 msgstr "Zu dieser ISBN konnten keine Daten geladen werden"
 
-#: app/routers/items_catalog.py:553
+#: app/routers/items_catalog.py:554
 msgid "This item has no ASIN to look up."
 msgstr "Dieser Eintrag hat keine ASIN zum Nachschlagen."
 
-#: app/routers/items_catalog.py:561
+#: app/routers/items_catalog.py:562
 #, python-format
 msgid "Not in the Audible catalogue for the %(region)s marketplace. Check Settings → Library → Audible marketplace."
 msgstr "Nicht im Audible-Katalog für den Marktplatz %(region)s. Prüfe Einstellungen → Bibliothek → Audible-Marktplatz."
 
-#: app/routers/items_catalog.py:566
+#: app/routers/items_catalog.py:567
 msgid "The Audible catalogue is rate-limiting requests. Try again in a minute."
 msgstr "Der Audible-Katalog begrenzt gerade die Anfragen. Versuche es in einer Minute noch einmal."
 
-#: app/routers/items_catalog.py:569
+#: app/routers/items_catalog.py:570
 msgid "Could not reach the Audible catalogue (Audnexus)."
 msgstr "Der Audible-Katalog (Audnexus) ist nicht erreichbar."
 
-#: app/routers/items_catalog.py:574
+#: app/routers/items_catalog.py:575
 msgid "Nothing to fill — every detail Audible has is already set."
 msgstr "Nichts zu ergänzen – alle Angaben, die Audible hat, sind schon gesetzt."
 
-#: app/routers/items_catalog.py:580
+#: app/routers/items_catalog.py:581
 #, python-format
 msgid "Audible's details could not be saved: %(error)s"
 msgstr "Die Angaben von Audible konnten nicht gespeichert werden: %(error)s"
 
-#: app/routers/items_catalog.py:582
+#: app/routers/items_catalog.py:583
 #, python-format
 msgid "Filled %(count)s field from Audible: %(fields)s."
 msgid_plural "Filled %(count)s fields from Audible: %(fields)s."
@@ -1655,63 +1655,63 @@ msgid_plural "%(num)s scans"
 msgstr[0] "%(num)s Scan"
 msgstr[1] "%(num)s Scans"
 
-#: app/templates/base.html:60
+#: app/templates/base.html:62
 msgid "Main menu"
 msgstr "Hauptmenü"
 
-#: app/templates/base.html:109
+#: app/templates/base.html:144
 msgid "Keyboard shortcuts (?)"
 msgstr "Tastenkürzel (?)"
 
-#: app/templates/base.html:115
+#: app/templates/base.html:150
 msgid "Keyboard Shortcuts"
 msgstr "Tastenkürzel"
 
-#: app/templates/base.html:122
+#: app/templates/base.html:157
 msgid "Global"
 msgstr "Überall"
 
-#: app/templates/base.html:124
+#: app/templates/base.html:159
 msgid "Focus search"
 msgstr "Zur Suche springen"
 
-#: app/templates/base.html:125
+#: app/templates/base.html:160
 msgid "Go to Scan"
 msgstr "Zu Scannen"
 
-#: app/templates/base.html:126
+#: app/templates/base.html:161
 msgid "Go to Browse"
 msgstr "Zur Sammlung"
 
-#: app/templates/base.html:127
+#: app/templates/base.html:162
 msgid "Show shortcuts"
 msgstr "Tastenkürzel anzeigen"
 
-#: app/templates/base.html:131
+#: app/templates/base.html:166
 msgid "Browse Page"
 msgstr "Sammlungsseite"
 
-#: app/templates/base.html:133
+#: app/templates/base.html:168
 msgid "Toggle grid / list view"
 msgstr "Raster- / Listenansicht umschalten"
 
-#: app/templates/base.html:134
+#: app/templates/base.html:169
 msgid "Toggle select mode"
 msgstr "Auswahlmodus umschalten"
 
-#: app/templates/base.html:135
+#: app/templates/base.html:170
 msgid "Toggle filters (mobile)"
 msgstr "Filter ein-/ausblenden (Handy)"
 
-#: app/templates/base.html:136 app/templates/fragments/item_grid.html:61
+#: app/templates/base.html:171 app/templates/fragments/item_grid.html:61
 msgid "Clear all filters"
 msgstr "Alle Filter zurücksetzen"
 
-#: app/templates/base.html:137
+#: app/templates/base.html:172
 msgid "Exit select / blur search"
 msgstr "Auswahl beenden / Suche verlassen"
 
-#: app/templates/base.html:142
+#: app/templates/base.html:177
 msgid "Shortcuts are disabled when typing in inputs"
 msgstr "Beim Tippen in Eingabefeldern sind Tastenkürzel aus"
 
@@ -2571,8 +2571,9 @@ msgid "Check Out"
 msgstr "Verleihen"
 
 #: app/templates/item_detail.html:279
-msgid "Add borrowers in <a href=\"/settings\" class=\"text-shelf-accent2\">Settings</a> first."
-msgstr "Lege zuerst in den <a href=\"/settings\" class=\"text-shelf-accent2\">Einstellungen</a> Personen an."
+#, python-format
+msgid "Add borrowers in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2\">Settings</a> first."
+msgstr "Lege zuerst in den <a href=\"%(settings_url)s\" class=\"text-shelf-accent2\">Einstellungen</a> Personen an."
 
 #: app/templates/item_detail.html:286
 msgid "Checkout history"
@@ -3016,12 +3017,12 @@ msgstr "Bei deiner Bibliothek anmelden"
 
 #: app/templates/fragments/account_menu.html:100
 #: app/templates/fragments/settings/users.html:44 app/templates/login.html:24
-#: app/templates/setup.html:27
+#: app/templates/setup.html:29
 msgid "Username"
 msgstr "Benutzername"
 
 #: app/templates/fragments/account_menu.html:91 app/templates/login.html:30
-#: app/templates/setup.html:40
+#: app/templates/setup.html:42
 msgid "Password"
 msgstr "Passwort"
 
@@ -3265,7 +3266,7 @@ msgid "No periodical publications are catalogued yet. Scan a 977 barcode from th
 msgstr "Noch keine Zeitschriften im Katalog. Scanne auf der Scan-Seite einen 977-Barcode, um anzufangen."
 
 #: app/templates/scan.html:40 app/templates/shelf_fill.html:67
-#: app/templates/store.html:36
+#: app/templates/store.html:38
 msgid "Scan with Camera"
 msgstr "Mit Kamera scannen"
 
@@ -3302,8 +3303,9 @@ msgid "Select borrower..."
 msgstr "Person auswählen …"
 
 #: app/templates/scan.html:170
-msgid "No borrowers yet. Add them in <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Settings</a>."
-msgstr "Noch keine Personen. Lege sie in den <a href=\"/settings\" class=\"text-shelf-accent2 underline\">Einstellungen</a> an."
+#, python-format
+msgid "No borrowers yet. Add them in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 underline\">Settings</a>."
+msgstr "Noch keine Personen. Lege sie in den <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 underline\">Einstellungen</a> an."
 
 #: app/templates/scan.html:200 app/templates/shelf_fill.html:54
 msgid "e.g. Cookbook; Signed"
@@ -3547,57 +3549,57 @@ msgstr "%(n)s angezeigt"
 msgid "These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card."
 msgstr "Diese Bücher gehören noch zu keiner Reihe. Öffne eines und setze auf der Bearbeiten-Seite eine Reihe, damit es in eine Reihenkarte wandert."
 
-#: app/templates/setup.html:6
+#: app/templates/setup.html:7
 msgid "Welcome"
 msgstr "Willkommen"
 
-#: app/templates/setup.html:15
+#: app/templates/setup.html:17
 msgid "Welcome to Shelf"
 msgstr "Willkommen bei Shelf"
 
-#: app/templates/setup.html:16
+#: app/templates/setup.html:18
 msgid "Create your admin account to get started."
 msgstr "Lege zuerst dein Admin-Konto an."
 
-#: app/templates/fragments/account_menu.html:105 app/templates/setup.html:33
+#: app/templates/fragments/account_menu.html:105 app/templates/setup.html:35
 msgid "Display Name"
 msgstr "Anzeigename"
 
 #: app/templates/fragments/settings/integrations.html:48
-#: app/templates/setup.html:33
+#: app/templates/setup.html:35
 msgid "(optional)"
 msgstr "(freiwillig)"
 
-#: app/templates/setup.html:35
+#: app/templates/setup.html:37
 msgid "How your name appears in the app"
 msgstr "So erscheint dein Name in der App"
 
-#: app/templates/fragments/account_menu.html:146 app/templates/setup.html:44
+#: app/templates/fragments/account_menu.html:146 app/templates/setup.html:46
 msgid "Must be at least 8 characters"
 msgstr "Mindestens 8 Zeichen"
 
-#: app/templates/setup.html:48
+#: app/templates/setup.html:50
 msgid "Confirm Password"
 msgstr "Passwort bestätigen"
 
-#: app/templates/setup.html:60
+#: app/templates/setup.html:62
 msgid "How much of Shelf do you want to start with?"
 msgstr "Mit welchem Umfang möchtest du Shelf starten?"
 
-#: app/templates/setup.html:70
+#: app/templates/setup.html:72
 #, python-format
 msgid "Adds: %(features)s"
 msgstr "Dazu: %(features)s"
 
-#: app/templates/setup.html:75
+#: app/templates/setup.html:77
 msgid "You can change this any time in Settings → Features."
 msgstr "Das kannst du jederzeit unter Einstellungen → Funktionen ändern."
 
-#: app/templates/setup.html:81
+#: app/templates/setup.html:83
 msgid "Create Account"
 msgstr "Konto anlegen"
 
-#: app/templates/setup.html:85
+#: app/templates/setup.html:87
 msgid "This will be the admin account with full access to your library."
 msgstr "Das wird das Admin-Konto mit vollem Zugriff auf deine Bibliothek."
 
@@ -3791,43 +3793,43 @@ msgstr "Hinzugefügt im Zeitraum %(period)s"
 msgid "latest %(shown)s of %(total)s"
 msgstr "die neuesten %(shown)s von %(total)s"
 
-#: app/templates/store.html:6
+#: app/templates/store.html:7
 msgid "Store Mode - Shelf"
 msgstr "Laden-Modus – Shelf"
 
-#: app/templates/store.html:19
+#: app/templates/store.html:21
 msgid "Back to Shelf"
 msgstr "Zurück zu Shelf"
 
-#: app/templates/store.html:21
+#: app/templates/store.html:23
 msgid "Connection status"
 msgstr "Verbindungsstatus"
 
-#: app/templates/store.html:27
+#: app/templates/store.html:29
 msgid "Loading library data…"
 msgstr "Bibliotheksdaten werden geladen …"
 
-#: app/templates/store.html:42
+#: app/templates/store.html:44
 msgid "Type or paste ISBN..."
 msgstr "ISBN eintippen oder einfügen …"
 
-#: app/templates/store.html:46
+#: app/templates/store.html:48
 msgid "Check"
 msgstr "Prüfen"
 
-#: app/templates/store.html:61
+#: app/templates/store.html:63
 msgid "Pending sync ("
 msgstr "Ausstehender Abgleich ("
 
-#: app/templates/store.html:64
+#: app/templates/store.html:66
 msgid "Sync now"
 msgstr "Jetzt abgleichen"
 
-#: app/templates/store.html:80
+#: app/templates/store.html:82
 msgid "Install Shelf on this device"
 msgstr "Shelf auf diesem Gerät installieren"
 
-#: app/templates/store.html:84
+#: app/templates/store.html:86
 msgid "Scans of books not in your library are added to your wishlist automatically when you're back online."
 msgstr "Gescannte Bücher, die nicht in deiner Bibliothek sind, kommen automatisch auf die Wunschliste, sobald du wieder online bist."
 
@@ -4914,8 +4916,8 @@ msgstr "(Cover bei Amazon gefunden)"
 
 #: app/templates/fragments/scan_result.html:149
 #, python-format
-msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations, or add it below."
-msgstr "%(provider)s hat den hinterlegten Schlüssel abgelehnt &mdash; der Eintrag fehlt vielleicht gar nicht. Prüfe ihn unter <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste oder trage den Eintrag unten ein."
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations, or add it below."
+msgstr "%(provider)s hat den hinterlegten Schlüssel abgelehnt &mdash; der Eintrag fehlt vielleicht gar nicht. Prüfe ihn unter <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste oder trage den Eintrag unten ein."
 
 #: app/templates/fragments/scan_result.html:151
 msgid "A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below."
@@ -4969,13 +4971,13 @@ msgstr "Nur mit Titel hinzugefügt &mdash; der Titel nennt Konsolen-Hardware, da
 
 #: app/templates/fragments/scan_result.html:279
 #, python-format
-msgid "Added with title only. Add an %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
-msgstr "Nur mit Titel hinzugefügt. Hinterlege den API-Schlüssel für %(provider)s unter <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste, um Beschreibungen und Cover zu bekommen."
+msgid "Added with title only. Add an %(provider)s API key in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
+msgstr "Nur mit Titel hinzugefügt. Hinterlege den API-Schlüssel für %(provider)s unter <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste, um Beschreibungen und Cover zu bekommen."
 
 #: app/templates/fragments/scan_result.html:279
 #, python-format
-msgid "Added with title only. Add a %(provider)s API key in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
-msgstr "Nur mit Titel hinzugefügt. Hinterlege den API-Schlüssel für %(provider)s unter <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste, um Beschreibungen und Cover zu bekommen."
+msgid "Added with title only. Add a %(provider)s API key in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations for descriptions and cover art."
+msgstr "Nur mit Titel hinzugefügt. Hinterlege den API-Schlüssel für %(provider)s unter <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste, um Beschreibungen und Cover zu bekommen."
 
 #: app/templates/fragments/scan_result.html:281
 #, python-format
@@ -5027,8 +5029,8 @@ msgstr "im Papierkorb"
 
 #: app/templates/fragments/search_status_notice.html:22
 #, python-format
-msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
-msgstr "%(provider)s hat den hinterlegten Schlüssel abgelehnt &mdash; der Eintrag fehlt vielleicht gar nicht. Prüfe ihn unter <a href=\"/settings\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste."
+msgid "%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Settings</a> &rarr; Integrations."
+msgstr "%(provider)s hat den hinterlegten Schlüssel abgelehnt &mdash; der Eintrag fehlt vielleicht gar nicht. Prüfe ihn unter <a href=\"%(settings_url)s\" class=\"text-shelf-accent2 hover:text-shelf-accent underline\">Einstellungen</a> &rarr; Dienste."
 
 #: app/templates/fragments/search_status_notice.html:24
 #, python-format

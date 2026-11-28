@@ -2,23 +2,23 @@
     {% set sl = status_labels(item.media_type) %}
     {% set rs = item.reading_status %}
     <div class="flex flex-wrap items-center gap-2">
-        <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"want_to_read"}' hx-target="#reading-status-section" hx-swap="outerHTML"
+        <button hx-post="{{ base_path }}/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"want_to_read"}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                 {% if rs == 'want_to_read' %}bg-shelf-warning/20 text-shelf-warning border-shelf-warning/40{% else %}bg-shelf-card text-shelf-muted border-shelf-border hover:border-shelf-warning/40{% endif %}">
             {{ _(sl.want) }}
         </button>
-        <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"reading"}' hx-target="#reading-status-section" hx-swap="outerHTML"
+        <button hx-post="{{ base_path }}/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"reading"}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                 {% if rs == 'reading' %}bg-shelf-accent/20 text-shelf-accent2 border-shelf-accent/40{% else %}bg-shelf-card text-shelf-muted border-shelf-border hover:border-shelf-accent/40{% endif %}">
             {{ _(sl.doing) }}
         </button>
-        <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"read"}' hx-target="#reading-status-section" hx-swap="outerHTML"
+        <button hx-post="{{ base_path }}/api/items/{{ item.id }}/reading-status" hx-vals='{"status":"read"}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-3 py-1.5 rounded-full text-xs font-medium border transition-colors
                 {% if rs == 'read' %}bg-shelf-success/20 text-shelf-success border-shelf-success/40{% else %}bg-shelf-card text-shelf-muted border-shelf-border hover:border-shelf-success/40{% endif %}">
             {{ _(sl.done) }}
         </button>
         {% if rs %}
-        <button hx-post="/api/items/{{ item.id }}/reading-status" hx-vals='{"status":""}' hx-target="#reading-status-section" hx-swap="outerHTML"
+        <button hx-post="{{ base_path }}/api/items/{{ item.id }}/reading-status" hx-vals='{"status":""}' hx-target="#reading-status-section" hx-swap="outerHTML"
                 class="px-2 py-1.5 rounded-full text-xs text-shelf-muted hover:text-shelf-error transition-colors" title="{{ _('Clear status') }}">
             &times;
         </button>

@@ -2,7 +2,7 @@
 {% block title %}{{ publication.title }} — {{ _('Periodicals') }} — Shelf{% endblock %}
 {% block content %}
 <div>
-    <div class="mb-4"><a href="/periodicals" class="text-sm text-shelf-muted hover:text-shelf-text">&larr; {{ _('Back to periodicals') }}</a></div>
+    <div class="mb-4"><a href="{{ base_path }}/periodicals" class="text-sm text-shelf-muted hover:text-shelf-text">&larr; {{ _('Back to periodicals') }}</a></div>
 
     <div class="bg-shelf-card border border-shelf-border rounded-xl p-6 mb-6">
         <p class="text-xs text-shelf-muted">{{ _('Publication') }}</p>
@@ -22,7 +22,7 @@
     {% if issues %}
     <div class="space-y-2">
         {% for issue in issues %}
-        <a href="/item/{{ issue.item_id }}" class="block bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover">
+        <a href="{{ base_path }}/item/{{ issue.item_id }}" class="block bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <p class="font-medium">{{ issue.title }}</p>

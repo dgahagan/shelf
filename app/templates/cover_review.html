@@ -16,7 +16,7 @@
                 {{ _('Every item with no cover — including discs, games and music, which the automatic sweep cannot reach.') }}
             </p>
         </div>
-        <a href="/settings" class="text-sm text-shelf-muted hover:text-shelf-text transition-colors">
+        <a href="{{ base_path }}/settings" class="text-sm text-shelf-muted hover:text-shelf-text transition-colors">
             {{ _('Back to Settings') }}
         </a>
     </div>
@@ -29,5 +29,5 @@
 
     {% include "fragments/cover_review_item.html" %}
 </div>
-<script src="/static/js/cover-review.js"></script>
+<script src="{{ base_path }}/static/js/cover-review.js"></script>
 {% endblock %}

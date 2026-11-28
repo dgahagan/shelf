@@ -18,7 +18,7 @@
             <p class="text-xs text-shelf-muted/70">{{ game.series_name }}</p>
             {% endif %}
         </div>
-        <form hx-post="/api/games/add" hx-target="#scan-results" hx-swap="afterbegin"
+        <form hx-post="{{ base_path }}/api/games/add" hx-target="#scan-results" hx-swap="afterbegin"
               data-after-request="clear-title-search">
             <input type="hidden" name="igdb_id" value="{{ game.igdb_id }}">
             <input type="hidden" name="platform" class="game-platform-sync" value="{{ platform }}">

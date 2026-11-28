@@ -25,11 +25,11 @@
            skips each when it is absent or disabled, so a host without them
            posts no `tags` and no `reading_status`. #}
         {% if manual_host == 'panel' %}
-        <form hx-post="/api/items/manual" hx-target="#scan-results" hx-swap="afterbegin"
+        <form hx-post="{{ base_path }}/api/items/manual" hx-target="#scan-results" hx-swap="afterbegin"
               hx-include="#scan-mode, #default-tags, #default-reading-status" enctype="multipart/form-data"
               class="space-y-3">
         {% else %}
-        <form hx-post="/api/items/manual" hx-target="closest .scan-result" hx-swap="outerHTML"
+        <form hx-post="{{ base_path }}/api/items/manual" hx-target="closest .scan-result" hx-swap="outerHTML"
               hx-include="#default-tags, #default-reading-status" enctype="multipart/form-data"
               class="border-t border-shelf-border pt-3 space-y-3">
         {% endif %}

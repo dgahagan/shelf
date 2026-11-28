@@ -119,6 +119,6 @@ def test_komga_item_script_is_loaded_only_from_item_detail_template():
     template = Path("app/templates/item_detail.html").read_text()
     components = Path("static/js/components.js").read_text()
 
-    assert '<script src="/static/js/komga-item.js"></script>' in template
+    assert '<script src="{{ base_path }}/static/js/komga-item.js"></script>' in template
     assert "komga-item.js" not in components
     assert "document.createElement('script')" not in components

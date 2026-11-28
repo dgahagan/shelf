@@ -18,7 +18,7 @@
                         <span class="text-shelf-muted text-xs">{{ _('%(n)s outside %(type)s', n=tag.out_of_scope_count, type=(_(media_types[tag.media_type]) if tag.media_type in media_types else tag.media_type)) }}</span>
                         {% endif %}
                     </span>
-                    <form action="/api/tags/{{ tag.id }}/delete" method="post" class="inline"
+                    <form action="{{ base_path }}/api/tags/{{ tag.id }}/delete" method="post" class="inline"
                           data-confirm="Delete tag '{{ tag.name }}' from every item, including items in Trash?">
                         <button type="submit" class="text-shelf-muted hover:text-shelf-error text-sm transition-colors">
                             {{ _('Delete') }}
@@ -27,7 +27,7 @@
                 </div>
                 <details>
                     <summary class="text-shelf-muted text-sm">{{ _('Edit') }}</summary>
-                    <form action="/api/tags/{{ tag.id }}/update" method="post" class="space-y-2">
+                    <form action="{{ base_path }}/api/tags/{{ tag.id }}/update" method="post" class="space-y-2">
                         <div>
                             <label for="tag-name-{{ tag.id }}" class="block text-sm font-medium text-shelf-muted mb-2">{{ _('Name') }}</label>
                             <input id="tag-name-{{ tag.id }}" type="text" name="name" value="{{ tag.name }}" required maxlength="40"

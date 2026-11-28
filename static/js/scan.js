@@ -102,7 +102,7 @@ function scanPage() {
             var request = ++this.recentScansRequest;
             var results = document.getElementById('scan-results');
             var firstResult = results.firstChild;
-            fetch('/api/recent-scans?mode=' + encodeURIComponent(m))
+            fetch(shelfUrl('/api/recent-scans?mode=' + encodeURIComponent(m)))
                 .then(function(r) {
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     return r.text();
@@ -259,7 +259,7 @@ function scanPage() {
                     }
                 }));
             });
-            var form = document.querySelector('form[hx-post="/api/scan"]');
+            var form = document.querySelector('form[hx-post="' + shelfUrl('/api/scan') + '"]');
             if (form) {
                 form.addEventListener('htmx:beforeRequest', function(e) {
                     if (self.mode === 'lend' && !self.borrowerId) {
@@ -288,7 +288,7 @@ function scanPage() {
                     return;
                 }
                 var path = detail.requestConfig && detail.requestConfig.path;
-                if (path === '/api/scan' && self.mode === 'inventory' && self.auditId) {
+                if (path === shelfUrl('/api/scan') && self.mode === 'inventory' && self.auditId) {
                     self.refreshAudit();
                 }
             });
@@ -317,7 +317,7 @@ function scanPage() {
         // Ask the server for the strip: the open session's summary, or the
         // start-or-join view when auditId is empty, finished or deleted.
         refreshAudit() {
-            var url = '/api/audits/summary?audit_id=' + encodeURIComponent(this.auditId || '');
+            var url = shelfUrl('/api/audits/summary?audit_id=' + encodeURIComponent(this.auditId || ''));
             htmx.ajax('GET', url, {target: '#audit-strip', swap: 'innerHTML'});
         },
 
@@ -448,13 +448,13 @@ function scanPage() {
             } catch(e) {}
 
             // Submit scan via fetch so we can capture the result
-            var form = document.querySelector('form[hx-post="/api/scan"]');
+            var form = document.querySelector('form[hx-post="' + shelfUrl('/api/scan') + '"]');
             var formData = new FormData(form);
             formData.set('isbn', code);
             formData.set('mode', this.mode);
             if (this.mode === 'lend') formData.set('borrower_id', this.borrowerId);
             try {
-                var resp = await fetch('/api/scan', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: formData });
+                var resp = await fetch(shelfUrl('/api/scan'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: formData });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 var html = await resp.text();
 

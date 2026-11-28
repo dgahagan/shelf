@@ -1406,6 +1406,15 @@ python -c "from app.services.openlibrary import USER_AGENT as U; assert 'http' i
     an edited title. When you add a key ahead of a fallback, seed a row the
     fallback cannot match.
 
+  **A mutation proves only the line the test executes.** Before reverting a
+  line to watch a test go red, confirm the walk actually reaches it — the same
+  feature often has two entry points. At #165 T13 an unwrapped
+  `htmx.ajax('GET', '/api/search?…')` in `browse.js` left the prefixed E2E
+  run green: the search box submits through its own `hx-get` attribute, and
+  `browse.js:286` runs only on filter-state restore. Mutating the
+  `store.js` data fetch, which Store Mode calls on every load, went red at
+  once. A green mutation is either a dead pin or a dead line; find out which
+  before choosing another target.
 - **Evidence:** `ce1003c`, `8ba5853`, `10caf32` (2026-08-21, issue #27). The
   queue's requeue-filter and head-of-line pins were mutation-checked the same
   way and did fail correctly (`[1,2,3,4] == [1]`, `[20.0] == [5.0]`).
@@ -6708,6 +6717,63 @@ python -m pytest tests/test_entrypoint.py -q -k "other_san_is_preserved or marke
 - **Status:** active. Covered for `check_workflows.py` by
   `tests/test_workflow_lint.py`. A YAML parser would close the class; the
   design keeps the lint stdlib-only, so the fixtures are the backstop.
+
+## G162 — When an E2E test waits on `navigator.serviceWorker.ready`
+
+- **Rule:** bound the wait. `Promise.race([navigator.serviceWorker.ready,
+  new Promise(r => setTimeout(() => r('not ready'), 10000))])`, then assert
+  on the value. Never await `ready` bare inside `page.evaluate`.
+- **Why:** `ready` resolves only once a worker *activates*. A worker whose
+  `install` fails (a precache URL that 404s, a script error) never activates,
+  so `ready` never settles and the test hangs until the outer timeout kills
+  the run — a hang, not a red, and it takes the rest of the session's tests
+  with it. The failure this wait exists to catch is exactly the one that
+  makes it hang.
+- **Evidence:** 2026-11-27, #165 T13 mutation pass: resolving `sw.js`'s
+  PRECACHE against the wrong base made `install` fail, and
+  `tests/e2e/test_base_path.py` hung past a 900 s `timeout` instead of
+  failing. Bounded in the same task; the mutation then failed in 21 s.
+- **Verify:** `grep -rn "serviceWorker.ready" tests/e2e/` — every hit sits
+  inside a `Promise.race` with a timer, or is the argument of
+  `wait_for_function`, which carries Playwright's own timeout
+  (`test_store_pwa.py:66`). A bare `page.evaluate` has none.
+- **Status:** active. Lint candidate (the grep above is mechanical).
+
+## G163 — When the same cookie name can exist at two paths
+
+- **Rule:** read `access_token` / `csrf_token` through `app.auth.read_cookie`,
+  never `request.cookies`. Under `SHELF_BASE_PATH` it takes the **first**
+  occurrence in the raw `Cookie` header.
+- **Why:** a browser sends the longer-path cookie first (RFC 6265 §5.4);
+  Starlette's parser keeps the **last** of a repeated name. With the session
+  scoped to the sub-path, any same-name cookie at `Path=/` — another app's on
+  the shared host, or this Shelf's from before the setting — shadowed the
+  real one: login looped back to the login page, and a foreign `csrf_token`
+  answered 403 to every POST, because the page script reads the first cookie.
+- **Evidence:** 2026-11-27, #165 diff review F1; fixed in `7d2ec4a`. The
+  unit test of the day had pinned the wrong reading as intended.
+- **Verify:** `grep -rn "request.cookies" app/` — only `read_cookie` itself.
+  A unit test with an httpx jar sends one cookie per name; set the raw
+  `Cookie` header, or use a browser (`test_foreign_root_cookie_does_not_shadow_the_session`).
+- **Status:** active. Lint candidate (the grep above is mechanical).
+
+## G164 — When an E2E test proves a URL the app builds
+
+- **Rule:** drive the control that owns the request and watch for it
+  (`page.expect_request`, or the prefix wrapper's report). A `fetch` or
+  `new EventSource` the test writes inside `page.evaluate` is setup, never
+  the assertion's subject. And observe every phase: a recorder reset after
+  a shared setup step erases what the setup requested — assert it before
+  the reset.
+- **Why:** a test that builds the URL itself passes whatever the app does;
+  a reset that follows setup makes setup's escapes invisible.
+- **Evidence:** 2026-11-27, #165 diff review: the valuation `EventSource`
+  unwrapped stayed green (claude E6), and a root-relative stylesheet in
+  `setup.html` left all nine prefixed walks green (codex M2). Both fixed in
+  `7d2ec4a`; both mutations then went red.
+- **Verify:** judgement — in a new E2E test, name the app code that builds
+  the URL under test.
+- **Status:** active.
 
 ## Graveyard
 

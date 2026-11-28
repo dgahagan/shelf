@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 {% block title %}{{ _('Labels') }} — Shelf{% endblock %}
 {% block head %}
-<script src="/static/js/labels.js" defer></script>
+<script src="{{ base_path }}/static/js/labels.js" defer></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-6">
     <div>
         <h1 class="text-2xl font-bold">{{ _('Copy labels') }}</h1>
         <p class="text-sm text-shelf-muted mt-1">
-            {{ _('Give copies a barcode, then print the codes on label sheets. Scanning a label in any Scan mode acts on that exact copy. Codes read') }} <span class="font-mono">{{ code_prefix }}-000001</span>{% if user and user.role == 'admin' %} &mdash; <a href="/settings" class="text-shelf-accent2 hover:underline">{{ _('change the prefix in Settings') }}</a>{% endif %}.
+            {{ _('Give copies a barcode, then print the codes on label sheets. Scanning a label in any Scan mode acts on that exact copy. Codes read') }} <span class="font-mono">{{ code_prefix }}-000001</span>{% if user and user.role == 'admin' %} &mdash; <a href="{{ base_path }}/settings" class="text-shelf-accent2 hover:underline">{{ _('change the prefix in Settings') }}</a>{% endif %}.
         </p>
     </div>
 
@@ -16,10 +16,10 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-1">{{ _('Assign codes') }}</h2>
         <p class="text-sm text-shelf-muted mb-4">{{ _('Copies that already have a barcode — generated or typed — are never changed.') }}</p>
-        <form id="labels-assign-form" hx-post="/api/labels/assign" hx-target="#labels-result" hx-swap="innerHTML" class="space-y-4" data-labels-scope-form>
+        <form id="labels-assign-form" hx-post="{{ base_path }}/api/labels/assign" hx-target="#labels-result" hx-swap="innerHTML" class="space-y-4" data-labels-scope-form>
             {% with prefix='assign' %}{% include "fragments/labels_scope.html" %}{% endwith %}
             <p id="labels-count" class="text-sm text-shelf-muted" data-testid="labels-count"
-               hx-get="/api/labels/count" hx-include="closest form" hx-trigger="load, change from:closest form, labels-assigned from:body"
+               hx-get="{{ base_path }}/api/labels/count" hx-include="closest form" hx-trigger="load, change from:closest form, labels-assigned from:body"
                hx-target="this" hx-swap="innerHTML"></p>
             <button type="submit" data-testid="labels-assign"
                     class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">
@@ -33,7 +33,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-6">
         <h2 class="text-lg font-semibold mb-1">{{ _('Print labels') }}</h2>
         <p class="text-sm text-shelf-muted mb-4">{{ _('Prints copies that have a barcode. To print one item\'s labels, use "Print labels for this item" on its page.') }}</p>
-        <form method="get" action="/labels/sheet" class="space-y-4" data-labels-scope-form data-labels-print-form>
+        <form method="get" action="{{ base_path }}/labels/sheet" class="space-y-4" data-labels-scope-form data-labels-print-form>
             {% with prefix='print' %}{% include "fragments/labels_scope.html" %}{% endwith %}
             <div class="flex flex-wrap gap-4">
                 <div>

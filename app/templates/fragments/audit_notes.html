@@ -1,6 +1,6 @@
 {# An audit's notes block. The text is user input and reaches the page only
    through autoescaping (G58). On a refusal the submitted text is kept. #}
-<form hx-post="/api/audits/{{ session.id }}/notes" hx-target="#audit-notes" hx-swap="innerHTML" class="space-y-2">
+<form hx-post="{{ base_path }}/api/audits/{{ session.id }}/notes" hx-target="#audit-notes" hx-swap="innerHTML" class="space-y-2">
     <label for="audit-notes-input" class="block text-sm font-medium text-shelf-muted">{{ _('Notes') }}</label>
     <textarea id="audit-notes-input" name="notes" rows="3" data-testid="audit-notes"
               class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">{{ notes_value }}</textarea>

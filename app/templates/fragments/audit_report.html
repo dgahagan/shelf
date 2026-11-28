@@ -10,7 +10,7 @@
 {% macro row(line, note='') %}
 <div class="flex items-center gap-3 py-2" data-audit-row>
     {% if line.item_id and line.cover_path %}
-    <img src="/covers/{{ line.item_id }}.jpg" class="w-8 h-12 object-cover rounded-sm shrink-0" alt="" data-cover-shape="{{ cover_shape(line.media_type) }}">
+    <img src="{{ base_path }}/covers/{{ line.item_id }}.jpg" class="w-8 h-12 object-cover rounded-sm shrink-0" alt="" data-cover-shape="{{ cover_shape(line.media_type) }}">
     {% else %}
     <div class="w-8 h-12 bg-shelf-hover rounded-sm shrink-0 flex items-center justify-center text-shelf-muted text-xs" data-cover-shape="{{ cover_shape(line.media_type) }}">?</div>
     {% endif %}
@@ -19,7 +19,7 @@
             {% if line.deleted %}
             <span class="text-shelf-muted">{{ _('a record since deleted') }}</span>
             {% elif line.item_id %}
-            <a href="/item/{{ line.item_id }}" class="hover:text-shelf-accent2">{{ line.title or "Untitled" }}</a>
+            <a href="{{ base_path }}/item/{{ line.item_id }}" class="hover:text-shelf-accent2">{{ line.title or "Untitled" }}</a>
             {% else %}
             <span>{{ line.title or line.raw_code }}</span>
             {% endif %}
@@ -74,7 +74,7 @@
 <div class="flex flex-col gap-1 shrink-0">
     {% for c in line.item_copies %}
     <button type="button" data-testid="audit-resolve-{{ c.copy_id }}"
-            hx-post="/api/audits/{{ session.id }}/resolve"
+            hx-post="{{ base_path }}/api/audits/{{ session.id }}/resolve"
             hx-vals='{"entry_id": {{ line.entry_id }}, "copy_id": {{ c.copy_id }}}'
             hx-target="#audit-report" hx-swap="innerHTML"
             class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">
@@ -93,7 +93,7 @@
 {% set all_missing = [] %}
 {% for line in report.missing %}{% for c in line.copies %}{% set _ = all_missing.append(c.copy_id) %}{% endfor %}{% endfor %}
 {% if all_missing and not session.location_deleted %}
-<form hx-post="/api/audits/{{ session.id }}/missing" hx-target="#audit-report" hx-swap="innerHTML" class="mb-2 text-right">
+<form hx-post="{{ base_path }}/api/audits/{{ session.id }}/missing" hx-target="#audit-report" hx-swap="innerHTML" class="mb-2 text-right">
     {% for cid in all_missing %}<input type="hidden" name="copy_id" value="{{ cid }}">{% endfor %}
     <button type="submit" data-testid="audit-mark-all" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Mark all missing') }}</button>
 </form>
@@ -102,7 +102,7 @@
 {% for line in report.missing %}
 {% call row(line, '' if line.copies else 'no copy record') %}
 {% if line.copies and not session.location_deleted %}
-<form hx-post="/api/audits/{{ session.id }}/missing" hx-target="#audit-report" hx-swap="innerHTML" class="shrink-0">
+<form hx-post="{{ base_path }}/api/audits/{{ session.id }}/missing" hx-target="#audit-report" hx-swap="innerHTML" class="shrink-0">
     {% for c in line.copies %}<input type="hidden" name="copy_id" value="{{ c.copy_id }}">{% endfor %}
     <button type="submit" data-testid="audit-mark-missing-{{ line.item_id }}-{{ line.location_id }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Mark missing') }}</button>
 </form>
@@ -115,9 +115,9 @@
 {% for line in report.unexpected %}
 {% call row(line, '' if line.deleted else '(in Trash)' if line.kind == 'in_trash' else 'not in the collection') %}
 {% if line.kind == 'not_owned' %}
-<a href="/scan?mode=add&amp;code={{ line.raw_code|urlencode }}" data-testid="audit-add-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Add') }}</a>
+<a href="{{ base_path }}/scan?mode=add&amp;code={{ line.raw_code|urlencode }}" data-testid="audit-add-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Add') }}</a>
 {% elif line.kind == 'in_trash' and not line.deleted %}
-<a href="/trash" data-testid="audit-trash-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Open Trash') }}</a>
+<a href="{{ base_path }}/trash" data-testid="audit-trash-{{ loop.index }}" class="px-2 py-1 rounded-lg border border-shelf-border text-xs hover:bg-shelf-hover transition-colors">{{ _('Open Trash') }}</a>
 {% endif %}
 {% endcall %}
 {% endfor %}

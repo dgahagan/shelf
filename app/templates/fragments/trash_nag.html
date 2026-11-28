@@ -9,10 +9,10 @@
         <span class="flex-1 min-w-0">
             {{ ngettext('%(num)s item in Trash has been there longer than your retention window.', '%(num)s items in Trash have been there longer than your retention window.', trash_nag.count) }}
         </span>
-        <a href="/trash?expired=1" data-testid="trash-nag-link"
+        <a href="{{ base_path }}/trash?expired=1" data-testid="trash-nag-link"
            class="underline hover:text-white">{{ _('Review expired items') }}</a>
         <button type="button" data-testid="trash-nag-dismiss"
-                hx-post="/api/trash/nag/dismiss"
+                hx-post="{{ base_path }}/api/trash/nag/dismiss"
                 hx-target="#trash-nag" hx-swap="outerHTML"
                 class="px-3 py-1 rounded-lg border border-shelf-warning/40 text-xs hover:bg-shelf-warning/20 transition-colors">
             {{ _('Dismiss') }}

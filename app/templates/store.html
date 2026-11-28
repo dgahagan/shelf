@@ -2,21 +2,23 @@
 <html lang="{{ current_locale() }}" class="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="shelf-base" content="{{ base_path }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ _('Store Mode - Shelf') }}</title>
-    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="manifest" href="{{ base_path }}/static/manifest.webmanifest">
     <meta name="theme-color" content="#0f1117">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-    <link rel="stylesheet" href="/static/css/app.css">
-    <script src="/static/vendor/html5-qrcode-2.3.8.min.js"></script>
-    <script src="/static/vendor/zxing-browser-0.1.5.min.js"></script>
-    <script src="/static/js/scanner-engine.js"></script>
-    <script defer src="/static/js/store.js"></script>
+    <link rel="apple-touch-icon" href="{{ base_path }}/static/icons/icon-192.png">
+    <link rel="stylesheet" href="{{ base_path }}/static/css/app.css">
+    <script src="{{ base_path }}/static/js/shelf-url.js"></script>
+    <script src="{{ base_path }}/static/vendor/html5-qrcode-2.3.8.min.js"></script>
+    <script src="{{ base_path }}/static/vendor/zxing-browser-0.1.5.min.js"></script>
+    <script src="{{ base_path }}/static/js/scanner-engine.js"></script>
+    <script defer src="{{ base_path }}/static/js/store.js"></script>
 </head>
 <body class="min-h-screen">
     <header class="bg-shelf-card border-b border-shelf-border sticky top-0 z-50">
         <div class="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
-            <a href="/browse" class="text-sm text-shelf-muted hover:text-white transition-colors">&larr; {{ _('Back to Shelf') }}</a>
+            <a href="{{ base_path }}/browse" class="text-sm text-shelf-muted hover:text-white transition-colors">&larr; {{ _('Back to Shelf') }}</a>
             <h1 class="text-lg font-bold text-shelf-accent2 tracking-tight">{{ _('Store Mode') }}</h1>
             <span id="net-dot" class="w-2.5 h-2.5 rounded-full bg-shelf-muted" title="{{ _('Connection status') }}"></span>
         </div>

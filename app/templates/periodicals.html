@@ -9,14 +9,14 @@
             <p class="text-sm text-shelf-muted mt-1">{{ _('Browse magazines by continuing publication while keeping every concrete issue as its own Shelf item.') }}</p>
         </div>
         {% if user and user.role in ('admin', 'editor') %}
-        <a href="/scan" class="px-3 py-2 bg-shelf-accent text-white rounded-lg text-sm">{{ _('Scan an issue') }}</a>
+        <a href="{{ base_path }}/scan" class="px-3 py-2 bg-shelf-accent text-white rounded-lg text-sm">{{ _('Scan an issue') }}</a>
         {% endif %}
     </div>
 
     {% if publications %}
     <div class="space-y-2">
         {% for publication in publications %}
-        <a href="/periodicals/{{ publication.id }}" class="block bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover">
+        <a href="{{ base_path }}/periodicals/{{ publication.id }}" class="block bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover">
             <div class="flex items-center justify-between gap-4">
                 <div>
                     <h2 class="font-semibold">{{ publication.title }}</h2>

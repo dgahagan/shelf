@@ -8,9 +8,9 @@
     <p class="text-sm text-shelf-muted mt-1">{% if has_hardcover %}{{ _("Your library grouped by series. Gaps are inferred from position numbers; use <span class=\"text-shelf-accent2\">Check completeness</span> to compare against Hardcover's full series listing.") }}{% else %}{{ _('Your library grouped by series. Gaps are inferred from position numbers.') }}{% endif %}</p>
     {% if radar %}
     <div class="flex flex-wrap items-center gap-3 mt-3">
-        <a href="/upcoming" class="text-sm text-shelf-accent2 hover:underline" data-testid="upcoming-link">{{ _('Upcoming releases') }}</a>
+        <a href="{{ base_path }}/upcoming" class="text-sm text-shelf-accent2 hover:underline" data-testid="upcoming-link">{{ _('Upcoming releases') }}</a>
         {% if can_edit %}
-        <button type="button" hx-post="/api/series/watch-all" hx-swap="none"
+        <button type="button" hx-post="{{ base_path }}/api/series/watch-all" hx-swap="none"
                 class="px-3 py-1.5 bg-shelf-card border border-shelf-border text-shelf-muted rounded-lg text-xs hover:text-shelf-text hover:border-shelf-accent/50 transition-colors"
                 data-testid="watch-all">{{ _('Watch all complete series') }}</button>
         {% endif %}
@@ -210,10 +210,10 @@
         <!-- Owned/wishlisted volumes -->
         <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
             {% for item in s['items'] %}
-            <a href="/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
+            <a href="{{ base_path }}/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
                 <div class="relative">
                     {% if item.cover_path %}
-                    <img src="/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">
+                    <img src="{{ base_path }}/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">
                     {% else %}
                     <div class="w-20 bg-shelf-hover rounded-lg border border-shelf-border flex items-center justify-center p-1" style="height:120px">
                         <span class="text-[10px] text-shelf-muted text-center leading-tight">{{ item.title[:40] }}</span>
@@ -291,10 +291,10 @@
         <p class="text-sm text-shelf-muted mt-2">{{ _("These books don't belong to a series yet. Open one and set a series on its edit page to move it into a series card.") }}</p>
         <div class="flex gap-3 mt-4 overflow-x-auto pb-2">
             {% for item in unassigned_items %}
-            <a href="/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
+            <a href="{{ base_path }}/item/{{ item.id }}?from=series" class="shrink-0 w-20 group" title="{{ item.title }}">
                 <div class="relative">
                     {% if item.cover_path %}
-                    <img src="/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">
+                    <img src="{{ base_path }}/{{ item.cover_path }}" alt="" class="w-20 h-30 object-cover rounded-lg border border-shelf-border group-hover:border-shelf-accent/50" style="height:120px" loading="lazy">
                     {% else %}
                     <div class="w-20 bg-shelf-hover rounded-lg border border-shelf-border flex items-center justify-center p-1" style="height:120px">
                         <span class="text-[10px] text-shelf-muted text-center leading-tight">{{ item.title[:40] }}</span>

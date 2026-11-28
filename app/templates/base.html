@@ -4,11 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Shelf{% endblock %}</title>
-    <link rel="manifest" href="/static/manifest.webmanifest">
+    <link rel="manifest" href="{{ base_path }}/static/manifest.webmanifest">
     <meta name="theme-color" content="#0f1117">
-    <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
-    <link rel="stylesheet" href="/static/css/app.css">
-    <script src="/static/vendor/htmx-2.0.4.min.js"></script>
+    <meta name="shelf-base" content="{{ base_path }}">
+    <link rel="apple-touch-icon" href="{{ base_path }}/static/icons/icon-192.png">
+    <link rel="stylesheet" href="{{ base_path }}/static/css/app.css">
+    <script src="{{ base_path }}/static/vendor/htmx-2.0.4.min.js"></script>
     <!--
       Script order below is load-bearing, and `make check-alpine` enforces it.
 
@@ -31,13 +32,14 @@
       from here with <body> unparsed, finds no x-data root, and leaves the
       whole page unbound.
     -->
-    <script src="/static/js/component-load-guard.js"></script>
-    <script src="/static/js/components.js"></script>
-    <script src="/static/js/components-library.js"></script>
-    <script src="/static/js/components-item.js"></script>
-    <script src="/static/js/components-settings.js"></script>
-    <script defer src="/static/vendor/alpinejs-csp-3.15.9.min.js"></script>
-    <script src="/static/js/csrf.js"></script>
+    <script src="{{ base_path }}/static/js/shelf-url.js"></script>
+    <script src="{{ base_path }}/static/js/component-load-guard.js"></script>
+    <script src="{{ base_path }}/static/js/components.js"></script>
+    <script src="{{ base_path }}/static/js/components-library.js"></script>
+    <script src="{{ base_path }}/static/js/components-item.js"></script>
+    <script src="{{ base_path }}/static/js/components-settings.js"></script>
+    <script defer src="{{ base_path }}/static/vendor/alpinejs-csp-3.15.9.min.js"></script>
+    <script src="{{ base_path }}/static/js/csrf.js"></script>
     {% block head %}{% endblock %}
 </head>
 <body class="min-h-screen">
@@ -49,7 +51,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14">
                 <div class="flex items-center gap-1">
-                    <a href="/" class="text-lg font-bold text-shelf-accent2 tracking-tight mr-6">Shelf</a>
+                    <a href="{{ base_path }}/" class="text-lg font-bold text-shelf-accent2 tracking-tight mr-6">Shelf</a>
 
                     <!-- Disclosure menu: below lg the full tab row overflows
                          the bar, so it collapses to this. Settings lives under
@@ -76,7 +78,7 @@
                             {% set links = [entry.tab] %}
                             {% endif %}
                             {% for tab in links %}
-                            <a href="{{ tab.path }}" data-nav-menu-tab="{{ tab.key }}" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                            <a href="{{ base_path }}{{ tab.path }}" data-nav-menu-tab="{{ tab.key }}" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                                 {{ _(tab.label) }}
                             </a>
                             {% endfor %}
@@ -101,7 +103,7 @@
                             <div x-show="open" x-cloak data-nav-group-panel="{{ entry.key }}" role="menu"
                                  class="absolute left-0 top-full mt-2 w-48 bg-shelf-card border border-shelf-border rounded-lg shadow-xl py-1 z-50">
                                 {% for tab in entry.members %}
-                                <a href="{{ tab.path }}" data-nav-tab="{{ tab.key }}" role="menuitem" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                                <a href="{{ base_path }}{{ tab.path }}" data-nav-tab="{{ tab.key }}" role="menuitem" class="block px-4 py-2 text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                                     {{ _(tab.label) }}
                                 </a>
                                 {% endfor %}
@@ -109,7 +111,7 @@
                         </div>
                         {% else %}
                         {% set tab = entry.tab %}
-                        <a href="{{ tab.path }}" data-nav-tab="{{ tab.key }}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
+                        <a href="{{ base_path }}{{ tab.path }}" data-nav-tab="{{ tab.key }}" class="px-3 py-2 rounded-md text-sm font-medium {% if request.url.path == tab.path %}bg-shelf-hover text-white{% else %}text-shelf-muted hover:text-white hover:bg-shelf-hover{% endif %} transition-colors">
                             {{ _(tab.label) }}
                         </a>
                         {% endif %}
@@ -180,6 +182,6 @@
     {# Translations for t() in app.js: inert JSON under the CSP, the same
        pattern as browse.html's filter config. Empty in English. #}
     <script type="application/json" id="i18n-catalog">{{ js_catalog() | tojson }}</script>
-    <script src="/static/js/app.js"></script>
+    <script src="{{ base_path }}/static/js/app.js"></script>
 </body>
 </html>

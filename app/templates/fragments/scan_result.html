@@ -17,7 +17,7 @@
         {# #90: a form that *continues* a scan posts back to whichever route
            rendered this card, so Shelf Fill keeps its own post-processing
            (placement) instead of losing it to /api/scan. #}
-        <form hx-post="{{ scan_action|default('/api/scan', true) }}" hx-target="closest .scan-result" hx-swap="outerHTML">
+        <form hx-post="{{ base_path }}{{ scan_action|default('/api/scan', true) }}" hx-target="closest .scan-result" hx-swap="outerHTML">{# base-path: ok — scan_action stays prefix-free (shelf_fill.py passes its own); base_path is prepended outside it #}
             <input type="hidden" name="isbn" value="{{ isbn }}">
             <input type="hidden" name="legacy_confirm_isbn13" value="{{ candidate.isbn13 }}">
             <input type="hidden" name="media_type" value="{{ media_type }}">
@@ -64,7 +64,7 @@
     <p class="text-sm text-shelf-error mt-3">{{ _('Enter exactly five digits.') }}</p>
     {% endif %}
 
-    <form hx-post="{{ scan_action|default('/api/scan', true) }}" hx-target="closest .scan-result" hx-swap="outerHTML" class="mt-4 flex gap-2">
+    <form hx-post="{{ base_path }}{{ scan_action|default('/api/scan', true) }}" hx-target="closest .scan-result" hx-swap="outerHTML" class="mt-4 flex gap-2">{# base-path: ok — scan_action stays prefix-free (shelf_fill.py passes its own); base_path is prepended outside it #}
         <input type="hidden" name="isbn" value="{{ isbn }}">
         <input type="hidden" name="media_type" value="{{ media_type }}">
         <input type="hidden" name="mode" value="{{ mode }}">
@@ -113,7 +113,7 @@
      data-scan-status="{{ status }}" x-data="manualAddForm">
     <div class="flex items-center gap-4 mb-3">
         {% if preview_cover %}
-        <img src="/{{ preview_cover }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
+        <img src="{{ base_path }}/{{ preview_cover }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
         {% else %}
         <div class="w-12 h-16 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-muted text-lg">?</div>
         {% endif %}
@@ -146,7 +146,7 @@
                cascade can be starved and a rate-limited UPC product lookup
                lands here too. #}
             {% if enrich_status == 'rejected' %}
-            <p class="text-xs text-shelf-warning mt-1">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations, or add it below.', provider=enrich_provider) }}</p>
+            <p class="text-xs text-shelf-warning mt-1">{{ _('%(provider)s rejected the configured key &mdash; this may not be a genuine miss. Check it in <a href="%(settings_url)s" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations, or add it below.', provider=enrich_provider, settings_url=base_path ~ '/settings') }}</p>
             {% elif enrich_status == 'quota' %}
             <p class="text-xs text-shelf-warning mt-1">{{ _('A metadata source is rate-limiting us right now &mdash; this may not be a genuine miss. Try again later, or add it below.') }}</p>
             {% elif enrich_status == 'unavailable' %}
@@ -169,7 +169,7 @@
     {% set attempt = 0 %}
     {% include "fragments/cover_thumb.html" %}
     {% elif cover_path %}
-    <img src="/{{ cover_path }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
+    <img src="{{ base_path }}/{{ cover_path }}" class="w-12 h-16 object-cover rounded-sm" alt="" data-scan-cover data-cover-shape="{{ cover_shape(media_type) }}">
     {% else %}
     <div class="w-12 h-16 bg-shelf-hover rounded-sm flex items-center justify-center text-shelf-muted text-xs">
         {% if status == 'added' or status == 'wishlisted' or status == 'promoted' or status == 'restored' %}+
@@ -185,7 +185,7 @@
         {% if status in ('added', 'wishlisted', 'duplicate', 'checked_out', 'returned', 'moved', 'confirmed', 'relocated', 'found', 'marked_read', 'already_checked_out', 'not_checked_out', 'elsewhere', 'promoted', 'restored', 'in_trash') %}
         <p class="font-medium truncate" data-scan-title>
             {# An item in Trash has no page to link to — /item/<id> bounces to Browse. #}
-            {% if item_id and status != 'in_trash' %}<a href="/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a>
+            {% if item_id and status != 'in_trash' %}<a href="{{ base_path }}/item/{{ item_id }}" class="hover:text-shelf-accent2">{{ title }}</a>
             {% else %}{{ title }}{% endif %}
         </p>
         {% if authors %}<p class="text-sm text-shelf-muted truncate" data-scan-authors>{{ authors }}</p>{% endif %}
@@ -199,14 +199,14 @@
            route would answer "already live". Send the user to Trash, where
            copies are restored one by one. #}
         <p class="text-xs text-shelf-muted" data-scan-detail>{{ _('Copy %(n)s is in Trash &mdash; restore it from the Trash page', n=copy_number) }}</p>
-        <a href="/trash" data-testid="scan-copy-in-trash"
+        <a href="{{ base_path }}/trash" data-testid="scan-copy-in-trash"
            class="inline-block mt-2 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">{{ _('Open Trash') }}</a>
         {% elif status == 'in_trash' %}
         <p class="text-xs text-shelf-muted" data-scan-detail>{{ _('In Trash since %(date)s &mdash; restore it to lend, move or rate it', date=(deleted_at or '')[:10]) }}</p>
         {# A side-trip to a fixed route, so it does not read scan_action
            (G103): it restores this item whatever mode the scan ran in, and the
            route answers with the `restored` card in this card's place. #}
-        <form hx-post="/api/trash/items/{{ item_id }}/restore"
+        <form hx-post="{{ base_path }}/api/trash/items/{{ item_id }}/restore"
               hx-target="closest .scan-result" hx-swap="outerHTML" class="mt-2">
             <input type="hidden" name="isbn" value="{{ isbn }}">
             <input type="hidden" name="mode" value="{{ mode }}">
@@ -276,7 +276,7 @@
         {% if enrich_status == 'no_lookup' %}
         <p class="text-xs text-shelf-warning mt-1">{{ _("Added with title only &mdash; the title names console hardware, so no film or game lookup was attempted. Change the type on the item if that's wrong.") }}</p>
         {% elif enrich_status == 'no_credential' %}
-        <p class="text-xs text-shelf-warning mt-1">{% if enrich_provider == 'IGDB' %}{{ _('Added with title only. Add an %(provider)s API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.', provider=enrich_provider) }}{% else %}{{ _('Added with title only. Add a %(provider)s API key in <a href="/settings" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.', provider=enrich_provider) }}{% endif %}</p>
+        <p class="text-xs text-shelf-warning mt-1">{% if enrich_provider == 'IGDB' %}{{ _('Added with title only. Add an %(provider)s API key in <a href="%(settings_url)s" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.', provider=enrich_provider, settings_url=base_path ~ '/settings') }}{% else %}{{ _('Added with title only. Add a %(provider)s API key in <a href="%(settings_url)s" class="text-shelf-accent2 hover:text-shelf-accent underline">Settings</a> &rarr; Integrations for descriptions and cover art.', provider=enrich_provider, settings_url=base_path ~ '/settings') }}{% endif %}</p>
         {% elif enrich_status == 'rejected' %}
         <p class="text-xs text-shelf-warning mt-1">{{ _('Added with title only &mdash; %(provider)s rejected the configured key.', provider=enrich_provider) }}</p>
         {% elif enrich_status == 'quota' %}

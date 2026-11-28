@@ -12,7 +12,7 @@
             </p>
         </div>
         <button type="button"
-                hx-get="/api/periodicals/assist/select?volume_id={{ candidate.google_volume_id|urlencode }}&raw_barcode={{ raw_barcode|urlencode }}&location_id={{ location_id or '' }}&mode={{ mode|urlencode }}"
+                hx-get="{{ base_path }}/api/periodicals/assist/select?volume_id={{ candidate.google_volume_id|urlencode }}&raw_barcode={{ raw_barcode|urlencode }}&location_id={{ location_id or '' }}&mode={{ mode|urlencode }}"
                 hx-target="closest .scan-result"
                 hx-swap="outerHTML"
                 class="shrink-0 px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30">

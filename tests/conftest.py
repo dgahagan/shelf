@@ -45,6 +45,13 @@ def _isolated_db(tmp_path, monkeypatch):
     monkeypatch.setattr("app.config.DATABASE_PATH", db_path)
     monkeypatch.setattr("app.config.COVERS_DIR", covers_dir)
 
+    # URL sub-path (#165): a developer shell that exports SHELF_BASE_PATH must
+    # not turn the unit suite into a prefixed run (G13). `with_base_path` is the
+    # one place a test flips it.
+    monkeypatch.setattr("app.config.BASE_PATH", "")
+    if "app.main" in sys.modules:
+        monkeypatch.setitem(sys.modules["app.main"].templates.env.globals, "base_path", "")
+
     # Modules already imported that did `from app.config import COVERS_DIR`
     # bound the real /data path at import time and never see the line above
     # (app.services.archive documents the same trap), so redirect their
@@ -139,6 +146,21 @@ def _isolated_db(tmp_path, monkeypatch):
     # second connection while a test's db fixture connection is already open.
     from app.auth import get_secret_key
     get_secret_key()
+
+
+@pytest.fixture
+def with_base_path(monkeypatch):
+    """Serve this test's pages as if under the sub-path /ingress/test (#165).
+
+    `app.main` is imported *before* the value flips: the header-rewrite stage
+    is installed at import when a base path is set, and an import made here
+    with the value already set would install it for the rest of this xdist
+    worker (triage R3). Templates and cookies read the value at call time.
+    """
+    import app.main as main_mod
+    monkeypatch.setattr("app.config.BASE_PATH", "/ingress/test")
+    monkeypatch.setitem(main_mod.templates.env.globals, "base_path", "/ingress/test")
+    return "/ingress/test"
 
 
 @pytest.fixture

@@ -192,7 +192,8 @@ def upc_stub():
 
 @contextlib.contextmanager
 def _boot_server(
-    env_extra: "dict[str, str] | None" = None, *, clear_env=(), upc_stub_url: str
+    env_extra: "dict[str, str] | None" = None, *, clear_env=(), upc_stub_url: str,
+    target: str = "app.main:app", mount: str = "",
 ):
     """Start a uvicorn process against a fresh temp DB; yield its coordinates.
 
@@ -207,6 +208,10 @@ def _boot_server(
     supply it from the `upc_stub` fixture, so every E2E server gets the stub
     without any test opting in; a third caller that forgets it fails here
     rather than silently running against the live trial API (#123).
+
+    `target` and `mount` serve the app behind a prefix-stripping wrapper
+    (`tests/e2e/prefix_app.py`, #165): the readiness poll and the yielded
+    `url` carry the mount, and `origin` is the bare scheme-host-port.
     """
     tmpdir = tempfile.mkdtemp(prefix="shelf_e2e_")
     data_dir = Path(tmpdir) / "data"
@@ -214,7 +219,9 @@ def _boot_server(
     (data_dir / "covers").mkdir()
 
     port = _free_port()
-    env = {k: v for k, v in os.environ.items() if k not in set(clear_env)}
+    # An exported SHELF_BASE_PATH would turn every E2E server into a
+    # prefixed one (#165, G50); `env_extra` can still set it.
+    env = {k: v for k, v in os.environ.items() if k not in set(clear_env) | {"SHELF_BASE_PATH"}}
     env.update({
         "DATA_DIR": str(data_dir),
         "SHELF_DISABLE_RATE_LIMIT": "1",
@@ -243,7 +250,7 @@ def _boot_server(
     proc = subprocess.Popen(
         [
             sys.executable, "-m", "uvicorn",
-            "app.main:app",
+            target,
             "--host", "127.0.0.1",
             "--port", str(port),
         ],
@@ -254,10 +261,11 @@ def _boot_server(
     )
     output = _OutputCapture(proc.stdout)
 
-    base_url = f"http://127.0.0.1:{port}"
+    origin = f"http://127.0.0.1:{port}"
+    base_url = origin + mount
     try:
         _wait_for_server(f"{base_url}/health", output=output)
-        yield {"url": base_url, "data_dir": data_dir, "port": port}
+        yield {"url": base_url, "origin": origin, "data_dir": data_dir, "port": port}
     finally:
         proc.terminate()
         try:

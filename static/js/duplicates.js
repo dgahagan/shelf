@@ -131,7 +131,7 @@
             var row = button.closest('[data-dup-dismissed]');
             if (!row) return;
             var pair = (button.getAttribute('data-pair') || '').split(',').map(function (s) { return parseInt(s, 10); });
-            run(row, deleteJson('/api/duplicates/dismiss', {item_ids: pair}), function () {
+            run(row, deleteJson(shelfUrl('/api/duplicates/dismiss'), {item_ids: pair}), function () {
                 window.location.reload();
             });
             return;
@@ -142,7 +142,7 @@
         var ids = memberIds(group);
 
         if (action === 'dismiss') {
-            run(group, postJson('/api/duplicates/dismiss', {item_ids: ids}), function () { removeGroup(group); });
+            run(group, postJson(shelfUrl('/api/duplicates/dismiss'), {item_ids: ids}), function () { removeGroup(group); });
         } else if (action === 'merge') {
             var kept = keptCard(group);
             if (!kept) return;
@@ -151,7 +151,7 @@
             var title = kept.getAttribute('data-title') || '';
             if (!window.confirm(t('Merge {count} records into "{title}"? The merged-away records cannot be restored.')
                     .replace('{count}', ids.length).replace('{title}', title))) return;
-            run(group, postJson('/api/items/merge', {keep_id: keepId, merge_ids: mergeIds}), function () { removeGroup(group); });
+            run(group, postJson(shelfUrl('/api/items/merge'), {keep_id: keepId, merge_ids: mergeIds}), function () { removeGroup(group); });
         }
     });
 

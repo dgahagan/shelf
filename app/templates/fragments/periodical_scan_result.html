@@ -18,7 +18,7 @@
         <summary class="cursor-pointer text-sm font-medium text-shelf-accent2">{{ _('Wrong or missing publication? Search magazines') }}</summary>
         <p class="text-xs text-shelf-muted mt-2">{{ _('Search Google Books by magazine title. Selecting a candidate only fills this card; nothing is added until you confirm below.') }}</p>
         <form class="flex gap-2 mt-3"
-              hx-get="/api/periodicals/assist/search"
+              hx-get="{{ base_path }}/api/periodicals/assist/search"
               hx-target="#periodical-assisted-{{ raw_barcode }}"
               hx-swap="innerHTML">
             <input type="hidden" name="raw_barcode" value="{{ raw_barcode }}">
@@ -34,7 +34,7 @@
         </div>
     </details>
 
-    <form method="post" action="/api/periodicals/confirm" class="space-y-3">
+    <form method="post" action="{{ base_path }}/api/periodicals/confirm" class="space-y-3">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <input type="hidden" name="raw_barcode" value="{{ raw_barcode }}">
         <input type="hidden" name="publisher" value="{{ candidate.publisher or '' }}">

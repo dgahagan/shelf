@@ -8,7 +8,7 @@
     <div class="bg-shelf-card rounded-xl border border-shelf-border p-8 text-center">
         {% if user and user.role == 'admin' %}
         <p class="text-shelf-muted mb-3">{{ _('Connect your Hardcover account to search for books and add them to your wishlist.') }}</p>
-        <a href="/settings" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors inline-block">{{ _('Go to Settings') }}</a>
+        <a href="{{ base_path }}/settings" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors inline-block">{{ _('Go to Settings') }}</a>
         {% else %}
         <p class="text-shelf-muted">{{ _('Hardcover is not connected. Ask an administrator to configure the integration.') }}</p>
         {% endif %}
@@ -19,7 +19,7 @@
         <div class="mb-6">
             <input type="search" name="q" placeholder="{{ _('Search by title or author...') }}"
                    x-model="query"
-                   hx-get="/api/hardcover/search" hx-trigger="keyup changed delay:400ms" hx-target="#hc-results"
+                   hx-get="{{ base_path }}/api/hardcover/search" hx-trigger="keyup changed delay:400ms" hx-target="#hc-results"
                    hx-include="this"
                    class="w-full bg-shelf-card border border-shelf-border rounded-lg px-4 py-3 text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50 text-lg"
                    autofocus>

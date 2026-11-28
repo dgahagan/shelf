@@ -553,7 +553,7 @@ msgstr "Die Funktionseinstellungen konnten nicht neu geladen werden"
 msgid "Could not save feature settings"
 msgstr "Die Funktionseinstellungen konnten nicht gespeichert werden"
 
-#: static/js/components.js:82
+#: static/js/components.js:109
 msgid "Could not change the language"
 msgstr "Die Sprache konnte nicht geändert werden"
 

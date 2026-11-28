@@ -14,7 +14,7 @@
                 {% if movie.description %} &middot; {{ movie.description[:80] }}{% if movie.description|length > 80 %}...{% endif %}{% endif %}
             </p>
         </div>
-        <form hx-post="/api/dvds/add" hx-target="#scan-results" hx-swap="afterbegin"
+        <form hx-post="{{ base_path }}/api/dvds/add" hx-target="#scan-results" hx-swap="afterbegin"
               data-after-request="clear-title-search">
             <input type="hidden" name="tmdb_id" value="{{ movie.tmdb_id }}">
             <input type="hidden" name="title" value="{{ movie.title }}">

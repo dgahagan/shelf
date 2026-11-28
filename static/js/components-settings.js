@@ -73,7 +73,7 @@ document.addEventListener('alpine:init', function () {
             testNotify() {
                 if (!this.notifySaved && !this.$refs.notifyUrl.value) return;
                 this.ntTesting = true; this.ntStatus = false;
-                fetch('/api/settings/notify-test', {
+                fetch(shelfUrl('/api/settings/notify-test'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ url: this.$refs.notifyUrl.value, format: this.$refs.notifyFormat.value })
@@ -124,7 +124,7 @@ document.addEventListener('alpine:init', function () {
             testAbs() {
                 if (!this.absTestReady) return;
                 this.absTesting = true; this.absStatus = false;
-                fetch('/api/sync/audiobookshelf/test', {
+                fetch(shelfUrl('/api/sync/audiobookshelf/test'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ url: this.absUrl, token: this.absToken })
@@ -137,7 +137,7 @@ document.addEventListener('alpine:init', function () {
                 this.syncing = true; this.result = false; this.syncCurrent = 0; this.syncTotal = 0;
                 this.syncLastTitle = ''; this.syncLog = []; this.showSyncLog = false;
                 var self = this;
-                var es = new EventSource('/api/sync/audiobookshelf/stream');
+                var es = new EventSource(shelfUrl('/api/sync/audiobookshelf/stream'));
                 es.onmessage = function (e) {
                     var d = JSON.parse(e.data);
                     if (d.type === 'progress') {
@@ -169,14 +169,14 @@ document.addEventListener('alpine:init', function () {
             },
             loadLibs() {
                 this.libsLoading = true; this.libsError = false;
-                fetch('/api/sync/audiobookshelf/libraries')
+                fetch(shelfUrl('/api/sync/audiobookshelf/libraries'))
                     .then(r => r.json())
                     .then(d => { if (d.ok) { this.libs = d.libraries } else { this.libsError = d.message } this.libsLoading = false })
                     .catch(() => { this.libsError = t('Failed to load libraries'); this.libsLoading = false });
             },
             saveLibs() {
                 this.libsSaving = true;
-                fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
+                fetch(shelfUrl('/api/sync/audiobookshelf/libraries'), {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
                     .then(r => r.json())
                     .then(d => { this.libsSaving = false; if (d.ok) showToast('Library selection saved'); else showToast(d.message || 'Save failed', 'error') })
                     .catch(() => { this.libsSaving = false; showToast('Save failed', 'error') });
@@ -185,8 +185,8 @@ document.addEventListener('alpine:init', function () {
                 if (!confirm(t('Move all Shelf items that came from unchecked libraries to Trash? Audiobookshelf itself is not touched, and you can restore them from Trash. A later sync does not re-import an item that is in Trash: restore it first.'))) return;
                 this.cleaning = true; this.cleanResult = false;
                 // Persist the current selection first so the cleanup matches what's on screen
-                fetch('/api/sync/audiobookshelf/libraries', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
-                    .then(() => fetch('/api/sync/audiobookshelf/libraries/cleanup', {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}}))
+                fetch(shelfUrl('/api/sync/audiobookshelf/libraries'), {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()}, body: JSON.stringify({excluded: this.excludedIds()})})
+                    .then(() => fetch(shelfUrl('/api/sync/audiobookshelf/libraries/cleanup'), {method: 'POST', headers: {'X-CSRF-Token': window.csrfToken()}}))
                     .then(r => r.json())
                     .then(d => { this.cleaning = false; this.cleanResult = d; if (d.ok) showToast('Moved ' + d.deleted + ' items to Trash') })
                     .catch(() => { this.cleaning = false; showToast('Cleanup failed', 'error') });
@@ -225,7 +225,7 @@ document.addEventListener('alpine:init', function () {
             testHc() {
                 if (!this.hcToken && !this.hcSaved) return;
                 this.hcTesting = true; this.hcStatus = false;
-                fetch('/api/hardcover/test', {
+                fetch(shelfUrl('/api/hardcover/test'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ token: this.hcToken })
@@ -237,7 +237,7 @@ document.addEventListener('alpine:init', function () {
                 this.exporting = true; this.exportResult = false;
                 this.exportCurrent = 0; this.exportTotal = 0;
                 this.exportLastTitle = ''; this.exportLog = []; this.showExportLog = false;
-                var url = '/api/hardcover/export/stream?owned=' + (this.exportOwnedOnly ? '1' : '');
+                var url = shelfUrl('/api/hardcover/export/stream?owned=' + (this.exportOwnedOnly ? '1' : ''));
                 var self = this;
                 var es = new EventSource(url);
                 es.onmessage = function (e) {
@@ -261,7 +261,7 @@ document.addEventListener('alpine:init', function () {
                 this.importLastTitle = ''; this.importLog = []; this.showImportLog = false;
                 var flags = { 1: this.hcFilter1, 2: this.hcFilter2, 3: this.hcFilter3, 4: this.hcFilter4, 5: this.hcFilter5 };
                 var sel = Object.entries(flags).filter(e => e[1]).map(e => e[0]).join(',');
-                var url = '/api/hardcover/import/stream?statuses=' + sel + '&overwrite=' + this.importOverwrite;
+                var url = shelfUrl('/api/hardcover/import/stream?statuses=' + sel + '&overwrite=' + this.importOverwrite);
                 var self = this;
                 var es = new EventSource(url);
                 es.onmessage = function (e) {
@@ -297,7 +297,7 @@ document.addEventListener('alpine:init', function () {
             testKey() {
                 if (!this.apiKey && !this.apiKeySaved) return;
                 this.testing = true; this.keyStatus = false;
-                fetch('/api/valuate/test-key', {
+                fetch(shelfUrl('/api/valuate/test-key'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ key: this.apiKey })
@@ -309,7 +309,7 @@ document.addEventListener('alpine:init', function () {
                 this.valuating = true; this.valResult = false; this.valCurrent = 0; this.valTotal = 0;
                 this.valLastTitle = ''; this.valLog = []; this.showValLog = false;
                 var self = this;
-                var es = new EventSource('/api/valuate/stream');
+                var es = new EventSource(shelfUrl('/api/valuate/stream'));
                 es.onmessage = function (e) {
                     var d = JSON.parse(e.data);
                     if (d.type === 'progress') {
@@ -339,7 +339,7 @@ document.addEventListener('alpine:init', function () {
             testGoogleBooks() {
                 if (!this.googleBooksKey && !this.googleBooksSaved) return;
                 this.googleBooksTesting = true; this.googleBooksStatus = false;
-                fetch('/api/settings/google-books/test', {
+                fetch(shelfUrl('/api/settings/google-books/test'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ api_key: this.googleBooksKey })
@@ -361,7 +361,7 @@ document.addEventListener('alpine:init', function () {
             testTmdb() {
                 if (!this.tmdbKey && !this.tmdbSaved) return;
                 this.tmdbTesting = true; this.tmdbStatus = false;
-                fetch('/api/tmdb/test-key', {
+                fetch(shelfUrl('/api/tmdb/test-key'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ key: this.tmdbKey })
@@ -383,7 +383,7 @@ document.addEventListener('alpine:init', function () {
             testIgdb() {
                 if ((!this.igdbId || !this.igdbSecret) && !this.igdbSaved) return;
                 this.igdbTesting = true; this.igdbStatus = false;
-                fetch('/api/igdb/test-key', {
+                fetch(shelfUrl('/api/igdb/test-key'), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken() },
                     body: JSON.stringify({ client_id: this.igdbId, client_secret: this.igdbSecret })
@@ -413,7 +413,7 @@ document.addEventListener('alpine:init', function () {
                 this.retrying = true; this.retryResult = false; this.retryCurrent = 0; this.retryTotal = 0;
                 this.retryLastTitle = ''; this.retryLog = []; this.showRetryLog = false;
                 var self = this;
-                var es = new EventSource('/api/covers/bulk-retry/stream');
+                var es = new EventSource(shelfUrl('/api/covers/bulk-retry/stream'));
                 es.onmessage = function (e) {
                     var d = JSON.parse(e.data);
                     if (d.type === 'progress') {
@@ -432,7 +432,7 @@ document.addEventListener('alpine:init', function () {
                 this.synFetching = true; this.synResult = false; this.synCurrent = 0; this.synTotal = 0;
                 this.synLastTitle = ''; this.synLog = []; this.showSynLog = false;
                 var self = this;
-                var es = new EventSource('/api/synopses/backfill/stream');
+                var es = new EventSource(shelfUrl('/api/synopses/backfill/stream'));
                 es.onmessage = function (e) {
                     var d = JSON.parse(e.data);
                     if (d.type === 'progress') {
@@ -456,7 +456,7 @@ document.addEventListener('alpine:init', function () {
             importResult: false, importing: false,
             doImport(e) {
                 this.importing = true; this.importResult = false;
-                fetch('/api/import/csv', { method: 'POST', body: new FormData(e.target), headers: { 'X-CSRF-Token': window.csrfToken() } })
+                fetch(shelfUrl('/api/import/csv'), { method: 'POST', body: new FormData(e.target), headers: { 'X-CSRF-Token': window.csrfToken() } })
                     .then(r => r.json())
                     .then(d => { this.importResult = d; this.importing = false; })
                     .catch(() => { this.importResult = { error: t('Import failed') }; this.importing = false; });
@@ -505,7 +505,7 @@ document.addEventListener('alpine:init', function () {
                 this.planning = true;
                 this.errorMessage = '';
                 this.importResult = false;
-                fetch('/api/import/archive/plan', {
+                fetch(shelfUrl('/api/import/archive/plan'), {
                     method: 'POST',
                     body: new FormData(e.target),
                     headers: { 'X-CSRF-Token': window.csrfToken() }
@@ -540,7 +540,7 @@ document.addEventListener('alpine:init', function () {
                 body.append('reading_log', this.selReadingLog ? 'true' : 'false');
                 body.append('checkouts', this.selCheckouts ? 'true' : 'false');
                 body.append('valuation_history', this.selValuation ? 'true' : 'false');
-                fetch('/api/import/archive/apply', {
+                fetch(shelfUrl('/api/import/archive/apply'), {
                     method: 'POST',
                     body: body,
                     headers: { 'X-CSRF-Token': window.csrfToken() }
@@ -694,7 +694,7 @@ document.addEventListener('alpine:init', function () {
             copied: false,
             copyLink(token, id) {
                 var self = this;
-                navigator.clipboard.writeText(location.origin + '/share/' + token).then(function () {
+                navigator.clipboard.writeText(location.origin + shelfUrl('/share/' + token)).then(function () {
                     self.copied = id;
                     setTimeout(function () { self.copied = false; }, 1500);
                 });
@@ -708,7 +708,7 @@ document.addEventListener('alpine:init', function () {
             restoreResult: false, restoring: false,
             doRestore(e) {
                 this.restoring = true; this.restoreResult = false;
-                fetch('/api/settings/restore', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: new FormData(e.target) })
+                fetch(shelfUrl('/api/settings/restore'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: new FormData(e.target) })
                     .then(r => r.json())
                     .then(d => { this.restoreResult = d; this.restoring = false; })
                     .catch(() => { this.restoreResult = { error: t('Restore failed') }; this.restoring = false; });
@@ -728,7 +728,7 @@ document.addEventListener('alpine:init', function () {
             newRole: 'viewer',
             addResult: false,
             async loadUsers() {
-                const d = await postJSON('/api/users', {});
+                const d = await postJSON(shelfUrl('/api/users'), {});
                 if (Array.isArray(d)) this.users = d;
                 else console.error('Failed to load users:', d.message);
             },
@@ -739,7 +739,7 @@ document.addEventListener('alpine:init', function () {
                 form.append('display_name', this.newDisplayName);
                 form.append('password', this.newPassword);
                 form.append('role', this.newRole);
-                const d = await postJSON('/api/users', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const d = await postJSON(shelfUrl('/api/users'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 this.addResult = d;
                 if (d.ok) {
                     this.newUsername = '';
@@ -752,7 +752,7 @@ document.addEventListener('alpine:init', function () {
             async updateRole(id, role) {
                 const form = new FormData();
                 form.append('role', role);
-                const d = await postJSON('/api/users/' + id + '/role', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const d = await postJSON(shelfUrl('/api/users/' + id + '/role'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();
             },
@@ -761,12 +761,12 @@ document.addEventListener('alpine:init', function () {
                 if (!pw) return;
                 const form = new FormData();
                 form.append('password', pw);
-                const d = await postJSON('/api/users/' + id + '/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const d = await postJSON(shelfUrl('/api/users/' + id + '/password'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 alert(d.message);
             },
             async deleteUser(id, name) {
                 if (!confirm(t('Delete user {name}?').replace('{name}', function () { return name; }))) return;
-                const d = await postJSON('/api/users/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
+                const d = await postJSON(shelfUrl('/api/users/' + id), { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) alert(d.message);
                 else await this.loadUsers();
             }
@@ -800,7 +800,7 @@ document.addEventListener('alpine:init', function () {
             },
             async load() {
                 const self = this;
-                const d = await postJSON('/api/tokens', {});
+                const d = await postJSON(shelfUrl('/api/tokens'), {});
                 if (d.ok) self.tokens = d.tokens;
                 else self.result = d;
                 self.loaded = true;
@@ -810,7 +810,7 @@ document.addEventListener('alpine:init', function () {
                 self.creating = true; self.result = false; self.created = false; self.copied = false;
                 const form = new FormData();
                 form.append('name', self.newName.trim());
-                const d = await postJSON('/api/tokens', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const d = await postJSON(shelfUrl('/api/tokens'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 self.creating = false;
                 if (!d.ok) { self.result = d; return; }
                 self.created = d;
@@ -820,7 +820,7 @@ document.addEventListener('alpine:init', function () {
             async revoke(id, name) {
                 const self = this;
                 if (!confirm(t('Revoke token {name}?').replace('{name}', function () { return name; }))) return;
-                const d = await postJSON('/api/tokens/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
+                const d = await postJSON(shelfUrl('/api/tokens/' + id), { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) { self.result = d; return; }
                 if (self.created && self.created.id === id) self.created = false;
                 self.result = false;
@@ -852,7 +852,7 @@ document.addEventListener('alpine:init', function () {
             when: tokenTime,
             async load() {
                 const self = this;
-                const d = await postJSON('/api/tokens/all', {});
+                const d = await postJSON(shelfUrl('/api/tokens/all'), {});
                 if (d.ok) { self.tokens = d.tokens; self.result = false; }
                 else self.result = d;
                 self.loaded = true;
@@ -860,7 +860,7 @@ document.addEventListener('alpine:init', function () {
             async revoke(id, name) {
                 const self = this;
                 if (!confirm(t('Revoke token {name}?').replace('{name}', function () { return name; }))) return;
-                const d = await postJSON('/api/tokens/' + id, { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
+                const d = await postJSON(shelfUrl('/api/tokens/' + id), { method: 'DELETE', headers: { 'X-CSRF-Token': window.csrfToken() } });
                 if (!d.ok) { self.result = d; return; }
                 self.result = false;
                 await self.load();
@@ -894,7 +894,8 @@ document.addEventListener('submit', async function (e) {
     if (e.defaultPrevented) return;
     const form = e.target;
     if (!form || !form.matches) return;
-    if (!form.matches('form[action^="/api/settings/features/"]:not([action$="/enable"]), form[action="/api/settings/profile"]')) return;
+    // The action attributes carry the base path (#165), so the prefix match is built with it.
+    if (!form.matches('form[action^="' + shelfUrl('/api/settings/features/') + '"]:not([action$="/enable"]), form[action="' + shelfUrl('/api/settings/profile') + '"]')) return; // base-path: ok — "/enable" is a suffix compare, true at any prefix
 
     e.preventDefault();
     const button = form.querySelector('button[type="submit"]');
@@ -914,7 +915,7 @@ document.addEventListener('submit', async function (e) {
             headers: { 'X-CSRF-Token': window.csrfToken() },
             body
         });
-        if (!response.ok || !new URL(response.url).pathname.endsWith('/settings')) {
+        if (!response.ok || !new URL(response.url).pathname.endsWith('/settings')) { // base-path: ok — a suffix compare, true at any prefix
             throw new Error(`Request failed (${response.status})`);
         }
 

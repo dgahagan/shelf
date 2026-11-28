@@ -16,6 +16,7 @@ Set these in your `.env` file next to `docker-compose.yml`, or with `-e` on
 | `SHELF_PORT` | `18888` | Port the app listens on *inside* the container. Usually leave it and change the Compose port mapping instead |
 | `SHELF_TLS` | `on` | `on` serves HTTPS with the self-signed certificate in `data/certs/` (generated if absent). `off` serves plain HTTP, for a reverse proxy that terminates TLS itself; existing certificates are left in place. Any other value stops the container at startup. Plain HTTP without a proxy loses the camera scanner and offline Store Mode — see [HTTPS and reverse proxies](https-and-reverse-proxy.md#plain-http-without-a-proxy) |
 | `SHELF_TRUST_PROXY` | *(unset)* | The reverse proxy's address as Shelf sees it: comma-separated IPs or CIDRs (e.g. `127.0.0.1`, `172.17.0.1`, `10.0.0.5,127.0.0.1`), or `*`, which is not recommended. Forwarded headers are honoured only from these peers, and `X-Forwarded-For` is read from the right. The legacy `1` means `127.0.0.1` and prints a startup warning. Leave unset without a proxy. Outside Docker, set uvicorn's `FORWARDED_ALLOW_IPS` instead, since `entrypoint.sh` does the hand-over. See [HTTPS and reverse proxies](https-and-reverse-proxy.md#2-reverse-proxy-with-a-real-certificate) |
+| `SHELF_BASE_PATH` | *(unset)* | The URL sub-path Shelf is served under, behind a proxy that strips it — Home Assistant ingress, or several apps on one nginx host (e.g. `/shelf`). Letters, digits and `. _ ~ - /` only; any other value stops the container at startup. The proxy **must strip** the prefix before forwarding. See [Serving under a sub-path](#serving-under-a-sub-path) |
 | `SECRET_KEY` | *(auto)* | JWT signing key. If unset, generated at `data/signing.key` (0600) on first start; an existing key from before 0.30 is moved there from the database on the first start after upgrading, so sessions survive. Set it explicitly to run several instances against one database |
 | `SHELF_SESSION_DAYS` | `7` | How long a login lasts, in whole days, `1`–`365`. The window slides: a session in use is renewed once it is past half its length, so someone who opens Shelf every few days is never logged out. A value that is not a whole number in range logs a warning at startup and uses 7. Existing sessions keep their old expiry until their next renewal |
 | `SHELF_ENCRYPTION_KEY` | *(auto)* | Key for API credentials stored in the database. If unset, generated at `data/encryption.key`. Set it (`openssl rand -hex 32`) so the data directory alone can't decrypt credentials |
@@ -27,6 +28,58 @@ Set these in your `.env` file next to `docker-compose.yml`, or with `-e` on
 | `SHELF_DISABLE_RELEASE_RADAR` | *(unset)* | Stops the daily release-radar check from starting, so it never calls Hardcover. For tests only — the test suite sets it; leave it unset in production |
 | `SHELF_UPC_LOOKUP_URL` | *(unset)* | Overrides the UPC Item DB lookup endpoint. For the test suite only — the E2E gate points it at a local stub. Leave it unset in production; the trial endpoint is used and paced when it is |
 | `SHELF_ISSN_PORTAL_URL` | *(unset)* | Overrides the ISSN Portal resource URL (a template with an `{issn}` placeholder). For the test suite only — the E2E gate points it at a local stub. Leave it unset in production |
+
+### Serving under a sub-path
+
+Set `SHELF_BASE_PATH` when Shelf is reached at a path such as
+`https://home.example/shelf/` rather than at the root of its own host name.
+Shelf then puts the prefix on every link, form, script and redirect it sends,
+and scopes its session cookie to that path so other apps on the same host
+never receive it.
+
+The proxy must **strip** the prefix: Shelf still answers `/browse`, and the
+proxy forwards `/shelf/browse` to it as `/browse`. Shelf does not accept the
+unstripped form.
+
+Compose passes only the variables its `environment:` list names, so add the
+line there as well as to `.env`:
+
+```yaml
+    environment:
+      - SHELF_BASE_PATH=${SHELF_BASE_PATH:-}
+```
+
+nginx — the trailing slash on `proxy_pass` is what strips the prefix. The block
+assumes `SHELF_TLS=off`, so Shelf serves plain HTTP to the proxy; against the
+built-in HTTPS listener use `https://` and `proxy_ssl_verify off`. See
+[HTTPS and reverse proxies](https-and-reverse-proxy.md):
+
+```nginx
+location /shelf/ {
+    proxy_pass http://127.0.0.1:18888/;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+**Home Assistant ingress** strips its `/api/hassio_ingress/<token>` prefix
+itself; an add-on sets `SHELF_BASE_PATH` to that prefix before starting
+Shelf. The setting is necessary for ingress but may not be sufficient: Shelf
+sends `Content-Security-Policy: frame-ancestors 'none'`, and Home Assistant
+shows ingress add-ons inside a frame of its own page. Opening the ingress URL
+in its own tab works.
+
+Things to know:
+
+- **Share links** copied under Home Assistant ingress open only for people
+  signed in to Home Assistant — that is how ingress controls access.
+- **One Shelf per host name.** Store Mode's offline data and queued scans
+  live in the browser per *origin*, so two Shelf instances at two prefixes on
+  one host name share them.
+- **Do not pick a prefix that is also one of Shelf's own paths** (`/item`,
+  `/browse`, `/settings` …). Shelf leaves a redirect alone when it already
+  starts with the prefix, so such a value would break redirects into that area.
+- **`/api/v1` clients** behind the same proxy add the prefix to their own
+  request paths.
 
 ### Credential overrides
 

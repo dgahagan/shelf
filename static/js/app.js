@@ -217,8 +217,8 @@ document.addEventListener('keydown', function(e) {
     // Leave Ctrl/Cmd/Alt combos to the browser (Ctrl+S, Ctrl+B, Ctrl+/ ...).
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === '/' ) { e.preventDefault(); var q = document.querySelector('[name="q"]'); if (q) q.focus(); }
-    else if (e.key === 's') { window.location.href = '/scan'; }
-    else if (e.key === 'b') { window.location.href = '/browse'; }
+    else if (e.key === 's') { window.location.href = shelfUrl('/scan'); }
+    else if (e.key === 'b') { window.location.href = shelfUrl('/browse'); }
     else if (e.key === '?') { document.getElementById('shortcut-modal').classList.toggle('hidden'); }
 });
 
@@ -329,6 +329,6 @@ document.body.addEventListener('htmx:afterRequest', function (evt) {
     } else if (action === 'reload' && ok) {
         location.reload();
     } else if (action === 'goto-browse' && ok) {
-        window.location = '/browse';
+        window.location = shelfUrl('/browse');
     }
 });

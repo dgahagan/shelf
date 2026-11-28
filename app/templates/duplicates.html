@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ _('Duplicates') }} — Shelf{% endblock %}
-{% block head %}<script src="/static/js/duplicates.js" defer></script>{% endblock %}
+{% block head %}<script src="{{ base_path }}/static/js/duplicates.js" defer></script>{% endblock %}
 {% block content %}
 <div class="max-w-5xl mx-auto space-y-6">
     <div>
@@ -29,12 +29,12 @@
                     </label>
                     <div class="flex gap-3">
                         {% if m.cover_path %}
-                        <img src="/{{ m.cover_path }}" alt="" class="w-12 h-16 object-cover rounded-sm bg-shelf-bg shrink-0" data-cover-shape="{{ cover_shape(m.media_type) }}">
+                        <img src="{{ base_path }}/{{ m.cover_path }}" alt="" class="w-12 h-16 object-cover rounded-sm bg-shelf-bg shrink-0" data-cover-shape="{{ cover_shape(m.media_type) }}">
                         {% else %}
                         <div class="w-12 h-16 rounded-sm bg-shelf-bg shrink-0" data-cover-shape="{{ cover_shape(m.media_type) }}"></div>
                         {% endif %}
                         <div class="min-w-0">
-                            <a href="/item/{{ m.id }}" class="font-medium hover:text-shelf-accent2 break-words">{{ m.title }}</a>
+                            <a href="{{ base_path }}/item/{{ m.id }}" class="font-medium hover:text-shelf-accent2 break-words">{{ m.title }}</a>
                             {% if m.subtitle %}<div class="text-sm text-shelf-muted break-words">{{ m.subtitle }}</div>{% endif %}
                             {% if m.authors %}<div class="text-sm break-words">{{ m.authors }}</div>{% endif %}
                             <div class="text-xs text-shelf-muted">{{ (_(media_types[m.media_type]) if m.media_type in media_types else m.media_type) }} · #{{ m.id }}{% if m.created_at %} · {{ _('added %(date)s', date=m.created_at[:10]) }}{% endif %}</div>
@@ -65,7 +65,7 @@
                 {% else %}
                 <span data-dup-dismiss-capped class="text-sm text-shelf-muted">{{ _('Groups larger than %(n)s records can be merged but not dismissed.', n=max_ids) }}</span>
                 {% endif %}
-                <span class="text-sm text-shelf-muted"><a href="/item/{{ group.member_ids[0] }}" data-dup-link class="text-shelf-accent2 hover:underline">{{ _('Link instead') }}</a> {{ _('— add the others under Related Media') }}</span>
+                <span class="text-sm text-shelf-muted"><a href="{{ base_path }}/item/{{ group.member_ids[0] }}" data-dup-link class="text-shelf-accent2 hover:underline">{{ _('Link instead') }}</a> {{ _('— add the others under Related Media') }}</span>
             </div>
             <p role="alert" data-dup-error class="text-sm text-red-400"></p>
         </article>
@@ -82,9 +82,9 @@
         <ul class="space-y-2">
             {% for pair in dismissed %}
             <li data-dup-dismissed class="bg-shelf-card rounded-lg border border-shelf-border p-3 text-sm flex flex-wrap items-center gap-2">
-                <a href="/item/{{ pair.a_id }}" class="hover:text-shelf-accent2">{{ pair.a_title }}</a>
+                <a href="{{ base_path }}/item/{{ pair.a_id }}" class="hover:text-shelf-accent2">{{ pair.a_title }}</a>
                 <span class="text-shelf-muted">{{ _('and') }}</span>
-                <a href="/item/{{ pair.b_id }}" class="hover:text-shelf-accent2">{{ pair.b_title }}</a>
+                <a href="{{ base_path }}/item/{{ pair.b_id }}" class="hover:text-shelf-accent2">{{ pair.b_title }}</a>
                 <button type="button" data-dup-action="restore" data-pair="{{ pair.a_id }},{{ pair.b_id }}"
                         class="ml-auto px-3 py-1 bg-shelf-hover text-shelf-text rounded-lg text-xs hover:bg-shelf-border transition-colors">{{ _('Restore') }}</button>
                 <p role="alert" data-dup-error class="w-full text-shelf-muted"></p>

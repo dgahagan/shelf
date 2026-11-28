@@ -80,7 +80,7 @@
                    navigation. /cover-review itself is `editor`-gated while this page is
                    `admin`-gated (app/routers/pages.py:521); that asymmetry is deliberate,
                    see app/routers/cover_review.py's module docstring. #}
-                <a href="/cover-review" data-testid="cover-review-link"
+                <a href="{{ base_path }}/cover-review" data-testid="cover-review-link"
                    class="text-sm text-shelf-accent2 hover:text-shelf-accent transition-colors">
                     {{ _('Review covers needing attention (%(n)s)', n=missing_covers) }}
                 </a>
@@ -145,7 +145,7 @@
 
         <div class="space-y-4">
             <div>
-                <a href="/api/export/csv" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
+                <a href="{{ base_path }}/api/export/csv" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
                     {{ _('Export CSV') }}
                 </a>
             </div>
@@ -270,7 +270,7 @@
             <div class="flex items-center gap-2 bg-shelf-bg rounded-lg px-4 py-2 flex-wrap" data-testid="share-link-row">
                 <span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium {% if sl.scope == 'wishlist' %}bg-shelf-warning/90 text-black{% else %}bg-shelf-accent/80 text-white{% endif %} uppercase">{{ sl.scope }}</span>
                 <span class="text-sm">{{ sl.label or _('Untitled link') }}</span>
-                <code class="text-xs text-shelf-muted truncate max-w-[220px]">/share/{{ sl.token }}</code>
+                <code class="text-xs text-shelf-muted truncate max-w-[220px]">{{ base_path }}/share/{{ sl.token }}</code>
                 {% if feature_on('share') %}
                 <div class="ml-auto flex items-center gap-2">
                     <button type="button" data-token="{{ sl.token }}"
@@ -279,9 +279,9 @@
                         <span x-show="copied !== {{ sl.id }}">{{ _('Copy link') }}</span>
                         <span x-show="copied === {{ sl.id }}" style="display:none" class="text-shelf-success">{{ _('Copied!') }}</span>
                     </button>
-                    <a href="/share/{{ sl.token }}" target="_blank" rel="noopener"
+                    <a href="{{ base_path }}/share/{{ sl.token }}" target="_blank" rel="noopener"
                        class="px-2 py-1 bg-shelf-hover text-shelf-text rounded-sm text-xs hover:bg-shelf-border transition-colors">{{ _('Open') }}</a>
-                    <form action="/api/share/{{ sl.id }}/delete" method="post" class="inline" data-testid="share-revoke">
+                    <form action="{{ base_path }}/api/share/{{ sl.id }}/delete" method="post" class="inline" data-testid="share-revoke">
                         <button type="submit" class="px-2 py-1 bg-shelf-error/20 text-shelf-error rounded-sm text-xs hover:bg-shelf-error/30 transition-colors">{{ _('Revoke') }}</button>
                     </form>
                 </div>
@@ -292,7 +292,7 @@
         {% endif %}
 
         {% if feature_on('share') %}
-        <form action="/api/share" method="post" class="flex gap-2 items-end flex-wrap" data-testid="share-create">
+        <form action="{{ base_path }}/api/share" method="post" class="flex gap-2 items-end flex-wrap" data-testid="share-create">
             <select name="scope" class="bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text">
                 <option value="wishlist">{{ _('Wishlist') }}</option>
                 <option value="collection">{{ _('Collection') }}</option>
@@ -311,7 +311,7 @@
         <h2 class="text-lg font-semibold mb-4">{{ _('Backup &amp; Restore') }}</h2>
         <div class="space-y-4">
             <div>
-                <form action="/api/settings/backup" method="post" class="flex flex-wrap gap-2 items-center">
+                <form action="{{ base_path }}/api/settings/backup" method="post" class="flex flex-wrap gap-2 items-center">
                     <input type="password" name="passphrase" autocomplete="new-password"
                            placeholder="{{ _('Passphrase (optional — encrypts the backup)') }}"
                            class="basis-full sm:flex-1 min-w-0 sm:max-w-xs bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
@@ -354,7 +354,7 @@
         <p class="text-sm text-shelf-muted mb-4">{{ _('For moving between instances or apps; no credentials included.') }}</p>
         <div class="space-y-4">
             <div>
-                <a href="/api/export/archive" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
+                <a href="{{ base_path }}/api/export/archive" class="px-4 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors inline-block">
                     {{ _('Export Archive') }}
                 </a>
             </div>

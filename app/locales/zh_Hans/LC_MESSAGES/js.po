@@ -553,7 +553,7 @@ msgstr ""
 msgid "Could not save feature settings"
 msgstr ""
 
-#: static/js/components.js:82
+#: static/js/components.js:109
 msgid "Could not change the language"
 msgstr "无法切换语言"
 

@@ -283,7 +283,7 @@ function browsePage() {
         // table (the #7 bug).
         runSearch(params) {
             params.set('view', this.viewMode);
-            htmx.ajax('GET', '/api/search?' + params.toString(),
+            htmx.ajax('GET', shelfUrl('/api/search?' + params.toString()),
                       {target: '#item-grid', swap: 'innerHTML'});
         },
 
@@ -302,7 +302,7 @@ function browsePage() {
             // an author filter restores as a full page load instead.
             var author = document.querySelector('[name="author_filter"]');
             if (params.get('author_filter') && author && !author.dataset.label) {
-                window.location.replace('/browse?' + stored);
+                window.location.replace(shelfUrl('/browse?' + stored));
                 return true;
             }
             var applied = new URLSearchParams();
@@ -474,7 +474,7 @@ function browsePage() {
         async bulkUpdate(updates) {
             if (!this.selectedIds.length) return;
             try {
-                var resp = await fetch('/api/items/bulk-update', {
+                var resp = await fetch(shelfUrl('/api/items/bulk-update'), {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()},
                     body: JSON.stringify({item_ids: this.selectedIds, updates: updates})
@@ -500,7 +500,7 @@ function browsePage() {
             if (!name || !this.selectedIds.length) return;
             var ids = this.selectedIds;
             try {
-                var resp = await fetch('/api/items/bulk-tags', {
+                var resp = await fetch(shelfUrl('/api/items/bulk-tags'), {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json', 'X-CSRF-Token': window.csrfToken()},
                     body: JSON.stringify({
@@ -532,7 +532,7 @@ function browsePage() {
         async bulkDelete() {
             if (!confirm(t('Move {count} items to Trash?').replace('{count}', this.selectedIds.length))) return;
             for (var id of this.selectedIds) {
-                await fetch('/api/items/' + id, {method: 'DELETE', headers: {'X-CSRF-Token': window.csrfToken()}});
+                await fetch(shelfUrl('/api/items/' + id), {method: 'DELETE', headers: {'X-CSRF-Token': window.csrfToken()}});
             }
             showToast(t('Moved {count} items to Trash').replace('{count}', this.selectedIds.length), 'success');
             this.selectedIds = [];

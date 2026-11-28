@@ -29,7 +29,7 @@
             status.className = 'text-xs h-5 ' + (ok === true ? 'text-shelf-success' : ok === false ? 'text-shelf-error' : 'text-shelf-muted');
         }
         async function loadStatus() {
-            const data = await readJSON('/api/romm/status');
+            const data = await readJSON(shelfUrl('/api/romm/status'));
             if (!data.ok) return;
             url.value = data.url || '';
             publicUrl.value = data.public_url || '';
@@ -38,7 +38,7 @@
 
         document.getElementById('romm-save').addEventListener('click', async function () {
             setStatus('Saving…');
-            const data = await readJSON('/api/romm/settings', {
+            const data = await readJSON(shelfUrl('/api/romm/settings'), {
                 method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({url: url.value, public_url: publicUrl.value, token: token.value, clear_token: clearToken.checked})
             });
@@ -48,7 +48,7 @@
 
         document.getElementById('romm-test').addEventListener('click', async function () {
             setStatus('Testing connection…');
-            const data = await readJSON('/api/romm/test', {
+            const data = await readJSON(shelfUrl('/api/romm/test'), {
                 method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({url: url.value, token: token.value})
             });
@@ -77,7 +77,7 @@
 
         document.getElementById('romm-load-platforms').addEventListener('click', async function () {
             platforms.textContent = 'Loading platforms…';
-            const data = await readJSON('/api/romm/platforms');
+            const data = await readJSON(shelfUrl('/api/romm/platforms'));
             if (!data.ok) { platforms.textContent = data.message || 'Could not load platforms'; savePlatforms.hidden = true; return; }
             renderPlatforms(data.platforms || []);
         });
@@ -86,7 +86,7 @@
             const rows = Array.from(platforms.querySelectorAll('[data-platform-id]')).map(function (node) {
                 return {id: node.dataset.platformId, included: node.querySelector('[data-role="included"]').checked};
             });
-            const data = await readJSON('/api/romm/platforms', {
+            const data = await readJSON(shelfUrl('/api/romm/platforms'), {
                 method: 'POST', headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({platforms: rows})
             });
@@ -101,7 +101,7 @@
             syncButton.addEventListener('click', function () {
                 result.textContent = ''; result.className = 'mt-2 text-xs text-shelf-muted';
                 progress.textContent = 'Starting RomM sync…'; progressBar.style.width = '0%';
-                const stream = new EventSource('/api/romm/sync/stream');
+                const stream = new EventSource(shelfUrl('/api/romm/sync/stream'));
                 stream.onmessage = function (event) {
                     const data = JSON.parse(event.data);
                     if (data.type === 'progress') {

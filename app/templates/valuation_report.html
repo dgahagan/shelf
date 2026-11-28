@@ -18,7 +18,7 @@
         a { text-decoration: none; color: inherit; }
     }
 </style>
-<script src="/static/js/valuation-report.js" defer></script>
+<script src="{{ base_path }}/static/js/valuation-report.js" defer></script>
 {% endblock %}
 {% block content %}
 <div class="max-w-4xl mx-auto">
@@ -88,7 +88,7 @@
                     <tr class="hover:bg-shelf-hover/50">
                         <td class="px-3 py-1.5">
                             {% if item.cover_path %}
-                            <img src="/{{ item.cover_path }}" alt="" class="w-7 rounded-xs" loading="lazy">
+                            <img src="{{ base_path }}/{{ item.cover_path }}" alt="" class="w-7 rounded-xs" loading="lazy">
                             {% endif %}
                         </td>
                         <td class="px-3 py-1.5">{{ item.title }}{% if item.publish_year %} <span class="text-shelf-muted">({{ item.publish_year }})</span>{% endif %}</td>

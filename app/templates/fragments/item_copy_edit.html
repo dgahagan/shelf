@@ -30,7 +30,7 @@
     <p class="text-xs font-semibold uppercase tracking-wider text-shelf-muted mb-2">
         {{ _('Copy #%(n)s', n=copy.copy_number) }}{% if copy.is_primary %} · {{ _('primary') }}{% endif %}
     </p>
-    <form hx-post="/api/items/{{ item_id }}/copies/{{ copy.id }}"
+    <form hx-post="{{ base_path }}/api/items/{{ item_id }}/copies/{{ copy.id }}"
           hx-target="#item-copies" hx-swap="outerHTML"
           class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
@@ -82,7 +82,7 @@
                    class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1 text-sm text-shelf-text focus:ring-1 focus:ring-shelf-accent outline-hidden">
             {%- if feature_on('collector') and not copy.copy_barcode %}
             <button type="button" data-testid="assign-copy-code"
-                    hx-post="/api/items/{{ item_id }}/copies/{{ copy.id }}/assign-code"
+                    hx-post="{{ base_path }}/api/items/{{ item_id }}/copies/{{ copy.id }}/assign-code"
                     hx-target="#item-copies" hx-swap="outerHTML"
                     class="mt-1 px-2 py-1 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs hover:bg-shelf-hover transition-colors">{{ _('Assign code') }}</button>
             {%- endif %}
@@ -98,11 +98,11 @@
             <button type="submit" data-testid="save-copy"
                     class="px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">{{ _('Save') }}</button>
             <button type="button" data-testid="cancel-copy"
-                    hx-get="/api/items/{{ item_id }}/copies"
+                    hx-get="{{ base_path }}/api/items/{{ item_id }}/copies"
                     hx-target="#item-copies" hx-swap="outerHTML"
                     class="px-3 py-1 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-xs hover:bg-shelf-hover transition-colors">{{ _('Cancel') }}</button>
             <button type="button" data-testid="remove-copy"
-                    hx-delete="/api/items/{{ item_id }}/copies/{{ copy.id }}"
+                    hx-delete="{{ base_path }}/api/items/{{ item_id }}/copies/{{ copy.id }}"
                     hx-target="#item-copies" hx-swap="outerHTML"
                     hx-confirm="Move copy #{{ copy.copy_number }} to Trash? Restore it from Trash to get it back."
                     class="px-3 py-1 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors ml-auto">{{ _('Remove copy') }}</button>

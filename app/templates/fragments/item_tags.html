@@ -4,16 +4,16 @@
     <div class="flex flex-wrap items-center gap-2">
         {% for tag in item_tags %}
         <span class="inline-flex items-center gap-1 px-2.5 py-1 bg-shelf-accent/10 text-shelf-accent2 border border-shelf-accent/20 rounded-full text-xs">
-            <a href="/browse?tag={{ tag.name|urlencode }}" class="hover:text-shelf-accent transition-colors">{{ tag.name }}</a>
+            <a href="{{ base_path }}/browse?tag={{ tag.name|urlencode }}" class="hover:text-shelf-accent transition-colors">{{ tag.name }}</a>
             {% if user and user.role in ('admin', 'editor') %}
-            <button hx-delete="/api/items/{{ item_id }}/tags/{{ tag.id }}"
+            <button hx-delete="{{ base_path }}/api/items/{{ item_id }}/tags/{{ tag.id }}"
                     hx-target="#item-tags" hx-swap="outerHTML"
                     class="inline-flex items-center justify-center w-6 h-6 -my-1 -mr-2 hover:text-shelf-error" title="{{ _('Remove tag') }}">&times;</button>
             {% endif %}
         </span>
         {% endfor %}
         {% if user and user.role in ('admin', 'editor') %}
-        <form hx-post="/api/items/{{ item_id }}/tags"
+        <form hx-post="{{ base_path }}/api/items/{{ item_id }}/tags"
               hx-target="#item-tags" hx-swap="outerHTML"
               class="inline-flex items-center gap-1">
             <input type="text" name="name" list="tag-suggestions" placeholder="{{ _('+ tag') }}"

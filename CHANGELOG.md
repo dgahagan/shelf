@@ -6,6 +6,43 @@ All notable changes to Shelf are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.88.0] - 2026-11-27
+
+Shelf assumed it owned the root of its host name. Behind a proxy that serves
+several apps on one host — `https://home.example/shelf/` — or behind Home
+Assistant's ingress, every link, form, script and redirect pointed at `/…` and
+left the sub-path, so the app did not work there at all. Shelf can now be
+served under a sub-path.
+
+### Added
+
+- **`SHELF_BASE_PATH` serves Shelf under a URL sub-path,** such as `/shelf`.
+  Shelf puts the prefix on every link, form, script request, cover, redirect
+  and live-progress stream it sends, and Store Mode's offline copy works under
+  it too. The proxy in front must **strip** the prefix before forwarding;
+  Shelf does not accept the unstripped form. The value may contain letters,
+  digits and `. _ ~ - /` only — anything else stops the container at startup
+  with a message naming the setting. See *Serving under a sub-path* in the
+  configuration docs, which includes an nginx example. Requested in
+  [#165](https://github.com/dgahagan/shelf/issues/165) by
+  [@FrnchFrgg](https://github.com/FrnchFrgg).
+- **The session cookie is scoped to the sub-path,** so other apps on the same
+  host never receive it. Signing out under a sub-path also clears a session
+  left at the root by the same Shelf before the setting was turned on. A
+  cookie of the same name that another app on the host sets at the root does
+  not interfere with Shelf's own.
+
+### Changed
+
+- **Nothing changes when the setting is unset.** Pages carry one new empty
+  `<meta name="shelf-base">` tag and one small script; every URL is as before.
+
+Home Assistant ingress: the setting is necessary but may not be enough on its
+own. Shelf forbids being shown inside a frame (`frame-ancestors 'none'`), and
+Home Assistant shows ingress add-ons in a frame of its own page. Opening the
+ingress URL in its own tab works. This release deliberately does not relax that
+protection; whether ingress needs it is an open question on #165.
+
 ## [0.87.0] - 2026-11-27
 
 The navigation bar had grown one tab at a time to ten, and at the narrow end
@@ -6301,6 +6338,7 @@ First public release.
   protection, encrypted credential storage, optional passphrase-encrypted
   backups, HTTPS out of the box, non-root container
 
+[0.88.0]: https://github.com/dgahagan/shelf/releases/tag/v0.88.0
 [0.87.0]: https://github.com/dgahagan/shelf/releases/tag/v0.87.0
 [0.86.1]: https://github.com/dgahagan/shelf/releases/tag/v0.86.1
 [0.86.0]: https://github.com/dgahagan/shelf/releases/tag/v0.86.0

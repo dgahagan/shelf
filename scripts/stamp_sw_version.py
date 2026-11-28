@@ -22,8 +22,8 @@ version would change the bytes the version is derived from and never converge.
 
 **The staleness check (`--check`) is advisory on a pull-request CI build, and
 only there.** It is unsatisfiable in that context, which is different from
-being inconvenient: a PR that touches any of the eight precached files (the
-stylesheet, store.js, scanner-engine.js, the two vendored scanners, the
+being inconvenient: a PR that touches any of the nine precached files (the
+stylesheet, store.js, shelf-url.js, scanner-engine.js, the two vendored scanners, the
 manifest, the two icons) moves the digest, and a PR that restamps SW_VERSION
 to get green collides with every other PR touching the same line. So on
 `pull_request` the check reports and returns 0; on push to main, and

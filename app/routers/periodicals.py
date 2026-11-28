@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from app import i18n
-from app.auth import require_role
+from app.auth import read_cookie, require_role
 from app.features import require_feature
 from app.config import HTTP_TIMEOUT
 from app.database import get_db, get_setting
@@ -143,7 +143,7 @@ async def render_scan_candidate(
             "location_id": location_id,
             "mode": mode if mode in {"add", "wishlist"} else "add",
             "notice": notice,
-            "csrf_token": request.cookies.get("csrf_token", ""),
+            "csrf_token": read_cookie(request, "csrf_token", ""),
         },
     )
 
@@ -233,7 +233,7 @@ async def assisted_periodical_select(
             "location_id": location_id,
             "mode": mode if mode in {"add", "wishlist"} else "add",
             "notice": "Google Books result selected. Confirm the concrete issue details before adding it.",
-            "csrf_token": request.cookies.get("csrf_token", ""),
+            "csrf_token": read_cookie(request, "csrf_token", ""),
         },
     )
 

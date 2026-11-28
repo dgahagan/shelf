@@ -30,7 +30,7 @@
         nav, .no-print { display: none !important; }
     }
 </style>
-<script src="/static/js/labels.js" defer></script>
+<script src="{{ base_path }}/static/js/labels.js" defer></script>
 {% endblock %}
 {% block content %}
 <div class="no-print max-w-5xl mx-auto mb-4 space-y-3">
@@ -42,10 +42,10 @@
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            {% if prev_url %}<a href="{{ prev_url }}" data-testid="labels-sheet-prev" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">&larr; {{ _('Previous') }}</a>{% endif %}
-            {% if next_url %}<a href="{{ next_url }}" data-testid="labels-sheet-next" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Next') }} &rarr;</a>{% endif %}
+            {% if prev_url %}<a href="{{ base_path }}{{ prev_url }}" data-testid="labels-sheet-prev" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">&larr; {{ _('Previous') }}</a>{% endif %}
+            {% if next_url %}<a href="{{ base_path }}{{ next_url }}" data-testid="labels-sheet-next" class="px-3 py-2 bg-shelf-hover text-shelf-text rounded-lg text-sm hover:bg-shelf-border transition-colors">{{ _('Next') }} &rarr;</a>{% endif %}
             {% if count %}<button type="button" data-print-page class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">{{ _('Print') }}</button>{% endif %}
-            <a href="/labels" class="px-3 py-2 text-sm text-shelf-muted hover:text-shelf-text">{{ _('Back to Labels') }}</a>
+            <a href="{{ base_path }}/labels" class="px-3 py-2 text-sm text-shelf-muted hover:text-shelf-text">{{ _('Back to Labels') }}</a>
         </div>
     </div>
     {% if next_url %}

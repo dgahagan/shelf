@@ -8,6 +8,19 @@ separate frontend build beyond Tailwind.
 
 Middleware, outermost first (`app/main.py`):
 
+0. **BasePathHeaders** — *installed only when `SHELF_BASE_PATH` is set*
+   (`app/base_path.py`). Shelf can sit behind a proxy that strips a URL
+   prefix; inbound paths then arrive prefix-free, so no other stage or route
+   knows about it. This stage prefixes the one channel templates and scripts
+   cannot reach: the root-relative URL in every `Location`, `HX-Redirect`,
+   `HX-Location` and `Refresh` header, including the ones the stages below
+   return themselves. An absolute URL on the request's own host — Starlette's
+   trailing-slash redirect — becomes the prefixed path. It leaves
+   protocol-relative, foreign absolute and already-prefixed values alone,
+   never decodes a value, and is pure ASGI so streamed bodies pass through
+   unbuffered. The session cookies are scoped to the sub-path, and
+   `auth.read_cookie` reads the scoped one when the host also holds a
+   same-name cookie at `/`.
 1. **SecurityHeaders** — strict CSP (no `unsafe-inline`/`unsafe-eval`, no
    third-party origins), frame/denial headers, and HSTS only when
    `request.url.scheme` is `https`.
@@ -1330,6 +1343,21 @@ stated rather than incidental:
 
 ## Frontend
 
+**Every URL Shelf emits carries the base path; every path it receives is
+prefix-free.** With `SHELF_BASE_PATH` unset the prefix is the empty string and
+output is unchanged. Three emitters, one rule each: templates write
+`{{ base_path }}/…` (a Jinja global); scripts call `shelfUrl('/…')` from
+`static/js/shelf-url.js`, which reads `<meta name="shelf-base">` at call time
+and loads before `component-load-guard.js`; response headers are prefixed by
+the outermost request-path stage. Server-supplied path variables (`tab.path`,
+`load_more_url`, `scan_action`) stay prefix-free because they are also
+compared with inbound paths, and the template prepends the prefix.
+`make check-base-path` (in `checks-fast`) fails on a root-relative literal in
+a template or script. The service worker resolves every URL against its own
+registration scope and the manifest's URLs are relative to the manifest, so
+both are correct at any prefix; the worker's `activate` deletes only its own
+`shelf-store-*` caches, because under a sub-path the origin is shared.
+
 **The UI is translated with gettext.** English is the source language: every
 msgid is the English text and `en` has no catalog, so an unmarked or
 untranslated string renders as written. Templates mark text with
@@ -2030,6 +2058,15 @@ as a wrong password, so timing does not enumerate accounts), short-lived
 sliding JWTs, per-IP rate limiting (and per-token on `/api/v1`), encrypted secrets,
 write-only credential fields, allow-listed image hosts for cover downloads,
 `noindex` + unguessable tokens on share links.
+
+**The URL sub-path is configuration, never request data.** `SHELF_BASE_PATH`
+is read once at startup and refused unless it is built from `A–Z a–z 0–9 . _
+~ - /` with no empty, `.` or `..` segment, because it is written into HTML
+attributes, Alpine expressions, script strings and response headers, and that
+alphabet cannot break out of any of them. A prefix taken from a header such as
+`X-Forwarded-Prefix` would hand that lever to anyone who can reach the
+container. The session and CSRF cookies are scoped to the prefix, and logout
+also clears a pair left at `/` from before the setting was turned on.
 
 **bcrypt never runs on the event loop.** Every hash and verify in a route goes
 through the thread pool, and never while a write transaction is open, so a

@@ -31,6 +31,9 @@ dashboard, and the token screens are hidden. (A browser that opens the address
 directly gets the normal "turned off" page instead.) Tokens you made before
 are kept, and they work again when the feature is turned back on.
 
+If Shelf is served under a URL sub-path (`SHELF_BASE_PATH`), a client
+behind the same proxy adds the prefix itself: `https://home.example/shelf/api/v1/stats`.
+
 ### Make a token
 
 1. We recommend a **dedicated viewer user** for dashboards, for example

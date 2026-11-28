@@ -128,7 +128,7 @@ function intakePage() {
                 this.imageEl = img;
                 this.photoW = img.naturalWidth;
                 this.photoH = img.naturalHeight;
-                var resp = await fetch('/api/intake/plan', {
+                var resp = await fetch(shelfUrl('/api/intake/plan'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -344,7 +344,7 @@ function intakePage() {
                         form.append('photos', this.file);
                     }
                 }
-                var resp = await fetch('/api/intake/analyze', {
+                var resp = await fetch(shelfUrl('/api/intake/analyze'), {
                     method: 'POST',
                     headers: { 'X-CSRF-Token': window.csrfToken() },
                     body: form,
@@ -415,7 +415,7 @@ function intakePage() {
             // cannot leave this stale (G2).
             var tags = ((document.getElementById('default-tags') || {}).value || '').split(';');
             try {
-                var resp = await fetch('/api/intake/confirm', {
+                var resp = await fetch(shelfUrl('/api/intake/confirm'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

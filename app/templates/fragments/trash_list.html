@@ -11,16 +11,16 @@
 <div id="trash-list">
     <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
         {% if expired_only %}
-        <a href="/trash" data-testid="trash-filter-all"
+        <a href="{{ base_path }}/trash" data-testid="trash-filter-all"
            class="text-sm text-shelf-accent2 hover:underline">{{ _('Show all') }}</a>
         {% else %}
-        <a href="/trash?expired=1" data-testid="trash-filter-expired"
+        <a href="{{ base_path }}/trash?expired=1" data-testid="trash-filter-expired"
            class="text-sm text-shelf-accent2 hover:underline">{{ _('Show expired only') }}</a>
         {% endif %}
 
         {% if user and user.role == 'admin' and expired_count > 0 %}
         <button type="button" data-testid="trash-empty-expired"
-                hx-post="/api/trash/empty-expired"
+                hx-post="{{ base_path }}/api/trash/empty-expired"
                 hx-target="#trash-list" hx-swap="outerHTML"
                 hx-confirm="{{ _('Delete %(n)s expired items and copies permanently?', n=expired_count) }}"
                 class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors">
@@ -54,7 +54,7 @@
         <div class="flex flex-wrap items-center gap-3 bg-shelf-bg rounded-lg px-4 py-3" data-testid="trash-item-row-{{ row.id }}">
             <div class="w-10 h-14 shrink-0" data-cover-shape="{{ cover_shape(row.media_type) }}">
                 {% if row.cover_path %}
-                <img src="/{{ row.cover_path }}" alt="" class="w-full h-full object-cover rounded-sm" data-cover-shape="{{ cover_shape(row.media_type) }}">
+                <img src="{{ base_path }}/{{ row.cover_path }}" alt="" class="w-full h-full object-cover rounded-sm" data-cover-shape="{{ cover_shape(row.media_type) }}">
                 {% else %}
                 <div class="w-full h-full bg-shelf-hover rounded-sm flex items-center justify-center">
                     <svg class="w-4 h-4 text-shelf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
@@ -77,14 +77,14 @@
             </div>
             <div class="flex items-center gap-2 shrink-0">
                 <button type="button" data-testid="trash-restore-item-{{ row.id }}"
-                        hx-post="/api/trash/items/{{ row.id }}/restore"
+                        hx-post="{{ base_path }}/api/trash/items/{{ row.id }}/restore"
                         hx-target="#trash-list" hx-swap="outerHTML"
                         class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">
                     {{ _('Restore') }}
                 </button>
                 {% if user and user.role == 'admin' %}
                 <button type="button" data-testid="trash-delete-item-{{ row.id }}"
-                        hx-delete="/api/trash/items/{{ row.id }}"
+                        hx-delete="{{ base_path }}/api/trash/items/{{ row.id }}"
                         hx-target="#trash-list" hx-swap="outerHTML"
                         hx-confirm="Delete '{{ row.title }}' permanently? This cannot be undone."
                         class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors">
@@ -103,7 +103,7 @@
         <div class="bg-shelf-bg rounded-lg px-4 py-3" data-testid="trash-copy-group-{{ group.item_id }}">
             <h3 class="text-sm font-medium mb-2">
                 {% if group.item_live %}
-                <a href="/item/{{ group.item_id }}" data-testid="trash-copy-group-link-{{ group.item_id }}"
+                <a href="{{ base_path }}/item/{{ group.item_id }}" data-testid="trash-copy-group-link-{{ group.item_id }}"
                    class="text-shelf-accent2 hover:underline">{{ group.item_title }}</a>
                 {% else %}
                 <span data-testid="trash-copy-group-title-{{ group.item_id }}" class="text-shelf-text">{{ group.item_title }}</span>
@@ -124,14 +124,14 @@
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         <button type="button" data-testid="trash-restore-copy-{{ copy.id }}"
-                                hx-post="/api/trash/copies/{{ copy.id }}/restore"
+                                hx-post="{{ base_path }}/api/trash/copies/{{ copy.id }}/restore"
                                 hx-target="#trash-list" hx-swap="outerHTML"
                                 class="px-3 py-1.5 bg-shelf-accent/20 text-shelf-accent2 rounded-lg text-xs hover:bg-shelf-accent/30 transition-colors">
                             {{ _('Restore') }}
                         </button>
                         {% if user and user.role == 'admin' %}
                         <button type="button" data-testid="trash-delete-copy-{{ copy.id }}"
-                                hx-delete="/api/trash/copies/{{ copy.id }}"
+                                hx-delete="{{ base_path }}/api/trash/copies/{{ copy.id }}"
                                 hx-target="#trash-list" hx-swap="outerHTML"
                                 hx-confirm="Delete copy #{{ copy.copy_number }} of '{{ group.item_title }}' permanently? This cannot be undone."
                                 class="px-3 py-1.5 bg-shelf-error/20 text-shelf-error rounded-lg text-xs hover:bg-shelf-error/30 transition-colors">

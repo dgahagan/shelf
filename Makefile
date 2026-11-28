@@ -16,7 +16,7 @@ PYTEST_FLAGS ?= -q --tb=short --no-header
 PYTEST_PAR   ?= -n auto --dist loadfile
 
 .PHONY: setup css test test-verbose test-fast test-cov test-e2e test-contract test-all \
-        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-i18n i18n check-workflows check-actions \
+        check-deps check-licenses check-secrets check-csrf check-alpine check-sw-version check-tests check-ruff check-deleted check-base-path check-i18n i18n check-workflows check-actions \
         badges check-badges check-roadmap lock lock-upgrade check-lock check-lock-selftest \
         pin-base check-base-image \
         checks checks-fast \
@@ -220,6 +220,10 @@ check-secrets:
 		echo "No hardcoded secrets found."; \
 	fi
 
+# Every URL Shelf emits carries SHELF_BASE_PATH (#165).
+check-base-path:
+	python scripts/check_base_path.py
+
 check-csrf:
 	python scripts/check_csrf_fetch.py
 
@@ -280,7 +284,7 @@ check-actions:
 	python scripts/check_workflows.py --resolve
 
 # Instant, offline lints — the inner-loop target.
-checks-fast: check-secrets check-csrf check-deleted check-alpine check-sw-version check-tests check-ruff check-badges check-roadmap check-i18n check-workflows
+checks-fast: check-secrets check-csrf check-base-path check-deleted check-alpine check-sw-version check-tests check-ruff check-badges check-roadmap check-i18n check-workflows
 
 # Everything, including the network-bound pip-audit and the dated report files.
 # Keep this the full set for running by hand. The release procedure in

@@ -138,6 +138,13 @@ inside the `reverse_proxy` block, nginx's `proxy_ssl_verify off`. This is how
 proxies were set up before `SHELF_TLS` existed, and those setups keep working
 unchanged.
 
+**Serving under a sub-path.** To reach Shelf at a path such as
+`https://home.example/shelf/` instead of a host name of its own, set
+`SHELF_BASE_PATH` and have the proxy strip the prefix. It works together with
+`SHELF_TRUST_PROXY`. See
+[Serving under a sub-path](configuration.md#serving-under-a-sub-path) for the
+nginx and Home Assistant ingress setups.
+
 ### 3. VPN home
 
 With WireGuard, Tailscale or similar you still see the self-signed warning,

@@ -94,6 +94,9 @@ Notes:
   Make targets, not raw `pytest`.
 - Any raw `fetch()` call in frontend JS must send the `X-CSRF-Token` header
   (`make check-csrf` enforces this).
+- Never write a root-relative URL: `{{ base_path }}/browse` in a template,
+  `shelfUrl('/api/x')` in a script (`make check-base-path` enforces this), so
+  Shelf keeps working under a URL sub-path.
 - Reads of `items` go through the `items_live` view and reads of `item_copies`
   through `copies_live`, never the physical tables (`make check-deleted`
   enforces both, matching `JOIN` as well as `FROM`). Writes stay on the physical

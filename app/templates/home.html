@@ -8,13 +8,13 @@
             <p class="text-sm text-shelf-muted mt-1">{{ _('A quick view of your collection. Use Browse when you want to search, filter or organise it.') }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-            <a href="/browse" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">{{ _('Browse collection') }}</a>
+            <a href="{{ base_path }}/browse" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm hover:bg-shelf-accent2 transition-colors">{{ _('Browse collection') }}</a>
             {% if user and user.role in ('admin', 'editor') %}
-            <a href="/scan" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">{{ _('Scan item') }}</a>
-            <a href="/scan?add=manual" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">{{ _('Add by hand') }}</a>
+            <a href="{{ base_path }}/scan" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">{{ _('Scan item') }}</a>
+            <a href="{{ base_path }}/scan?add=manual" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">{{ _('Add by hand') }}</a>
             {% endif %}
             {% if feature_on('stats') %}
-            <a href="/stats" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">{{ _('Statistics') }}</a>
+            <a href="{{ base_path }}/stats" class="px-4 py-2 bg-shelf-card border border-shelf-border text-shelf-text rounded-lg text-sm hover:bg-shelf-hover transition-colors">{{ _('Statistics') }}</a>
             {% endif %}
         </div>
     </div>
@@ -24,20 +24,20 @@
        the gap at the narrower widths. #}
     {% set lending_tile = feature_on('lending') %}
     <div class="grid grid-cols-2 sm:grid-cols-3 {{ 'lg:grid-cols-6' if lending_tile else 'lg:grid-cols-5' }} gap-4 mb-8" data-testid="home-summary">
-        <a href="/browse" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+        <a href="{{ base_path }}/browse" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
             <p class="text-shelf-muted text-sm">{{ _('Catalogue') }}</p>
             <p class="text-3xl font-bold">{{ total_count }}</p>
         </a>
-        <a href="/browse?owned=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+        <a href="{{ base_path }}/browse?owned=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
             <p class="text-shelf-muted text-sm">{{ _('Owned') }}</p>
             <p class="text-3xl font-bold">{{ owned_count }}</p>
         </a>
-        <a href="/browse?owned=0" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
+        <a href="{{ base_path }}/browse?owned=0" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors">
             <p class="text-shelf-muted text-sm">{{ _('Wishlist') }}</p>
             <p class="text-3xl font-bold">{{ wishlist_count }}</p>
         </a>
         {% if lending_tile %}
-        <a href="/browse?lent_out=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors" data-testid="home-lent-out">
+        <a href="{{ base_path }}/browse?lent_out=1" class="bg-shelf-card border border-shelf-border rounded-lg p-5 hover:bg-shelf-hover transition-colors" data-testid="home-lent-out">
             <p class="text-shelf-muted text-sm">{{ _('Lent out') }}</p>
             <p class="text-3xl font-bold">{{ lent_out_count }}</p>
         </a>
@@ -56,12 +56,12 @@
         <section class="bg-shelf-card border border-shelf-border rounded-lg p-5">
             <div class="flex items-center justify-between gap-4 mb-4">
                 <h2 class="text-lg font-semibold">{{ _('Collection mix') }}</h2>
-                <a href="/browse" class="text-sm text-shelf-accent2 hover:text-shelf-accent">{{ _('Browse all') }}</a>
+                <a href="{{ base_path }}/browse" class="text-sm text-shelf-accent2 hover:text-shelf-accent">{{ _('Browse all') }}</a>
             </div>
             {% if media_types %}
             <div class="space-y-3" data-testid="home-media-types">
                 {% for row in media_types %}
-                <a href="/browse?media_type_filter={{ row.media_type }}" class="block">
+                <a href="{{ base_path }}/browse?media_type_filter={{ row.media_type }}" class="block">
                     <div class="flex justify-between text-sm mb-1">
                         <span>{{ _(media_type_labels.get(row.media_type, row.media_type)) }}</span>
                         <span class="text-shelf-muted">{{ row.item_count }}</span>
@@ -80,18 +80,18 @@
         <section class="bg-shelf-card border border-shelf-border rounded-lg p-5">
             <h2 class="text-lg font-semibold mb-4">{{ _('Useful places') }}</h2>
             <div class="space-y-3">
-                <a href="/browse" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
+                <a href="{{ base_path }}/browse" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
                     <p class="font-medium">{{ _('Browse') }}</p>
                     <p class="text-xs text-shelf-muted mt-1">{{ _('Search, filter, sort and bulk-edit the full catalogue.') }}</p>
                 </a>
                 {% if feature_on('series') %}
-                <a href="/series" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
+                <a href="{{ base_path }}/series" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
                     <p class="font-medium">{{ _('Series') }}</p>
                     <p class="text-xs text-shelf-muted mt-1">{{ _('See runs, gaps and completeness without crowding Browse.') }}</p>
                 </a>
                 {% endif %}
                 {% if feature_on('stats') %}
-                <a href="/stats" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
+                <a href="{{ base_path }}/stats" class="block bg-shelf-bg border border-shelf-border rounded-lg px-4 py-3 hover:bg-shelf-hover transition-colors">
                     <p class="font-medium">{{ _('Statistics') }}</p>
                     <p class="text-xs text-shelf-muted mt-1">{{ _('Open the deeper collection dashboard and charts.') }}</p>
                 </a>
@@ -106,19 +106,19 @@
                 <h2 class="text-lg font-semibold">{{ _('Recently added') }}</h2>
                 <p class="text-xs text-shelf-muted mt-1">{{ _('The latest items to enter your catalogue.') }}</p>
             </div>
-            <a href="/browse?sort=newest" class="text-sm text-shelf-accent2 hover:text-shelf-accent">{{ _('See more') }}</a>
+            <a href="{{ base_path }}/browse?sort=newest" class="text-sm text-shelf-accent2 hover:text-shelf-accent">{{ _('See more') }}</a>
         </div>
 
         {% if recent_items %}
         <div class="cover-grid" data-testid="home-recent-items">
             {% for item in recent_items %}
-            <a href="/item/{{ item.id }}" class="group relative">
+            <a href="{{ base_path }}/item/{{ item.id }}" class="group relative">
                 <div class="cover-card bg-shelf-card rounded-lg overflow-hidden border border-shelf-border group-hover:border-shelf-accent/50 transition-colors shadow-lg" data-cover-shape="{{ cover_shape(item.media_type) }}">
                     {% if item.wishlisted %}
                     <div class="absolute top-2 right-2 z-10 px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shadow-sm">{{ _('Wishlist') }}</div>
                     {% endif %}
                     {% if item.cover_path %}
-                    <img src="/{{ item.cover_path }}" alt="{{ item.title }}" loading="lazy">
+                    <img src="{{ base_path }}/{{ item.cover_path }}" alt="{{ item.title }}" loading="lazy">
                     {% else %}
                     <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-linear-to-br from-shelf-card to-shelf-hover">
                         <p class="text-shelf-text text-sm font-medium leading-tight mb-1">{{ item.title[:60] }}</p>
@@ -135,7 +135,7 @@
         </div>
         {% else %}
         <div class="bg-shelf-card border border-shelf-border rounded-lg p-5 text-sm text-shelf-muted">
-            {{ _('No items yet.') }} {% if user and user.role in ('admin', 'editor') %}<a href="/scan" class="text-shelf-accent2 hover:text-shelf-accent">{{ _('Start scanning') }}</a>.{% endif %}
+            {{ _('No items yet.') }} {% if user and user.role in ('admin', 'editor') %}<a href="{{ base_path }}/scan" class="text-shelf-accent2 hover:text-shelf-accent">{{ _('Start scanning') }}</a>.{% endif %}
         </div>
         {% endif %}
     </section>

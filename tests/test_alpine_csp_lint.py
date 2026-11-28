@@ -306,7 +306,7 @@ def _mutate_real_template(tmp_path, name, before, after):
     return check_alpine_csp.check_script_load_order(dest)
 
 
-_ALPINE_SRC = "/static/vendor/alpinejs-csp-3.15.9.min.js"
+_ALPINE_SRC = "{{ base_path }}/static/vendor/alpinejs-csp-3.15.9.min.js"
 
 
 def test_real_base_html_without_defer_is_caught(tmp_path):

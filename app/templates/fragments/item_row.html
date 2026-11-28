@@ -22,7 +22,7 @@
 } %}
 <tr class="border-b border-shelf-border hover:bg-shelf-hover/50 transition-colors cursor-pointer"
     data-item-id="{{ item.id }}"
-    @click="openOrToggle({{ item.id }}, '/item/{{ item.id }}', $event)"
+    @click="openOrToggle({{ item.id }}, '{{ base_path }}/item/{{ item.id }}', $event)"
     :class="selectedIds.includes({{ item.id }}) ? 'bg-shelf-accent/10' : ''">
     {% for col in browse_columns %}
     {%- if col.name == 'select' %}
@@ -35,7 +35,7 @@
     {%- elif col.name == 'cover' %}
     <td data-col="cover" class="px-3 py-2 w-10">
         {% if item.cover_path %}
-        <img src="/{{ item.cover_path }}" alt="" class="w-8 max-w-none h-12 object-cover rounded-sm" loading="lazy" data-cover-shape="{{ cover_shape(item.media_type) }}">
+        <img src="{{ base_path }}/{{ item.cover_path }}" alt="" class="w-8 max-w-none h-12 object-cover rounded-sm" loading="lazy" data-cover-shape="{{ cover_shape(item.media_type) }}">
         {% else %}
         <div class="w-8 h-12 bg-shelf-hover rounded-sm flex items-center justify-center">
             <svg class="w-4 h-4 text-shelf-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
@@ -45,7 +45,7 @@
     {%- elif col.name == 'title' %}
     <td data-col="title" class="px-3 py-2">
         <div class="flex items-center gap-2">
-            <a href="/item/{{ item.id }}" @click.prevent
+            <a href="{{ base_path }}/item/{{ item.id }}" @click.prevent
                class="text-shelf-text text-sm font-medium truncate max-w-xs hover:underline">{{ item.title }}</a>
             {% if item.wishlisted %}
             <span class="px-1.5 py-0.5 rounded-sm text-[10px] font-medium bg-shelf-warning/90 text-black shrink-0">{{ _('Wishlist') }}</span>
@@ -99,7 +99,7 @@
         {%- if row_tags %}
         <span class="flex flex-wrap gap-1">
             {%- for tag_name in row_tags %}
-            <a href="/browse?tag={{ tag_name|urlencode }}" @click.stop
+            <a href="{{ base_path }}/browse?tag={{ tag_name|urlencode }}" @click.stop
                class="px-1.5 py-0.5 bg-shelf-accent/10 text-shelf-accent2 rounded-full text-[10px] hover:bg-shelf-accent/20 transition-colors">{{ tag_name }}</a>
             {%- endfor %}
         </span>

@@ -13,7 +13,7 @@
         {% endif %}
     </span>
     {% if summary.next_position and summary.total %}
-    <a href="/locations/{{ location_id }}/arrange" class="ml-2 text-shelf-accent2 hover:text-shelf-accent">{{ _('Arrange') }}</a>
+    <a href="{{ base_path }}/locations/{{ location_id }}/arrange" class="ml-2 text-shelf-accent2 hover:text-shelf-accent">{{ _('Arrange') }}</a>
     {% endif %}
     {% endif %}
 </div>

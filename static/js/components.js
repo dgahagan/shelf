@@ -93,7 +93,7 @@ document.addEventListener('alpine:init', function () {
                 this.nameSaving = true; this.nameResult = false;
                 const form = new FormData();
                 form.append('display_name', this.displayName);
-                const r = await fetch('/api/account/display-name', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const r = await fetch(shelfUrl('/api/account/display-name'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 this.nameResult = await r.json();
                 this.nameSaving = false;
                 if (this.nameResult.ok) setTimeout(() => location.reload(), 800);
@@ -102,7 +102,7 @@ document.addEventListener('alpine:init', function () {
                 const form = new FormData();
                 form.append('language', this.language);
                 // A refusal can be plain text (a CSRF 403), not our JSON.
-                const r = await fetch('/api/account/language', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const r = await fetch(shelfUrl('/api/account/language'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 const result = await r.json().catch(() => ({ ok: false }));
                 if (result.ok) { location.reload(); return; }
                 this.language = this.savedLanguage;
@@ -113,7 +113,7 @@ document.addEventListener('alpine:init', function () {
                 const form = new FormData();
                 form.append('current_password', this.current);
                 form.append('new_password', this.newPw);
-                const r = await fetch('/api/account/password', { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
+                const r = await fetch(shelfUrl('/api/account/password'), { method: 'POST', headers: { 'X-CSRF-Token': window.csrfToken() }, body: form });
                 this.pwResult = await r.json();
                 this.pwSaving = false;
                 if (this.pwResult.ok) { this.current = ''; this.newPw = ''; this.confirm = ''; }

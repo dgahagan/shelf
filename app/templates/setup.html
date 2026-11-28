@@ -2,12 +2,14 @@
 <html lang="{{ current_locale()|replace('_', '-') }}" class="dark">
 <head>
     <meta charset="UTF-8">
+    <meta name="shelf-base" content="{{ base_path }}">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ _('Welcome') }} - Shelf</title>
-    <link rel="stylesheet" href="/static/css/app.css">
-    <script src="/static/js/component-load-guard.js"></script>
-    <script src="/static/js/components.js"></script>
-    <script defer src="/static/vendor/alpinejs-csp-3.15.9.min.js"></script>
+    <link rel="stylesheet" href="{{ base_path }}/static/css/app.css">
+    <script src="{{ base_path }}/static/js/shelf-url.js"></script>
+    <script src="{{ base_path }}/static/js/component-load-guard.js"></script>
+    <script src="{{ base_path }}/static/js/components.js"></script>
+    <script defer src="{{ base_path }}/static/vendor/alpinejs-csp-3.15.9.min.js"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center px-4">
     <div class="w-full max-w-md" x-data="setupForm">
@@ -16,7 +18,7 @@
             <p class="text-shelf-muted text-sm mt-2">{{ _('Create your admin account to get started.') }}</p>
         </div>
 
-        <form method="POST" action="/setup" class="bg-shelf-card border border-shelf-border rounded-xl p-6 space-y-4">
+        <form method="POST" action="{{ base_path }}/setup" class="bg-shelf-card border border-shelf-border rounded-xl p-6 space-y-4">
             {% if error %}
             <div class="bg-shelf-error/10 border border-shelf-error/30 text-shelf-error text-sm rounded-lg px-4 py-2">
                 {{ error }}

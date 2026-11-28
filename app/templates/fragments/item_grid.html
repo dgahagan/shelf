@@ -6,7 +6,7 @@
     {% endfor %}
     {% if has_more is defined and has_more %}
     <div id="load-more" class="col-span-full text-center py-4"
-         hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="[name='view']">
+         hx-get="{{ base_path }}{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="[name='view']">
         <div class="inline-block w-6 h-6 border-2 border-shelf-border border-t-shelf-accent rounded-full animate-spin"></div>
     </div>
     {% endif %}
@@ -36,7 +36,7 @@
             {% endfor %}
             {% if has_more is defined and has_more %}
             <tr id="load-more"
-                hx-get="{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="[name='view']">
+                hx-get="{{ base_path }}{{ load_more_url }}" hx-trigger="revealed" hx-swap="outerHTML" hx-include="[name='view']">
                 <td colspan="{{ browse_columns|length }}" class="text-center py-4">
                     <div class="inline-block w-6 h-6 border-2 border-shelf-border border-t-shelf-accent rounded-full animate-spin"></div>
                 </td>
@@ -61,7 +61,7 @@
             class="text-shelf-accent2 hover:text-shelf-accent inline-block cursor-pointer">{{ _('Clear all filters') }}</button>
     {% else %}
     <p class="text-shelf-muted text-lg mb-2">{{ _('No items found') }}</p>
-    <a href="/scan" class="text-shelf-accent2 hover:text-shelf-accent inline-block">{{ _('Start scanning books') }}</a>
+    <a href="{{ base_path }}/scan" class="text-shelf-accent2 hover:text-shelf-accent inline-block">{{ _('Start scanning books') }}</a>
     {% endif %}
 </div>
 {% endif %}

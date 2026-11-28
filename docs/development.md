@@ -57,7 +57,7 @@ DATA_DIR=./data-dev uvicorn app.main:app --reload
 | `make test-contract` | Live UPC Item DB contract check — spends one trial lookup; run at release, never on a gate |
 | `python -m pytest tests/test_items.py::test_x -v` | One unit test |
 | `python -m pytest tests/e2e/test_scan.py -v -m e2e` | One E2E file |
-| `make checks-fast` | Offline lints: secrets, CSRF, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges, workflow action pins |
+| `make checks-fast` | Offline lints: secrets, CSRF, base-path URLs, `items_live`/`copies_live` read seams, Alpine CSP, service-worker version, test conventions, Python lint (ruff: unused imports and variables, redefinitions, syntax errors), README test-count badges, workflow action pins |
 | `make badges` | Restamp README's two test-count badges from `pytest --co` — CI runs this on the push to `main` (the `restamp` job below); run it locally to see your work, but **never commit the result in a pull request** |
 | `make checks` | All checks incl. `check-lock`, `check-lock-selftest`, `pip-audit`, licenses, `check-base-image` and `check-actions` (network) |
 | `make lock` | Regenerate the hashed `requirements*.txt` locks from the `.in` files |
@@ -256,6 +256,16 @@ it posted from.
   A new `Alpine.data('name', …)` also needs a `name: 'file.js'` entry in the
   guard's `SCRIPTS` map, or losing that file goes unreported — the same lint
   fails until it is there.
+- **Never emit a root-relative URL.** Shelf can run under a URL sub-path
+  (`SHELF_BASE_PATH`). Templates write `{{ base_path }}/browse`, never
+  `href="/browse"`; scripts write `fetch(shelfUrl('/api/x'))`, never
+  `fetch('/api/x')`. A path variable from the server is prefixed in the
+  template: `{{ base_path }}{{ load_more_url }}`, and a URL passed into a
+  translated string is `base_path ~ '/settings'`. HTML built in Python uses
+  `f'{app_config.BASE_PATH}/settings'`. Redirects need nothing — a stage
+  prefixes their headers. `make check-base-path` reads templates, scripts
+  and `app/**/*.py` and enforces it; a
+  deliberate exception carries `base-path: ok — <reason>` on the same line.
 - **Raw `fetch()` must send `X-CSRF-Token`.** `make check-csrf` enforces;
   HTMX is configured globally in `base.html`.
 - **`MIGRATIONS` in `app/database.py` is append-only.** Never edit or

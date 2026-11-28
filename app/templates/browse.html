@@ -183,7 +183,7 @@
             <!-- Search always visible on mobile -->
             <input type="search" name="q" data-testid="search-input" placeholder="{{ _('Search...') }}" value="{{ initial_query or '' }}"
                    x-model="searchQuery"
-                   hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
+                   hx-get="{{ base_path }}/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="{{ filter_includes('q') }}"
                    class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50 flex-1 min-w-0">
         </div>
@@ -191,14 +191,14 @@
             <!-- Search (hidden on mobile since it's shown above) -->
             <input type="search" name="q" data-testid="search-input" placeholder="{{ _('Search...') }}" value="{{ initial_query or '' }}"
                    x-model="searchQuery"
-                   hx-get="/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
+                   hx-get="{{ base_path }}/api/search" hx-trigger="keyup changed delay:300ms" hx-target="#item-grid"
                    hx-include="{{ filter_includes('q') }}"
                    class="hidden sm:block bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50 w-48">
 
             {% set f = initial_filters or {} %}
             <!-- Media Type Filter -->
             <select id="type-filter" name="media_type_filter"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('media_type_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.media_type_filter else '' }}>{{ _('All Types') }} ({{ type_total }})</option>
@@ -212,7 +212,7 @@
 
             <!-- Location Filter -->
             <select id="location-filter" name="location_filter"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('location_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.location_filter else '' }}>{{ _('All Locations') }} ({{ filtered_total }})</option>
@@ -227,7 +227,7 @@
 
             <!-- Owned / Wishlist Filter -->
             <select id="owned-filter" name="owned"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('owned') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.owned else '' }}>{{ _('All') }} ({{ owned_count + wishlist_count + neither_count }})</option>
@@ -239,7 +239,7 @@
             {% if feature_on('lending') %}
             <!-- Lent Out Filter -->
             <select name="lent_out"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('lent_out') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.lent_out else '' }}>{{ _('All Items') }}</option>
@@ -250,7 +250,7 @@
             <!-- Reading Status Filter -->
             {% set sl = status_labels(active_type or none) %}
             <select id="reading-status-filter" name="reading_status"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('reading_status') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.reading_status else '' }}>{{ _('All Statuses') }}</option>
@@ -263,7 +263,7 @@
             <!-- Tag Filter (only when tags exist) -->
             {% if all_tags %}
             <select id="tag-filter" name="tag"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('tag') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.tag else '' }}>{{ _('All Tags') }}</option>
@@ -276,7 +276,7 @@
             <!-- Language Filter (only when the library has languages) -->
             {% if item_languages %}
             <select id="language-filter" name="language"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('language') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.language else '' }}>{{ _('All Languages') }}</option>
@@ -288,7 +288,7 @@
 
             <!-- Source Filter (how the item arrived: a provider, a sync, a scan by hand) -->
             <select id="source-filter" name="source_filter" data-testid="source-filter"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('source_filter') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="" {{ 'selected' if not f.source_filter else '' }}>{{ _('All Sources') }}</option>
@@ -303,7 +303,7 @@
 
             <!-- Sort -->
             <select name="sort"
-                    hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+                    hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
                     hx-include="{{ filter_includes('sort') }}"
                     class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
                 <option value="newest" {{ 'selected' if f.sort == 'newest' or not f.sort else '' }}>{{ _('Most Recent') }}</option>
@@ -339,7 +339,7 @@
     {% set author_value = (initial_filters or {}).get('author_filter', '') %}
     <input type="hidden" name="author_filter" value="{{ author_value }}"
            data-label="{{ author_filter_label or '' }}"
-           hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+           hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
            hx-include="{{ filter_includes('author_filter') }}">
 
     <!-- Item Grid -->
@@ -355,5 +355,5 @@
 <script type="application/json" id="browse-filter-config">{{ browse_filter_config() | tojson }}</script>
 {# The list-view column set, declared once in app/browse_columns.py. #}
 <script type="application/json" id="browse-column-config">{{ browse_column_config() | tojson }}</script>
-<script src="/static/js/browse.js"></script>
+<script src="{{ base_path }}/static/js/browse.js"></script>
 {% endblock %}

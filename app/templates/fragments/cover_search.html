@@ -1,4 +1,4 @@
-{% set action_prefix = action_prefix | default('/api/items/' ~ item_id, true) %}
+{% set action_prefix = action_prefix | default('/api/items/' ~ item_id, true) %}{# base-path: ok — action_prefix stays prefix-free; every attribute that uses it prepends base_path #}
 {% set result_target = result_target | default('#cover-candidates', true) %}
 {% set result_swap   = result_swap   | default('innerHTML', true) %}
 {# Where the SEARCH BOX puts its own response, which is another copy of this
@@ -14,7 +14,7 @@
     <input type="text" id="cover-query-{{ item_id }}" name="query" value="{{ query or '' }}"
            placeholder="{{ _('Search covers…') }}"
            class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-2 py-1.5 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent focus:border-transparent outline-hidden placeholder-shelf-muted/50 mb-2"
-           hx-get="{{ action_prefix }}/cover-search"
+           hx-get="{{ base_path }}{{ action_prefix }}/cover-search"
            hx-target="{{ search_target }}" hx-swap="{{ search_swap }}"
            hx-trigger="keyup changed delay:400ms"
            {# A counted host carries its position through the SEARCH too. The
@@ -37,13 +37,13 @@
         {% if cover_path %}
         <div data-testid="current-cover"
              class="relative rounded-lg overflow-hidden border border-shelf-accent bg-shelf-card">
-            <img src="/{{ cover_path }}" alt="{{ _('Current cover') }}" class="w-full aspect-2/3 object-cover"
+            <img src="{{ base_path }}/{{ cover_path }}" alt="{{ _('Current cover') }}" class="w-full aspect-2/3 object-cover"
                  data-cover-shape="{{ cover_shape(media_type) }}">
             <div class="absolute bottom-0 inset-x-0 bg-black/70 text-[10px] text-gray-300 px-1 py-0.5 text-center">{% if cover_edition_language == "en" %}{{ _('Current: English cover from another edition') }}{% else %}{{ _('Current') }}{% endif %}</div>
         </div>
         {% endif %}
         {% for c in candidates %}
-        <button hx-post="{{ action_prefix }}/cover-select" hx-vals='{"url":"{{ c.url }}"{% if c.edition_isbn %}, "edition_isbn":"{{ c.edition_isbn }}", "edition_language":"en"{% endif %}{% if pos is defined and pos %}, "pos":"{{ pos }}", "total":"{{ total }}"{% endif %}}'
+        <button hx-post="{{ base_path }}{{ action_prefix }}/cover-select" hx-vals='{"url":"{{ c.url }}"{% if c.edition_isbn %}, "edition_isbn":"{{ c.edition_isbn }}", "edition_language":"en"{% endif %}{% if pos is defined and pos %}, "pos":"{{ pos }}", "total":"{{ total }}"{% endif %}}'
                 hx-target="{{ result_target }}" hx-swap="{{ result_swap }}"
                 hx-include="#cover-query-{{ item_id }}"
                 class="group relative rounded-lg overflow-hidden border {% if failed_url and failed_url == c.url %}border-shelf-error{% else %}border-shelf-border hover:border-shelf-accent/50{% endif %} transition-colors cursor-pointer bg-shelf-card">
@@ -87,7 +87,7 @@
         {% if show_url_form %}
         <div>
             <p class="text-xs font-medium text-shelf-muted mb-1">{{ _('Use image from URL') }}</p>
-            <form hx-post="{{ action_prefix }}/cover-url" hx-swap="none"
+            <form hx-post="{{ base_path }}{{ action_prefix }}/cover-url" hx-swap="none"
                   data-testid="cover-url"
                   hx-disabled-elt="find input, find button"
                   class="flex items-center gap-2">
@@ -105,7 +105,7 @@
 
         <div>
             <p class="text-xs font-medium text-shelf-muted mb-1">{{ _('Upload from this device') }}</p>
-            <form hx-post="{{ action_prefix }}/cover-upload"
+            <form hx-post="{{ base_path }}{{ action_prefix }}/cover-upload"
                   hx-swap="{{ upload_swap | default('none', true) }}"
                   {% if upload_target %}hx-target="{{ upload_target }}"{% endif %}
                   enctype="multipart/form-data"
@@ -129,7 +129,7 @@
             </form>
         </div>
         {% if cover_path %}
-        <button hx-post="/api/items/{{ item_id }}/cover-remove" hx-swap="none" hx-confirm="Remove this cover?"
+        <button hx-post="{{ base_path }}/api/items/{{ item_id }}/cover-remove" hx-swap="none" hx-confirm="Remove this cover?"
                 data-testid="cover-remove"
                 class="px-3 py-1.5 bg-shelf-hover text-shelf-error rounded-lg text-sm hover:bg-shelf-border transition-colors">
             {{ _('Remove cover') }}

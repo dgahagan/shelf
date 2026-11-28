@@ -33,7 +33,7 @@
         }
 
         async function loadStatus() {
-            const data = await readJSON('/api/komga/status');
+            const data = await readJSON(shelfUrl('/api/komga/status'));
             if (!data.ok) return;
             url.value = data.url || '';
             publicUrl.value = data.public_url || '';
@@ -42,7 +42,7 @@
 
         document.getElementById('komga-save').addEventListener('click', async function () {
             setStatus('Saving…');
-            const data = await readJSON('/api/komga/settings', {
+            const data = await readJSON(shelfUrl('/api/komga/settings'), {
                 method: 'POST',
                 headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({
@@ -62,7 +62,7 @@
 
         document.getElementById('komga-test').addEventListener('click', async function () {
             setStatus('Testing connection…');
-            const data = await readJSON('/api/komga/test', {
+            const data = await readJSON(shelfUrl('/api/komga/test'), {
                 method: 'POST',
                 headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({url: url.value, api_key: apiKey.value})
@@ -106,7 +106,7 @@
 
         document.getElementById('komga-load-libraries').addEventListener('click', async function () {
             libraries.textContent = 'Loading libraries…';
-            const data = await readJSON('/api/komga/libraries');
+            const data = await readJSON(shelfUrl('/api/komga/libraries'));
             if (!data.ok) {
                 libraries.textContent = data.message || 'Could not load libraries';
                 saveLibraries.hidden = true;
@@ -123,7 +123,7 @@
                     kind: node.querySelector('[data-role="kind"]').value
                 };
             });
-            const data = await readJSON('/api/komga/libraries', {
+            const data = await readJSON(shelfUrl('/api/komga/libraries'), {
                 method: 'POST',
                 headers: csrfHeaders({'Content-Type': 'application/json'}),
                 body: JSON.stringify({libraries: rows})
@@ -140,7 +140,7 @@
                 result.textContent = '';
                 progress.textContent = 'Starting Komga sync…';
                 progressBar.style.width = '0%';
-                const stream = new EventSource('/api/komga/sync/stream');
+                const stream = new EventSource(shelfUrl('/api/komga/sync/stream'));
                 stream.onmessage = function (event) {
                     const data = JSON.parse(event.data);
                     if (data.type === 'progress') {

@@ -7,7 +7,7 @@
 <span id="collection-count" hx-swap-oob="true" class="text-shelf-muted text-lg font-normal">({{ filtered_total }})</span>
 
 <select id="type-filter" name="media_type_filter" hx-swap-oob="true"
-        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('media_type_filter') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_type else '' }}>{{ _('All Types') }} ({{ type_total }})</option>
@@ -20,7 +20,7 @@
 </select>
 
 <select id="owned-filter" name="owned" hx-swap-oob="true"
-        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('owned') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_owned else '' }}>{{ _('All') }} ({{ owned_count + wishlist_count + neither_count }})</option>
@@ -31,7 +31,7 @@
 
 {% if locations is defined %}
 <select id="location-filter" name="location_filter" hx-swap-oob="true"
-        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('location_filter') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_location else '' }}>{{ _('All Locations') }} ({{ filtered_total }})</option>
@@ -47,7 +47,7 @@
 
 {% if source_counts is defined %}
 <select id="source-filter" name="source_filter" data-testid="source-filter" hx-swap-oob="true"
-        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('source_filter') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_source else '' }}>{{ _('All Sources') }}</option>
@@ -65,7 +65,7 @@
 {% set rsc = reading_status_counts or {} %}
 {% set sl = status_labels(active_type or none) %}
 <select id="reading-status-filter" name="reading_status" hx-swap-oob="true"
-        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-get="{{ base_path }}/api/search" hx-trigger="change" hx-target="#item-grid"
         hx-include="{{ filter_includes('reading_status') }}"
         class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
     <option value="" {{ 'selected' if not active_reading_status else '' }}>{{ _('All Statuses') }}</option>
