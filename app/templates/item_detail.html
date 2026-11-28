@@ -48,6 +48,13 @@
                             class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
                         {{ _('Find cover') }}
                     </button>
+                    {% if item.media_type == 'board_game' %}
+                    {# Fills empty fields and a missing cover from BGG. #}
+                    <button hx-post="/api/board-games/{{ item.id }}/refresh" hx-swap="none" data-testid="bgg-refresh"
+                            class="text-xs px-3 py-1 bg-shelf-accent/20 text-shelf-accent2 rounded-sm hover:bg-shelf-accent/30 transition-colors">
+                        {{ _('Update from BGG') }}
+                    </button>
+                    {% endif %}
                 </div>
                 <div id="cover-candidates"></div>
                 {% endif %}
@@ -62,6 +69,7 @@
                     <p class="text-xs text-shelf-muted" data-testid="buy-links-disclosure">Affiliate links carrying your own tags (Settings &rarr; Library &rarr; Buy links).{% for l in buy_links %}{% if l.store == 'bookshop' %} Bookshop.org supports independent bookstores.{% endif %}{% endfor %}</p>
                 </div>{% endif %}
                 {% if item.subtitle %}<p class="text-lg text-shelf-muted mb-2">{{ item.subtitle }}</p>{% endif %}
+                {% if item.original_title and item.original_title != item.title %}<p class="text-sm text-shelf-muted mb-2" data-testid="original-title">{{ _('Original title:') }} {{ item.original_title }}</p>{% endif %}
                 {% if item.authors %}
                 <p class="text-lg mb-4 wrap-break-word">
                     {%- if item_authors %}
@@ -110,7 +118,20 @@
                     {% if item.narrator %}
                     <div><span class="text-shelf-muted">{{ _('Narrator:') }}</span> <a href="/browse?q={{ item.narrator|urlencode }}" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ item.narrator }}</a></div>
                     {% endif %}
+                    {% if item.media_type == 'board_game' %}
+                    {% if item.min_players %}
+                    <div data-testid="board-game-players"><span class="text-shelf-muted">{{ _('Players:') }}</span> {% if item.max_players and item.max_players != item.min_players %}{{ item.min_players }}&ndash;{{ item.max_players }}{% else %}{{ item.min_players }}{% endif %}</div>
+                    {% endif %}
                     {% if item.duration_mins %}
+                    <div data-testid="board-game-play-time"><span class="text-shelf-muted">{{ _('Play time:') }}</span> {{ item.duration_mins }} min</div>
+                    {% endif %}
+                    {% if item.min_age %}
+                    <div data-testid="board-game-min-age"><span class="text-shelf-muted">{{ _('Age:') }}</span> {{ item.min_age }}+</div>
+                    {% endif %}
+                    {% if item.bgg_id %}
+                    <div><span class="text-shelf-muted">BGG:</span> <a href="https://boardgamegeek.com/boardgame/{{ item.bgg_id }}" target="_blank" rel="noopener noreferrer" class="text-shelf-accent2 hover:text-shelf-accent transition-colors">{{ _('View on BoardGameGeek') }}</a> <span class="text-xs text-shelf-muted">({{ _('Powered by BGG') }})</span></div>
+                    {% endif %}
+                    {% elif item.duration_mins %}
                     <div><span class="text-shelf-muted">{{ _('Duration:') }}</span> {{ (item.duration_mins // 60) }}h {{ item.duration_mins % 60 }}m</div>
                     {% endif %}
                     {% include "fragments/item_copies.html" %}

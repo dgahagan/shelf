@@ -1170,7 +1170,8 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                     "publish_year", "page_count", "description", "series_name",
                     "series_position", "narrator", "duration_mins", "location_id", "notes",
                     "reading_status", "date_started", "date_finished", "owned", "wishlisted",
-                    "platform", "manual_value", "language", "asin"):
+                    "platform", "manual_value", "language", "asin",
+                    "min_players", "max_players", "min_age", "original_title"):
             val = form.get(key)
             if val is not None:
                 if key == "wishlisted":
@@ -1181,7 +1182,8 @@ async def update_item(request: Request, item_id: int, _=Depends(require_role("ed
                     fields[key] = val == "1"
                 elif val == "" and key != "owned":
                     fields[key] = None
-                elif key in ("publish_year", "page_count", "duration_mins", "location_id"):
+                elif key in ("publish_year", "page_count", "duration_mins", "location_id",
+                             "min_players", "max_players", "min_age"):
                     fields[key] = int(val) if val else None
                 elif key in ("series_position", "manual_value"):
                     fields[key] = float(val) if val else None

@@ -6,7 +6,7 @@
 msgid ""
 msgstr ""
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"PO-Revision-Date: 2026-11-27 15:02-0500\n"
+"PO-Revision-Date: 2026-11-27 23:18+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: de\n"
 "Language-Team: de <LL@li.org>\n"
@@ -20,27 +20,27 @@ msgstr ""
 msgid "Title"
 msgstr "Titel"
 
-#: app/browse_columns.py:63 app/browse_filters.py:220 app/config.py:156
+#: app/browse_columns.py:63 app/browse_filters.py:277 app/config.py:158
 #: app/templates/valuation_report.html:80
 msgid "Author"
 msgstr "Autor"
 
-#: app/browse_columns.py:64 app/browse_filters.py:209
+#: app/browse_columns.py:64 app/browse_filters.py:266
 #: app/templates/valuation_report.html:82
 msgid "Type"
 msgstr "Typ"
 
-#: app/browse_columns.py:65 app/browse_filters.py:211
+#: app/browse_columns.py:65 app/browse_filters.py:268
 #: app/templates/fragments/item_copy_edit.html:37
 #: app/templates/fragments/labels_scope.html:12
 #: app/templates/fragments/manual_add_form.html:160
 #: app/templates/intake.html:202 app/templates/item_edit.html:81
-#: app/templates/item_edit.html:301 app/templates/item_edit.html:306
+#: app/templates/item_edit.html:302 app/templates/item_edit.html:307
 msgid "Location"
 msgstr "Ort"
 
-#: app/browse_columns.py:66 app/browse_filters.py:213
-#: app/templates/item_detail.html:232 app/templates/item_edit.html:138
+#: app/browse_columns.py:66 app/browse_filters.py:270
+#: app/templates/item_detail.html:253 app/templates/item_edit.html:139
 msgid "Status"
 msgstr "Status"
 
@@ -51,31 +51,31 @@ msgstr "Wert"
 #: app/browse_columns.py:68 app/features.py:168 app/nav.py:45
 #: app/services/audnexus.py:210 app/templates/browse.html:49
 #: app/templates/fragments/manual_add_form.html:155 app/templates/home.html:89
-#: app/templates/item_edit.html:79 app/templates/item_edit.html:217
-#: app/templates/item_edit.html:221 app/templates/series.html:2
+#: app/templates/item_edit.html:79 app/templates/item_edit.html:218
+#: app/templates/item_edit.html:222 app/templates/series.html:2
 #: app/templates/series.html:7 app/templates/upcoming.html:6
 msgid "Series"
 msgstr "Reihe"
 
 #: app/browse_columns.py:69 app/services/audnexus.py:206
 #: app/templates/fragments/manual_add_form.html:96
-#: app/templates/item_edit.html:118
+#: app/templates/item_edit.html:119
 msgid "Publisher"
 msgstr "Verlag"
 
 #: app/browse_columns.py:70 app/services/audnexus.py:207
 #: app/templates/fragments/manual_add_form.html:99
-#: app/templates/item_edit.html:119
+#: app/templates/item_edit.html:120
 msgid "Year"
 msgstr "Jahr"
 
-#: app/browse_columns.py:71 app/templates/item_edit.html:223
+#: app/browse_columns.py:71 app/templates/item_edit.html:224
 msgid "Pages"
 msgstr "Seiten"
 
-#: app/browse_columns.py:72 app/browse_filters.py:221
+#: app/browse_columns.py:72 app/browse_filters.py:278
 #: app/templates/browse.html:65 app/templates/fragments/account_menu.html:116
-#: app/templates/item_edit.html:123
+#: app/templates/item_edit.html:124
 msgid "Language"
 msgstr "Sprache"
 
@@ -84,7 +84,7 @@ msgstr "Sprache"
 msgid "Added"
 msgstr "Hinzugefügt"
 
-#: app/browse_columns.py:74 app/templates/item_edit.html:355
+#: app/browse_columns.py:74 app/templates/item_edit.html:356
 #: app/templates/scan.html:148
 msgid "Platform"
 msgstr "Plattform"
@@ -95,27 +95,35 @@ msgstr "ISBN/EAN"
 
 #: app/browse_columns.py:76 app/templates/fragments/item_tags.html:3
 #: app/templates/fragments/settings/tags.html:6 app/templates/item_edit.html:83
-#: app/templates/item_edit.html:390
+#: app/templates/item_edit.html:399
 msgid "Tags"
 msgstr "Schlagwörter"
 
-#: app/browse_filters.py:208
+#: app/browse_filters.py:265
 #: app/templates/fragments/periodical_scan_result.html:29
 #: app/templates/logs.html:32
 msgid "Search"
 msgstr "Suche"
 
-#: app/browse_filters.py:210 app/templates/fragments/item_copy_edit.html:67
+#: app/browse_filters.py:267 app/templates/fragments/item_copy_edit.html:67
 msgid "Source"
 msgstr "Quelle"
 
-#: app/browse_filters.py:212
+#: app/browse_filters.py:269
 msgid "Sort"
 msgstr "Sortierung"
 
-#: app/browse_filters.py:216 app/templates/browse.html:83
+#: app/browse_filters.py:273 app/templates/browse.html:83
 msgid "Tag"
 msgstr "Schlagwort"
+
+#: app/browse_filters.py:280
+msgid "Players"
+msgstr "Spieler"
+
+#: app/browse_filters.py:281
+msgid "Play time"
+msgstr "Spieldauer"
 
 #: app/config.py:15
 msgid "Book"
@@ -133,7 +141,7 @@ msgstr "E-Book"
 msgid "Magazine"
 msgstr "Zeitschrift"
 
-#: app/config.py:19 app/routers/items_catalog.py:523
+#: app/config.py:19 app/routers/items_catalog.py:525
 msgid "DVD / Blu-ray"
 msgstr "DVD / Blu-ray"
 
@@ -162,91 +170,269 @@ msgid "Manga"
 msgstr "Manga"
 
 #: app/config.py:26 app/routers/items_catalog.py:185
-#: app/routers/items_common.py:870
+#: app/routers/items_common.py:879
 msgid "Video Game"
 msgstr "Videospiel"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:290
+#: app/config.py:27
+msgid "Board Game"
+msgstr "Brettspiel"
+
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:290
 msgid "Want to Read"
 msgstr "Möchte ich lesen"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:294
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:294
 msgid "Reading"
 msgstr "Lese ich gerade"
 
-#: app/config.py:54 app/templates/fragments/settings/integrations.html:298
+#: app/config.py:55 app/templates/fragments/settings/integrations.html:298
 msgid "Read"
 msgstr "Gelesen"
 
-#: app/config.py:54
+#: app/config.py:55
 msgid "read"
 msgstr "gelesen"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Want to Watch"
 msgstr "Möchte ich sehen"
 
-#: app/config.py:55 app/templates/series.html:89
+#: app/config.py:56 app/templates/series.html:89
 msgid "Watching"
 msgstr "Schaue ich gerade"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "Watched"
 msgstr "Gesehen"
 
-#: app/config.py:55
+#: app/config.py:56
 msgid "watched"
 msgstr "angesehen"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Want to Play"
 msgstr "Möchte ich spielen"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Playing"
 msgstr "Spiele ich gerade"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "Played"
 msgstr "Gespielt"
 
-#: app/config.py:56
+#: app/config.py:57
 msgid "played"
 msgstr "gespielt"
 
-#: app/config.py:58 app/templates/scan.html:218
+#: app/config.py:59 app/templates/scan.html:218
 msgid "Want to"
 msgstr "Geplant"
 
-#: app/config.py:58 app/templates/scan.html:219
+#: app/config.py:59 app/templates/scan.html:219
 msgid "In progress"
 msgstr "In Arbeit"
 
-#: app/config.py:58 app/templates/scan.html:220
+#: app/config.py:59 app/templates/scan.html:220
 #: app/templates/stats_wrapup.html:36
 msgid "Finished"
 msgstr "Fertig"
 
-#: app/config.py:58
+#: app/config.py:59
 msgid "finished"
 msgstr "fertig"
 
-#: app/config.py:124
+#: app/config.py:125
 msgid "Author(s)"
 msgstr "Autor(en)"
 
-#: app/config.py:127
+#: app/config.py:128
 msgid "Developer"
 msgstr "Entwickler"
 
-#: app/config.py:128
+#: app/config.py:129
+msgid "Designer"
+msgstr "Spieleautor"
+
+#: app/config.py:130
 msgid "Director"
 msgstr "Regie"
 
-#: app/config.py:131 app/templates/fragments/music_discogs.html:74
+#: app/config.py:133 app/templates/fragments/music_discogs.html:74
 #: app/templates/music.html:22 app/templates/music.html:23
 msgid "Artist"
 msgstr "Künstler"
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Rock"
+msgstr "Rock"
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Pop"
+msgstr "Pop"
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Jazz"
+msgstr "Jazz"
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Classical"
+msgstr "Klassik"
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Hip-hop"
+msgstr "Hip-Hop"
+
+#: app/config.py:169
+msgctxt "tag"
+msgid "Country"
+msgstr "Country"
+
+#: app/config.py:170
+msgctxt "tag"
+msgid "Electronic"
+msgstr "Elektronisch"
+
+#: app/config.py:170
+msgctxt "tag"
+msgid "Folk"
+msgstr "Folk"
+
+#: app/config.py:170
+msgctxt "tag"
+msgid "Soundtrack"
+msgstr "Soundtrack"
+
+#: app/config.py:170 app/config.py:173 app/config.py:175 app/config.py:176
+msgctxt "tag"
+msgid "Kids"
+msgstr "Kinder"
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Fiction"
+msgstr "Roman"
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Non-fiction"
+msgstr "Sachbuch"
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Cookbook"
+msgstr "Kochbuch"
+
+#: app/config.py:173
+msgctxt "tag"
+msgid "Reference"
+msgstr "Nachschlagewerk"
+
+#: app/config.py:174
+msgctxt "tag"
+msgid "Signed"
+msgstr "Signiert"
+
+#: app/config.py:174
+msgctxt "tag"
+msgid "First edition"
+msgstr "Erstausgabe"
+
+#: app/config.py:174
+msgctxt "tag"
+msgid "Book club"
+msgstr "Lesekreis"
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "Movie"
+msgstr "Film"
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "TV series"
+msgstr "Serie"
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "Documentary"
+msgstr "Doku"
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "Blu-ray"
+msgstr "Blu-ray"
+
+#: app/config.py:175
+msgctxt "tag"
+msgid "4K"
+msgstr "4K"
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Multiplayer"
+msgstr "Mehrspieler"
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Co-op"
+msgstr "Koop"
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Collector's edition"
+msgstr "Sammleredition"
+
+#: app/config.py:176
+msgctxt "tag"
+msgid "Sealed"
+msgstr "Originalverpackt"
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Family"
+msgstr "Familienspiel"
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Strategy"
+msgstr "Strategiespiel"
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Party Game"
+msgstr "Partyspiel"
+
+#: app/config.py:177
+msgctxt "tag"
+msgid "Puzzle"
+msgstr "Knobelspiel"
+
+#: app/config.py:178
+msgctxt "tag"
+msgid "Cooperative"
+msgstr "Kooperativ"
+
+#: app/config.py:178
+msgctxt "tag"
+msgid "Children's Game"
+msgstr "Kinderspiel"
+
+#: app/config.py:179
+msgctxt "tag"
+msgid "Two-player"
+msgstr "Für zwei"
+
+#: app/config.py:179
+msgctxt "tag"
+msgid "Expansion"
+msgstr "Erweiterung"
 
 #: app/currency.py:35
 msgid "US Dollar"
@@ -329,7 +515,7 @@ msgid "South African Rand"
 msgstr "Südafrikanischer Rand"
 
 #: app/features.py:159 app/templates/fragments/settings/library.html:255
-#: app/templates/item_detail.html:240
+#: app/templates/item_detail.html:261
 msgid "Lending"
 msgstr "Verleihen"
 
@@ -675,7 +861,7 @@ msgstr "Das Rückgabedatum liegt außerhalb des gültigen Bereichs"
 
 #: app/routers/checkouts.py:137 app/routers/hardcover.py:250
 #: app/routers/item_copies.py:174 app/routers/item_copies.py:231
-#: app/routers/items_catalog.py:544 app/routers/related_media.py:44
+#: app/routers/items_catalog.py:546 app/routers/related_media.py:44
 #: app/routers/related_media.py:80 app/routers/related_media.py:103
 #: app/routers/related_media.py:120
 msgid "Item not found"
@@ -802,7 +988,7 @@ msgid "Not in your collection"
 msgstr "Nicht in deiner Sammlung"
 
 #: app/routers/items.py:476 app/routers/items.py:702
-#: app/routers/items_catalog.py:276
+#: app/routers/items_catalog.py:278
 msgid "Invalid ISBN"
 msgstr "Ungültige ISBN"
 
@@ -810,16 +996,16 @@ msgstr "Ungültige ISBN"
 msgid "Network error during lookup — check connectivity"
 msgstr "Netzwerkfehler bei der Suche – prüfe die Verbindung"
 
-#: app/routers/items.py:589 app/routers/items_common.py:554
-#: app/routers/items_common.py:746
+#: app/routers/items.py:589 app/routers/items_board_games.py:289
+#: app/routers/items_common.py:563 app/routers/items_common.py:755
 msgid "Not found — add manually below"
 msgstr "Nicht gefunden – unten von Hand eintragen"
 
-#: app/routers/items.py:673 app/routers/items_catalog.py:440
+#: app/routers/items.py:673 app/routers/items_catalog.py:442
 msgid "Title is required"
 msgstr "Ein Titel ist nötig"
 
-#: app/routers/items.py:713 app/routers/items_catalog.py:448
+#: app/routers/items.py:713 app/routers/items_catalog.py:450
 msgid "Invalid publish year"
 msgstr "Ungültiges Erscheinungsjahr"
 
@@ -861,6 +1047,31 @@ msgstr "Einträge, die beide verliehen sind, können nicht zusammengeführt werd
 msgid "Cannot merge \"%(title)s\" (#%(id)s): %(reason)s"
 msgstr "„%(title)s“ (#%(id)s) kann nicht zusammengeführt werden: %(reason)s"
 
+#: app/routers/items_board_games.py:108
+msgid "No title for this game"
+msgstr "Kein Titel für dieses Spiel"
+
+#: app/routers/items_board_games.py:358 app/routers/items_board_games.py:427
+msgid "Failed to fetch game details from BoardGameGeek"
+msgstr "Spieldaten konnten nicht von BoardGameGeek geladen werden"
+
+#: app/routers/items_board_games.py:407
+msgid "Add a BoardGameGeek token in Settings first"
+msgstr "Hinterlege zuerst in den Einstellungen ein BoardGameGeek-Token"
+
+#: app/routers/items_board_games.py:421
+#, python-format
+msgid "BoardGameGeek has no single game called “%(title)s” — use Find cover, or correct the title"
+msgstr "Bei BoardGameGeek gibt es kein eindeutiges Spiel namens „%(title)s“ – nutze „Cover suchen“ oder korrigiere den Titel"
+
+#: app/routers/items_board_games.py:425
+msgid "Could not reach BoardGameGeek — check connectivity and try again."
+msgstr "BoardGameGeek war nicht erreichbar – prüfe die Verbindung und versuch es noch einmal."
+
+#: app/routers/items_board_games.py:450
+msgid "Updated from BoardGameGeek"
+msgstr "Von BoardGameGeek aktualisiert"
+
 #: app/routers/items_catalog.py:92
 msgid "Unrecognised game platform — pick one and try again"
 msgstr "Unbekannte Plattform – wähle eine aus und versuch es noch einmal"
@@ -869,41 +1080,41 @@ msgstr "Unbekannte Plattform – wähle eine aus und versuch es noch einmal"
 msgid "Failed to fetch game details from IGDB"
 msgstr "Spieldaten konnten nicht von IGDB geladen werden"
 
-#: app/routers/items_catalog.py:268
+#: app/routers/items_catalog.py:270
 msgid "Unrecognised media type — pick one and try again"
 msgstr "Unbekannter Medientyp – wähle einen aus und versuch es noch einmal"
 
-#: app/routers/items_catalog.py:320
+#: app/routers/items_catalog.py:322
 msgid "Could not fetch metadata for this ISBN"
 msgstr "Zu dieser ISBN konnten keine Daten geladen werden"
 
-#: app/routers/items_catalog.py:553
+#: app/routers/items_catalog.py:555
 msgid "This item has no ASIN to look up."
 msgstr "Dieser Eintrag hat keine ASIN zum Nachschlagen."
 
-#: app/routers/items_catalog.py:561
+#: app/routers/items_catalog.py:563
 #, python-format
 msgid "Not in the Audible catalogue for the %(region)s marketplace. Check Settings → Library → Audible marketplace."
 msgstr "Nicht im Audible-Katalog für den Marktplatz %(region)s. Prüfe Einstellungen → Bibliothek → Audible-Marktplatz."
 
-#: app/routers/items_catalog.py:566
+#: app/routers/items_catalog.py:568
 msgid "The Audible catalogue is rate-limiting requests. Try again in a minute."
 msgstr "Der Audible-Katalog begrenzt gerade die Anfragen. Versuche es in einer Minute noch einmal."
 
-#: app/routers/items_catalog.py:569
+#: app/routers/items_catalog.py:571
 msgid "Could not reach the Audible catalogue (Audnexus)."
 msgstr "Der Audible-Katalog (Audnexus) ist nicht erreichbar."
 
-#: app/routers/items_catalog.py:574
+#: app/routers/items_catalog.py:576
 msgid "Nothing to fill — every detail Audible has is already set."
 msgstr "Nichts zu ergänzen – alle Angaben, die Audible hat, sind schon gesetzt."
 
-#: app/routers/items_catalog.py:580
+#: app/routers/items_catalog.py:582
 #, python-format
 msgid "Audible's details could not be saved: %(error)s"
 msgstr "Die Angaben von Audible konnten nicht gespeichert werden: %(error)s"
 
-#: app/routers/items_catalog.py:582
+#: app/routers/items_catalog.py:584
 #, python-format
 msgid "Filled %(count)s field from Audible: %(fields)s."
 msgid_plural "Filled %(count)s fields from Audible: %(fields)s."
@@ -914,21 +1125,25 @@ msgstr[1] "%(count)s Felder von Audible ergänzt: %(fields)s."
 msgid "Metadata lookup failed — check connectivity"
 msgstr "Datensuche fehlgeschlagen – prüfe die Verbindung"
 
-#: app/routers/items_covers.py:75 app/routers/valuation.py:110
+#: app/routers/items_covers.py:76 app/routers/valuation.py:110
 #: app/templates/fragments/book_search_results.html:35
 msgid "No ISBN"
 msgstr "Keine ISBN"
 
-#: app/routers/items_covers.py:88
+#: app/routers/items_covers.py:89
 msgid "No cover found"
 msgstr "Kein Cover gefunden"
+
+#: app/routers/items_covers.py:105
+msgid "Board game cover search needs a BoardGameGeek token — add one in Settings → Integrations."
+msgstr "Die Cover-Suche für Brettspiele braucht ein BoardGameGeek-Token – trage es unter Einstellungen → Dienste ein."
 
 #: app/routers/items_csv.py:102
 #, python-format
 msgid "Unknown import mode '%(mode)s' (use skip or update)"
 msgstr ""
 
-#: app/routers/items_csv.py:111 app/routers/settings.py:490
+#: app/routers/items_csv.py:111 app/routers/settings.py:492
 msgid "No file uploaded"
 msgstr ""
 
@@ -999,7 +1214,7 @@ msgid "Copy %(n)s is no longer in the collection"
 msgstr "Exemplar %(n)s ist nicht mehr in der Sammlung"
 
 #: app/routers/items_scan_modes.py:197 app/routers/scan_inventory.py:181
-#: app/templates/item_edit.html:126
+#: app/templates/item_edit.html:127
 msgid "Unknown"
 msgstr "Unbekannt"
 
@@ -1143,106 +1358,106 @@ msgstr "So heißt die Reihe schon"
 msgid "Hardcover has no synopsis for this series — add one below"
 msgstr "Hardcover hat keine Zusammenfassung für diese Reihe – füge unten eine hinzu"
 
-#: app/routers/settings.py:90 app/routers/settings.py:92
-#: app/routers/settings.py:96 app/routers/settings.py:424
-#: app/routers/settings.py:426 app/routers/settings.py:434
+#: app/routers/settings.py:92 app/routers/settings.py:94
+#: app/routers/settings.py:98 app/routers/settings.py:426
+#: app/routers/settings.py:428 app/routers/settings.py:436
 msgid "Invalid request"
 msgstr "Ungültige Anfrage"
 
-#: app/routers/settings.py:102
+#: app/routers/settings.py:104
 msgid "No API key configured"
 msgstr "Kein API-Schlüssel eingerichtet"
 
-#: app/routers/settings.py:127
+#: app/routers/settings.py:129
 msgid "Unknown vision provider"
 msgstr "Unbekannter Bilderkennungsdienst"
 
-#: app/routers/settings.py:130
+#: app/routers/settings.py:132
 msgid "Ollama image size must be a whole number of pixels"
 msgstr "Die Ollama-Bildgröße muss eine ganze Pixelzahl sein"
 
-#: app/routers/settings.py:133
+#: app/routers/settings.py:135
 msgid "OpenAI image size must be a whole number of pixels"
 msgstr "Die OpenAI-Bildgröße muss eine ganze Pixelzahl sein"
 
-#: app/routers/settings.py:172
+#: app/routers/settings.py:174
 msgid "Overdue days must be a whole number"
 msgstr "Die Tage bis zur Überfälligkeit müssen eine ganze Zahl sein"
 
-#: app/routers/settings.py:175
+#: app/routers/settings.py:177
 msgid "Unknown notification format"
 msgstr "Unbekanntes Benachrichtigungsformat"
 
-#: app/routers/settings.py:204
+#: app/routers/settings.py:206
 msgid "Retention days must be a whole number"
 msgstr "Die Aufbewahrungsdauer in Tagen muss eine ganze Zahl sein"
 
-#: app/routers/settings.py:236
+#: app/routers/settings.py:238
 #, python-format
 msgid "Drop threshold must be a whole number from 1 to %(max)s"
 msgstr "Die Schwelle für Preissenkungen muss eine ganze Zahl von 1 bis %(max)s sein"
 
-#: app/routers/settings.py:238
+#: app/routers/settings.py:240
 #, python-format
 msgid "Books per night must be a whole number from 1 to %(max)s"
 msgstr "Bücher pro Nacht müssen eine ganze Zahl von 1 bis %(max)s sein"
 
-#: app/routers/settings.py:298
+#: app/routers/settings.py:300
 #, python-format
 msgid "Series per day must be a whole number from 1 to %(max)s"
 msgstr "Reihen pro Tag müssen eine ganze Zahl von 1 bis %(max)s sein"
 
-#: app/routers/settings.py:443
+#: app/routers/settings.py:445
 msgid "No URL provided"
 msgstr "Keine URL angegeben"
 
-#: app/routers/settings.py:446
+#: app/routers/settings.py:448
 msgid "Test notification sent"
 msgstr "Testbenachrichtigung gesendet"
 
-#: app/routers/settings.py:446
+#: app/routers/settings.py:448
 msgid "Send failed — check the URL and server logs"
 msgstr "Senden fehlgeschlagen – prüfe die URL und die Server-Protokolle"
 
-#: app/routers/settings.py:495
+#: app/routers/settings.py:497
 msgid "File too large (max 500 MB)"
 msgstr ""
 
-#: app/routers/settings.py:501
+#: app/routers/settings.py:503
 msgid "This backup is encrypted — enter its passphrase"
 msgstr ""
 
-#: app/routers/settings.py:528
+#: app/routers/settings.py:530
 msgid "Database contains triggers — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:537
+#: app/routers/settings.py:539
 msgid "Database contains views — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:547
+#: app/routers/settings.py:549
 msgid "Database contains virtual tables — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:554
+#: app/routers/settings.py:556
 msgid "Database has attached databases — not allowed"
 msgstr ""
 
-#: app/routers/settings.py:569
+#: app/routers/settings.py:571
 #, python-format
 msgid "Not a valid Shelf database (missing tables: %(tables)s)"
 msgstr ""
 
-#: app/routers/settings.py:584
+#: app/routers/settings.py:586
 #, python-format
 msgid "Incompatible schema: '%(table)s' table is missing columns: %(columns)s"
 msgstr ""
 
-#: app/routers/settings.py:590
+#: app/routers/settings.py:592
 msgid "Invalid database file — must be a valid Shelf SQLite database"
 msgstr ""
 
-#: app/routers/settings.py:644
+#: app/routers/settings.py:646
 msgid "Database restored. All sessions invalidated. Restart the container to apply."
 msgstr ""
 
@@ -1444,7 +1659,7 @@ msgstr "Untertitel"
 msgid "Authors"
 msgstr "Autoren"
 
-#: app/services/audnexus.py:205 app/templates/item_edit.html:366
+#: app/services/audnexus.py:205 app/templates/item_edit.html:367
 msgid "Narrator"
 msgstr "Sprecher"
 
@@ -1452,13 +1667,489 @@ msgstr "Sprecher"
 msgid "Duration"
 msgstr "Dauer"
 
-#: app/services/audnexus.py:209 app/templates/item_detail.html:126
+#: app/services/audnexus.py:209 app/templates/item_detail.html:147
 msgid "Synopsis"
 msgstr "Inhalt"
 
 #: app/services/audnexus.py:211
 msgid "Series number"
 msgstr "Nummer in der Reihe"
+
+#: app/services/bgg_tags.py:32
+msgctxt "bgg"
+msgid "Abstract Strategy"
+msgstr "Abstraktes Strategiespiel"
+
+#: app/services/bgg_tags.py:33
+msgctxt "bgg"
+msgid "Dexterity"
+msgstr "Geschicklichkeit"
+
+#: app/services/bgg_tags.py:34
+msgctxt "bgg"
+msgid "Adventure"
+msgstr "Abenteuer"
+
+#: app/services/bgg_tags.py:35
+msgctxt "bgg"
+msgid "Age of Reason"
+msgstr "Aufklärung"
+
+#: app/services/bgg_tags.py:36
+msgctxt "bgg"
+msgid "American Civil War"
+msgstr "Amerikanischer Bürgerkrieg"
+
+#: app/services/bgg_tags.py:37
+msgctxt "bgg"
+msgid "American Indian Wars"
+msgstr "Indianerkriege"
+
+#: app/services/bgg_tags.py:38
+msgctxt "bgg"
+msgid "American Revolutionary War"
+msgstr "Amerikanische Revolution"
+
+#: app/services/bgg_tags.py:39
+msgctxt "bgg"
+msgid "Wild West"
+msgstr "Wilder Westen"
+
+#: app/services/bgg_tags.py:40
+msgctxt "bgg"
+msgid "Ancient"
+msgstr "Antike"
+
+#: app/services/bgg_tags.py:41
+msgctxt "bgg"
+msgid "Animals"
+msgstr "Tiere"
+
+#: app/services/bgg_tags.py:42
+msgctxt "bgg"
+msgid "Arabian"
+msgstr "Orient"
+
+#: app/services/bgg_tags.py:43
+msgctxt "bgg"
+msgid "Aviation"
+msgstr "Luftfahrt"
+
+#: app/services/bgg_tags.py:44
+msgctxt "bgg"
+msgid "Bluffing"
+msgstr "Bluffen"
+
+#: app/services/bgg_tags.py:45
+msgctxt "bgg"
+msgid "Gamebook"
+msgstr "Spielbuch"
+
+#: app/services/bgg_tags.py:46
+msgctxt "bgg"
+msgid "Card Game"
+msgstr "Kartenspiel"
+
+#: app/services/bgg_tags.py:47
+msgctxt "bgg"
+msgid "Children's Game"
+msgstr "Kinderspiel"
+
+#: app/services/bgg_tags.py:48
+msgctxt "bgg"
+msgid "City Building"
+msgstr "Städtebau"
+
+#: app/services/bgg_tags.py:49
+msgctxt "bgg"
+msgid "Civil War"
+msgstr "Bürgerkrieg"
+
+#: app/services/bgg_tags.py:50
+msgctxt "bgg"
+msgid "Civilization"
+msgstr "Zivilisation"
+
+#: app/services/bgg_tags.py:51
+msgctxt "bgg"
+msgid "Collectible"
+msgstr "Sammelspiel"
+
+#: app/services/bgg_tags.py:52
+msgctxt "bgg"
+msgid "Comics"
+msgstr "Comic"
+
+#: app/services/bgg_tags.py:53
+msgctxt "bgg"
+msgid "Deduction"
+msgstr "Deduktion"
+
+#: app/services/bgg_tags.py:54
+msgctxt "bgg"
+msgid "Dice Game"
+msgstr "Würfelspiel"
+
+#: app/services/bgg_tags.py:55
+msgctxt "bgg"
+msgid "Economic"
+msgstr "Wirtschaft"
+
+#: app/services/bgg_tags.py:56
+msgctxt "bgg"
+msgid "Educational"
+msgstr "Lernspiel"
+
+#: app/services/bgg_tags.py:57
+msgctxt "bgg"
+msgid "Electronic"
+msgstr "Elektronisch"
+
+#: app/services/bgg_tags.py:58
+msgctxt "bgg"
+msgid "Environmental"
+msgstr "Umwelt"
+
+#: app/services/bgg_tags.py:59 app/services/bgg_tags.py:61
+#: app/services/bgg_tags.py:136
+msgctxt "bgg"
+msgid "Expansion"
+msgstr "Erweiterung"
+
+#: app/services/bgg_tags.py:60
+msgctxt "bgg"
+msgid "Exploration"
+msgstr "Erkundung"
+
+#: app/services/bgg_tags.py:62
+msgctxt "bgg"
+msgid "Fantasy"
+msgstr "Fantasy"
+
+#: app/services/bgg_tags.py:63
+msgctxt "bgg"
+msgid "Farming"
+msgstr "Landwirtschaft"
+
+#: app/services/bgg_tags.py:64
+msgctxt "bgg"
+msgid "Fighting"
+msgstr "Kampf"
+
+#: app/services/bgg_tags.py:65
+msgctxt "bgg"
+msgid "Game System"
+msgstr "Spielsystem"
+
+#: app/services/bgg_tags.py:66
+msgctxt "bgg"
+msgid "Horror"
+msgstr "Horror"
+
+#: app/services/bgg_tags.py:67
+msgctxt "bgg"
+msgid "Humor"
+msgstr "Humor"
+
+#: app/services/bgg_tags.py:68
+msgctxt "bgg"
+msgid "Industry"
+msgstr "Industrie"
+
+#: app/services/bgg_tags.py:69
+msgctxt "bgg"
+msgid "Korean War"
+msgstr "Koreakrieg"
+
+#: app/services/bgg_tags.py:70
+msgctxt "bgg"
+msgid "Mafia"
+msgstr "Mafia"
+
+#: app/services/bgg_tags.py:71
+msgctxt "bgg"
+msgid "Math"
+msgstr "Mathematik"
+
+#: app/services/bgg_tags.py:72
+msgctxt "bgg"
+msgid "Adults Only"
+msgstr "Für Erwachsene"
+
+#: app/services/bgg_tags.py:73
+msgctxt "bgg"
+msgid "Maze"
+msgstr "Labyrinth"
+
+#: app/services/bgg_tags.py:74
+msgctxt "bgg"
+msgid "Medical"
+msgstr "Medizin"
+
+#: app/services/bgg_tags.py:75
+msgctxt "bgg"
+msgid "Medieval"
+msgstr "Mittelalter"
+
+#: app/services/bgg_tags.py:76 app/services/bgg_tags.py:131
+msgctxt "bgg"
+msgid "Memory"
+msgstr "Gedächtnisspiel"
+
+#: app/services/bgg_tags.py:77
+msgctxt "bgg"
+msgid "Miniatures"
+msgstr "Miniaturen"
+
+#: app/services/bgg_tags.py:78
+msgctxt "bgg"
+msgid "Modern Warfare"
+msgstr "Moderne Kriegsführung"
+
+#: app/services/bgg_tags.py:79
+msgctxt "bgg"
+msgid "Movies & TV"
+msgstr "Film & Fernsehen"
+
+#: app/services/bgg_tags.py:80
+msgctxt "bgg"
+msgid "Mystery"
+msgstr "Krimi"
+
+#: app/services/bgg_tags.py:81
+msgctxt "bgg"
+msgid "Music"
+msgstr "Musik"
+
+#: app/services/bgg_tags.py:82
+msgctxt "bgg"
+msgid "Mythology"
+msgstr "Mythologie"
+
+#: app/services/bgg_tags.py:83
+msgctxt "bgg"
+msgid "Napoleonic"
+msgstr "Napoleonische Zeit"
+
+#: app/services/bgg_tags.py:84
+msgctxt "bgg"
+msgid "Nautical"
+msgstr "Seefahrt"
+
+#: app/services/bgg_tags.py:85
+msgctxt "bgg"
+msgid "Negotiation"
+msgstr "Verhandeln"
+
+#: app/services/bgg_tags.py:86
+msgctxt "bgg"
+msgid "Based on a Novel"
+msgstr "Nach einem Roman"
+
+#: app/services/bgg_tags.py:87
+msgctxt "bgg"
+msgid "Numbers"
+msgstr "Zahlenspiel"
+
+#: app/services/bgg_tags.py:88
+msgctxt "bgg"
+msgid "Party Game"
+msgstr "Partyspiel"
+
+#: app/services/bgg_tags.py:89
+msgctxt "bgg"
+msgid "Pike and Shot"
+msgstr "Frühe Neuzeit"
+
+#: app/services/bgg_tags.py:90
+msgctxt "bgg"
+msgid "Pirates"
+msgstr "Piraten"
+
+#: app/services/bgg_tags.py:91
+msgctxt "bgg"
+msgid "Political"
+msgstr "Politik"
+
+#: app/services/bgg_tags.py:92
+msgctxt "bgg"
+msgid "Post-Napoleonic"
+msgstr "19. Jahrhundert"
+
+#: app/services/bgg_tags.py:93
+msgctxt "bgg"
+msgid "Prehistoric"
+msgstr "Urzeit"
+
+#: app/services/bgg_tags.py:94
+msgctxt "bgg"
+msgid "Print & Play"
+msgstr "Print & Play"
+
+#: app/services/bgg_tags.py:95
+msgctxt "bgg"
+msgid "Puzzle"
+msgstr "Knobelspiel"
+
+#: app/services/bgg_tags.py:96
+msgctxt "bgg"
+msgid "Racing"
+msgstr "Rennspiel"
+
+#: app/services/bgg_tags.py:97
+msgctxt "bgg"
+msgid "Real-time"
+msgstr "Echtzeit"
+
+#: app/services/bgg_tags.py:98
+msgctxt "bgg"
+msgid "Religious"
+msgstr "Religion"
+
+#: app/services/bgg_tags.py:99
+msgctxt "bgg"
+msgid "Renaissance"
+msgstr "Renaissance"
+
+#: app/services/bgg_tags.py:100
+msgctxt "bgg"
+msgid "Science Fiction"
+msgstr "Science-Fiction"
+
+#: app/services/bgg_tags.py:101
+msgctxt "bgg"
+msgid "Space"
+msgstr "Weltraum"
+
+#: app/services/bgg_tags.py:102
+msgctxt "bgg"
+msgid "Spies"
+msgstr "Spione"
+
+#: app/services/bgg_tags.py:103
+msgctxt "bgg"
+msgid "Sports"
+msgstr "Sport"
+
+#: app/services/bgg_tags.py:104
+msgctxt "bgg"
+msgid "Territory Building"
+msgstr "Gebietsaufbau"
+
+#: app/services/bgg_tags.py:105
+msgctxt "bgg"
+msgid "Trains"
+msgstr "Eisenbahn"
+
+#: app/services/bgg_tags.py:106
+msgctxt "bgg"
+msgid "Transportation"
+msgstr "Transport"
+
+#: app/services/bgg_tags.py:107
+msgctxt "bgg"
+msgid "Travel"
+msgstr "Reisen"
+
+#: app/services/bgg_tags.py:108
+msgctxt "bgg"
+msgid "Trivia"
+msgstr "Quiz"
+
+#: app/services/bgg_tags.py:109
+msgctxt "bgg"
+msgid "Video Game Theme"
+msgstr "Videospiel-Thema"
+
+#: app/services/bgg_tags.py:110
+msgctxt "bgg"
+msgid "Vietnam War"
+msgstr "Vietnamkrieg"
+
+#: app/services/bgg_tags.py:111
+msgctxt "bgg"
+msgid "Wargame"
+msgstr "Konfliktsimulation"
+
+#: app/services/bgg_tags.py:112
+msgctxt "bgg"
+msgid "Word Game"
+msgstr "Wortspiel"
+
+#: app/services/bgg_tags.py:113
+msgctxt "bgg"
+msgid "World War I"
+msgstr "Erster Weltkrieg"
+
+#: app/services/bgg_tags.py:114
+msgctxt "bgg"
+msgid "World War II"
+msgstr "Zweiter Weltkrieg"
+
+#: app/services/bgg_tags.py:115
+msgctxt "bgg"
+msgid "Zombies"
+msgstr "Zombies"
+
+#: app/services/bgg_tags.py:120
+msgctxt "bgg"
+msgid "Cooperative"
+msgstr "Kooperativ"
+
+#: app/services/bgg_tags.py:121
+msgctxt "bgg"
+msgid "Solo"
+msgstr "Solospiel"
+
+#: app/services/bgg_tags.py:122
+msgctxt "bgg"
+msgid "Teams"
+msgstr "Teamspiel"
+
+#: app/services/bgg_tags.py:123
+msgctxt "bgg"
+msgid "Deck Building"
+msgstr "Deckbau"
+
+#: app/services/bgg_tags.py:124
+msgctxt "bgg"
+msgid "Worker Placement"
+msgstr "Worker Placement"
+
+#: app/services/bgg_tags.py:125
+msgctxt "bgg"
+msgid "Tile Placement"
+msgstr "Plättchen legen"
+
+#: app/services/bgg_tags.py:126
+msgctxt "bgg"
+msgid "Roll and Move"
+msgstr "Würfeln und Ziehen"
+
+#: app/services/bgg_tags.py:127
+msgctxt "bgg"
+msgid "Trick-taking"
+msgstr "Stichspiel"
+
+#: app/services/bgg_tags.py:128
+msgctxt "bgg"
+msgid "Hidden Roles"
+msgstr "Geheime Rollen"
+
+#: app/services/bgg_tags.py:129
+msgctxt "bgg"
+msgid "Legacy"
+msgstr "Legacy"
+
+#: app/services/bgg_tags.py:130
+msgctxt "bgg"
+msgid "Push Your Luck"
+msgstr "Push your Luck"
+
+#: app/services/bgg_tags.py:132 app/services/bgg_tags.py:133
+msgctxt "bgg"
+msgid "Drafting"
+msgstr "Drafting"
 
 #: app/services/browse_counts.py:16
 msgid "Manual"
@@ -1475,6 +2166,62 @@ msgstr "Laden-Warteschlange"
 #: app/services/browse_counts.py:34
 msgid "CSV Import"
 msgstr "CSV-Import"
+
+#: app/services/browse_counts.py:41
+msgid "Solo"
+msgstr "Allein"
+
+#: app/services/browse_counts.py:42
+msgid "2 players"
+msgstr "Zu zweit"
+
+#: app/services/browse_counts.py:43
+msgid "3 players"
+msgstr "Zu dritt"
+
+#: app/services/browse_counts.py:44
+msgid "4 players"
+msgstr "Zu viert"
+
+#: app/services/browse_counts.py:45
+msgid "5 players"
+msgstr "Zu fünft"
+
+#: app/services/browse_counts.py:46
+msgid "6 players"
+msgstr "Zu sechst"
+
+#: app/services/browse_counts.py:47
+msgid "7 players"
+msgstr "Zu siebt"
+
+#: app/services/browse_counts.py:48
+msgid "8 players"
+msgstr "Zu acht"
+
+#: app/services/browse_counts.py:49
+msgid "9 players"
+msgstr "Zu neunt"
+
+#: app/services/browse_counts.py:50
+msgid "10 or more players"
+msgstr "Zu zehnt oder mehr"
+
+#: app/services/browse_counts.py:56
+msgid "Up to 30 min"
+msgstr "Bis 30 Min."
+
+#: app/services/browse_counts.py:57
+msgid "31–60 min"
+msgstr "31–60 Min."
+
+#: app/services/browse_counts.py:58
+msgid "61–120 min"
+msgstr "61–120 Min."
+
+#: app/services/browse_counts.py:59
+msgid "Over 2 hours"
+msgstr "Über 2 Std."
 
 #: app/services/national.py:90
 msgid "English"
@@ -1659,59 +2406,59 @@ msgstr[1] "%(num)s Scans"
 msgid "Main menu"
 msgstr "Hauptmenü"
 
-#: app/templates/base.html:109
+#: app/templates/base.html:142
 msgid "Keyboard shortcuts (?)"
 msgstr "Tastenkürzel (?)"
 
-#: app/templates/base.html:115
+#: app/templates/base.html:148
 msgid "Keyboard Shortcuts"
 msgstr "Tastenkürzel"
 
-#: app/templates/base.html:122
+#: app/templates/base.html:155
 msgid "Global"
 msgstr "Überall"
 
-#: app/templates/base.html:124
+#: app/templates/base.html:157
 msgid "Focus search"
 msgstr "Zur Suche springen"
 
-#: app/templates/base.html:125
+#: app/templates/base.html:158
 msgid "Go to Scan"
 msgstr "Zu Scannen"
 
-#: app/templates/base.html:126
+#: app/templates/base.html:159
 msgid "Go to Browse"
 msgstr "Zur Sammlung"
 
-#: app/templates/base.html:127
+#: app/templates/base.html:160
 msgid "Show shortcuts"
 msgstr "Tastenkürzel anzeigen"
 
-#: app/templates/base.html:131
+#: app/templates/base.html:164
 msgid "Browse Page"
 msgstr "Sammlungsseite"
 
-#: app/templates/base.html:133
+#: app/templates/base.html:166
 msgid "Toggle grid / list view"
 msgstr "Raster- / Listenansicht umschalten"
 
-#: app/templates/base.html:134
+#: app/templates/base.html:167
 msgid "Toggle select mode"
 msgstr "Auswahlmodus umschalten"
 
-#: app/templates/base.html:135
+#: app/templates/base.html:168
 msgid "Toggle filters (mobile)"
 msgstr "Filter ein-/ausblenden (Handy)"
 
-#: app/templates/base.html:136 app/templates/fragments/item_grid.html:61
+#: app/templates/base.html:169 app/templates/fragments/item_grid.html:61
 msgid "Clear all filters"
 msgstr "Alle Filter zurücksetzen"
 
-#: app/templates/base.html:137
+#: app/templates/base.html:170
 msgid "Exit select / blur search"
 msgstr "Auswahl beenden / Suche verlassen"
 
-#: app/templates/base.html:142
+#: app/templates/base.html:175
 msgid "Shortcuts are disabled when typing in inputs"
 msgstr "Beim Tippen in Eingabefeldern sind Tastenkürzel aus"
 
@@ -1846,7 +2593,7 @@ msgstr "Im Besitz"
 #: app/templates/fragments/item_card.html:7
 #: app/templates/fragments/item_row.html:51
 #: app/templates/fragments/settings/data.html:297 app/templates/home.html:36
-#: app/templates/home.html:118 app/templates/item_detail.html:58
+#: app/templates/home.html:118 app/templates/item_detail.html:65
 #: app/templates/series.html:226 app/templates/series.html:304
 #: app/templates/stats.html:20
 msgid "Wishlist"
@@ -1866,7 +2613,7 @@ msgid "Lent Out"
 msgstr "Verliehen"
 
 #: app/templates/browse.html:256
-#: app/templates/fragments/filter_counts_oob.html:71
+#: app/templates/fragments/filter_counts_oob.html:75
 msgid "All Statuses"
 msgstr "Alle Status"
 
@@ -1878,36 +2625,36 @@ msgstr "Alle Schlagwörter"
 msgid "All Languages"
 msgstr "Alle Sprachen"
 
-#: app/templates/browse.html:294
+#: app/templates/browse.html:297
 #: app/templates/fragments/filter_counts_oob.html:53
 msgid "All Sources"
 msgstr "Alle Quellen"
 
-#: app/templates/browse.html:309
+#: app/templates/browse.html:312
 msgid "Most Recent"
 msgstr "Neueste zuerst"
 
-#: app/templates/browse.html:310
+#: app/templates/browse.html:313
 msgid "Oldest First"
 msgstr "Älteste zuerst"
 
-#: app/templates/browse.html:311
+#: app/templates/browse.html:314
 msgid "Title A–Z"
 msgstr "Titel A–Z"
 
-#: app/templates/browse.html:312
+#: app/templates/browse.html:315
 msgid "Title Z–A"
 msgstr "Titel Z–A"
 
-#: app/templates/browse.html:315
+#: app/templates/browse.html:318
 msgid "Year (Newest)"
 msgstr "Jahr (neueste)"
 
-#: app/templates/browse.html:316
+#: app/templates/browse.html:319
 msgid "Year (Oldest)"
 msgstr "Jahr (älteste)"
 
-#: app/templates/browse.html:329
+#: app/templates/browse.html:332
 msgid "Clear all"
 msgstr "Alles zurücksetzen"
 
@@ -1978,7 +2725,7 @@ msgstr "Diesen Datensatz behalten"
 msgid "added %(date)s"
 msgstr "hinzugefügt am %(date)s"
 
-#: app/templates/duplicates.html:44 app/templates/item_detail.html:95
+#: app/templates/duplicates.html:44 app/templates/item_detail.html:103
 msgid "ISBN:"
 msgstr "ISBN:"
 
@@ -2078,7 +2825,7 @@ msgstr "Sammlung ansehen"
 msgid "Scan item"
 msgstr "Eintrag scannen"
 
-#: app/templates/home.html:14 app/templates/scan.html:266
+#: app/templates/home.html:14 app/templates/scan.html:267
 msgid "Add by hand"
 msgstr "Von Hand hinzufügen"
 
@@ -2186,7 +2933,7 @@ msgid "Capture"
 msgstr "Aufnehmen"
 
 #: app/templates/fragments/item_copy_edit.html:103 app/templates/intake.html:49
-#: app/templates/item_edit.html:377 app/templates/series.html:150
+#: app/templates/item_edit.html:386 app/templates/series.html:150
 #: app/templates/series.html:164 app/templates/series.html:203
 msgid "Cancel"
 msgstr "Abbrechen"
@@ -2322,6 +3069,7 @@ msgid "Default tags — e.g. Cookbook; Signed"
 msgstr "Standard-Schlagwörter – z. B. Kochbuch; Signiert"
 
 #: app/templates/fragments/audit_report.html:118
+#: app/templates/fragments/board_game_search_results.html:48
 #: app/templates/fragments/book_search_results.html:31
 #: app/templates/fragments/dvd_search_results.html:29
 #: app/templates/fragments/game_search_results.html:31
@@ -2389,201 +3137,229 @@ msgstr "ASIN erneut versuchen"
 msgid "Find cover"
 msgstr "Cover suchen"
 
-#: app/templates/item_detail.html:59
+#: app/templates/item_detail.html:55
+msgid "Update from BGG"
+msgstr "Von BGG aktualisieren"
+
+#: app/templates/item_detail.html:66
 #, python-format
 msgid "List price %(price)s"
 msgstr "Listenpreis %(price)s"
 
-#: app/templates/item_detail.html:59 app/templates/item_detail.html:120
+#: app/templates/item_detail.html:66 app/templates/item_detail.html:141
 #, python-format
 msgid "as of %(date)s"
 msgstr "Stand %(date)s"
 
-#: app/templates/item_detail.html:59
+#: app/templates/item_detail.html:66
 #, python-format
 msgid "was %(price)s on %(date)s"
 msgstr "am %(date)s: %(price)s"
 
-#: app/templates/item_detail.html:77
+#: app/templates/item_detail.html:72
+msgid "Original title:"
+msgstr "Originaltitel:"
+
+#: app/templates/item_detail.html:85
 msgid "Type:"
 msgstr "Typ:"
 
-#: app/templates/item_detail.html:80
+#: app/templates/item_detail.html:88
 msgid "Language:"
 msgstr "Sprache:"
 
-#: app/templates/item_detail.html:83
+#: app/templates/item_detail.html:91
 msgid "Platform:"
 msgstr "Plattform:"
 
-#: app/templates/item_detail.html:86
+#: app/templates/item_detail.html:94
 msgid "Publisher:"
 msgstr "Verlag:"
 
-#: app/templates/item_detail.html:89
+#: app/templates/item_detail.html:97
 msgid "Year:"
 msgstr "Jahr:"
 
-#: app/templates/item_detail.html:92
+#: app/templates/item_detail.html:100
 msgid "Pages:"
 msgstr "Seiten:"
 
-#: app/templates/item_detail.html:98
+#: app/templates/item_detail.html:106
 msgid "Series:"
 msgstr "Reihe:"
 
-#: app/templates/item_detail.html:105
+#: app/templates/item_detail.html:113
 #, python-format
 msgid "you own %(owned)s of 1–%(top)s"
 msgstr "du hast %(owned)s von 1–%(top)s"
 
-#: app/templates/item_detail.html:105
+#: app/templates/item_detail.html:113
 msgid "missing"
 msgstr "fehlt"
 
-#: app/templates/item_detail.html:106
+#: app/templates/item_detail.html:114
 #, python-format
 msgid "%(count)s in series (Hardcover)"
 msgstr "%(count)s in der Reihe (Hardcover)"
 
-#: app/templates/item_detail.html:111
+#: app/templates/item_detail.html:119
 msgid "Narrator:"
 msgstr "Sprecher:"
 
-#: app/templates/item_detail.html:114
+#: app/templates/item_detail.html:123
+msgid "Players:"
+msgstr "Spieler:"
+
+#: app/templates/item_detail.html:126
+msgid "Play time:"
+msgstr "Spieldauer:"
+
+#: app/templates/item_detail.html:129
+msgid "Age:"
+msgstr "Alter:"
+
+#: app/templates/item_detail.html:132
+msgid "View on BoardGameGeek"
+msgstr "Auf BoardGameGeek ansehen"
+
+#: app/templates/item_detail.html:132
+msgid "Powered by BGG"
+msgstr "Daten von BGG"
+
+#: app/templates/item_detail.html:135
 msgid "Duration:"
 msgstr "Dauer:"
 
-#: app/templates/item_detail.html:118
+#: app/templates/item_detail.html:139
 msgid "Value:"
 msgstr "Wert:"
 
-#: app/templates/item_detail.html:118
+#: app/templates/item_detail.html:139
 msgid "(manual)"
 msgstr "(von Hand)"
 
-#: app/templates/item_detail.html:120
+#: app/templates/item_detail.html:141
 msgid "Est. Value:"
 msgstr "Geschätzter Wert:"
 
-#: app/templates/item_detail.html:133
+#: app/templates/item_detail.html:154
 msgid "Read more"
 msgstr "Weiterlesen"
 
-#: app/templates/item_detail.html:133
+#: app/templates/item_detail.html:154
 msgid "Show less"
 msgstr "Weniger anzeigen"
 
-#: app/templates/item_detail.html:142 app/templates/series.html:96
+#: app/templates/item_detail.html:163 app/templates/series.html:96
 msgid "Fetch synopsis"
 msgstr "Inhaltsangabe laden"
 
-#: app/templates/item_detail.html:143
+#: app/templates/item_detail.html:164
 msgid "Searching…"
 msgstr "Suche läuft …"
 
-#: app/templates/item_detail.html:145
+#: app/templates/item_detail.html:166
 msgid "No synopsis found on Open Library or Google Books."
 msgstr "Keine Inhaltsangabe bei Open Library oder Google Books gefunden."
 
-#: app/templates/item_detail.html:155
+#: app/templates/item_detail.html:176
 msgid "Fill details from Audible"
 msgstr "Angaben von Audible ergänzen"
 
-#: app/templates/item_detail.html:167
+#: app/templates/item_detail.html:188
 msgid "Loading related media…"
 msgstr "Verknüpfte Medien werden geladen …"
 
-#: app/templates/item_detail.html:172
+#: app/templates/item_detail.html:193
 msgid "Notes:"
 msgstr "Notizen:"
 
 #: app/templates/fragments/settings/integrations.html:57
-#: app/templates/item_detail.html:181
+#: app/templates/item_detail.html:202
 msgid "Read on Audiobookshelf"
 msgstr "In Audiobookshelf lesen"
 
-#: app/templates/item_detail.html:181
+#: app/templates/item_detail.html:202
 msgid "Listen on Audiobookshelf"
 msgstr "In Audiobookshelf anhören"
 
-#: app/templates/item_detail.html:197
+#: app/templates/item_detail.html:218
 msgid "Synced to Hardcover"
 msgstr "Mit Hardcover abgeglichen"
 
-#: app/templates/item_detail.html:197
+#: app/templates/item_detail.html:218
 msgid "Push to Hardcover"
 msgstr "An Hardcover senden"
 
 #: app/templates/fragments/settings/integrations.html:106
-#: app/templates/item_detail.html:198
+#: app/templates/item_detail.html:219
 msgid "Syncing..."
 msgstr "Wird abgeglichen …"
 
-#: app/templates/item_detail.html:204
+#: app/templates/item_detail.html:225
 msgid "Added to your Hardcover library"
 msgstr "Zu deiner Hardcover-Bibliothek hinzugefügt"
 
-#: app/templates/item_detail.html:216
+#: app/templates/item_detail.html:237
 #, python-format
 msgid "Also in Audiobookshelf (%(type)s)"
 msgstr "Auch in Audiobookshelf (%(type)s)"
 
-#: app/templates/item_detail.html:243
+#: app/templates/item_detail.html:264
 msgid "Lent to"
 msgstr "Verliehen an"
 
-#: app/templates/item_detail.html:244
+#: app/templates/item_detail.html:265
 #, python-format
 msgid "on %(date)s"
 msgstr "am %(date)s"
 
-#: app/templates/item_detail.html:246
+#: app/templates/item_detail.html:267
 msgid "Due:"
 msgstr "Zurück bis:"
 
-#: app/templates/item_detail.html:252
+#: app/templates/item_detail.html:273
 msgid "Check In"
 msgstr "Zurücknehmen"
 
-#: app/templates/item_detail.html:260
+#: app/templates/item_detail.html:281
 msgid "Lend this item"
 msgstr "Diesen Eintrag verleihen"
 
-#: app/templates/item_detail.html:271
+#: app/templates/item_detail.html:292
 msgid "2 weeks"
 msgstr "2 Wochen"
 
-#: app/templates/item_detail.html:272
+#: app/templates/item_detail.html:293
 msgid "1 week"
 msgstr "1 Woche"
 
-#: app/templates/item_detail.html:273
+#: app/templates/item_detail.html:294
 msgid "1 month"
 msgstr "1 Monat"
 
-#: app/templates/item_detail.html:274
+#: app/templates/item_detail.html:295
 msgid "No due date"
 msgstr "Ohne Rückgabedatum"
 
-#: app/templates/item_detail.html:276
+#: app/templates/item_detail.html:297
 msgid "Check Out"
 msgstr "Verleihen"
 
-#: app/templates/item_detail.html:279
+#: app/templates/item_detail.html:300
 msgid "Add borrowers in <a href=\"/settings\" class=\"text-shelf-accent2\">Settings</a> first."
 msgstr "Lege zuerst in den <a href=\"/settings\" class=\"text-shelf-accent2\">Einstellungen</a> Personen an."
 
-#: app/templates/item_detail.html:286
+#: app/templates/item_detail.html:307
 msgid "Checkout history"
 msgstr "Verleihverlauf"
 
-#: app/templates/item_detail.html:293
+#: app/templates/item_detail.html:314
 #, python-format
 msgid "returned %(date)s"
 msgstr "zurück am %(date)s"
 
-#: app/templates/item_detail.html:295
+#: app/templates/item_detail.html:316
 msgid "out"
 msgstr "verliehen"
 
@@ -2592,36 +3368,36 @@ msgstr "verliehen"
 #: app/templates/fragments/item_copies.html:95
 #: app/templates/fragments/settings/library.html:134
 #: app/templates/fragments/settings/tags.html:29
-#: app/templates/item_detail.html:309
+#: app/templates/item_detail.html:330
 msgid "Edit"
 msgstr "Bearbeiten"
 
-#: app/templates/item_detail.html:312
+#: app/templates/item_detail.html:333
 msgid "Add another like this"
 msgstr "Ähnlichen Eintrag hinzufügen"
 
 #: app/templates/fragments/settings/tags.html:24
 #: app/templates/fragments/settings/users.html:33
-#: app/templates/item_detail.html:318
+#: app/templates/item_detail.html:339
 msgid "Delete"
 msgstr "Löschen"
 
-#: app/templates/item_detail.html:324
+#: app/templates/item_detail.html:345
 #, python-format
 msgid "Added %(date)s"
 msgstr "Hinzugefügt am %(date)s"
 
-#: app/templates/item_detail.html:324
+#: app/templates/item_detail.html:345
 #, python-format
 msgid "Updated %(date)s"
 msgstr "Geändert am %(date)s"
 
-#: app/templates/item_detail.html:324
+#: app/templates/item_detail.html:345
 #, python-format
 msgid "via %(source)s"
 msgstr "Quelle: %(source)s"
 
-#: app/templates/item_detail.html:329
+#: app/templates/item_detail.html:350
 msgid "Integration IDs"
 msgstr "IDs der Dienste"
 
@@ -2699,15 +3475,15 @@ msgstr "Bereiche"
 msgid "General"
 msgstr "Allgemein"
 
-#: app/templates/item_edit.html:78 app/templates/item_edit.html:168
+#: app/templates/item_edit.html:78 app/templates/item_edit.html:169
 msgid "Artwork"
 msgstr "Cover"
 
-#: app/templates/item_edit.html:80 app/templates/item_edit.html:229
+#: app/templates/item_edit.html:80 app/templates/item_edit.html:230
 msgid "Identifiers"
 msgstr "Kennungen"
 
-#: app/templates/item_edit.html:82 app/templates/item_edit.html:350
+#: app/templates/item_edit.html:82 app/templates/item_edit.html:351
 msgid "Media Details"
 msgstr "Mediendetails"
 
@@ -2715,147 +3491,163 @@ msgstr "Mediendetails"
 msgid "Core catalogue metadata and reading details."
 msgstr "Grunddaten des Eintrags und Lesestatus."
 
+#: app/templates/item_edit.html:105
+msgid "Original title"
+msgstr "Originaltitel"
+
 #: app/templates/fragments/manual_add_form.html:40
-#: app/templates/item_edit.html:108 app/templates/scan.html:113
+#: app/templates/item_edit.html:109 app/templates/scan.html:113
 msgid "Media Type"
 msgstr "Medientyp"
 
-#: app/templates/item_edit.html:142 app/templates/item_edit.html:178
-#: app/templates/item_edit.html:309 app/templates/item_edit.html:358
+#: app/templates/item_edit.html:143 app/templates/item_edit.html:179
+#: app/templates/item_edit.html:310 app/templates/item_edit.html:359
 #: app/templates/scan.html:134 app/templates/scan.html:217
 msgid "None"
 msgstr "Keine"
 
-#: app/templates/item_edit.html:149
+#: app/templates/item_edit.html:150
 msgid "Date Started"
 msgstr "Begonnen am"
 
-#: app/templates/item_edit.html:150
+#: app/templates/item_edit.html:151
 msgid "Date Finished"
 msgstr "Beendet am"
 
-#: app/templates/item_edit.html:155
+#: app/templates/item_edit.html:156
 msgid "Description"
 msgstr "Beschreibung"
 
-#: app/templates/fragments/audit_notes.html:4 app/templates/item_edit.html:161
+#: app/templates/fragments/audit_notes.html:4 app/templates/item_edit.html:162
 msgid "Notes"
 msgstr "Notizen"
 
-#: app/templates/item_edit.html:169
+#: app/templates/item_edit.html:170
 msgid "Preview the current cover, upload a replacement, or use a public image URL."
 msgstr "Aktuelles Cover ansehen, ein neues hochladen oder eine öffentliche Bild-URL verwenden."
 
 #: app/templates/fragments/cover_search.html:40
-#: app/templates/item_edit.html:175
+#: app/templates/item_edit.html:176
 msgid "Current cover"
 msgstr "Aktuelles Cover"
 
-#: app/templates/item_edit.html:177
+#: app/templates/item_edit.html:178
 msgid "Cover preview"
 msgstr "Cover-Vorschau"
 
-#: app/templates/item_edit.html:188
+#: app/templates/item_edit.html:189
 msgid "Drop an image here or click to browse"
 msgstr "Bild hierher ziehen oder zum Auswählen klicken"
 
-#: app/templates/item_edit.html:190
+#: app/templates/item_edit.html:191
 msgid "The replacement is applied when you save the item."
 msgstr "Das neue Cover wird beim Speichern übernommen."
 
-#: app/templates/item_edit.html:196
+#: app/templates/item_edit.html:197
 msgid "Cover image URL"
 msgstr "Bild-URL des Covers"
 
-#: app/templates/item_edit.html:208
+#: app/templates/item_edit.html:209
 msgid "Use URL"
 msgstr "URL übernehmen"
 
-#: app/templates/item_edit.html:211
+#: app/templates/item_edit.html:212
 msgid "Public HTTPS image links only. Use URL applies the cover immediately; your other edits are still saved with Save Changes."
 msgstr "Nur öffentliche HTTPS-Bildlinks. „URL übernehmen“ setzt das Cover sofort; deine anderen Änderungen werden weiterhin erst beim Speichern übernommen."
 
-#: app/templates/item_edit.html:218
+#: app/templates/item_edit.html:219
 msgid "Series membership, position and page count."
 msgstr "Reihe, Position und Seitenzahl."
 
-#: app/templates/item_edit.html:222
+#: app/templates/item_edit.html:223
 msgid "Series #"
 msgstr "Reihen-Nr."
 
-#: app/templates/item_edit.html:230
+#: app/templates/item_edit.html:231
 msgid "Identifiers printed on this edition."
 msgstr "Kennungen, die auf dieser Ausgabe stehen."
 
-#: app/templates/item_edit.html:233
+#: app/templates/item_edit.html:234
 msgid "ISBN"
 msgstr "ISBN"
 
-#: app/templates/item_edit.html:237
+#: app/templates/item_edit.html:238
 msgid "The stored ISBN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
 msgstr "Die gespeicherte ISBN hat eine falsche Prüfziffer. Sie bleibt so, bis du sie hier änderst – Korrekturen werden wie üblich geprüft."
 
-#: app/templates/item_edit.html:242 app/templates/item_edit.html:249
+#: app/templates/item_edit.html:243 app/templates/item_edit.html:250
 msgid "Scan ISBN"
 msgstr "ISBN scannen"
 
-#: app/templates/item_edit.html:250 app/templates/item_edit.html:283
+#: app/templates/item_edit.html:251 app/templates/item_edit.html:284
 msgid "Close scanner"
 msgstr "Scanner schließen"
 
-#: app/templates/item_edit.html:266 app/templates/music.html:27
+#: app/templates/item_edit.html:267 app/templates/music.html:27
 msgid "UPC / EAN"
 msgstr "UPC / EAN"
 
-#: app/templates/item_edit.html:266
+#: app/templates/item_edit.html:267
 msgid "UPC-A or EAN-13"
 msgstr "UPC-A oder EAN-13"
 
-#: app/templates/item_edit.html:270
+#: app/templates/item_edit.html:271
 msgid "The stored UPC / EAN fails its check digit. It is kept as-is unless you change it here — correcting or clearing it is checked as usual."
 msgstr "Die gespeicherte UPC / EAN hat eine falsche Prüfziffer. Sie bleibt so, bis du sie hier änderst – Korrekturen werden wie üblich geprüft."
 
-#: app/templates/item_edit.html:275 app/templates/item_edit.html:282
+#: app/templates/item_edit.html:276 app/templates/item_edit.html:283
 msgid "Scan UPC / EAN"
 msgstr "UPC / EAN scannen"
 
-#: app/templates/item_edit.html:302
+#: app/templates/item_edit.html:303
 msgid "Ownership, physical location and collection value."
 msgstr "Besitz, Standort und Wert."
 
-#: app/templates/item_edit.html:323
+#: app/templates/item_edit.html:324
 msgid "I own this item"
 msgstr "Ich besitze diesen Eintrag"
 
-#: app/templates/item_edit.html:334
+#: app/templates/item_edit.html:335
 msgid "On my wishlist"
 msgstr "Auf meiner Wunschliste"
 
-#: app/templates/item_edit.html:336
+#: app/templates/item_edit.html:337
 msgid "Uncheck both for a book you read but don't own — reading history stays."
 msgstr "Beides abwählen für ein Buch, das du gelesen hast, aber nicht besitzt – der Leseverlauf bleibt erhalten."
 
-#: app/templates/item_edit.html:341
+#: app/templates/item_edit.html:342
 #, python-format
 msgid "Value (%(symbol)s)"
 msgstr "Wert (%(symbol)s)"
 
-#: app/templates/item_edit.html:344
+#: app/templates/item_edit.html:345
 msgid "Overrides the ISBNdb estimate everywhere it's shown"
 msgstr "Ersetzt überall die Schätzung von ISBNdb"
 
-#: app/templates/item_edit.html:344
+#: app/templates/item_edit.html:345
 #, python-format
 msgid "ISBNdb estimate: %(value)s"
 msgstr "Schätzung von ISBNdb: %(value)s"
 
-#: app/templates/item_edit.html:351
+#: app/templates/item_edit.html:352
 msgid "Fields specific to the selected media type."
 msgstr "Felder für den gewählten Medientyp."
 
-#: app/templates/item_edit.html:367
+#: app/templates/item_edit.html:368
 msgid "Duration (min)"
 msgstr "Dauer (Min.)"
+
+#: app/templates/item_edit.html:375
+msgid "Min. players"
+msgstr "Min. Spieler"
+
+#: app/templates/item_edit.html:376
+msgid "Max. players"
+msgstr "Max. Spieler"
+
+#: app/templates/item_edit.html:377
+msgid "Minimum age"
+msgstr "Mindestalter"
 
 #: app/templates/fragments/account_menu.html:132
 #: app/templates/fragments/item_copy_edit.html:99
@@ -2868,11 +3660,11 @@ msgstr "Dauer (Min.)"
 #: app/templates/fragments/settings/library.html:338
 #: app/templates/fragments/settings/price_alerts.html:35
 #: app/templates/fragments/settings/release_radar.html:27
-#: app/templates/item_edit.html:374 app/templates/series.html:199
+#: app/templates/item_edit.html:383 app/templates/series.html:199
 msgid "Save"
 msgstr "Speichern"
 
-#: app/templates/item_edit.html:391
+#: app/templates/item_edit.html:400
 msgid "Tags save as you add or remove them."
 msgstr "Schlagwörter werden sofort gespeichert."
 
@@ -3345,23 +4137,27 @@ msgstr "Für Module oder Spiele ohne Barcode – suche bei IGDB nach Name und Pl
 msgid "Search TMDb for movies by title."
 msgstr "Filme bei TMDb nach Titel suchen."
 
-#: app/templates/scan.html:240
+#: app/templates/scan.html:238
+msgid "Search BoardGameGeek for board games by title."
+msgstr "Brettspiele bei BoardGameGeek nach Titel suchen."
+
+#: app/templates/scan.html:241
 msgid "Search Open Library for books by title, author, or keyword."
 msgstr "Bücher bei Open Library nach Titel, Autor oder Stichwort suchen."
 
-#: app/templates/scan.html:241
+#: app/templates/scan.html:242
 msgid "Title search has no barcode to detect from, so it searches books. Pick a media type above to search TMDb or IGDB instead."
 msgstr "Ohne Barcode lässt sich der Typ nicht erkennen, daher werden Bücher gesucht. Wähle oben einen Medientyp, um stattdessen andere Quellen zu durchsuchen."
 
-#: app/templates/scan.html:266
+#: app/templates/scan.html:267
 msgid "Hide manual entry"
 msgstr "Eingabe von Hand ausblenden"
 
-#: app/templates/scan.html:273
+#: app/templates/scan.html:274
 msgid "Add by Hand"
 msgstr "Von Hand hinzufügen"
 
-#: app/templates/scan.html:274
+#: app/templates/scan.html:275
 msgid "No lookup involved — a title is all you need. Everything else is optional and editable afterwards."
 msgstr "Ohne Suche – ein Titel reicht. Alles andere ist freiwillig und lässt sich später ändern."
 
@@ -4173,11 +4969,40 @@ msgstr "%(n)s gescannt"
 msgid "Reload to see them"
 msgstr "Neu laden, um sie zu sehen"
 
-#: app/templates/fragments/book_search_results.html:43
-#, python-format
-msgid "No books found for \"%(query)s\". Try a different search."
-msgstr "Keine Bücher für „%(query)s“ gefunden. Versuch eine andere Suche."
+#: app/templates/fragments/board_game_filters.html:11
+msgid "Any number of players"
+msgstr "Beliebig viele Spieler"
 
+#: app/templates/fragments/board_game_filters.html:25
+msgid "Any play time"
+msgstr "Beliebige Spieldauer"
+
+#: app/templates/fragments/board_game_search_results.html:12
+msgid "Choose the matching game below"
+msgstr "Wähle unten das passende Spiel"
+
+#: app/templates/fragments/board_game_search_results.html:13
+#, python-format
+msgid "Which game is barcode %(upc)s?"
+msgstr "Welches Spiel hat den Barcode %(upc)s?"
+
+#: app/templates/fragments/board_game_search_results.html:27
+msgid "players"
+msgstr "Spieler"
+
+#: app/templates/fragments/board_game_search_results.html:29
+msgid "Expansion"
+msgstr "Erweiterung"
+
+#: app/templates/fragments/board_game_search_results.html:53
+msgid "Powered by"
+msgstr "Daten von"
+
+#: app/templates/fragments/board_game_search_results.html:58
+msgid "No board games found. Try a different title."
+msgstr "Keine Brettspiele gefunden. Versuch einen anderen Titel."
+
+#: app/templates/fragments/board_game_search_results.html:63
 #: app/templates/fragments/book_search_results.html:48
 #: app/templates/fragments/dvd_search_results.html:43
 #: app/templates/fragments/game_search_results.html:45
@@ -4185,6 +5010,11 @@ msgstr "Keine Bücher für „%(query)s“ gefunden. Versuch eine andere Suche."
 #: app/templates/fragments/scan_result.html:256
 msgid "Add it by hand"
 msgstr "Von Hand hinzufügen"
+
+#: app/templates/fragments/book_search_results.html:43
+#, python-format
+msgid "No books found for \"%(query)s\". Try a different search."
+msgstr "Keine Bücher für „%(query)s“ gefunden. Versuch eine andere Suche."
 
 #: app/templates/fragments/cover_review_item.html:18
 msgid "That's the end of this pass"

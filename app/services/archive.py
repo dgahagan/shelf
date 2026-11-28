@@ -77,6 +77,11 @@ _ITEM_COLUMNS = (
     "date_finished", "owned", "estimated_value", "manual_value",
     "value_updated_at", "hardcover_book_id", "hardcover_edition_id",
     "hardcover_user_book_id", "language", "cover_review_dismissed",
+    # Board games (migrations 58-61). An absent key (an archive written
+    # before them) imports as NULL, which all four columns allow.
+    "bgg_id", "min_players", "max_players", "min_age",
+    # Migration 63; absent in older archives, so NULL on import.
+    "original_title",
     "created_at", "updated_at",
 )
 

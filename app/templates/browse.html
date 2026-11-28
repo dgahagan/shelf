@@ -286,6 +286,9 @@
             </select>
             {% endif %}
 
+            <!-- Board game filters: players and play time -->
+            {% with oob = false %}{% include "fragments/board_game_filters.html" %}{% endwith %}
+
             <!-- Source Filter (how the item arrived: a provider, a sync, a scan by hand) -->
             <select id="source-filter" name="source_filter" data-testid="source-filter"
                     hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"

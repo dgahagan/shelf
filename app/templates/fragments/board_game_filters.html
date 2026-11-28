@@ -1,0 +1,33 @@
+{# Board game filters (#167): Players and Play time. Rendered by browse.html on
+   first paint and by filter_counts_oob.html on every page-1 swap, so the two
+   copies cannot drift. `oob` adds hx-swap-oob for the swap. Each select only
+   appears once some item in the library has the data it filters on (or it
+   is in use). #}
+{% if has_player_filter or active_players %}
+<select id="players-filter" name="players" data-testid="players-filter" {% if oob %}hx-swap-oob="true"{% endif %}
+        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-include="{{ filter_includes('players') }}"
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
+    <option value="" {{ 'selected' if not active_players else '' }}>{{ _('Any number of players') }}</option>
+    {% for n, count in player_counts.items() %}
+    <option value="{{ n }}" {{ 'selected' if active_players == n|string else '' }}>{{ player_labels[n] }} ({{ count }})</option>
+    {% endfor %}
+    {% if active_players and active_players|int not in player_counts %}
+    <option value="{{ active_players }}" selected>{{ player_labels.get(active_players|int, active_players) }} (0)</option>
+    {% endif %}
+</select>
+{% endif %}
+{% if has_play_time_filter or active_play_time %}
+<select id="play-time-filter" name="play_time" data-testid="play-time-filter" {% if oob %}hx-swap-oob="true"{% endif %}
+        hx-get="/api/search" hx-trigger="change" hx-target="#item-grid"
+        hx-include="{{ filter_includes('play_time') }}"
+        class="bg-shelf-card border border-shelf-border rounded-lg px-3 py-2 text-sm text-shelf-text focus:ring-2 focus:ring-shelf-accent outline-hidden">
+    <option value="" {{ 'selected' if not active_play_time else '' }}>{{ _('Any play time') }}</option>
+    {% for key, label in play_time_labels.items() %}
+    {% set count = play_time_counts.get(key, 0) %}
+    {% if count or active_play_time == key %}
+    <option value="{{ key }}" {{ 'selected' if active_play_time == key else '' }}>{{ label }} ({{ count }})</option>
+    {% endif %}
+    {% endfor %}
+</select>
+{% endif %}

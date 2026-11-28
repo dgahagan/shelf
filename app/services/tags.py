@@ -22,7 +22,7 @@ import sqlite3
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from app import config
+from app import config, i18n
 
 MAX_TAG_LENGTH = 40
 
@@ -312,7 +312,9 @@ def suggestions_for(db, media_type: str) -> list:
     out = [{"name": row["name"], "starter": False} for row in user_tags]
     if not has_scoped:
         for starter in config.TAG_SUGGESTIONS.get(media_type, []):
-            name = normalize_tag(starter)
+            # A chosen starter becomes a stored tag every user shares, so it
+            # is offered in the library's language, not the viewer's.
+            name = normalize_tag(i18n.library_pgettext("tag", starter))
             if name.casefold() not in seen:
                 out.append({"name": name, "starter": True})
                 seen.add(name.casefold())

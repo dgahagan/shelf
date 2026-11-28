@@ -100,8 +100,9 @@ def _location(value):
 def _search(value):
     like = f"%{value}%"
     return (
-        "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ? OR i.asin LIKE ?)",
-        [like, like, like, like, like],
+        "(i.title LIKE ? OR i.authors LIKE ? OR i.isbn LIKE ? OR i.narrator LIKE ? OR i.asin LIKE ?"
+        " OR i.original_title LIKE ?)",
+        [like, like, like, like, like, like],
     )
 
 
@@ -149,6 +150,62 @@ def _author(value):
         "WHERE ia.item_id = i.id AND ia.author_id = ?)",
         built[1],
     )
+
+
+#: The largest player count the Players filter offers as its own option.
+#: A game "for 2-99" would otherwise add a hundred options.
+MAX_PLAYERS_OPTION = 10
+
+#: Play-time buckets for board games: value -> (lowest, highest) minutes,
+#: both inclusive; None is open-ended. Ordered as the dropdown shows them.
+PLAY_TIME_BUCKETS: dict[str, tuple[int | None, int | None]] = {
+    "short": (None, 30),
+    "medium": (31, 60),
+    "long": (61, 120),
+    "epic": (121, None),
+}
+
+
+def _players(value):
+    """Board games playable with exactly this many people (#167).
+
+    A game with no maximum on record is taken to play with its minimum only,
+    which is what BGG's `maxplayers=0` ("unknown") is closest to. The top
+    option (`MAX_PLAYERS_OPTION`) means "this many or more", so a party game
+    for 4-20 answers a request for a large group.
+    """
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        return _NEVER
+    if n < 1 or n > MAX_PLAYERS_OPTION:
+        return _NEVER
+    if n == MAX_PLAYERS_OPTION:
+        return "COALESCE(i.max_players, i.min_players) >= ?", [n]
+    return (
+        "i.min_players IS NOT NULL AND i.min_players <= ? "
+        "AND COALESCE(i.max_players, i.min_players) >= ?",
+        [n, n],
+    )
+
+
+def _play_time(value):
+    """Board games whose play time falls in one bucket. Only board games:
+    `duration_mins` also holds a film's or an audiobook's running time,
+    which nobody means by "a game for half an hour"."""
+    bucket = PLAY_TIME_BUCKETS.get(value)
+    if bucket is None:
+        return _NEVER
+    low, high = bucket
+    sql = ["i.media_type = 'board_game'", "i.duration_mins IS NOT NULL"]
+    params: list = []
+    if low is not None:
+        sql.append("i.duration_mins >= ?")
+        params.append(low)
+    if high is not None:
+        sql.append("i.duration_mins <= ?")
+        params.append(high)
+    return "(" + " AND ".join(sql) + ")", params
 
 
 @dataclass(frozen=True)
@@ -219,6 +276,9 @@ FILTERS: tuple[BrowseFilter, ...] = (
     # (the control's data-label), never the id.
     BrowseFilter("author_filter", prefix=N_("Author"), condition=_author),
     BrowseFilter("language", prefix=N_("Language"), condition=_column("i.language")),
+    # Board games (#167): who can play, and for how long.
+    BrowseFilter("players", prefix=N_("Players"), condition=_players),
+    BrowseFilter("play_time", prefix=N_("Play time"), condition=_play_time),
     # `view` is the odd one: client-owned state (localStorage) that is sent to
     # the server so it can pick the grid or list template. It is not a filter
     # the user clears, chips, or reads out of the URL — hence all three opt-outs.

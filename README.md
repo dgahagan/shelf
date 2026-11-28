@@ -28,7 +28,7 @@ Most home library apps are cloud-hosted, mobile-only, or require you to manually
 - **Zero cloud dependency** — runs entirely on your network in a single Docker container with a SQLite database. Your data never leaves your home
 - **Works on any device** — responsive web UI that works on phones, tablets, and desktops. No app store required
 - **Multi-user** — share with your household. Admins manage the catalog, viewers can browse and track what they're reading
-- **More than books** — catalog audiobooks, eBooks, DVDs, CDs, comics, manga, and video games. Link physical and digital formats together
+- **More than books** — catalog audiobooks, eBooks, DVDs, CDs, comics, manga, video games, and board games. Link physical and digital formats together
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges (Atari 2600, NES, SNES, etc.). Cover art, publisher, series, and platform tracking with a customizable platform list
 - **Lend with confidence** — track who borrowed what with the Lend/Return scan modes and a "Lent Out" filter on the browse page
 - **Shelf audits** — start an audit of a shelf or the whole library, scan from any device (or several at once, or after a reload), and finish for a report: found, moved here, seen elsewhere, on loan, missing and unexpected. Mark the missing copies; the next scan of one clears it. See [Audits](docs/user-guide/audits.md)
@@ -136,6 +136,7 @@ of this whole directory carries the keys next to the data they protect.
 - **Manga as its own media type** — in the book family, so it carries an ISBN, belongs to a series, and filters separately from comics
 - **Retail barcodes on the edit form** — the Identifiers section takes a UPC/EAN as well as an ISBN, with the same camera scanner. UPC-A is canonicalised to EAN-13 and checksummed; 978/979 Bookland codes are refused, because they belong in the ISBN field. See [Editing barcodes](docs/user-guide/editing-barcodes.md)
 - **Video game support** — scan UPC barcodes for modern games or search IGDB by title for retro cartridges. Platform tracking with a customizable platform list (30+ platforms from Atari 2600 to PS5)
+- **Board game support** — scan a board game's barcode (matched to BoardGameGeek through GameUPC) or search BoardGameGeek by title. Players, play time, minimum age, designers and box art per printing, with a link back to BGG
 
 ### Scan Modes
 
@@ -231,6 +232,7 @@ each option before anything is sent.
 - **[Hardcover](https://hardcover.app)** — bidirectional reading status sync, import your library, discover new books
 - **[Audiobookshelf](https://www.audiobookshelf.org)** — sync selected libraries from your Audiobookshelf server, link physical + digital formats, and jump straight to an item in ABS from its Shelf page
 - **[IGDB](https://www.igdb.com)** — video game metadata, cover art, and platform info via Twitch developer credentials (free)
+- **[BoardGameGeek](https://boardgamegeek.com)** — board game metadata and box art (players, play time, age, designers), via a free BGG XML API token; [GameUPC](https://gameupc.com) maps a board game's barcode to its BGG entry
 - **[RomM](https://romm.app)** — sync a self-hosted RomM server's digital game library. A RomM game gets its own record rather than being matched onto a physical cartridge you already own; link the two yourself. See [RomM](docs/romm.md)
 - **[Komga](https://komga.org)** — sync a self-hosted Komga server's digital comics and manga, matching on ISBN where one exists. A library's Comic/Manga kind is kept apart from Shelf's own media type, so it never reclassifies an item you catalogued by hand. See [Komga](docs/komga.md)
 - **[ISBNdb](https://isbndb.com)** — collection valuation with list prices for insurance documentation, and wishlist price alerts
@@ -329,6 +331,8 @@ Configure in Settings to unlock additional features:
 | **Hardcover** | Reading status sync, richer metadata, import/export, Discover page, release radar for new volumes in watched series | [hardcover.app](https://hardcover.app) |
 | **Google Books** | Optional credentialed metadata, synopsis, and cover requests; anonymous access remains available | [Google Books API](https://developers.google.com/books) |
 | **IGDB** (Twitch) | Video game metadata, cover art, and platform info — on UPC scan, title search, and Photo Intake confirm | [dev.twitch.tv/console](https://dev.twitch.tv/console) |
+| **BoardGameGeek** | Board game metadata and box art — on UPC scan (with GameUPC), title search, **Find cover** and **Update from BGG**. Board game data courtesy of BoardGameGeek | [boardgamegeek.com/applications](https://boardgamegeek.com/applications) |
+| **GameUPC** | Board game barcode → BGG id. Optional key; Auto mode asks it only with one | [gameupc.com](https://gameupc.com) |
 | **Discogs** | Pick the exact pressing of a Music item; Shelf keeps only the Discogs release ID | [discogs.com/settings/developers](https://www.discogs.com/settings/developers) |
 | **ISBNdb** | Collection valuation with market prices; wishlist price alerts | [isbndb.com](https://isbndb.com) |
 | **TMDb** | DVD/Blu-ray metadata — on UPC scan, title search, and Photo Intake confirm | [themoviedb.org](https://www.themoviedb.org) |

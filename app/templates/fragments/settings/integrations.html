@@ -912,6 +912,26 @@
         </form>
     </div>
 
+<!-- BoardGameGeek + GameUPC (Board Games) -->
+<div class="bg-shelf-card border border-shelf-border rounded-xl p-5">
+    <h2 class="text-lg font-semibold">BoardGameGeek (Board Games)</h2>
+    <p class="text-sm text-shelf-muted mt-2">Board game details, covers, player counts and play times come from BoardGameGeek. Barcodes are matched to games through GameUPC.</p>
+    <p class="text-xs text-shelf-muted mt-2">Register a free application at <a href="https://boardgamegeek.com/applications" target="_blank" rel="noopener noreferrer" class="text-shelf-accent">boardgamegeek.com/applications</a> and paste its token here. A GameUPC key is optional; without one, Shelf uses GameUPC's public test service.</p>
+    <form action="/api/settings" method="post" class="space-y-3 mt-3">
+        <label for="bgg_api_token" class="block text-sm font-medium">BGG API token</label>
+        <input type="password" id="bgg_api_token" name="bgg_api_token" autocomplete="new-password"
+               placeholder="{% if secrets_saved['bgg_api_token'] %}Saved &ndash; leave blank to keep{% elif secrets_present['bgg_api_token'] %}Set by BGG_API_TOKEN{% else %}Your BGG application token{% endif %}"
+               class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2">
+        {% if secrets_saved['bgg_api_token'] %}<label class="flex items-center gap-2 text-xs"><input type="checkbox" name="clear_bgg_api_token"> Remove saved token</label>{% endif %}
+        <label for="gameupc_api_key" class="block text-sm font-medium">GameUPC API key (optional)</label>
+        <input type="password" id="gameupc_api_key" name="gameupc_api_key" autocomplete="new-password"
+               placeholder="{% if secrets_saved['gameupc_api_key'] %}Saved &ndash; leave blank to keep{% elif secrets_present['gameupc_api_key'] %}Set by GAMEUPC_API_KEY{% else %}Optional GameUPC key{% endif %}"
+               class="w-full bg-shelf-bg border border-shelf-border rounded-lg px-3 py-2">
+        {% if secrets_saved['gameupc_api_key'] %}<label class="flex items-center gap-2 text-xs"><input type="checkbox" name="clear_gameupc_api_key"> Remove saved key</label>{% endif %}
+        <button type="submit" class="px-4 py-2 bg-shelf-accent text-white rounded-lg text-sm">Save</button>
+    </form>
+</div>
+
 <div class="bg-shelf-card border border-shelf-border rounded-xl p-5">
     <h2 class="text-lg font-semibold">LibraryThing</h2>
     <p class="text-sm text-shelf-muted mt-2">Find English covers from related editions when existing cover sources fail. Your book's ISBN and metadata stay unchanged.</p>

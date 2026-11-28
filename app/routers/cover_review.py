@@ -58,7 +58,7 @@ router = APIRouter()
 # when the item has copies at all; fall back to the seam only when it has none.
 _QUEUE_COLUMNS = """
     i.id, i.title, i.authors, i.media_type, i.cover_path,
-    i.publish_year, i.platform, i.isbn, i.cover_edition_language,
+    i.publish_year, i.platform, i.isbn, i.cover_edition_language, i.bgg_id,
     COALESCE(
         (SELECT l.name FROM copies_live c
            JOIN locations l ON l.id = c.location_id
@@ -241,7 +241,7 @@ async def cover_review_search(
     templates = request.app.state.templates
     with get_db() as db:
         item = db.execute(
-            "SELECT id, title, authors, cover_path, media_type, publish_year, platform, isbn, asin, cover_edition_language "
+            "SELECT id, title, authors, cover_path, media_type, publish_year, platform, isbn, asin, cover_edition_language, bgg_id "
             "FROM items_live WHERE id = ?", (item_id,)
         ).fetchone()
         # Key-by-key through get_setting, never the bulk accessor: provider

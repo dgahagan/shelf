@@ -12,7 +12,7 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit"
 
-#: static/js/app.js:71 static/js/app.js:114 static/js/app.js:124
+#: static/js/app.js:73 static/js/app.js:116 static/js/app.js:126
 #: static/js/browse.js:30
 msgid "Done"
 msgstr "Fatto"
@@ -550,7 +550,7 @@ msgstr "Impossibile aggiornare le impostazioni delle funzionalità"
 msgid "Could not save feature settings"
 msgstr "Impossibile salvare le impostazioni delle funzionalità"
 
-#: static/js/components.js:82
+#: static/js/components.js:109
 msgid "Could not change the language"
 msgstr "Impossibile cambiare la lingua"
 
@@ -831,18 +831,26 @@ msgid "Select a location first"
 msgstr "Prima scegli una posizione"
 
 #: static/js/scan.js:488
+msgid "Choose the matching game below"
+msgstr ""
+
+#: static/js/scan.js:489
 msgid "Choose the matching book below"
 msgstr "Scegli il libro corrispondente qui sotto"
 
-#: static/js/scan.js:488
+#: static/js/scan.js:489
 msgid "Type the five digits below"
 msgstr "Scrivi le cinque cifre qui sotto"
 
-#: static/js/scan.js:507 static/js/shelf-fill.js:135
+#: static/js/scan.js:497
+msgid "done"
+msgstr ""
+
+#: static/js/scan.js:508 static/js/shelf-fill.js:135
 msgid "error"
 msgstr "errore"
 
-#: static/js/scan.js:507 static/js/shelf-fill.js:135
+#: static/js/scan.js:508 static/js/shelf-fill.js:135
 msgid "Scan failed"
 msgstr "Scansione non riuscita"
 
